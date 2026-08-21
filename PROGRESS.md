@@ -16,6 +16,12 @@ This file tracks what's been built so far. Claude reads this at the start of eve
   - **Offline behavior:** The app works fully offline at all times — no internet connection is ever required to use it, since all data lives directly on the phone (consistent with the 0.1 no-sync decision). Whenever the phone does have an internet connection, the app will quietly make a backup copy of the data to the cloud, purely as a safety net (e.g. if the phone is lost, broken, or replaced). This backup is **not** the same as the two-phone syncing feature — it never shares data with another phone or profile, it just protects against losing your one phone's data. Real two-phone syncing stays deferred to Phase 9, as decided in 0.1.
   - **Minimum phone OS version:** Recent phones only — roughly the last ~4 years of iOS/Android. Very old devices are not a target, in exchange for a simpler, faster build.
 
+### Phase 1 — Security & Sign-In (M1–M2)
+- **1.1 — Data model setup.** Done.
+  - Created `mobile-app/src/types.ts` — TypeScript definitions describing the "shape" of every piece of financial data: People, Income sources, Bills, Debts, Loans, Savings goals, Balance accounts (cash/debit/credit/investment/property/vehicle), manual Transactions, Categories, and app Settings. Matches the behavior of the original web app.
+  - Created `mobile-app/src/defaultModel.ts` — a function that returns a brand-new, empty version of all that data, for when someone creates a new profile.
+  - Nothing visible on the phone yet — this is the invisible foundation the next checkpoints (sign-in screen, encryption, actual data entry) will be built on top of.
+
 ---
 
 ## 🔧 In progress
@@ -31,14 +37,15 @@ Nothing in progress right now — ready to start the next checkpoint.
 - **Git:** The `mobile-app` project was created *inside* the existing `household-finance-mobile` git repo, and was told to skip creating its own separate git repo — everything stays under the one repo.
 - **Offline behavior:** Fully offline app, with an automatic cloud backup (safety copy only, not multi-device sync) whenever internet is available.
 - **Minimum phone OS version:** Recent phones only (~last 4 years).
+- **Data model language:** TypeScript (`.ts` files) inside `mobile-app/src/`, matching field names and behavior from the original web app's data shapes.
 
 ---
 
 ## ▶️ Next step
 
-**Phase 1 begins — Checkpoint 1.1: Data model setup.**
+**Checkpoint 1.2 — Create-profile & sign-in screens, with password protection.**
 
-This is where real app code starts getting written. Checkpoint 1.1 defines the "shape" of all your financial data (bills, debts, income, accounts, etc.) inside the app, matching the behavior of your original web app. Nothing will be visible on your phone yet after this checkpoint — it's the invisible foundation everything else gets built on top of.
+This is the first checkpoint where something actually appears on your phone: a screen to create a username and passphrase, and a way to sign back in. Encryption itself (making the data unreadable without the passphrase) comes in Checkpoint 1.3, right after.
 
 ---
 
@@ -50,6 +57,8 @@ This is where real app code starts getting written. Checkpoint 1.1 defines the "
 - `household-finance-app-spec-and-scale.md`
 - `README.md`
 - `PROGRESS.md` (this file)
-- `mobile-app/` folder (blank Expo project — created directly in Codespaces, not uploaded as a zip; see note below)
+- `mobile-app/` folder (blank Expo project — created directly in Codespaces)
+  - `mobile-app/src/types.ts` — data model type definitions
+  - `mobile-app/src/defaultModel.ts` — empty/default data factory function
 
-**Note on `mobile-app/` folder:** Since this was created directly in your Codespace (not on your computer), it's not something you need to download and re-upload — it already lives in your repo's `main` branch, saved automatically by Codespaces' connection to GitHub. Nothing extra to upload this session for that folder.
+**Note on `mobile-app/` folder:** This project lives entirely inside your Codespace and gets saved to GitHub via `git add` / `git commit` / `git push` in the terminal — not by uploading files through the GitHub website. Future sessions should continue using that same terminal workflow.
