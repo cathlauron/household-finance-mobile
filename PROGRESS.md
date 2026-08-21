@@ -21,6 +21,10 @@ This file tracks what's been built so far. Claude reads this at the start of eve
   - Created `mobile-app/src/types.ts` — TypeScript definitions describing the "shape" of every piece of financial data: People, Income sources, Bills, Debts, Loans, Savings goals, Balance accounts (cash/debit/credit/investment/property/vehicle), manual Transactions, Categories, and app Settings. Matches the behavior of the original web app.
   - Created `mobile-app/src/defaultModel.ts` — a function that returns a brand-new, empty version of all that data, for when someone creates a new profile.
   - Nothing visible on the phone yet — this is the invisible foundation the next checkpoints (sign-in screen, encryption, actual data entry) will be built on top of.
+- **1.2 — Create-profile & sign-in screens, with password protection.** ✅ Complete.
+  - Built the sign-in / create-profile screens (`src/auth.ts` and `src/screens/CreateProfileScreen.tsx`, wired into `App.tsx`).
+  - Confirmed working on a real Android phone via Expo Go: successfully created a profile, signed in, and signed out.
+  - Two bugs surfaced and fixed during testing (details below under "Fixes applied").
 
 ---
 
@@ -38,14 +42,28 @@ Nothing in progress right now — ready to start the next checkpoint.
 - **Offline behavior:** Fully offline app, with an automatic cloud backup (safety copy only, not multi-device sync) whenever internet is available.
 - **Minimum phone OS version:** Recent phones only (~last 4 years).
 - **Data model language:** TypeScript (`.ts` files) inside `mobile-app/src/`, matching field names and behavior from the original web app's data shapes.
+- **Dev workflow in Codespaces:** Because this project runs in **GitHub Codespaces** (cloud-based, not on the person's home network), Metro must always be started with tunnel mode:
+  ```
+  npx expo start --tunnel
+  ```
+  The plain `npx expo start` will start Metro on a local network address that the phone can't reach, causing a "Failed to download remote update" error. Always confirm the terminal shows an address ending in `.exp.direct` before scanning the QR code.
+
+---
+
+## 🛠️ Fixes applied (Checkpoint 1.2 session)
+
+1. **Missing `expo-crypto` package**
+   - Symptom: Metro bundling failed with `Unable to resolve "expo-crypto" from "src/auth.ts"`.
+   - Fix: Ran `npx expo install expo-crypto` in the Codespaces terminal, then committed and pushed the updated `package.json` / `package-lock.json` to GitHub. This is now baked into the project — should not recur on a fresh clone.
+2. **Metro using local network address instead of tunnel**
+   - Symptom: Phone got stuck on the loading/QR screen, then showed `Uncaught Error: java.io.IOException: Failed to download remote update`.
+   - Fix: Restarted Metro with `npx expo start --tunnel` (see the standing decision above).
 
 ---
 
 ## ▶️ Next step
 
-**Checkpoint 1.2 — Create-profile & sign-in screens, with password protection.**
-
-This is the first checkpoint where something actually appears on your phone: a screen to create a username and passphrase, and a way to sign back in. Encryption itself (making the data unreadable without the passphrase) comes in Checkpoint 1.3, right after.
+Continue with the roadmap step immediately after **Checkpoint 1.2** — likely **Checkpoint 1.3: Encryption**, making the profile's stored data unreadable without the passphrase. Confirm the exact next checkpoint against `3-ROADMAP.md` before starting, and explain it in plain English before making any changes (encryption/security changes always require explaining first, per project instructions).
 
 ---
 
@@ -60,5 +78,9 @@ This is the first checkpoint where something actually appears on your phone: a s
 - `mobile-app/` folder (blank Expo project — created directly in Codespaces)
   - `mobile-app/src/types.ts` — data model type definitions
   - `mobile-app/src/defaultModel.ts` — empty/default data factory function
+  - `mobile-app/src/auth.ts` — sign-in / create-profile logic (uses `expo-crypto`)
+  - `mobile-app/src/screens/CreateProfileScreen.tsx` — create-profile screen UI
+  - `mobile-app/App.tsx` — updated to wire in the new auth screen
+  - `mobile-app/package.json` / `package-lock.json` — updated to include `expo-crypto`
 
 **Note on `mobile-app/` folder:** This project lives entirely inside your Codespace and gets saved to GitHub via `git add` / `git commit` / `git push` in the terminal — not by uploading files through the GitHub website. Future sessions should continue using that same terminal workflow.
