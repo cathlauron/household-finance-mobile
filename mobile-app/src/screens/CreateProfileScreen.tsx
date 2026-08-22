@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { generateSalt, hashPassword, sanitizeUsername } from '../auth';
-import { loadProfilesIndex, saveProfilesIndex, saveProfileData } from '../storage';
+import CryptoJS from 'crypto-js';
+import { sanitizeUsername } from '../auth';
+import { generateSalt, deriveKey, encryptJSON } from '../encryption';
+import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '../storage';
 import { defaultModel } from '../defaultModel';
 
 type Props = {
-  onProfileCreated: (username: string) => void;
+  onProfileCreated: (username: string, key: CryptoJS.lib.WordArray) => void;
   onGoToSignIn: () => void;
 };
 
@@ -39,13 +41,14 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         setBusy(false);
         return;
       }
-      const salt = generateSalt();
-      const passwordHash = await hashPassword(password1, salt);
-      profiles.push({ username, passwordHash, salt });
+      const salt = await generateSalt();
+      const key = deriveKey(password1, salt);
+      const encrypted = await encryptJSON(key, defaultModel());
+      profiles.push({ username, salt });
       await saveProfilesIndex(profiles);
-      await saveProfileData(username, defaultModel());
+      await saveEncryptedProfileData(username, encrypted);
       setBusy(false);
-      onProfileCreated(username);
+      onProfileCreated(username, key);
     } catch (e) {
       setBusy(false);
       setError('Something went wrong saving your profile. Please try again.');
@@ -101,8 +104,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        There's no "forgot passphrase" recovery once encryption is turned on in the next step —
-        remember this passphrase, like you would a password manager entry.
+        There's no "forgot passphrase" recovery — your data is genuinely encrypted with this
+        passphrase, not just hidden. Remember it, like you would a password manager entry.
       </Text>
     </View>
   );

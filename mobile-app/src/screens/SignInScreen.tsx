@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { hashPassword, sanitizeUsername } from '../auth';
-import { loadProfilesIndex } from '../storage';
+import CryptoJS from 'crypto-js';
+import { sanitizeUsername } from '../auth';
+import { deriveKey, decryptJSON } from '../encryption';
+import { loadProfilesIndex, loadEncryptedProfileData } from '../storage';
 
 type Props = {
-  onSignedIn: (username: string) => void;
+  onSignedIn: (username: string, key: CryptoJS.lib.WordArray) => void;
   onGoToCreateProfile: () => void;
 };
 
@@ -30,14 +32,22 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         setBusy(false);
         return;
       }
-      const hash = await hashPassword(password, profile.salt);
-      if (hash !== profile.passwordHash) {
+      const encrypted = await loadEncryptedProfileData(username);
+      if (!encrypted) {
+        setError('Could not find any saved data for that profile.');
+        setBusy(false);
+        return;
+      }
+      const key = deriveKey(password, profile.salt);
+      try {
+        decryptJSON(key, encrypted);
+      } catch (e) {
         setError('Incorrect username or passphrase.');
         setBusy(false);
         return;
       }
       setBusy(false);
-      onSignedIn(username);
+      onSignedIn(username, key);
     } catch (e) {
       setBusy(false);
       setError('Something went wrong signing in. Please try again.');

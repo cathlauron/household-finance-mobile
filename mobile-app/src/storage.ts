@@ -4,7 +4,6 @@ const PROFILES_INDEX_KEY = 'profiles-index';
 
 export type ProfileIndexEntry = {
   username: string;
-  passwordHash: string;
   salt: string;
 };
 
@@ -27,16 +26,14 @@ function profileDataKey(username: string): string {
   return `profile:${username}:app-data`;
 }
 
-export async function saveProfileData(username: string, data: unknown): Promise<void> {
-  await AsyncStorage.setItem(profileDataKey(username), JSON.stringify(data));
+// Saves already-encrypted data (a string) exactly as given — encryption happens in the
+// screen that calls this, using encryptJSON from encryption.ts.
+export async function saveEncryptedProfileData(username: string, encryptedPayload: string): Promise<void> {
+  await AsyncStorage.setItem(profileDataKey(username), encryptedPayload);
 }
 
-export async function loadProfileData(username: string): Promise<unknown | null> {
-  const raw = await AsyncStorage.getItem(profileDataKey(username));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
+// Returns the raw encrypted string for a profile, or null if nothing's saved yet.
+// Callers decrypt it themselves with decryptJSON from encryption.ts.
+export async function loadEncryptedProfileData(username: string): Promise<string | null> {
+  return AsyncStorage.getItem(profileDataKey(username));
 }

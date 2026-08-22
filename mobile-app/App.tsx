@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ActivityIndicator } from 'react-native';
+import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -10,6 +11,7 @@ type Screen = 'loading' | 'createProfile' | 'signIn' | 'home';
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const [derivedKey, setDerivedKey] = useState<CryptoJS.lib.WordArray | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -26,13 +28,14 @@ export default function App() {
     );
   }
 
-  if (screen === 'home' && currentUsername) {
+  if (screen === 'home' && currentUsername && derivedKey) {
     return (
       <SafeAreaView style={{ flex: 1 }}>
         <HomeScreen
           username={currentUsername}
           onSignOut={() => {
             setCurrentUsername(null);
+            setDerivedKey(null);
             setScreen('signIn');
           }}
         />
@@ -44,8 +47,9 @@ export default function App() {
     return (
       <SafeAreaView style={{ flex: 1 }}>
         <CreateProfileScreen
-          onProfileCreated={(username) => {
+          onProfileCreated={(username, key) => {
             setCurrentUsername(username);
+            setDerivedKey(key);
             setScreen('home');
           }}
           onGoToSignIn={() => setScreen('signIn')}
@@ -57,8 +61,9 @@ export default function App() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <SignInScreen
-        onSignedIn={(username) => {
+        onSignedIn={(username, key) => {
           setCurrentUsername(username);
+          setDerivedKey(key);
           setScreen('home');
         }}
         onGoToCreateProfile={() => setScreen('createProfile')}
