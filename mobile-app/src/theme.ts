@@ -1,53 +1,69 @@
-// Color palette ported from the web app's "Ink & Emerald" (Classic) theme.
-// See household-finance-app-spec-and-scale.md section 4 for the full theming system this is based on.
+// Colors and fonts ported from the web app's default "Classic" (Ink & Emerald) theme.
+// See household-finance-app-spec-and-scale.md §4 for the full theming system this
+// is a simplified starting point for.
 
-export type ThemeColors = {
-  ink: string;
-  inkDim: string;
-  inkFaint: string;
-  navy1: string;
-  navy2: string;
-  navy3: string;
-  navy4: string;
-  gold: string;
-  goldDim: string;
-  accent: string;
-  error: string;
-  errorBg: string;
-  ok: string;
-  orange: string;
+export type AppTheme = {
+  mode: 'light' | 'dark';
+  colors: {
+    ink: string;
+    inkDim: string;
+    inkFaint: string;
+    background: string;   // page background (--navy-2 equivalent)
+    surface: string;      // card/input background (--navy-3 equivalent)
+    surfaceAlt: string;   // subtle fill (--navy-1 equivalent)
+    border: string;
+    gold: string;         // primary accent / buttons
+    goldDim: string;
+    error: string;
+    errorBg: string;
+    ok: string;
+  };
+  fonts: {
+    serif: string;  // headings
+    sans: string;   // body text
+    mono: string;   // amounts, codes
+  };
 };
 
-export const lightTheme: ThemeColors = {
+const lightColors: AppTheme['colors'] = {
   ink: '#1C1917',
   inkDim: '#57534E',
   inkFaint: '#A8A29E',
-  navy1: '#EFEAE0',
-  navy2: '#F7F2E9',
-  navy3: '#FFFDF8',
-  navy4: '#DCD3C1',
+  background: '#F7F2E9',
+  surface: '#FFFDF8',
+  surfaceAlt: '#EFEAE0',
+  border: 'rgba(28,25,23,0.08)',
   gold: '#1C1917',
   goldDim: '#44403C',
-  accent: '#059669',
   error: '#E11D48',
   errorBg: '#FFF1F2',
   ok: '#059669',
-  orange: '#EA580C',
 };
 
-export const darkTheme: ThemeColors = {
+const darkColors: AppTheme['colors'] = {
   ink: '#F1F0EF',
   inkDim: '#C7C2BE',
   inkFaint: '#8C857F',
-  navy1: '#161412',
-  navy2: '#1C1917',
-  navy3: '#242020',
-  navy4: '#3A3532',
+  background: '#1C1917',
+  surface: '#242020',
+  surfaceAlt: '#161412',
+  border: 'rgba(255,255,255,0.08)',
   gold: '#10B981',
   goldDim: '#059669',
-  accent: '#34D399',
   error: '#FB7185',
   errorBg: '#3F1725',
   ok: '#34D399',
-  orange: '#FB923C',
 };
+
+// The web app pairs a serif font for headings with a plain sans font for body text.
+// React Native ships with system fonts only, so for this pass we use the closest
+// built-in system equivalents (serif/sans-serif) rather than loading custom web fonts.
+// Swapping in real custom fonts (e.g. via expo-font) can be a later checkpoint.
+const fonts: AppTheme['fonts'] = {
+  serif: 'serif',
+  sans: 'System',
+  mono: 'monospace',
+};
+
+export const lightTheme: AppTheme = { mode: 'light', colors: lightColors, fonts };
+export const darkTheme: AppTheme = { mode: 'dark', colors: darkColors, fonts };
