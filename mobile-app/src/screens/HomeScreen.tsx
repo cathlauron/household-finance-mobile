@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import SetPinScreen from './SetPinScreen';
 import { hasPinSetUp } from '../pin';
+import { useTheme } from '../ThemeContext';
 
 type Props = {
   username: string;
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default function HomeScreen({ username, onSignOut, onLock }: Props) {
+  const { colors } = useTheme();
   const [showSetPin, setShowSetPin] = useState(false);
   const [pinIsSet, setPinIsSet] = useState(false);
 
@@ -33,24 +35,30 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>You're signed in, {username}!</Text>
-      <Text style={styles.sub}>
+    <View style={[styles.container, { backgroundColor: colors.navy2 }]}>
+      <Text style={[styles.title, { color: colors.ink }]}>You're signed in, {username}!</Text>
+      <Text style={[styles.sub, { color: colors.inkDim }]}>
         This is a placeholder home screen. The real tabs (Calendar, Bills, etc.) get built in
         later checkpoints.
       </Text>
 
-      <TouchableOpacity style={styles.pinBtn} onPress={() => setShowSetPin(true)}>
+      <TouchableOpacity
+        style={[styles.pinBtn, { backgroundColor: colors.gold }]}
+        onPress={() => setShowSetPin(true)}
+      >
         <Text style={styles.pinBtnText}>{pinIsSet ? 'Change my PIN' : 'Set a Quick PIN'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.lockBtn} onPress={pinIsSet ? onLock : onSignOut}>
-        <Text style={styles.lockBtnText}>{pinIsSet ? 'Lock' : 'Sign out'}</Text>
+      <TouchableOpacity
+        style={[styles.lockBtn, { backgroundColor: colors.navy1 }]}
+        onPress={pinIsSet ? onLock : onSignOut}
+      >
+        <Text style={[styles.lockBtnText, { color: colors.ink }]}>{pinIsSet ? 'Lock' : 'Sign out'}</Text>
       </TouchableOpacity>
 
       {pinIsSet && (
         <TouchableOpacity style={styles.signOutBtn} onPress={onSignOut}>
-          <Text style={styles.signOutText}>Sign out completely</Text>
+          <Text style={[styles.signOutText, { color: colors.inkDim }]}>Sign out completely</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -58,13 +66,13 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF9', padding: 24, paddingTop: 100, alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: '600', color: '#1C1917', marginBottom: 12, textAlign: 'center' },
-  sub: { fontSize: 14, color: '#57534E', textAlign: 'center', lineHeight: 20, marginBottom: 30 },
-  pinBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 14 },
+  container: { flex: 1, padding: 24, paddingTop: 100, alignItems: 'center' },
+  title: { fontSize: 20, fontWeight: '600', marginBottom: 12, textAlign: 'center' },
+  sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 30 },
+  pinBtn: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 14 },
   pinBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  lockBtn: { backgroundColor: '#E7E5E4', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 6 },
-  lockBtnText: { color: '#1C1917', fontWeight: '600', fontSize: 14 },
+  lockBtn: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 6 },
+  lockBtnText: { fontWeight: '600', fontSize: 14 },
   signOutBtn: { paddingVertical: 12, paddingHorizontal: 20 },
-  signOutText: { color: '#57534E', fontSize: 13 },
+  signOutText: { fontSize: 13 },
 });
