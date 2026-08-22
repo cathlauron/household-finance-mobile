@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable } from 'react-native';
 import { useTheme } from '../ThemeContext';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -13,6 +13,7 @@ export default function CalendarScreen() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   function goPrevMonth() {
     if (month === 0) {
@@ -37,6 +38,14 @@ export default function CalendarScreen() {
     setMonth(today.getMonth());
   }
 
+  function handleDayPress(day: number) {
+    setSelectedDay(day);
+  }
+
+  function closeDayModal() {
+    setSelectedDay(null);
+  }
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday
 
@@ -55,6 +64,18 @@ export default function CalendarScreen() {
   }
 
   const styles = makeStyles(colors);
+
+  // Full, friendly label for whichever day is currently selected, e.g.
+  // "Friday, August 22, 2026" — used in the popup title.
+  const selectedDateLabel =
+    selectedDay !== null
+      ? new Date(year, month, selectedDay).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : '';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -89,8 +110,11 @@ export default function CalendarScreen() {
           {row.map((day, colIndex) => {
             const isToday = isCurrentMonth && day === today.getDate();
             return (
-              <View
+              <TouchableOpacity
                 key={colIndex}
+                disabled={day === null}
+                onPress={() => day !== null && handleDayPress(day)}
+                activeOpacity={0.6}
                 style={[
                   styles.dayCell,
                   day === null && styles.dayCellEmpty,
@@ -102,11 +126,31 @@ export default function CalendarScreen() {
                     {day}
                   </Text>
                 )}
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
       ))}
+
+      <Modal
+        visible={selectedDay !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDayModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closeDayModal}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>{selectedDateLabel}</Text>
+            <Text style={styles.modalSubtitle}>
+              Nothing to show here yet — this is where bills, income, and other
+              items due this day will eventually appear.
+            </Text>
+            <TouchableOpacity onPress={closeDayModal} style={styles.modalCloseButton}>
+              <Text style={styles.modalCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -195,6 +239,44 @@ function makeStyles(colors: any) {
     dayTextToday: {
       color: colors.gold,
       fontWeight: '700',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    modalCard: {
+      width: '100%',
+      maxWidth: 360,
+      backgroundColor: colors.navy3,
+      borderRadius: 14,
+      padding: 20,
+    },
+    modalTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.ink,
+      marginBottom: 8,
+    },
+    modalSubtitle: {
+      fontSize: 13,
+      color: colors.inkDim,
+      lineHeight: 19,
+      marginBottom: 18,
+    },
+    modalCloseButton: {
+      alignSelf: 'flex-end',
+      backgroundColor: colors.gold,
+      paddingHorizontal: 18,
+      paddingVertical: 9,
+      borderRadius: 999,
+    },
+    modalCloseButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.navy2,
     },
   });
 }
