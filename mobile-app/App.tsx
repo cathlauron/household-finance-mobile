@@ -9,17 +9,16 @@ import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES } from './src/autoLock';
+import { ThemeProvider, useTheme } from './src/ThemeContext';
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
 
-export default function App() {
+function AppContent() {
+  const { colors } = useTheme();
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [derivedKey, setDerivedKey] = useState<CryptoJS.lib.WordArray | null>(null);
 
-  // Refs mirror the state above so the AppState listener and the idle
-  // timer (both set up once) always see the *current* values instead of
-  // whatever they were when the listener/timer was first created.
   const screenRef = useRef<Screen>('loading');
   const usernameRef = useRef<string | null>(null);
   const autoLockMinutesRef = useRef<number>(DEFAULT_AUTO_LOCK_MINUTES);
@@ -66,7 +65,6 @@ export default function App() {
     }, timeoutMs);
   }
 
-  // Trigger 1: the app itself was switched away from (backgrounded).
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
@@ -76,8 +74,6 @@ export default function App() {
     return () => subscription.remove();
   }, []);
 
-  // Trigger 2: the idle stopwatch. Starts fresh whenever we land on the
-  // home screen, and is fully stopped whenever we leave it.
   useEffect(() => {
     if (screen === 'home') {
       resetIdleTimer();
@@ -96,15 +92,15 @@ export default function App() {
 
   if (screen === 'loading') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAF9', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.accent} />
       </SafeAreaView>
     );
   }
 
   if (screen === 'locked' && currentUsername && derivedKey) {
     return (
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <PinUnlockScreen
           username={currentUsername}
           onUnlocked={() => setScreen('home')}
@@ -116,10 +112,7 @@ export default function App() {
 
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
-      // onStartShouldSetResponderCapture fires on every tap anywhere in the
-      // app, lets us reset the idle stopwatch, then returns false so the
-      // tap still reaches whatever button/field was actually pressed.
-      <View style={{ flex: 1 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
+      <View style={{ flex: 1, backgroundColor: colors.navy2 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
         <NavigationContainer>
           <MainTabs
             username={currentUsername}
@@ -133,7 +126,7 @@ export default function App() {
 
   if (screen === 'createProfile') {
     return (
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <CreateProfileScreen
           onProfileCreated={(username, key) => {
             setCurrentUsername(username);
@@ -147,7 +140,7 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
       <SignInScreen
         onSignedIn={(username, key) => {
           setCurrentUsername(username);
@@ -157,5 +150,13 @@ export default function App() {
         onGoToCreateProfile={() => setScreen('createProfile')}
       />
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
