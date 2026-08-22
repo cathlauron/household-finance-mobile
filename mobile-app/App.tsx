@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
-import HomeScreen from './src/screens/HomeScreen';
 import PinUnlockScreen from './src/screens/PinUnlockScreen';
+import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES } from './src/autoLock';
@@ -119,13 +120,13 @@ export default function App() {
       // app, lets us reset the idle stopwatch, then returns false so the
       // tap still reaches whatever button/field was actually pressed.
       <View style={{ flex: 1 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <HomeScreen
+        <NavigationContainer>
+          <MainTabs
             username={currentUsername}
             onSignOut={handleFullSignOut}
             onLock={() => setScreen('locked')}
           />
-        </SafeAreaView>
+        </NavigationContainer>
       </View>
     );
   }
