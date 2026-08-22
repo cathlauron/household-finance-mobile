@@ -2,19 +2,16 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 import { useTheme } from '../ThemeContext';
-
 const Tab = createBottomTabNavigator();
-
 type MainTabsProps = {
   username: string;
   onLock: () => void;
   onSignOut: () => void;
 };
-
 export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps) {
   const { colors } = useTheme();
-
   return (
     <Tab.Navigator
       screenOptions={{
@@ -30,7 +27,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       <Tab.Screen name="Home">
         {() => <HomeScreen username={username} onLock={onLock} onSignOut={onSignOut} />}
       </Tab.Screen>
-      <Tab.Screen name="Calendar" component={PlaceholderScreen} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Accounts" component={PlaceholderScreen} />
       <Tab.Screen name="To-Pay" component={PlaceholderScreen} />
       <Tab.Screen name="Planning" component={PlaceholderScreen} />
