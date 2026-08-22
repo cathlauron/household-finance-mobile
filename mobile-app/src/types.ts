@@ -80,6 +80,9 @@ export type Debt = {
   interestRate?: number | '';
   minPayment?: number | '';
   createdAt?: number;
+  customFreq?: string;
+  customStartDate?: string;
+  customOccurrenceCount?: number | '';
 };
 
 export type LoanPayment = {

@@ -10,11 +10,13 @@ import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES } from './src/autoLock';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
+import { DataProvider, useData } from './src/DataContext';
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
 
 function AppContent() {
   const { colors } = useTheme();
+  const { loadModel, clearModel } = useData();
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [derivedKey, setDerivedKey] = useState<CryptoJS.lib.WordArray | null>(null);
@@ -85,6 +87,7 @@ function AppContent() {
 
   function handleFullSignOut() {
     clearIdleTimer();
+    clearModel();
     setCurrentUsername(null);
     setDerivedKey(null);
     setScreen('signIn');
@@ -131,6 +134,7 @@ function AppContent() {
           onProfileCreated={(username, key) => {
             setCurrentUsername(username);
             setDerivedKey(key);
+            loadModel(username, key);
             setScreen('home');
           }}
           onGoToSignIn={() => setScreen('signIn')}
@@ -145,6 +149,7 @@ function AppContent() {
         onSignedIn={(username, key) => {
           setCurrentUsername(username);
           setDerivedKey(key);
+          loadModel(username, key);
           setScreen('home');
         }}
         onGoToCreateProfile={() => setScreen('createProfile')}
@@ -156,7 +161,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
     </ThemeProvider>
   );
 }

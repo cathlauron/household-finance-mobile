@@ -1,0 +1,351 @@
+// ============================================================
+// Household Finance App — Running balance projection
+// ============================================================
+// This is the mobile version of the web app's "what will my
+// balance be" calendar math (see household-finance-app-spec-
+// and-scale.md §7, and the .html file's computeRunningBalances /
+// getMonthEvents functions).
+//
+// It starts from your Cash + Debit + Credit accounts, as of the
+// "as of" date you've set, then walks forward (or backward) day
+// by day applying anything dated: manual transactions, bill/debt
+// payments due, income due, and savings contributions.
+//
+// NOTE: Loans aren't included yet — the data model doesn't have
+// a due-date field for loans yet (only Bills and Debts do). This
+// will be added once Loans gets its own due-date fields.
+// NOTE: Income "actual paid" logs aren't factored in yet — every
+// projected payday uses the expected amount, not a logged actual
+// amount. That refinement can come later, once there's a real
+// screen for logging actual paydays.
+// ============================================================
+
+import type { HouseholdModel, Bill, Debt, IncomeSource } from './types';
+
+export type CalendarEvent = {
+  type: 'income' | 'bill' | 'debt' | 'manual' | 'saving';
+  label: string;
+  amount: number;
+  direction?: 'in' | 'out' | 'saving'; // only set for manual transactions
+};
+
+function toNumber(v: number | '' | undefined): number {
+  return typeof v === 'number' && !isNaN(v) ? v : 0;
+}
+
+function stripTime(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseISO(iso: string | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function lastDayOfMonth(year: number, monthIndex: number): number {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+// ---- Total balance right now (not projected) ----
+// Sums every Cash, Debit, and Credit account. Matches the "Total balance" figure
+// shown on the web app's Calendar tab.
+export function totalLiquidBalance(model: HouseholdModel): number {
+  const groups = [model.balanceAccounts.cash, model.balanceAccounts.debit, model.balanceAccounts.credit];
+  return groups.reduce((sum, group) => sum + group.reduce((s, a) => s + toNumber(a.amount), 0), 0);
+}
+
+// ---- Bill / Debt outstanding amount ----
+// How much is currently still owed on a bill or debt, across every logged payment cycle.
+function outstandingBalance(record: Bill | Debt): number {
+  return (record.cycles || []).reduce((sum, c) => sum + (toNumber(c.amountDue) - toNumber(c.amountPaid)), 0);
+}
+
+// ---- Bill / Debt next-due-date resolver ----
+// Bills and Debts share the exact same recurrence shape, so one function handles both.
+function nextOccurrenceInMonth(record: Bill | Debt, year: number, monthIndex: number): number[] {
+  const d = record.dueDate || {};
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+
+  if (record.recurringType === 'monthly') {
+    if (!d.day) return [];
+    const day = d.day === 'last' ? daysInMonth : parseInt(d.day, 10);
+    return day >= 1 && day <= daysInMonth ? [day] : [];
+  }
+
+  if (record.recurringType === 'annual') {
+    if (!d.day || !d.month || d.month !== monthIndex + 1) return [];
+    const day = d.day === 'last' ? daysInMonth : parseInt(d.day, 10);
+    return day >= 1 && day <= daysInMonth ? [day] : [];
+  }
+
+  if (record.recurringType === 'onetime') {
+    if (!d.date) return [];
+    const dt = parseISO(d.date);
+    if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return [];
+    return [dt.getDate()];
+  }
+
+  if (record.recurringType === 'custom') {
+    return customOccurrencesInMonth(
+      record.customStartDate,
+      record.customFreq,
+      record.customOccurrenceCount,
+      year,
+      monthIndex
+    );
+  }
+
+  return [];
+}
+
+// ---- Custom recurrence (daily / weekly / biweekly / monthly / yearly) ----
+// Shared by Bills and Debts' "Custom" recurrence type.
+function customOccurrencesInMonth(
+  startDateStr: string | undefined,
+  freq: string | undefined,
+  occurrenceCount: number | '' | undefined,
+  year: number,
+  monthIndex: number
+): number[] {
+  if (!startDateStr) return [];
+  const start = parseISO(startDateStr);
+  if (!start) return [];
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+  const frequency = freq || 'monthly';
+  const count = typeof occurrenceCount === 'number' && occurrenceCount > 0 ? occurrenceCount : null;
+
+  // If there's a finite occurrence count, generate every occurrence date up front and
+  // just filter down to the ones that land in this month.
+  if (count) {
+    const results: number[] = [];
+    const d = new Date(start);
+    for (let i = 0; i < count; i++) {
+      if (d.getFullYear() === year && d.getMonth() === monthIndex) results.push(d.getDate());
+      if (frequency === 'daily') d.setDate(d.getDate() + 1);
+      else if (frequency === 'weekly') d.setDate(d.getDate() + 7);
+      else if (frequency === 'biweekly') d.setDate(d.getDate() + 14);
+      else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + 1);
+      else d.setMonth(d.getMonth() + 1); // monthly
+    }
+    return results;
+  }
+
+  // Repeats forever — figure out which day(s) in this specific month it lands on.
+  const results: number[] = [];
+  if (frequency === 'monthly') {
+    const day = Math.min(start.getDate(), daysInMonth);
+    const candidate = new Date(year, monthIndex, day);
+    if (stripTime(candidate) >= stripTime(start)) results.push(day);
+  } else if (frequency === 'yearly') {
+    if (start.getMonth() === monthIndex && year >= start.getFullYear()) results.push(start.getDate());
+  } else if (frequency === 'daily') {
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (stripTime(new Date(year, monthIndex, day)) >= stripTime(start)) results.push(day);
+    }
+  } else if (frequency === 'weekly' || frequency === 'biweekly') {
+    const interval = frequency === 'weekly' ? 7 : 14;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dt = stripTime(new Date(year, monthIndex, day));
+      if (dt < stripTime(start)) continue;
+      const diffDays = Math.round((dt.getTime() - stripTime(start).getTime()) / 86400000);
+      if (diffDays % interval === 0) results.push(day);
+    }
+  }
+  return results;
+}
+
+// ---- Income next-payday resolver ----
+function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex: number): number[] {
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+  const pd = source.payDates || [];
+
+  if (source.frequency === 'monthly' && pd[0]) {
+    const day = pd[0] === 'last' ? daysInMonth : parseInt(pd[0], 10);
+    return day >= 1 && day <= daysInMonth ? [day] : [];
+  }
+
+  if (source.frequency === 'semimonthly') {
+    const results: number[] = [];
+    pd.forEach((raw) => {
+      if (!raw) return;
+      const day = raw === 'last' ? daysInMonth : parseInt(raw, 10);
+      if (day >= 1 && day <= daysInMonth) results.push(day);
+    });
+    return results;
+  }
+
+  if (source.frequency === 'weekly' && pd[0] !== undefined && pd[0] !== '') {
+    const dow = parseInt(pd[0], 10);
+    const results: number[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (new Date(year, monthIndex, day).getDay() === dow) results.push(day);
+    }
+    return results;
+  }
+
+  if (source.frequency === 'biweekly' && pd[0]) {
+    const anchor = parseISO(pd[0]);
+    if (!anchor) return [];
+    const results: number[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dt = stripTime(new Date(year, monthIndex, day));
+      const diffDays = Math.round((dt.getTime() - stripTime(anchor).getTime()) / 86400000);
+      if (((diffDays % 14) + 14) % 14 === 0) results.push(day);
+    }
+    return results;
+  }
+
+  if (source.frequency === 'onetime' && pd[0]) {
+    const dt = parseISO(pd[0]);
+    if (dt && dt.getFullYear() === year && dt.getMonth() === monthIndex) return [dt.getDate()];
+  }
+
+  return [];
+}
+
+// ---- Every dated event in one month, grouped by day-of-month ----
+export function computeMonthEvents(
+  model: HouseholdModel,
+  year: number,
+  monthIndex: number
+): Record<number, CalendarEvent[]> {
+  const map: Record<number, CalendarEvent[]> = {};
+  function push(day: number, event: CalendarEvent) {
+    if (!map[day]) map[day] = [];
+    map[day].push(event);
+  }
+
+  model.bills.forEach((bill) => {
+    const amount = Math.max(0, outstandingBalance(bill));
+    nextOccurrenceInMonth(bill, year, monthIndex).forEach((day) => {
+      push(day, { type: 'bill', label: bill.name || 'Bill', amount });
+    });
+  });
+
+  model.debts.forEach((debt) => {
+    const amount = Math.max(0, outstandingBalance(debt));
+    nextOccurrenceInMonth(debt, year, monthIndex).forEach((day) => {
+      push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount });
+    });
+  });
+
+  model.income.forEach((source) => {
+    const amount = toNumber(source.expectedAmount);
+    incomeOccurrencesInMonth(source, year, monthIndex).forEach((day) => {
+      push(day, { type: 'income', label: source.sourceName || source.category || 'Income', amount });
+    });
+  });
+
+  model.manualTransactions.forEach((t) => {
+    const dt = parseISO(t.date);
+    if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
+    push(dt.getDate(), { type: 'manual', label: t.label || 'Transaction', amount: t.amount, direction: t.direction });
+  });
+
+  model.savingsGoals.forEach((goal) => {
+    (goal.contributions || []).forEach((c) => {
+      const dt = parseISO(c.date);
+      if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
+      const amount = toNumber(c.amount);
+      if (amount <= 0) return;
+      push(dt.getDate(), { type: 'saving', label: `${goal.name || 'Savings'} contribution`, amount });
+    });
+  });
+
+  return map;
+}
+
+// How much one event moves the liquid balance: income adds, everything else subtracts.
+function eventDelta(event: CalendarEvent): number {
+  if (event.type === 'income') return event.amount;
+  if (event.type === 'manual') return event.direction === 'in' ? event.amount : -event.amount;
+  return -event.amount; // bill, debt, saving
+}
+
+function accountsAsOfDate(model: HouseholdModel): Date {
+  const parsed = parseISO(model.balanceAccounts.asOfDate);
+  return parsed ? stripTime(parsed) : stripTime(new Date());
+}
+
+// ---- Projected balance for every day in one month ----
+// Mirrors the web app's computeRunningBalances(): starts from the account totals as of
+// their "as of" date, then adds up every day's events between that date and the month
+// being viewed (in whichever direction), so the projection is correct even when looking
+// at a month before or after the "as of" date.
+export function computeRunningBalances(
+  model: HouseholdModel,
+  year: number,
+  monthIndex: number
+): Record<number, number> {
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+  const monthStart = new Date(year, monthIndex, 1);
+  const monthEnd = new Date(year, monthIndex, daysInMonth);
+  const asOf = accountsAsOfDate(model);
+  const totalStart = totalLiquidBalance(model);
+
+  const rangeStart = asOf < monthStart ? asOf : monthStart;
+  const rangeEnd = asOf > monthEnd ? asOf : monthEnd;
+
+  // Walk every month between rangeStart and rangeEnd, collecting a delta per date.
+  const deltaByDate: Record<string, number> = {};
+  let y = rangeStart.getFullYear();
+  let m = rangeStart.getMonth();
+  const endY = rangeEnd.getFullYear();
+  const endM = rangeEnd.getMonth();
+  while (y < endY || (y === endY && m <= endM)) {
+    const events = computeMonthEvents(model, y, m);
+    Object.keys(events).forEach((dayStr) => {
+      const day = parseInt(dayStr, 10);
+      const dateObj = stripTime(new Date(y, m, day));
+      if (dateObj < rangeStart || dateObj > rangeEnd) return;
+      const key = toISO(dateObj);
+      const dayTotal = events[day].reduce((sum, ev) => sum + eventDelta(ev), 0);
+      deltaByDate[key] = (deltaByDate[key] || 0) + dayTotal;
+    });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+
+  // Turn the per-day deltas into a running (cumulative) total, then read off whichever
+  // days we actually need for the visible month.
+  const prefix: Record<string, number> = {};
+  let cumulative = 0;
+  const cursor = new Date(rangeStart);
+  while (cursor <= rangeEnd) {
+    const key = toISO(cursor);
+    cumulative += deltaByDate[key] || 0;
+    prefix[key] = cumulative;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const asOfKey = toISO(asOf);
+  const cumulativeAtAsOf = prefix[asOfKey] !== undefined ? prefix[asOfKey] : 0;
+
+  const result: Record<number, number> = {};
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = toISO(new Date(year, monthIndex, day));
+    const cumulativeAtDay = prefix[key] !== undefined ? prefix[key] : 0;
+    result[day] = totalStart + (cumulativeAtDay - cumulativeAtAsOf);
+  }
+  return result;
+}
+
+// ---- Peso formatting ----
+// Small local helper so Calendar doesn't need its own copy — matches the web app's
+// two-decimal-places style.
+export function formatPeso(amount: number, currencySymbol: string = '₱'): string {
+  const isNegative = amount < 0;
+  const abs = Math.abs(amount);
+  const formatted = abs.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${isNegative ? '-' : ''}${currencySymbol}${formatted}`;
+}

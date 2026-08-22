@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import { useData } from '../DataContext';
+import { computeRunningBalances, totalLiquidBalance, formatPeso } from '../balanceProjection';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -10,10 +12,23 @@ const MONTHS = [
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
+  const { model } = useData();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const styles = makeStyles(colors);
+
+  // Data hasn't finished loading into memory yet (this is usually near-instant, right
+  // after signing in or unlocking) — show a spinner instead of a blank/broken calendar.
+  if (!model) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
 
   function goPrevMonth() {
     if (month === 0) {
@@ -63,7 +78,9 @@ export default function CalendarScreen() {
     rows.push(cells.slice(i, i + 7));
   }
 
-  const styles = makeStyles(colors);
+  // The actual balance math — see src/balanceProjection.ts for how this is calculated.
+  const totalBalance = totalLiquidBalance(model);
+  const projectedBalances = computeRunningBalances(model, year, month);
 
   // Full, friendly label for whichever day is currently selected, e.g.
   // "Friday, August 22, 2026" — used in the popup title.
@@ -77,8 +94,15 @@ export default function CalendarScreen() {
         })
       : '';
 
+  const selectedDayBalance = selectedDay !== null ? projectedBalances[selectedDay] : null;
+
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.balanceBanner}>
+        <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
+        <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+      </View>
+
       <View style={styles.header}>
         <TouchableOpacity onPress={goPrevMonth} style={styles.navButton}>
           <Text style={styles.navButtonText}>{'‹'}</Text>
@@ -122,9 +146,14 @@ export default function CalendarScreen() {
                 ]}
               >
                 {day !== null && (
-                  <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
-                    {day}
-                  </Text>
+                  <>
+                    <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
+                      {day}
+                    </Text>
+                    <Text style={styles.dayBalanceText} numberOfLines={1}>
+                      {formatPeso(projectedBalances[day] ?? 0)}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
             );
@@ -141,8 +170,13 @@ export default function CalendarScreen() {
         <Pressable style={styles.modalOverlay} onPress={closeDayModal}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>{selectedDateLabel}</Text>
+            {selectedDayBalance !== null && (
+              <Text style={styles.modalBalanceLine}>
+                Projected balance: {formatPeso(selectedDayBalance)}
+              </Text>
+            )}
             <Text style={styles.modalSubtitle}>
-              Nothing to show here yet — this is where bills, income, and other
+              Nothing else to show here yet — this is where bills, income, and other
               items due this day will eventually appear.
             </Text>
             <TouchableOpacity onPress={closeDayModal} style={styles.modalCloseButton}>
@@ -162,6 +196,28 @@ function makeStyles(colors: any) {
       backgroundColor: colors.navy2,
       paddingHorizontal: 12,
       paddingTop: 16,
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    balanceBanner: {
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      marginBottom: 14,
+    },
+    balanceBannerLabel: {
+      fontSize: 10,
+      letterSpacing: 1,
+      color: colors.inkDim,
+      marginBottom: 4,
+    },
+    balanceBannerAmount: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.ink,
     },
     header: {
       flexDirection: 'row',
@@ -240,6 +296,11 @@ function makeStyles(colors: any) {
       color: colors.gold,
       fontWeight: '700',
     },
+    dayBalanceText: {
+      fontSize: 7.5,
+      color: colors.inkFaint,
+      marginTop: 1,
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -259,6 +320,12 @@ function makeStyles(colors: any) {
       fontWeight: '700',
       color: colors.ink,
       marginBottom: 8,
+    },
+    modalBalanceLine: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.gold,
+      marginBottom: 10,
     },
     modalSubtitle: {
       fontSize: 13,
