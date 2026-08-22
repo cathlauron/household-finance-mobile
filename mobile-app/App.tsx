@@ -4,9 +4,10 @@ import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import PinUnlockScreen from './src/screens/PinUnlockScreen';
 import { loadProfilesIndex } from './src/storage';
 
-type Screen = 'loading' | 'createProfile' | 'signIn' | 'home';
+type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
@@ -20,10 +21,28 @@ export default function App() {
     })();
   }, []);
 
+  function handleFullSignOut() {
+    setCurrentUsername(null);
+    setDerivedKey(null);
+    setScreen('signIn');
+  }
+
   if (screen === 'loading') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAF9', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === 'locked' && currentUsername && derivedKey) {
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        <PinUnlockScreen
+          username={currentUsername}
+          onUnlocked={() => setScreen('home')}
+          onUsePassphraseInstead={handleFullSignOut}
+        />
       </SafeAreaView>
     );
   }
@@ -33,11 +52,8 @@ export default function App() {
       <SafeAreaView style={{ flex: 1 }}>
         <HomeScreen
           username={currentUsername}
-          onSignOut={() => {
-            setCurrentUsername(null);
-            setDerivedKey(null);
-            setScreen('signIn');
-          }}
+          onSignOut={handleFullSignOut}
+          onLock={() => setScreen('locked')}
         />
       </SafeAreaView>
     );
