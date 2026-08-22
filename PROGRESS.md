@@ -22,9 +22,16 @@ Phase 1 — Security & Sign-In (M1–M2)
     2. No taps anywhere on screen for the configured number of minutes (5 by default) → locks via an idle timer that resets on every tap.
   - Confirmed working on a real Android phone via Expo Go: backgrounding the app locked it immediately, and idling triggered the lock screen after the timeout.
 
+Phase 2 — Getting Around the App (M4)
+- 2.1 — Bottom tab bar with all 10 main sections. ✅ Complete.
+  - Added mobile-app/src/screens/PlaceholderScreen.tsx — a generic "This section is coming soon" screen, shown for any tab that doesn't have real content built yet. Reads its own label from the tab's route name, so one component covers every unbuilt tab.
+  - Added mobile-app/src/navigation/MainTabs.tsx — the bottom tab navigator itself, defining all 10 tabs: Home, Calendar, Accounts, To-Pay, Planning, Transactions, Insights, Income, Savings, Settings. Home renders the real HomeScreen (passing through username/onLock/onSignOut); every other tab renders PlaceholderScreen for now.
+  - Updated mobile-app/App.tsx: added the @react-navigation/native NavigationContainer wrapper (required by the navigation library), and swapped the 'home' screen's rendering from directly showing HomeScreen to showing MainTabs instead. The PIN lock screen, auto-lock idle timer, backgrounding lock trigger, sign-in, and create-profile flows are all untouched and still work exactly as before.
+  - Confirmed working on a real Android phone via Expo Go: after signing in, all 10 tabs appear at the bottom, Home tab still has working Lock/Sign out, and every other tab shows the "coming soon" placeholder correctly.
+
 🔧 In progress
 
-Phase 2 — Getting Around the App (M4), Checkpoint 2.1 — Bottom tab bar. A previous attempt to create the screen files failed (they were pasted at the terminal prompt instead of saved into real files), so no navigation code exists yet despite the navigation library being installed. Redoing this properly now, one file at a time.
+Nothing in progress right now — Phase 2 Checkpoint 2.1 is complete. Ready to start Checkpoint 2.2 — basic theming (colors/light-dark mode) ported over from the web app, to match its visual style.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -40,11 +47,12 @@ Phase 2 — Getting Around the App (M4), Checkpoint 2.1 — Bottom tab bar. A pr
 - PIN quick-unlock (Checkpoint 1.4): Split into three small sub-steps (1.4a set-up, 1.4b wiring into Lock, 1.4c auto-lock timer) rather than one big change. The PIN is always a convenience re-entry method on top of an already-unlocked session — it is never a substitute for the real passphrase, and the app always keeps a "Use passphrase instead" fallback available from the PIN screen.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under the key "autoLockMinutes" so a future Settings screen can adjust it without needing any structural changes — just call setAutoLockMinutes(newValue) from that screen once it exists.
 - Checkpoint tracking discipline: A prior session completed 1.3/1.4a/1.4b but ended without running the "wrap up this session" step, so this file went stale for a while even though the work was safely committed to GitHub the whole time. Caught and corrected by cross-checking git log and the real files before proceeding, per the project's sync-check rule. No work was lost — this was a notes problem, not a data problem.
-- File-creation discipline: Learned that pasting multi-line code directly at the bash `$` prompt fails silently/loudly (bash tries to run it as commands) rather than saving it. Going forward, files are always created either via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block (content included inside the same paste) or by opening the file in the Codespace's built-in editor — never by pasting code at a bare prompt.
+- File-creation discipline: Learned that pasting multi-line code directly at the bash `$` prompt fails silently/loudly (bash tries to run it as commands) rather than saving it. Going forward, files are always created either via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block (content included inside the same paste) or by opening the file in the Codespace's built-in editor — never by pasting code at a bare prompt. This caught and fixed a failed first attempt at Phase 2.1 before anything was committed.
+- Tab bar structure: Used @react-navigation/bottom-tabs directly rather than a custom-built tab bar, matching the web app's own eventual "Bottom navigation" layout preference. All 10 tabs are shown flat in the bar for now (no "More" overflow menu yet) since 10 tabs is a lot for a phone-width bar — may need revisiting for a real device's screen width once more tabs have real content, but works fine as placeholders today.
 
 ▶️ Next step
 
-Phase 2 — Getting Around the App (M4), Checkpoint 2.1 — Bottom tab bar with all main sections (Home, Calendar, Accounts, To-Pay, Planning, Transactions, Insights, Income, Savings, Settings). Right now the app only has one placeholder Home screen after signing in — this checkpoint adds the actual tab navigation so each of those sections exists as its own (empty, for now) screen you can tap between. Redoing PlaceholderScreen.tsx and MainTabs.tsx correctly this time, using cat > file << 'ENDOFFILE' blocks so they actually save.
+Phase 2 — Getting Around the App (M4), Checkpoint 2.2 — Basic theming (colors/light-dark mode) ported over from the web app, to match its visual style. The web app uses a specific color palette and font pairing (see household-finance-app-spec-and-scale.md and the .html reference file) — this checkpoint applies that same look across the mobile app's screens instead of the current default white/black styling.
 
 Files uploaded to GitHub so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -66,9 +74,9 @@ Files uploaded to GitHub so far
   - mobile-app/src/screens/HomeScreen.tsx — placeholder home screen (Lock / Sign out / Set PIN)
   - mobile-app/src/screens/SetPinScreen.tsx — set/change PIN screen UI
   - mobile-app/src/screens/PinUnlockScreen.tsx — "locked, enter PIN" screen UI
-  - mobile-app/App.tsx — wires all screens together, including the 'locked' state and the two auto-lock triggers
-  - mobile-app/package.json / package-lock.json — includes expo-crypto, crypto-js, @react-native-async-storage/async-storage
-  - mobile-app/src/navigation/MainTabs.tsx — (coming this session) bottom tab navigator
-  - mobile-app/src/screens/PlaceholderScreen.tsx — (coming this session) generic "coming soon" screen for tabs not yet built
+  - mobile-app/src/screens/PlaceholderScreen.tsx — generic "coming soon" screen for tabs not yet built
+  - mobile-app/src/navigation/MainTabs.tsx — bottom tab navigator with all 10 sections
+  - mobile-app/App.tsx — wires all screens together via NavigationContainer + MainTabs, including the 'locked' state and the two auto-lock triggers
+  - mobile-app/package.json / package-lock.json — includes expo-crypto, crypto-js, @react-native-async-storage/async-storage, @react-navigation/native, @react-navigation/bottom-tabs, react-native-screens, react-native-safe-area-context
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Future sessions should continue using that same terminal workflow.
