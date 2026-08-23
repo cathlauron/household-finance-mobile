@@ -46,6 +46,13 @@ Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 
 Phase 5 (M7) is now fully complete — Bills, Debts, and Loans (including recurring schedules and the payoff simulator) are all built and confirmed working end to end.
 
+Phase 6 — Transactions (M8)
+- 6.1 — Unified transaction list. ✅ Complete and confirmed working on a real phone.
+  - mobile-app/src/transactions.ts — new shared module: buildTransactionsList() pulls together paid bill cycles, paid debt cycles, and logged loan payments (loan repayments received on "lent" loans count as money in, everything else as money out) into one combined, typed list. Also exports sortTransactions() (newest/oldest) and transactionTotals() (total in / total out / net). Built so Income and Savings contributions can be added into this same function later (Phase 7) without changing its shape or any screen that reads from it.
+  - mobile-app/src/screens/TransactionsScreen.tsx — new screen: stat cards for Total In / Total Out, a Net banner, a Newest-first/Oldest-first pill switcher, and the combined scrollable list (label, category, date, source tag, signed colored amount). Shows a plain empty-state message when nothing's been paid/logged yet.
+  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab now points at TransactionsScreen instead of PlaceholderScreen.
+  - ✅ Confirmed working on a real phone: Transactions tab shows combined paid bills/debts/loan payments, totals are correct, sort order toggle flips the list correctly.
+
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
 - Expo SDK version: SDK 54, chosen specifically for compatibility with the plain Expo Go app.
@@ -66,6 +73,7 @@ Phase 5 (M7) is now fully complete — Bills, Debts, and Loans (including recurr
 - To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern and keeps the bottom tab bar from getting overcrowded. Now has three pills: Bills, Debts, Loans.
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen — keeps the "next due date" logic consistent everywhere it's shown (list rows, sorting, Calendar).
 - Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen — matches how the web app treats it as a sub-view within Debts/Loans. Deliberately built without a charting library (plain stat cards + a payoff-order list) to keep the checkpoint scoped small.
+- Unified Transactions design (Checkpoint 6.1): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints (manual transactions, income, savings) can extend the same function without needing to touch screen code. Manual transactions, income, and savings contributions are intentionally left out of this list for now since those input screens don't exist yet (Phase 7) — this is expected, not a bug.
 - Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
@@ -74,12 +82,12 @@ Phase 5 (M7) is now fully complete — Bills, Debts, and Loans (including recurr
 
 ▶️ Next step
 
-Phase 5 is done. Next up is Phase 6 — Transactions (M8):
-- 6.1 — Unified transaction list: pull together everything that already has a date/amount (bill payments, debt payments, loan payments, savings contributions) into one combined, sortable Transactions tab — matching how the web app's buildTransactionsList() works (see the spec doc §3.2).
-- 6.2 — Manually add a transaction, with an optional receipt photo attached.
-- 6.3 — CSV import (optional/can be simplified or deferred if it adds too much complexity for one checkpoint).
+Phase 6.1 is done. Next up is Checkpoint 6.2 — Manually add a transaction:
+- Add a "+" button/screen on the Transactions tab to let the user manually log a transaction (label, amount, date, direction) that isn't tied to a Bill/Debt/Loan.
+- Optional: attach a receipt photo (expo-image-picker), matching the web app's manualTransactions shape (see spec doc §3, model.manualTransactions).
+- This will need a new field in the data model (manualTransactions: []) plus a small addition to buildTransactionsList() in transactions.ts to fold manual entries into the combined list — everything else in transactions.ts and TransactionsScreen.tsx should keep working unchanged.
 
-Recommend starting with 6.1 alone as its own checkpoint, since it touches every existing screen's data (Bills/Debts/Loans/Savings) without needing any new input UI yet.
+After 6.2, Checkpoint 6.3 (CSV import) is next, and can be simplified or deferred if it adds too much complexity for one checkpoint.
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -91,6 +99,7 @@ Files in the repo so far
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
   - mobile-app/src/types.ts — data model types (Loan now includes optional recurringType, dueDate, interestRate)
   - mobile-app/src/recurrence.ts — shared recurrence helpers (getNextDueDate, formatShortDate, recurringTypeLabel), used by Bills/Debts/Loans
+  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
   - mobile-app/src/defaultModel.ts — empty/default data factory function
   - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
   - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data
@@ -111,10 +120,11 @@ Files in the repo so far
   - mobile-app/src/screens/AccountsScreen.tsx
   - mobile-app/src/screens/BillsScreen.tsx
   - mobile-app/src/screens/DebtsScreen.tsx
-  - mobile-app/src/screens/LoansScreen.tsx — now includes a "Repeats" picker (One-time/Monthly/Annual), sorted by next due date
+  - mobile-app/src/screens/LoansScreen.tsx — includes a "Repeats" picker (One-time/Monthly/Annual), sorted by next due date
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/navigation/MainTabs.tsx
+  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle
+  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab now wired to TransactionsScreen
   - mobile-app/App.tsx
   - mobile-app/package.json / package-lock.json
 
