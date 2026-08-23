@@ -16,6 +16,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
+import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Debt, HouseholdModel } from '../types';
 
 function makeId(prefix: string): string {
@@ -27,21 +28,20 @@ function debtAmount(debt: Debt): number {
   return first && typeof first.amountDue === 'number' ? first.amountDue : 0;
 }
 
-function debtDueDateText(debt: Debt): string {
-  return (debt.dueDate && debt.dueDate.date) || '';
-}
-
-// Sorts debts with a due date first (earliest first), undated debts at the end.
-function sortByDueDate(debts: Debt[]): Debt[] {
+// Sorts debts by next due date (soonest first); debts with no computable
+// due date yet sort to the bottom.
+function sortByNextDue(debts: Debt[]): Debt[] {
   return [...debts].sort((a, b) => {
-    const da = debtDueDateText(a);
-    const db = debtDueDateText(b);
+    const da = getNextDueDate(a.recurringType, a.dueDate);
+    const db = getNextDueDate(b.recurringType, b.dueDate);
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
-    return da < db ? -1 : da > db ? 1 : 0;
+    return da.getTime() - db.getTime();
   });
 }
+
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
 export default function DebtsScreen() {
   const { colors } = useTheme();
@@ -53,10 +53,13 @@ export default function DebtsScreen() {
   const [creditorInput, setCreditorInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
-  const [dueDateInput, setDueDateInput] = useState('');
   const [interestRateInput, setInterestRateInput] = useState('');
   const [minPaymentInput, setMinPaymentInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
+  const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  const [onetimeDateInput, setOnetimeDateInput] = useState('');
+  const [dayInput, setDayInput] = useState('');
+  const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!model) {
@@ -67,16 +70,23 @@ export default function DebtsScreen() {
     );
   }
 
-  function openAddModal() {
-    setEditingId(null);
+  function resetForm() {
     setCreditorInput('');
     setCategoryInput('');
     setAmountInput('');
-    setDueDateInput('');
     setInterestRateInput('');
     setMinPaymentInput('');
     setNotesInput('');
+    setRecurTypeInput('onetime');
+    setOnetimeDateInput('');
+    setDayInput('');
+    setMonthInput('');
     setErrorMsg('');
+  }
+
+  function openAddModal() {
+    setEditingId(null);
+    resetForm();
     setModalOpen(true);
   }
 
@@ -85,7 +95,6 @@ export default function DebtsScreen() {
     setCreditorInput(debt.creditorOrPerson);
     setCategoryInput(debt.category || '');
     setAmountInput(debtAmount(debt) === 0 ? '' : String(debtAmount(debt)));
-    setDueDateInput(debtDueDateText(debt));
     setInterestRateInput(
       typeof debt.interestRate === 'number' ? String(debt.interestRate) : ''
     );
@@ -93,6 +102,12 @@ export default function DebtsScreen() {
       typeof debt.minPayment === 'number' ? String(debt.minPayment) : ''
     );
     setNotesInput(debt.notes || '');
+    const rt = (debt.recurringType as RecurringType) || 'onetime';
+    setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    const d = debt.dueDate || {};
+    setOnetimeDateInput(d.date || '');
+    setDayInput(d.day ? String(d.day) : '');
+    setMonthInput(d.month ? String(d.month) : '');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -115,11 +130,36 @@ export default function DebtsScreen() {
       setErrorMsg('Enter a valid amount.');
       return;
     }
-    const trimmedDate = dueDateInput.trim();
-    if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Due date should look like 2026-08-25 (YYYY-MM-DD), or leave it blank.');
-      return;
+
+    let dueDate: Record<string, any> = {};
+    if (recurTypeInput === 'onetime') {
+      const trimmedDate = onetimeDateInput.trim();
+      if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2026-08-25.');
+        return;
+      }
+      dueDate = { date: trimmedDate };
+    } else if (recurTypeInput === 'monthly') {
+      const dayNum = parseInt(dayInput, 10);
+      if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
+        setErrorMsg('Enter a day of month between 1 and 31.');
+        return;
+      }
+      dueDate = { day: dayInput.trim() };
+    } else if (recurTypeInput === 'annual') {
+      const dayNum = parseInt(dayInput, 10);
+      const monthNum = parseInt(monthInput, 10);
+      if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
+        setErrorMsg('Enter a day of month between 1 and 31.');
+        return;
+      }
+      if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
+        setErrorMsg('Enter a month between 1 and 12.');
+        return;
+      }
+      dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
+
     let parsedInterest: number | '' = '';
     if (interestRateInput.trim() !== '') {
       const n = parseFloat(interestRateInput);
@@ -139,6 +179,11 @@ export default function DebtsScreen() {
       parsedMinPayment = n;
     }
 
+    const nextDue = getNextDueDate(recurTypeInput, dueDate);
+    const nextDueISO = nextDue
+      ? nextDue.getFullYear() + '-' + String(nextDue.getMonth() + 1).padStart(2, '0') + '-' + String(nextDue.getDate()).padStart(2, '0')
+      : '';
+
     const updated: HouseholdModel = { ...model, debts: [...model.debts] };
 
     if (editingId) {
@@ -146,8 +191,8 @@ export default function DebtsScreen() {
         if (d.id !== editingId) return d;
         const existingCycle = d.cycles[0];
         const cycle = existingCycle
-          ? { ...existingCycle, dueDate: trimmedDate, amountDue: parsedAmount }
-          : { id: makeId('cycle'), dueDate: trimmedDate, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '' };
+          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount }
+          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '' };
         return {
           ...d,
           creditorOrPerson: trimmedCreditor,
@@ -155,7 +200,8 @@ export default function DebtsScreen() {
           notes: notesInput,
           interestRate: parsedInterest,
           minPayment: parsedMinPayment,
-          dueDate: { date: trimmedDate },
+          recurringType: recurTypeInput,
+          dueDate,
           cycles: [cycle],
         };
       });
@@ -164,12 +210,12 @@ export default function DebtsScreen() {
         id: makeId('debt'),
         creditorOrPerson: trimmedCreditor,
         category: categoryInput.trim(),
-        recurringType: 'onetime',
-        dueDate: { date: trimmedDate },
+        recurringType: recurTypeInput,
+        dueDate,
         cycles: [
           {
             id: makeId('cycle'),
-            dueDate: trimmedDate,
+            dueDate: nextDueISO,
             amountDue: parsedAmount,
             amountPaid: '',
             paidDate: '',
@@ -199,7 +245,7 @@ export default function DebtsScreen() {
     closeModal();
   }
 
-  const debts = sortByDueDate(model.debts);
+  const debts = sortByNextDue(model.debts);
   const totalOwed = debts.reduce((sum, d) => sum + debtAmount(d), 0);
 
   return (
@@ -214,26 +260,28 @@ export default function DebtsScreen() {
           <Text style={styles.emptyText}>No debts yet. Add your first one below.</Text>
         )}
 
-        {debts.map((debt) => (
-          <TouchableOpacity
-            key={debt.id}
-            style={styles.debtRow}
-            activeOpacity={0.7}
-            onPress={() => openEditModal(debt)}
-          >
-            <View style={styles.debtRowMain}>
-              <Text style={styles.debtName} numberOfLines={1}>
-                {debt.creditorOrPerson || 'Untitled debt'}
-              </Text>
-              <Text style={styles.debtSub} numberOfLines={1}>
-                {(debt.category || 'Uncategorized')}
-                {debtDueDateText(debt) ? ' · Due ' + debtDueDateText(debt) : ' · No due date set'}
-                {typeof debt.interestRate === 'number' ? ' · ' + debt.interestRate + '% APR' : ''}
-              </Text>
-            </View>
-            <Text style={styles.debtAmount}>{formatPeso(debtAmount(debt))}</Text>
-          </TouchableOpacity>
-        ))}
+        {debts.map((debt) => {
+          const nextDue = getNextDueDate(debt.recurringType, debt.dueDate);
+          return (
+            <TouchableOpacity
+              key={debt.id}
+              style={styles.debtRow}
+              activeOpacity={0.7}
+              onPress={() => openEditModal(debt)}
+            >
+              <View style={styles.debtRowMain}>
+                <Text style={styles.debtName} numberOfLines={1}>
+                  {debt.creditorOrPerson || 'Untitled debt'}
+                </Text>
+                <Text style={styles.debtSub} numberOfLines={1}>
+                  {(debt.category || 'Uncategorized')} · {recurringTypeLabel(debt.recurringType)} · {formatShortDate(nextDue)}
+                  {typeof debt.interestRate === 'number' ? ' · ' + debt.interestRate + '% APR' : ''}
+                </Text>
+              </View>
+              <Text style={styles.debtAmount}>{formatPeso(debtAmount(debt))}</Text>
+            </TouchableOpacity>
+          );
+        })}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add debt</Text>
@@ -278,14 +326,74 @@ export default function DebtsScreen() {
                   onChangeText={setAmountInput}
                 />
 
-                <Text style={styles.inputLabel}>Due date (YYYY-MM-DD, optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2026-08-25"
-                  placeholderTextColor={colors.inkFaint}
-                  value={dueDateInput}
-                  onChangeText={setDueDateInput}
-                />
+                <Text style={styles.inputLabel}>Repeats</Text>
+                <View style={styles.pillRow}>
+                  {RECUR_TYPES.map((rt) => (
+                    <TouchableOpacity
+                      key={rt}
+                      style={[styles.pillButton, recurTypeInput === rt && styles.pillButtonActive]}
+                      onPress={() => setRecurTypeInput(rt)}
+                    >
+                      <Text style={[styles.pillButtonText, recurTypeInput === rt && styles.pillButtonTextActive]}>
+                        {recurringTypeLabel(rt)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {recurTypeInput === 'onetime' && (
+                  <>
+                    <Text style={styles.inputLabel}>Due date (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="2026-08-25"
+                      placeholderTextColor={colors.inkFaint}
+                      value={onetimeDateInput}
+                      onChangeText={setOnetimeDateInput}
+                    />
+                  </>
+                )}
+
+                {recurTypeInput === 'monthly' && (
+                  <>
+                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 15"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="number-pad"
+                      value={dayInput}
+                      onChangeText={setDayInput}
+                    />
+                  </>
+                )}
+
+                {recurTypeInput === 'annual' && (
+                  <View style={styles.row2}>
+                    <View style={styles.row2Item}>
+                      <Text style={styles.inputLabel}>Month (1–12)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 3"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        value={monthInput}
+                        onChangeText={setMonthInput}
+                      />
+                    </View>
+                    <View style={styles.row2Item}>
+                      <Text style={styles.inputLabel}>Day</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 15"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        value={dayInput}
+                        onChangeText={setDayInput}
+                      />
+                    </View>
+                  </View>
+                )}
 
                 <Text style={styles.inputLabel}>Interest rate % (optional)</Text>
                 <TextInput
@@ -406,6 +514,20 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     notesInput: { minHeight: 60, textAlignVertical: 'top' },
+    row2: { flexDirection: 'row', gap: 10 },
+    row2Item: { flex: 1 },
+    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+    pillButton: {
+      flex: 1,
+      minWidth: 80,
+      backgroundColor: colors.navy2,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    pillButtonActive: { backgroundColor: colors.gold },
+    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
+    pillButtonTextActive: { color: colors.navy2 },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
