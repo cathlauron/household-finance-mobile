@@ -1,18 +1,16 @@
 // ============================================================
-// Household Finance App — Unified transaction list (Checkpoint 6.1 + 6.2)
+// Household Finance App — Unified transaction list (Checkpoint 6.1 + 6.2 + follow-up)
 // ============================================================
 // Pulls together every dated, paid amount already recorded elsewhere in the
-// app — paid bill cycles, paid debt cycles, logged loan payments, and now
-// manually-added transactions — into one combined list, matching the spirit
-// of the original web app's buildTransactionsList() (see the spec doc,
-// §3.2). Income and savings-goal contributions aren't wired into any screen
-// yet (Phase 7), so they're intentionally left out here — this function can
-// grow to include them later without needing to change its own shape.
+// app — paid bill cycles, paid debt cycles, logged loan payments, logged
+// income paydays, savings-goal contributions, and manually-added
+// transactions — into one combined list, matching the spirit of the
+// original web app's buildTransactionsList() (see the spec doc, §3.2).
 // ============================================================
 
 import type { HouseholdModel } from './types';
 
-export type TransactionSource = 'bill' | 'debt' | 'loan' | 'manual';
+export type TransactionSource = 'bill' | 'debt' | 'loan' | 'income' | 'saving' | 'manual';
 export type TransactionDirection = 'in' | 'out' | 'saving';
 
 export type TransactionEntry = {
@@ -87,6 +85,40 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
         amount: amt,
         direction: lent ? 'in' : 'out',
         owner: loan.owner || 'shared',
+      });
+    });
+  });
+
+  (model.income || []).forEach((source) => {
+    (source.paymentLog || []).forEach((entry) => {
+      const amt = typeof entry.amount === 'number' ? entry.amount : 0;
+      if (!entry.date || amt <= 0) return;
+      list.push({
+        id: 'income-' + entry.id,
+        date: entry.date,
+        label: source.sourceName || source.category || 'Income',
+        category: source.category || 'Income',
+        source: 'income',
+        amount: amt,
+        direction: 'in',
+        owner: source.personId || 'shared',
+      });
+    });
+  });
+
+  (model.savingsGoals || []).forEach((goal) => {
+    (goal.contributions || []).forEach((c) => {
+      const amt = typeof c.amount === 'number' ? c.amount : 0;
+      if (!c.date || amt <= 0) return;
+      list.push({
+        id: 'saving-' + c.id,
+        date: c.date,
+        label: (goal.name || 'Savings goal') + ' contribution',
+        category: 'Savings',
+        source: 'saving',
+        amount: amt,
+        direction: 'saving',
+        owner: 'shared',
       });
     });
   });

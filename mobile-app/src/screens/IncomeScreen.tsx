@@ -24,11 +24,16 @@ import {
   computeNextPayDate,
   formatShortDate,
 } from '../income';
-import type { IncomeSource, Person, HouseholdModel } from '../types';
+import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
+
+// Local editing shape for one payment-log row in the modal — amount is kept as
+// raw text while typing (not a number) so a half-typed value like "1500."
+// doesn't get mangled, and is only parsed/validated on Save.
+type PaymentLogFormEntry = { id: string; date: string; amountText: string };
 
 const CATEGORY_SUGGESTIONS = ['Salary', 'Freelance / Side gig', 'Business income', 'Rental income', 'Other'];
 
@@ -86,6 +91,7 @@ export default function IncomeScreen() {
   const [weeklyDowInput, setWeeklyDowInput] = useState<number | null>(null);
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
 
   if (!model) {
     return (
@@ -107,6 +113,7 @@ export default function IncomeScreen() {
     setWeeklyDowInput(null);
     setOnetimeDateInput('');
     setErrorMsg('');
+    setPaymentLogEntries([]);
   }
 
   function openAddModal() {
@@ -131,6 +138,13 @@ export default function IncomeScreen() {
     setSemiDay2Input(freq === 'semimonthly' ? pd[1] || '' : '');
     setWeeklyDowInput(freq === 'weekly' && pd[0] !== undefined ? parseInt(pd[0], 10) : null);
     setOnetimeDateInput(freq === 'onetime' ? pd[0] || '' : '');
+    setPaymentLogEntries(
+      (source.paymentLog || []).map((e) => ({
+        id: e.id,
+        date: e.date,
+        amountText: typeof e.amount === 'number' ? String(e.amount) : '',
+      }))
+    );
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -139,6 +153,22 @@ export default function IncomeScreen() {
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+  }
+
+  function addPaymentLogEntry() {
+    setPaymentLogEntries((prev) => [{ id: makeId('paylog'), date: '', amountText: '' }, ...prev]);
+  }
+
+  function updatePaymentLogDate(id: string, date: string) {
+    setPaymentLogEntries((prev) => prev.map((e) => (e.id === id ? { ...e, date } : e)));
+  }
+
+  function updatePaymentLogAmount(id: string, amountText: string) {
+    setPaymentLogEntries((prev) => prev.map((e) => (e.id === id ? { ...e, amountText } : e)));
+  }
+
+  function removePaymentLogEntry(id: string) {
+    setPaymentLogEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function handleSave() {
@@ -188,6 +218,27 @@ export default function IncomeScreen() {
     }
     // biweekly: no schedule fields collected in this version — payDates stays [].
 
+    const validPaymentLog: PaymentLogEntry[] = [];
+    for (const entry of paymentLogEntries) {
+      const dateTrim = entry.date.trim();
+      const amtTrim = entry.amountText.trim();
+      if (!dateTrim && !amtTrim) continue; // fully blank row — quietly dropped
+      if (!dateTrim || !amtTrim) {
+        setErrorMsg('Each payment log entry needs both a date and an amount — or leave both blank to remove it.');
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTrim)) {
+        setErrorMsg('Enter each payment log date as YYYY-MM-DD, e.g. 2025-03-24.');
+        return;
+      }
+      const amtNum = parseFloat(amtTrim);
+      if (isNaN(amtNum)) {
+        setErrorMsg('Enter a valid amount for each payment log entry.');
+        return;
+      }
+      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: amtNum });
+    }
+
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
 
     const updated: HouseholdModel = {
@@ -207,6 +258,7 @@ export default function IncomeScreen() {
               expectedAmount: parsedAmount,
               frequency: frequencyInput,
               payDates,
+              paymentLog: validPaymentLog,
             }
           : s
       );
@@ -219,7 +271,7 @@ export default function IncomeScreen() {
         expectedAmount: parsedAmount,
         frequency: frequencyInput,
         payDates,
-        paymentLog: [],
+        paymentLog: validPaymentLog,
         destinationAccountId: '',
         createdAt: Date.now(),
       };
@@ -448,10 +500,43 @@ export default function IncomeScreen() {
 
                 {frequencyInput === 'biweekly' && (
                   <Text style={styles.hintText}>
-                    No fixed schedule needed — just log each payday as it happens. (Payment logging
-                    is coming in a follow-up checkpoint.)
+                    No fixed schedule needed — just log each payday below as it happens.
                   </Text>
                 )}
+
+                <Text style={styles.inputLabel}>Payment log</Text>
+                <Text style={styles.hintText}>
+                  Log each actual payday as it happens — this feeds your Transactions list and
+                  reports.
+                </Text>
+                {paymentLogEntries.map((entry) => (
+                  <View key={entry.id} style={styles.paymentLogRow}>
+                    <TextInput
+                      style={[styles.input, styles.paymentLogDateInput]}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor={colors.inkFaint}
+                      value={entry.date}
+                      onChangeText={(v) => updatePaymentLogDate(entry.id, v)}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.paymentLogAmountInput]}
+                      placeholder="Amount"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="decimal-pad"
+                      value={entry.amountText}
+                      onChangeText={(v) => updatePaymentLogAmount(entry.id, v)}
+                    />
+                    <TouchableOpacity
+                      style={styles.paymentLogRemoveBtn}
+                      onPress={() => removePaymentLogEntry(entry.id)}
+                    >
+                      <Text style={styles.paymentLogRemoveText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addPaymentLogButton} onPress={addPaymentLogEntry}>
+                  <Text style={styles.addPaymentLogButtonText}>+ Log a payday</Text>
+                </TouchableOpacity>
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
@@ -576,5 +661,17 @@ function makeStyles(colors: any) {
     deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
+    paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
+    paymentLogAmountInput: { flex: 1, marginBottom: 0 },
+    paymentLogRemoveBtn: { paddingHorizontal: 8, paddingVertical: 6 },
+    paymentLogRemoveText: { fontSize: 18, color: '#e5484d', fontWeight: '600' },
+    addPaymentLogButton: {
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+      marginBottom: 14,
+    },
+    addPaymentLogButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
   });
 }

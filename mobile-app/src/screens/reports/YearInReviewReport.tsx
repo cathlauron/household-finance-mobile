@@ -6,12 +6,10 @@
 // paid down, and how many savings goals have been reached.
 //
 // Reuses buildTransactionsList()/transactionTotals() exactly
-// like Dashboard and Monthly Close-out do. NOTE: "Income" here
-// carries the same known limitation as Dashboard — Income
-// sources aren't wired into buildTransactionsList() yet, so this
-// only counts manual "money in" entries and loan repayments
-// received, not recurring paychecks. See the footer note on the
-// screen itself.
+// like Dashboard and Monthly Close-out do. "Income" here now
+// includes logged income paydays (via each IncomeSource's
+// paymentLog), not just manual "money in" entries and loan
+// repayments received.
 // ============================================================
 
 import React, { useState } from 'react';
@@ -195,10 +193,6 @@ export default function YearInReviewReport() {
         </View>
       </View>
 
-      <Text style={styles.footerNote}>
-        "Income" above only counts money-in transactions already logged in Transactions (manual entries
-        and loan repayments received) — recurring paycheck income isn't folded in yet.
-      </Text>
     </ScrollView>
   );
 }
