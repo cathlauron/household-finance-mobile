@@ -154,6 +154,7 @@ export type ManualTransaction = {
   direction: 'in' | 'out' | 'saving';
   owner: string;
   category?: string;
+  receiptPhoto?: string; // base64 data URI of an attached receipt photo, optional
 };
 
 export type Category = {

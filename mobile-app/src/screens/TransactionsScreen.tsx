@@ -12,7 +12,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -61,6 +64,7 @@ export default function TransactionsScreen() {
   const [amountInput, setAmountInput] = useState('');
   const [dateInput, setDateInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
+  const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   const transactions = useMemo(() => {
@@ -84,6 +88,7 @@ export default function TransactionsScreen() {
     setAmountInput('');
     setDateInput(todayISO());
     setDirectionInput('out');
+    setReceiptPhoto(null);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -91,6 +96,34 @@ export default function TransactionsScreen() {
   function closeModal() {
     setModalOpen(false);
     setErrorMsg('');
+  }
+
+  async function handlePickReceipt() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Permission needed',
+        'Allow photo library access in your phone settings to attach a receipt.'
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,
+      base64: true,
+    });
+    if (result.canceled || !result.assets || !result.assets[0]) return;
+    const asset = result.assets[0];
+    if (!asset.base64) {
+      Alert.alert("Couldn't read that photo", 'Try picking a different one.');
+      return;
+    }
+    const mime = asset.mimeType || 'image/jpeg';
+    setReceiptPhoto(`data:${mime};base64,${asset.base64}`);
+  }
+
+  function handleRemoveReceipt() {
+    setReceiptPhoto(null);
   }
 
   async function handleSave() {
@@ -119,6 +152,7 @@ export default function TransactionsScreen() {
       direction: directionInput,
       owner: 'shared',
       category: categoryInput.trim(),
+      ...(receiptPhoto ? { receiptPhoto } : {}),
     };
 
     const updated: HouseholdModel = {
@@ -262,6 +296,20 @@ export default function TransactionsScreen() {
                   onChangeText={setCategoryInput}
                 />
 
+                <Text style={styles.inputLabel}>Receipt photo (optional)</Text>
+                {receiptPhoto ? (
+                  <View style={styles.receiptPreviewWrap}>
+                    <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
+                    <TouchableOpacity style={styles.receiptRemoveButton} onPress={handleRemoveReceipt}>
+                      <Text style={styles.receiptRemoveButtonText}>Remove photo</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
+                    <Text style={styles.receiptPickButtonText}>📎 Attach a receipt photo</Text>
+                  </TouchableOpacity>
+                )}
+
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -369,6 +417,24 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
+    receiptPickButton: {
+      backgroundColor: colors.navy2,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    receiptPickButtonText: { fontSize: 13.5, fontWeight: '600', color: colors.gold },
+    receiptPreviewWrap: { marginBottom: 14 },
+    receiptThumb: {
+      width: '100%',
+      height: 140,
+      borderRadius: 8,
+      backgroundColor: colors.navy2,
+      marginBottom: 8,
+    },
+    receiptRemoveButton: { alignSelf: 'flex-start' },
+    receiptRemoveButtonText: { fontSize: 12, color: '#e5484d', fontWeight: '600' },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
