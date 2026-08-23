@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
@@ -15,6 +15,22 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // The passphrase → encryption key step (deriveKey, below) is intentionally slow on
+  // purpose — it's what makes the passphrase hard to brute-force — and on a phone it can
+  // take anywhere from a few seconds to over a minute depending on the device. This just
+  // shows a reassuring "this is normal" message once it's been running a couple seconds,
+  // so it doesn't look frozen.
+  const [showSlowHint, setShowSlowHint] = useState(false);
+
+  useEffect(() => {
+    if (!busy) {
+      setShowSlowHint(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSlowHint(true), 2000);
+    return () => clearTimeout(timer);
+  }, [busy]);
 
   async function handleSignIn() {
     setError('');
@@ -68,6 +84,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         placeholder="e.g. miguel, ana"
         autoCapitalize="none"
         autoCorrect={false}
+        editable={!busy}
       />
 
       <Text style={styles.label}>Passphrase</Text>
@@ -78,15 +95,30 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         placeholder="••••••••"
         secureTextEntry
         autoCapitalize="none"
+        editable={!busy}
       />
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.primaryBtn} onPress={handleSignIn} disabled={busy}>
-        <Text style={styles.primaryBtnText}>{busy ? 'Signing in…' : 'Sign in'}</Text>
+        {busy ? (
+          <View style={styles.busyRow}>
+            <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
+            <Text style={styles.primaryBtnText}>Signing in…</Text>
+          </View>
+        ) : (
+          <Text style={styles.primaryBtnText}>Sign in</Text>
+        )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.ghostBtn} onPress={onGoToCreateProfile}>
+      {showSlowHint && (
+        <Text style={styles.slowHint}>
+          This can take up to a minute — your phone is turning your passphrase into your
+          encryption key. This is normal and only happens on sign-in.
+        </Text>
+      )}
+
+      <TouchableOpacity style={styles.ghostBtn} onPress={onGoToCreateProfile} disabled={busy}>
         <Text style={styles.ghostBtnText}>Create a new profile</Text>
       </TouchableOpacity>
     </View>
@@ -106,6 +138,9 @@ const styles = StyleSheet.create({
   error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
   primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 24 },
   primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+  busyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  spinner: { marginRight: 8 },
+  slowHint: { color: '#78716C', fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 8 },
   ghostBtn: { paddingVertical: 14, marginTop: 4 },
   ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
 });
