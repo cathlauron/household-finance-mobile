@@ -33,11 +33,15 @@ Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 - 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete and confirmed working on a real phone.
 - 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete.
 
-Phase 6 — Transactions (M8) — ✅ CORE COMPLETE (CSV import still optional/outstanding)
+Phase 6 — Transactions (M8) — ✅ FULLY COMPLETE
 - 6.1 — Unified transaction list. ✅ Complete and confirmed working on a real phone.
 - 6.2 — Manually add a transaction. ✅ Complete and confirmed working on a real phone, including surviving a tab-switch/close-reopen.
 - 6.2 follow-up — Receipt photo attachment. ✅ Complete and confirmed working on a real phone.
 - 6.2 follow-up #2 — Edit/delete manual transactions. ✅ Complete and confirmed working on a real phone.
+- 6.3 — CSV import. ✅ Complete and confirmed working on a real phone (real CSV file imported, transactions appeared correctly in the list).
+  - New src/csvImport.ts: pure parsing logic, no UI. parseTransactionsCsv(text) expects a header row matched by column name (date, label, amount required; direction optional) — columns can be in any order. Handles quoted CSV fields (including embedded commas and escaped "" quotes) via a hand-rolled splitCsvLine(), no external CSV library. Accepts dates as YYYY-MM-DD or MM/DD/YYYY. Direction accepts in/income/deposit, out/expense/withdrawal, saving/savings, or blank (defaults to 'out', since most bank/spreadsheet exports are expenses). Returns per-row results (validRows/invalidRows) with a human-readable error per invalid row, rather than failing the whole import on one bad row.
+  - New src/screens/CsvImportModal.tsx: file-picker UI, opened from a new "Import CSV" button next to "+ Add transaction" on TransactionsScreen. Uses expo-document-picker (file picker, restricted after picking to filenames ending in .csv/.txt, with a friendly message if someone picks an .xlsx instead) and expo-file-system/legacy (readAsStringAsync) to read the file contents as UTF8 text. Correctly wraps the document-picker call in setAutoLockSuppressed(true) / setAutoLockSuppressed(false), using try/finally, matching the established pattern from the receipt-photo picker. Shows a preview (first 8 valid rows, plus a full list of skipped rows with their reasons) before anything is saved. On confirm, creates real ManualTransaction records (owner: 'shared', category: 'Imported') and appends them via saveModel().
+  - No column-mapping UI and no duplicate-detection — deliberately kept simple per the roadmap's "or Claude explains why we're deferring this" allowance for 6.3. Flagged as possible future follow-ups, not forgotten.
 
 Phase 7 — Income & Savings (M9) — IN PROGRESS
 - 7.1 — Add income sources with pay schedules. ✅ Complete and confirmed working on a real phone.
@@ -64,7 +68,7 @@ Phase 7 — Income & Savings (M9) — IN PROGRESS
 - Encryption approach: Uses crypto-js (imported in App.tsx for the WordArray type) plus expo-crypto (used directly in pin.ts for hashing). Salt generation lives in encryption.ts and is reused by pin.ts for PIN salts.
 - PIN quick-unlock: The PIN is always a convenience re-entry method on top of an already-unlocked session — never a substitute for the real passphrase; "Use passphrase instead" is always available from the PIN screen.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
-- Auto-lock suppression: Any feature that opens a native OS picker/UI on top of the app (photo picker, and — in the future — things like document/CSV pickers) must wrap that call with setAutoLockSuppressed(true) / setAutoLockSuppressed(false) from src/autoLockSuppress.ts, using try/finally so it's always cleared.
+- Auto-lock suppression: Any feature that opens a native OS picker/UI on top of the app (photo picker, document/CSV picker, and any future ones) must wrap that call with setAutoLockSuppressed(true) / setAutoLockSuppressed(false) from src/autoLockSuppress.ts, using try/finally so it's always cleared. Confirmed in use by both ImagePicker (TransactionsScreen) and DocumentPicker (CsvImportModal).
 - Theming approach: Colors live in theme.ts (lightTheme/darkTheme); ThemeContext.tsx exposes useTheme(). Fonts have NOT been ported yet — default system fonts still in use. Full 13-theme picker, custom colors, and font pairing are deferred to a later checkpoint once a real Settings screen exists.
 - Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, Transactions, and now Income): a scrollable list of rows, each tappable to open an edit modal (for editable record types); a "+ Add X" button at the bottom opens the same modal blank.
 - Due dates / transaction dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
@@ -72,10 +76,11 @@ Phase 7 — Income & Savings (M9) — IN PROGRESS
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen.
 - Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen.
 - Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints can extend the same function without needing to touch screen code. Income and savings-goal contributions are still intentionally left out of this list for now — wiring income in is a flagged follow-up to 7.1.
-- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet. Category is a free-typed optional text field, not a picker. Now that Income (7.1) has established the People list and the findOrCreatePerson() pattern, a follow-up could wire an owner picker into manual transactions too.
-- Manual transaction edit/delete design: The derived TransactionEntry list carries an optional rawId pointing back to the real ManualTransaction record. Only manual transactions are directly editable from the Transactions tab.
+- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet. Category is a free-typed optional text field, not a picker. Now that Income (7.1) has established the People list and the findOrCreatePerson() pattern, a follow-up could wire an owner picker into manual transactions too. Imported transactions (6.3) also default owner to 'shared' and category to 'Imported'.
+- Manual transaction edit/delete design: The derived TransactionEntry list carries an optional rawId pointing back to the real ManualTransaction record. Only manual transactions are directly editable from the Transactions tab — this includes CSV-imported ones, since they're saved as real ManualTransaction records.
+- CSV import design (Checkpoint 6.3): Parsing logic (src/csvImport.ts) is kept fully separate from the picker/UI (src/screens/CsvImportModal.tsx), matching the same "logic module vs. screen" split used by transactions.ts/income.ts elsewhere. No column-mapping UI (columns are matched by fixed header names only) and no duplicate-detection against existing transactions — both deliberately deferred to keep the checkpoint scoped, per the roadmap's explicit allowance to simplify 6.3.
 - Income/pay-schedule design (Checkpoint 7.1): Kept in its own src/income.ts module rather than extending recurrence.ts, since pay-schedule shapes (weekly day-of-week, semi-monthly two-days) are different enough from Bill/Debt/Loan due-date shapes to not share logic cleanly. findOrCreatePerson() (in IncomeScreen.tsx) matches an existing person case-insensitively by trimmed name, or creates a new Person with role 'primary' (if first person) or 'partner' (otherwise) — mirrors the web app's own person-creation behavior.
-- Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
+- Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version. If work is reported as done but PROGRESS.md wasn't updated at the time (as happened with 6.3), the next session should verify via git log/file listing before crediting it, rather than taking the claim at face value or dismissing it outright.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
 - Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there. For changes involving multi-line blocks where exact whitespace matters, a small inline Python script (via `python3 - << 'ENDOFFILE'`) that does an exact string match-and-replace is used instead, and it reports clearly if the expected text wasn't found rather than silently doing nothing or corrupting the file.
@@ -83,14 +88,13 @@ Phase 7 — Income & Savings (M9) — IN PROGRESS
 
 ▶️ Next step
 
-Checkpoint 7.1 (Income sources with pay schedules) is done and confirmed working on-device. A few things are open going into the next session — recommend asking the person which they'd prefer:
+Phase 6 (Transactions) is now fully complete, including CSV import. Phase 7 is in progress. Recommend asking the person which they'd prefer next:
 
 1. Income follow-ups (natural next small steps, flagged during 7.1):
    (a) Actual-pay logging — record what was actually received on a real date, vs. the expected schedule.
    (b) Wire income into the unified Transactions list (src/transactions.ts) so paydays show up there.
    (c) A destination-account picker to route income into a specific Debit account.
 2. Move on to Checkpoint 7.2 — Savings goals + Emergency Fund/FI calculators.
-3. Still outstanding from Phase 6: Checkpoint 6.3 (CSV import) — explicitly optional/deferrable per the roadmap.
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -102,7 +106,8 @@ Files in the repo so far
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
   - mobile-app/src/types.ts — data model types
   - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans
-  - mobile-app/src/income.ts — NEW: Frequency type + pay-schedule helpers (computeNextPayDate, frequencyLabel, formatShortDate, DOW_LABELS)
+  - mobile-app/src/income.ts — Frequency type + pay-schedule helpers (computeNextPayDate, frequencyLabel, formatShortDate, DOW_LABELS)
+  - mobile-app/src/csvImport.ts — parseTransactionsCsv() and related CSV parsing types, no UI
   - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
   - mobile-app/src/autoLockSuppress.ts
   - mobile-app/src/defaultModel.ts
@@ -128,10 +133,11 @@ Files in the repo so far
   - mobile-app/src/screens/LoansScreen.tsx
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx
-  - mobile-app/src/screens/IncomeScreen.tsx — NEW: Income tab, list + add/edit modal
-  - mobile-app/src/navigation/MainTabs.tsx — Income tab now wired to IncomeScreen
+  - mobile-app/src/screens/TransactionsScreen.tsx — includes "Import CSV" button wired to CsvImportModal
+  - mobile-app/src/screens/CsvImportModal.tsx — CSV file picker + preview + confirm-import UI
+  - mobile-app/src/screens/IncomeScreen.tsx — Income tab, list + add/edit modal
+  - mobile-app/src/navigation/MainTabs.tsx — Income tab wired to IncomeScreen
   - mobile-app/App.tsx
-  - mobile-app/package.json / package-lock.json
+  - mobile-app/package.json / package-lock.json (includes expo-image-picker, expo-document-picker, expo-file-system)
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Metro must be started from inside mobile-app (cd mobile-app first), always with --tunnel.
