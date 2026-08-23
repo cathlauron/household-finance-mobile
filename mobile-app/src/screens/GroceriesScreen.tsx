@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Modal,
   Pressable,
@@ -61,9 +60,9 @@ export default function GroceriesScreen() {
 
   if (!model) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+      <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator color={colors.accent ?? colors.gold} />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -223,7 +222,7 @@ export default function GroceriesScreen() {
   const runningTotal = calcTotal(calcEntries);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.pillRow}>
         <TouchableOpacity
           style={[styles.pillButton, activeTab === 'list' && styles.pillButtonActive]}
@@ -423,7 +422,7 @@ export default function GroceriesScreen() {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

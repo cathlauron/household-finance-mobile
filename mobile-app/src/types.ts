@@ -130,10 +130,6 @@ export type CalculatorInputs = {
 };
 
 // ---- Checkpoint 8.1: Groceries ----
-// A single grocery-list item: what you plan to spend, what you actually spent (only
-// meaningful once purchased), and whether it's been bought yet. Intentionally simpler
-// than the web app's version for now (no store/aisle/unit-price detail yet) — that can
-// be added later without changing this shape, same additive philosophy used elsewhere.
 export type GroceryItem = {
   id: string;
   item: string;
@@ -142,13 +138,64 @@ export type GroceryItem = {
   purchased: boolean;
 };
 
-// A scratch-tally entry for the in-store running-total calculator. Not linked to the
-// grocery list until "Add all to list" is tapped, which copies these over as planned
-// GroceryItems and clears the calculator.
 export type GroceryCalcEntry = {
   id: string;
   label: string;
   amount: number;
+};
+
+// ---- Checkpoint 8.2: Travel ----
+export type TravelChecklistItem = {
+  id: string;
+  title: string;
+  cost: number | '';
+  checked: boolean;
+  completedDate?: string;
+};
+
+export type TravelTrip = {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  checklist: TravelChecklistItem[];
+  createdAt?: number;
+};
+
+// ---- Checkpoint 8.3: Events ----
+// Recurrence is deliberately just Annual or One-time for now (no Custom, matching the
+// "basic add/edit works" bar for this checkpoint) — Annual events store month+day and
+// repeat every year; One-time events store a single full date. No per-event checklist
+// and no automatic savings-goal syncing yet, same flagged-follow-up treatment as Travel's
+// savings sync.
+export type EventItem = {
+  id: string;
+  name: string;
+  type: 'birthday' | 'anniversary' | 'other';
+  recurrence: 'annual' | 'onetime';
+  month?: number | '';
+  day?: number | '';
+  onetimeDate?: string;
+  budget: number | '';
+  completed: boolean;
+  completedDate?: string;
+  createdAt?: number;
+};
+
+// ---- Checkpoint 8.3: Year-End Goals ----
+// Mode mirrors the web app: 'progress' goals track a target amount against a running
+// current amount (with a progress bar); 'checklist' goals are just a plain Completed
+// toggle, for goals that aren't about a dollar figure at all.
+export type YearlyGoal = {
+  id: string;
+  title: string;
+  description: string;
+  mode: 'progress' | 'checklist';
+  targetAmount: number | '';
+  currentAmount: number | '';
+  targetDate: string;
+  completed: boolean;
+  createdAt?: number;
 };
 
 export type BalanceAccountEntry = {
@@ -208,4 +255,7 @@ export type HouseholdModel = {
   calculatorInputs?: CalculatorInputs;
   groceries?: GroceryItem[];
   groceryCalculator?: GroceryCalcEntry[];
+  travel?: TravelTrip[];
+  events?: EventItem[];
+  yearlyGoals?: YearlyGoal[];
 };
