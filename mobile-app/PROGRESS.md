@@ -33,18 +33,18 @@ Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 - 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete and confirmed working on a real phone.
 - 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete.
 
-Phase 6 — Transactions (M8)
+Phase 6 — Transactions (M8) — ✅ CORE COMPLETE (CSV import still optional/outstanding)
 - 6.1 — Unified transaction list. ✅ Complete and confirmed working on a real phone.
 - 6.2 — Manually add a transaction. ✅ Complete and confirmed working on a real phone, including surviving a tab-switch/close-reopen.
 - 6.2 follow-up — Receipt photo attachment. ✅ Complete and confirmed working on a real phone.
   - Added expo-image-picker (npx expo install expo-image-picker).
   - types.ts: ManualTransaction gained an optional receiptPhoto field (base64 data URI).
-  - TransactionsScreen.tsx: Add Transaction modal now has a "Receipt photo (optional)" section — an "Attach a receipt photo" button that opens the photo library, shows a thumbnail preview once picked, with a "Remove photo" option. Stored as a base64 data URI directly on the manual transaction (self-contained inside the encrypted data, no separate file reference).
-  - Bug found and fixed during this checkpoint: opening the native photo picker was triggering the app's auto-lock (Checkpoint 1.4c), because the OS reports "picker opened on top of the app" the same way it reports "app was backgrounded" — so the existing AppState listener locked the app by mistake every time someone tried to attach a photo.
-    - Fix: new src/autoLockSuppress.ts module exposes setAutoLockSuppressed(true/false) and isAutoLockSuppressed(). App.tsx's lockIfPinIsSetUp() now checks isAutoLockSuppressed() first and skips locking while it's true. Includes a 60-second safety timer that force-clears the suppression automatically, so a crash mid-picker can never leave the app permanently unlockable.
-    - TransactionsScreen.tsx's handlePickReceipt() now calls setAutoLockSuppressed(true) right before opening the picker and setAutoLockSuppressed(false) in a finally block, so it's always cleared whether the picker succeeds, is cancelled, or errors.
-    - This pattern (suppress auto-lock around any native picker/share-sheet call) should be reused for any future feature that hands control to the OS UI — CSV import file picking, future photo/document attachments elsewhere, etc.
-  - ✅ Confirmed working on a real phone: photo picker opens without locking the app, thumbnail preview shows correctly, transaction saves successfully with the photo attached.
+  - TransactionsScreen.tsx Add Transaction modal has a "Receipt photo (optional)" section — attach/preview/remove, stored as a base64 data URI directly on the manual transaction.
+  - Auto-lock suppression pattern established (src/autoLockSuppress.ts) — see Decisions below.
+- 6.2 follow-up #2 — Edit/delete manual transactions. ✅ Complete and confirmed working on a real phone.
+  - src/transactions.ts: TransactionEntry now carries an optional rawId — the real id of the underlying ManualTransaction in model.manualTransactions — so a derived list entry (id: 'manual-' + t.id) can be mapped back to its source record for editing/deleting.
+  - TransactionsScreen.tsx: tapping a manual transaction row opens the same modal used for adding, pre-filled with its existing details (including receipt photo). Save updates the record in place; a "Delete this transaction" button removes it. Bill/Debt/Loan-derived rows are shown but not tappable — they display "(edit on its own tab)" and must be edited from their own source tab, matching the web app's design.
+  - Confirmed on a real phone: edit pre-fill works (including photo), save updates the list, delete removes the row and updates totals, non-manual rows are correctly non-interactive, and a new transaction with a photo can be added then re-opened for editing.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -62,13 +62,14 @@ Phase 6 — Transactions (M8)
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
 - Auto-lock suppression: Any feature that opens a native OS picker/UI on top of the app (photo picker, and — in the future — things like document/CSV pickers) must wrap that call with setAutoLockSuppressed(true) / setAutoLockSuppressed(false) from src/autoLockSuppress.ts, using try/finally so it's always cleared. This is now the established pattern going forward, not a one-off fix.
 - Theming approach: Colors live in theme.ts (lightTheme/darkTheme); ThemeContext.tsx exposes useTheme(). Fonts have NOT been ported yet — default system fonts still in use. Full 13-theme picker, custom colors, and font pairing are deferred to a later checkpoint once a real Settings screen exists.
-- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, and Transactions' Add flow): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank.
+- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, and Transactions): a scrollable list of rows, each tappable to open an edit modal (for editable record types); a "+ Add X" button at the bottom opens the same modal blank.
 - Due dates / transaction dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
 - To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern and keeps the bottom tab bar from getting overcrowded. Has three pills: Bills, Debts, Loans.
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen.
 - Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen. Deliberately built without a charting library (plain stat cards + a payoff-order list) to keep the checkpoint scoped small.
 - Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints (income, savings) can extend the same function without needing to touch screen code. Income and savings-goal contributions are still intentionally left out of this list for now since those input screens don't exist yet (Phase 7) — this is expected, not a bug.
 - Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, since People/Income screens (Phase 7) haven't been built. Category is a free-typed optional text field, not a picker.
+- Manual transaction edit/delete design: The derived TransactionEntry list (used for display/sorting/totals) carries an optional rawId pointing back to the real ManualTransaction record, rather than trying to parse it out of the prefixed display id. Only manual transactions are directly editable from the Transactions tab — Bill/Debt/Loan-derived rows must be edited at their source, matching the original web app's behavior.
 - Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
@@ -77,12 +78,15 @@ Phase 6 — Transactions (M8)
 
 ▶️ Next step
 
-The receipt photo follow-up to 6.2 is done and confirmed. Two things are outstanding before Phase 6 is fully closed out:
+Phase 6 (Transactions) core functionality is fully done and confirmed working. One optional item remains:
 
-1. Editing/deleting a manual transaction — tap-to-edit, matching the Bills/Debts/Loans pattern. Right now manual transactions can only be added, not edited or removed, once saved.
-2. Checkpoint 6.3 — CSV import: Import transactions from a CSV file. Can be simplified or deferred further if it adds too much complexity for one checkpoint (the roadmap explicitly allows this).
+1. Checkpoint 6.3 — CSV import: Import transactions from a CSV file. The roadmap explicitly allows this to be simplified or deferred if it adds too much complexity for one checkpoint.
 
-Recommend tackling #1 (edit/delete) next, since it's a gap in a feature that's otherwise complete, before moving on to new functionality like CSV import.
+Two reasonable paths forward:
+- (a) Tackle 6.3 (CSV import) now to fully close out Phase 6, or
+- (b) Defer 6.3 and move on to Phase 7 — Income & Savings (M9), coming back to CSV import later.
+
+Recommend asking the person which they'd prefer at the start of the next session, since CSV import is explicitly optional/deferrable per the roadmap and Phase 7 unlocks real functionality (people/income screens) that several existing screens are already stubbed out waiting for (e.g. manual transactions' hardcoded "shared" owner).
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -92,9 +96,9 @@ Files in the repo so far
 - README.md
 - PROGRESS.md (this file)
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types (ManualTransaction now includes optional receiptPhoto)
+  - mobile-app/src/types.ts — data model types (ManualTransaction includes optional receiptPhoto)
   - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans
-  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
+  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals() — TransactionEntry now includes optional rawId for manual entries
   - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed(), used to pause auto-lock around native pickers
   - mobile-app/src/defaultModel.ts — empty/default data factory function
   - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
@@ -119,9 +123,9 @@ Files in the repo so far
   - mobile-app/src/screens/LoansScreen.tsx
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle, Add Transaction modal with receipt photo attachment
+  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle, add/edit/delete modal with receipt photo attachment
   - mobile-app/src/navigation/MainTabs.tsx — Transactions tab wired to TransactionsScreen
   - mobile-app/App.tsx — includes auto-lock suppression check
-  - mobile-app/package.json / package-lock.json (now includes expo-image-picker)
+  - mobile-app/package.json / package-lock.json (includes expo-image-picker)
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Metro must be started from inside mobile-app (cd mobile-app first), always with --tunnel.
