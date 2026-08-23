@@ -104,6 +104,11 @@ export type Loan = {
   // the Payoff Simulator (Checkpoint 5.3c) to estimate interest; blank/0 is treated as
   // no interest, which still lets the simulator run using expectedPayment alone.
   interestRate?: number | '';
+  // Recurrence + due date (Checkpoint 5.4c). Optional so loans saved before this change
+  // (which have neither field) still load fine — screens fall back to 'onetime' with no
+  // date set when either is missing, same pattern Bills/Debts already use.
+  recurringType?: 'monthly' | 'annual' | 'onetime' | 'custom';
+  dueDate?: Record<string, any>;
   createdAt?: number;
 };
 

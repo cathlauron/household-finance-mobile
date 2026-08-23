@@ -16,6 +16,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
+import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Loan, HouseholdModel } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 
@@ -40,9 +41,19 @@ function loanProgressPct(loan: Loan): number {
   return Math.min(100, Math.max(0, pct));
 }
 
-// Sorts loans alphabetically by name (loans have no due date to sort by, unlike bills/debts).
-function sortByName(loans: Loan[]): Loan[] {
-  return [...loans].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
+
+// Sorts loans by next due date (soonest first); loans with no computable due date yet
+// (e.g. saved before Checkpoint 5.4c, or never given a date) sort to the bottom.
+function sortByNextDue(loans: Loan[]): Loan[] {
+  return [...loans].sort((a, b) => {
+    const da = getNextDueDate((a.recurringType as RecurringType) || 'onetime', a.dueDate || {});
+    const db = getNextDueDate((b.recurringType as RecurringType) || 'onetime', b.dueDate || {});
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return da.getTime() - db.getTime();
+  });
 }
 
 export default function LoansScreen() {
@@ -58,6 +69,10 @@ export default function LoansScreen() {
   const [totalAmountInput, setTotalAmountInput] = useState('');
   const [expectedPaymentInput, setExpectedPaymentInput] = useState('');
   const [interestRateInput, setInterestRateInput] = useState('');
+  const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  const [onetimeDateInput, setOnetimeDateInput] = useState('');
+  const [dayInput, setDayInput] = useState('');
+  const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [simulatorOpen, setSimulatorOpen] = useState(false);
 
@@ -77,6 +92,10 @@ export default function LoansScreen() {
     setTotalAmountInput('');
     setExpectedPaymentInput('');
     setInterestRateInput('');
+    setRecurTypeInput('onetime');
+    setOnetimeDateInput('');
+    setDayInput('');
+    setMonthInput('');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -91,6 +110,12 @@ export default function LoansScreen() {
       typeof loan.expectedPayment === 'number' ? String(loan.expectedPayment) : ''
     );
     setInterestRateInput(typeof loan.interestRate === 'number' ? String(loan.interestRate) : '');
+    const rt = (loan.recurringType as RecurringType) || 'onetime';
+    setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    const d = loan.dueDate || {};
+    setOnetimeDateInput(d.date || '');
+    setDayInput(d.day ? String(d.day) : '');
+    setMonthInput(d.month ? String(d.month) : '');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -136,6 +161,35 @@ export default function LoansScreen() {
       parsedRate = n;
     }
 
+    let dueDate: Record<string, any> = {};
+    if (recurTypeInput === 'onetime') {
+      const trimmedDate = onetimeDateInput.trim();
+      if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2026-08-25.');
+        return;
+      }
+      dueDate = { date: trimmedDate };
+    } else if (recurTypeInput === 'monthly') {
+      const dayNum = parseInt(dayInput, 10);
+      if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
+        setErrorMsg('Enter a day of month between 1 and 31.');
+        return;
+      }
+      dueDate = { day: dayInput.trim() };
+    } else if (recurTypeInput === 'annual') {
+      const dayNum = parseInt(dayInput, 10);
+      const monthNum = parseInt(monthInput, 10);
+      if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
+        setErrorMsg('Enter a day of month between 1 and 31.');
+        return;
+      }
+      if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
+        setErrorMsg('Enter a month between 1 and 12.');
+        return;
+      }
+      dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
+    }
+
     const updated: HouseholdModel = { ...model, loans: [...model.loans] };
 
     if (editingId) {
@@ -149,6 +203,8 @@ export default function LoansScreen() {
           totalAmount: parsedTotal,
           expectedPayment: parsedExpected,
           interestRate: parsedRate,
+          recurringType: recurTypeInput,
+          dueDate,
         };
       });
     } else {
@@ -162,6 +218,8 @@ export default function LoansScreen() {
         actualPayments: [],
         owner: 'shared',
         direction: directionInput,
+        recurringType: recurTypeInput,
+        dueDate,
         createdAt: Date.now(),
       };
       updated.loans = [...updated.loans, newLoan];
@@ -181,7 +239,7 @@ export default function LoansScreen() {
     closeModal();
   }
 
-  const loans = sortByName(model.loans);
+  const loans = sortByNextDue(model.loans);
   const totalBorrowed = loans
     .filter((l) => l.direction !== 'lent')
     .reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0);
@@ -227,6 +285,7 @@ export default function LoansScreen() {
           const total = loanTotal(loan);
           const pct = loanProgressPct(loan);
           const isLent = loan.direction === 'lent';
+          const nextDue = getNextDueDate((loan.recurringType as RecurringType) || 'onetime', loan.dueDate || {});
           return (
             <TouchableOpacity
               key={loan.id}
@@ -242,6 +301,7 @@ export default function LoansScreen() {
                   <Text style={styles.loanSub} numberOfLines={1}>
                     {(loan.loanType || 'Loan')}
                     {isLent ? ' · Lent (owed to you)' : ' · Borrowed'}
+                    {' · ' + recurringTypeLabel((loan.recurringType as RecurringType) || 'onetime') + ' · ' + formatShortDate(nextDue)}
                     {!isLent && typeof loan.interestRate === 'number' && loan.interestRate > 0
                       ? ' · ' + loan.interestRate + '% APR'
                       : ''}
@@ -334,6 +394,75 @@ export default function LoansScreen() {
                   value={expectedPaymentInput}
                   onChangeText={setExpectedPaymentInput}
                 />
+
+                <Text style={styles.inputLabel}>Repeats</Text>
+                <View style={styles.pillRow}>
+                  {RECUR_TYPES.map((rt) => (
+                    <TouchableOpacity
+                      key={rt}
+                      style={[styles.pillButton, recurTypeInput === rt && styles.pillButtonActive]}
+                      onPress={() => setRecurTypeInput(rt)}
+                    >
+                      <Text style={[styles.pillButtonText, recurTypeInput === rt && styles.pillButtonTextActive]}>
+                        {recurringTypeLabel(rt)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {recurTypeInput === 'onetime' && (
+                  <>
+                    <Text style={styles.inputLabel}>Due date (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="2026-08-25"
+                      placeholderTextColor={colors.inkFaint}
+                      value={onetimeDateInput}
+                      onChangeText={setOnetimeDateInput}
+                    />
+                  </>
+                )}
+
+                {recurTypeInput === 'monthly' && (
+                  <>
+                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 15"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="number-pad"
+                      value={dayInput}
+                      onChangeText={setDayInput}
+                    />
+                  </>
+                )}
+
+                {recurTypeInput === 'annual' && (
+                  <View style={styles.row2}>
+                    <View style={styles.row2Item}>
+                      <Text style={styles.inputLabel}>Month (1–12)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 3"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        value={monthInput}
+                        onChangeText={setMonthInput}
+                      />
+                    </View>
+                    <View style={styles.row2Item}>
+                      <Text style={styles.inputLabel}>Day</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 15"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        value={dayInput}
+                        onChangeText={setDayInput}
+                      />
+                    </View>
+                  </View>
+                )}
 
                 <Text style={styles.inputLabel}>Interest rate, annual % (optional)</Text>
                 <TextInput
@@ -467,6 +596,8 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     fieldHint: { fontSize: 11, color: colors.inkFaint, marginTop: -10, marginBottom: 14, lineHeight: 15 },
+    row2: { flexDirection: 'row', gap: 10 },
+    row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
     pillButton: {
       flex: 1,
