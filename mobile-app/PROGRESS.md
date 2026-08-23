@@ -30,21 +30,24 @@ Phase 4 — Accounts (M6)
 Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 - 5.1 — Add/edit/delete Bills. ✅ Complete.
 - 5.2 — Add/edit/delete Debts. ✅ Complete.
-- 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete and confirmed working on a real phone.
+- 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete.
 - 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete.
 
 Phase 6 — Transactions (M8) — ✅ CORE COMPLETE (CSV import still optional/outstanding)
-- 6.1 — Unified transaction list. ✅ Complete and confirmed working on a real phone.
-- 6.2 — Manually add a transaction. ✅ Complete and confirmed working on a real phone, including surviving a tab-switch/close-reopen.
-- 6.2 follow-up — Receipt photo attachment. ✅ Complete and confirmed working on a real phone.
-  - Added expo-image-picker (npx expo install expo-image-picker).
-  - types.ts: ManualTransaction gained an optional receiptPhoto field (base64 data URI).
-  - TransactionsScreen.tsx Add Transaction modal has a "Receipt photo (optional)" section — attach/preview/remove, stored as a base64 data URI directly on the manual transaction.
-  - Auto-lock suppression pattern established (src/autoLockSuppress.ts) — see Decisions below.
-- 6.2 follow-up #2 — Edit/delete manual transactions. ✅ Complete and confirmed working on a real phone.
-  - src/transactions.ts: TransactionEntry now carries an optional rawId — the real id of the underlying ManualTransaction in model.manualTransactions — so a derived list entry (id: 'manual-' + t.id) can be mapped back to its source record for editing/deleting.
-  - TransactionsScreen.tsx: tapping a manual transaction row opens the same modal used for adding, pre-filled with its existing details (including receipt photo). Save updates the record in place; a "Delete this transaction" button removes it. Bill/Debt/Loan-derived rows are shown but not tappable — they display "(edit on its own tab)" and must be edited from their own source tab, matching the web app's design.
-  - Confirmed on a real phone: edit pre-fill works (including photo), save updates the list, delete removes the row and updates totals, non-manual rows are correctly non-interactive, and a new transaction with a photo can be added then re-opened for editing.
+- 6.1 — Unified transaction list. ✅ Complete.
+- 6.2 — Manually add a transaction, incl. receipt photo attachment, edit/delete. ✅ Complete and confirmed working on a real phone.
+- 6.3 — CSV import: NOT yet done. Explicitly optional/deferrable per the roadmap.
+
+Phase 7 — Income & Savings (M9) — ✅ FULLY COMPLETE
+- 7.1 — Income sources with pay schedules. ✅ Complete (from a prior session).
+- 7.2 — Savings goals + Emergency Fund/FI calculators. ✅ Complete and confirmed working on a real phone.
+  - types.ts: added optional CalculatorInputs type and calculatorInputs field on HouseholdModel, so EF/FI inputs persist.
+  - New SavingsScreen.tsx: 3-way pill switcher (Goals / Emergency Fund / FI Calculator).
+    - Goals: tap-to-edit rows, add/edit modal with name, optional target amount, optional target date (YYYY-MM-DD), and a dynamic list of contributions (date + amount, add/remove rows). currentAmount is always recalculated from the contributions list (not typed separately), matching the Loans payment pattern. Progress bar shown when a target amount is set. Delete button inside the edit modal.
+    - Emergency Fund: monthly essential expenses + current savings inputs → months-covered result. Has its own Save button (not autosave-per-keystroke) so typing doesn't re-encrypt the whole file every digit.
+    - FI Calculator: annual expenses + current savings inputs → FI number (25× rule) + progress bar/percentage. Same explicit-Save pattern.
+  - MainTabs.tsx: Savings tab now points to SavingsScreen instead of the placeholder.
+  - Confirmed on a real phone: goals add/edit/persist correctly, calculator inputs persist across tab switches and full app close/reopen.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -62,31 +65,33 @@ Phase 6 — Transactions (M8) — ✅ CORE COMPLETE (CSV import still optional/o
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
 - Auto-lock suppression: Any feature that opens a native OS picker/UI on top of the app (photo picker, and — in the future — things like document/CSV pickers) must wrap that call with setAutoLockSuppressed(true) / setAutoLockSuppressed(false) from src/autoLockSuppress.ts, using try/finally so it's always cleared. This is now the established pattern going forward, not a one-off fix.
 - Theming approach: Colors live in theme.ts (lightTheme/darkTheme); ThemeContext.tsx exposes useTheme(). Fonts have NOT been ported yet — default system fonts still in use. Full 13-theme picker, custom colors, and font pairing are deferred to a later checkpoint once a real Settings screen exists.
-- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, and Transactions): a scrollable list of rows, each tappable to open an edit modal (for editable record types); a "+ Add X" button at the bottom opens the same modal blank.
+- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, Transactions, Savings): a scrollable list of rows, each tappable to open an edit modal (for editable record types); a "+ Add X" button opens the same modal blank.
 - Due dates / transaction dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
-- To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern and keeps the bottom tab bar from getting overcrowded. Has three pills: Bills, Debts, Loans.
+- To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type. Has three pills: Bills, Debts, Loans.
+- Savings tab structure: Same in-screen pill-button switcher pattern as To-Pay, applied to Goals / Emergency Fund / FI Calculator.
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen.
-- Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen. Deliberately built without a charting library (plain stat cards + a payoff-order list) to keep the checkpoint scoped small.
-- Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints (income, savings) can extend the same function without needing to touch screen code. Income and savings-goal contributions are still intentionally left out of this list for now since those input screens don't exist yet (Phase 7) — this is expected, not a bug.
-- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, since People/Income screens (Phase 7) haven't been built. Category is a free-typed optional text field, not a picker.
-- Manual transaction edit/delete design: The derived TransactionEntry list (used for display/sorting/totals) carries an optional rawId pointing back to the real ManualTransaction record, rather than trying to parse it out of the prefixed display id. Only manual transactions are directly editable from the Transactions tab — Bill/Debt/Loan-derived rows must be edited at their source, matching the original web app's behavior.
+- Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen.
+- Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module so future checkpoints can extend it without touching screen code. Income and savings-goal contributions are still intentionally left out of this list for now — that hookup is a flagged follow-up, not yet done.
+- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, even though Income now has people. This is a flagged follow-up, not yet wired up.
+- Manual transaction edit/delete design: The derived TransactionEntry list carries an optional rawId pointing back to the real ManualTransaction record. Only manual transactions are directly editable from the Transactions tab.
+- Calculator input persistence design (Checkpoint 7.2): EF/FI calculator inputs are hand-typed only — no auto-pull from Bills/Income data yet. That auto-pull is a flagged nice-to-have follow-up, not required by the roadmap. Inputs save via an explicit Save button rather than on every keystroke, to avoid re-encrypting the whole file per digit typed.
+- Savings goal amount design: A goal's currentAmount is always derived by summing its contributions list (not typed directly), matching the pattern already used for Loan payments.
 - Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
-- Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there. For changes involving multi-line blocks where exact whitespace matters, a small inline Python script (via `python3 - << 'ENDOFFILE'`) that does an exact string match-and-replace is used instead, and it reports clearly if the expected text wasn't found rather than silently doing nothing or corrupting the file.
+- Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there. For changes involving multi-line blocks where exact whitespace matters, a small inline Python script (via `python3 - << 'ENDOFFILE'`) that does an exact string match-and-replace is used instead.
 - Tab bar structure: Used @react-navigation/bottom-tabs directly. All 10 tabs shown flat in the bar (no "More" overflow menu yet).
 
 ▶️ Next step
 
-Phase 6 (Transactions) core functionality is fully done and confirmed working. One optional item remains:
+Phase 7 (Income & Savings) is fully done and confirmed working. Two things to decide at the start of next session:
 
-1. Checkpoint 6.3 — CSV import: Import transactions from a CSV file. The roadmap explicitly allows this to be simplified or deferred if it adds too much complexity for one checkpoint.
+1. Flagged follow-ups not yet done (small, can be picked up any time): manual transactions still hardcode owner to 'shared' instead of using the People list from Income; income/savings-goal contributions aren't yet folded into the unified Transactions list; EF/FI calculators don't auto-pull figures from Bills/Income.
+2. Main path forward: Phase 8 — Groceries / Travel / Events / Goals (M10), starting with Checkpoint 8.1 (grocery list + calculator).
 
-Two reasonable paths forward:
-- (a) Tackle 6.3 (CSV import) now to fully close out Phase 6, or
-- (b) Defer 6.3 and move on to Phase 7 — Income & Savings (M9), coming back to CSV import later.
+Checkpoint 6.3 (CSV import) also remains deferred/optional per the roadmap.
 
-Recommend asking the person which they'd prefer at the start of the next session, since CSV import is explicitly optional/deferrable per the roadmap and Phase 7 unlocks real functionality (people/income screens) that several existing screens are already stubbed out waiting for (e.g. manual transactions' hardcoded "shared" owner).
+Recommend asking the person at the start of the next session whether to: (a) start Phase 8.1 (Groceries) directly, or (b) knock out one of the small flagged follow-ups first (the manual-transaction owner picker is probably the highest-value quick win, now that People/Income exist).
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -96,10 +101,10 @@ Files in the repo so far
 - README.md
 - PROGRESS.md (this file)
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types (ManualTransaction includes optional receiptPhoto)
+  - mobile-app/src/types.ts — data model types (now includes CalculatorInputs + calculatorInputs on HouseholdModel)
   - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans
-  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals() — TransactionEntry now includes optional rawId for manual entries
-  - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed(), used to pause auto-lock around native pickers
+  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
+  - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
   - mobile-app/src/defaultModel.ts — empty/default data factory function
   - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
   - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data
@@ -123,9 +128,11 @@ Files in the repo so far
   - mobile-app/src/screens/LoansScreen.tsx
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle, add/edit/delete modal with receipt photo attachment
-  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab wired to TransactionsScreen
+  - mobile-app/src/screens/TransactionsScreen.tsx
+  - mobile-app/src/screens/IncomeScreen.tsx
+  - mobile-app/src/screens/SavingsScreen.tsx — Goals / Emergency Fund / FI Calculator pill-switcher tab
+  - mobile-app/src/navigation/MainTabs.tsx — Savings tab wired to SavingsScreen
   - mobile-app/App.tsx — includes auto-lock suppression check
-  - mobile-app/package.json / package-lock.json (includes expo-image-picker)
+  - mobile-app/package.json / package-lock.json
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Metro must be started from inside mobile-app (cd mobile-app first), always with --tunnel.
