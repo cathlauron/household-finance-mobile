@@ -128,6 +128,17 @@ export type SavingsGoal = {
   createdAt?: number;
 };
 
+// ---- Checkpoint 7.2: Emergency Fund / FI calculator inputs ----
+// Purely hand-typed figures for now (no auto-pull from Bills yet — that's a flagged
+// follow-up). Optional on HouseholdModel so profiles saved before this checkpoint still
+// load fine; screens fall back to '' for any missing field, same pattern used elsewhere.
+export type CalculatorInputs = {
+  efMonthlyExpenses: number | '';
+  efCurrentSavings: number | '';
+  fiAnnualExpenses: number | '';
+  fiCurrentSavings: number | '';
+};
+
 export type BalanceAccountEntry = {
   id: string;
   name: string;
@@ -182,4 +193,5 @@ export type HouseholdModel = {
   manualTransactions: ManualTransaction[];
   categories: Category[];
   categoryBudgets: CategoryBudget[];
+  calculatorInputs?: CalculatorInputs;
 };
