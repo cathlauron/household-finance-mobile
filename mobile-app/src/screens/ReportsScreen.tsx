@@ -1,12 +1,3 @@
-// ============================================================
-// Household Finance App — Reports pill-switcher (Checkpoint 10.2)
-// ============================================================
-// Now that there are 3 report pages, this screen switches between
-// them the same way ToPayScreen/PlanningScreen switch between
-// their own sub-sections. Each report lives in its own file under
-// src/screens/reports/.
-// ============================================================
-
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -16,8 +7,9 @@ import CashFlowForecastReport from './reports/CashFlowForecastReport';
 import PersonSpendingReport from './reports/PersonSpendingReport';
 import WeeklyDigestReport from './reports/WeeklyDigestReport';
 import MerchantSpendingReport from './reports/MerchantSpendingReport';
+import SubscriptionAuditReport from './reports/SubscriptionAuditReport';
 
-type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person' | 'weekly' | 'merchant';
+type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person' | 'weekly' | 'merchant' | 'subscription';
 
 const REPORT_TABS: { id: ReportTab; label: string }[] = [
   { id: 'monthly', label: 'Monthly Close-out' },
@@ -26,6 +18,7 @@ const REPORT_TABS: { id: ReportTab; label: string }[] = [
   { id: 'person', label: 'Person Spending' },
   { id: 'weekly', label: 'Weekly Digest' },
   { id: 'merchant', label: 'Merchant Spending' },
+  { id: 'subscription', label: 'Subscription Audit' },
 ];
 
 export default function ReportsScreen() {
@@ -57,6 +50,7 @@ export default function ReportsScreen() {
       {activeReport === 'person' && <PersonSpendingReport />}
       {activeReport === 'weekly' && <WeeklyDigestReport />}
       {activeReport === 'merchant' && <MerchantSpendingReport />}
+      {activeReport === 'subscription' && <SubscriptionAuditReport />}
     </View>
   );
 }
