@@ -100,13 +100,7 @@ export type Loan = {
   actualPayments: LoanPayment[];
   owner: string;
   direction: 'borrowed' | 'lent';
-  // Annual interest rate as a plain percentage (e.g. 12 means 12%). Optional — used by
-  // the Payoff Simulator (Checkpoint 5.3c) to estimate interest; blank/0 is treated as
-  // no interest, which still lets the simulator run using expectedPayment alone.
   interestRate?: number | '';
-  // Recurrence + due date (Checkpoint 5.4c). Optional so loans saved before this change
-  // (which have neither field) still load fine — screens fall back to 'onetime' with no
-  // date set when either is missing, same pattern Bills/Debts already use.
   recurringType?: 'monthly' | 'annual' | 'onetime' | 'custom';
   dueDate?: Record<string, any>;
   createdAt?: number;
@@ -128,15 +122,33 @@ export type SavingsGoal = {
   createdAt?: number;
 };
 
-// ---- Checkpoint 7.2: Emergency Fund / FI calculator inputs ----
-// Purely hand-typed figures for now (no auto-pull from Bills yet — that's a flagged
-// follow-up). Optional on HouseholdModel so profiles saved before this checkpoint still
-// load fine; screens fall back to '' for any missing field, same pattern used elsewhere.
 export type CalculatorInputs = {
   efMonthlyExpenses: number | '';
   efCurrentSavings: number | '';
   fiAnnualExpenses: number | '';
   fiCurrentSavings: number | '';
+};
+
+// ---- Checkpoint 8.1: Groceries ----
+// A single grocery-list item: what you plan to spend, what you actually spent (only
+// meaningful once purchased), and whether it's been bought yet. Intentionally simpler
+// than the web app's version for now (no store/aisle/unit-price detail yet) — that can
+// be added later without changing this shape, same additive philosophy used elsewhere.
+export type GroceryItem = {
+  id: string;
+  item: string;
+  plannedAmount: number | '';
+  actualAmount: number | '';
+  purchased: boolean;
+};
+
+// A scratch-tally entry for the in-store running-total calculator. Not linked to the
+// grocery list until "Add all to list" is tapped, which copies these over as planned
+// GroceryItems and clears the calculator.
+export type GroceryCalcEntry = {
+  id: string;
+  label: string;
+  amount: number;
 };
 
 export type BalanceAccountEntry = {
@@ -165,7 +177,7 @@ export type ManualTransaction = {
   direction: 'in' | 'out' | 'saving';
   owner: string;
   category?: string;
-  receiptPhoto?: string; // base64 data URI of an attached receipt photo, optional
+  receiptPhoto?: string;
 };
 
 export type Category = {
@@ -194,4 +206,6 @@ export type HouseholdModel = {
   categories: Category[];
   categoryBudgets: CategoryBudget[];
   calculatorInputs?: CalculatorInputs;
+  groceries?: GroceryItem[];
+  groceryCalculator?: GroceryCalcEntry[];
 };
