@@ -27,6 +27,7 @@ import {
   TransactionEntry,
 } from '../transactions';
 import type { ManualTransaction, HouseholdModel } from '../types';
+import CsvImportModal from './CsvImportModal';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -68,6 +69,7 @@ export default function TransactionsScreen() {
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
 
   const transactions = useMemo(() => {
     if (!model) return [];
@@ -295,10 +297,17 @@ export default function TransactionsScreen() {
           );
         })}
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add transaction</Text>
-        </TouchableOpacity>
+        <View style={styles.addButtonRow}>
+          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+            <Text style={styles.addButtonText}>+ Add transaction</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.importButton} onPress={() => setCsvModalOpen(true)}>
+            <Text style={styles.importButtonText}>Import CSV</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
         <Pressable style={styles.modalOverlay} onPress={closeModal}>
@@ -454,8 +463,11 @@ function makeStyles(colors: any) {
     txnLabel: { fontSize: 13.5, fontWeight: '600', color: colors.ink },
     txnSub: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
     txnAmount: { fontSize: 13.5, fontWeight: '700' },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
+    addButtonRow: { flexDirection: 'row', gap: 16, marginTop: 4, flexWrap: 'wrap' },
+    addButton: { paddingVertical: 8, paddingHorizontal: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    importButton: { paddingVertical: 8, paddingHorizontal: 4 },
+    importButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
