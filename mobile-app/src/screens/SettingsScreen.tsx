@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import type { Category, HouseholdModel } from '../types';
+import type { Category, Payee, HouseholdModel } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -42,6 +42,15 @@ export default function SettingsScreen() {
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
 
+  // ---- Merchants & Payees ----
+  // Same tap-row-to-edit pattern as Categories above, in its own modal since the fields
+  // are different (name + an optional default category, no color).
+  const [payeeModalOpen, setPayeeModalOpen] = useState(false);
+  const [editingPayeeId, setEditingPayeeId] = useState<string | null>(null);
+  const [payeeNameInput, setPayeeNameInput] = useState('');
+  const [payeeCategoryInput, setPayeeCategoryInput] = useState('');
+  const [payeeErrorMsg, setPayeeErrorMsg] = useState('');
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -51,6 +60,7 @@ export default function SettingsScreen() {
   }
 
   const categories = [...model.categories].sort((a, b) => a.name.localeCompare(b.name));
+  const payees = [...(model.payees ?? [])].sort((a, b) => a.name.localeCompare(b.name));
 
   function openAddModal() {
     setEditingId(null);
@@ -131,6 +141,76 @@ export default function SettingsScreen() {
     closeModal();
   }
 
+  // ---- Merchants & Payees handlers ----
+  function openAddPayeeModal() {
+    setEditingPayeeId(null);
+    setPayeeNameInput('');
+    setPayeeCategoryInput('');
+    setPayeeErrorMsg('');
+    setPayeeModalOpen(true);
+  }
+
+  function openEditPayeeModal(payee: Payee) {
+    setEditingPayeeId(payee.id);
+    setPayeeNameInput(payee.name);
+    setPayeeCategoryInput(payee.defaultCategory ?? '');
+    setPayeeErrorMsg('');
+    setPayeeModalOpen(true);
+  }
+
+  function closePayeeModal() {
+    setPayeeModalOpen(false);
+    setEditingPayeeId(null);
+    setPayeeErrorMsg('');
+  }
+
+  async function handleSavePayee() {
+    if (!model) return;
+    const trimmed = payeeNameInput.trim();
+    if (!trimmed) {
+      setPayeeErrorMsg('Give the merchant or payee a name.');
+      return;
+    }
+    const existing = model.payees ?? [];
+    const duplicate = existing.find(
+      (p) => p.id !== editingPayeeId && p.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (duplicate) {
+      setPayeeErrorMsg('You already have a payee with that name.');
+      return;
+    }
+
+    let updatedPayees: Payee[];
+    if (editingPayeeId) {
+      updatedPayees = existing.map((p) =>
+        p.id === editingPayeeId
+          ? { ...p, name: trimmed, defaultCategory: payeeCategoryInput.trim() }
+          : p
+      );
+    } else {
+      const newPayee: Payee = {
+        id: makeId('payee'),
+        name: trimmed,
+        defaultCategory: payeeCategoryInput.trim(),
+      };
+      updatedPayees = [...existing, newPayee];
+    }
+
+    const updated: HouseholdModel = { ...model, payees: updatedPayees };
+    await saveModel(updated);
+    closePayeeModal();
+  }
+
+  async function handleDeletePayee() {
+    if (!editingPayeeId || !model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      payees: (model.payees ?? []).filter((p) => p.id !== editingPayeeId),
+    };
+    await saveModel(updated);
+    closePayeeModal();
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -176,6 +256,38 @@ export default function SettingsScreen() {
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add category</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>
+        <Text style={styles.sectionSub}>
+          Save names you use often so they're quicker to enter on transactions. The default
+          category is optional — it's here for a future auto-categorizing feature.
+        </Text>
+
+        {payees.length === 0 && (
+          <Text style={styles.emptyText}>No payees yet. Add your first one below.</Text>
+        )}
+
+        {payees.map((payee) => (
+          <TouchableOpacity
+            key={payee.id}
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => openEditPayeeModal(payee)}
+          >
+            <Text style={styles.rowName} numberOfLines={1}>
+              {payee.name}
+            </Text>
+            {!!payee.defaultCategory && (
+              <Text style={styles.rowSubText} numberOfLines={1}>
+                {payee.defaultCategory}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity style={styles.addButton} onPress={openAddPayeeModal}>
+          <Text style={styles.addButtonText}>+ Add payee</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -226,6 +338,55 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={payeeModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={closePayeeModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closePayeeModal}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>
+              {editingPayeeId ? 'Edit payee' : 'New payee'}
+            </Text>
+
+            <Text style={styles.inputLabel}>Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. SM Supermarket, Meralco"
+              placeholderTextColor={colors.inkFaint}
+              value={payeeNameInput}
+              onChangeText={setPayeeNameInput}
+            />
+
+            <Text style={styles.inputLabel}>Default category (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Groceries, Utilities"
+              placeholderTextColor={colors.inkFaint}
+              value={payeeCategoryInput}
+              onChangeText={setPayeeCategoryInput}
+            />
+
+            {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSavePayee}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+
+            {editingPayeeId && (
+              <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePayee}>
+                <Text style={styles.deleteButtonText}>Delete this payee</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.cancelButton} onPress={closePayeeModal}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -261,6 +422,13 @@ function makeStyles(colors: any) {
       color: colors.ink,
     },
     rowName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.ink },
+    rowSubText: {
+      fontSize: 12,
+      color: colors.inkDim,
+      marginLeft: 8,
+      flexShrink: 1,
+      textAlign: 'right',
+    },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     modalOverlay: {

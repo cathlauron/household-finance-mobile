@@ -240,6 +240,12 @@ export type CategoryBudget = {
   monthlyBudget: number | '';
 };
 
+export type Payee = {
+  id: string;
+  name: string;
+  defaultCategory: string;
+};
+
 export type HouseholdModel = {
   settings: Settings;
   people: Person[];
@@ -257,5 +263,6 @@ export type HouseholdModel = {
   groceryCalculator?: GroceryCalcEntry[];
   travel?: TravelTrip[];
   events?: EventItem[];
-  yearlyGoals?: YearlyGoal[];
+    yearlyGoals?: YearlyGoal[];
+  payees?: Payee[];
 };
