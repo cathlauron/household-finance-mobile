@@ -57,18 +57,17 @@ export default function CsvImportModal({ visible, onClose }: Props) {
     setAutoLockSuppressed(true);
     try {
       const picked = await DocumentPicker.getDocumentAsync({
-        type: [
-          'text/csv',
-          'text/comma-separated-values',
-          'text/plain',
-          'application/vnd.ms-excel',
-          'public.comma-separated-values-text',
-        ],
+        type: '*/*',
         copyToCacheDirectory: true,
         multiple: false,
       });
       if (picked.canceled || !picked.assets || !picked.assets[0]) return;
       const asset = picked.assets[0];
+      const nameLower = (asset.name || '').toLowerCase();
+      if (!nameLower.endsWith('.csv') && !nameLower.endsWith('.txt')) {
+        setErrorMsg("That doesn't look like a CSV file (it should end in .csv). If you exported from a spreadsheet app, make sure you chose \"CSV\" as the export format, not Excel (.xlsx).");
+        return;
+      }
       setLoading(true);
       const text = await FileSystem.readAsStringAsync(asset.uri, {
         encoding: FileSystem.EncodingType.UTF8,
