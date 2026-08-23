@@ -26,6 +26,7 @@ import {
   transactionTotals,
   TransactionEntry,
 } from '../transactions';
+import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person } from '../types';
 import CsvImportModal from './CsvImportModal';
 
@@ -148,6 +149,26 @@ export default function TransactionsScreen() {
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+  }
+
+  // ---- Categorization Rules auto-fill ----
+  // Only fills the category in when it's still empty, so this never overwrites a category
+  // the person already typed by hand. Amount-based rules need the amount too, so both the
+  // label and amount fields trigger this — each reading whatever's currently in the other.
+  function handleLabelChange(text: string) {
+    setLabelInput(text);
+    if (!model || categoryInput.trim()) return;
+    const amt = parseFloat(amountInput);
+    const auto = computeAutoCategory(model, text, amt);
+    if (auto) setCategoryInput(auto);
+  }
+
+  function handleAmountChange(text: string) {
+    setAmountInput(text);
+    if (!model || categoryInput.trim()) return;
+    const amt = parseFloat(text);
+    const auto = computeAutoCategory(model, labelInput, amt);
+    if (auto) setCategoryInput(auto);
   }
 
   async function handlePickReceipt() {
@@ -359,7 +380,7 @@ export default function TransactionsScreen() {
                   placeholder="e.g. Coffee, Cash gift, Market run"
                   placeholderTextColor={colors.inkFaint}
                   value={labelInput}
-                  onChangeText={setLabelInput}
+                  onChangeText={handleLabelChange}
                 />
 
                 <Text style={styles.inputLabel}>Type</Text>
@@ -384,7 +405,7 @@ export default function TransactionsScreen() {
                   placeholderTextColor={colors.inkFaint}
                   keyboardType="decimal-pad"
                   value={amountInput}
-                  onChangeText={setAmountInput}
+                  onChangeText={handleAmountChange}
                 />
 
                 <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>

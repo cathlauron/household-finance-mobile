@@ -246,6 +246,14 @@ export type Payee = {
   defaultCategory: string;
 };
 
+export type CategorizationRule = {
+  id: string;
+  labelContains: string;
+  amountMin: number | '';
+  amountMax: number | '';
+  category: string;
+};
+
 export type HouseholdModel = {
   settings: Settings;
   people: Person[];
@@ -265,4 +273,5 @@ export type HouseholdModel = {
   events?: EventItem[];
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
+  categorizationRules?: CategorizationRule[];
 };

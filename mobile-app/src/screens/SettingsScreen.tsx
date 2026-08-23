@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import type { Category, Payee, HouseholdModel } from '../types';
+import { formatPeso } from '../balanceProjection';
+import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -27,6 +28,15 @@ const COLOR_PALETTE = [
   '#6D28D9', '#2563EB', '#EA580C', '#059669', '#DC2626',
   '#9333EA', '#0891B2', '#D97706', '#DB2777', '#78716C',
 ];
+
+function amountRangeLabel(rule: CategorizationRule): string {
+  const min = rule.amountMin === '' || rule.amountMin === undefined ? null : Number(rule.amountMin);
+  const max = rule.amountMax === '' || rule.amountMax === undefined ? null : Number(rule.amountMax);
+  if (min !== null && max !== null) return `${formatPeso(min)}–${formatPeso(max)}`;
+  if (min !== null) return `${formatPeso(min)} or more`;
+  if (max !== null) return `Up to ${formatPeso(max)}`;
+  return '';
+}
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -43,13 +53,23 @@ export default function SettingsScreen() {
   );
 
   // ---- Merchants & Payees ----
-  // Same tap-row-to-edit pattern as Categories above, in its own modal since the fields
-  // are different (name + an optional default category, no color).
   const [payeeModalOpen, setPayeeModalOpen] = useState(false);
   const [editingPayeeId, setEditingPayeeId] = useState<string | null>(null);
   const [payeeNameInput, setPayeeNameInput] = useState('');
   const [payeeCategoryInput, setPayeeCategoryInput] = useState('');
   const [payeeErrorMsg, setPayeeErrorMsg] = useState('');
+
+  // ---- Categorization Rules ----
+  // Same tap-row-to-edit pattern as Categories/Payees above, plus up/down reorder arrows
+  // since rules are checked in order and the first match wins — reordering genuinely
+  // changes behavior, unlike the alphabetical Categories/Payees lists.
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleContainsInput, setRuleContainsInput] = useState('');
+  const [ruleMinInput, setRuleMinInput] = useState('');
+  const [ruleMaxInput, setRuleMaxInput] = useState('');
+  const [ruleCategoryInput, setRuleCategoryInput] = useState('');
+  const [ruleErrorMsg, setRuleErrorMsg] = useState('');
 
   if (!model) {
     return (
@@ -61,6 +81,7 @@ export default function SettingsScreen() {
 
   const categories = [...model.categories].sort((a, b) => a.name.localeCompare(b.name));
   const payees = [...(model.payees ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  const rules = model.categorizationRules ?? []; // NOT sorted — array order is match order
 
   function openAddModal() {
     setEditingId(null);
@@ -211,6 +232,113 @@ export default function SettingsScreen() {
     closePayeeModal();
   }
 
+  // ---- Categorization Rules handlers ----
+  function openAddRuleModal() {
+    setEditingRuleId(null);
+    setRuleContainsInput('');
+    setRuleMinInput('');
+    setRuleMaxInput('');
+    setRuleCategoryInput('');
+    setRuleErrorMsg('');
+    setRuleModalOpen(true);
+  }
+
+  function openEditRuleModal(rule: CategorizationRule) {
+    setEditingRuleId(rule.id);
+    setRuleContainsInput(rule.labelContains);
+    setRuleMinInput(rule.amountMin === '' || rule.amountMin === undefined ? '' : String(rule.amountMin));
+    setRuleMaxInput(rule.amountMax === '' || rule.amountMax === undefined ? '' : String(rule.amountMax));
+    setRuleCategoryInput(rule.category);
+    setRuleErrorMsg('');
+    setRuleModalOpen(true);
+  }
+
+  function closeRuleModal() {
+    setRuleModalOpen(false);
+    setEditingRuleId(null);
+    setRuleErrorMsg('');
+  }
+
+  async function handleSaveRule() {
+    if (!model) return;
+    const trimmedContains = ruleContainsInput.trim();
+    const trimmedCategory = ruleCategoryInput.trim();
+    if (!trimmedContains) {
+      setRuleErrorMsg('Enter text to match in the label.');
+      return;
+    }
+    if (!trimmedCategory) {
+      setRuleErrorMsg('Choose a category to set when this rule matches.');
+      return;
+    }
+    const minVal: number | '' = ruleMinInput.trim() === '' ? '' : parseFloat(ruleMinInput);
+    const maxVal: number | '' = ruleMaxInput.trim() === '' ? '' : parseFloat(ruleMaxInput);
+    if (minVal !== '' && isNaN(minVal)) {
+      setRuleErrorMsg('Minimum amount must be a number.');
+      return;
+    }
+    if (maxVal !== '' && isNaN(maxVal)) {
+      setRuleErrorMsg('Maximum amount must be a number.');
+      return;
+    }
+    if (minVal !== '' && maxVal !== '' && minVal > maxVal) {
+      setRuleErrorMsg('Minimum amount must be less than maximum.');
+      return;
+    }
+
+    const existing = model.categorizationRules ?? [];
+    let updatedRules: CategorizationRule[];
+    if (editingRuleId) {
+      updatedRules = existing.map((r) =>
+        r.id === editingRuleId
+          ? {
+              ...r,
+              labelContains: trimmedContains,
+              amountMin: minVal,
+              amountMax: maxVal,
+              category: trimmedCategory,
+            }
+          : r
+      );
+    } else {
+      const newRule: CategorizationRule = {
+        id: makeId('catrule'),
+        labelContains: trimmedContains,
+        amountMin: minVal,
+        amountMax: maxVal,
+        category: trimmedCategory,
+      };
+      updatedRules = [...existing, newRule];
+    }
+
+    const updated: HouseholdModel = { ...model, categorizationRules: updatedRules };
+    await saveModel(updated);
+    closeRuleModal();
+  }
+
+  async function handleDeleteRule() {
+    if (!editingRuleId || !model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      categorizationRules: (model.categorizationRules ?? []).filter((r) => r.id !== editingRuleId),
+    };
+    await saveModel(updated);
+    closeRuleModal();
+  }
+
+  async function moveRule(id: string, direction: 'up' | 'down') {
+    if (!model) return;
+    const list = [...(model.categorizationRules ?? [])];
+    const idx = list.findIndex((r) => r.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx === -1 || swapIdx < 0 || swapIdx >= list.length) return;
+    const tmp = list[idx];
+    list[idx] = list[swapIdx];
+    list[swapIdx] = tmp;
+    const updated: HouseholdModel = { ...model, categorizationRules: list };
+    await saveModel(updated);
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -260,8 +388,8 @@ export default function SettingsScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>
         <Text style={styles.sectionSub}>
-          Save names you use often so they're quicker to enter on transactions. The default
-          category is optional — it's here for a future auto-categorizing feature.
+          Save names you use often so they're quicker to enter on transactions. Set a default
+          category and it'll auto-fill whenever you type that exact name on a new transaction.
         </Text>
 
         {payees.length === 0 && (
@@ -288,6 +416,63 @@ export default function SettingsScreen() {
 
         <TouchableOpacity style={styles.addButton} onPress={openAddPayeeModal}>
           <Text style={styles.addButtonText}>+ Add payee</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categorization Rules</Text>
+        <Text style={styles.sectionSub}>
+          Auto-fill a category when a transaction's label contains some text, optionally
+          within an amount range. Checked top to bottom — the first matching rule wins, and
+          a saved payee's own default category above always takes priority over these.
+        </Text>
+
+        {rules.length === 0 && (
+          <Text style={styles.emptyText}>No rules yet. Add your first one below.</Text>
+        )}
+
+        {rules.map((rule, idx) => (
+          <View key={rule.id} style={styles.ruleRow}>
+            <View style={styles.reorderCol}>
+              <TouchableOpacity
+                onPress={() => moveRule(rule.id, 'up')}
+                disabled={idx === 0}
+                style={styles.reorderBtn}
+              >
+                <Text style={[styles.reorderBtnText, idx === 0 && styles.reorderBtnDisabled]}>▲</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => moveRule(rule.id, 'down')}
+                disabled={idx === rules.length - 1}
+                style={styles.reorderBtn}
+              >
+                <Text
+                  style={[
+                    styles.reorderBtnText,
+                    idx === rules.length - 1 && styles.reorderBtnDisabled,
+                  ]}
+                >
+                  ▼
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.ruleRowMain}
+              activeOpacity={0.7}
+              onPress={() => openEditRuleModal(rule)}
+            >
+              <Text style={styles.rowName} numberOfLines={1}>
+                "{rule.labelContains}" → {rule.category}
+              </Text>
+              {!!amountRangeLabel(rule) && (
+                <Text style={styles.rowSubText} numberOfLines={1}>
+                  {amountRangeLabel(rule)}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <TouchableOpacity style={styles.addButton} onPress={openAddRuleModal}>
+          <Text style={styles.addButtonText}>+ Add rule</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -387,6 +572,74 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={ruleModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={closeRuleModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closeRuleModal}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>{editingRuleId ? 'Edit rule' : 'New rule'}</Text>
+
+            <Text style={styles.inputLabel}>If the label contains</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. jollibee, meralco, grab"
+              placeholderTextColor={colors.inkFaint}
+              value={ruleContainsInput}
+              onChangeText={setRuleContainsInput}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Minimum amount (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="No minimum"
+              placeholderTextColor={colors.inkFaint}
+              keyboardType="decimal-pad"
+              value={ruleMinInput}
+              onChangeText={setRuleMinInput}
+            />
+
+            <Text style={styles.inputLabel}>Maximum amount (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="No maximum"
+              placeholderTextColor={colors.inkFaint}
+              keyboardType="decimal-pad"
+              value={ruleMaxInput}
+              onChangeText={setRuleMaxInput}
+            />
+
+            <Text style={styles.inputLabel}>Set category to</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Groceries, Utilities"
+              placeholderTextColor={colors.inkFaint}
+              value={ruleCategoryInput}
+              onChangeText={setRuleCategoryInput}
+            />
+
+            {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveRule}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+
+            {editingRuleId && (
+              <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteRule}>
+                <Text style={styles.deleteButtonText}>Delete this rule</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.cancelButton} onPress={closeRuleModal}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -431,6 +684,28 @@ function makeStyles(colors: any) {
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    ruleRow: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      marginBottom: 8,
+      overflow: 'hidden',
+    },
+    reorderCol: {
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+      backgroundColor: colors.navy2,
+    },
+    reorderBtn: { paddingVertical: 4, paddingHorizontal: 6 },
+    reorderBtnText: { fontSize: 11, color: colors.inkDim },
+    reorderBtnDisabled: { opacity: 0.3 },
+    ruleRowMain: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      justifyContent: 'center',
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
