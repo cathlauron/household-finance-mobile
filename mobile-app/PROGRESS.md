@@ -47,14 +47,15 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 
 ### Phase 10 — Dashboard & Reports
 - Dashboard wired into Insights tab (10.1)
-- Insights pill-switcher + 7 report types built (10.2): Monthly Close-out, Year in Review, Cash-Flow Forecast, Subscription Audit, Weekly Digest, Merchant Spending, Person Spending
+- Insights pill-switcher + 7 report types built (10.2): Monthly Close-out, Year in Review, Cash-Flow Forecast, SubscriptionAudit, Weekly Digest, Merchant Spending, Person Spending
 
 ### Phase 11 — Settings (in progress)
 - Settings tab created and wired into MainTabs (replacing PlaceholderScreen) — src/screens/SettingsScreen.tsx
 - Categories manager: add / rename / recolor / remove, tap-row-to-edit pattern matching IncomeScreen.tsx. Uses the existing `categories: Category[]` field already present in HouseholdModel/defaultModel — no data model changes needed.
 - Fixed color palette (15 swatches) used for the color picker, since React Native has no built-in color picker.
 - Notifications section: "Alert me X day(s) before due" number field, saves on blur, wired to model.settings.notifyDaysBefore (already existed on the data model — no changes needed there). Confirmed working on phone — field saves correctly.
-- **Merchants & Payees manager** (new this session): add / rename / edit default category / remove, same tap-row-to-edit modal pattern as Categories, in its own modal (`payeeModalOpen` state, separate from the Categories modal). Fields: name (required, must be unique) + default category (optional free-text — not wired to auto-categorizing yet, just saved for a later feature). Added a new `Payee` type to `src/types.ts` and a new optional `payees?: Payee[]` field on `HouseholdModel` (optional so existing saved profiles without it don't break). Confirmed working on the user's phone — add/edit/delete all tested.
+- **Merchants & Payees manager**: add / rename / edit default category / remove, same tap-row-to-edit modal pattern as Categories, in its own modal (`payeeModalOpen` state, separate from the Categories modal). Fields: name (required, must be unique) + default category (optional free-text). Added a new `Payee` type to `src/types.ts` and a new optional `payees?: Payee[]` field on `HouseholdModel` (optional so existing saved profiles without it don't break). Confirmed working on the user's phone — add/edit/delete all tested.
+- **Categorization Rules manager** (new this session): auto-fills a transaction's Category field based on the label (and optionally an amount range) — e.g. "contains jollibee → sets Dining". Same tap-row-to-edit modal pattern as Categories/Payees, plus ▲/▼ reorder arrows since rules are checked in array order and the first match wins. New `CategorizationRule` type added to `src/types.ts`, new optional `categorizationRules?: CategorizationRule[]` field on `HouseholdModel`. New helper file `src/categorization.ts` exports `computeAutoCategory()`, which checks a saved Payee's own default category first (more specific signal), then falls through to the first matching rule. Wired into TransactionsScreen.tsx's add/edit form: typing in the Label or Amount field triggers auto-fill, but only when the Category field is still empty — never overwrites something the user already typed. Confirmed working on the user's phone: auto-fill on label match, and rule reordering via arrows, both tested successfully.
 
 ### Cross-cutting fixes
 - Person-picker added to Transactions screen
@@ -62,12 +63,12 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 
 ## ⚠️ NOT started yet
 - **Phase 9 — Shared Expenses / Household Linking** (no evidence in files or commits)
-- **Phase 11 — Settings, remaining sub-sections**: Categorization Rules, Layout & Navigation, Security (change passphrase, PIN setup), Household & Data (backup/export/import, linking), Help & FAQ
+- **Phase 11 — Settings, remaining sub-sections**: Layout & Navigation, Security (change passphrase, PIN setup), Household & Data (backup/export/import, linking), Help & FAQ
 - **Phase 12 — Polish & Real-Device Testing** (offline behavior, accessibility, full tab-by-tab pass)
 - **Phase 13 — Publishing** (EAS Build, app store)
 
 ## 🔧 In progress / just finished
-- Nothing currently mid-way. Last confirmed-complete work: Merchants & Payees manager added to Settings (this session), tested working on the user's phone via Expo Go.
+- Nothing currently mid-way. Last confirmed-complete work: Categorization Rules manager added to Settings + wired into Transactions auto-fill (this session), tested working on the user's phone via Expo Go.
 
 ## 📌 Decisions made
 - Payment log dates typed as YYYY-MM-DD (e.g. 2025-03-24) — no date picker yet
@@ -77,9 +78,15 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 - Category colors picked from a fixed 15-swatch palette (matches the web app's default auto-assigned colors) rather than a native color picker
 - Payees have no color/parent concept (unlike Categories) — just name + an optional default category text field, matching the web app's simpler Payee shape
 - `payees` field added as optional (`payees?: Payee[]`) on HouseholdModel rather than required, so older saved profiles that predate this feature don't break when loaded — same pattern already used for groceries/travel/events/yearlyGoals
+- Categorization Rules follow the same "optional field" pattern: `categorizationRules?: CategorizationRule[]` on HouseholdModel
+- Auto-categorize priority order: a matching Payee's default category always wins over a matching Rule (Payee match is a more specific signal — an exact name match vs. a "contains" substring match)
+- Auto-fill only ever fills an *empty* Category field — it's a convenience, not something that silently overwrites a category the user already picked
 
-## 🛠️ Known environment fix — Expo tunnel mode in Codespaces
-Codespaces assigns Metro a private local address (e.g. `10.x.x.x`) that phones can't reach directly — `npx expo start` alone will spin forever on the phone. Fix: run `npx expo start --tunnel` instead. If that throws `CommandError: TypeError: Cannot read properties of undefined (reading 'body')`, it's an ngrok version mismatch — run `npm install --save-dev @expo/ngrok@4.1.0` once, then `npx expo start --tunnel` again. This only needs doing once per Codespace (the package stays installed).
+## 🛠️ Known environment fixes — Codespaces / Expo tunnel mode
+- Codespaces assigns Metro a private local address (e.g. `10.x.x.x`) that phones can't reach directly — `npx expo start` alone will spin forever on the phone. Fix: run `npx expo start --tunnel` instead.
+- If `--tunnel` throws `CommandError: TypeError: Cannot read properties of undefined (reading 'body')`, this is **not** actually an ngrok version mismatch (a prior session's note was wrong about the cause) — it's usually fixed simply by clearing the Metro bundler cache: run `npx expo start --tunnel -c` (the `-c` flag clears the cache). This resolved it directly in this session without needing to touch ngrok auth at all.
+- Separately, ngrok tunnels do require a free ngrok account + authtoken to work reliably going forward. Sign up at https://dashboard.ngrok.com/signup, then get your authtoken at https://dashboard.ngrok.com/get-started/your-authtoken. Note: `npx ngrok config add-authtoken ...` does NOT work in this project's environment (the bundled ngrok binary here is v2.3.40, an older version with a different CLI — `config` is not a recognized subcommand for it). If auth is ever needed again, this will need a different approach — but in practice, `-c` alone was sufficient to fix the immediate issue this session.
+- This only needs the `-c` cache-clear once per Codespace typically — after that, plain `npx expo start --tunnel` should keep working for the rest of that Codespace's life.
 
 ## 🚨 Process note — read this every session
 PROGRESS.md drifted out of sync with actual completed work at least twice in the past (see git history for details). The 114-commit audit that rebuilt this file is the reliable baseline. Going forward: if the person's pasted `git status` is clean and matches this file, trust it and proceed directly — no need to re-audit the whole repo every time.
@@ -89,10 +96,10 @@ Also: code and file edits should always be done in the Codespaces **file editor*
 When Claude hands off updated/new files at the end of a session, it should give the **complete file contents** to paste in as a full replacement — not a series of "find this line, change it to that" instructions — except for very small, low-risk additions (like a single new type or a single field), which can stay as targeted snippets since the risk of a paste error is low and asking for the whole file would be overkill.
 
 ## ▶️ Next step
-Continue Phase 11 — Settings. Good next sub-sections to pick from, smallest first:
-(a) Categorization Rules — auto-fill category based on label/amount (and could now also read a payee's default category, since that field just landed)
-(b) Security — change passphrase form (touches encryption, so extra care needed)
-(c) Layout & Navigation — smaller UI-only settings
-(d) Household & Data — backup/export/import, linking (bigger, save for later)
+Continue Phase 11 — Settings. Remaining sub-sections, roughly smallest/lowest-risk first:
+(a) Layout & Navigation — smaller UI-only settings, good next pick
+(b) Household & Data — backup/export/import, linking (bigger, multi-step)
+(c) Security — change passphrase form + PIN setup (touches encryption directly, so extra care needed — save for when there's a full session to focus on it)
+(d) Help & FAQ — smallest, mostly static content, could even be done same-session as (a)
 
-Recommend Categorization Rules next — it's a natural continuation of Merchants & Payees (same list-manager pattern, and can reuse the default-category field just added).
+Recommend Layout & Navigation next, since it's UI-only and low-risk, then Help & FAQ if there's time left in the same session.
