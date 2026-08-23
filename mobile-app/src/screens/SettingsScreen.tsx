@@ -15,6 +15,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
+import { requestNotificationPermission, sendTestNotification } from '../pushNotifications';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -59,6 +60,8 @@ export default function SettingsScreen() {
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
+  const [notifStatusMsg, setNotifStatusMsg] = useState('');
+  const [testNotifMsg, setTestNotifMsg] = useState('');
 
   // ---- Merchants & Payees ----
   const [payeeModalOpen, setPayeeModalOpen] = useState(false);
@@ -117,6 +120,47 @@ export default function SettingsScreen() {
       settings: { ...model.settings, notifyDaysBefore: value },
     };
     await saveModel(updated);
+  }
+
+    async function togglePushNotifications() {
+    if (!model) return;
+    setNotifStatusMsg('');
+    const turningOn = !model.settings.pushNotificationsEnabled;
+
+    if (turningOn) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        setNotifStatusMsg(
+          "Notifications need permission from your phone's settings first — check your phone's notification settings for this app and try again."
+        );
+        return;
+      }
+    }
+
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, pushNotificationsEnabled: turningOn },
+    };
+    await saveModel(updated);
+    setNotifStatusMsg(turningOn ? "You'll get a reminder when a bill is due soon." : 'Turned off.');
+  }
+
+  // ---- Checkpoint 11.2 verification: temporary test notification handler ----
+  // Requests permission if it hasn't been granted yet (so this works even if the toggle
+  // above is still off), then fires one real notification 10 seconds later via the shared
+  // sendTestNotification() helper. Remove this handler and its button below once you've
+  // confirmed a real notification actually shows up on your phone.
+  async function handleSendTestNotification() {
+    setTestNotifMsg('');
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      setTestNotifMsg(
+        "Notifications need permission from your phone's settings first — check your phone's notification settings for this app and try again."
+      );
+      return;
+    }
+    await sendTestNotification();
+    setTestNotifMsg('Sent! Lock your phone or switch apps now — it should appear in about 10 seconds.');
   }
 
   function closeModal() {
@@ -387,6 +431,32 @@ export default function SettingsScreen() {
           />
           <Text style={styles.rowName}>day(s) before due</Text>
         </View>
+
+        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={togglePushNotifications}>
+          <Text style={styles.rowName}>Notify me on this phone</Text>
+          <View
+            style={[
+              styles.toggleTrack,
+              model.settings.pushNotificationsEnabled && styles.toggleTrackActive,
+            ]}
+          >
+            <View
+              style={[
+                styles.toggleThumb,
+                model.settings.pushNotificationsEnabled && styles.toggleThumbActive,
+              ]}
+            />
+          </View>
+        </TouchableOpacity>
+        {!!notifStatusMsg && <Text style={styles.notifStatusText}>{notifStatusMsg}</Text>}
+
+        {/* ---- Checkpoint 11.2 verification: temporary test button ---- */}
+        {/* Remove this button (and handleSendTestNotification above) once a real */}
+        {/* notification has been confirmed to fire on your phone. */}
+        <TouchableOpacity style={styles.testButton} onPress={handleSendTestNotification}>
+          <Text style={styles.testButtonText}>Send a test notification in 10 seconds</Text>
+        </TouchableOpacity>
+        {!!testNotifMsg && <Text style={styles.notifStatusText}>{testNotifMsg}</Text>}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
         <Text style={styles.sectionSub}>
@@ -746,6 +816,41 @@ function makeStyles(colors: any) {
       paddingHorizontal: 14,
       justifyContent: 'center',
     },
+    toggleTrack: {
+      width: 44,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: colors.navy2,
+      padding: 3,
+      justifyContent: 'center',
+    },
+    toggleTrackActive: { backgroundColor: colors.gold },
+    toggleThumb: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: '#fff',
+    },
+    toggleThumbActive: { alignSelf: 'flex-end' },
+    notifStatusText: {
+      fontSize: 12,
+      color: colors.inkDim,
+      marginTop: -4,
+      marginBottom: 12,
+      lineHeight: 16,
+    },
+    testButton: {
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 8,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.gold,
+      borderStyle: 'dashed',
+    },
+    testButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',

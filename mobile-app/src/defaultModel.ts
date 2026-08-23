@@ -19,6 +19,7 @@ export function defaultModel(): HouseholdModel {
       fontFamily: 'rounded',
       layoutMode: 'bottomnav',
       incomeToleranceDays: 2,
+      pushNotificationsEnabled: false,
     },
     people: [],
     income: [],

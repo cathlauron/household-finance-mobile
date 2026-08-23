@@ -16,6 +16,7 @@ export type Settings = {
   fontFamily: string;
   layoutMode: string;
   incomeToleranceDays: number;
+  pushNotificationsEnabled: boolean;
 };
 
 export type Person = {

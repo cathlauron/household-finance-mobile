@@ -13,6 +13,7 @@ import type { HouseholdModel } from './types';
 import { defaultModel } from './defaultModel';
 import { encryptJSON, decryptJSON } from './encryption';
 import { loadEncryptedProfileData, saveEncryptedProfileData } from './storage';
+import { rescheduleBillNotifications } from './pushNotifications';
 
 type DataContextValue = {
   model: HouseholdModel | null;
@@ -39,12 +40,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     keyRef.current = key;
     try {
       const encrypted = await loadEncryptedProfileData(username);
+      let loaded: HouseholdModel;
       if (!encrypted) {
-        setModel(defaultModel());
+        loaded = defaultModel();
       } else {
-        const decrypted = decryptJSON<HouseholdModel>(key, encrypted);
-        setModel(decrypted);
+        loaded = decryptJSON<HouseholdModel>(key, encrypted);
       }
+      setModel(loaded);
+      // Rebuild any due-bill alerts against whatever was just loaded — not awaited,
+      // since it shouldn't hold up the sign-in screen finishing its own transition.
+      rescheduleBillNotifications(loaded).catch(() => {});
     } catch (e) {
       // Shouldn't normally happen, since this only ever runs after a verified sign-in —
       // but fall back to a blank model instead of crashing, just in case.
@@ -61,6 +66,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!username || !key) return;
     const encrypted = await encryptJSON(key, updatedModel);
     await saveEncryptedProfileData(username, encrypted);
+    // Keep scheduled alerts in sync with whatever just changed (a new bill, a paid
+    // bill, a changed due date, or the notification setting itself).
+    rescheduleBillNotifications(updatedModel).catch(() => {});
   }
 
   function clearModel() {
