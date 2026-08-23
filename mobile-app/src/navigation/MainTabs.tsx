@@ -6,6 +6,7 @@ import TransactionsScreen from '../screens/TransactionsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import AccountsScreen from '../screens/AccountsScreen';
 import ToPayScreen from '../screens/ToPayScreen';
+import IncomeScreen from '../screens/IncomeScreen';
 import { useTheme } from '../ThemeContext';
 const Tab = createBottomTabNavigator();
 type MainTabsProps = {
@@ -36,7 +37,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       <Tab.Screen name="Planning" component={PlaceholderScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Insights" component={PlaceholderScreen} />
-      <Tab.Screen name="Income" component={PlaceholderScreen} />
+      <Tab.Screen name="Income" component={IncomeScreen} />
       <Tab.Screen name="Savings" component={PlaceholderScreen} />
       <Tab.Screen name="Settings" component={PlaceholderScreen} />
     </Tab.Navigator>
