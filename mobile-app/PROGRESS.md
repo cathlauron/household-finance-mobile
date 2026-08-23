@@ -49,35 +49,41 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 - Dashboard wired into Insights tab (10.1)
 - Insights pill-switcher + 7 report types built (10.2): Monthly Close-out, Year in Review, Cash-Flow Forecast, Subscription Audit, Weekly Digest, Merchant Spending, Person Spending
 
+### Phase 11 — Settings (just started)
+- Settings tab created and wired into MainTabs (replacing PlaceholderScreen) — src/screens/SettingsScreen.tsx
+- Categories manager: add / rename / recolor / remove, tap-row-to-edit pattern matching IncomeScreen.tsx. Uses the existing `categories: Category[]` field already present in HouseholdModel/defaultModel — no data model changes needed.
+- Fixed color palette (15 swatches) used for the color picker, since React Native has no built-in color picker.
+
 ### Cross-cutting fixes
 - Person-picker added to Transactions screen
 - 4 pre-existing TypeScript type errors fixed
 
 ## ⚠️ NOT started yet
 - **Phase 9 — Shared Expenses / Household Linking** (no evidence in files or commits)
-- **Phase 11 — Settings** (Categories, Payees, Rules, Notifications, Security & Household & Data) — confirmed with user: not started, no SettingsScreen.tsx exists at all
+- **Phase 11 — Settings, remaining sub-sections**: Merchants & Payees, Categorization Rules, Notifications, Layout & Navigation, Security (change passphrase, PIN setup), Household & Data (backup/export/import, linking), Help & FAQ
 - **Phase 12 — Polish & Real-Device Testing** (offline behavior, accessibility, full tab-by-tab pass)
 - **Phase 13 — Publishing** (EAS Build, app store)
 
 ## 🔧 In progress / just finished
-- Nothing currently mid-way. Last confirmed-complete work: Income Payment Log + wiring it into Transactions/Reports (this session).
+- Nothing currently mid-way. Last confirmed-complete work: Settings tab + Categories manager (this session), tested working on the user's phone via Expo Go.
 
 ## 📌 Decisions made
 - Payment log dates typed as YYYY-MM-DD (e.g. 2025-03-24) — no date picker yet
 - Payment log entries stored per-income-source, alongside the source's existing fields
 - Transaction id prefixes: "bill-", "debt-", "loan-", "income-", "saving-", manual — consistent pattern in transactions.ts
+- Settings screen built as one screen with sections (starting with Categories), rather than a drill-in category list like the web app — revisit this if it gets crowded once more sections are added
+- Category colors picked from a fixed 15-swatch palette (matches the web app's default auto-assigned colors) rather than a native color picker
 
 ## 🚨 Process note — read this every session
-PROGRESS.md has drifted out of sync with actual completed work at least twice now:
-1. A past session built and left uncommitted work (Payment Log → Transactions/Reports wiring) that sat invisible in Codespace for an unknown number of sessions.
-2. PROGRESS.md itself was significantly stale — missing entire completed phases (7, 8, most of 10) despite the code and commits clearly showing them done.
+PROGRESS.md drifted out of sync with actual completed work at least twice in the past (see git history for details). The 114-commit audit that rebuilt this file is the reliable baseline. Going forward: if the person's pasted `git status` is clean and matches this file, trust it and proceed directly — no need to re-audit the whole repo every time.
 
-**Going forward:** at the start of any session, if something seems off, don't just trust PROGRESS.md's summary — cross-check with `find src -type f` and `git log --oneline` if there's any doubt. This audit (all 114 commits + full file list) is the reliable baseline as of now.
+Also: code and file edits should always be done in the Codespaces **file editor** (left-hand file list → open/create a file → paste there), never pasted into the **terminal**. The terminal is only for short one-line commands like `git status`, `git add/commit/push`, and `npx expo start`.
 
 ## ▶️ Next step
-Choose between:
-(a) Phase 9 — Shared Expenses / Household Linking (flagged in the original roadmap as the hardest technical phase — depends on the Phase 0.1 sync decision)
-(b) Phase 11 — Settings (Categories, Payees, Rules, Notifications, Security & Household & Data)
-(c) Phase 12 — Polish/accessibility pass across everything already built
+Continue Phase 11 — Settings. Good next sub-sections to pick from, smallest first:
+(a) Notifications — just the "alert me X days before" number field, simplest to build
+(b) Merchants & Payees — same add/edit/remove pattern as Categories, one more field (default category)
+(c) Security — change passphrase form (touches encryption, so extra care needed)
+(d) Household & Data — backup/export/import, linking (bigger, save for later)
 
-Recommend discussing with the user which to prioritize — Settings (11) is likely the most immediately useful gap since there's currently no way to manage categories/notifications/security settings from the app itself.
+Recommend Notifications or Merchants & Payees next — both reuse patterns already proven this session (Categories manager, IncomeScreen modal pattern).
