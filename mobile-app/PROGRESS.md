@@ -49,10 +49,11 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 - Dashboard wired into Insights tab (10.1)
 - Insights pill-switcher + 7 report types built (10.2): Monthly Close-out, Year in Review, Cash-Flow Forecast, Subscription Audit, Weekly Digest, Merchant Spending, Person Spending
 
-### Phase 11 — Settings (just started)
+### Phase 11 — Settings (in progress)
 - Settings tab created and wired into MainTabs (replacing PlaceholderScreen) — src/screens/SettingsScreen.tsx
 - Categories manager: add / rename / recolor / remove, tap-row-to-edit pattern matching IncomeScreen.tsx. Uses the existing `categories: Category[]` field already present in HouseholdModel/defaultModel — no data model changes needed.
 - Fixed color palette (15 swatches) used for the color picker, since React Native has no built-in color picker.
+- Notifications section: "Alert me X day(s) before due" number field, saves on blur, wired to model.settings.notifyDaysBefore (already existed on the data model — no changes needed there). Confirmed working on phone — field saves correctly.
 
 ### Cross-cutting fixes
 - Person-picker added to Transactions screen
@@ -60,12 +61,12 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 
 ## ⚠️ NOT started yet
 - **Phase 9 — Shared Expenses / Household Linking** (no evidence in files or commits)
-- **Phase 11 — Settings, remaining sub-sections**: Merchants & Payees, Categorization Rules, Notifications, Layout & Navigation, Security (change passphrase, PIN setup), Household & Data (backup/export/import, linking), Help & FAQ
+- **Phase 11 — Settings, remaining sub-sections**: Merchants & Payees, Categorization Rules, Layout & Navigation, Security (change passphrase, PIN setup), Household & Data (backup/export/import, linking), Help & FAQ
 - **Phase 12 — Polish & Real-Device Testing** (offline behavior, accessibility, full tab-by-tab pass)
 - **Phase 13 — Publishing** (EAS Build, app store)
 
 ## 🔧 In progress / just finished
-- Nothing currently mid-way. Last confirmed-complete work: Settings tab + Categories manager (this session), tested working on the user's phone via Expo Go.
+- Nothing currently mid-way. Last confirmed-complete work: Notifications section added to Settings (this session), tested working on the user's phone via Expo Go.
 
 ## 📌 Decisions made
 - Payment log dates typed as YYYY-MM-DD (e.g. 2025-03-24) — no date picker yet
@@ -74,6 +75,9 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 - Settings screen built as one screen with sections (starting with Categories), rather than a drill-in category list like the web app — revisit this if it gets crowded once more sections are added
 - Category colors picked from a fixed 15-swatch palette (matches the web app's default auto-assigned colors) rather than a native color picker
 
+## 🛠️ Known environment fix — Expo tunnel mode in Codespaces
+Codespaces assigns Metro a private local address (e.g. `10.x.x.x`) that phones can't reach directly — `npx expo start` alone will spin forever on the phone. Fix: run `npx expo start --tunnel` instead. If that throws `CommandError: TypeError: Cannot read properties of undefined (reading 'body')`, it's an ngrok version mismatch — run `npm install --save-dev @expo/ngrok@4.1.0` once, then `npx expo start --tunnel` again. This only needs doing once per Codespace (the package stays installed).
+
 ## 🚨 Process note — read this every session
 PROGRESS.md drifted out of sync with actual completed work at least twice in the past (see git history for details). The 114-commit audit that rebuilt this file is the reliable baseline. Going forward: if the person's pasted `git status` is clean and matches this file, trust it and proceed directly — no need to re-audit the whole repo every time.
 
@@ -81,9 +85,9 @@ Also: code and file edits should always be done in the Codespaces **file editor*
 
 ## ▶️ Next step
 Continue Phase 11 — Settings. Good next sub-sections to pick from, smallest first:
-(a) Notifications — just the "alert me X days before" number field, simplest to build
-(b) Merchants & Payees — same add/edit/remove pattern as Categories, one more field (default category)
+(a) Merchants & Payees — same add/edit/remove pattern as Categories, one more field (default category)
+(b) Categorization Rules — auto-fill category based on label/amount
 (c) Security — change passphrase form (touches encryption, so extra care needed)
 (d) Household & Data — backup/export/import, linking (bigger, save for later)
 
-Recommend Notifications or Merchants & Payees next — both reuse patterns already proven this session (Categories manager, IncomeScreen modal pattern).
+Recommend Merchants & Payees next — reuses the exact pattern already proven this session (Categories manager, IncomeScreen modal pattern).

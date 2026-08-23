@@ -20,7 +20,7 @@ function makeId(prefix: string): string {
 }
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
-// auto-assigns to new categories, just offered as tappable swatches here instead of a
+// auto-assigns to new categories, just offered as tappable swatches here instead ofa
 // native color picker (React Native has no built-in one).
 const COLOR_PALETTE = [
   '#E76F51', '#2A9D8F', '#264653', '#E9C46A', '#F4A261',
@@ -38,6 +38,9 @@ export default function SettingsScreen() {
   const [nameInput, setNameInput] = useState('');
   const [colorInput, setColorInput] = useState(COLOR_PALETTE[0]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [notifyDaysInput, setNotifyDaysInput] = useState(
+    String(model?.settings?.notifyDaysBefore ?? 3)
+  );
 
   if (!model) {
     return (
@@ -63,6 +66,18 @@ export default function SettingsScreen() {
     setColorInput(cat.color);
     setErrorMsg('');
     setModalOpen(true);
+  }
+
+  async function saveNotifyDays() {
+    if (!model) return;
+    const n = parseInt(notifyDaysInput, 10);
+    const value = isNaN(n) || n < 0 ? 0 : n;
+    setNotifyDaysInput(String(value));
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, notifyDaysBefore: value },
+    };
+    await saveModel(updated);
   }
 
   function closeModal() {
@@ -119,7 +134,24 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>Categories</Text>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        <Text style={styles.sectionSub}>
+          How many days before something's due should it count as "due soon"?
+        </Text>
+        <View style={styles.row}>
+          <Text style={styles.rowName}>Alert me</Text>
+          <TextInput
+            style={styles.notifyInput}
+            value={notifyDaysInput}
+            onChangeText={setNotifyDaysInput}
+            onBlur={saveNotifyDays}
+            keyboardType="number-pad"
+            maxLength={2}
+          />
+          <Text style={styles.rowName}>day(s) before due</Text>
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
         <Text style={styles.sectionSub}>
           Manage the category names and colors used across Bills, Debts, and Transactions.
         </Text>
@@ -216,6 +248,18 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     colorDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
+    notifyInput: {
+      borderWidth: 1,
+      borderColor: colors.navy2,
+      borderRadius: 8,
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      marginHorizontal: 8,
+      minWidth: 40,
+      textAlign: 'center',
+      fontSize: 14,
+      color: colors.ink,
+    },
     rowName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.ink },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
