@@ -16,41 +16,33 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { Bill, HouseholdModel } from '../types';
-
-type Priority = 'high' | 'medium' | 'low' | '';
-
-const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
-  { value: '', label: 'None' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
+import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
+import type { Bill, HouseholdModel, BillCycle } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 function billAmount(bill: Bill): number {
-  const first = bill.cycles[0];
-  return first && typeof first.amountDue === 'number' ? first.amountDue : 0;
+  const c = bill.cycles && bill.cycles[0];
+  return c && typeof c.amountDue === 'number' ? c.amountDue : 0;
 }
 
-function billDueDateText(bill: Bill): string {
-  return (bill.dueDate && bill.dueDate.date) || '';
-}
-
-// Sorts bills with a due date first (earliest first), undated bills at the end.
-function sortByDueDate(bills: Bill[]): Bill[] {
+// Sorts bills by next due date (soonest first); bills with no computable
+// due date yet sort to the bottom.
+function sortByNextDue(bills: Bill[]): Bill[] {
   return [...bills].sort((a, b) => {
-    const da = billDueDateText(a);
-    const db = billDueDateText(b);
+    const da = getNextDueDate(a.recurringType, a.dueDate);
+    const db = getNextDueDate(b.recurringType, b.dueDate);
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
-    return da < db ? -1 : da > db ? 1 : 0;
+    return da.getTime() - db.getTime();
   });
 }
+
+const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
 export default function BillsScreen() {
   const { colors } = useTheme();
@@ -62,9 +54,12 @@ export default function BillsScreen() {
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
-  const [dueDateInput, setDueDateInput] = useState('');
-  const [priorityInput, setPriorityInput] = useState<Priority>('');
+  const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
   const [notesInput, setNotesInput] = useState('');
+  const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  const [onetimeDateInput, setOnetimeDateInput] = useState('');
+  const [dayInput, setDayInput] = useState('');
+  const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!model) {
@@ -75,15 +70,22 @@ export default function BillsScreen() {
     );
   }
 
-  function openAddModal() {
-    setEditingId(null);
+  function resetForm() {
     setNameInput('');
     setCategoryInput('');
     setAmountInput('');
-    setDueDateInput('');
     setPriorityInput('');
     setNotesInput('');
+    setRecurTypeInput('onetime');
+    setOnetimeDateInput('');
+    setDayInput('');
+    setMonthInput('');
     setErrorMsg('');
+  }
+
+  function openAddModal() {
+    setEditingId(null);
+    resetForm();
     setModalOpen(true);
   }
 
@@ -92,9 +94,14 @@ export default function BillsScreen() {
     setNameInput(bill.name);
     setCategoryInput(bill.category || '');
     setAmountInput(billAmount(bill) === 0 ? '' : String(billAmount(bill)));
-    setDueDateInput(billDueDateText(bill));
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
+    const rt = (bill.recurringType as RecurringType) || 'onetime';
+    setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    const d = bill.dueDate || {};
+    setOnetimeDateInput(d.date || '');
+    setDayInput(d.day ? String(d.day) : '');
+    setMonthInput(d.month ? String(d.month) : '');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -109,36 +116,71 @@ export default function BillsScreen() {
     if (!model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Give this bill a name.');
+      setErrorMsg('Enter a name for this bill.');
       return;
     }
-    const parsedAmount = amountInput.trim() === '' ? 0 : parseFloat(amountInput);
-    if (isNaN(parsedAmount)) {
-      setErrorMsg('Enter a valid amount.');
-      return;
+
+    let parsedAmount = 0;
+    if (amountInput.trim() !== '') {
+      const n = parseFloat(amountInput);
+      if (isNaN(n)) {
+        setErrorMsg('Enter a valid amount, or leave it blank.');
+        return;
+      }
+      parsedAmount = n;
     }
-    const trimmedDate = dueDateInput.trim();
-    if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Due date should look like 2026-08-25 (YYYY-MM-DD), or leave it blank.');
-      return;
+
+    let dueDate: Record<string, any> = {};
+    if (recurTypeInput === 'onetime') {
+      const trimmedDate = onetimeDateInput.trim();
+      if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2025-03-15.');
+        return;
+      }
+      dueDate = { date: trimmedDate };
+    } else if (recurTypeInput === 'monthly') {
+      const dayNum = parseInt(dayInput, 10);
+      if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
+        setErrorMsg('Enter a day of month between 1 and 31.');
+        return;
+      }
+      dueDate = { day: dayInput.trim() };
+    } else if (recurTypeInput === 'annual') {
+      const dayNum = parseInt(dayInput, 10);
+      const monthNum = parseInt(monthInput, 10);
+      if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
+        setErrorMsg('Enter a day of month between 1 and 31.');
+        return;
+      }
+      if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
+        setErrorMsg('Enter a month between 1 and 12.');
+        return;
+      }
+      dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
+
+    const nextDue = getNextDueDate(recurTypeInput, dueDate);
+    const nextDueISO = nextDue
+      ? nextDue.getFullYear() + '-' + String(nextDue.getMonth() + 1).padStart(2, '0') + '-' + String(nextDue.getDate()).padStart(2, '0')
+      : '';
 
     const updated: HouseholdModel = { ...model, bills: [...model.bills] };
 
     if (editingId) {
       updated.bills = updated.bills.map((b) => {
         if (b.id !== editingId) return b;
-        const existingCycle = b.cycles[0];
-        const cycle = existingCycle
-          ? { ...existingCycle, dueDate: trimmedDate, amountDue: parsedAmount }
-          : { id: makeId('cycle'), dueDate: trimmedDate, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '' };
+        const existingCycle = b.cycles && b.cycles[0];
+        const cycle: BillCycle = existingCycle
+          ? { ...existingCycle, amountDue: parsedAmount, dueDate: nextDueISO }
+          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '' };
         return {
           ...b,
           name: trimmedName,
           category: categoryInput.trim(),
           priority: priorityInput,
           notes: notesInput,
-          dueDate: { date: trimmedDate },
+          recurringType: recurTypeInput,
+          dueDate,
           cycles: [cycle],
         };
       });
@@ -147,20 +189,13 @@ export default function BillsScreen() {
         id: makeId('bill'),
         name: trimmedName,
         category: categoryInput.trim(),
-        recurringType: 'onetime',
-        dueDate: { date: trimmedDate },
+        recurringType: recurTypeInput,
+        dueDate,
         priority: priorityInput,
         owner: 'shared',
         notes: notesInput,
         cycles: [
-          {
-            id: makeId('cycle'),
-            dueDate: trimmedDate,
-            amountDue: parsedAmount,
-            amountPaid: '',
-            paidDate: '',
-            notes: '',
-          },
+          { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '' },
         ],
         createdAt: Date.now(),
       };
@@ -181,41 +216,43 @@ export default function BillsScreen() {
     closeModal();
   }
 
-  const bills = sortByDueDate(model.bills);
-  const totalOwed = bills.reduce((sum, b) => sum + billAmount(b), 0);
+  const bills = sortByNextDue(model.bills);
+  const totalDue = bills.reduce((sum, b) => sum + billAmount(b), 0);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.balanceBanner}>
-          <Text style={styles.balanceBannerLabel}>TOTAL BILLS LOGGED</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
+          <Text style={styles.balanceBannerLabel}>TOTAL BILLS</Text>
+          <Text style={styles.balanceBannerAmount}>{formatPeso(totalDue)}</Text>
         </View>
 
         {bills.length === 0 && (
           <Text style={styles.emptyText}>No bills yet. Add your first one below.</Text>
         )}
 
-        {bills.map((bill) => (
-          <TouchableOpacity
-            key={bill.id}
-            style={styles.billRow}
-            activeOpacity={0.7}
-            onPress={() => openEditModal(bill)}
-          >
-            <View style={styles.billRowMain}>
-              <Text style={styles.billName} numberOfLines={1}>
-                {bill.name || 'Untitled bill'}
-              </Text>
-              <Text style={styles.billSub} numberOfLines={1}>
-                {(bill.category || 'Uncategorized')}
-                {billDueDateText(bill) ? ' · Due ' + billDueDateText(bill) : ' · No due date set'}
-                {bill.priority ? ' · ' + bill.priority.charAt(0).toUpperCase() + bill.priority.slice(1) + ' priority' : ''}
-              </Text>
-            </View>
-            <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
-          </TouchableOpacity>
-        ))}
+        {bills.map((bill) => {
+          const nextDue = getNextDueDate(bill.recurringType, bill.dueDate);
+          return (
+            <TouchableOpacity
+              key={bill.id}
+              style={styles.billRow}
+              activeOpacity={0.7}
+              onPress={() => openEditModal(bill)}
+            >
+              <View style={styles.billRowMain}>
+                <Text style={styles.billName} numberOfLines={1}>
+                  {bill.name || 'Untitled bill'}
+                </Text>
+                <Text style={styles.billSub} numberOfLines={1}>
+                  {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
+                  {bill.category ? ' · ' + bill.category : ''}
+                </Text>
+              </View>
+              <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
+            </TouchableOpacity>
+          );
+        })}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add bill</Text>
@@ -241,7 +278,7 @@ export default function BillsScreen() {
                   onChangeText={setNameInput}
                 />
 
-                <Text style={styles.inputLabel}>Category</Text>
+                <Text style={styles.inputLabel}>Category (optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Utilities, Subscription"
@@ -260,33 +297,85 @@ export default function BillsScreen() {
                   onChangeText={setAmountInput}
                 />
 
-                <Text style={styles.inputLabel}>Due date (YYYY-MM-DD, optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2026-08-25"
-                  placeholderTextColor={colors.inkFaint}
-                  value={dueDateInput}
-                  onChangeText={setDueDateInput}
-                />
-
-                <Text style={styles.inputLabel}>Priority</Text>
-                <View style={styles.priorityRow}>
-                  {PRIORITY_OPTIONS.map((opt) => (
+                <Text style={styles.inputLabel}>Repeats</Text>
+                <View style={styles.pillRow}>
+                  {RECUR_TYPES.map((rt) => (
                     <TouchableOpacity
-                      key={opt.label}
-                      style={[
-                        styles.priorityChip,
-                        priorityInput === opt.value && styles.priorityChipActive,
-                      ]}
-                      onPress={() => setPriorityInput(opt.value)}
+                      key={rt}
+                      style={[styles.pillButton, recurTypeInput === rt && styles.pillButtonActive]}
+                      onPress={() => setRecurTypeInput(rt)}
                     >
-                      <Text
-                        style={[
-                          styles.priorityChipText,
-                          priorityInput === opt.value && styles.priorityChipTextActive,
-                        ]}
-                      >
-                        {opt.label}
+                      <Text style={[styles.pillButtonText, recurTypeInput === rt && styles.pillButtonTextActive]}>
+                        {recurringTypeLabel(rt)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {recurTypeInput === 'onetime' && (
+                  <>
+                    <Text style={styles.inputLabel}>Due date (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="2025-03-15"
+                      placeholderTextColor={colors.inkFaint}
+                      value={onetimeDateInput}
+                      onChangeText={setOnetimeDateInput}
+                    />
+                  </>
+                )}
+
+                {recurTypeInput === 'monthly' && (
+                  <>
+                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 15"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="number-pad"
+                      value={dayInput}
+                      onChangeText={setDayInput}
+                    />
+                  </>
+                )}
+
+                {recurTypeInput === 'annual' && (
+                  <View style={styles.row2}>
+                    <View style={styles.row2Item}>
+                      <Text style={styles.inputLabel}>Month (1–12)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 3"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        value={monthInput}
+                        onChangeText={setMonthInput}
+                      />
+                    </View>
+                    <View style={styles.row2Item}>
+                      <Text style={styles.inputLabel}>Day</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 15"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        value={dayInput}
+                        onChangeText={setDayInput}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                <Text style={styles.inputLabel}>Priority (optional)</Text>
+                <View style={styles.pillRow}>
+                  {PRIORITIES.map((p) => (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.pillButton, priorityInput === p && styles.pillButtonActive]}
+                      onPress={() => setPriorityInput(priorityInput === p ? '' : p)}
+                    >
+                      <Text style={[styles.pillButtonText, priorityInput === p && styles.pillButtonTextActive]}>
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -342,14 +431,14 @@ function makeStyles(colors: any) {
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
     billRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
       backgroundColor: colors.navy3,
       borderRadius: 10,
       paddingVertical: 12,
       paddingHorizontal: 14,
       marginBottom: 8,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
     },
     billRowMain: { flex: 1, marginRight: 10 },
     billName: { fontSize: 14, fontWeight: '600', color: colors.ink },
@@ -391,16 +480,20 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     notesInput: { minHeight: 60, textAlignVertical: 'top' },
-    priorityRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    priorityChip: {
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 999,
+    row2: { flexDirection: 'row', gap: 10 },
+    row2Item: { flex: 1 },
+    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+    pillButton: {
+      flex: 1,
+      minWidth: 80,
       backgroundColor: colors.navy2,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
     },
-    priorityChipActive: { backgroundColor: colors.gold },
-    priorityChipText: { fontSize: 12, color: colors.inkDim, fontWeight: '600' },
-    priorityChipTextActive: { color: colors.navy2 },
+    pillButtonActive: { backgroundColor: colors.gold },
+    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
+    pillButtonTextActive: { color: colors.navy2 },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
