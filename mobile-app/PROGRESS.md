@@ -51,11 +51,12 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 
 ### Phase 11 — Settings (in progress)
 - Settings tab created and wired into MainTabs (replacing PlaceholderScreen) — src/screens/SettingsScreen.tsx
-- Categories manager: add / rename / recolor / remove, tap-row-to-edit pattern matching IncomeScreen.tsx. Uses the existing `categories: Category[]` field already present in HouseholdModel/defaultModel — no data model changes needed.
+- Categories manager: add / rename / recolor / remove, tap-row-to-edit pattern matching IncomeScreen.tsx. Uses the existing`categories: Category[]` field already present in HouseholdModel/defaultModel — no data model changes needed.
 - Fixed color palette (15 swatches) used for the color picker, since React Native has no built-in color picker.
 - Notifications section: "Alert me X day(s) before due" number field, saves on blur, wired to model.settings.notifyDaysBefore (already existed on the data model — no changes needed there). Confirmed working on phone — field saves correctly.
-- **Merchants & Payees manager**: add / rename / edit default category / remove, same tap-row-to-edit modal pattern as Categories, in its own modal (`payeeModalOpen` state, separate from the Categories modal). Fields: name (required, must be unique) + default category (optional free-text). Added a new `Payee` type to `src/types.ts` and a new optional `payees?: Payee[]` field on `HouseholdModel` (optional so existing saved profiles without it don't break). Confirmed working on the user's phone — add/edit/delete all tested.
-- **Categorization Rules manager** (new this session): auto-fills a transaction's Category field based on the label (and optionally an amount range) — e.g. "contains jollibee → sets Dining". Same tap-row-to-edit modal pattern as Categories/Payees, plus ▲/▼ reorder arrows since rules are checked in array order and the first match wins. New `CategorizationRule` type added to `src/types.ts`, new optional `categorizationRules?: CategorizationRule[]` field on `HouseholdModel`. New helper file `src/categorization.ts` exports `computeAutoCategory()`, which checks a saved Payee's own default category first (more specific signal), then falls through to the first matching rule. Wired into TransactionsScreen.tsx's add/edit form: typing in the Label or Amount field triggers auto-fill, but only when the Category field is still empty — never overwrites something the user already typed. Confirmed working on the user's phone: auto-fill on label match, and rule reordering via arrows, both tested successfully.
+- **Merchants & Payees manager**: add / rename / edit default category / remove, same tap-row-to-edit modal pattern as Categories, in its own modal (`payeeModalOpen` state, separate from the Categories modal). Fields: name (required, must be unique) + default category (optional free-text). Added a new `Payee` type to `src/types.ts` and a new optional `payees?: Payee[]`field on `HouseholdModel` (optional so existing saved profiles without it don't break). Confirmed working on the user's phone — add/edit/delete all tested.
+- **Categorization Rules manager**: auto-fills a transaction's Category field based on the label (and optionally an amount range) — e.g. "contains jollibee → sets Dining". Same tap-row-to-edit modal pattern as Categories/Payees, plus ▲/▼ reorder arrows since rules are checked in array order and the first match wins. New `CategorizationRule` type added to `src/types.ts`, new optional `categorizationRules?: CategorizationRule[]` field on `HouseholdModel`. New helper file `src/categorization.ts` exports `computeAutoCategory()`, which checks a saved Payee's own default category first (more specific signal), then falls through to the first matching rule. Wired into TransactionsScreen.tsx's add/edit form: typing in the Label or Amount field triggers auto-fill, but only when the Category field is still empty — never overwrites something the user already typed. Confirmed working on the user's phone: auto-fill on label match, and rule reordering via arrows, both tested successfully.
+- **Appearance mode** (Light / Dark / Device): added a Settings UI section that lets the user pick a color mode. Reused the existing `ThemeContext.tsx` mode system (`light` / `dark` / `device`, already persisted via AsyncStorage) rather than building new logic — only the Settings UI was added, no changes to the underlying theme engine. Confirmed working on device.
 
 ### Cross-cutting fixes
 - Person-picker added to Transactions screen
@@ -68,7 +69,7 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 - **Phase 13 — Publishing** (EAS Build, app store)
 
 ## 🔧 In progress / just finished
-- Nothing currently mid-way. Last confirmed-complete work: Categorization Rules manager added to Settings + wired into Transactions auto-fill (this session), tested working on the user's phone via Expo Go.
+- Nothing currently mid-way. Last confirmed-complete work: Appearance mode (Light/Dark/Device) added to Settings, tested working on the user's phone.
 
 ## 📌 Decisions made
 - Payment log dates typed as YYYY-MM-DD (e.g. 2025-03-24) — no date picker yet
@@ -81,6 +82,7 @@ PROGRESS.md had drifted significantly out of date — it was missing entire comp
 - Categorization Rules follow the same "optional field" pattern: `categorizationRules?: CategorizationRule[]` on HouseholdModel
 - Auto-categorize priority order: a matching Payee's default category always wins over a matching Rule (Payee match is a more specific signal — an exact name match vs. a "contains" substring match)
 - Auto-fill only ever fills an *empty* Category field — it's a convenience, not something that silently overwrites a category the user already picked
+- **Layout & Navigation** (mobile) does NOT need sidebar/top-menu/tab-reorder options like the original web app — the app already has a fixed, native-style bottom tab bar (`src/navigation/MainTabs.tsx`), which is the better mobile pattern anyway. Tab reordering/hiding was deliberately left out and would be its own separate future checkpoint if ever wanted. This effectively narrows the "Layout & Navigation" Settings sub-section down to whatever's left after removing that scope (if anything) — confirm scope again before starting it.
 
 ## 🛠️ Known environment fixes — Codespaces / Expo tunnel mode
 - Codespaces assigns Metro a private local address (e.g. `10.x.x.x`) that phones can't reach directly — `npx expo start` alone will spin forever on the phone. Fix: run `npx expo start --tunnel` instead.
@@ -97,9 +99,9 @@ When Claude hands off updated/new files at the end of a session, it should give 
 
 ## ▶️ Next step
 Continue Phase 11 — Settings. Remaining sub-sections, roughly smallest/lowest-risk first:
-(a) Layout & Navigation — smaller UI-only settings, good next pick
+(a) Layout & Navigation — now narrowed in scope (see Decisions above, tab-reorder/sidebar explicitly excluded) — confirm what's actually left here before starting, may be very small or even skippable
 (b) Household & Data — backup/export/import, linking (bigger, multi-step)
 (c) Security — change passphrase form + PIN setup (touches encryption directly, so extra care needed — save for when there's a full session to focus on it)
 (d) Help & FAQ — smallest, mostly static content, could even be done same-session as (a)
 
-Recommend Layout & Navigation next, since it's UI-only and low-risk, then Help & FAQ if there's time left in the same session.
+No specific item has been chosen for the next session yet. Start by re-confirming scope for (a) Layout & Navigation given the exclusion decision above, then let the user pick between (a) and (d) if there's limited time, or tackle (b)/(c) if there's a full session available.
