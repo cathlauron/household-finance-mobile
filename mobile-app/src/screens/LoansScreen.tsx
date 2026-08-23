@@ -311,7 +311,7 @@ export default function LoansScreen() {
               </View>
               {total > 0 && (
                 <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: pct + '%' }]} />
+                  <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
                 </View>
               )}
             </TouchableOpacity>

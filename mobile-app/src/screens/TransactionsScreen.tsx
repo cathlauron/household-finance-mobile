@@ -26,8 +26,32 @@ import {
   transactionTotals,
   TransactionEntry,
 } from '../transactions';
-import type { ManualTransaction, HouseholdModel } from '../types';
+import type { ManualTransaction, HouseholdModel, Person } from '../types';
 import CsvImportModal from './CsvImportModal';
+
+function personName(people: Person[], id: string): string {
+  const p = people.find((x) => x.id === id);
+  return p ? p.name : '';
+}
+
+// Finds an existing person by name (case-insensitive), or creates a new one.
+// Mirrors IncomeScreen's behavior: typing a name that doesn't exist yet quietly
+// adds that person, rather than requiring a separate "add a person" step.
+function findOrCreatePerson(
+  people: Person[],
+  typedName: string
+): { people: Person[]; personId: string } {
+  const trimmed = typedName.trim();
+  if (!trimmed) return { people, personId: '' };
+  const existing = people.find((p) => p.name.trim().toLowerCase() === trimmed.toLowerCase());
+  if (existing) return { people, personId: existing.id };
+  const newPerson: Person = {
+    id: makeId('person'),
+    name: trimmed,
+    role: people.length === 0 ? 'primary' : 'partner',
+  };
+  return { people: [...people, newPerson], personId: newPerson.id };
+}
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -68,6 +92,7 @@ export default function TransactionsScreen() {
   const [dateInput, setDateInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
+  const [personInput, setPersonInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
 
@@ -93,6 +118,7 @@ export default function TransactionsScreen() {
     setDateInput(todayISO());
     setDirectionInput('out');
     setReceiptPhoto(null);
+    setPersonInput('');
     setErrorMsg('');
   }
 
@@ -109,6 +135,7 @@ export default function TransactionsScreen() {
     setEditingId(raw.id);
     setLabelInput(raw.label || '');
     setCategoryInput(raw.category || '');
+    setPersonInput(personName(model?.people || [], raw.owner || ''));
     setAmountInput(typeof raw.amount === 'number' ? String(raw.amount) : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
@@ -174,7 +201,13 @@ export default function TransactionsScreen() {
       return;
     }
 
-    const updated: HouseholdModel = { ...model, manualTransactions: [...(model.manualTransactions || [])] };
+    const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
+
+    const updated: HouseholdModel = {
+      ...model,
+      people: peopleWithPerson,
+      manualTransactions: [...(model.manualTransactions || [])],
+    };
 
     if (editingId) {
       updated.manualTransactions = updated.manualTransactions.map((t) => {
@@ -185,6 +218,7 @@ export default function TransactionsScreen() {
           label: trimmedLabel,
           amount: parsedAmount,
           direction: directionInput,
+          owner: personId || 'shared',
           category: categoryInput.trim(),
         };
         if (receiptPhoto) {
@@ -201,7 +235,7 @@ export default function TransactionsScreen() {
         label: trimmedLabel,
         amount: parsedAmount,
         direction: directionInput,
-        owner: 'shared',
+        owner: personId || 'shared',
         category: categoryInput.trim(),
         ...(receiptPhoto ? { receiptPhoto } : {}),
       };
@@ -362,6 +396,28 @@ export default function TransactionsScreen() {
                   onChangeText={setDateInput}
                 />
 
+                <Text style={styles.inputLabel}>Belongs to</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Type a name, e.g. Miguel, Ana"
+                  placeholderTextColor={colors.inkFaint}
+                  value={personInput}
+                  onChangeText={setPersonInput}
+                />
+                {model.people.length > 0 && (
+                  <View style={styles.chipRow}>
+                    {model.people.map((p) => (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={styles.chip}
+                        onPress={() => setPersonInput(p.name)}
+                      >
+                        <Text style={styles.chipText}>{p.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
                 <Text style={styles.inputLabel}>Category (optional)</Text>
                 <TextInput
                   style={styles.input}
@@ -501,6 +557,14 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
+    chip: {
+      backgroundColor: colors.navy2,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    chipText: { fontSize: 12.5, color: colors.ink, fontWeight: '600' },
     receiptPickButton: {
       backgroundColor: colors.navy2,
       borderRadius: 8,

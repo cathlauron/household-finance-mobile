@@ -21,6 +21,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
   const { colors } = useTheme();
   return (
     <Tab.Navigator
+      id={undefined}
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: colors.navy3 },

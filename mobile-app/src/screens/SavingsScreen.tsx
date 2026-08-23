@@ -386,7 +386,7 @@ export default function SavingsScreen() {
                 </View>
                 {target > 0 && (
                   <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: pct + '%' }]} />
+                    <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -473,7 +473,7 @@ export default function SavingsScreen() {
             {fiProgressPct !== null && (
               <>
                 <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: fiProgressPct + '%' }]} />
+                  <View style={[styles.progressFill, { width: `${fiProgressPct}%` as const }]} />
                 </View>
                 <Text style={styles.resultSub}>{fiProgressPct.toFixed(1)}% of the way there</Text>
               </>
