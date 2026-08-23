@@ -31,15 +31,18 @@ Phase 5 — Bills / Debts / Loans (M7)
 - 5.1 — Add/edit/delete Bills. ✅ Complete.
   - mobile-app/src/screens/BillsScreen.tsx — scrollable list + tap-to-open modal to add/edit/delete a bill.
   - Every bill currently saved as recurringType: 'onetime' with a single cycle — recurring schedules deferred to Checkpoint 5.4.
-- 5.2 — Add/edit/delete Debts. ✅ Complete this session.
-  - New file: mobile-app/src/screens/DebtsScreen.tsx — same list + modal pattern as BillsScreen.tsx, adapted for the Debt type (fields: creditorOrPerson, category, amount via cycles[0], due date, interest rate %, minimum payment, notes). Also saved as recurringType: 'onetime' with a single cycle for now, matching Bills' approach — recurring schedules for Debts are also deferred to 5.4.
-  - New file: mobile-app/src/screens/ToPayScreen.tsx — a small "Bills / Debts" pill-button switcher at the top of the To-Pay tab, showing BillsScreen or DebtsScreen depending on which is selected. This is the new home of the To-Pay tab; Loans will likely get a third pill here once built (5.3).
+- 5.2 — Add/edit/delete Debts. ✅ Complete.
+  - mobile-app/src/screens/DebtsScreen.tsx — same list + modal pattern as BillsScreen.tsx, adapted for the Debt type (fields: creditorOrPerson, category, amount via cycles[0], due date, interest rate %, minimum payment, notes). Also saved as recurringType: 'onetime' with a single cycle for now, matching Bills' approach — recurring schedules for Debts are also deferred to 5.4.
+  - mobile-app/src/screens/ToPayScreen.tsx — a small "Bills / Debts" pill-button switcher at the top of the To-Pay tab, showing BillsScreen or DebtsScreen depending on which is selected. Will gain a third "Loans" pill in this session (5.3b).
   - mobile-app/src/navigation/MainTabs.tsx updated: the "To-Pay" tab now points at ToPayScreen instead of BillsScreen directly.
-  - Confirmed working on a real phone: switched between Bills/Debts, added a test debt, saw it in the list, confirmed existing bills were untouched.
+  - Confirmed working on a real phone.
 
-🔧 In progress
+🔧 In progress — Checkpoint 5.3 (Loans), broken into sub-steps so this session always ends with something finished:
+- 5.3a — Build LoansScreen.tsx (list + add/edit/delete modal), following the exact same pattern as DebtsScreen.tsx/BillsScreen.tsx, using the existing Loan type in types.ts (fields: name, loanType, totalAmount, expectedPayment, actualPayments, owner, direction 'borrowed'|'lent'). NOT STARTED YET as of this note.
+- 5.3b — Add Loans as a third pill in ToPayScreen.tsx alongside Bills/Debts, and confirm working on-device. NOT STARTED YET.
+- 5.3c — Payoff simulator (Snowball vs. Avalanche, month-by-month projection chart). DEFERRED to a future session on purpose — bigger, separate piece of math/UI, not required for Loans to be usable.
 
-Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.3 — Add/edit/delete Loans, plus the payoff simulator. Not started yet. DebtsScreen.tsx and BillsScreen.tsx are the models to follow — same list + modal pattern, using the existing Loan type from types.ts. The payoff simulator (part of 5.3 per the roadmap) is a separate, more involved piece of math/UI and may be worth splitting into its own sub-step once the basic add/edit/delete Loans part is working.
+If this session gets cut off mid-way: check which of 5.3a/5.3b is done by looking for mobile-app/src/screens/LoansScreen.tsx and whether ToPayScreen.tsx mentions it. Pick up from whichever sub-step wasn't finished.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -56,10 +59,10 @@ Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.3 — Add/edit/delete Loans
 - PIN quick-unlock (Checkpoint 1.4): Split into three small sub-steps (1.4a set-up, 1.4b wiring into Lock, 1.4c auto-lock timer) rather than one big change. The PIN is always a convenience re-entry method on top of an already-unlocked session — it is never a substitute for the real passphrase, and the app always keeps a "Use passphrase instead" fallback available from the PIN screen.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under the key "autoLockMinutes" so a future Settings screen can adjust it without needing any structural changes — just call setAutoLockMinutes(newValue) from that screen once it exists.
 - Theming approach: Colors live in theme.ts as plain exported objects (lightTheme/darkTheme, type ThemeColors); ThemeContext.tsx wraps the app and exposes useTheme() for any screen to read live colors from, with light/dark/device mode persisted via AsyncStorage. Fonts have NOT been ported yet — screens currently use default system fonts. The full 13-theme picker, custom colors, and font pairing options from the web app are deferred to a later checkpoint once a real Settings screen exists to host them.
-- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, and likely Loans/Savings next): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank. This keeps every list-style screen visually and structurally consistent, and makes each new one faster to build since the pattern is proven.
-- Due dates (Bills & Debts, Checkpoints 5.1–5.2): Entered as plain typed text in YYYY-MM-DD format for now, with a basic format check before saving. A proper native date-picker UI is a nice-to-have polish item for later, not blocking any other checkpoint — the stored data shape (a plain date string) won't need to change when that's added.
-- To-Pay tab structure (Checkpoint 5.2): Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern (spec doc §8) and keeps the bottom tab bar from getting overcrowded. Loans (5.3) will likely be added as a third pill here.
-- Checkpoint tracking discipline: Every session should end with a full PROGRESS.md rewrite (like this one) reflecting exactly what was verified via terminal output and confirmed working on-device — not just a quick note appended to the old version.
+- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, and now Loans): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank. This keeps every list-style screen visually and structurally consistent, and makes each new one faster to build since the pattern is proven.
+- Due dates (Bills & Debts, Checkpoints 5.1–5.2): Entered as plain typed text in YYYY-MM-DD format for now, with a basic format check before saving. A proper native date-picker UI is a nice-to-have polish item for later, not blocking any other checkpoint — the stored data shape (a plain date string) won't need to change when that's added. Loans will follow the same approach.
+- To-Pay tab structure (Checkpoint 5.2): Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern (spec doc §8) and keeps the bottom tab bar from getting overcrowded. Loans (5.3) is being added as a third pill here.
+- Checkpoint tracking discipline: Every session should end with a full PROGRESS.md rewrite (like this one) reflecting exactly what was verified via terminal output and confirmed working on-device — not just a quick note appended to the old version. For a session working through multiple sub-steps (like this one), PROGRESS.md is also updated mid-session at natural breakpoints, so a mid-session disconnect never loses more than one small sub-step of work.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block (content included inside the same paste) — never by pasting code at a bare prompt, which bash tries to run as commands instead of saving.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, always first check whether that file already exists (e.g. via `cat filename` or `git log --oneline -- filename`) rather than assuming a fresh file is needed.
 - Editing an existing file safely: When only a small, well-defined change is needed (like swapping one screen name for another), a targeted `sed` command is used instead of retyping the whole file — after first running a `grep` to see exactly what's there, so the change is predictable and doesn't risk corrupting the rest of the file.
@@ -67,7 +70,7 @@ Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.3 — Add/edit/delete Loans
 
 ▶️ Next step
 
-Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.3 — Add/edit/delete Loans, plus the payoff simulator. Build a LoansScreen.tsx following the same list + modal pattern as DebtsScreen.tsx/BillsScreen.tsx, using the existing Loan type in types.ts (fields: name, loanType, totalAmount, expectedPayment, actualPayments, owner, direction 'borrowed'|'lent'). Add it as a third pill in ToPayScreen.tsx alongside Bills/Debts. The payoff simulator (Snowball vs Avalanche, month-by-month projection) is more involved and should be discussed with the person as a possible separate sub-step once basic Loans add/edit/delete is working and confirmed on-device.
+Working through Checkpoint 5.3 in sub-steps within one session (see "In progress" above): first build LoansScreen.tsx (5.3a), then wire it into ToPayScreen.tsx as a third pill (5.3b), confirm on-device, then stop there for this session — the payoff simulator (5.3c) is intentionally saved for later.
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -97,9 +100,9 @@ Files in the repo so far
   - mobile-app/src/screens/CalendarScreen.tsx — month grid, tap-a-day, running balance projection
   - mobile-app/src/screens/AccountsScreen.tsx — Cash/Debit/Credit account list + add/edit/delete modal
   - mobile-app/src/screens/BillsScreen.tsx — Bills list + add/edit/delete modal
-  - mobile-app/src/screens/DebtsScreen.tsx — Debts list + add/edit/delete modal (NEW this session)
-  - mobile-app/src/screens/ToPayScreen.tsx — Bills/Debts pill switcher, new home of the To-Pay tab (NEW this session)
-  - mobile-app/src/navigation/MainTabs.tsx — bottom tab navigator with all 10 sections, themed; To-Pay now shows ToPayScreen (UPDATED this session)
+  - mobile-app/src/screens/DebtsScreen.tsx — Debts list + add/edit/delete modal
+  - mobile-app/src/screens/ToPayScreen.tsx — Bills/Debts pill switcher, new home of the To-Pay tab (gaining a Loans pill this session)
+  - mobile-app/src/navigation/MainTabs.tsx — bottom tab navigator with all 10 sections, themed; To-Pay shows ToPayScreen
   - mobile-app/App.tsx — wires all screens together via NavigationContainer + MainTabs + ThemeProvider, including the 'locked' state and the two auto-lock triggers
   - mobile-app/package.json / package-lock.json — includes expo-crypto, crypto-js, @react-native-async-storage/async-storage, @react-navigation/native, @react-navigation/bottom-tabs, react-native-screens, react-native-safe-area-context
 
