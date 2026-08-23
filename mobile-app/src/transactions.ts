@@ -23,6 +23,8 @@ export type TransactionEntry = {
   source: TransactionSource;
   amount: number;
   direction: TransactionDirection;
+  // Whose it is — a Person id, or 'shared' if not assigned to one person.
+  owner: string;
   // Only set for source === 'manual' — the real id of the underlying
   // ManualTransaction in model.manualTransactions, so it can be found again
   // for editing/deleting. Bill/debt/loan entries are derived from their own
@@ -46,6 +48,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
         source: 'bill',
         amount: amt,
         direction: 'out',
+        owner: bill.owner || 'shared',
       });
     });
   });
@@ -63,6 +66,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
         source: 'debt',
         amount: amt,
         direction: 'out',
+        owner: debt.owner || 'shared',
       });
     });
   });
@@ -82,6 +86,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
         source: 'loan',
         amount: amt,
         direction: lent ? 'in' : 'out',
+        owner: loan.owner || 'shared',
       });
     });
   });
@@ -97,6 +102,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
       source: 'manual',
       amount: amt,
       direction: t.direction,
+      owner: t.owner || 'shared',
       rawId: t.id,
     });
   });

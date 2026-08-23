@@ -13,13 +13,15 @@ import { useTheme } from '../ThemeContext';
 import MonthlyCloseOutReport from './reports/MonthlyCloseOutReport';
 import YearInReviewReport from './reports/YearInReviewReport';
 import CashFlowForecastReport from './reports/CashFlowForecastReport';
+import PersonSpendingReport from './reports/PersonSpendingReport';
 
-type ReportTab = 'monthly' | 'yearly' | 'forecast';
+type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person';
 
 const REPORT_TABS: { id: ReportTab; label: string }[] = [
   { id: 'monthly', label: 'Monthly Close-out' },
   { id: 'yearly', label: 'Year in Review' },
   { id: 'forecast', label: 'Cash-Flow Forecast' },
+  { id: 'person', label: 'Person Spending' },
 ];
 
 export default function ReportsScreen() {
@@ -48,6 +50,7 @@ export default function ReportsScreen() {
       {activeReport === 'monthly' && <MonthlyCloseOutReport />}
       {activeReport === 'yearly' && <YearInReviewReport />}
       {activeReport === 'forecast' && <CashFlowForecastReport />}
+      {activeReport === 'person' && <PersonSpendingReport />}
     </View>
   );
 }
