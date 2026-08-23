@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
+import TransactionsScreen from '../screens/TransactionsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import AccountsScreen from '../screens/AccountsScreen';
 import ToPayScreen from '../screens/ToPayScreen';
@@ -33,7 +34,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       <Tab.Screen name="Accounts" component={AccountsScreen} />
       <Tab.Screen name="To-Pay" component={ToPayScreen} />
       <Tab.Screen name="Planning" component={PlaceholderScreen} />
-      <Tab.Screen name="Transactions" component={PlaceholderScreen} />
+      <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Insights" component={PlaceholderScreen} />
       <Tab.Screen name="Income" component={PlaceholderScreen} />
       <Tab.Screen name="Savings" component={PlaceholderScreen} />
