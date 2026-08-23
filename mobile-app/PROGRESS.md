@@ -32,13 +32,13 @@ Phase 4 — Accounts (M6)
 
 🔧 In progress
 
-Nothing in progress right now. Phases 0–4 are fully complete and confirmed against the actual code (see "How this was verified" below). Ready to start Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.1 — Add/edit/delete Bills.
+Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.1 — Add/edit/delete Bills. Just started (or about to start) this session — check the actual files listed below to see how far it got before assuming this is done or not done.
 
-How this was verified (this session)
-This session found that PROGRESS.md had drifted out of sync with the actual code again (same issue flagged twice before in earlier sessions). Real work — the full Calendar tab (3.1–3.3) and the full Accounts tab (4.1–4.2) — had been built in past sessions but never logged here. This was caught by:
+How this was verified (prior session)
+An earlier session found that PROGRESS.md had drifted out of sync with the actual code again (same issue flagged before). Real work — the full Calendar tab (3.1–3.3) and the full Accounts tab (4.1–4.2) — had been built but never logged here. This was caught by:
 1. Running `find mobile-app/src -type f -name "*.tsx" -o -name "*.ts" | sort` to see every file that actually exists.
 2. Reading the full contents of CalendarScreen.tsx, AccountsScreen.tsx, balanceProjection.ts, MainTabs.tsx, and DataContext.tsx directly.
-3. Confirming MainTabs.tsx still points every other tab (To-Pay, Planning, Transactions, Insights, Income, Savings, Settings) at PlaceholderScreen — proving Phase 5 (Bills/Debts/Loans) has NOT been started yet, and nothing beyond Phase 4 is hiding anywhere.
+3. Confirming MainTabs.tsx still points every other tab (To-Pay, Planning, Transactions, Insights, Income, Savings, Settings) at PlaceholderScreen — proving Phase 5 (Bills/Debts/Loans) had NOT been started, and nothing beyond Phase 4 was hiding anywhere.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -52,16 +52,23 @@ This session found that PROGRESS.md had drifted out of sync with the actual code
 - PIN quick-unlock: Always a convenience re-entry method on an already-unlocked session, never a substitute for the real passphrase. "Use passphrase instead" fallback always available.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage key "autoLockMinutes", adjustable later from a Settings screen via setAutoLockMinutes().
 - Theming approach: Colors in theme.ts (lightTheme/darkTheme, type ThemeColors); ThemeContext.tsx exposes useTheme() with light/dark/device mode persisted via AsyncStorage. Fonts NOT ported yet — screens use default system fonts. Full 13-theme picker, custom colors, and font pairing deferred to a later checkpoint once a real Settings screen exists.
-- Data layer architecture (confirmed this session, built in an earlier one): DataContext.tsx (React context) holds the decrypted HouseholdModel in memory once signed in, exposing `model`, `loading`, `loadModel(username, key)`, `saveModel(updatedModel)`, and `clearModel()` to any screen via the `useData()` hook. Screens never touch encryption/storage directly — they call `saveModel()` and DataContext handles re-encrypting and persisting.
+- Data layer architecture: DataContext.tsx (React context) holds the decrypted HouseholdModel in memory once signed in, exposing `model`, `loading`, `loadModel(username, key)`, `saveModel(updatedModel)`, and `clearModel()` to any screen via the `useData()` hook. Screens never touch encryption/storage directly — they call `saveModel()` and DataContext handles re-encrypting and persisting.
 - Balance projection architecture: balanceProjection.ts is a standalone module (no React) exporting `computeMonthEvents()`, `computeRunningBalances()`, `totalLiquidBalance()`, and `formatPeso()`. Calendar and Accounts both import from it, so there's one shared source of truth for balance math rather than each screen calculating its own.
-- Checkpoint tracking discipline (reinforced AGAIN this session): This is the third time real, working code existed that PROGRESS.md didn't reflect. Going forward, every session — even ones that feel like "just a small fix" — must end with a genuine PROGRESS.md rewrite, not an incremental edit assumed to be still-accurate. When in doubt at the START of a session about whether PROGRESS.md is accurate, run `find mobile-app/src -type f` and spot-check a couple of files BEFORE proceeding, rather than trusting the file blindly even after a clean git sync check (a clean git sync only proves Codespace and GitHub agree with each other — it does NOT prove PROGRESS.md's own content is accurate).
+- Checkpoint tracking discipline (reinforced multiple times): Real, working code has existed that PROGRESS.md didn't reflect, more than once. Going forward, every session — even ones that feel like "just a small fix" — must end with a genuine PROGRESS.md rewrite, not an incremental edit assumed to be still-accurate. When in doubt at the START of a session about whether PROGRESS.md is accurate, run `find mobile-app/src -type f` and spot-check a couple of files BEFORE proceeding, rather than trusting the file blindly even after a clean git sync check (a clean git sync only proves Codespace and GitHub agree with each other — it does NOT prove PROGRESS.md's own content is accurate).
 - File-creation discipline: Files are always created via `cat > filename << 'ENDOFFILE'` (content included in the same paste) or the Codespace's built-in editor — never by pasting code at a bare `$` prompt.
 - Overwrite-safety discipline: Before creating any file with `cat > filename << 'ENDOFFILE'`, always check first whether that file already exists (`cat filename` or `git log --oneline -- filename`).
 - Tab bar structure: @react-navigation/bottom-tabs, all 10 tabs shown flat (no "More" overflow menu yet).
+- Phase 5 sub-plan (decided this session, before starting 5.1): The original roadmap's 5.1–5.4 doesn't include a dedicated step for payment-cycle tracking (marking a bill/debt "paid" with a due/paid date and amount history) — that's a meaty feature on its own. Revised plan:
+  - 5.1 (Bills, bare-bones): name, amount, category, recurrence type (monthly/annual/one-time — NOT "custom" yet), priority. Add/edit/delete, shown in a list (same modal-form pattern as AccountsScreen.tsx). NO payment-cycle/paid-tracking yet.
+  - 5.2: Same bare-bones treatment, but for Debts.
+  - New checkpoint (inserted, not in the original numbered list): Payment cycles for BOTH Bills and Debts together — due date, amount due/paid, paid date, marking paid/unpaid, history. Comes after 5.1 and 5.2 are both done.
+  - 5.3: Loans + payoff simulator (unchanged from original roadmap).
+  - 5.4: Recurring schedule refinements, e.g. "custom" recurrence type for Bills/Debts (unchanged from original roadmap, but also covers whatever wasn't done in 5.1/5.2).
+  - Rationale: keeps each session's checkpoint small and demoable ("you can add a bill and see it in a list"), matching the roadmap's own sizing philosophy, rather than trying to build the full web-app-equivalent Bills feature in one sitting.
 
 ▶️ Next step
 
-Phase 5 — Bills / Debts / Loans (M7), Checkpoint 5.1 — Add/edit/delete Bills. This replaces the "To-Pay" tab's current PlaceholderScreen with a real screen where bills can be added, edited, and deleted, matching the web app's Bills tab behavior (see household-finance-app-spec-and-scale.md §3/§8 and the .html reference file's billsTabHTML()/billFormHTML() logic — recurrence types monthly/annual/onetime/custom, priority, owner, notes, and payment cycles). This session should decide how much of the full web version's payment-cycle complexity to bring into checkpoint 5.1 versus defer to 5.2+, since 5.1 is meant to be a small, single-session step (per the roadmap: "You can add a bill and see it in a list").
+Phase 5, Checkpoint 5.1 — Add/edit/delete Bills (bare-bones version, see Phase 5 sub-plan above). This replaces the "To-Pay" tab's current PlaceholderScreen with a real screen. Fields: name, amount, category, recurrence type (monthly/annual/one-time), priority. No payment-cycle tracking in this checkpoint. See household-finance-app-spec-and-scale.md §3/§8 and the .html reference file's billsTabHTML()/billFormHTML() for the web app's fuller behavior to (eventually, not yet) match.
 
 Files that exist so far (mobile-app/src/)
 - types.ts — data model type definitions
@@ -82,7 +89,7 @@ Files that exist so far (mobile-app/src/)
 - screens/PinUnlockScreen.tsx
 - screens/CalendarScreen.tsx — full month grid + day-tap modal + projected balances
 - screens/AccountsScreen.tsx — Cash/Debit/Credit add/edit/delete
-- screens/PlaceholderScreen.tsx — still used by: To-Pay, Planning, Transactions, Insights, Income, Savings, Settings
+- screens/PlaceholderScreen.tsx — still used by: To-Pay, Planning, Transactions, Insights, Income, Savings, Settings (until 5.1 lands, To-Pay still uses this)
 - navigation/MainTabs.tsx — bottom tab navigator, all 10 tabs
 - App.tsx — wires everything together via NavigationContainer + MainTabs + ThemeProvider + DataProvider, including the 'locked' state and auto-lock triggers
 - package.json / package-lock.json — includes expo-crypto, crypto-js, @react-native-async-storage/async-storage, @react-navigation/native, @react-navigation/bottom-tabs, react-native-screens, react-native-safe-area-context
