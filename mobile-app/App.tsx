@@ -9,6 +9,7 @@ import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES } from './src/autoLock';
+import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { DataProvider, useData } from './src/DataContext';
 
@@ -43,6 +44,7 @@ function AppContent() {
   }, []);
 
   async function lockIfPinIsSetUp() {
+    if (isAutoLockSuppressed()) return;
     const username = usernameRef.current;
     if (screenRef.current !== 'home' || !username) return;
     const pinIsSetUp = await hasPinSetUp(username);

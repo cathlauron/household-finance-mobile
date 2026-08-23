@@ -16,6 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -99,27 +100,32 @@ export default function TransactionsScreen() {
   }
 
   async function handlePickReceipt() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        'Permission needed',
-        'Allow photo library access in your phone settings to attach a receipt.'
-      );
-      return;
+    setAutoLockSuppressed(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission needed',
+          'Allow photo library access in your phone settings to attach a receipt.'
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.5,
+        base64: true,
+      });
+      if (result.canceled || !result.assets || !result.assets[0]) return;
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert("Couldn't read that photo", 'Try picking a different one.');
+        return;
+      }
+      const mime = asset.mimeType || 'image/jpeg';
+      setReceiptPhoto(`data:${mime};base64,${asset.base64}`);
+    } finally {
+      setAutoLockSuppressed(false);
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.5,
-      base64: true,
-    });
-    if (result.canceled || !result.assets || !result.assets[0]) return;
-    const asset = result.assets[0];
-    if (!asset.base64) {
-      Alert.alert("Couldn't read that photo", 'Try picking a different one.');
-      return;
-    }
-    const mime = asset.mimeType || 'image/jpeg';
-    setReceiptPhoto(`data:${mime};base64,${asset.base64}`);
   }
 
   function handleRemoveReceipt() {

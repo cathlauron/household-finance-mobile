@@ -29,35 +29,22 @@ Phase 4 — Accounts (M6)
 
 Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 - 5.1 — Add/edit/delete Bills. ✅ Complete.
-  - mobile-app/src/screens/BillsScreen.tsx — scrollable list + tap-to-open modal to add/edit/delete a bill.
 - 5.2 — Add/edit/delete Debts. ✅ Complete.
-  - mobile-app/src/screens/DebtsScreen.tsx — same list + modal pattern as BillsScreen.tsx, adapted for the Debt type.
-  - mobile-app/src/screens/ToPayScreen.tsx — pill-button switcher at the top of the To-Pay tab, showing Bills/Debts/Loans depending on which is selected.
-- 5.3 — Loans, fully complete:
-  - 5.3a — mobile-app/src/screens/LoansScreen.tsx — list + add/edit/delete modal.
-  - 5.3b — Loans added as a third pill in ToPayScreen.tsx alongside Bills/Debts. Confirmed working on-device.
-  - 5.3c — Payoff Simulator (Snowball vs. Avalanche). ✅ Complete and confirmed working on a real phone.
-    - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx — month-by-month simulation, extra-payment input, debt-free estimate, total interest per strategy, payoff-order list.
-- 5.4 — Recurring schedules (monthly, custom, etc.) — "A bill correctly repeats on schedule." ✅ Complete.
-  - 5.4c — Loans: added a "Repeats" picker (One-time / Monthly / Annual) to LoansScreen.tsx, matching the pattern already used on Bills/Debts. Loans are now sorted by next due date instead of alphabetically, and each row shows its recurrence + next due date alongside loan type/direction/interest rate.
-    - types.ts: Loan gained optional recurringType and dueDate fields (same shape as Bill/Debt), plus recurrence helpers pulled from a shared src/recurrence.ts (getNextDueDate, formatShortDate, recurringTypeLabel).
-    - Existing loans saved before this change load fine, defaulting to "One-time" with no date set until edited.
-    - ✅ Confirmed working on a real phone.
-
-Phase 5 (M7) is now fully complete — Bills, Debts, and Loans (including recurring schedules and the payoff simulator) are all built and confirmed working end to end.
+- 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete and confirmed working on a real phone.
+- 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete.
 
 Phase 6 — Transactions (M8)
 - 6.1 — Unified transaction list. ✅ Complete and confirmed working on a real phone.
-  - mobile-app/src/transactions.ts — buildTransactionsList() pulls together paid bill cycles, paid debt cycles, logged loan payments, and (as of 6.2) manual transactions into one combined, typed list. Also exports sortTransactions() (newest/oldest) and transactionTotals() (total in / total out / total saving / net).
-  - mobile-app/src/screens/TransactionsScreen.tsx — stat cards, Net banner, sort toggle, combined scrollable list, and (as of 6.2) the Add Transaction modal.
-  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab points at TransactionsScreen.
-- 6.2 — Manually add a transaction. ✅ Complete and confirmed working on a real phone, including surviving a tab-switch/close-reopen (proof it's actually persisted to encrypted storage, not just on-screen state).
-  - types.ts: ManualTransaction.direction widened to 'in' | 'out' | 'saving' (already matched; TransactionEntry/TransactionDirection in transactions.ts updated to match).
-  - transactions.ts: buildTransactionsList() now folds in model.manualTransactions; transactionTotals() now also returns totalSaving.
-  - TransactionsScreen.tsx: new "+ Add transaction" modal (label, type — Money out/Money in/Savings, amount, date as YYYY-MM-DD, optional category), following the same modal/save pattern as BillsScreen.tsx. Saves via saveModel() from DataContext, appending to manualTransactions.
-  - A "SAVED" stat card appears only when totalSaving > 0, alongside the existing Total In/Total Out cards and the Net banner.
-  - Receipt photo attachment was intentionally left out of this checkpoint — deferred as a small separate follow-up (see Next step below).
-  - ✅ Confirmed working on a real phone: added a "Money out" transaction (shows red "−"), added a "Money in" transaction (shows green "+"), totals updated correctly, and both transactions persisted after switching tabs / reopening the app.
+- 6.2 — Manually add a transaction. ✅ Complete and confirmed working on a real phone, including surviving a tab-switch/close-reopen.
+- 6.2 follow-up — Receipt photo attachment. ✅ Complete and confirmed working on a real phone.
+  - Added expo-image-picker (npx expo install expo-image-picker).
+  - types.ts: ManualTransaction gained an optional receiptPhoto field (base64 data URI).
+  - TransactionsScreen.tsx: Add Transaction modal now has a "Receipt photo (optional)" section — an "Attach a receipt photo" button that opens the photo library, shows a thumbnail preview once picked, with a "Remove photo" option. Stored as a base64 data URI directly on the manual transaction (self-contained inside the encrypted data, no separate file reference).
+  - Bug found and fixed during this checkpoint: opening the native photo picker was triggering the app's auto-lock (Checkpoint 1.4c), because the OS reports "picker opened on top of the app" the same way it reports "app was backgrounded" — so the existing AppState listener locked the app by mistake every time someone tried to attach a photo.
+    - Fix: new src/autoLockSuppress.ts module exposes setAutoLockSuppressed(true/false) and isAutoLockSuppressed(). App.tsx's lockIfPinIsSetUp() now checks isAutoLockSuppressed() first and skips locking while it's true. Includes a 60-second safety timer that force-clears the suppression automatically, so a crash mid-picker can never leave the app permanently unlockable.
+    - TransactionsScreen.tsx's handlePickReceipt() now calls setAutoLockSuppressed(true) right before opening the picker and setAutoLockSuppressed(false) in a finally block, so it's always cleared whether the picker succeeds, is cancelled, or errors.
+    - This pattern (suppress auto-lock around any native picker/share-sheet call) should be reused for any future feature that hands control to the OS UI — CSV import file picking, future photo/document attachments elsewhere, etc.
+  - ✅ Confirmed working on a real phone: photo picker opens without locking the app, thumbnail preview shows correctly, transaction saves successfully with the photo attached.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -73,28 +60,29 @@ Phase 6 — Transactions (M8)
 - Encryption approach: Uses crypto-js (imported in App.tsx for the WordArray type) plus expo-crypto (used directly in pin.ts for hashing). Salt generation lives in encryption.ts and is reused by pin.ts for PIN salts.
 - PIN quick-unlock: The PIN is always a convenience re-entry method on top of an already-unlocked session — never a substitute for the real passphrase; "Use passphrase instead" is always available from the PIN screen.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
+- Auto-lock suppression: Any feature that opens a native OS picker/UI on top of the app (photo picker, and — in the future — things like document/CSV pickers) must wrap that call with setAutoLockSuppressed(true) / setAutoLockSuppressed(false) from src/autoLockSuppress.ts, using try/finally so it's always cleared. This is now the established pattern going forward, not a one-off fix.
 - Theming approach: Colors live in theme.ts (lightTheme/darkTheme); ThemeContext.tsx exposes useTheme(). Fonts have NOT been ported yet — default system fonts still in use. Full 13-theme picker, custom colors, and font pairing are deferred to a later checkpoint once a real Settings screen exists.
-- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, and now Transactions' Add flow): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank.
+- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, and Transactions' Add flow): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank.
 - Due dates / transaction dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
-- To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern and keeps the bottom tab bar from getting overcrowded. Now has three pills: Bills, Debts, Loans.
-- Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen — keeps the "next due date" logic consistent everywhere it's shown (list rows, sorting, Calendar).
-- Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen — matches how the web app treats it as a sub-view within Debts/Loans. Deliberately built without a charting library (plain stat cards + a payoff-order list) to keep the checkpoint scoped small.
+- To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern and keeps the bottom tab bar from getting overcrowded. Has three pills: Bills, Debts, Loans.
+- Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen.
+- Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen. Deliberately built without a charting library (plain stat cards + a payoff-order list) to keep the checkpoint scoped small.
 - Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints (income, savings) can extend the same function without needing to touch screen code. Income and savings-goal contributions are still intentionally left out of this list for now since those input screens don't exist yet (Phase 7) — this is expected, not a bug.
-- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, since People/Income screens (Phase 7) haven't been built. Category is a free-typed optional text field, not a picker — matches how the web app treats it before its category-manager exists on mobile.
+- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, since People/Income screens (Phase 7) haven't been built. Category is a free-typed optional text field, not a picker.
 - Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
-- Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there.
+- Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there. For changes involving multi-line blocks where exact whitespace matters, a small inline Python script (via `python3 - << 'ENDOFFILE'`) that does an exact string match-and-replace is used instead, and it reports clearly if the expected text wasn't found rather than silently doing nothing or corrupting the file.
 - Tab bar structure: Used @react-navigation/bottom-tabs directly. All 10 tabs shown flat in the bar (no "More" overflow menu yet).
 
 ▶️ Next step
 
-Checkpoint 6.2 is done. Two small options for the next session — pick whichever, or ask Claude to recommend one:
+The receipt photo follow-up to 6.2 is done and confirmed. Two things are outstanding before Phase 6 is fully closed out:
 
-1. Small follow-up to 6.2 — Receipt photo attachment: Add an optional "Attach receipt" step to the Add Transaction modal using expo-image-picker, storing the photo similarly to the web app's manualTransactions receipt handling (see spec doc §3). This was deliberately deferred out of 6.2 to keep that checkpoint small.
+1. Editing/deleting a manual transaction — tap-to-edit, matching the Bills/Debts/Loans pattern. Right now manual transactions can only be added, not edited or removed, once saved.
 2. Checkpoint 6.3 — CSV import: Import transactions from a CSV file. Can be simplified or deferred further if it adds too much complexity for one checkpoint (the roadmap explicitly allows this).
 
-Either way, editing/deleting a manual transaction (tap-to-edit, matching the Bills/Debts/Loans pattern) is still outstanding and worth doing before Phase 6 is considered fully closed out — right now manual transactions can only be added, not edited or removed, once saved.
+Recommend tackling #1 (edit/delete) next, since it's a gap in a feature that's otherwise complete, before moving on to new functionality like CSV import.
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -104,9 +92,10 @@ Files in the repo so far
 - README.md
 - PROGRESS.md (this file)
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types
-  - mobile-app/src/recurrence.ts — shared recurrence helpers (getNextDueDate, formatShortDate, recurringTypeLabel), used by Bills/Debts/Loans
-  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals() — now includes manual transactions and totalSaving
+  - mobile-app/src/types.ts — data model types (ManualTransaction now includes optional receiptPhoto)
+  - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans
+  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
+  - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed(), used to pause auto-lock around native pickers
   - mobile-app/src/defaultModel.ts — empty/default data factory function
   - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
   - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data
@@ -127,12 +116,12 @@ Files in the repo so far
   - mobile-app/src/screens/AccountsScreen.tsx
   - mobile-app/src/screens/BillsScreen.tsx
   - mobile-app/src/screens/DebtsScreen.tsx
-  - mobile-app/src/screens/LoansScreen.tsx — includes a "Repeats" picker (One-time/Monthly/Annual), sorted by next due date
+  - mobile-app/src/screens/LoansScreen.tsx
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle, and Add Transaction modal
+  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle, Add Transaction modal with receipt photo attachment
   - mobile-app/src/navigation/MainTabs.tsx — Transactions tab wired to TransactionsScreen
-  - mobile-app/App.tsx
-  - mobile-app/package.json / package-lock.json
+  - mobile-app/App.tsx — includes auto-lock suppression check
+  - mobile-app/package.json / package-lock.json (now includes expo-image-picker)
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Metro must be started from inside mobile-app (cd mobile-app first), always with --tunnel.
