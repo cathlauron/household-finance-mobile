@@ -17,6 +17,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { Loan, HouseholdModel } from '../types';
+import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -56,7 +57,9 @@ export default function LoansScreen() {
   const [directionInput, setDirectionInput] = useState<'borrowed' | 'lent'>('borrowed');
   const [totalAmountInput, setTotalAmountInput] = useState('');
   const [expectedPaymentInput, setExpectedPaymentInput] = useState('');
+  const [interestRateInput, setInterestRateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
 
   if (!model) {
     return (
@@ -73,6 +76,7 @@ export default function LoansScreen() {
     setDirectionInput('borrowed');
     setTotalAmountInput('');
     setExpectedPaymentInput('');
+    setInterestRateInput('');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -86,6 +90,7 @@ export default function LoansScreen() {
     setExpectedPaymentInput(
       typeof loan.expectedPayment === 'number' ? String(loan.expectedPayment) : ''
     );
+    setInterestRateInput(typeof loan.interestRate === 'number' ? String(loan.interestRate) : '');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -121,6 +126,15 @@ export default function LoansScreen() {
       }
       parsedExpected = n;
     }
+    let parsedRate: number | '' = '';
+    if (interestRateInput.trim() !== '') {
+      const n = parseFloat(interestRateInput);
+      if (isNaN(n)) {
+        setErrorMsg('Enter a valid interest rate (e.g. 12), or leave it blank.');
+        return;
+      }
+      parsedRate = n;
+    }
 
     const updated: HouseholdModel = { ...model, loans: [...model.loans] };
 
@@ -134,6 +148,7 @@ export default function LoansScreen() {
           direction: directionInput,
           totalAmount: parsedTotal,
           expectedPayment: parsedExpected,
+          interestRate: parsedRate,
         };
       });
     } else {
@@ -143,6 +158,7 @@ export default function LoansScreen() {
         loanType: loanTypeInput.trim(),
         totalAmount: parsedTotal,
         expectedPayment: parsedExpected,
+        interestRate: parsedRate,
         actualPayments: [],
         owner: 'shared',
         direction: directionInput,
@@ -170,6 +186,24 @@ export default function LoansScreen() {
     .filter((l) => l.direction !== 'lent')
     .reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0);
 
+  // Only borrowed loans with a real remaining balance are worth simulating — a "lent" loan
+  // (money owed to you) or a fully-paid loan wouldn't make sense in a payoff projection.
+  const simLoans: SimLoanInput[] = loans
+    .filter((l) => l.direction !== 'lent')
+    .map((l) => {
+      const balance = Math.max(0, loanTotal(l) - loanPaidTotal(l));
+      return {
+        id: l.id,
+        name: l.name || 'Untitled loan',
+        balance,
+        rate: typeof l.interestRate === 'number' ? l.interestRate : 0,
+        hasRate: typeof l.interestRate === 'number',
+        minPayment: typeof l.expectedPayment === 'number' ? l.expectedPayment : 0,
+        hasMinPayment: typeof l.expectedPayment === 'number' && l.expectedPayment > 0,
+      };
+    })
+    .filter((l) => l.balance > 0.01);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -177,6 +211,12 @@ export default function LoansScreen() {
           <Text style={styles.balanceBannerLabel}>REMAINING ON LOANS (BORROWED)</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
         </View>
+
+        {simLoans.length > 0 && (
+          <TouchableOpacity style={styles.simulatorButton} onPress={() => setSimulatorOpen(true)}>
+            <Text style={styles.simulatorButtonText}>📊  View Payoff Simulator</Text>
+          </TouchableOpacity>
+        )}
 
         {loans.length === 0 && (
           <Text style={styles.emptyText}>No loans yet. Add your first one below.</Text>
@@ -202,6 +242,9 @@ export default function LoansScreen() {
                   <Text style={styles.loanSub} numberOfLines={1}>
                     {(loan.loanType || 'Loan')}
                     {isLent ? ' · Lent (owed to you)' : ' · Borrowed'}
+                    {!isLent && typeof loan.interestRate === 'number' && loan.interestRate > 0
+                      ? ' · ' + loan.interestRate + '% APR'
+                      : ''}
                   </Text>
                 </View>
                 <Text style={styles.loanAmount}>{formatPeso(paid)}{total > 0 ? ' / ' + formatPeso(total) : ''}</Text>
@@ -292,6 +335,20 @@ export default function LoansScreen() {
                   onChangeText={setExpectedPaymentInput}
                 />
 
+                <Text style={styles.inputLabel}>Interest rate, annual % (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 12"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="decimal-pad"
+                  value={interestRateInput}
+                  onChangeText={setInterestRateInput}
+                />
+                <Text style={styles.fieldHint}>
+                  Used by the Payoff Simulator to estimate interest — leave blank if you're not sure,
+                  and it'll assume 0%.
+                </Text>
+
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -312,6 +369,13 @@ export default function LoansScreen() {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
+
+      <LoanPayoffSimulatorModal
+        visible={simulatorOpen}
+        onClose={() => setSimulatorOpen(false)}
+        loans={simLoans}
+        colors={colors}
+      />
     </SafeAreaView>
   );
 }
@@ -326,10 +390,18 @@ function makeStyles(colors: any) {
       borderRadius: 12,
       paddingVertical: 14,
       paddingHorizontal: 16,
-      marginBottom: 18,
+      marginBottom: 12,
     },
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
+    simulatorButton: {
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 18,
+    },
+    simulatorButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
     loanRow: {
       backgroundColor: colors.navy3,
@@ -394,6 +466,7 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
+    fieldHint: { fontSize: 11, color: colors.inkFaint, marginTop: -10, marginBottom: 14, lineHeight: 15 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
     pillButton: {
       flex: 1,

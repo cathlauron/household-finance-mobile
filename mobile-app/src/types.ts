@@ -100,6 +100,10 @@ export type Loan = {
   actualPayments: LoanPayment[];
   owner: string;
   direction: 'borrowed' | 'lent';
+  // Annual interest rate as a plain percentage (e.g. 12 means 12%). Optional — used by
+  // the Payoff Simulator (Checkpoint 5.3c) to estimate interest; blank/0 is treated as
+  // no interest, which still lets the simulator run using expectedPayment alone.
+  interestRate?: number | '';
   createdAt?: number;
 };
 
