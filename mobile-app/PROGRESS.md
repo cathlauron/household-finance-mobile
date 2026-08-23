@@ -48,12 +48,21 @@ Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone.
 
 Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
-- 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone (previous session). DashboardScreen.tsx: Total Balance, This Month (income/expenses/net), Amount Owed (bills+debts), Due Soon (14-day window, bills+debts only — loans not included, see known limitation below), Savings Goals overview.
-- 10.2 — Reports pages. 🔧 IN PROGRESS — first report page done this session, confirmed working on a real phone.
-  - New InsightsScreen.tsx: pill-switcher (Dashboard / Reports), same pattern as ToPayScreen and PlanningScreen. This is now what the "Insights" bottom tab points to, instead of DashboardScreen directly.
-  - New ReportsScreen.tsx: first report page — "Monthly Close-out." Shows current month Income/Expenses/Net (reusing buildTransactionsList()/transactionTotals(), same as Dashboard does) plus a "Spending by Category" breakdown with proportional bars, sorted highest-to-lowest, sized relative to the largest category. Shows a friendly empty state if no expenses are logged yet this month. Ends with a footer note that more report pages are coming.
-  - MainTabs.tsx: Insights tab now points to InsightsScreen instead of DashboardScreen (small sed edit, not a rewrite).
-  - Still to build (per the original web app's 9 report pages, and the roadmap's note that this phase may span several checkpoints): Weekly Digest, Year in Review, Tax Summary, Cash-Flow Forecast, Subscription Audit, Merchant Spending, Person Spending, Payment Methods. Monthly Close-out (built this session) covers the "Monthly Close-out" page from that original list.
+- 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone. DashboardScreen.tsx: Total Balance, This Month (income/expenses/net), Amount Owed (bills+debts), Due Soon (14-day window, bills+debts only — loans not included, see known limitation below), Savings Goals overview.
+- 10.2 — Reports pages. 🔧 IN PROGRESS — three report pages done, confirmed working on a real phone.
+  - InsightsScreen.tsx: pill-switcher (Dashboard / Reports), same pattern as ToPayScreen and PlanningScreen. This is what the "Insights" bottom tab points to.
+  - ReportsScreen.tsx is now itself a second-level pill-switcher between three report pages, each living in its own file under src/screens/reports/:
+    - MonthlyCloseOutReport.tsx — current-month Income/Expenses/Net plus a "Spending by Category" breakdown with proportional bars. (This was the original single report from earlier in the session, moved into its own file.)
+    - YearInReviewReport.tsx — prev/next year navigation, Total Income/Expenses/Saved for the year, a 12-month income-vs-expenses bar chart, top spending categories, debt paid down this year, and savings goals reached. Carries the same known "Income" limitation as Dashboard (see below) — flagged directly on-screen via a footer note.
+    - CashFlowForecastReport.tsx — 30/60/90-day pill switcher, Today vs. In N Days balance stat cards, a day-by-day projected balance bar chart, and a red warning callout if the projected balance dips negative at any point in the window. Reuses computeRunningBalances() from balanceProjection.ts directly (stitched across however many calendar months the range spans) — no new balance math was written.
+  - All three confirmed working on a real phone this session (after a one-time ngrok tunnel hiccup unrelated to the code — see Known Issues below).
+  - Still to build (per the original web app's 9 report pages): Weekly Digest, Tax Summary, Subscription Audit, Merchant Spending, Person Spending, Payment Methods.
+
+⚠️ Known issues / gotchas (non-code)
+- Expo tunnel (`--tunnel`) occasionally fails with `CommandError: TypeError: Cannot read properties of undefined (reading 'body')`, pointing at ngrok. This is a tunnel-tooling hiccup, not a bug in the app. Fix, in order, if it happens again:
+  1. `npm install --save-dev @expo/ngrok@latest` (from inside mobile-app/), then retry `npx expo start --tunnel`.
+  2. If that doesn't work: `npx expo start --tunnel --clear`.
+  3. If that still doesn't work: ngrok may be asking for a free account/token — read the exact terminal error text for a signup link and follow it.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -65,7 +74,7 @@ Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 - Dev workflow in Codespaces: Metro must always be started with tunnel mode, AND from inside the mobile-app folder:
     cd mobile-app
     npx expo start --tunnel
-  Always confirm the terminal shows an address ending in .exp.direct before scanning the QR code.
+  Always confirm the terminal shows an address ending in .exp.direct before scanning the QR code. If the tunnel throws an ngrok-related error, see Known Issues above before troubleshooting further.
 - Encryption approach: Uses crypto-js (imported in App.tsx for the WordArray type) plus expo-crypto (used directly in pin.ts for hashing). Salt generation lives in encryption.ts and is reused by pin.ts for PIN salts.
 - PIN quick-unlock: The PIN is always a convenience re-entry method on top of an already-unlocked session — never a substitute for the real passphrase; "Use passphrase instead" is always available from the PIN screen.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
@@ -76,12 +85,12 @@ Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 - To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type. Has three pills: Bills, Debts, Loans.
 - Savings tab structure: Same in-screen pill-button switcher pattern as To-Pay, applied to Goals / Emergency Fund / FI Calculator.
 - Planning tab structure: Same in-screen pill-button switcher pattern, with four pills (Groceries / Travel / Events / Goals) in a horizontally scrollable row.
-- Insights tab structure (Checkpoint 10.2): Same in-screen pill-button switcher pattern as To-Pay/Savings/Planning, now with two pills: Dashboard / Reports. InsightsScreen.tsx is the new pill-switcher; MainTabs.tsx's "Insights" tab points to it instead of DashboardScreen directly.
-- Reports page structure (Checkpoint 10.2): ReportsScreen.tsx currently holds just one report ("Monthly Close-out") rendered directly, not yet its own internal pill-switcher — as more report pages are added, a second-level switcher inside ReportsScreen.tsx (or promoting each report to its own screen file) will likely be needed. Not decided yet; revisit once 2–3 report pages exist.
+- Insights tab structure: Same in-screen pill-button switcher pattern as To-Pay/Savings/Planning, with two pills: Dashboard / Reports. InsightsScreen.tsx is the pill-switcher; MainTabs.tsx's "Insights" tab points to it instead of DashboardScreen directly.
+- Reports page structure (Checkpoint 10.2, revisited this session): Now that 3 report pages exist, ReportsScreen.tsx has become a second-level pill-switcher itself (horizontally scrollable pill row), rendering whichever report is selected. Each report page is its own file under src/screens/reports/ (MonthlyCloseOutReport.tsx, YearInReviewReport.tsx, CashFlowForecastReport.tsx) rather than one growing file — this pattern should continue for the remaining report pages.
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen. Events use their own simpler month/day (Annual) or full-date (One-time) fields directly on EventItem rather than pulling in recurrence.ts, since Events only support two recurrence options (no Custom yet).
-- Dashboard design (Checkpoint 10.1): Rather than recalculating bill/debt-owed totals separately, outstandingBalance() was exported from balanceProjection.ts (previously private to that file) so Dashboard could reuse the exact same math Bills/Debts screens rely on — same discipline as recurrence.ts being shared across Bills/Debts/Loans.
+- Dashboard design (Checkpoint 10.1): Rather than recalculating bill/debt-owed totals separately, outstandingBalance() was exported from balanceProjection.ts (previously private to that file) so Dashboard could reuse the exact same math Bills/Debts screens rely on — same discipline as recurrence.ts being shared across Bills/Debts/Loans. computeRunningBalances() was reused the same way for Cash-Flow Forecast this session.
 - Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen.
-- Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module so future checkpoints can extend it without touching screen code. Income and savings-goal contributions are still intentionally left out of this list for now — that hookup is a flagged follow-up, not yet done.
+- Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module so future checkpoints can extend it without touching screen code. Income and savings-goal contributions are still intentionally left out of this list for now — that hookup is a flagged follow-up, not yet done. This means "Income" figures on both Dashboard and Year in Review only count manual "money in" entries and loan repayments received, not recurring paycheck income — flagged on-screen in Year in Review via a footer note.
 - Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, even though Income now has people. This is a flagged follow-up, not yet wired up.
 - Manual transaction edit/delete design: The derived TransactionEntry list carries an optional rawId pointing back to the real ManualTransaction record. Only manual transactions are directly editable from the Transactions tab.
 - Calculator input persistence design (Checkpoint 7.2): EF/FI calculator inputs are hand-typed only — no auto-pull from Bills/Income data yet. That auto-pull is a flagged nice-to-have follow-up, not required by the roadmap. Inputs save via an explicit Save button rather than on every keystroke, to avoid re-encrypting the whole file per digit typed.
@@ -96,12 +105,12 @@ Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 
 ▶️ Next step
 
-Checkpoint 10.2 is in progress — Monthly Close-out is done and confirmed working. Next up, in order of what's likely most valuable:
+Checkpoint 10.2 is in progress — Monthly Close-out, Year in Review, and Cash-Flow Forecast are all done and confirmed working. Next up, in order of what's likely most valuable:
 
-1. More Reports pages, one or two at a time (per the roadmap's note that this phase may span several checkpoints). Good next candidates: Year in Review, Cash-Flow Forecast, or Payment Methods — ask the person which they'd find most useful first, since the original 9-page list is long and not all of them may be worth building for a 2-person household.
-2. Still-flagged follow-ups from earlier phases (small, can be picked up any time): manual transactions hardcode owner to 'shared' instead of using the People list; income/savings-goal contributions aren't yet folded into the unified Transactions list; EF/FI calculators don't auto-pull figures from Bills/Income; Events have no per-event checklist or savings-goal auto-sync; Travel's own savings-goal auto-sync is still outstanding.
+1. More Reports pages, one or two at a time. Remaining from the original 9-page list: Weekly Digest, Tax Summary, Subscription Audit, Merchant Spending, Person Spending, Payment Methods. Ask the person which they'd find most useful next — not all 9 may be worth building for a 2-person household.
+2. Still-flagged follow-ups from earlier phases (small, can be picked up any time): manual transactions hardcode owner to 'shared' instead of using the People list; income/savings-goal contributions aren't yet folded into the unified Transactions list (this also affects the "Income" figures on Dashboard and Year in Review); EF/FI calculators don't auto-pull figures from Bills/Income; Events have no per-event checklist or savings-goal auto-sync; Travel's own savings-goal auto-sync is still outstanding.
 3. Phase 9 — Shared Expenses / Household Linking (M3, M11) — still the biggest remaining phase, flagged as the hardest technical part of the whole project, and still deferred pending revisiting the Phase 0.1 sync decision.
-4. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
+4. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's/Cash-Flow Forecast's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
 
 Recommend asking the person at the start of the next session which of these to tackle first.
 
@@ -150,8 +159,11 @@ Files in the repo so far
   - mobile-app/src/screens/GoalsScreen.tsx — Year-End Goals, Track-progress or Simple-checklist mode
   - mobile-app/src/screens/PlanningScreen.tsx — Groceries / Travel / Events / Goals pill-switcher tab
   - mobile-app/src/screens/DashboardScreen.tsx — Total Balance, This Month, Amount Owed, Due Soon, Savings Goals overview
-  - mobile-app/src/screens/ReportsScreen.tsx — Reports: currently "Monthly Close-out" (income/expenses/net + spending by category)
   - mobile-app/src/screens/InsightsScreen.tsx — Dashboard / Reports pill-switcher tab
+  - mobile-app/src/screens/ReportsScreen.tsx — second-level pill-switcher between report pages
+  - mobile-app/src/screens/reports/MonthlyCloseOutReport.tsx — income/expenses/net + spending by category
+  - mobile-app/src/screens/reports/YearInReviewReport.tsx — year totals, 12-month chart, top categories, debt paid, goals reached
+  - mobile-app/src/screens/reports/CashFlowForecastReport.tsx — 30/60/90-day balance projection with warning callout
   - mobile-app/src/navigation/MainTabs.tsx — Insights tab wired to InsightsScreen
   - mobile-app/App.tsx — includes auto-lock suppression check
   - mobile-app/package.json / package-lock.json
