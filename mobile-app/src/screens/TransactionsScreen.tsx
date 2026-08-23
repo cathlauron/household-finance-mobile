@@ -6,7 +6,12 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Modal,
+  Pressable,
+  TextInput,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -17,6 +22,11 @@ import {
   transactionTotals,
   TransactionEntry,
 } from '../transactions';
+import type { ManualTransaction, HouseholdModel } from '../types';
+
+function makeId(prefix: string): string {
+  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -24,13 +34,34 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-const SOURCE_LABELS: Record<string, string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan' };
+function todayISO(): string {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+const SOURCE_LABELS: Record<string, string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan', manual: 'Manual' };
+const DIRECTIONS: Array<'out' | 'in' | 'saving'> = ['out', 'in', 'saving'];
+const DIRECTION_LABELS: Record<string, string> = { out: 'Money out', in: 'Money in', saving: 'Savings' };
+
+function amountColor(direction: string): string {
+  if (direction === 'in') return '#2f9e44';
+  if (direction === 'saving') return '#c2410c';
+  return '#e5484d';
+}
 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
-  const { model } = useData();
+  const { model, saveModel } = useData();
   const styles = makeStyles(colors);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [labelInput, setLabelInput] = useState('');
+  const [categoryInput, setCategoryInput] = useState('');
+  const [amountInput, setAmountInput] = useState('');
+  const [dateInput, setDateInput] = useState('');
+  const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const transactions = useMemo(() => {
     if (!model) return [];
@@ -47,6 +78,58 @@ export default function TransactionsScreen() {
     );
   }
 
+  function openAddModal() {
+    setLabelInput('');
+    setCategoryInput('');
+    setAmountInput('');
+    setDateInput(todayISO());
+    setDirectionInput('out');
+    setErrorMsg('');
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setErrorMsg('');
+  }
+
+  async function handleSave() {
+    if (!model) return;
+    const trimmedLabel = labelInput.trim();
+    if (!trimmedLabel) {
+      setErrorMsg('Enter a label for this transaction.');
+      return;
+    }
+    const trimmedDate = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2025-03-15.');
+      return;
+    }
+    const parsedAmount = parseFloat(amountInput);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setErrorMsg('Enter an amount greater than 0.');
+      return;
+    }
+
+    const newTxn: ManualTransaction = {
+      id: makeId('txn'),
+      date: trimmedDate,
+      label: trimmedLabel,
+      amount: parsedAmount,
+      direction: directionInput,
+      owner: 'shared',
+      category: categoryInput.trim(),
+    };
+
+    const updated: HouseholdModel = {
+      ...model,
+      manualTransactions: [...(model.manualTransactions || []), newTxn],
+    };
+
+    await saveModel(updated);
+    closeModal();
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -60,8 +143,16 @@ export default function TransactionsScreen() {
             <Text style={[styles.statAmount, { color: '#e5484d' }]}>{formatPeso(totals.totalOut)}</Text>
           </View>
         </View>
+        {totals.totalSaving > 0 && (
+          <View style={styles.statRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>SAVED</Text>
+              <Text style={[styles.statAmount, { color: '#c2410c' }]}>{formatPeso(totals.totalSaving)}</Text>
+            </View>
+          </View>
+        )}
         <View style={styles.netBanner}>
-          <Text style={styles.netLabel}>NET</Text>
+          <Text style={styles.netLabel}>NET (CASH IN HAND)</Text>
           <Text style={styles.netAmount}>{formatPeso(totals.net)}</Text>
         </View>
 
@@ -86,7 +177,7 @@ export default function TransactionsScreen() {
 
         {transactions.length === 0 && (
           <Text style={styles.emptyText}>
-            Nothing recorded yet. Mark a bill, debt, or loan as paid and it'll show up here.
+            Nothing recorded yet. Add one below, or mark a bill/debt/loan as paid elsewhere in the app.
           </Text>
         )}
 
@@ -98,12 +189,93 @@ export default function TransactionsScreen() {
                 {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
               </Text>
             </View>
-            <Text style={[styles.txnAmount, { color: t.direction === 'in' ? '#2f9e44' : '#e5484d' }]}>
-              {t.direction === 'in' ? '+' : '−'}{formatPeso(t.amount)}
+            <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
+              {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
             </Text>
           </View>
         ))}
+
+        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+          <Text style={styles.addButtonText}>+ Add transaction</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
+        <Pressable style={styles.modalOverlay} onPress={closeModal}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalKeyboardWrap}
+          >
+            <Pressable style={styles.modalCard} onPress={() => {}}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={styles.modalTitle}>New transaction</Text>
+
+                <Text style={styles.inputLabel}>Label</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Coffee, Cash gift, Market run"
+                  placeholderTextColor={colors.inkFaint}
+                  value={labelInput}
+                  onChangeText={setLabelInput}
+                />
+
+                <Text style={styles.inputLabel}>Type</Text>
+                <View style={styles.pillRow}>
+                  {DIRECTIONS.map((d) => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.pillButton, directionInput === d && styles.pillButtonActive]}
+                      onPress={() => setDirectionInput(d)}
+                    >
+                      <Text style={[styles.pillButtonText, directionInput === d && styles.pillButtonTextActive]}>
+                        {DIRECTION_LABELS[d]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.inputLabel}>Amount</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="decimal-pad"
+                  value={amountInput}
+                  onChangeText={setAmountInput}
+                />
+
+                <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="2025-03-15"
+                  placeholderTextColor={colors.inkFaint}
+                  value={dateInput}
+                  onChangeText={setDateInput}
+                />
+
+                <Text style={styles.inputLabel}>Category (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Groceries, Transportation"
+                  placeholderTextColor={colors.inkFaint}
+                  value={categoryInput}
+                  onChangeText={setCategoryInput}
+                />
+
+                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.saveButtonText}>Add transaction</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -135,9 +307,10 @@ function makeStyles(colors: any) {
     },
     netLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim },
     netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
     pillButton: {
       flex: 1,
+      minWidth: 80,
       backgroundColor: colors.navy3,
       borderRadius: 999,
       paddingVertical: 9,
@@ -146,7 +319,7 @@ function makeStyles(colors: any) {
     pillButtonActive: { backgroundColor: colors.gold },
     pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
     pillButtonTextActive: { color: colors.navy2 },
-    emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6 },
+    emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6, marginBottom: 12 },
     txnRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -161,5 +334,51 @@ function makeStyles(colors: any) {
     txnLabel: { fontSize: 13.5, fontWeight: '600', color: colors.ink },
     txnSub: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
     txnAmount: { fontSize: 13.5, fontWeight: '700' },
+    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
+    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '85%' },
+    modalCard: {
+      width: '100%',
+      maxWidth: 360,
+      maxHeight: '100%',
+      backgroundColor: colors.navy3,
+      borderRadius: 14,
+      padding: 20,
+    },
+    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
+    inputLabel: {
+      fontSize: 11,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      color: colors.inkDim,
+      marginBottom: 6,
+    },
+    input: {
+      backgroundColor: colors.navy2,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.ink,
+      marginBottom: 14,
+    },
+    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    saveButton: {
+      backgroundColor: colors.gold,
+      borderRadius: 999,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
+    cancelButton: { alignItems: 'center', paddingVertical: 8 },
+    cancelButtonText: { fontSize: 13, color: colors.inkDim },
   });
 }

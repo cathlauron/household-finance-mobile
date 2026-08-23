@@ -1,20 +1,19 @@
 // ============================================================
-// Household Finance App — Unified transaction list (Checkpoint 6.1)
+// Household Finance App — Unified transaction list (Checkpoint 6.1 + 6.2)
 // ============================================================
 // Pulls together every dated, paid amount already recorded elsewhere in the
-// app — paid bill cycles, paid debt cycles, and logged loan payments — into
-// one combined list, matching the spirit of the original web app's
-// buildTransactionsList() (see the spec doc, §3.2). Manual transactions,
-// income, and savings contributions aren't wired into any screen yet
-// (Income/Savings are Phase 7), so they're intentionally left out here —
-// this function can grow to include them once those screens exist, without
-// needing to change its own shape.
+// app — paid bill cycles, paid debt cycles, logged loan payments, and now
+// manually-added transactions — into one combined list, matching the spirit
+// of the original web app's buildTransactionsList() (see the spec doc,
+// §3.2). Income and savings-goal contributions aren't wired into any screen
+// yet (Phase 7), so they're intentionally left out here — this function can
+// grow to include them later without needing to change its own shape.
 // ============================================================
 
 import type { HouseholdModel } from './types';
 
-export type TransactionSource = 'bill' | 'debt' | 'loan';
-export type TransactionDirection = 'in' | 'out';
+export type TransactionSource = 'bill' | 'debt' | 'loan' | 'manual';
+export type TransactionDirection = 'in' | 'out' | 'saving';
 
 export type TransactionEntry = {
   id: string;
@@ -82,6 +81,20 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
     });
   });
 
+  (model.manualTransactions || []).forEach((t) => {
+    const amt = typeof t.amount === 'number' ? t.amount : 0;
+    if (!t.date || amt <= 0) return;
+    list.push({
+      id: 'manual-' + t.id,
+      date: t.date,
+      label: t.label || 'Transaction',
+      category: t.category || 'Manual',
+      source: 'manual',
+      amount: amt,
+      direction: t.direction,
+    });
+  });
+
   return list;
 }
 
@@ -96,5 +109,6 @@ export function sortTransactions(
 export function transactionTotals(list: TransactionEntry[]) {
   const totalIn = list.filter((t) => t.direction === 'in').reduce((s, t) => s + t.amount, 0);
   const totalOut = list.filter((t) => t.direction === 'out').reduce((s, t) => s + t.amount, 0);
-  return { totalIn, totalOut, net: totalIn - totalOut };
+  const totalSaving = list.filter((t) => t.direction === 'saving').reduce((s, t) => s + t.amount, 0);
+  return { totalIn, totalOut, totalSaving, net: totalIn - totalOut - totalSaving };
 }
