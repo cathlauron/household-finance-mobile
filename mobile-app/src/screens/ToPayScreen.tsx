@@ -3,17 +3,16 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-na
 import { useTheme } from '../ThemeContext';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
+import LoansScreen from './LoansScreen';
 
-type SubTab = 'bills' | 'debts';
+type SubTab = 'bills' | 'debts' | 'loans';
 
 // A small tab switcher at the top of the To-Pay tab, matching the web app's
-// "Bills / Debts" sub-tab pattern. More sub-tabs (Loans) can be added the
-// same way later.
+// "Bills / Debts / Loans" sub-tab pattern.
 export default function ToPayScreen() {
   const { colors } = useTheme();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('bills');
   const styles = makeStyles(colors);
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.switcherRow}>
@@ -43,15 +42,28 @@ export default function ToPayScreen() {
             Debts
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.switcherBtn, activeSubTab === 'loans' && styles.switcherBtnActive]}
+          onPress={() => setActiveSubTab('loans')}
+        >
+          <Text
+            style={[
+              styles.switcherBtnText,
+              activeSubTab === 'loans' && styles.switcherBtnTextActive,
+            ]}
+          >
+            Loans
+          </Text>
+        </TouchableOpacity>
       </View>
-
       <View style={styles.contentWrap}>
-        {activeSubTab === 'bills' ? <BillsScreen /> : <DebtsScreen />}
+        {activeSubTab === 'bills' && <BillsScreen />}
+        {activeSubTab === 'debts' && <DebtsScreen />}
+        {activeSubTab === 'loans' && <LoansScreen />}
       </View>
     </SafeAreaView>
   );
 }
-
 function makeStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.navy2 },
