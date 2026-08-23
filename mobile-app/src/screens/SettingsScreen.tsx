@@ -29,6 +29,14 @@ const COLOR_PALETTE = [
   '#9333EA', '#0891B2', '#D97706', '#DB2777', '#78716C',
 ];
 
+// ---- Appearance mode options ----
+// Backed entirely by ThemeContext's existing setMode()/mode — this just gives it a UI.
+const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'device', label: 'Device' },
+];
+
 function amountRangeLabel(rule: CategorizationRule): string {
   const min = rule.amountMin === '' || rule.amountMin === undefined ? null : Number(rule.amountMin);
   const max = rule.amountMax === '' || rule.amountMax === undefined ? null : Number(rule.amountMax);
@@ -39,7 +47,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
 }
 
 export default function SettingsScreen() {
-  const { colors } = useTheme();
+  const { colors, mode, setMode } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
@@ -342,7 +350,28 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <Text style={styles.sectionSub}>
+          Choose how the app looks — Light, Dark, or match your phone's own setting.
+        </Text>
+        <View style={styles.modeRow}>
+          {MODE_OPTIONS.map((opt) => {
+            const active = mode === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.modeButton, active && styles.modeButtonActive]}
+                onPress={() => setMode(opt.id)}
+              >
+                <Text style={[styles.modeButtonText, active && styles.modeButtonTextActive]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
         <Text style={styles.sectionSub}>
           How many days before something's due should it count as "due soon"?
         </Text>
@@ -652,6 +681,17 @@ function makeStyles(colors: any) {
     sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 4 },
     sectionSub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 17 },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    modeRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+    modeButton: {
+      flex: 1,
+      backgroundColor: colors.navy3,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    modeButtonActive: { backgroundColor: colors.gold },
+    modeButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    modeButtonTextActive: { color: colors.navy2 },
     row: {
       backgroundColor: colors.navy3,
       borderRadius: 10,
