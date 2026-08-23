@@ -74,6 +74,7 @@ Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - Savings tab structure: Same in-screen pill-button switcher pattern as To-Pay, applied to Goals / Emergency Fund / FI Calculator.
 - Planning tab structure: Same in-screen pill-button switcher pattern, now with four pills (Groceries / Travel / Events / Goals) in a horizontally scrollable row.
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen. Events use their own simpler month/day (Annual) or full-date (One-time) fields directly on EventItem rather than pulling in recurrence.ts, since Events only support two recurrence options (no Custom yet).
+- Dashboard design (Checkpoint 10.1): Rather than recalculating bill/debt-owed totals separately, outstandingBalance() was exported from balanceProjection.ts (previously private to that file) so Dashboard could reuse the exact same math Bills/Debts screens rely on — same discipline as recurrence.ts being shared across Bills/Debts/Loans.
 - Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen.
 - Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module so future checkpoints can extend it without touching screen code. Income and savings-goal contributions are still intentionally left out of this list for now — that hookup is a flagged follow-up, not yet done.
 - Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, even though Income now has people. This is a flagged follow-up, not yet wired up.
@@ -90,14 +91,15 @@ Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 
 ▶️ Next step
 
-Phase 8 (Groceries / Travel / Events / Goals) is now fully done and confirmed working. That means every phase through M10 in the original roadmap numbering is complete. Two things to decide at the start of next session:
+Checkpoint 10.1 (Core dashboard charts) is done and confirmed working. Next up, in order of what's likely most valuable:
 
-1. Flagged follow-ups not yet done (small, can be picked up any time): manual transactions still hardcode owner to 'shared' instead of using the People list from Income; income/savings-goal contributions aren't yet folded into the unified Transactions list; EF/FI calculators don't auto-pull figures from Bills/Income; Events have no per-event checklist or savings-goal auto-sync; Travel's own savings-goal auto-sync is also still outstanding from an earlier phase.
-2. Main path forward: Phase 9 — Shared Expenses / Household Linking (M3, M11). This is flagged in the roadmap as "the hardest technical part of the whole project" and depends on the Phase 0.1 sync decision (none chosen yet, deferred here). Expect more back-and-forth on this phase than prior ones — recommend budgeting extra sessions.
+1. Checkpoint 10.2 — Reports pages (may span several checkpoints per the roadmap's own note).
+2. Still-flagged follow-ups from earlier phases (small, can be picked up any time): manual transactions hardcode owner to 'shared' instead of using the People list; income/savings-goal contributions aren't yet folded into the unified Transactions list; EF/FI calculators don't auto-pull figures from Bills/Income; Events have no per-event checklist or savings-goal auto-sync; Travel's own savings-goal auto-sync is still outstanding.
+3. Phase 9 — Shared Expenses / Household Linking (M3, M11) — still the biggest remaining phase, flagged as the hardest technical part of the whole project, and still deferred pending revisiting the Phase 0.1 sync decision.
+4. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
 
-Checkpoint 6.3 (CSV import) also remains deferred/optional per the roadmap.
+Recommend asking the person at the start of the next session which of these to tackle first.
 
-Recommend asking the person at the start of the next session whether to: (a) start Phase 9 (Shared Expenses / Household Linking) directly — noting it's the most involved phase and will need the sync-method decision revisited first, (b) knock out one of the small flagged follow-ups first (the manual-transaction owner picker is probably the highest-value quick win, now that People/Income exist across both Income and — as of this session — Events/Goals context), or (c) skip ahead to a later, simpler phase (e.g. Phase 10 Dashboard, Phase 11 Settings) and come back to Phase 9 later, since Phase 9 is optional/deferrable in spirit (multi-phone sync was explicitly deferred in Phase 0.1).
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -142,7 +144,8 @@ Files in the repo so far
   - mobile-app/src/screens/EventsScreen.tsx — birthdays/anniversaries/other events, Annual or One-time
   - mobile-app/src/screens/GoalsScreen.tsx — Year-End Goals, Track-progress or Simple-checklist mode
   - mobile-app/src/screens/PlanningScreen.tsx — Groceries / Travel / Events / Goals pill-switcher tab
-  - mobile-app/src/navigation/MainTabs.tsx — Planning tab wired to PlanningScreen
+  - mobile-app/src/navigation/MainTabs.tsx — Planning tab wired to PlanningScreen; Insights tab wired to DashboardScreen
+  - mobile-app/src/screens/DashboardScreen.tsx — Insights tab: Total Balance, This Month, Amount Owed, Due Soon, Savings Goals overview
   - mobile-app/App.tsx — includes auto-lock suppression check
   - mobile-app/package.json / package-lock.json
 

@@ -64,7 +64,7 @@ export function totalLiquidBalance(model: HouseholdModel): number {
 
 // ---- Bill / Debt outstanding amount ----
 // How much is currently still owed on a bill or debt, across every logged payment cycle.
-function outstandingBalance(record: Bill | Debt): number {
+export function outstandingBalance(record: Bill | Debt): number {
   return (record.cycles || []).reduce((sum, c) => sum + (toNumber(c.amountDue) - toNumber(c.amountPaid)), 0);
 }
 
