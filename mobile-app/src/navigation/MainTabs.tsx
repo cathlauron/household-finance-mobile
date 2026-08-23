@@ -10,6 +10,7 @@ import IncomeScreen from '../screens/IncomeScreen';
 import SavingsScreen from '../screens/SavingsScreen';
 import PlanningScreen from '../screens/PlanningScreen';
 import InsightsScreen from '../screens/InsightsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import { useTheme } from '../ThemeContext';
 const Tab = createBottomTabNavigator();
 type MainTabsProps = {
@@ -43,7 +44,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       <Tab.Screen name="Insights" component={InsightsScreen} />
       <Tab.Screen name="Income" component={IncomeScreen} />
       <Tab.Screen name="Savings" component={SavingsScreen} />
-      <Tab.Screen name="Settings" component={PlaceholderScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
