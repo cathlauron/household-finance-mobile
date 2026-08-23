@@ -42,16 +42,22 @@ Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
   - 5.4c — Loans: added a "Repeats" picker (One-time / Monthly / Annual) to LoansScreen.tsx, matching the pattern already used on Bills/Debts. Loans are now sorted by next due date instead of alphabetically, and each row shows its recurrence + next due date alongside loan type/direction/interest rate.
     - types.ts: Loan gained optional recurringType and dueDate fields (same shape as Bill/Debt), plus recurrence helpers pulled from a shared src/recurrence.ts (getNextDueDate, formatShortDate, recurringTypeLabel).
     - Existing loans saved before this change load fine, defaulting to "One-time" with no date set until edited.
-    - ✅ Confirmed working on a real phone: added a Monthly loan and an Annual loan, both showed the correct next-due label; edited an existing loan and the Repeats/date fields reopened correctly; total amount, expected payment, interest rate, direction, and the Payoff Simulator all still work unchanged.
+    - ✅ Confirmed working on a real phone.
 
 Phase 5 (M7) is now fully complete — Bills, Debts, and Loans (including recurring schedules and the payoff simulator) are all built and confirmed working end to end.
 
 Phase 6 — Transactions (M8)
 - 6.1 — Unified transaction list. ✅ Complete and confirmed working on a real phone.
-  - mobile-app/src/transactions.ts — new shared module: buildTransactionsList() pulls together paid bill cycles, paid debt cycles, and logged loan payments (loan repayments received on "lent" loans count as money in, everything else as money out) into one combined, typed list. Also exports sortTransactions() (newest/oldest) and transactionTotals() (total in / total out / net). Built so Income and Savings contributions can be added into this same function later (Phase 7) without changing its shape or any screen that reads from it.
-  - mobile-app/src/screens/TransactionsScreen.tsx — new screen: stat cards for Total In / Total Out, a Net banner, a Newest-first/Oldest-first pill switcher, and the combined scrollable list (label, category, date, source tag, signed colored amount). Shows a plain empty-state message when nothing's been paid/logged yet.
-  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab now points at TransactionsScreen instead of PlaceholderScreen.
-  - ✅ Confirmed working on a real phone: Transactions tab shows combined paid bills/debts/loan payments, totals are correct, sort order toggle flips the list correctly.
+  - mobile-app/src/transactions.ts — buildTransactionsList() pulls together paid bill cycles, paid debt cycles, logged loan payments, and (as of 6.2) manual transactions into one combined, typed list. Also exports sortTransactions() (newest/oldest) and transactionTotals() (total in / total out / total saving / net).
+  - mobile-app/src/screens/TransactionsScreen.tsx — stat cards, Net banner, sort toggle, combined scrollable list, and (as of 6.2) the Add Transaction modal.
+  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab points at TransactionsScreen.
+- 6.2 — Manually add a transaction. ✅ Complete and confirmed working on a real phone, including surviving a tab-switch/close-reopen (proof it's actually persisted to encrypted storage, not just on-screen state).
+  - types.ts: ManualTransaction.direction widened to 'in' | 'out' | 'saving' (already matched; TransactionEntry/TransactionDirection in transactions.ts updated to match).
+  - transactions.ts: buildTransactionsList() now folds in model.manualTransactions; transactionTotals() now also returns totalSaving.
+  - TransactionsScreen.tsx: new "+ Add transaction" modal (label, type — Money out/Money in/Savings, amount, date as YYYY-MM-DD, optional category), following the same modal/save pattern as BillsScreen.tsx. Saves via saveModel() from DataContext, appending to manualTransactions.
+  - A "SAVED" stat card appears only when totalSaving > 0, alongside the existing Total In/Total Out cards and the Net banner.
+  - Receipt photo attachment was intentionally left out of this checkpoint — deferred as a small separate follow-up (see Next step below).
+  - ✅ Confirmed working on a real phone: added a "Money out" transaction (shows red "−"), added a "Money in" transaction (shows green "+"), totals updated correctly, and both transactions persisted after switching tabs / reopening the app.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -68,12 +74,13 @@ Phase 6 — Transactions (M8)
 - PIN quick-unlock: The PIN is always a convenience re-entry method on top of an already-unlocked session — never a substitute for the real passphrase; "Use passphrase instead" is always available from the PIN screen.
 - Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
 - Theming approach: Colors live in theme.ts (lightTheme/darkTheme); ThemeContext.tsx exposes useTheme(). Fonts have NOT been ported yet — default system fonts still in use. Full 13-theme picker, custom colors, and font pairing are deferred to a later checkpoint once a real Settings screen exists.
-- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank.
-- Due dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
+- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, and now Transactions' Add flow): a scrollable list of rows, each tappable to open an edit modal; a "+ Add X" button at the bottom opens the same modal blank.
+- Due dates / transaction dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
 - To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type — matches the web app's own To-Pay sub-tab pattern and keeps the bottom tab bar from getting overcrowded. Now has three pills: Bills, Debts, Loans.
 - Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen — keeps the "next due date" logic consistent everywhere it's shown (list rows, sorting, Calendar).
 - Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen — matches how the web app treats it as a sub-view within Debts/Loans. Deliberately built without a charting library (plain stat cards + a payoff-order list) to keep the checkpoint scoped small.
-- Unified Transactions design (Checkpoint 6.1): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints (manual transactions, income, savings) can extend the same function without needing to touch screen code. Manual transactions, income, and savings contributions are intentionally left out of this list for now since those input screens don't exist yet (Phase 7) — this is expected, not a bug.
+- Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module (not inside TransactionsScreen.tsx) so future checkpoints (income, savings) can extend the same function without needing to touch screen code. Income and savings-goal contributions are still intentionally left out of this list for now since those input screens don't exist yet (Phase 7) — this is expected, not a bug.
+- Manual transactions (Checkpoint 6.2): Owner is hardcoded to 'shared' for now — no per-person "who does this belong to" picker yet, since People/Income screens (Phase 7) haven't been built. Category is a free-typed optional text field, not a picker — matches how the web app treats it before its category-manager exists on mobile.
 - Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE' ... ENDOFFILE` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
@@ -82,12 +89,12 @@ Phase 6 — Transactions (M8)
 
 ▶️ Next step
 
-Phase 6.1 is done. Next up is Checkpoint 6.2 — Manually add a transaction:
-- Add a "+" button/screen on the Transactions tab to let the user manually log a transaction (label, amount, date, direction) that isn't tied to a Bill/Debt/Loan.
-- Optional: attach a receipt photo (expo-image-picker), matching the web app's manualTransactions shape (see spec doc §3, model.manualTransactions).
-- This will need a new field in the data model (manualTransactions: []) plus a small addition to buildTransactionsList() in transactions.ts to fold manual entries into the combined list — everything else in transactions.ts and TransactionsScreen.tsx should keep working unchanged.
+Checkpoint 6.2 is done. Two small options for the next session — pick whichever, or ask Claude to recommend one:
 
-After 6.2, Checkpoint 6.3 (CSV import) is next, and can be simplified or deferred if it adds too much complexity for one checkpoint.
+1. Small follow-up to 6.2 — Receipt photo attachment: Add an optional "Attach receipt" step to the Add Transaction modal using expo-image-picker, storing the photo similarly to the web app's manualTransactions receipt handling (see spec doc §3). This was deliberately deferred out of 6.2 to keep that checkpoint small.
+2. Checkpoint 6.3 — CSV import: Import transactions from a CSV file. Can be simplified or deferred further if it adds too much complexity for one checkpoint (the roadmap explicitly allows this).
+
+Either way, editing/deleting a manual transaction (tap-to-edit, matching the Bills/Debts/Loans pattern) is still outstanding and worth doing before Phase 6 is considered fully closed out — right now manual transactions can only be added, not edited or removed, once saved.
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -97,9 +104,9 @@ Files in the repo so far
 - README.md
 - PROGRESS.md (this file)
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types (Loan now includes optional recurringType, dueDate, interestRate)
+  - mobile-app/src/types.ts — data model types
   - mobile-app/src/recurrence.ts — shared recurrence helpers (getNextDueDate, formatShortDate, recurringTypeLabel), used by Bills/Debts/Loans
-  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
+  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals() — now includes manual transactions and totalSaving
   - mobile-app/src/defaultModel.ts — empty/default data factory function
   - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
   - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data
@@ -123,8 +130,8 @@ Files in the repo so far
   - mobile-app/src/screens/LoansScreen.tsx — includes a "Repeats" picker (One-time/Monthly/Annual), sorted by next due date
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle
-  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab now wired to TransactionsScreen
+  - mobile-app/src/screens/TransactionsScreen.tsx — unified transactions list, totals, sort toggle, and Add Transaction modal
+  - mobile-app/src/navigation/MainTabs.tsx — Transactions tab wired to TransactionsScreen
   - mobile-app/App.tsx
   - mobile-app/package.json / package-lock.json
 
