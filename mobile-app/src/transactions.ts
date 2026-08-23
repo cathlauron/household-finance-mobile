@@ -23,6 +23,11 @@ export type TransactionEntry = {
   source: TransactionSource;
   amount: number;
   direction: TransactionDirection;
+  // Only set for source === 'manual' — the real id of the underlying
+  // ManualTransaction in model.manualTransactions, so it can be found again
+  // for editing/deleting. Bill/debt/loan entries are derived from their own
+  // source records and aren't directly editable here.
+  rawId?: string;
 };
 
 export function buildTransactionsList(model: HouseholdModel): TransactionEntry[] {
@@ -92,6 +97,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
       source: 'manual',
       amount: amt,
       direction: t.direction,
+      rawId: t.id,
     });
   });
 

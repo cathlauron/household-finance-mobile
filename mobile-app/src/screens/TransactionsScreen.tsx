@@ -60,6 +60,7 @@ export default function TransactionsScreen() {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [labelInput, setLabelInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
@@ -83,7 +84,7 @@ export default function TransactionsScreen() {
     );
   }
 
-  function openAddModal() {
+  function resetForm() {
     setLabelInput('');
     setCategoryInput('');
     setAmountInput('');
@@ -91,11 +92,32 @@ export default function TransactionsScreen() {
     setDirectionInput('out');
     setReceiptPhoto(null);
     setErrorMsg('');
+  }
+
+  function openAddModal() {
+    setEditingId(null);
+    resetForm();
+    setModalOpen(true);
+  }
+
+  function openEditModal(t: TransactionEntry) {
+    if (t.source !== 'manual' || !t.rawId) return;
+    const raw = (model?.manualTransactions || []).find((m) => m.id === t.rawId);
+    if (!raw) return;
+    setEditingId(raw.id);
+    setLabelInput(raw.label || '');
+    setCategoryInput(raw.category || '');
+    setAmountInput(typeof raw.amount === 'number' ? String(raw.amount) : '');
+    setDateInput(raw.date || todayISO());
+    setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
+    setReceiptPhoto(raw.receiptPhoto || null);
+    setErrorMsg('');
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
+    setEditingId(null);
     setErrorMsg('');
   }
 
@@ -150,22 +172,50 @@ export default function TransactionsScreen() {
       return;
     }
 
-    const newTxn: ManualTransaction = {
-      id: makeId('txn'),
-      date: trimmedDate,
-      label: trimmedLabel,
-      amount: parsedAmount,
-      direction: directionInput,
-      owner: 'shared',
-      category: categoryInput.trim(),
-      ...(receiptPhoto ? { receiptPhoto } : {}),
-    };
+    const updated: HouseholdModel = { ...model, manualTransactions: [...(model.manualTransactions || [])] };
 
+    if (editingId) {
+      updated.manualTransactions = updated.manualTransactions.map((t) => {
+        if (t.id !== editingId) return t;
+        const next: ManualTransaction = {
+          ...t,
+          date: trimmedDate,
+          label: trimmedLabel,
+          amount: parsedAmount,
+          direction: directionInput,
+          category: categoryInput.trim(),
+        };
+        if (receiptPhoto) {
+          next.receiptPhoto = receiptPhoto;
+        } else {
+          delete next.receiptPhoto;
+        }
+        return next;
+      });
+    } else {
+      const newTxn: ManualTransaction = {
+        id: makeId('txn'),
+        date: trimmedDate,
+        label: trimmedLabel,
+        amount: parsedAmount,
+        direction: directionInput,
+        owner: 'shared',
+        category: categoryInput.trim(),
+        ...(receiptPhoto ? { receiptPhoto } : {}),
+      };
+      updated.manualTransactions = [...updated.manualTransactions, newTxn];
+    }
+
+    await saveModel(updated);
+    closeModal();
+  }
+
+  async function handleDelete() {
+    if (!editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
-      manualTransactions: [...(model.manualTransactions || []), newTxn],
+      manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== editingId),
     };
-
     await saveModel(updated);
     closeModal();
   }
@@ -221,19 +271,29 @@ export default function TransactionsScreen() {
           </Text>
         )}
 
-        {transactions.map((t: TransactionEntry) => (
-          <View key={t.id} style={styles.txnRow}>
-            <View style={styles.txnMain}>
-              <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
-              <Text style={styles.txnSub} numberOfLines={1}>
-                {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
+        {transactions.map((t: TransactionEntry) => {
+          const isManual = t.source === 'manual';
+          return (
+            <TouchableOpacity
+              key={t.id}
+              style={styles.txnRow}
+              activeOpacity={isManual ? 0.7 : 1}
+              onPress={() => openEditModal(t)}
+              disabled={!isManual}
+            >
+              <View style={styles.txnMain}>
+                <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
+                <Text style={styles.txnSub} numberOfLines={1}>
+                  {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
+                  {!isManual ? ' (edit on its own tab)' : ''}
+                </Text>
+              </View>
+              <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
+                {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
               </Text>
-            </View>
-            <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
-              {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
-            </Text>
-          </View>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add transaction</Text>
@@ -248,7 +308,7 @@ export default function TransactionsScreen() {
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>New transaction</Text>
+                <Text style={styles.modalTitle}>{editingId ? 'Edit transaction' : 'New transaction'}</Text>
 
                 <Text style={styles.inputLabel}>Label</Text>
                 <TextInput
@@ -319,8 +379,14 @@ export default function TransactionsScreen() {
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Add transaction</Text>
+                  <Text style={styles.saveButtonText}>{editingId ? 'Save changes' : 'Add transaction'}</Text>
                 </TouchableOpacity>
+
+                {editingId && (
+                  <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                    <Text style={styles.deleteButtonText}>Delete this transaction</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -450,6 +516,8 @@ function makeStyles(colors: any) {
       marginBottom: 10,
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
+    deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
+    deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
   });
