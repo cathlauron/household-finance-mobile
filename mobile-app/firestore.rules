@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /linkCodes/{code} {
+      allow get: if true;
+      allow write: if
+        (request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername'])
+          && request.resource.data.codeSalt is string
+          && request.resource.data.encryptedSecret is string
+          && request.resource.data.encryptedHostData is string
+          && request.resource.data.hostUsername is string)
+        ||
+        (request.resource.data.finished == true
+          && request.resource.data.householdId is string);
+      allow delete: if false;
+      allow list: if false;
+    }
+
+    match /households/{householdId} {
+      allow get: if true;
+      allow write: if request.resource.data.keys().hasAll(['data', 'updatedAt'])
+        && request.resource.data.data is string
+        && request.resource.data.updatedAt is number;
+      allow delete: if false;
+      allow list: if false;
+    }
+
+    match /householdKeys/{username} {
+      allow get: if true;
+      allow write: if request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt'])
+        && request.resource.data.householdId is string
+        && request.resource.data.wrappedKey is string
+        && request.resource.data.updatedAt is number;
+      allow delete: if true;
+      allow list: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
