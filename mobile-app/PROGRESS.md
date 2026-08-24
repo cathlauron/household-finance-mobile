@@ -45,8 +45,8 @@ Phase 7 — Income & Savings (M9) — ✅ FULLY COMPLETE
 
 Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - 8.1 — Grocery list + calculator. ✅ Complete and confirmed working on a real phone.
-- 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone. UPDATE (this session): the "Auto-saving to Savings tab" toggle added in an earlier session was previously only wired to local component state — it now actually creates/updates/removes a real linked SavingsGoal. See the dated session entry below for full detail. This closes out the last outstanding piece of Travel that earlier "Next step" notes had flagged as unfinished.
-- 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone. NOTE: Events' own savings-goal auto-sync (mirroring what Travel now has) is NOT implemented — confirmed via grep this session. See "Next step" below.
+- 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone, including real savings-goal auto-sync (tripFullChecklistTotal/syncTripSavingsGoal), verified in an earlier session.
+- 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone. UPDATE (this session): Events now has its own savings-goal auto-sync, mirroring Travel's pattern exactly. See dated session entry below for full detail. This was the last outstanding piece flagged from the previous session's "Next step" — Phase 8 is now genuinely fully complete, not just "complete except for X."
 
 Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 - 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone.
@@ -61,129 +61,111 @@ Phase 11 — Settings (M14) — 🔧 IN PROGRESS
 
 ---
 
-## 📅 Session entry — Travel savings-goal auto-sync (Steps 8–9 completed & verified)
+## 📅 Session entry — Events savings-goal auto-sync (mirrors Travel, fully verified on-device)
 
-This session picked up mid-flow from a prior session that had already added the
-"Auto-saving to Savings tab" toggle's *visual* UI to TravelScreen.tsx (Step 8) but had
-not yet connected it to any real data — it was only backed by local `useState` at that
-point. This session (Step 9) finished the actual sync logic and confirmed it end-to-end
-on a physical device.
+This session copied the savings-goal auto-sync pattern built for Travel in the prior
+session over to Events — closing out the one piece Phase 8 was missing.
 
-**Investigation before writing code (this session):**
-- Confirmed `TravelTrip` (in `src/types.ts`) already had `budget?`, `trackInSavings?`,
-  and `savingsGoalId?` fields defined, with an existing code comment flagging that
-  Events should eventually reuse the same pattern.
-- Checked `EventsScreen.tsx` via grep for `trackInSavings|savingsGoalId|SavingsGoal` —
-  zero matches. Confirmed Events has no goal-sync implementation at all yet, so Travel
-  is the *first* implementation of this pattern in the mobile app, not a copy of an
-  existing one — the comment in types.ts was describing an intended future pattern, not
-  documenting something already built elsewhere.
-- Confirmed `SavingsGoal` (in `src/types.ts`) is a `type` (not `interface`) with fields:
-  `id`, `name`, `targetAmount`, `targetDate`, `contributions`, `currentAmount`,
-  `createdAt`.
-- Inspected the full `handleSaveTrip()`/`handleDeleteTrip()`/`openAddModal()`/
-  `openEditModal()` functions in TravelScreen.tsx before writing any patch, to match
-  exact variable names and structure rather than guessing.
+**Code changes made:**
+- `src/types.ts` — Added `trackInSavings?: boolean` and `savingsGoalId?: string` to the
+  `EventItem` type, matching the fields already on `TravelTrip`.
+- `src/screens/EventsScreen.tsx`:
+  - Added `SavingsGoal` to the type import line.
+  - Added `syncEventSavingsGoal(ev, trackInSavings, budget, allGoals)` — the Events
+    equivalent of Travel's `syncTripSavingsGoal()`. Since Events have no checklist (just
+    a flat `budget` field, unlike Travel's checklist-derived total), this function uses
+    `budget` directly as the target amount rather than needing a
+    `tripFullChecklistTotal()`-style helper first. Same removal/create/update logic as
+    Travel: if tracking is off or budget is 0, the linked goal (matched by
+    `savingsGoalId`) is removed if one exists; otherwise it's created or updated in
+    place, named `"Event: {event name}"`, with `targetDate` set from the event's
+    `onetimeDate` where available.
+  - Added `trackInSavingsInput` state, reset to `false` on `openAddModal()` and loaded
+    from `ev.trackInSavings ?? false` on `openEditModal()`.
+  - `handleSaveEvent()` (the save handler) now runs the sync before saving, and persists
+    both the updated event (with its `trackInSavings`/`savingsGoalId` fields) and the
+    updated `savingsGoals` array in one `saveModel()` call — same one-call-for-both-
+    pieces approach used for Travel, so event and goal data can never be saved out of
+    sync with each other.
+  - `handleDeleteEvent()` now looks up the event being deleted and, if it had a
+    `savingsGoalId`, filters that goal out of `model.savingsGoals` in the same update
+    that removes the event — no orphaned goals left behind.
+  - Added a "✓ Auto-saving to Savings tab" / "Not tracked in Savings tab" toggle to the
+    add/edit modal, placed directly under the Budget field, above the existing
+    Completed toggle — visually matching Travel's toggle styling (new
+    `trackSavingsToggle`/`trackSavingsToggleActive`/`trackSavingsToggleText`/
+    `trackSavingsToggleTextActive` style entries, styled identically to the existing
+    `completedToggle` family).
+- Explicit scope note carried over from the plan: like Travel, this only syncs the
+  savings goal target — it does NOT convert a completed event into an actual logged
+  expense/transaction. That remains a separate, not-yet-built feature for both screens.
 
-**Code changes made (all in `src/screens/TravelScreen.tsx` unless noted):**
-- Added `tripFullChecklistTotal(trip)` — sums the cost of every checklist item
-  regardless of checked state. Deliberately distinct from the pre-existing
-  `tripChecklistTotal(trip)`, which only sums *checked* items and feeds a separate
-  "committed so far" banner already shown in the modal. The savings goal target uses the
-  *full* total, matching the original web app's `syncTravelSavingsGoal()` behavior of
-  budgeting for the whole trip, not just what's already been paid for.
-- Added `syncTripSavingsGoal(trip, budget, allGoals)` — the core sync function:
-  - If `trackInSavings` is false, or budget is 0: removes the linked goal (matched by
-    `savingsGoalId`) from the goals array if one exists; otherwise no-op.
-  - If `trackInSavings` is true and budget > 0: looks for an existing goal by
-    `savingsGoalId`. If found, updates its `name` (always `"Travel: {trip name}"`) and
-    `targetAmount` to match the current budget. If not found, creates a new
-    `SavingsGoal` with `targetDate` set to the trip's `startDate` (or `''` if unset),
-    `contributions: []`, and `currentAmount: 0`.
-  - Returns `{ goals, savingsGoalId }` so the caller can persist both the updated goals
-    array and the trip's own updated pointer in a single `saveModel()` call, keeping
-    trip and goal data from ever being saved out of sync with each other.
-- Updated the type import line to include `SavingsGoal` alongside the existing
-  `TravelTrip`, `TravelChecklistItem`, `HouseholdModel` imports.
-- `openAddModal()`: now resets `trackInSavings` to `false` (previously left it in
-  whatever state the last-edited trip left it in).
-- `openEditModal(trip)`: now loads `trackInSavings` from `trip.trackInSavings ?? false`
-  instead of leaving local state stale from whatever was previously open.
-- `handleSaveTrip()`: rewritten to build a `draftTrip` object first (carrying over
-  `savingsGoalId` and `createdAt` from the prior trip when editing), compute its budget
-  via `tripFullChecklistTotal()`, run it through `syncTripSavingsGoal()`, and save the
-  resulting `finalTrip` (now including `budget` and the possibly-new `savingsGoalId`)
-  alongside the synced goals array — both in one `saveModel(updated)` call.
-- `handleDeleteTrip()`: rewritten to look up the trip being deleted, and if it had a
-  `savingsGoalId`, filter that goal out of `model.savingsGoals` in the same update that
-  removes the trip — so deleting a trip never leaves an orphaned goal behind in Savings.
+**Process note on patch reliability (confirms last session's lesson):**
+- The person's pasted terminal output for this session showed visibly truncated/
+  garbled echo of both Python heredoc scripts (e.g. the second script's visible output
+  jumped straight from an early line to "EventsScreen.tsx patched successfully -- all 9
+  edits applied." with everything in between compressed/missing from the paste) — but
+  both scripts DID report their success message, meaning every `assert` passed and the
+  file was actually written in full. This matches the known Codespace-terminal-echo
+  quirk documented in the prior session's Code health notes: garbled on-screen echo
+  during/after a large heredoc paste does not mean the underlying file write failed.
+  `npx tsc --noEmit` returning clean output afterward is itself strong independent
+  confirmation the files ended up syntactically correct.
 
-**Verification on physical device, all confirmed working:**
-1. Added a trip with a checklist item (cost ₱15,000), toggled "Auto-saving to Savings
-   tab" on, saved — a new goal "Travel: {trip name}" appeared in the Savings tab with
-   target ₱15,000.
-2. Edited the trip's checklist (added/changed item costs), saved again — the goal's
-   target updated to match the new total.
-3. Toggled "Auto-saving to Savings tab" off, saved — the goal disappeared from Savings.
-4. Deleted a trip that still had an active linked goal — the goal was removed along
-   with the trip, no orphaned entry left behind.
-5. `npx tsc --noEmit` returned zero output (no type errors) immediately after the patch
-   applied, before any device testing.
-
-**Process note on patch-script reliability (useful for future sessions):**
-- A first attempt at this patch used one large Python script matching whole multi-line
-  text blocks verbatim, and failed twice with `AssertionError: ... not found`, even
-  though the target code looked visually identical when independently checked with
-  `sed`/`grep` — almost certainly due to invisible whitespace/line-wrapping differences
-  between the assumed text and the actual file content.
-- Because that patch script only calls `f.write()` at the very end, after every
-  `assert` has already passed, a failed assertion means the file was **never touched** —
-  confirmed by re-inspecting the file after the failure and finding it completely
-  unchanged. This is a safe failure mode, not a partial/corrupted edit, but it's worth
-  knowing that an `AssertionError` here means "nothing happened," not "something broke."
-- Fix: switched from whole-block string matching to a line-by-line approach — locating
-  individual anchor lines (via small `find_line`/`find_containing` helper functions) and
-  inserting/replacing only the specific line ranges needed around them. This applied
-  cleanly on the first retry. Recommended default going forward: prefer this line-by-
-  line anchor approach over large verbatim block matches for any future file patch,
-  given block-matching failed here for reasons that weren't obvious from visual
-  inspection alone.
+**Verification on physical device, all 6 steps confirmed working by the person:**
+1. Created a new event with a ₱5,000 budget, toggled "Auto-saving to Savings tab" on,
+   saved — a new goal "Event: {event name}" appeared in Savings with a ₱5,000 target.
+2. Edited the event's budget to ₱7,500, saved — the SAME goal updated its target to
+   ₱7,500 (not duplicated).
+3. Toggled tracking off, saved — the goal disappeared from Savings.
+4. Toggled tracking back on, saved — the goal reappeared.
+5. Deleted the event entirely — the linked goal was removed along with it, no orphan
+   left in Savings.
+6. `npx tsc --noEmit` returned zero output (no type errors) after both patch scripts
+   applied, before any device testing began.
 
 🧹 Code health
-- npx tsc --noEmit ran clean (0 errors) after this session's Travel savings-goal sync changes, and also after the prior session's Tax Summary changes.
-- Confirmed in an earlier session: a very large single cat > file << 'ENDOFFILE' paste can make the Codespace terminal's on-screen echo look garbled/truncated mid-paste — but the file actually written to disk was correct and complete both times this was checked. Lesson for future sessions: if a big paste looks broken on screen, don't assume the file is broken — verify with cat -n on the actual file before troubleshooting or recreating it. If a file genuinely does come out truncated, the fix is to split the same content into two or more smaller cat > ... << 'ENDOFFILE' blocks rather than one giant one.
-- This session added a second, related lesson specifically for *patch scripts* (not just file creation): prefer line-by-line anchor matching over whole-block verbatim matching, since the latter failed twice this session for reasons not visible via normal file inspection. See the dated session entry above for full detail.
-- Previous sessions' fixes (setNotificationHandler shouldShowBanner/shouldShowList properties, MainTabs.tsx id prop, LoansScreen.tsx/SavingsScreen.tsx progress-bar width typing) remain fixed — implied by this session's clean npx tsc --noEmit run, not individually re-diffed line by line.
+- npx tsc --noEmit ran clean (0 errors) after this session's Events savings-goal sync
+  changes, immediately following both patch scripts.
+- This session reconfirms (rather than newly discovers) the existing lesson that a
+  large heredoc paste's on-screen terminal echo can look garbled/truncated even when the
+  actual file write completes correctly and completely — see the dated session entry
+  above and the "Known issues" note below. No new code-health issues surfaced this
+  session.
+- Previous sessions' fixes (setNotificationHandler shouldShowBanner/shouldShowList
+  properties, MainTabs.tsx id prop, LoansScreen.tsx/SavingsScreen.tsx progress-bar width
+  typing, the line-by-line anchor patch technique used for both Travel and now Events)
+  remain fixed — implied by this session's clean npx tsc --noEmit run, not individually
+  re-diffed line by line.
 
 ⚠️ Known issues / gotchas (non-code)
 - Expo tunnel (`--tunnel`) occasionally fails with `CommandError: TypeError: Cannot read properties of undefined (reading 'body')`, pointing at ngrok. Not a bug in the app. Fix order: (1) `npm install --save-dev @expo/ngrok@latest` then retry `npx expo start --tunnel`; (2) `npx expo start --tunnel --clear`; (3) check terminal text for an ngrok signup-link prompt.
 - Expo Go on Android cannot run any expo-notifications functionality (local or remote/push) as of Expo SDK 53+ — confirmed via direct testing. Affects on-device testing of all Checkpoint 11.2 work until Phase 13 (real installed build). iPhone via Expo Go may still work (untried) since the restriction is Android-specific.
 - npx tsc (and likely other npx-invoked project tools) must be run from inside mobile-app/, not the repo root, or npx will try to fetch an unrelated package also called "tsc" from the internet.
 - PROGRESS.md can drift from what's actually in the code — confirmed multiple times across sessions now. When a file's actual contents look more complete (or less complete) than this log describes, don't assume the log is "close enough" — verify directly via terminal output before updating status.
-- Large heredoc pastes (cat > file << 'ENDOFFILE' with a lot of content) can render garbled in the Codespace terminal's own echo, even when the underlying file write succeeds correctly. Always verify with cat -n against the actual file rather than trusting what scrolled by on screen — see Code health above.
-- Multi-line Python patch scripts that match whole text blocks verbatim can fail with AssertionError even when the target code is visually identical on inspection, due to invisible whitespace/formatting differences. Prefer line-by-line anchor matching instead — see Code health above and the dated session entry for the specific technique used.
+- Large heredoc pastes (cat > file << 'ENDOFFILE' with a lot of content, or a multi-line python3 - << 'PYEOF' script) can render garbled/truncated in the Codespace terminal's own on-screen echo, even when the underlying file write succeeds correctly and completely. This has now been observed across two consecutive sessions (Travel's session and this one). Always trust the script's own printed success message plus a clean npx tsc --noEmit run over what scrolled by on screen — verify with cat -n against the actual file directly if there's ever real doubt.
+- Multi-line Python patch scripts that match whole text blocks verbatim can fail with AssertionError even when the target code is visually identical on inspection, due to invisible whitespace/formatting differences. Prefer line-by-line anchor matching instead — this technique was used successfully for both Travel (prior session) and Events (this session).
 
 📌 Decisions made
 (All decisions from prior sessions still stand — repeating only what's new/relevant below; see repo history for the full original list if ever needed.)
-- Travel savings-goal budget semantics (this session): The synced goal's target is the trip's *full* checklist total (every item, checked or not) — kept deliberately separate from the "committed so far" total (checked items only) already used for the modal's own progress banner. These are two different numbers serving two different purposes and should not be merged into one.
-- Reference pattern for future goal-sync work (this session): The pattern built for Travel (trackInSavings + savingsGoalId fields on the parent record; sync computed and applied on every save; linked goal removed on toggle-off or on deleting the parent record) is now the reference implementation to copy when Events gets the same treatment. Events' types.ts entry already has a comment flagging this, but as of this session EventsScreen.tsx has zero implementation of it (confirmed via grep — no trackInSavings, savingsGoalId, or goal-sync logic present at all).
-- Patch-script technique (this session): For future multi-line edits to existing files, prefer line-by-line anchor matching (locate specific anchor lines, then insert/replace narrow ranges around them) over large verbatim block replacement, based on this session's two failed whole-block attempts before switching approaches.
+- Events savings-goal sync follows Travel's pattern exactly (this session): trackInSavings + savingsGoalId fields on the parent record; sync computed and applied on every save; linked goal removed on toggle-off or on deleting the parent record. The only structural difference is that Events uses its flat budget field directly as the sync target, since Events has no checklist to sum (unlike Travel's tripFullChecklistTotal()). This pattern is now implemented identically in both TravelScreen.tsx and EventsScreen.tsx and should be treated as the standard reference if any other screen ever needs the same kind of "auto-track a budget as a savings goal" behavior.
+- Scope stays deliberately narrow (this session, reconfirmed from the original plan): Events' sync, like Travel's, only manages the savings goal target — it does not convert a completed event into an actual logged expense/transaction. That remains an explicitly separate, not-yet-built feature.
+- Terminal-echo trust discipline (this session, reconfirming prior session's lesson): garbled/truncated on-screen echo during a large heredoc or Python patch script paste is not, by itself, evidence of a problem. The script's own printed success message (which only prints after every assert has passed) plus a clean npx tsc --noEmit run are the real signals to trust.
 - Tax Summary scope decision (earlier session): Built with loan-late-fees-only for "interest & fees," clearly labeled in-app as a limitation, rather than waiting on a data-model change. This matches the project's general pattern of shipping a clearly-labeled partial feature over blocking on a larger prerequisite.
 - Payment Methods report deferred (earlier session): The person chose to explicitly defer this rather than do the minimum data-model change to unblock it now. Next time this is picked up, it should be scoped as its own checkpoint (data model field + real Cash/Debit/Credit picker UI on payment-logging screens + manual transaction form), not just "one more report file."
-- Paste-safety discipline (earlier session): For any future large file creation via cat > ... << 'ENDOFFILE', if the terminal echo looks garbled or cut off during/after the paste, do NOT assume the file is broken — always verify with cat -n first. If a file genuinely is incomplete, split the content into two+ smaller heredoc blocks instead of one large one.
 - Checkpoint tracking discipline (reconfirmed): Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version.
-- File-creation discipline (reconfirmed): Files are created via cat > filename << 'ENDOFFILE'. Existence is checked first before creating. Editing existing files uses targeted sed for small changes, or a python3 - << 'ENDOFFILE' exact-match script for multi-line/whitespace-sensitive edits — this session confirmed the line-by-line variant of that approach is more reliable than whole-block matching.
-- New-screen/new-logic wiring discipline (reconfirmed): A new feature isn't "done" until it's fully wired into its real data flow AND confirmed visible/working on a real device — all of this was completed this session for Travel's savings-goal sync, matching how Tax Summary was closed out in the prior session.
+- File-creation discipline (reconfirmed): Files are created via cat > filename << 'ENDOFFILE'. Existence is checked first before creating. Editing existing files uses targeted sed for small changes, or a python3 - << 'ENDOFFILE' exact-match script for multi-line/whitespace-sensitive edits, using line-by-line anchor matching rather than whole-block matching.
+- New-screen/new-logic wiring discipline (reconfirmed): A new feature isn't "done" until it's fully wired into its real data flow AND confirmed visible/working on a real device — all of this was completed this session for Events' savings-goal sync, matching how Travel and Tax Summary were both closed out in prior sessions.
 
 ▶️ Next step
 
-Checkpoint 10.2 (Reports) remains done except for Payment Methods, which is intentionally deferred and rescoped (see above) rather than being "the next report to build." Recommended order for next session — ask the person which to tackle first:
+Phase 8 is now genuinely fully complete (Events' savings-goal sync closes the last gap). Recommended order for next session — ask the person which to tackle first:
 
-1. Events' own savings-goal auto-sync is now the clearest small next item: Travel's implementation (this session) is the reference pattern to copy — tripFullChecklistTotal/syncTripSavingsGoal naming and logic should translate directly to an Events equivalent, adjusted for however Events' own checklist/budget fields are shaped (needs its own grep/inspection pass first, same as this session did for Travel, since Events' checklist fields haven't been confirmed yet). Other still-flagged small follow-ups: EF/FI calculators still don't auto-pull figures from Bills/Income; Events have no per-event checklist yet either (separate from the goal-sync question); Custom recurrence math isn't implemented in recurrence.ts yet (Bills/Debts/Loans data model supports it, but due-date calculation doesn't).
-2. Phase 9 — Shared Expenses / Household Linking (M3, M11) — still the biggest remaining phase, flagged as the hardest technical part of the whole project, and still deferred pending revisiting the Phase 0.1 sync decision.
-3. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's/Cash-Flow Forecast's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
-4. Rest of Phase 11 (Settings): 11.1 (Categories, Payees, Rules) and 11.3 (Security & Household & Data) haven't been started yet.
-5. Payment Methods report — as its own checkpoint, starting with the data-model decision (add paymentMethod to BillCycle/Debt cycles/LoanPayment/ManualTransaction) and a real picker UI, THEN the report itself.
+1. Phase 9 — Shared Expenses / Household Linking (M3, M11) — the biggest remaining phase, flagged as the hardest technical part of the whole project, and still deferred pending revisiting the Phase 0.1 sync decision.
+2. Rest of Phase 11 (Settings): 11.1 (Categories, Payees, Rules) and 11.3 (Security & Household & Data) haven't been started yet.
+3. Payment Methods report — as its own checkpoint, starting with the data-model decision (add paymentMethod to BillCycle/Debt cycles/LoanPayment/ManualTransaction) and a real picker UI, THEN the report itself.
+4. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's/Cash-Flow Forecast's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
+5. Smaller loose ends still flagged from earlier sessions: EF/FI calculators still don't auto-pull figures from Bills/Income; Custom recurrence math isn't implemented in recurrence.ts yet (Bills/Debts/Loans data model supports it, but due-date calculation doesn't); neither Travel nor Events converts a completed item into an actual logged expense/transaction yet (both currently only sync a savings goal target).
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -193,7 +175,7 @@ Files in the repo so far
 - README.md
 - PROGRESS.md (this file)
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types (no paymentMethod or feesPortion fields yet — see Phase 10.2 notes above)
+  - mobile-app/src/types.ts — data model types. UPDATED this session: EventItem now has trackInSavings?/savingsGoalId? fields, matching TravelTrip. Still no paymentMethod or feesPortion fields anywhere — see Phase 10.2 notes above.
   - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math not yet implemented)
   - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
   - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
@@ -225,8 +207,8 @@ Files in the repo so far
   - mobile-app/src/screens/IncomeScreen.tsx
   - mobile-app/src/screens/SavingsScreen.tsx
   - mobile-app/src/screens/GroceriesScreen.tsx
-  - mobile-app/src/screens/TravelScreen.tsx — UPDATED this session: real savings-goal auto-sync (tripFullChecklistTotal, syncTripSavingsGoal), replacing the local-state-only toggle from an earlier session. See dated session entry above.
-  - mobile-app/src/screens/EventsScreen.tsx — confirmed this session to have NO trackInSavings/savingsGoalId/goal-sync logic yet; flagged as the next candidate to copy Travel's pattern into.
+  - mobile-app/src/screens/TravelScreen.tsx — real savings-goal auto-sync (tripFullChecklistTotal, syncTripSavingsGoal), confirmed working on a real phone in an earlier session.
+  - mobile-app/src/screens/EventsScreen.tsx — UPDATED this session: real savings-goal auto-sync (syncEventSavingsGoal), mirroring TravelScreen.tsx's pattern, confirmed working on a real phone (all 6 verification steps passed). See dated session entry above.
   - mobile-app/src/screens/GoalsScreen.tsx
   - mobile-app/src/screens/PlanningScreen.tsx
   - mobile-app/src/screens/DashboardScreen.tsx
