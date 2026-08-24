@@ -15,7 +15,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { TravelTrip, TravelChecklistItem, HouseholdModel } from '../types';
+import type { TravelTrip, TravelChecklistItem, HouseholdModel, SavingsGoal } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -25,6 +25,57 @@ function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
     .filter((i) => i.checked)
     .reduce((sum, i) => sum + (typeof i.cost === 'number' ? i.cost : 0), 0);
+}
+
+// Budget is auto-derived from the FULL checklist (every item, checked or not) — matches
+// the original web app's syncTravelSavingsGoal(), which budgets for everything planned,
+// not just what's already been paid for. Distinct from tripChecklistTotal() above, which
+// only sums checked items for the "committed so far" banner in the modal.
+function tripFullChecklistTotal(trip: TravelTrip): number {
+  return (trip.checklist ?? []).reduce(
+    (sum, i) => sum + (typeof i.cost === 'number' ? i.cost : 0),
+    0
+  );
+}
+// Mirrors the web app's syncTravelSavingsGoal(): while trackInSavings is on and the trip
+// has a positive budget, keeps a SavingsGoal named "Travel: {name}" in sync with that
+// budget as its target (creating it on first use, updating name/target on every save).
+// Turning the toggle off, or the budget dropping to 0, removes the linked goal instead.
+function syncTripSavingsGoal(
+  trip: TravelTrip,
+  budget: number,
+  allGoals: SavingsGoal[]
+): { goals: SavingsGoal[]; savingsGoalId: string | undefined } {
+  const shouldTrack = !!trip.trackInSavings && budget > 0;
+  if (!shouldTrack) {
+    if (trip.savingsGoalId) {
+      return {
+        goals: allGoals.filter((g) => g.id !== trip.savingsGoalId),
+        savingsGoalId: undefined,
+      };
+    }
+    return { goals: allGoals, savingsGoalId: undefined };
+  }
+  const goalName = 'Travel: ' + trip.name;
+  const existing = trip.savingsGoalId
+    ? allGoals.find((g) => g.id === trip.savingsGoalId)
+    : undefined;
+  if (existing) {
+    const goals = allGoals.map((g) =>
+      g.id === existing.id ? { ...g, name: goalName, targetAmount: budget } : g
+    );
+    return { goals, savingsGoalId: existing.id };
+  }
+  const newGoal: SavingsGoal = {
+    id: makeId('goal'),
+    name: goalName,
+    targetAmount: budget,
+    targetDate: trip.startDate || '',
+    contributions: [],
+    currentAmount: 0,
+    createdAt: Date.now(),
+  };
+  return { goals: [...allGoals, newGoal], savingsGoalId: newGoal.id };
 }
 
 function tripDateRangeLabel(trip: TravelTrip): string {
@@ -71,6 +122,7 @@ export default function TravelScreen() {
     setStartDateInput('');
     setEndDateInput('');
     setChecklist([]);
+    setTrackInSavings(false);
     setItemTitleInput('');
     setItemCostInput('');
     setErrorMsg('');
@@ -83,6 +135,7 @@ export default function TravelScreen() {
     setStartDateInput(trip.startDate);
     setEndDateInput(trip.endDate);
     setChecklist(trip.checklist ?? []);
+    setTrackInSavings(trip.trackInSavings ?? false);
     setItemTitleInput('');
     setItemCostInput('');
     setErrorMsg('');
@@ -149,35 +202,41 @@ export default function TravelScreen() {
     }
 
     const currentList = model.travel ?? [];
-    let updatedList: TravelTrip[];
-    if (editingId) {
-      updatedList = currentList.map((t) =>
-        t.id === editingId
-          ? { ...t, name: trimmedName, startDate: startDateInput.trim(), endDate: endDateInput.trim(), checklist }
-          : t
-      );
-    } else {
-      const newTrip: TravelTrip = {
-        id: makeId('trip'),
-        name: trimmedName,
-        startDate: startDateInput.trim(),
-        endDate: endDateInput.trim(),
-        checklist,
-        createdAt: Date.now(),
-      };
-      updatedList = [...currentList, newTrip];
-    }
-
-    const updated: HouseholdModel = { ...model, travel: updatedList };
+    const priorTrip = editingId ? currentList.find((t) => t.id === editingId) : undefined;
+    const draftTrip: TravelTrip = {
+      id: editingId ?? makeId('trip'),
+      name: trimmedName,
+      startDate: startDateInput.trim(),
+      endDate: endDateInput.trim(),
+      checklist,
+      trackInSavings,
+      savingsGoalId: priorTrip?.savingsGoalId,
+      createdAt: priorTrip?.createdAt ?? Date.now(),
+    };
+    const budget = tripFullChecklistTotal(draftTrip);
+    const { goals: syncedGoals, savingsGoalId } = syncTripSavingsGoal(
+      draftTrip,
+      budget,
+      model.savingsGoals ?? []
+    );
+    const finalTrip: TravelTrip = { ...draftTrip, budget, savingsGoalId };
+    const updatedList: TravelTrip[] = editingId
+      ? currentList.map((t) => (t.id === editingId ? finalTrip : t))
+      : [...currentList, finalTrip];
+    const updated: HouseholdModel = { ...model, travel: updatedList, savingsGoals: syncedGoals };
     await saveModel(updated);
     closeModal();
   }
 
   async function handleDeleteTrip() {
     if (!editingId || !model) return;
+    const tripBeingDeleted = (model.travel ?? []).find((t) => t.id === editingId);
     const updated: HouseholdModel = {
       ...model,
       travel: (model.travel ?? []).filter((t) => t.id !== editingId),
+      savingsGoals: tripBeingDeleted?.savingsGoalId
+        ? (model.savingsGoals ?? []).filter((g) => g.id !== tripBeingDeleted.savingsGoalId)
+        : model.savingsGoals,
     };
     await saveModel(updated);
     closeModal();
