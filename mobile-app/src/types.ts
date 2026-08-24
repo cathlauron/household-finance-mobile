@@ -160,6 +160,16 @@ export type TravelTrip = {
   startDate: string;
   endDate: string;
   checklist: TravelChecklistItem[];
+  // ---- Flagged follow-up: Travel savings-goal auto-sync ----
+  // budget is auto-computed from the FULL checklist (every item, not just checked ones —
+  // see tripFullChecklistTotal() in TravelScreen.tsx, distinct from the "committed" total
+  // shown in the modal banner which only sums checked items). trackInSavings/savingsGoalId
+  // mirror the same pattern Events uses for its own goal-sync: turning the toggle on
+  // creates/updates a matching SavingsGoal named "Travel: {trip name}" with that budget as
+  // its target, turning it off (or the budget dropping to 0) removes the linked goal.
+  budget?: number | '';
+  trackInSavings?: boolean;
+  savingsGoalId?: string;
   createdAt?: number;
 };
 

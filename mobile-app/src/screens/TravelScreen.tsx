@@ -53,6 +53,7 @@ export default function TravelScreen() {
   const [itemTitleInput, setItemTitleInput] = useState('');
   const [itemCostInput, setItemCostInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [trackInSavings, setTrackInSavings] = useState(false);
 
   if (!model) {
     return (
@@ -268,6 +269,21 @@ export default function TravelScreen() {
                   </Text>
                 </View>
 
+                <TouchableOpacity
+                  style={[styles.trackToggle, trackInSavings && styles.trackToggleActive]}
+                  onPress={() => setTrackInSavings((prev) => !prev)}
+                >
+                  <View style={[styles.trackToggleDot, trackInSavings && styles.trackToggleDotActive]} />
+                  <Text style={[styles.trackToggleText, trackInSavings && styles.trackToggleTextActive]}>
+                    {trackInSavings ? 'Auto-saving to Savings tab' : 'Not tracked in Savings tab'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.trackHint}>
+                  {trackInSavings
+                    ? "Budget is the sum of every checklist item, and stays synced to a matching savings goal."
+                    : "Turn this on to automatically create and keep a savings goal in sync with this trip's full checklist total."}
+                </Text>
+
                 <Text style={styles.checklistHeading}>Checklist</Text>
                 {checklist.length === 0 && (
                   <Text style={styles.emptyText}>No checklist items yet.</Text>
@@ -466,5 +482,43 @@ function makeStyles(colors: any) {
       padding: 20,
     },
     modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
+    trackToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.navy3,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginTop: 12,
+      alignSelf: 'flex-start',
+    },
+    trackToggleActive: {
+      backgroundColor: colors.accent ? colors.accent + '22' : colors.navy3,
+    },
+    trackToggleDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.inkFaint,
+      marginRight: 8,
+    },
+    trackToggleDotActive: {
+      backgroundColor: colors.accent || '#3ecf8e',
+    },
+    trackToggleText: {
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: colors.inkDim,
+    },
+    trackToggleTextActive: {
+      color: colors.accent || '#3ecf8e',
+    },
+    trackHint: {
+      fontSize: 11.5,
+      color: colors.inkFaint,
+      marginTop: 6,
+      marginBottom: 4,
+      lineHeight: 16,
+    },
   });
 }
