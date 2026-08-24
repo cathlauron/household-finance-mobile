@@ -56,7 +56,7 @@ Phase 9 — Shared Expenses / Household Linking (M3, M11) — 🔧 IN PROGRESS
   - `mobile-app/src/firebase.ts` initializes the Firebase app and exports `db` (a Firestore instance).
   - Verified end-to-end with a temporary test button (added and then fully removed from SettingsScreen.tsx same session — confirmed via grep returning zero results).
 
-- 9.2a — Household key encryption + linking plumbing. ✅ COMPLETE THIS SESSION. `npx tsc --noEmit` passed clean (no output).
+- 9.2a — Household key encryption + linking plumbing. ✅ COMPLETE. `npx tsc --noEmit` passed clean (no output).
   - **New file `src/household.ts`** — the core "how linking works" logic, no UI yet:
     - `generateHouseholdId()` — a random, non-secret ID identifying one shared household document in Firestore (like a folder name).
     - `generateHouseholdKey()` — the actual shared secret (32 random bytes) used to encrypt/decrypt the household's shared data. Generated once, when a household is first created.
@@ -64,10 +64,10 @@ Phase 9 — Shared Expenses / Household Linking (M3, M11) — 🔧 IN PROGRESS
     - `saveHouseholdData(householdId, encryptedPayload)` / `loadHouseholdData(householdId)` — Firestore read/write for the actual encrypted household data itself, stored at `households/{householdId}`.
     - `saveWrappedHouseholdKey(username, householdId, wrappedKey)` / `loadWrappedHouseholdKey(username)` / `deleteWrappedHouseholdKey(username)` — Firestore read/write for each linked person's own wrapped copy of the household key, stored at `householdKeys/{username}`, keyed by username so any device can look up "what household is this username linked to" using just username + passphrase (no separate device-pairing step).
   - **Updated `src/storage.ts`** — `ProfileIndexEntry` now has an optional `householdId` field (absent = not linked, same as every profile before this checkpoint). Added `updateProfileHouseholdId(username, householdId)` to set or clear it locally, mirroring the existing `updateProfileSalt()` pattern (does nothing if username not found, so it can't accidentally create a stray entry).
-  - **No screens changed this session.** No Firestore security rules changed yet — still in test mode. Nothing in the app actually calls any of these new functions yet; that's 9.2b.
   - No new npm packages needed — `doc`/`getDoc`/`setDoc`/`deleteDoc` from `firebase/firestore` were already available from the `firebase` package installed in 9.1.
 
-  - 9.2b (Firestore security rules + the real "Link with another profile" screen) and 9.2c (wiring DataContext to actually read/write shared data when linked) are NOT started yet — those are the next steps.
+- 9.2b — Firestore security rules + the real "Link with another profile" screen. 🔧 IN PROGRESS, PAUSED ON A DESIGN DECISION — see this session's entry below. No code written yet this session.
+  - 9.2c (wiring DataContext to actually read/write shared data when linked) is NOT started yet.
   - 9.3 (shared expense ledger + settle-up) depends on 9.2 being fully done first.
 
 Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
@@ -91,85 +91,73 @@ Phase 11 — Settings (M14) — ✅ FULLY COMPLETE
 
 ---
 
-## 📅 Session entry — Checkpoint 9.2a: Household key encryption + linking plumbing
+## 📅 Session entry — Checkpoint 9.2b: paused on a real design question (no code written yet)
 
-This session began the actual linking mechanism for Phase 9, broken into three
-smaller pieces:
-- **9.2a (this session):** the household-key data model and core
-  encryption/Firestore helper functions — no UI, no screens changed.
-- **9.2b (next session):** real Firestore security rules (replacing test
-  mode) + the actual "Link with another profile" screen in Settings.
-- **9.2c (after that):** wiring DataContext to read/write from the shared
-  household document when linked, instead of local storage only.
-
-**Design approach:** matches how the original reference web app
-(household-finance-app.html) does household linking — a random household key
-is generated once, then "wrapped" (encrypted) separately for each linked
-person using their own passphrase-derived key. That lets two people keep two
-completely different passphrases while both unlocking the exact same shared
-household key, which is what actually encrypts the shared data. This wasn't
-invented fresh for mobile — the web app's own approach was matched
-intentionally, since it's the same underlying security requirement.
+This session set out to build Checkpoint 9.2b (Firestore security rules +
+the real "Link with another profile" screen), but stopped short of writing
+any code once a genuine design problem surfaced — one worth confirming with
+the person before proceeding, per this project's own "confirm before
+anything that could lose data" rule.
 
 **What was done:**
-- Retrieved the current, exact contents of `types.ts`, `encryption.ts`,
-  `storage.ts`, and `firebase.ts` directly from the Codespace via `cat`,
-  before writing any code — so nothing was guessed at.
-- Created **`src/household.ts`** — see the detailed function-by-function
-  breakdown under Phase 9 / 9.2a above. In short: generate a household ID +
-  household key, wrap/unwrap that key per-person using their existing
-  passphrase-derived key, and read/write both the shared encrypted household
-  data and each person's wrapped key to Firestore (`households/{householdId}`
-  and `householdKeys/{username}` respectively).
-- Updated **`src/storage.ts`** — added an optional `householdId` field to
-  `ProfileIndexEntry`, plus `updateProfileHouseholdId()` to set/clear it,
-  mirroring the existing `updateProfileSalt()` function's shape and safety
-  behavior (no-op if username isn't found).
-- Confirmed `npx tsc --noEmit` produces no output (clean compile) after both
-  changes.
+- Retrieved the exact current contents of `household.ts`, `storage.ts`,
+  `encryption.ts`, `auth.ts`, `DataContext.tsx`, and `SettingsScreen.tsx`
+  directly from the Codespace via `cat` (split into smaller pastes/`head`
+  after a couple of pastes got silently truncated mid-file — see Known
+  issues below). All six files confirmed retrieved in full.
+- While planning the actual linking screen, identified a real gap: **each
+  profile's data currently lives ONLY on that person's own phone**, encrypted
+  in local AsyncStorage — nothing about an unlinked profile exists in
+  Firestore yet. This is different from the reference web app, where all
+  data (linked or not) already lived in one shared storage layer from the
+  start, so linking there just changes which key encrypts already-centralized
+  data. On mobile, two phones about to link have no shared place to look at
+  each other's existing data from, so a true three-way "keep mine / keep
+  theirs / merge" choice (like the web app offers) isn't achievable in one
+  simple step the way it is on web.
+- Proposed a simpler, honest first version instead: linking makes the
+  person's OWN current data become the shared household's starting content;
+  the other (invited) person's own existing local entries are left
+  untouched on their phone but are not pulled in or merged — they'd simply
+  stop showing once that profile switches over to shared data. The screen
+  itself would say this plainly before anyone links.
+- **Asked the person to confirm this approach (or ask for the fuller
+  merge-capable version to be scoped instead) before writing any code.**
+  Awaiting their answer — this is the actual blocker, not a technical one.
 
-**Nothing in the running app actually calls any of this new code yet** —
-9.2a was purely building the underlying "plumbing" correctly and confirming
-it type-checks, before wiring it into any real screen or user-facing flow in
-9.2b. No Firestore security rules were touched this session either — still
-running in the test-mode rules set up in 9.1.
+**Nothing was written to any file this session.** No Firestore rules
+changed. No SettingsScreen.tsx changes. `household.ts`/`storage.ts` are
+exactly as they were at the end of 9.2a.
 
 🧹 Code health
-- New file: `src/household.ts`.
-- Changed file: `src/storage.ts` (added `householdId` to `ProfileIndexEntry`,
-  added `updateProfileHouseholdId()`).
-- No new npm packages — `firebase/firestore`'s `doc`/`getDoc`/`setDoc`/
-  `deleteDoc` were already available from the `firebase` package (installed
-  in Checkpoint 9.1).
-- `npx tsc --noEmit` confirmed clean (no output) after this session's changes.
-- No screens or navigation touched this session.
+- No files changed this session (design discussion + file retrieval only).
+- No new npm packages.
+- Nothing to type-check — no code was written.
 
 ⚠️ Known issues / gotchas (non-code)
 (All previously logged items still stand except where noted.)
 - Firestore is **still running in test mode** (wide-open rules, from
-  Checkpoint 9.1) — real security rules restricting who can read/write which
-  household/key documents have NOT been written yet. This becomes more
-  important now that `household.ts` actually defines real document paths
-  (`households/{householdId}`, `householdKeys/{username}`) that a future
-  screen will start writing real (though still encrypted) data to. Security
-  rules must be written as part of, or immediately before, Checkpoint 9.2b —
-  before any real household linking actually happens through the UI.
+  Checkpoint 9.1) — unchanged this session.
 - Loans with "Custom" recurrence are still excluded from the projection/
-  Dashboard — unchanged this session, still a real data-model gap (Loan type
-  has no custom-recurrence fields).
+  Dashboard — unchanged, still a real data-model gap.
 - Debt-side "feesPortion" still doesn't exist in the data model — Tax
   Summary's Interest & Fees figure still only covers loan late fees.
-- Pasted terminal output can silently drop lines/commands from view, and long
-  multi-line pastes can occasionally get garbled in the Codespaces terminal —
-  always spot-check with a direct cat/grep after any nontrivial paste. (No
-  issues of this kind occurred this session — noted for continued awareness.)
+- **Confirmed again this session:** pasting an entire file's contents in
+  one `cat` command can silently truncate mid-file in this terminal —
+  happened twice with `SettingsScreen.tsx` specifically (cut off at the same
+  point both times: right before the imports/component start). Splitting
+  into multiple smaller `cat` commands, or using `head -n <N>` for just the
+  top portion of a long file, reliably worked around it both times. Worth
+  defaulting to smaller/split pastes for any file that seems to be cutting
+  off, rather than repeating the same full-file `cat`.
 
 📌 Decisions made
+- (All decisions from prior sessions still stand — see below.)
 - **Household linking design**: one shared random "household key" per
   household, wrapped separately per-person with each person's own
   passphrase-derived key — matching the original web app's own approach
   exactly, rather than inventing a different scheme for mobile.
-- **Firestore document layout** for household linking, decided this session:
+- **Firestore document layout** for household linking:
   - `households/{householdId}` → `{ data: <encrypted household data>, updatedAt }`
   - `householdKeys/{username}` → `{ householdId, wrappedKey, updatedAt }`
   Keyed by username (not by device) so linking/unlinking works from any
@@ -178,27 +166,31 @@ running in the test-mode rules set up in 9.1.
 - Checkpoint 9.2 was deliberately split into three sub-steps (9.2a/9.2b/9.2c)
   rather than attempted in one session, given how much is riding on getting
   the encryption/linking logic correct.
-- (All decisions from prior sessions still stand.)
+- **NOT YET DECIDED, awaiting the person's answer:** whether Checkpoint 9.2b
+  should ship with the simpler "your data becomes the shared starting point,
+  other person's existing local data is left behind" linking behavior, or
+  whether to first scope a fuller "keep mine / keep theirs / merge" flow
+  (which would need each phone's data reachable in the cloud independently
+  before a merge is even possible — a bigger feature, likely its own
+  checkpoint).
 
 ▶️ Next step
 
-**Checkpoint 9.2a (household key encryption + linking plumbing) is complete
-and confirmed compiling clean.**
+**Checkpoint 9.2b cannot proceed with code until the person answers the
+open design question above** (simple "my data becomes the shared start"
+approach vs. scoping the fuller merge-capable version first). Once answered:
 
-The next-biggest items, in order:
 1. **Checkpoint 9.2b — Firestore security rules + the real "Link with
-   another profile" screen.** Two parts, likely tackled together since the
-   rules need to match what the new screen actually does:
+   another profile" screen.**
    - Write real Firestore security rules replacing test mode, restricting
      `households/{householdId}` and `householdKeys/{username}` access
-     appropriately (exact rule design TBD next session, but at minimum test
-     mode should not still be active once real linking is possible through
-     the UI).
+     appropriately.
    - Build the actual "Link with another profile" UI in Settings (replacing
      today's one-line placeholder text), using the `household.ts` functions
-     built this session: enter the other person's username, generate/wrap/
-     store the household key for both people, and update each person's local
-     `ProfileIndexEntry.householdId` via `updateProfileHouseholdId()`.
+     built in 9.2a: enter the other person's username + passphrase, generate/
+     wrap/store the household key for both people, and update each person's
+     local `ProfileIndexEntry.householdId` via `updateProfileHouseholdId()`.
+     Exact data-handling behavior depends on the pending decision above.
 2. **Checkpoint 9.2c — Wire DataContext to read/write shared data when
    linked.** Once a profile has a `householdId` set, DataContext's
    load/save logic needs to use `loadHouseholdData()`/`saveHouseholdData()`
@@ -238,21 +230,21 @@ Files in the repo so far
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
   - mobile-app/src/types.ts — data model types, including full Category/Payee/CategorizationRule types. Still no paymentMethod or feesPortion fields anywhere — see Phase 10.2 notes above.
   - mobile-app/src/firebase.ts — Initializes the Firebase app (project: household-finance-mobile) and exports `db`, a Firestore instance.
-  - mobile-app/src/household.ts — NEW THIS SESSION. Household-key generation, wrap/unwrap (per-person encryption of the shared key), and Firestore read/write for both the shared household data (`households/{householdId}`) and each person's wrapped key (`householdKeys/{username}`). Not yet called from any screen.
+  - mobile-app/src/household.ts — Household-key generation, wrap/unwrap (per-person encryption of the shared key), and Firestore read/write for both the shared household data (`households/{householdId}`) and each person's wrapped key (`householdKeys/{username}`). Not yet called from any screen. Confirmed re-verified byte-for-byte via `cat` this session — unchanged from 9.2a.
   - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math still Bills/Debts only — Loan type has no custom fields)
   - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
   - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
   - mobile-app/src/pushNotifications.ts — local bill-due notification scheduling, confirmed wired into DataContext.tsx's loadModel()/saveModel(), and confirmed firing real notifications on a physical device (multiple sessions).
   - mobile-app/src/defaultModel.ts — empty/default data factory function
-  - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
-  - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data. Reused by household.ts for wrapping/unwrapping the household key.
+  - mobile-app/src/auth.ts — username sanitizing / sign-in helpers. Confirmed re-verified via `cat` this session — unchanged.
+  - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data. Reused by household.ts for wrapping/unwrapping the household key. Confirmed re-verified via `cat` this session — unchanged.
   - mobile-app/src/pin.ts — PIN hashing, storage, and verification
   - mobile-app/src/autoLock.ts — auto-lock idle-minutes setting (default 5)
   - mobile-app/src/theme.ts — color palette (light/dark), ported from the web app's Classic theme
   - mobile-app/src/ThemeContext.tsx — React context + useTheme() hook
-  - mobile-app/src/storage.ts — reads/writes encrypted profile data and the profiles index, incl. updateProfileSalt(), saveEncryptedProfileData(), loadEncryptedProfileData(). UPDATED THIS SESSION: ProfileIndexEntry now has an optional householdId field, plus updateProfileHouseholdId() to set/clear it.
+  - mobile-app/src/storage.ts — reads/writes encrypted profile data and the profiles index, incl. updateProfileSalt(), saveEncryptedProfileData(), loadEncryptedProfileData(), and (since 9.2a) householdId on ProfileIndexEntry + updateProfileHouseholdId(). Confirmed re-verified via `cat` this session — unchanged from 9.2a.
   - mobile-app/src/balanceProjection.ts — running-balance math + formatPeso() currency formatting + outstandingBalance() + loanOutstandingBalance(). Includes Loans (Monthly/Annual/One-time) in computeMonthEvents()/computeRunningBalances(), excluding "lent" loans and Custom-recurrence loans.
-  - mobile-app/src/DataContext.tsx — shared in-memory data holder; wired to rescheduleBillNotifications(); includes changePassphrase(). Not yet updated to use household.ts (that's Checkpoint 9.2c).
+  - mobile-app/src/DataContext.tsx — shared in-memory data holder; wired to rescheduleBillNotifications(); includes changePassphrase(). Not yet updated to use household.ts (that's Checkpoint 9.2c). Confirmed re-verified via `cat` this session — unchanged.
   - mobile-app/src/screens/CreateProfileScreen.tsx
   - mobile-app/src/screens/SignInScreen.tsx
   - mobile-app/src/screens/HomeScreen.tsx
@@ -285,7 +277,7 @@ Files in the repo so far
   - mobile-app/src/screens/reports/MerchantSpendingReport.tsx
   - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx
   - mobile-app/src/screens/reports/TaxSummaryReport.tsx — Year-picker, total income/expenses/saved, interest & fees (loan late fees only, clearly labeled), full expense-by-category breakdown.
-  - mobile-app/src/screens/SettingsScreen.tsx — Contains ALL of Phase 11: Categories/Payees/Categorization Rules (11.1), Appearance mode picker + Notifications settings (11.2, fully clean), and Security (change passphrase) / Household (placeholder — still not updated for Phase 9, to be replaced in 9.2b) / Data (backup + clear all) sections (11.3). No leftover debug UI.
+  - mobile-app/src/screens/SettingsScreen.tsx — Contains ALL of Phase 11: Categories/Payees/Categorization Rules (11.1), Appearance mode picker + Notifications settings (11.2, fully clean), and Security (change passphrase) / Household (placeholder — still not updated for Phase 9, to be replaced in 9.2b) / Data (backup + clear all) sections (11.3). No leftover debug UI. Confirmed re-verified in full via `cat` this session (across two pastes + a `head` due to truncation — see Known issues) — unchanged from Phase 11.
   - mobile-app/src/navigation/MainTabs.tsx
   - mobile-app/App.tsx
   - mobile-app/package.json / package-lock.json — includes expo-sharing (~14.0.8) and firebase.
