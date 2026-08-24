@@ -15,7 +15,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { EventItem, HouseholdModel } from '../types';
+import type { EventItem, HouseholdModel, SavingsGoal } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -47,6 +47,50 @@ function typeLabel(t: EventItem['type']): string {
   return found ? found.label : 'Event';
 }
 
+// ---- Events savings-goal auto-sync (mirrors TravelScreen's syncTripSavingsGoal) ----
+// Unlike Travel, an Event has no checklist -- its budget field is used directly as the
+// savings goal target. If trackInSavings is off, or there's no budget, any existing
+// linked goal is removed. Otherwise the linked goal (matched by savingsGoalId) is
+// created or updated to match the event's current name/budget/date.
+function syncEventSavingsGoal(
+  ev: { name: string; savingsGoalId?: string; onetimeDate?: string },
+  trackInSavings: boolean,
+  budget: number | '',
+  allGoals: SavingsGoal[]
+): { goals: SavingsGoal[]; savingsGoalId: string | undefined } {
+  const numericBudget = typeof budget === 'number' ? budget : 0;
+  const existingIndex = ev.savingsGoalId
+    ? allGoals.findIndex((g) => g.id === ev.savingsGoalId)
+    : -1;
+
+  if (!trackInSavings || numericBudget <= 0) {
+    if (existingIndex === -1) {
+      return { goals: allGoals, savingsGoalId: ev.savingsGoalId };
+    }
+    const goals = allGoals.filter((g) => g.id !== ev.savingsGoalId);
+    return { goals, savingsGoalId: undefined };
+  }
+
+  const goalName = 'Event: ' + ev.name;
+  if (existingIndex === -1) {
+    const newGoal: SavingsGoal = {
+      id: makeId('savingsgoal'),
+      name: goalName,
+      targetAmount: numericBudget,
+      targetDate: ev.onetimeDate ?? '',
+      currentAmount: 0,
+      contributions: [],
+      createdAt: Date.now(),
+    };
+    return { goals: [...allGoals, newGoal], savingsGoalId: newGoal.id };
+  }
+
+  const goals = allGoals.map((g, i) =>
+    i === existingIndex ? { ...g, name: goalName, targetAmount: numericBudget } : g
+  );
+  return { goals, savingsGoalId: ev.savingsGoalId };
+}
+
 export default function EventsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -62,6 +106,7 @@ export default function EventsScreen() {
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [budgetInput, setBudgetInput] = useState('');
   const [completedInput, setCompletedInput] = useState(false);
+  const [trackInSavingsInput, setTrackInSavingsInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!model) {
@@ -84,6 +129,7 @@ export default function EventsScreen() {
     setOnetimeDateInput('');
     setBudgetInput('');
     setCompletedInput(false);
+    setTrackInSavingsInput(false);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -98,6 +144,7 @@ export default function EventsScreen() {
     setOnetimeDateInput(ev.onetimeDate ?? '');
     setBudgetInput(typeof ev.budget === 'number' ? String(ev.budget) : '');
     setCompletedInput(!!ev.completed);
+    setTrackInSavingsInput(!!ev.trackInSavings);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -156,6 +203,14 @@ export default function EventsScreen() {
     }
 
     const currentList = model.events ?? [];
+    const existingEvent = editingId ? currentList.find((ev) => ev.id === editingId) : undefined;
+    const sync = syncEventSavingsGoal(
+      { name: trimmedName, savingsGoalId: existingEvent?.savingsGoalId, onetimeDate },
+      trackInSavingsInput,
+      budget,
+      model.savingsGoals ?? []
+    );
+
     let updatedList: EventItem[];
     if (editingId) {
       updatedList = currentList.map((ev) =>
@@ -173,6 +228,8 @@ export default function EventsScreen() {
               completedDate: completedInput
                 ? ev.completedDate ?? new Date().toISOString().slice(0, 10)
                 : undefined,
+              trackInSavings: trackInSavingsInput,
+              savingsGoalId: sync.savingsGoalId,
             }
           : ev
       );
@@ -188,21 +245,27 @@ export default function EventsScreen() {
         budget,
         completed: completedInput,
         completedDate: completedInput ? new Date().toISOString().slice(0, 10) : undefined,
+        trackInSavings: trackInSavingsInput,
+        savingsGoalId: sync.savingsGoalId,
         createdAt: Date.now(),
       };
       updatedList = [...currentList, newEvent];
     }
 
-    const updated: HouseholdModel = { ...model, events: updatedList };
+    const updated: HouseholdModel = { ...model, events: updatedList, savingsGoals: sync.goals };
     await saveModel(updated);
     closeModal();
   }
 
   async function handleDeleteEvent() {
     if (!editingId || !model) return;
+    const deletedEvent = (model.events ?? []).find((ev) => ev.id === editingId);
     const updated: HouseholdModel = {
       ...model,
       events: (model.events ?? []).filter((ev) => ev.id !== editingId),
+      savingsGoals: deletedEvent?.savingsGoalId
+        ? (model.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
+        : model.savingsGoals ?? [],
     };
     await saveModel(updated);
     closeModal();
@@ -359,6 +422,25 @@ export default function EventsScreen() {
                 />
 
                 <TouchableOpacity
+                  style={[
+                    styles.trackSavingsToggle,
+                    trackInSavingsInput && styles.trackSavingsToggleActive,
+                  ]}
+                  onPress={() => setTrackInSavingsInput((v) => !v)}
+                >
+                  <Text
+                    style={[
+                      styles.trackSavingsToggleText,
+                      trackInSavingsInput && styles.trackSavingsToggleTextActive,
+                    ]}
+                  >
+                    {trackInSavingsInput
+                      ? '✓ Auto-saving to Savings tab'
+                      : 'Not tracked in Savings tab'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[styles.completedToggle, completedInput && styles.completedToggleActive]}
                   onPress={() => setCompletedInput((v) => !v)}
                 >
@@ -448,6 +530,16 @@ function makeStyles(colors: any) {
     smallPillActive: { backgroundColor: colors.gold },
     smallPillText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
     smallPillTextActive: { color: colors.navy2 },
+    trackSavingsToggle: {
+      backgroundColor: colors.navy2,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    trackSavingsToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
+    trackSavingsToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    trackSavingsToggleTextActive: { color: '#10b981' },
     completedToggle: {
       backgroundColor: colors.navy2,
       borderRadius: 999,

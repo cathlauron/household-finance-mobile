@@ -190,6 +190,8 @@ export type EventItem = {
   budget: number | '';
   completed: boolean;
   completedDate?: string;
+  trackInSavings?: boolean;
+  savingsGoalId?: string;
   createdAt?: number;
 };
 
