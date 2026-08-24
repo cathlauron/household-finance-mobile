@@ -48,7 +48,7 @@ Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone, including real savings-goal auto-sync (tripFullChecklistTotal/syncTripSavingsGoal), verified in an earlier session.
 - 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone, including Events' own savings-goal auto-sync (syncEventSavingsGoal), mirroring Travel's pattern, verified in an earlier session.
 
-Phase 9 — Shared Expenses / Household Linking (M3, M11) — 🔧 IN PROGRESS
+Phase 9 — Household Linking (M3) — ✅ COMPLETE. (M11, shared expense ledger, was explicitly SKIPPED by decision — see 9.3 below, not deferred.)
 - 9.1 — Set up the chosen sync/backend service. ✅ COMPLETE, CONFIRMED WORKING ON A REAL DEVICE.
   - Sync service chosen: **Firebase** (Firestore, in "test mode" — wide-open rules for now, to be locked down with real security rules before this handles any real household data).
   - A free Firebase project was created (household-finance-mobile), Firestore Database was enabled in test mode, and a Web app was registered inside that Firebase project to get connection keys (firebaseConfig — these are not secret; they only identify which project to connect to, not a password).
@@ -79,8 +79,10 @@ Phase 9 — Shared Expenses / Household Linking (M3, M11) — 🔧 IN PROGRESS
   - **Confirmed this session on two separate real phones:** Phone A tapped "Start linking," got a code. Phone B entered that code via "Join with a code," and the comparison screen correctly showed both phones' real data summaries side by side. Tapping each of the three choice buttons correctly showed the "Choice recorded" placeholder message. Nothing else changed on either phone, as expected/intended for this checkpoint.
   - `npx tsc --noEmit` passed clean (no output) before testing.
 
-- 9.2c (actually saving the chosen data as the permanent shared household, wiring DataContext to read/write it going forward) — NOT started yet. This is the next real piece of work in Phase 9.
-- 9.3 (shared expense ledger + settle-up) depends on 9.2c being done first.
+- 9.2c — Making "Keep mine / Keep theirs / Merge both" permanent, wiring DataContext to read/write shared household data going forward. ✅ COMPLETE, CONFIRMED WORKING END-TO-END ON TWO REAL PHONES THIS SESSION.
+  - Full linking flow tested: host generates code (9.2b-i) → joiner enters code, sees an accurate comparison screen, picks "Merge both" → joiner's data correctly shows both profiles' items → host taps "I've shared this code — finish linking" → host correctly detects the joiner already finished and completes linking → host's data also shows both profiles' items.
+  - Confirmed real two-way sync after linking: new items added on either linked profile appear on the other profile after switching.
+- **9.3 (shared expense ledger + settle-up) — SKIPPED BY DECISION, not deferred.** The person confirmed this doesn't reflect how they manage money as partners — they share expenses without tracking who owes whom, so this feature isn't wanted. A scoping discussion (data model, netting logic, settle-up flow) happened this session but no code was written. Do not resurface this as a pending checkpoint in future sessions.
 
 Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 - 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone. "Amount Owed" card includes a third Loans line (borrowed loans only — "lent" loans excluded since that's money owed to you, not an expense) alongside the existing Bills and Debts lines, and the "Due in the Next 14 Days" list includes upcoming loan payments too. Confirmed working on a real phone.
@@ -100,6 +102,41 @@ Phase 11 — Settings (M14) — ✅ FULLY COMPLETE (Household section within it 
   - npx tsc --noEmit passed clean with zero errors.
 
 ---
+## 📅 Session entry — Checkpoint 9.2c confirmed on two real phones; Checkpoint 9.3 scoped and then deliberately skipped
+
+**What was done:**
+- Ran the full linking flow test end-to-end on two real phones, following
+  the plan laid out at the end of the previous session:
+  - Phone (test1) started linking and got a code.
+  - Phone (test2) joined with the code, saw an accurate side-by-side data
+    comparison, and chose "Merge both" — confirmed both profiles' items
+    correctly appeared afterward.
+  - Phone (test1) tapped "I've shared this code — finish linking" and it
+    correctly detected test2 had already finished, completing the link and
+    pulling in the merged data.
+  - Confirmed real two-way sync afterward: new items added on either
+    linked profile showed up on the other after switching profiles.
+- No code changes were needed — this session was pure on-device
+  confirmation of code already written and marked code-complete last
+  session.
+- Discussed and scoped Checkpoint 9.3 (shared expense ledger + settle-up):
+  proposed a 9.3a/9.3b/9.3c breakdown mirroring how 9.2 was split.
+- **The person then decided not to build this feature at all** — as
+  partners, they share expenses without tracking who owes whom, so a
+  "who owes whom" ledger doesn't match how they manage money. This is
+  recorded as a deliberate decision (see 📌 Decisions above), not a
+  deferral — it should not be re-proposed in future sessions.
+
+🧹 Code health
+- No files changed this session.
+- No new npm packages.
+- No code was written or modified — this was a testing + scoping session.
+
+⚠️ Known issues / gotchas (non-code)
+- Firestore is still in test mode (wide-open rules) — now flagged as
+  higher priority than before, since real shared data is now flowing
+  through it via 9.2c (see Known issues above).
+- All previously logged known issues still stand unchanged.
 
 ## 📅 Session entry — Checkpoint 9.2b-ii: "Join with a code" built AND confirmed on two real phones
 
@@ -142,9 +179,10 @@ Phase 11 — Settings (M14) — ✅ FULLY COMPLETE (Household section within it 
 
 ⚠️ Known issues / gotchas (non-code)
 (All previously logged items still stand except where noted.)
-- Firestore is **still running in test mode** (wide-open rules) — still
-  unchanged, still needs real security rules before any real household
-  data should rely on this.
+- Firestore is **still running in test mode** (wide-open rules). This is
+  now a real priority rather than a someday item — as of this session,
+  actual shared household data (via Checkpoint 9.2c) is flowing through
+  it on real devices.
 - Loans with "Custom" recurrence are still excluded from the projection/
   Dashboard — unchanged, still a real data-model gap.
 - Debt-side "feesPortion" still doesn't exist in the data model — Tax
@@ -192,49 +230,35 @@ Phase 11 — Settings (M14) — ✅ FULLY COMPLETE (Household section within it 
   to pay off — 9.2b-ii was tested and confirmed working before any
   permanent/destructive logic was added on top of it.
 
+- **Checkpoint 9.3 (shared expense ledger + settle-up) will NOT be built.**
+  Decided this session: the person and their partner share expenses
+  without tracking who owes whom, so a "who owes whom" ledger doesn't
+  match how they actually manage money together. This is a deliberate
+  scope decision, not a technical blocker — don't re-propose this feature
+  in future sessions unless the person brings it up themselves.
+
 ▶️ Next step
 
-1. **Checkpoint 9.2c — Make the "Keep mine / Keep theirs / Merge both"
-   choice actually permanent.** This is the next real piece of work:
-   - Actually save the chosen data (host's, joiner's, or a merge of both)
-     as the real shared household content.
-   - Decide where the permanent shared household actually lives — likely
-     needs a proper `households/{householdId}`-style Firestore document
-     (similar to what `household.ts` from 9.2a already has helpers for)
-     rather than continuing to live under the short-lived `linkCodes/{code}`
-     document from 9.2b, which was only ever meant as a temporary
-     handshake, not permanent storage.
-   - Set `ProfileIndexEntry.householdId` locally on both phones via the
-     existing `updateProfileHouseholdId()` (from `storage.ts`, 9.2a) once
-     the choice is finalized.
-   - Wire `DataContext.tsx`'s load/save logic so that once a profile has a
-     `householdId` set, it reads/writes the shared household data instead
-     of (or in addition to) its own local profile data.
-   - Decide what "Merge both" actually means in terms of real logic (e.g.
-     combining bill/debt/loan/etc. lists, deduping people by name — similar
-     to how the original web app's own merge logic worked, per the spec
-     doc) — this is probably the most involved part of 9.2c.
-   - Write real Firestore security rules (still in test/wide-open mode)
-     before this goes further, since 9.2c is when real permanent shared
-     data starts actually being written and read this way.
-2. **Checkpoint 9.3 — Shared expense ledger + settle-up.** Depends on 9.2c
-   being fully done first.
-3. **Payment Methods report checkpoint** (deferred from Phase 10.2) — requires
+1. **Write real Firestore security rules.** Still in test/wide-open mode —
+   now a real priority, since Checkpoint 9.2c means actual shared
+   household data is flowing through it on real devices as of this
+   session.
+2. **Payment Methods report checkpoint** (deferred from Phase 10.2) — requires
    adding a paymentMethod field to the data model (BillCycle, Debt cycles,
    LoanPayment, ManualTransaction) AND a real Cash/Debit/Credit picker UI on
    the relevant payment-logging screens and the manual transaction form, not
    just a new report file.
-4. **Custom recurrence for Loans** — would need new fields on the Loan type
+3. **Custom recurrence for Loans** — would need new fields on the Loan type
    (customStartDate/customFreq/customOccurrenceCount) plus a "Custom" option
    added to the Loans screen's recurrence dropdown, before balanceProjection.ts
    could even use it.
-5. Smaller loose ends still flagged from earlier sessions: EF/FI calculators
+4. Smaller loose ends still flagged from earlier sessions: EF/FI calculators
    still don't auto-pull figures from Bills/Income; neither Travel nor Events
    converts a completed item into an actual logged expense/transaction yet
    (both currently only sync a savings goal target); debt-side "feesPortion"
    doesn't exist in the data model, so Tax Summary's Interest & Fees figure
    only covers loan late fees, not debt fees.
-6. **Optional/deferred from earlier:** Checkpoint 6.3, CSV import for
+5. **Optional/deferred from earlier:** Checkpoint 6.3, CSV import for
    Transactions — explicitly optional per the roadmap, still not built.
 
 Files in the repo so far
