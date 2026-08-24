@@ -27,8 +27,9 @@ import {
   TransactionEntry,
 } from '../transactions';
 import { computeAutoCategory } from '../categorization';
-import type { ManualTransaction, HouseholdModel, Person } from '../types';
+import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
+import PaymentMethodPicker from '../components/PaymentMethodPicker';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -94,6 +95,7 @@ export default function TransactionsScreen() {
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [personInput, setPersonInput] = useState('');
+  const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
 
@@ -120,6 +122,7 @@ export default function TransactionsScreen() {
     setDirectionInput('out');
     setReceiptPhoto(null);
     setPersonInput('');
+    setPaymentMethodInput(undefined);
     setErrorMsg('');
   }
 
@@ -141,6 +144,7 @@ export default function TransactionsScreen() {
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
     setReceiptPhoto(raw.receiptPhoto || null);
+    setPaymentMethodInput(raw.paymentMethod);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -241,6 +245,7 @@ export default function TransactionsScreen() {
           direction: directionInput,
           owner: personId || 'shared',
           category: categoryInput.trim(),
+          paymentMethod: paymentMethodInput,
         };
         if (receiptPhoto) {
           next.receiptPhoto = receiptPhoto;
@@ -258,6 +263,7 @@ export default function TransactionsScreen() {
         direction: directionInput,
         owner: personId || 'shared',
         category: categoryInput.trim(),
+        paymentMethod: paymentMethodInput,
         ...(receiptPhoto ? { receiptPhoto } : {}),
       };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
@@ -446,6 +452,13 @@ export default function TransactionsScreen() {
                   placeholderTextColor={colors.inkFaint}
                   value={categoryInput}
                   onChangeText={setCategoryInput}
+                />
+
+                <PaymentMethodPicker
+                  value={paymentMethodInput}
+                  onChange={setPaymentMethodInput}
+                  debitAccounts={model.balanceAccounts.debit}
+                  creditAccounts={model.balanceAccounts.credit}
                 />
 
                 <Text style={styles.inputLabel}>Receipt photo (optional)</Text>
