@@ -9,8 +9,9 @@ import WeeklyDigestReport from './reports/WeeklyDigestReport';
 import MerchantSpendingReport from './reports/MerchantSpendingReport';
 import SubscriptionAuditReport from './reports/SubscriptionAuditReport';
 import TaxSummaryReport from './reports/TaxSummaryReport';
+import PaymentMethodsReport from './reports/PaymentMethodsReport';
 
-type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person' | 'weekly' | 'merchant' | 'subscription' | 'tax';
+type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person' | 'weekly' | 'merchant' | 'subscription' | 'tax' | 'paymentMethod';
 
 const REPORT_TABS: { id: ReportTab; label: string }[] = [
   { id: 'monthly', label: 'Monthly Close-out' },
@@ -21,6 +22,7 @@ const REPORT_TABS: { id: ReportTab; label: string }[] = [
   { id: 'merchant', label: 'Merchant Spending' },
   { id: 'subscription', label: 'Subscription Audit' },
   { id: 'tax', label: 'Tax Summary' },
+  { id: 'paymentMethod', label: 'Payment Methods' },
 ];
 
 export default function ReportsScreen() {
@@ -54,6 +56,7 @@ export default function ReportsScreen() {
       {activeReport === 'merchant' && <MerchantSpendingReport />}
       {activeReport === 'subscription' && <SubscriptionAuditReport />}
         {activeReport === 'tax' && <TaxSummaryReport />}
+      {activeReport === 'paymentMethod' && <PaymentMethodsReport />}
     </View>
   );
 }
