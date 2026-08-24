@@ -52,6 +52,10 @@ Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 - 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone.
 - 10.2 — Reports pages. 🔧 IN PROGRESS — seven of the original nine report pages are done and confirmed working on a real phone (Monthly Close-out, Year in Review, Cash-Flow Forecast, Person Spending, Weekly Digest, Merchant Spending, Subscription Audit). Still to build: Tax Summary, Payment Methods.
 
+Phase 11 — Settings (M14) — 🔧 IN PROGRESS
+- 11.2 — Notifications (native push). 🔧 Code complete, on-device confirmation DEFERRED. src/pushNotifications.ts exists with a sendTestNotification() helper, and SettingsScreen.tsx has a temporary "Send a test notification in 10 seconds" button wired to it, confirmed present in the repo (grep-verified this session). This code has NOT been visually confirmed firing on a real device yet — attempting to test it surfaced a real Expo Go limitation, not a bug: as of SDK 53+, Expo Go on Android no longer supports any expo-notifications functionality (local or push), per Expo's own error message. This is a known platform limitation, not something in our code to fix. Confirming this feature actually fires on-device is deferred until Phase 13 (a real installed build, not Expo Go) — unless testing on an iPhone in Expo Go is tried in the meantime, which may still work since this Android restriction is Android-specific. The temporary test button should be removed from SettingsScreen.tsx once real confirmation happens in Phase 13, so it doesn't linger in the shipped app.
+- 11.1, 11.3 — Not yet started.
+
 🧹 Code health
 - This session fixed all 4 pre-existing `npx tsc --noEmit` type errors that had built up across earlier sessions without being caught:
   - MainTabs.tsx: React Navigation v7 requires an explicit `id` prop on `Tab.Navigator` (didn't exist as a requirement in v6). Fixed with `id={undefined}`, which is valid since this app only has one navigator.
@@ -64,7 +68,8 @@ Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
   1. `npm install --save-dev @expo/ngrok@latest` (from inside mobile-app/), then retry `npx expo start --tunnel`.
   2. If that doesn't work: `npx expo start --tunnel --clear`.
   3. If that still doesn't work: ngrok may be asking for a free account/token — read the exact terminal error text for a signup link and follow it.
-- PROGRESS.md can drift from what's actually in the code. Always verify claims in this file against the actual screen/router code when in doubt, not just against this log. (This session's own catch: 4 type errors had accumulated without being tracked here — now fixed and logged above.)
+- Expo Go on Android cannot run any expo-notifications functionality (local or remote/push) as of Expo SDK 53+ — confirmed via direct testing this session (see Phase 11.2 above). Expo's own guidance is to use a development/installed build instead of Expo Go for this feature. This affects on-device testing of Checkpoint 11.2 specifically, and will affect testing any future notification-related work too, until Phase 13 (real installed build) is reached. Testing on an iPhone via Expo Go may still work, since this restriction is Android-specific, but hasn't been tried yet.
+- PROGRESS.md can drift from what's actually in the code — confirmed twice now. Earlier this session, this file was checked against a fresh git status + GitHub fetch and found to be missing an entire completed checkpoint (11.2's code) because a prior session got cut off before it could update this log, even though the actual code had been correctly committed and pushed. Lesson: a clean git status only proves Codespace and GitHub agree with each other — it does NOT prove PROGRESS.md's contents are accurate. When something referenced in chat history (e.g. a previous session's work) doesn't appear in this file, grep/ls the actual repo directly to check before assuming the work is missing OR assuming the file is just stale — confirm which one it actually is first, the way this session did.
 
 📌 Decisions made
 - Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
@@ -99,22 +104,25 @@ Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
 - Savings goal amount design: A goal's currentAmount is always derived by summing its contributions list (not typed directly), matching the pattern already used for Loan payments.
 - Events design (Checkpoint 8.3): No per-event checklist and no auto-sync of an event's budget to a savings goal — both flagged follow-ups, not yet built, matching the same simplification already made for Travel.
 - Year-End Goals design (Checkpoint 8.3): Each goal has an explicit mode field ('progress' or 'checklist') rather than inferring the mode from whether a target amount is set — a deliberate, explicit choice from the start (unlike the original web app, which inferred it).
+- Notifications design (Checkpoint 11.2): sendTestNotification() in src/pushNotifications.ts is the single reusable function for firing a notification, reused by the temporary test button rather than the button implementing its own separate notification-firing logic — this is the pattern any future real due-date-triggered notification call should also reuse, rather than a third copy of similar code.
 - Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version. Claims in this file (e.g. "still to build") should be spot-checked against the actual router/screen code, not assumed correct from a prior session's notes.
 - File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE'` block — never by pasting code at a bare prompt.
 - Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
 - New-screen wiring discipline: When a new report/screen file is created, the session isn't done until it's actually imported and wired into its parent pill-switcher/router AND confirmed visible on a real device — creating the file alone is not sufficient, per an earlier session's catch.
 - Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there. For changes involving multi-line blocks where exact whitespace matters, a small inline Python script (via `python3 - << 'ENDOFFILE'`) that does an exact string match-and-replace is used instead — this session's person-picker patch and type-error fixes both used this method successfully across 4 files in one go.
 - End-of-session code health check: Run `npx tsc --noEmit` before wrapping up any session, even if the session's own change compiles clean — it can catch type errors left over from earlier sessions that were never verified. Established this session after finding 4 such pre-existing errors.
+- Cross-session verification discipline: When chat history references work (e.g. code from a previous, possibly cut-off session) that isn't reflected in PROGRESS.md, don't assume either "the file is just stale" or "the work was never saved" — grep/ls the actual repo directly first to determine which is true, then update PROGRESS.md to match reality. Established this session after PROGRESS.md was found missing a fully-committed checkpoint (11.2) due to a cut-off session.
 - Tab bar structure: Used @react-navigation/bottom-tabs directly. All 10 tabs shown flat in the bar (no "More" overflow menu yet).
 
 ▶️ Next step
 
-Checkpoint 10.2 is nearly done — 7 of 9 original report pages are built, wired in, and confirmed working on a real phone. Next up, in order of what's likely most valuable:
+Checkpoint 10.2 is nearly done — 7 of 9 original report pages are built, wired in, and confirmed working on a real phone. Checkpoint 11.2's code is complete but its on-device confirmation is deferred to Phase 13 (see above). Next up, in order of what's likely most valuable:
 
 1. The final two Reports pages: Tax Summary and Payment Methods. Ask the person whether both are worth building for a 2-person household, or whether to skip one/both and move to Phase 9 or the flagged follow-ups below instead.
 2. Still-flagged follow-ups from earlier phases (small, can be picked up any time): income/savings-goal contributions aren't yet folded into the unified Transactions list (this also affects the "Income" figures on Dashboard and Year in Review); EF/FI calculators don't auto-pull figures from Bills/Income; Events have no per-event checklist or savings-goal auto-sync; Travel's own savings-goal auto-sync is still outstanding; Custom recurrence math isn't implemented in recurrence.ts yet (Bills/Debts/Loans data model supports it, but due-date calculation doesn't). (Manual transactions' owner field is now resolved — see Phase 6 above — no longer on this list.)
 3. Phase 9 — Shared Expenses / Household Linking (M3, M11) — still the biggest remaining phase, flagged as the hardest technical part of the whole project, and still deferred pending revisiting the Phase 0.1 sync decision.
 4. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's/Cash-Flow Forecast's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
+5. Rest of Phase 11 (Settings): 11.1 (Categories, Payees, Rules) and 11.3 (Security & Household & Data) haven't been started yet.
 
 Recommend asking the person at the start of the next session which of these to tackle first.
 
@@ -131,6 +139,7 @@ Files in the repo so far
   - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math not yet implemented)
   - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
   - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
+  - mobile-app/src/pushNotifications.ts — requestNotificationPermission() and sendTestNotification(); code complete, on-device confirmation deferred to Phase 13 (see Phase 11.2 above)
   - mobile-app/src/defaultModel.ts — empty/default data factory function
   - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
   - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data
@@ -172,6 +181,7 @@ Files in the repo so far
   - mobile-app/src/screens/reports/WeeklyDigestReport.tsx — weekly summary digest
   - mobile-app/src/screens/reports/MerchantSpendingReport.tsx — spending grouped by merchant
   - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx — recurring bills ranked by monthly-equivalent cost
+  - mobile-app/src/screens/SettingsScreen.tsx — includes a temporary "Send a test notification in 10 seconds" button (Checkpoint 11.2) to be removed once real device confirmation happens in Phase 13
   - mobile-app/src/navigation/MainTabs.tsx — Insights tab wired to InsightsScreen; Tab.Navigator now has an explicit id prop for React Navigation v7 compatibility
   - mobile-app/App.tsx — includes auto-lock suppression check
   - mobile-app/package.json / package-lock.json
