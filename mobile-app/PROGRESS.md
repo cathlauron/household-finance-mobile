@@ -49,7 +49,7 @@ Phase 6 — Transactions (M8) — ✅ FULLY COMPLETE
 
 Phase 7 — Income & Savings (M9) — ✅ FULLY COMPLETE
 - 7.1 — Income sources with pay schedules. ✅ Complete.
-- 7.2 — Savings goals + Emergency Fund/FI calculators. ✅ Complete and confirmed working on a real phone.
+- 7.2 — Savings goals + Emergency Fund/FI calculators. ✅ Complete and confirmed working on a real phone. EF's "Monthly essential expenses" and FI's "Annual expenses" now show a real, tappable auto-suggestion pulled from recurring Bills data (monthly bills at latest cycle amount, annual bills' latest cycle amount ÷ 12 — mirrors the web app's monthlyBudgetBaseline()). Suggestion never overwrites a saved value automatically — it's a tap-to-accept line under each field, confirmed working on a real phone.
 
 Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - 8.1 — Grocery list + calculator. ✅ Complete and confirmed working on a real phone.
@@ -84,7 +84,38 @@ Phase 11 — Settings (M14) — ✅ FULLY COMPLETE
 - 11.3 — Security & Household & Data. ✅ COMPLETE. Change passphrase, real household linking UI, backup (expo-file-system + expo-sharing), clear-all-data with confirm step. All confirmed on-device.
 
 ---
+## 📅 Session entry — EF/FI calculators now suggest real numbers from Bills data
 
+**What happened this session:**
+Closed out the second (and last) optional-polish item flagged at the end of the previous
+session: the EF/FI calculators on the Savings tab only ever took manually-typed numbers,
+with no connection to real Bills data.
+
+- `src/screens/SavingsScreen.tsx` — added `billLatestCycleAmount()` and
+  `computeMonthlyExpenseBaseline()`, mirroring the web app's `monthlyBudgetBaseline()`:
+  monthly-recurring bills counted at their most recent cycle's `amountDue`, annual-recurring
+  bills' most recent cycle amount divided by 12. One-time/custom bills excluded (no reliable
+  "typical month" figure for those).
+- Emergency Fund's "Monthly essential expenses" field and FI's "Annual expenses" field
+  (annual = monthly baseline × 12) each now show a tappable suggestion line underneath —
+  "Based on your recurring Bills: ₱X,XXX/mo — tap to use this" — only when the computed
+  baseline is greater than 0.
+- Deliberately NOT auto-filled/silent: tapping the suggestion fills the input, but a
+  previously-saved `calculatorInputs` value is never overwritten automatically. Manual
+  entry/editing still works exactly as before.
+- Scoped down from the original plan: Income-based auto-fill for FI was dropped this
+  session, since the current FI calculator is expenses-only (`expenses × 25`, the standard
+  rule) and doesn't use an income figure anywhere — pulling in Income sources wouldn't have
+  fed into anything real. Flagged to the person before writing code; confirmed as the right
+  scope.
+
+**Confirmed this session:**
+- `npx tsc --noEmit` — clean, no errors.
+- Manually tested on a real phone: with at least one monthly/annual Bill logged with a cycle
+  amount, the suggestion line appeared under both the EF and FI expense fields, and tapping
+  it filled the input correctly.
+
+---
 ## 📅 Session entry — Travel/Events checklist items now log real transactions
 
 **What happened this session:**
@@ -136,8 +167,8 @@ Also answered an unrelated Codespaces/VS Code UI question this session (the blue
 ⚠️ Known issues / gotchas (all optional polish, nothing blocking)
 - Loans with "Custom" recurrence are still excluded from the Calendar's running-balance projection and Dashboard (Loan type has no customStartDate/customFreq/customOccurrenceCount fields; Monthly/Annual/One-time loans work fully).
 - Debt-side "feesPortion" still doesn't exist in the data model — Tax Summary's Interest & Fees figure still only covers loan late fees, not debt fees. Clearly labeled on-screen as a known limitation.
-- EF/FI calculators (Savings tab) still don't auto-pull figures from Bills/Income — figures are entered manually.
-2. **Optional polish**, if wanted (none are urgent): Custom recurrence for Loans; auto-pull EF/FI calculator figures from Bills/Income (this was flagged as "polish item #2" mid-session, not yet started); add a feesPortion field to Debts so Tax Summary's interest/fees figure is complete.
+
+2. **Optional polish**, if wanted (none are urgent — the last two items from the original polish list are now both done): Custom recurrence for Loans; add a feesPortion field to Debts so Tax Summary's interest/fees figure covers debts, not just loan late fees.
 - Firestore rules still rely on document-ID secrecy rather than real per-user Firebase Auth (accepted limitation, see 9.4) — someone who already knows a household's exact link code/ID could still read/write to it.
 - Pasting an entire large file's contents in one `cat` command can silently truncate mid-file in this terminal — splitting into smaller `cat`/`sed -n`/`wc -l` calls reliably works around it (confirmed again this session).
 - PROGRESS.md can go stale relative to actual code — worth spot-checking real files (as done this session) rather than trusting notes blindly when something looks like it "should" already be done.
