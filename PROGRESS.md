@@ -5,7 +5,7 @@ This file tracks what's been built so far. Claude reads this at the start of eve
 ✅ Done
 
 Phase 0 — Decisions & Foundation
-- 0.1 — Sync decision: Chosen. No syncing between phones for now — each phone/profile will have its own separate data. Real multi-phone syncing is deferred to Phase 9, later in the roadmap, by design.
+- 0.1 — Sync decision: Chosen. No syncing between phones for now — each phone/profile will have its own separate data. Real multi-phone syncing is deferred to Phase 9, later in the roadmap, by design. UPDATE: Phase 9 has now begun — see below. Firebase was chosen as the sync service.
 - 0.2 — Blank Expo project created and confirmed working.
 - 0.3 — Offline behavior and minimum phone OS version decided (see Decisions below).
 
@@ -22,7 +22,7 @@ Phase 2 — Getting Around the App (M4)
 - 2.2 — Basic theming (colors/light-dark mode) ported over from the web app. ✅ Complete.
 
 Phase 3 — Calendar (M5)
-- 3.1, 3.2, 3.3 — Full Calendar tab (month grid, tap-a-day, running balance projection). ✅ Complete.
+- 3.1, 3.2, 3.3 — Full Calendar tab (month grid, tap-a-day, running balance projection). ✅ Complete. Running-balance projection includes Loan payments (Monthly/Annual/One-time recurrence — Custom still excluded, see note below), confirmed showing correctly on a real phone.
 
 Phase 4 — Accounts (M6)
 - 4.1, 4.2 — Full Accounts tab (add/edit/delete Cash, Debit, Credit accounts; balance calculation engine). ✅ Complete.
@@ -31,12 +31,12 @@ Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 - 5.1 — Add/edit/delete Bills. ✅ Complete.
 - 5.2 — Add/edit/delete Debts. ✅ Complete.
 - 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete.
-- 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete.
+- 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete. NOTE: "Custom" recurrence is only usable for Bills/Debts — the Loan type has no customStartDate/customFreq/customOccurrenceCount fields, and the Loans screen's own recurrence dropdown doesn't offer "Custom" as a choice. Monthly/Annual/One-time loans work fully everywhere.
 
 Phase 6 — Transactions (M8) — ✅ CORE COMPLETE (CSV import still optional/outstanding)
 - 6.1 — Unified transaction list. ✅ Complete.
 - 6.2 — Manually add a transaction, incl. receipt photo attachment, edit/delete. ✅ Complete and confirmed working on a real phone.
-- 6.2b — Manual transactions now have a real "Belongs to" person picker (matching Income's pattern), replacing the previous hardcoded owner: 'shared'. Free-text input with tappable chips for existing people; typing a new name quietly creates that person via the same findOrCreatePerson() logic Income uses. Verified: new transactions can be assigned a person, editing round-trips the saved person correctly, and old transactions (owner still 'shared' from before this change) open without crashing and show a blank picker rather than "shared" as a literal name. ✅ Complete and confirmed working on a real phone.
+- 6.2b — Manual transactions now have a real "Belongs to" person picker (matching Income's pattern), replacing the previous hardcoded owner: 'shared'. ✅ Complete and confirmed working on a real phone.
 - 6.3 — CSV import: NOT yet done. Explicitly optional/deferrable per the roadmap.
 
 Phase 7 — Income & Savings (M9) — ✅ FULLY COMPLETE
@@ -45,87 +45,219 @@ Phase 7 — Income & Savings (M9) — ✅ FULLY COMPLETE
 
 Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - 8.1 — Grocery list + calculator. ✅ Complete and confirmed working on a real phone.
-- 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone.
-- 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone.
+- 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone, including real savings-goal auto-sync (tripFullChecklistTotal/syncTripSavingsGoal), verified in an earlier session.
+- 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone, including Events' own savings-goal auto-sync (syncEventSavingsGoal), mirroring Travel's pattern, verified in an earlier session.
+
+Phase 9 — Shared Expenses / Household Linking (M3, M11) — 🔧 IN PROGRESS
+- 9.1 — Set up the chosen sync/backend service. ✅ COMPLETE, CONFIRMED WORKING ON A REAL DEVICE.
+  - Sync service chosen: **Firebase** (Firestore, in "test mode" — wide-open rules for now, to be locked down with real security rules in a later checkpoint before any real household data touches it).
+  - A free Firebase project was created (household-finance-mobile), Firestore Database was enabled in test mode, and a Web app was registered inside that Firebase project to get connection keys (firebaseConfig — these are not secret; they only identify which project to connect to, not a password).
+  - `npm install firebase` was run inside mobile-app/.
+  - `mobile-app/src/firebase.ts` initializes the Firebase app and exports `db` (a Firestore instance).
+  - Verified end-to-end with a temporary test button (added and then fully removed from SettingsScreen.tsx same session — confirmed via grep returning zero results).
+  - LEFTOVER TO CLEAN UP: a `connectionTest` collection from this original verification is still sitting in Firestore (empty/harmless, but should be deleted when security rules are written).
+
+- 9.2a — Household key encryption + linking plumbing. ✅ COMPLETE. `npx tsc --noEmit` passed clean (no output).
+  - **File `src/household.ts`** — the core "how SHARED household data works" logic, no UI yet:
+    - `generateHouseholdId()` — a random, non-secret ID identifying one shared household document in Firestore (like a folder name).
+    - `generateHouseholdKey()` — the actual shared secret (32 random bytes) used to encrypt/decrypt the household's shared data. Generated once, when a household is first created.
+    - `wrapHouseholdKey(householdKey, personalKey)` / `unwrapHouseholdKey(wrapped, personalKey)` — encrypts/decrypts the household key using one person's own passphrase-derived key (reuses `encryptJSON`/`decryptJSON` from encryption.ts), so two people with two different passphrases can each unlock the same shared household key with their own.
+    - `saveHouseholdData(householdId, encryptedPayload)` / `loadHouseholdData(householdId)` — Firestore read/write for the actual encrypted household data itself, stored at `households/{householdId}`.
+    - `saveWrappedHouseholdKey(username, householdId, wrappedKey)` / `loadWrappedHouseholdKey(username)` / `deleteWrappedHouseholdKey(username)` — Firestore read/write for each linked person's own wrapped copy of the household key, stored at `householdKeys/{username}`, keyed by username so any device can look up "what household is this username linked to" using just username + passphrase (no separate device-pairing step).
+  - **Updated `src/storage.ts`** — `ProfileIndexEntry` now has an optional `householdId` field (absent = not linked, same as every profile before this checkpoint). Added `updateProfileHouseholdId(username, householdId)` to set or clear it locally, mirroring the existing `updateProfileSalt()` pattern (does nothing if username not found, so it can't accidentally create a stray entry).
+  - No new npm packages needed — `doc`/`getDoc`/`setDoc`/`deleteDoc` from `firebase/firestore` were already available from the `firebase` package installed in 9.1.
+  - Re-confirmed byte-for-byte unchanged (via `cat`) at the start of the 9.2b session below.
+
+- 9.2b-i — Personal cloud backup for every profile (not-yet-linked included). ✅ COMPLETE, CONFIRMED WORKING ON A REAL DEVICE.
+  - **New file `src/cloudBackup.ts`** — `saveProfileCloudBackup(username, encryptedPayload)` / `loadProfileCloudBackup(username)`, reading/writing Firestore at `profileBackups/{username}`. Saves/loads the exact same already-encrypted string produced by `encryptJSON` (no new encryption logic) — Firestore never sees anything unencrypted.
+  - **Why this exists:** the real "keep mine / keep theirs / merge" linking screen (9.2b-ii) needs to be able to see BOTH people's existing data to offer a genuine three-way choice. Before this checkpoint, an unlinked profile's data lived ONLY on that one phone — nothing to compare against from the other phone. This also doubles as a real backup if a phone is lost.
+  - **Updated `src/DataContext.tsx`**:
+    - `saveModel()` now also calls `saveProfileCloudBackup(username, encrypted)` right after the existing local save — not awaited, silently ignored on failure (`.catch(() => {})`), same pattern already used for `rescheduleBillNotifications`. A failed cloud backup (e.g. no internet) never blocks or interrupts normal use of the app.
+    - `changePassphrase()` now also refreshes the cloud backup with the newly re-encrypted data (the old cloud backup was encrypted with the OLD key and would otherwise be stuck, undecryptable with the new passphrase).
+  - `npx tsc --noEmit` passed clean (no output).
+  - **CONFIRMED ON A REAL DEVICE**: edited data in the app, then verified in the Firebase console that `profileBackups/cath1` now exists with an encrypted `data` string and a real `updatedAt` timestamp.
+
+- 9.2b-ii — The real "Link with another profile" screen (keep mine / keep theirs / merge). 🔧 NOT STARTED YET. This is the next step — see ▶️ Next step below.
+  - 9.2c (wiring DataContext to actually read/write shared data when linked) is NOT started yet, and depends on 9.2b-ii being done first.
+  - 9.3 (shared expense ledger + settle-up) depends on all of 9.2 being fully done first.
 
 Phase 10 — Dashboard & Reports (M12–M13) — 🔧 IN PROGRESS
-- 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone.
-- 10.2 — Reports pages. 🔧 IN PROGRESS — seven of the original nine report pages are done and confirmed working on a real phone (Monthly Close-out, Year in Review, Cash-Flow Forecast, Person Spending, Weekly Digest, Merchant Spending, Subscription Audit). Still to build: Tax Summary, Payment Methods.
+- 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone. "Amount Owed" card includes a third Loans line (borrowed loans only — "lent" loans excluded since that's money owed to you, not an expense) alongside the existing Bills and Debts lines, and the "Due in the Next 14 Days" list includes upcoming loan payments too. Confirmed working on a real phone.
+- 10.2 — Reports pages. 🔧 IN PROGRESS — eight of the original nine report pages are done and confirmed working on a real phone (Monthly Close-out, Year in Review, Cash-Flow Forecast, Person Spending, Weekly Digest, Merchant Spending, Subscription Audit, Tax Summary). Still to build: Payment Methods — deliberately deferred, see note below.
+  - Tax Summary: src/screens/reports/TaxSummaryReport.tsx, wired into ReportsScreen.tsx as an 8th pill. Shows year-picker, total income/expenses/saved, an "Interest & Fees Paid" card, and a full (not top-6) expense-by-category breakdown. Confirmed compiling clean via npx tsc --noEmit and confirmed working on a real phone.
+  - IMPORTANT LIMITATION, flagged on-screen in the app itself: "Interest & fees paid" only counts loan late fees (a logged loan payment higher than that loan's expectedPayment — same math LoansScreen already uses). Debt-side fees are NOT included, because Debt/BillCycle in types.ts has no feesPortion field at all — there's no data to pull from. This is a real data-model gap, not a report bug.
+  - Payment Methods report was explicitly NOT built, by the person's own choice. Root cause: types.ts has no paymentMethod field anywhere (not on BillCycle, Debt cycles, LoanPayment, or ManualTransaction) — the mobile app has never asked "how did you pay for this" anywhere in the UI. Building this report properly requires real screen work first — adding the field to the model AND adding an actual Cash/Debit/Credit picker to the bill/debt/loan payment-logging screens and the manual transaction form — not just a report file. Scoped as its own future checkpoint.
 
-Phase 11 — Settings (M14) — 🔧 IN PROGRESS
-- 11.2 — Notifications (native push). 🔧 Code complete, on-device confirmation DEFERRED. src/pushNotifications.ts exists with a sendTestNotification() helper, and SettingsScreen.tsx has a temporary "Send a test notification in 10 seconds" button wired to it, confirmed present in the repo (grep-verified this session). This code has NOT been visually confirmed firing on a real device yet — attempting to test it surfaced a real Expo Go limitation, not a bug: as of SDK 53+, Expo Go on Android no longer supports any expo-notifications functionality (local or push), per Expo's own error message. This is a known platform limitation, not something in our code to fix. Confirming this feature actually fires on-device is deferred until Phase 13 (a real installed build, not Expo Go) — unless testing on an iPhone in Expo Go is tried in the meantime, which may still work since this Android restriction is Android-specific. The temporary test button should be removed from SettingsScreen.tsx once real confirmation happens in Phase 13, so it doesn't linger in the shipped app.
-- 11.1, 11.3 — Not yet started.
+Phase 11 — Settings (M14) — ✅ FULLY COMPLETE
+- 11.1 — Categories, Payees, Rules. ✅ COMPLETE. Full add/edit/delete for all three (Categories with color-swatch picker and duplicate-name checking; Merchants & Payees with optional default category; Categorization Rules with up/down reorder arrows since rule order determines match priority, plus amount-range validation). Verified end-to-end on a real phone in an earlier session.
+- 11.2 — Notifications (native push). ✅ COMPLETE, WITH FULL REAL ON-DEVICE CONFIRMATION. rescheduleBillNotifications() is called from both loadModel() and saveModel() in DataContext.tsx, non-blocking with silent-fail via .catch(() => {}), so scheduled alerts stay in sync with bill/debt/loan/setting changes automatically. Confirmed firing on a real physical device. No leftover debug UI.
+- 11.3 — Security & Household & Data. ✅ COMPLETE. Built from scratch and confirmed working on a real phone:
+  - **Security (change passphrase):** Verifies the current passphrase is correct first (re-derives a key from it and successfully decrypts existing data) before changing anything. Generates a brand new random salt, derives a new key from the new passphrase + new salt, re-encrypts all in-memory data with it, saves it, updates the profiles index with the new salt, and swaps the in-memory session key so future saves keep working without needing to sign out and back in. Confirmed on-device: changed passphrase, fully closed and reopened the app, signed in successfully with the new passphrase. Since Checkpoint 9.2b-i, also refreshes the cloud backup with the newly re-encrypted data.
+  - **Household:** One-line placeholder text noting that sharing data between phones is coming in a future update (Phase 9), matching the earlier Phase 0.1 decision. Phase 9 has since begun (see above) — this placeholder text has NOT been updated/removed yet. Will be replaced with the real linking UI in Checkpoint 9.2b-ii.
+  - **Data (backup + clear):** "Save a backup" writes the full decrypted model to a JSON file via expo-file-system and opens the native share sheet via expo-sharing so the file can be saved to Files, emailed, etc. "Clear all data & start fresh" wipes all entries back to defaultModel() after a confirm step, while keeping the same username/passphrase. Both confirmed working on-device.
+  - New files/changes: src/storage.ts (added updateProfileSalt, saveEncryptedProfileData/loadEncryptedProfileData), src/DataContext.tsx (added changePassphrase), src/screens/SettingsScreen.tsx (added Security/Household/Data sections). New dependency: expo-sharing (~14.0.8).
+  - npx tsc --noEmit passed clean with zero errors.
+
+**PHASE 11 IS FULLY COMPLETE — INCLUDING ALL CLEANUP. NO KNOWN LOOSE ENDS REMAIN IN THIS PHASE.**
+
+---
+
+## 📅 Session entry — Checkpoint 9.2b-i: personal cloud backups, built and confirmed working
+
+This session picked up right where the previous one paused: on an open design
+question about what household linking should do with each phone's existing
+data. The person chose the fuller option — a real "keep mine / keep theirs /
+merge" choice, not just "my data becomes the shared start."
+
+**What that decision meant, and why 9.2b got split into two smaller pieces:**
+Before now, an unlinked profile's data lived ONLY on that one phone. A real
+three-way choice needs both phones' data to actually be comparable somewhere
+both can reach — so a prerequisite step was needed first: every profile
+(linked or not) automatically keeps an encrypted backup of its own data in
+the cloud. That prerequisite is what this session built, as its own
+checkpoint (9.2b-i), separate from the actual linking screen (now 9.2b-ii,
+not started yet).
+
+**What was done, step by step:**
+1. Retrieved the exact current contents of `src/storage.ts` and
+   `src/household.ts` via `cat`, confirming both were unchanged from the end
+   of Checkpoint 9.2a (no truncation issues this time — both are modest-sized
+   files).
+2. Created **`src/cloudBackup.ts`** — a small, new, separate file (deliberately
+   not folded into `household.ts`, since that file is specifically about
+   *shared* household data once two people are linked, while this one is
+   about *personal* backups that exist even before anyone links). Two
+   functions: `saveProfileCloudBackup(username, encryptedPayload)` and
+   `loadProfileCloudBackup(username)`, reading/writing Firestore at
+   `profileBackups/{username}`. No new encryption logic — it saves/loads the
+   exact same already-encrypted string `encryptJSON` already produces.
+3. Retrieved the exact current contents of `src/DataContext.tsx` via `cat`
+   to make a safe, exact edit rather than guessing.
+4. Rewrote `src/DataContext.tsx` (given back as a full file, not a
+   find-and-replace) with two additions:
+   - `saveModel()` now also calls `saveProfileCloudBackup()` right after the
+     existing local save, not awaited and silently ignored on failure
+     (`.catch(() => {})`) — same non-blocking pattern already used for
+     `rescheduleBillNotifications()`, so a failed cloud save (e.g. no
+     internet) never interrupts normal use of the app.
+   - `changePassphrase()` now also refreshes the cloud backup using the
+     freshly re-encrypted data, since the old cloud backup would otherwise
+     be encrypted with the now-replaced key and become undecryptable.
+5. `npx tsc --noEmit` run and confirmed clean (no output — zero errors).
+6. **Real on-device test performed and confirmed**: edited data in the app on
+   a real phone, then checked the Firebase console. Confirmed
+   `profileBackups/cath1` now exists, containing an encrypted `data` string
+   (correctly unreadable gibberish) and a real `updatedAt` timestamp.
+
+**Nothing else was touched this session.** No Firestore security rules
+changed (still test mode, unchanged from 9.1). No UI/screens changed —
+Settings > Household still shows the old placeholder text, unchanged.
 
 🧹 Code health
-- This session fixed all 4 pre-existing `npx tsc --noEmit` type errors that had built up across earlier sessions without being caught:
-  - MainTabs.tsx: React Navigation v7 requires an explicit `id` prop on `Tab.Navigator` (didn't exist as a requirement in v6). Fixed with `id={undefined}`, which is valid since this app only has one navigator.
-  - LoansScreen.tsx (1 spot) and SavingsScreen.tsx (2 spots): progress-bar `width` styles were being built as plain strings (`pct + '%'`), which doesn't satisfy React Native's stricter `DimensionValue` type. Fixed by templating as `` `${pct}%` as const `` instead.
-  - `npx tsc --noEmit` now returns clean (0 errors) as of this session. Confirmed no visual regression on Loans and Savings progress bars on a real phone after the fix.
-  - Going forward: run `npx tsc --noEmit` at the end of any session that touches multiple files, not just the one file being edited — this session's errors had accumulated silently across at least 2-3 prior sessions before being caught.
+- New file: `src/cloudBackup.ts`.
+- Changed file: `src/DataContext.tsx` (full-file replacement, given back in
+  full both times to avoid any find-and-replace risk).
+- No files deleted. `src/household.ts` and `src/storage.ts` confirmed
+  unchanged this session (re-verified via `cat` at the very start).
+- No new npm packages — `doc`/`getDoc`/`setDoc` from `firebase/firestore`
+  were already available.
+- `npx tsc --noEmit` passed clean both times code was added this session.
 
 ⚠️ Known issues / gotchas (non-code)
-- Expo tunnel (`--tunnel`) occasionally fails with `CommandError: TypeError: Cannot read properties of undefined (reading 'body')`, pointing at ngrok. This is a tunnel-tooling hiccup, not a bug in the app. Fix, in order, if it happens again:
-  1. `npm install --save-dev @expo/ngrok@latest` (from inside mobile-app/), then retry `npx expo start --tunnel`.
-  2. If that doesn't work: `npx expo start --tunnel --clear`.
-  3. If that still doesn't work: ngrok may be asking for a free account/token — read the exact terminal error text for a signup link and follow it.
-- Expo Go on Android cannot run any expo-notifications functionality (local or remote/push) as of Expo SDK 53+ — confirmed via direct testing this session (see Phase 11.2 above). Expo's own guidance is to use a development/installed build instead of Expo Go for this feature. This affects on-device testing of Checkpoint 11.2 specifically, and will affect testing any future notification-related work too, until Phase 13 (real installed build) is reached. Testing on an iPhone via Expo Go may still work, since this restriction is Android-specific, but hasn't been tried yet.
-- PROGRESS.md can drift from what's actually in the code — confirmed twice now. Earlier this session, this file was checked against a fresh git status + GitHub fetch and found to be missing an entire completed checkpoint (11.2's code) because a prior session got cut off before it could update this log, even though the actual code had been correctly committed and pushed. Lesson: a clean git status only proves Codespace and GitHub agree with each other — it does NOT prove PROGRESS.md's contents are accurate. When something referenced in chat history (e.g. a previous session's work) doesn't appear in this file, grep/ls the actual repo directly to check before assuming the work is missing OR assuming the file is just stale — confirm which one it actually is first, the way this session did.
+(All previously logged items still stand except where noted.)
+- Firestore is **still running in test mode** (wide-open rules, from
+  Checkpoint 9.1) — unchanged this session. Real security rules are still
+  needed before this should hold any real household's actual data long-term.
+- **NEW, minor, harmless**: a `connectionTest` collection is still sitting in
+  Firestore from the original 9.1 verification (empty, no security risk) —
+  worth deleting when security rules are written, just for tidiness.
+- Loans with "Custom" recurrence are still excluded from the projection/
+  Dashboard — unchanged, still a real data-model gap.
+- Debt-side "feesPortion" still doesn't exist in the data model — Tax
+  Summary's Interest & Fees figure still only covers loan late fees.
+- Last session's truncation issue (a full-file `cat` cutting off mid-file for
+  `SettingsScreen.tsx`) did NOT recur this session — both files retrieved via
+  `cat` this session (`storage.ts`, `household.ts`, `DataContext.tsx`) came
+  through complete in one paste each. Likely file-size-related; still worth
+  splitting into smaller pastes if a `cat` output looks cut off on a larger
+  file in the future.
 
 📌 Decisions made
-- Sync method: None for now (Phase 0.1). Add real sync later in Phase 9.
-- Expo SDK version: SDK 54, chosen specifically for compatibility with the plain Expo Go app.
-- Git: The mobile-app project lives inside the existing household-finance-mobile git repo — no separate repo.
-- Offline behavior: Fully offline app, with an automatic cloud backup (safety copy only, not multi-device sync) whenever internet is available.
-- Minimum phone OS version: Recent phones only (~last 4 years).
-- Data model language: TypeScript (.ts files) inside mobile-app/src/, matching field names and behavior from the original web app's data shapes.
-- Dev workflow in Codespaces: Metro must always be started with tunnel mode, AND from inside the mobile-app folder:
-    cd mobile-app
-    npx expo start --tunnel
-  Always confirm the terminal shows an address ending in .exp.direct before scanning the QR code. If the tunnel throws an ngrok-related error, see Known Issues above before troubleshooting further.
-- Encryption approach: Uses crypto-js (imported in App.tsx for the WordArray type) plus expo-crypto (used directly in pin.ts for hashing). Salt generation lives in encryption.ts and is reused by pin.ts for PIN salts.
-- PIN quick-unlock: The PIN is always a convenience re-entry method on top of an already-unlocked session — never a substitute for the real passphrase; "Use passphrase instead" is always available from the PIN screen.
-- Auto-lock timeout: Defaults to 5 minutes idle, stored via AsyncStorage under "autoLockMinutes" for a future Settings screen to adjust via setAutoLockMinutes(newValue).
-- Auto-lock suppression: Any feature that opens a native OS picker/UI on top of the app (photo picker, and — in the future — things like document/CSV pickers) must wrap that call with setAutoLockSuppressed(true) / setAutoLockSuppressed(false) from src/autoLockSuppress.ts, using try/finally so it's always cleared. This is now the established pattern going forward, not a one-off fix.
-- Theming approach: Colors live in theme.ts (lightTheme/darkTheme); ThemeContext.tsx exposes useTheme(). Fonts have NOT been ported yet — default system fonts still in use. Full 13-theme picker, custom colors, and font pairing are deferred to a later checkpoint once a real Settings screen exists.
-- Screen pattern for simple list-based tabs (Accounts, Bills, Debts, Loans, Transactions, Savings, Groceries, Travel, Events, Goals): a scrollable list of rows, each tappable to open an edit modal (for editable record types); a "+ Add X" button opens the same modal blank.
-- Person/owner picker pattern (established with Income, now also on Transactions): a free-text input plus a row of tappable chips for existing model.people entries. findOrCreatePerson(people, typedName) resolves the typed name against existing people case-insensitively, or creates a new Person record on save if no match — this is the standard pattern to reuse for any future screen needing a "belongs to" field (e.g. Bills/Debts/Loans owner, if/when that's added).
-- Due dates / transaction dates: Entered as plain typed text in YYYY-MM-DD format, with a basic format check before saving. A native date-picker UI is a nice-to-have polish item for later — the stored data shape won't need to change when that's added.
-- To-Pay tab structure: Uses an in-screen pill-button switcher (ToPayScreen.tsx) rather than a separate bottom tab per record type. Has three pills: Bills, Debts, Loans.
-- Savings tab structure: Same in-screen pill-button switcher pattern as To-Pay, applied to Goals / Emergency Fund / FI Calculator.
-- Planning tab structure: Same in-screen pill-button switcher pattern, with four pills (Groceries / Travel / Events / Goals) in a horizontally scrollable row.
-- Insights tab structure: Same in-screen pill-button switcher pattern as To-Pay/Savings/Planning, with two pills: Dashboard / Reports. InsightsScreen.tsx is the pill-switcher; MainTabs.tsx's "Insights" tab points to it instead of DashboardScreen directly.
-- Reports page structure: ReportsScreen.tsx is a second-level pill-switcher (horizontally scrollable pill row), rendering whichever report is selected. Each report page is its own file under src/screens/reports/ rather than one growing file — this pattern continues for any remaining report pages (Tax Summary, Payment Methods).
-- Recurring schedule design (Checkpoint 5.4): A shared src/recurrence.ts module (getNextDueDate, formatShortDate, recurringTypeLabel) is reused across Bills, Debts, and Loans rather than duplicating due-date math per screen. Events use their own simpler month/day (Annual) or full-date (One-time) fields directly on EventItem rather than pulling in recurrence.ts, since Events only support two recurrence options (no Custom yet). Custom recurrence for Bills/Debts/Loans exists in the data model but is NOT yet implemented in recurrence.ts's actual due-date math — SubscriptionAuditReport.tsx works around this by treating Custom bills as monthly-equivalent, flagged in that file as a simplification.
-- Dashboard design (Checkpoint 10.1): outstandingBalance() was exported from balanceProjection.ts (previously private to that file) so Dashboard could reuse the exact same math Bills/Debts screens rely on. computeRunningBalances() was reused the same way for Cash-Flow Forecast.
-- Payoff Simulator design: Built as a modal (LoanPayoffSimulatorModal.tsx) opened from a button on LoansScreen.tsx, rather than a separate tab/screen.
-- Unified Transactions design (Checkpoint 6.1/6.2): buildTransactionsList() lives in its own src/transactions.ts module so future checkpoints can extend it without touching screen code. Income and savings-goal contributions are still intentionally left out of this list for now — that hookup is a flagged follow-up, not yet done. This means "Income" figures on both Dashboard and Year in Review only count manual "money in" entries and loan repayments received, not recurring paycheck income — flagged on-screen in Year in Review via a footer note.
-- Manual transaction edit/delete design: The derived TransactionEntry list carries an optional rawId pointing back to the real ManualTransaction record. Only manual transactions are directly editable from the Transactions tab.
-- Calculator input persistence design (Checkpoint 7.2): EF/FI calculator inputs are hand-typed only — no auto-pull from Bills/Income data yet. That auto-pull is a flagged nice-to-have follow-up, not required by the roadmap. Inputs save via an explicit Save button rather than on every keystroke, to avoid re-encrypting the whole file per digit typed.
-- Savings goal amount design: A goal's currentAmount is always derived by summing its contributions list (not typed directly), matching the pattern already used for Loan payments.
-- Events design (Checkpoint 8.3): No per-event checklist and no auto-sync of an event's budget to a savings goal — both flagged follow-ups, not yet built, matching the same simplification already made for Travel.
-- Year-End Goals design (Checkpoint 8.3): Each goal has an explicit mode field ('progress' or 'checklist') rather than inferring the mode from whether a target amount is set — a deliberate, explicit choice from the start (unlike the original web app, which inferred it).
-- Notifications design (Checkpoint 11.2): sendTestNotification() in src/pushNotifications.ts is the single reusable function for firing a notification, reused by the temporary test button rather than the button implementing its own separate notification-firing logic — this is the pattern any future real due-date-triggered notification call should also reuse, rather than a third copy of similar code.
-- Checkpoint tracking discipline: Every session ends with a full PROGRESS.md rewrite reflecting exactly what was verified via terminal output and confirmed working on-device — not just a note appended to the old version. Claims in this file (e.g. "still to build") should be spot-checked against the actual router/screen code, not assumed correct from a prior session's notes.
-- File-creation discipline: Files are always created via a `cat > filename << 'ENDOFFILE'` block — never by pasting code at a bare prompt.
-- Overwrite-safety discipline: Before creating any file with a `cat > filename << 'ENDOFFILE'` block, first check whether that file already exists.
-- New-screen wiring discipline: When a new report/screen file is created, the session isn't done until it's actually imported and wired into its parent pill-switcher/router AND confirmed visible on a real device — creating the file alone is not sufficient, per an earlier session's catch.
-- Editing an existing file safely: For small, well-defined changes, a targeted `sed` command is used instead of retyping the whole file, after first running `grep` to see exactly what's there. For changes involving multi-line blocks where exact whitespace matters, a small inline Python script (via `python3 - << 'ENDOFFILE'`) that does an exact string match-and-replace is used instead — this session's person-picker patch and type-error fixes both used this method successfully across 4 files in one go.
-- End-of-session code health check: Run `npx tsc --noEmit` before wrapping up any session, even if the session's own change compiles clean — it can catch type errors left over from earlier sessions that were never verified. Established this session after finding 4 such pre-existing errors.
-- Cross-session verification discipline: When chat history references work (e.g. code from a previous, possibly cut-off session) that isn't reflected in PROGRESS.md, don't assume either "the file is just stale" or "the work was never saved" — grep/ls the actual repo directly first to determine which is true, then update PROGRESS.md to match reality. Established this session after PROGRESS.md was found missing a fully-committed checkpoint (11.2) due to a cut-off session.
-- Tab bar structure: Used @react-navigation/bottom-tabs directly. All 10 tabs shown flat in the bar (no "More" overflow menu yet).
+- (All decisions from prior sessions still stand — see below.)
+- **Household linking will support a real "keep mine / keep theirs / merge"
+  choice** (the fuller option), not just "your data becomes the shared
+  start." Chosen by the person explicitly this session.
+- **Checkpoint 9.2b was split into 9.2b-i and 9.2b-ii** as a direct
+  consequence of that choice:
+  - 9.2b-i (this session, DONE): every profile — linked or not — keeps an
+    encrypted personal backup of its own data in the cloud
+    (`profileBackups/{username}`), so there's something for the linking
+    screen to compare against.
+  - 9.2b-ii (not started): the actual linking screen, which will load both
+    people's cloud backups via `loadProfileCloudBackup()`, show a
+    plain-English summary of each ("You have 4 bills, 2 debts..." / "They
+    have 6 bills, 1 debt..."), and let the person choose keep mine / keep
+    theirs / merge both.
+- Cloud backups are saved on every `saveModel()` call, not on some slower
+  interval — matches how local saves already work, and Firestore writes
+  are cheap/free at this app's expected scale.
 
 ▶️ Next step
 
-Checkpoint 10.2 is nearly done — 7 of 9 original report pages are built, wired in, and confirmed working on a real phone. Checkpoint 11.2's code is complete but its on-device confirmation is deferred to Phase 13 (see above). Next up, in order of what's likely most valuable:
-
-1. The final two Reports pages: Tax Summary and Payment Methods. Ask the person whether both are worth building for a 2-person household, or whether to skip one/both and move to Phase 9 or the flagged follow-ups below instead.
-2. Still-flagged follow-ups from earlier phases (small, can be picked up any time): income/savings-goal contributions aren't yet folded into the unified Transactions list (this also affects the "Income" figures on Dashboard and Year in Review); EF/FI calculators don't auto-pull figures from Bills/Income; Events have no per-event checklist or savings-goal auto-sync; Travel's own savings-goal auto-sync is still outstanding; Custom recurrence math isn't implemented in recurrence.ts yet (Bills/Debts/Loans data model supports it, but due-date calculation doesn't). (Manual transactions' owner field is now resolved — see Phase 6 above — no longer on this list.)
-3. Phase 9 — Shared Expenses / Household Linking (M3, M11) — still the biggest remaining phase, flagged as the hardest technical part of the whole project, and still deferred pending revisiting the Phase 0.1 sync decision.
-4. Loans still aren't included in the Dashboard's "Amount Owed" or "Due Soon" cards, or in the Calendar's/Cash-Flow Forecast's running-balance projection — matching balanceProjection.ts's own pre-existing limitation. Worth a dedicated checkpoint later to add loan due-dates into that projection everywhere it's used.
-5. Rest of Phase 11 (Settings): 11.1 (Categories, Payees, Rules) and 11.3 (Security & Household & Data) haven't been started yet.
-
-Recommend asking the person at the start of the next session which of these to tackle first.
-
+1. **Checkpoint 9.2b-ii — The real "Link with another profile" screen.**
+   This is the very next step. Plan:
+   - Enter the other person's username + passphrase.
+   - Verify their passphrase is correct the same way `changePassphrase`
+     already does (derive a key from it, try decrypting their data).
+   - Load BOTH people's data: yours (already in memory) and theirs (via
+     `loadProfileCloudBackup()` + `decryptJSON`).
+   - Show a plain-English summary of both ("You have X bills, Y debts..." /
+     "They have X bills, Y debts...") and offer three choices: keep mine,
+     keep theirs, merge both.
+   - Once chosen: generate a household ID + household key (`household.ts`'s
+     `generateHouseholdId()`/`generateHouseholdKey()`), wrap the key for
+     both people (`wrapHouseholdKey()`), save the chosen/merged data to
+     `saveHouseholdData()`, save each person's wrapped key via
+     `saveWrappedHouseholdKey()`, and update each person's local
+     `ProfileIndexEntry.householdId` via `updateProfileHouseholdId()`.
+   - "Merge both" needs real merge logic decided/written — likely: combine
+     both people's lists (bills, debts, income, etc.) rather than trying to
+     de-duplicate anything automatically, since there's no reliable way to
+     know if two entries are "the same" bill. Worth confirming this
+     approach with the person when we get there.
+2. **Checkpoint 9.2c — Wire DataContext to read/write shared data when
+   linked.** Once a profile has a `householdId` set, DataContext's
+   load/save logic needs to use `loadHouseholdData()`/`saveHouseholdData()`
+   (household.ts) instead of `loadEncryptedProfileData()`/
+   `saveEncryptedProfileData()` (storage.ts) — and needs to unwrap the
+   household key (via the wrapped key saved in 9.2b-ii + the person's own
+   passphrase-derived key) to actually decrypt/encrypt with it.
+3. **Checkpoint 9.3 — Shared expense ledger + settle-up.** Depends on all of
+   9.2 being done first.
+4. Once 9.2 is fully done, the Settings > Household placeholder text should
+   be fully replaced by the real linking flow.
+5. **Security rules checkpoint**, before this app holds any real household's
+   data long-term: replace Firestore's current wide-open "test mode" rules
+   with real ones restricting `households/{householdId}`,
+   `householdKeys/{username}`, and `profileBackups/{username}` access
+   appropriately, and delete the leftover `connectionTest` collection.
+6. **Payment Methods report checkpoint** (deferred from Phase 10.2) — requires
+   adding a paymentMethod field to the data model (BillCycle, Debt cycles,
+   LoanPayment, ManualTransaction) AND a real Cash/Debit/Credit picker UI on
+   the relevant payment-logging screens and the manual transaction form, not
+   just a new report file.
+7. **Custom recurrence for Loans** — would need new fields on the Loan type
+   (customStartDate/customFreq/customOccurrenceCount) plus a "Custom" option
+   added to the Loans screen's recurrence dropdown, before balanceProjection.ts
+   could even use it.
+8. Smaller loose ends still flagged from earlier sessions: EF/FI calculators
+   still don't auto-pull figures from Bills/Income; neither Travel nor Events
+   converts a completed item into an actual logged expense/transaction yet
+   (both currently only sync a savings goal target); debt-side "feesPortion"
+   doesn't exist in the data model, so Tax Summary's Interest & Fees figure
+   only covers loan late fees, not debt fees.
+9. **Optional/deferred from earlier:** Checkpoint 6.3, CSV import for
+   Transactions — explicitly optional per the roadmap, still not built.
 
 Files in the repo so far
 - 2-PROJECT-INSTRUCTIONS.md
@@ -135,55 +267,59 @@ Files in the repo so far
 - README.md
 - PROGRESS.md (this file)
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types
-  - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math not yet implemented)
+  - mobile-app/src/types.ts — data model types, including full Category/Payee/CategorizationRule types. Still no paymentMethod or feesPortion fields anywhere — see Phase 10.2 notes above.
+  - mobile-app/src/firebase.ts — Initializes the Firebase app (project: household-finance-mobile) and exports `db`, a Firestore instance.
+  - mobile-app/src/household.ts — Household-key generation, wrap/unwrap (per-person encryption of the shared key), and Firestore read/write for both the shared household data (`households/{householdId}`) and each person's wrapped key (`householdKeys/{username}`). Not yet called from any screen. Confirmed re-verified via `cat` this session — unchanged from 9.2a.
+  - mobile-app/src/cloudBackup.ts — NEW this session. `saveProfileCloudBackup(username, encryptedPayload)` / `loadProfileCloudBackup(username)`, reading/writing Firestore at `profileBackups/{username}`. Personal (not household-shared) encrypted backups, used so the future linking screen has something to compare between two people's data. Confirmed working on a real device.
+  - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math still Bills/Debts only — Loan type has no custom fields)
   - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals()
   - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
-  - mobile-app/src/pushNotifications.ts — requestNotificationPermission() and sendTestNotification(); code complete, on-device confirmation deferred to Phase 13 (see Phase 11.2 above)
+  - mobile-app/src/pushNotifications.ts — local bill-due notification scheduling, confirmed wired into DataContext.tsx's loadModel()/saveModel(), and confirmed firing real notifications on a physical device (multiple sessions).
   - mobile-app/src/defaultModel.ts — empty/default data factory function
-  - mobile-app/src/auth.ts — username sanitizing / sign-in helpers
-  - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data
+  - mobile-app/src/auth.ts — username sanitizing / sign-in helpers.
+  - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data. Reused by household.ts for wrapping/unwrapping the household key, and by cloudBackup.ts indirectly (via the already-encrypted string passed in).
   - mobile-app/src/pin.ts — PIN hashing, storage, and verification
   - mobile-app/src/autoLock.ts — auto-lock idle-minutes setting (default 5)
   - mobile-app/src/theme.ts — color palette (light/dark), ported from the web app's Classic theme
   - mobile-app/src/ThemeContext.tsx — React context + useTheme() hook
-  - mobile-app/src/storage.ts — reads/writes encrypted profile data and the profiles index
-  - mobile-app/src/balanceProjection.ts — running-balance math + formatPeso() currency formatting + outstandingBalance()
-  - mobile-app/src/DataContext.tsx — shared in-memory data holder
+  - mobile-app/src/storage.ts — reads/writes encrypted profile data and the profiles index, incl. updateProfileSalt(), saveEncryptedProfileData(), loadEncryptedProfileData(), and (since 9.2a) householdId on ProfileIndexEntry + updateProfileHouseholdId(). Confirmed re-verified via `cat` this session — unchanged from 9.2a.
+  - mobile-app/src/balanceProjection.ts — running-balance math + formatPeso() currency formatting + outstandingBalance() + loanOutstandingBalance(). Includes Loans (Monthly/Annual/One-time) in computeMonthEvents()/computeRunningBalances(), excluding "lent" loans and Custom-recurrence loans.
+  - mobile-app/src/DataContext.tsx — shared in-memory data holder; wired to rescheduleBillNotifications(); includes changePassphrase(). UPDATED this session: saveModel() and changePassphrase() now also keep a Firestore cloud backup in sync via cloudBackup.ts. Not yet updated to use household.ts (that's Checkpoint 9.2c).
   - mobile-app/src/screens/CreateProfileScreen.tsx
   - mobile-app/src/screens/SignInScreen.tsx
   - mobile-app/src/screens/HomeScreen.tsx
   - mobile-app/src/screens/SetPinScreen.tsx
   - mobile-app/src/screens/PinUnlockScreen.tsx
   - mobile-app/src/screens/PlaceholderScreen.tsx
-  - mobile-app/src/screens/CalendarScreen.tsx
+  - mobile-app/src/screens/CalendarScreen.tsx — running balance reflects Loans too, confirmed on a real phone.
   - mobile-app/src/screens/AccountsScreen.tsx
   - mobile-app/src/screens/BillsScreen.tsx
   - mobile-app/src/screens/DebtsScreen.tsx
   - mobile-app/src/screens/LoansScreen.tsx
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx — now includes a person picker for manual transactions (matches Income's pattern)
+  - mobile-app/src/screens/TransactionsScreen.tsx
   - mobile-app/src/screens/IncomeScreen.tsx
-  - mobile-app/src/screens/SavingsScreen.tsx — Goals / Emergency Fund / FI Calculator pill-switcher tab
-  - mobile-app/src/screens/GroceriesScreen.tsx — grocery list + running-tally calculator
-  - mobile-app/src/screens/TravelScreen.tsx — trip checklist
-  - mobile-app/src/screens/EventsScreen.tsx — birthdays/anniversaries/other events, Annual or One-time
-  - mobile-app/src/screens/GoalsScreen.tsx — Year-End Goals, Track-progress or Simple-checklist mode
-  - mobile-app/src/screens/PlanningScreen.tsx — Groceries / Travel / Events / Goals pill-switcher tab
-  - mobile-app/src/screens/DashboardScreen.tsx — Total Balance, This Month, Amount Owed, Due Soon, Savings Goals overview
-  - mobile-app/src/screens/InsightsScreen.tsx — Dashboard / Reports pill-switcher tab
-  - mobile-app/src/screens/ReportsScreen.tsx — second-level pill-switcher between report pages (7 pills)
-  - mobile-app/src/screens/reports/MonthlyCloseOutReport.tsx — income/expenses/net + spending by category
-  - mobile-app/src/screens/reports/YearInReviewReport.tsx — year totals, 12-month chart, top categories, debt paid, goals reached
-  - mobile-app/src/screens/reports/CashFlowForecastReport.tsx — 30/60/90-day balance projection with warning callout
-  - mobile-app/src/screens/reports/PersonSpendingReport.tsx — per-person spending breakdown
-  - mobile-app/src/screens/reports/WeeklyDigestReport.tsx — weekly summary digest
-  - mobile-app/src/screens/reports/MerchantSpendingReport.tsx — spending grouped by merchant
-  - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx — recurring bills ranked by monthly-equivalent cost
-  - mobile-app/src/screens/SettingsScreen.tsx — includes a temporary "Send a test notification in 10 seconds" button (Checkpoint 11.2) to be removed once real device confirmation happens in Phase 13
-  - mobile-app/src/navigation/MainTabs.tsx — Insights tab wired to InsightsScreen; Tab.Navigator now has an explicit id prop for React Navigation v7 compatibility
-  - mobile-app/App.tsx — includes auto-lock suppression check
-  - mobile-app/package.json / package-lock.json
+  - mobile-app/src/screens/SavingsScreen.tsx
+  - mobile-app/src/screens/GroceriesScreen.tsx
+  - mobile-app/src/screens/TravelScreen.tsx — real savings-goal auto-sync (tripFullChecklistTotal, syncTripSavingsGoal), confirmed working on a real phone.
+  - mobile-app/src/screens/EventsScreen.tsx — real savings-goal auto-sync (syncEventSavingsGoal), mirroring TravelScreen.tsx's pattern, confirmed working on a real phone.
+  - mobile-app/src/screens/GoalsScreen.tsx
+  - mobile-app/src/screens/PlanningScreen.tsx
+  - mobile-app/src/screens/DashboardScreen.tsx — "Amount Owed" shows Bills/Debts/Loans breakdown; "Due Soon" includes loan payments. Confirmed working on a real phone.
+  - mobile-app/src/screens/InsightsScreen.tsx
+  - mobile-app/src/screens/ReportsScreen.tsx — second-level pill-switcher between report pages (8 pills)
+  - mobile-app/src/screens/reports/MonthlyCloseOutReport.tsx
+  - mobile-app/src/screens/reports/YearInReviewReport.tsx
+  - mobile-app/src/screens/reports/CashFlowForecastReport.tsx
+  - mobile-app/src/screens/reports/PersonSpendingReport.tsx
+  - mobile-app/src/screens/reports/WeeklyDigestReport.tsx
+  - mobile-app/src/screens/reports/MerchantSpendingReport.tsx
+  - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx
+  - mobile-app/src/screens/reports/TaxSummaryReport.tsx — Year-picker, total income/expenses/saved, interest & fees (loan late fees only, clearly labeled), full expense-by-category breakdown.
+  - mobile-app/src/screens/SettingsScreen.tsx — Contains ALL of Phase 11: Categories/Payees/Categorization Rules (11.1), Appearance mode picker + Notifications settings (11.2), and Security (change passphrase) / Household (placeholder — still not updated for Phase 9, to be replaced in 9.2b-ii) / Data (backup + clear all) sections (11.3). No leftover debug UI. Not touched this session.
+  - mobile-app/src/navigation/MainTabs.tsx
+  - mobile-app/App.tsx
+  - mobile-app/package.json / package-lock.json — includes expo-sharing (~14.0.8) and firebase.
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Metro must be started from inside mobile-app (cd mobile-app first), always with --tunnel.

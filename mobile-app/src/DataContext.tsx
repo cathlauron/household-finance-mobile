@@ -19,6 +19,7 @@ import {
   updateProfileSalt,
 } from './storage';
 import { rescheduleBillNotifications } from './pushNotifications';
+import { saveProfileCloudBackup } from './cloudBackup';
 
 type ChangePassphraseResult = { ok: boolean; error?: string };
 
@@ -81,6 +82,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Keep scheduled alerts in sync with whatever just changed (a new bill, a paid
     // bill, a changed due date, or the notification setting itself).
     rescheduleBillNotifications(updatedModel).catch(() => {});
+    // Checkpoint 9.2b-i: also keep an encrypted backup of this profile's data in the
+    // cloud, so a future "link with another profile" screen has something to compare
+    // against — and as a side benefit, a real backup if this phone is lost. Not
+    // awaited and silently ignored on failure (e.g. no internet), same pattern as
+    // rescheduleBillNotifications above — a failed cloud backup should never block or
+    // interrupt normal use of the app.
+    saveProfileCloudBackup(username, encrypted).catch(() => {});
   }
 
   function clearModel() {
@@ -127,6 +135,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const reEncrypted = await encryptJSON(newKey, currentModel);
     await saveEncryptedProfileData(username, reEncrypted);
     await updateProfileSalt(username, newSalt);
+    // Checkpoint 9.2b-i: the cloud backup was encrypted with the OLD key, so it needs
+    // to be refreshed here too, using the freshly re-encrypted data above — otherwise
+    // it would be left stuck, undecryptable with the new passphrase.
+    saveProfileCloudBackup(username, reEncrypted).catch(() => {});
 
     keyRef.current = newKey;
     return { ok: true };
