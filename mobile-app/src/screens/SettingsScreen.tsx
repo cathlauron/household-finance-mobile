@@ -19,6 +19,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
+import { startHouseholdLink } from '../linking';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -52,7 +53,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { model, saveModel, changePassphrase } = useData();
+  const { model, saveModel, changePassphrase, username } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -83,6 +84,11 @@ export default function SettingsScreen() {
   const [ruleMaxInput, setRuleMaxInput] = useState('');
   const [ruleCategoryInput, setRuleCategoryInput] = useState('');
   const [ruleErrorMsg, setRuleErrorMsg] = useState('');
+
+  // ---- Checkpoint 9.2a: Start linking ----
+  const [linkCode, setLinkCode] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkErrorMsg, setLinkErrorMsg] = useState('');
 
   // ---- Checkpoint 11.3: Security (change passphrase) ----
   const [currentPassInput, setCurrentPassInput] = useState('');
@@ -388,6 +394,20 @@ export default function SettingsScreen() {
     await saveModel(updated);
   }
 
+  // ---- Checkpoint 9.2a: Start linking handler ----
+  async function handleStartLinking() {
+    if (!model || !username) return;
+    setLinkErrorMsg('');
+    setLinkBusy(true);
+    try {
+      const result = await startHouseholdLink(username, model);
+      setLinkCode(result.code);
+    } catch (e) {
+      setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
+    }
+    setLinkBusy(false);
+  }
+
   // ---- Checkpoint 11.3: Security handler ----
   async function handleChangePassphrase() {
     setPassChangeMsg('');
@@ -690,9 +710,34 @@ export default function SettingsScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
         <Text style={styles.sectionSub}>
-          Sharing data between phones is coming in a future update. For now, this profile's
-          data stays only on this device.
+          Link this profile with another phone so you both see and edit the same data.
         </Text>
+
+        {!linkCode ? (
+          <>
+            <TouchableOpacity
+              style={styles.dataButton}
+              onPress={handleStartLinking}
+              disabled={linkBusy}
+            >
+              {linkBusy ? (
+                <ActivityIndicator color={colors.gold} />
+              ) : (
+                <Text style={styles.dataButtonText}>Start linking</Text>
+              )}
+            </TouchableOpacity>
+            {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
+          </>
+        ) : (
+          <View style={styles.linkCodeBox}>
+            <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
+            <Text style={styles.linkCodeText}>{linkCode}</Text>
+            <Text style={styles.hintText}>
+              On the other phone, choose "Join with a code" and enter this. The code only
+              works once and doesn't expire yet — we'll tighten that up in a later step.
+            </Text>
+          </View>
+        )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
         <Text style={styles.sectionSub}>
@@ -1067,6 +1112,21 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     dataButtonText: { fontSize: 14, fontWeight: '600', color: colors.gold },
+    linkCodeBox: {
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      padding: 16,
+      marginBottom: 8,
+      alignItems: 'center',
+    },
+    linkCodeLabel: { fontSize: 12.5, color: colors.inkDim, marginBottom: 8 },
+    linkCodeText: {
+      fontSize: 28,
+      fontWeight: '700',
+      letterSpacing: 4,
+      color: colors.ink,
+      marginBottom: 8,
+    },
     dangerButton: {
       backgroundColor: '#e5484d',
       borderRadius: 10,

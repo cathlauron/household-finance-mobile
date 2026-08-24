@@ -28,7 +28,11 @@ type DataContextValue = {
   loadModel: (username: string, key: CryptoJS.lib.WordArray) => Promise<void>;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
-  changePassphrase: (currentPassphrase: string, newPassphrase: string) => Promise<ChangePassphraseResult>;
+  changePassphrase: (
+    currentPassphrase: string,
+    newPassphrase: string
+  ) => Promise<ChangePassphraseResult>;
+  username: string | null;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -130,7 +134,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider
-      value={{ model, loading, loadModel, saveModel, clearModel, changePassphrase }}
+      value={{
+        model,
+        loading,
+        loadModel,
+        saveModel,
+        clearModel,
+        changePassphrase,
+        username: usernameRef.current,
+      }}
     >
       {children}
     </DataContext.Provider>
