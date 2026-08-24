@@ -16,7 +16,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { SavingsGoal, SavingsContribution, HouseholdModel } from '../types';
+import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -66,6 +66,30 @@ function sortGoals(goals: SavingsGoal[]): SavingsGoal[] {
     if (!db) return -1;
     return da.getTime() - db.getTime();
   });
+}
+
+// ---- Auto-suggested expense baseline (pulled from real Bills data) ----
+// Mirrors the web app's monthlyBudgetBaseline(): monthly-recurring bills counted at their
+// most recently logged cycle amount, plus annual-recurring bills' most recent amount divided
+// by 12. One-time/custom bills aren't counted — there's no reliable "typical month" figure
+// for those. This never overwrites a saved value; it's only ever shown as a tappable
+// suggestion the person can choose to accept.
+function billLatestCycleAmount(bill: Bill): number {
+  if (!bill.cycles || bill.cycles.length === 0) return 0;
+  const last = bill.cycles[bill.cycles.length - 1];
+  return typeof last.amountDue === 'number' ? last.amountDue : 0;
+}
+
+function computeMonthlyExpenseBaseline(bills: Bill[]): number {
+  let total = 0;
+  for (const bill of bills) {
+    if (bill.recurringType === 'monthly') {
+      total += billLatestCycleAmount(bill);
+    } else if (bill.recurringType === 'annual') {
+      total += billLatestCycleAmount(bill) / 12;
+    }
+  }
+  return total;
 }
 
 type ContribRow = { id: string; date: string; amountInput: string };
@@ -300,6 +324,9 @@ export default function SavingsScreen() {
   const goals = sortGoals(model.savingsGoals);
   const totalSaved = goals.reduce((sum, g) => sum + contributionsTotal(g), 0);
 
+  const suggestedMonthlyExpenses = computeMonthlyExpenseBaseline(model.bills);
+  const suggestedAnnualExpenses = suggestedMonthlyExpenses * 12;
+
   const storedCalc = calcInputsFromModel();
   const efExpensesDisplay =
     efExpensesInput !== '' ? efExpensesInput : storedCalc.efMonthlyExpenses === '' ? '' : String(storedCalc.efMonthlyExpenses);
@@ -415,6 +442,18 @@ export default function SavingsScreen() {
             value={efExpensesDisplay}
             onChangeText={setEfExpensesInput}
           />
+          {suggestedMonthlyExpenses > 0 && (
+            <TouchableOpacity
+              style={styles.suggestionRow}
+              onPress={() =>
+                setEfExpensesInput(String(Math.round(suggestedMonthlyExpenses * 100) / 100))
+              }
+            >
+              <Text style={styles.suggestionText}>
+                Based on your recurring Bills: {formatPeso(suggestedMonthlyExpenses)}/mo — tap to use this
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <Text style={styles.inputLabel}>Current savings set aside for this</Text>
           <TextInput
@@ -456,6 +495,18 @@ export default function SavingsScreen() {
             value={fiExpensesDisplay}
             onChangeText={setFiExpensesInput}
           />
+          {suggestedAnnualExpenses > 0 && (
+            <TouchableOpacity
+              style={styles.suggestionRow}
+              onPress={() =>
+                setFiExpensesInput(String(Math.round(suggestedAnnualExpenses * 100) / 100))
+              }
+            >
+              <Text style={styles.suggestionText}>
+                Based on your recurring Bills: {formatPeso(suggestedAnnualExpenses)}/yr — tap to use this
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <Text style={styles.inputLabel}>Current savings / investments</Text>
           <TextInput
@@ -653,6 +704,8 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
+    suggestionRow: { marginTop: -6, marginBottom: 14 },
+    suggestionText: { fontSize: 11.5, color: colors.gold, fontStyle: 'italic' },
     fieldHint: { fontSize: 11, color: colors.inkFaint, marginBottom: 10, lineHeight: 15 },
     resultCard: {
       backgroundColor: colors.navy3,
