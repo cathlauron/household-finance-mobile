@@ -5,6 +5,10 @@ const PROFILES_INDEX_KEY = 'profiles-index';
 export type ProfileIndexEntry = {
   username: string;
   salt: string;
+  // Set once this profile is linked to a shared household (Checkpoint 9.2+).
+  // Undefined/absent means "not linked — personal data only," same as every
+  // profile before this checkpoint.
+  householdId?: string;
 };
 
 export async function loadProfilesIndex(): Promise<ProfileIndexEntry[]> {
@@ -30,6 +34,19 @@ export async function updateProfileSalt(username: string, newSalt: string): Prom
   const idx = profiles.findIndex((p) => p.username === username);
   if (idx === -1) return;
   profiles[idx] = { ...profiles[idx], salt: newSalt };
+  await saveProfilesIndex(profiles);
+}
+
+// Records (or clears, by passing undefined) which household this profile is linked to.
+// Same "do nothing if username not found" safety as updateProfileSalt above.
+export async function updateProfileHouseholdId(username: string, householdId: string | undefined): Promise<void> {
+  const profiles = await loadProfilesIndex();
+  const idx = profiles.findIndex((p) => p.username === username);
+  if (idx === -1) return;
+  const next = { ...profiles[idx] };
+  if (householdId) next.householdId = householdId;
+  else delete next.householdId;
+  profiles[idx] = next;
   await saveProfilesIndex(profiles);
 }
 
