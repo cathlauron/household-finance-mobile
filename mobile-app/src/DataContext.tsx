@@ -5,6 +5,14 @@
 // or unlocked, and gives any screen a way to read it — and,
 // eventually, save changes back — without every screen needing
 // to know how to decrypt/encrypt or talk to storage itself.
+//
+// Checkpoint 9.2c: a profile can now be linked to a shared
+// household. Once linked (profile.householdId is set in the
+// profiles index), loadModel/saveModel transparently read/write
+// the SHARED household data instead of this profile's own
+// personal data — every other screen keeps working exactly as
+// before, with no idea whether it's looking at personal or
+// shared data.
 // ============================================================
 
 import React, { createContext, useContext, useRef, useState, ReactNode } from 'react';
@@ -20,6 +28,12 @@ import {
 } from './storage';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup } from './cloudBackup';
+import {
+  loadWrappedHouseholdKey,
+  unwrapHouseholdKey,
+  loadHouseholdData,
+  saveHouseholdData,
+} from './household';
 
 type ChangePassphraseResult = { ok: boolean; error?: string };
 
@@ -34,6 +48,13 @@ type DataContextValue = {
     newPassphrase: string
   ) => Promise<ChangePassphraseResult>;
   username: string | null;
+  // Checkpoint 9.2c: whether this profile is currently reading/writing
+  // shared household data (true) or its own personal data (false).
+  isLinked: boolean;
+  // The passphrase-derived key for THIS profile's own passphrase — needed
+  // by the linking screens to wrap/unwrap a shared household key, without
+  // every screen having to re-derive or pass it around separately.
+  getPersonalKey: () => CryptoJS.lib.WordArray | null;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -41,17 +62,54 @@ const DataContext = createContext<DataContextValue | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<HouseholdModel | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isLinked, setIsLinked] = useState(false);
 
   // Kept outside React state (in refs) since we only need them for the next save/load
   // call, not for anything that should trigger a re-render on its own.
   const usernameRef = useRef<string | null>(null);
   const keyRef = useRef<CryptoJS.lib.WordArray | null>(null);
+  // Checkpoint 9.2c: set only when this profile is linked — the shared
+  // household's id and its (unwrapped) encryption key. Undefined/null in
+  // both when this profile is personal/unlinked.
+  const householdIdRef = useRef<string | undefined>(undefined);
+  const householdKeyRef = useRef<CryptoJS.lib.WordArray | null>(null);
 
   async function loadModel(username: string, key: CryptoJS.lib.WordArray) {
     setLoading(true);
     usernameRef.current = username;
     keyRef.current = key;
+    householdIdRef.current = undefined;
+    householdKeyRef.current = null;
     try {
+      const profiles = await loadProfilesIndex();
+      const profile = profiles.find((p) => p.username === username);
+      const householdId = profile?.householdId;
+
+      if (householdId) {
+        // Linked profile: look up this profile's own wrapped copy of the
+        // shared household key, unwrap it with the personal key, then load
+        // and decrypt the shared household data with it.
+        const wrapped = await loadWrappedHouseholdKey(username);
+        if (wrapped && wrapped.householdId === householdId) {
+          const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
+          const encryptedHousehold = await loadHouseholdData(householdId);
+          if (encryptedHousehold) {
+            const loaded = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
+            householdIdRef.current = householdId;
+            householdKeyRef.current = householdKey;
+            setModel(loaded);
+            setIsLinked(true);
+            rescheduleBillNotifications(loaded).catch(() => {});
+            setLoading(false);
+            return;
+          }
+        }
+        // If we get here, something about the link is broken (e.g. the wrapped
+        // key wasn't found, or the shared data hasn't been saved yet) — fall
+        // through to personal data below rather than showing a blank/broken
+        // screen. This shouldn't normally happen.
+      }
+
       const encrypted = await loadEncryptedProfileData(username);
       let loaded: HouseholdModel;
       if (!encrypted) {
@@ -60,6 +118,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         loaded = decryptJSON<HouseholdModel>(key, encrypted);
       }
       setModel(loaded);
+      setIsLinked(false);
       // Rebuild any due-bill alerts against whatever was just loaded — not awaited,
       // since it shouldn't hold up the sign-in screen finishing its own transition.
       rescheduleBillNotifications(loaded).catch(() => {});
@@ -67,6 +126,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Shouldn't normally happen, since this only ever runs after a verified sign-in —
       // but fall back to a blank model instead of crashing, just in case.
       setModel(defaultModel());
+      setIsLinked(false);
     } finally {
       setLoading(false);
     }
@@ -75,8 +135,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   async function saveModel(updatedModel: HouseholdModel) {
     setModel(updatedModel);
     const username = usernameRef.current;
+    if (!username) return;
+
+    if (householdIdRef.current && householdKeyRef.current) {
+      // Linked profile: save to the shared household document instead of
+      // this profile's own personal storage.
+      const encrypted = await encryptJSON(householdKeyRef.current, updatedModel);
+      await saveHouseholdData(householdIdRef.current, encrypted);
+      rescheduleBillNotifications(updatedModel).catch(() => {});
+      return;
+    }
+
     const key = keyRef.current;
-    if (!username || !key) return;
+    if (!key) return;
     const encrypted = await encryptJSON(key, updatedModel);
     await saveEncryptedProfileData(username, encrypted);
     // Keep scheduled alerts in sync with whatever just changed (a new bill, a paid
@@ -94,7 +165,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function clearModel() {
     usernameRef.current = null;
     keyRef.current = null;
+    householdIdRef.current = undefined;
+    householdKeyRef.current = null;
     setModel(null);
+    setIsLinked(false);
+  }
+
+  function getPersonalKey(): CryptoJS.lib.WordArray | null {
+    return keyRef.current;
   }
 
   // ---- Checkpoint 11.3: change passphrase ----
@@ -154,6 +232,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         clearModel,
         changePassphrase,
         username: usernameRef.current,
+        isLinked,
+        getPersonalKey,
       }}
     >
       {children}

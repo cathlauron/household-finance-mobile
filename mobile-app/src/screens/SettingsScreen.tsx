@@ -19,7 +19,8 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
-import { startHouseholdLink, joinHouseholdLink } from '../linking';
+import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink } from '../linking';
+import type { JoinChoice } from '../linking';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -80,7 +81,7 @@ function summarizeModel(m: HouseholdModel): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { model, saveModel, changePassphrase, username } = useData();
+  const { model, saveModel, changePassphrase, username, loadModel, isLinked, getPersonalKey } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -114,11 +115,17 @@ export default function SettingsScreen() {
 
   // ---- Checkpoint 9.2a: Start linking ----
   const [linkCode, setLinkCode] = useState('');
+  const [linkSecretHex, setLinkSecretHex] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErrorMsg, setLinkErrorMsg] = useState('');
 
+  // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
+  const [hostFinishBusy, setHostFinishBusy] = useState(false);
+  const [hostFinishMsg, setHostFinishMsg] = useState('');
+
   // ---- Checkpoint 9.2b-ii: Join with a code ----
   const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [joinedCode, setJoinedCode] = useState('');
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinErrorMsg, setJoinErrorMsg] = useState('');
   const [joinResult, setJoinResult] = useState<{
@@ -126,6 +133,7 @@ export default function SettingsScreen() {
     hostModel: HouseholdModel;
     secretHex: string;
   } | null>(null);
+  const [joinChoiceBusy, setJoinChoiceBusy] = useState(false);
   const [joinChoiceMsg, setJoinChoiceMsg] = useState('');
 
   // ---- Checkpoint 11.3: Security (change passphrase) ----
@@ -440,15 +448,46 @@ export default function SettingsScreen() {
     try {
       const result = await startHouseholdLink(username, model);
       setLinkCode(result.code);
+      setLinkSecretHex(result.secretHex);
     } catch (e) {
       setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
     }
     setLinkBusy(false);
   }
 
+  // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
+  // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
+  // says so and lets you try again after checking with them. If it has, this phone
+  // finishes its own side (wraps the real shared key with this phone's own passphrase)
+  // and reloads so the rest of the app immediately starts using the shared data.
+  async function handleFinishHostLink() {
+    if (!username || !linkCode || !linkSecretHex) return;
+    const personalKey = getPersonalKey();
+    if (!personalKey) {
+      setHostFinishMsg('Something went wrong — please try again.');
+      return;
+    }
+    setHostFinishBusy(true);
+    setHostFinishMsg('');
+    try {
+      const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey);
+      if (result.status === 'notYet') {
+        setHostFinishMsg(
+          "They haven't finished on their end yet — ask them to pick Keep mine / Keep theirs / Merge both on their phone, then try this again."
+        );
+      } else {
+        setHostFinishMsg('Linked! Loading your shared data…');
+        await loadModel(username, personalKey);
+      }
+    } catch (e) {
+      setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
+    }
+    setHostFinishBusy(false);
+  }
+
   // ---- Checkpoint 9.2b-ii: Join with a code handler ----
   // Unlocks the other phone's data using the code, then shows a side-by-side
-  // comparison. Nothing is saved or made permanent here yet — that's next session.
+  // comparison so mine/theirs/merge can be picked next.
   async function handleJoinWithCode() {
     setJoinErrorMsg('');
     setJoinChoiceMsg('');
@@ -458,19 +497,48 @@ export default function SettingsScreen() {
     }
     setJoinBusy(true);
     try {
+      const normalizedCode = joinCodeInput.trim().toUpperCase();
       const result = await joinHouseholdLink(joinCodeInput);
       setJoinResult(result);
+      setJoinedCode(normalizedCode);
     } catch (e) {
       setJoinErrorMsg("That code doesn't look right, or it's expired — check it and try again.");
     }
     setJoinBusy(false);
   }
 
-  // Placeholder for now — recording the choice is as far as this goes until next
-  // session, when this will actually create the shared household and save it.
-  function handleJoinChoice(choice: 'mine' | 'theirs' | 'merge') {
-    const label = choice === 'mine' ? 'keep your data' : choice === 'theirs' ? 'keep their data' : 'merge both';
-    setJoinChoiceMsg(`Choice recorded: ${label}. This will be made permanent in a future update.`);
+  // ---- Checkpoint 9.2c: joiner side — mine/theirs/merge, made permanent ----
+  // Creates the real shared household, saves the chosen data to it, wraps the shared
+  // key with this phone's own passphrase, and reloads so the rest of the app
+  // immediately starts using the shared data.
+  async function handleJoinChoice(choice: JoinChoice) {
+    if (!model || !username || !joinResult || !joinedCode) return;
+    const personalKey = getPersonalKey();
+    if (!personalKey) {
+      setJoinChoiceMsg('Something went wrong — please try again.');
+      return;
+    }
+    setJoinChoiceBusy(true);
+    setJoinChoiceMsg('');
+    try {
+      await finishJoinerLink(
+        joinedCode,
+        choice,
+        username,
+        model,
+        joinResult.hostModel,
+        joinResult.secretHex,
+        personalKey
+      );
+      setJoinChoiceMsg('Linked! Loading your shared data…');
+      await loadModel(username, personalKey);
+      setJoinResult(null);
+      setJoinCodeInput('');
+      setJoinedCode('');
+    } catch (e) {
+      setJoinChoiceMsg("Something went wrong — check your connection and try again.");
+    }
+    setJoinChoiceBusy(false);
   }
 
   // ---- Checkpoint 11.3: Security handler ----
@@ -775,82 +843,130 @@ export default function SettingsScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
         <Text style={styles.sectionSub}>
-          Link this profile with another phone so you both see and edit the same data.
+          {isLinked
+            ? 'This profile shares its data with another linked profile — anything either of you enters shows up for both of you.'
+            : 'Link this profile with another phone so you both see and edit the same data.'}
         </Text>
 
-        {!linkCode && !joinResult && (
+        {isLinked ? (
+          <View style={styles.linkCodeBox}>
+            <Text style={styles.linkCodeLabel}>✓ Linked</Text>
+            <Text style={styles.hintText}>
+              This profile is currently sharing its data with another linked profile. Unlinking
+              isn't available yet — that's coming in a later update.
+            </Text>
+          </View>
+        ) : (
           <>
-            <TouchableOpacity
-              style={styles.dataButton}
-              onPress={handleStartLinking}
-              disabled={linkBusy}
-            >
-              {linkBusy ? (
-                <ActivityIndicator color={colors.gold} />
-              ) : (
-                <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
-              )}
-            </TouchableOpacity>
-            {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
+            {!linkCode && !joinResult && (
+              <>
+                <TouchableOpacity
+                  style={styles.dataButton}
+                  onPress={handleStartLinking}
+                  disabled={linkBusy}
+                >
+                  {linkBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
+                  )}
+                </TouchableOpacity>
+                {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
-            <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter the 6-character code"
-              placeholderTextColor={colors.inkFaint}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              value={joinCodeInput}
-              onChangeText={setJoinCodeInput}
-            />
-            <TouchableOpacity
-              style={styles.dataButton}
-              onPress={handleJoinWithCode}
-              disabled={joinBusy}
-            >
-              {joinBusy ? (
-                <ActivityIndicator color={colors.gold} />
-              ) : (
-                <Text style={styles.dataButtonText}>Join with a code</Text>
-              )}
-            </TouchableOpacity>
-            {!!joinErrorMsg && <Text style={styles.errorText}>{joinErrorMsg}</Text>}
+                <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter the 6-character code"
+                  placeholderTextColor={colors.inkFaint}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  value={joinCodeInput}
+                  onChangeText={setJoinCodeInput}
+                />
+                <TouchableOpacity
+                  style={styles.dataButton}
+                  onPress={handleJoinWithCode}
+                  disabled={joinBusy}
+                >
+                  {joinBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <Text style={styles.dataButtonText}>Join with a code</Text>
+                  )}
+                </TouchableOpacity>
+                {!!joinErrorMsg && <Text style={styles.errorText}>{joinErrorMsg}</Text>}
+              </>
+            )}
+
+            {!!linkCode && (
+              <View style={styles.linkCodeBox}>
+                <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
+                <Text style={styles.linkCodeText}>{linkCode}</Text>
+                <Text style={styles.hintText}>
+                  On the other phone, choose "Join with a code" and enter this. Once they've
+                  picked Keep mine / Keep theirs / Merge both on their end, come back here and
+                  tap the button below to finish linking on this phone too.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
+                  onPress={handleFinishHostLink}
+                  disabled={hostFinishBusy}
+                >
+                  {hostFinishBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <Text style={styles.dataButtonText}>I've shared this code — finish linking</Text>
+                  )}
+                </TouchableOpacity>
+                {!!hostFinishMsg && (
+                  <Text style={hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
+                    {hostFinishMsg}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {!!joinResult && model && (
+              <View style={styles.linkCodeBox}>
+                <Text style={styles.linkCodeLabel}>Found their data</Text>
+                <Text style={styles.hintText}>You: {summarizeModel(model)}</Text>
+                <Text style={styles.hintText}>
+                  {joinResult.hostUsername}: {summarizeModel(joinResult.hostModel)}
+                </Text>
+                <Text style={[styles.hintText, { marginTop: 8, marginBottom: 8 }]}>
+                  Choose what the shared vault should start with — this can't be undone once
+                  you pick, so double check with the other phone first if you're unsure.
+                </Text>
+                <TouchableOpacity
+                  style={styles.dataButton}
+                  onPress={() => handleJoinChoice('mine')}
+                  disabled={joinChoiceBusy}
+                >
+                  <Text style={styles.dataButtonText}>Keep mine</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dataButton}
+                  onPress={() => handleJoinChoice('theirs')}
+                  disabled={joinChoiceBusy}
+                >
+                  <Text style={styles.dataButtonText}>Keep theirs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dataButton}
+                  onPress={() => handleJoinChoice('merge')}
+                  disabled={joinChoiceBusy}
+                >
+                  <Text style={styles.dataButtonText}>Merge both</Text>
+                </TouchableOpacity>
+                {joinChoiceBusy && <ActivityIndicator color={colors.gold} />}
+                {!!joinChoiceMsg && (
+                  <Text style={joinChoiceMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
+                    {joinChoiceMsg}
+                  </Text>
+                )}
+              </View>
+            )}
           </>
-        )}
-
-        {!!linkCode && (
-          <View style={styles.linkCodeBox}>
-            <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
-            <Text style={styles.linkCodeText}>{linkCode}</Text>
-            <Text style={styles.hintText}>
-              On the other phone, choose "Join with a code" and enter this. The code only
-              works once and doesn't expire yet — we'll tighten that up in a later step.
-            </Text>
-          </View>
-        )}
-
-        {!!joinResult && model && (
-          <View style={styles.linkCodeBox}>
-            <Text style={styles.linkCodeLabel}>Found their data</Text>
-            <Text style={styles.hintText}>You: {summarizeModel(model)}</Text>
-            <Text style={styles.hintText}>
-              {joinResult.hostUsername}: {summarizeModel(joinResult.hostModel)}
-            </Text>
-            <Text style={[styles.hintText, { marginTop: 8, marginBottom: 8 }]}>
-              Choose what the shared vault should start with — nothing is deleted from
-              either phone until this is made permanent in a future step.
-            </Text>
-            <TouchableOpacity style={styles.dataButton} onPress={() => handleJoinChoice('mine')}>
-              <Text style={styles.dataButtonText}>Keep mine</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.dataButton} onPress={() => handleJoinChoice('theirs')}>
-              <Text style={styles.dataButtonText}>Keep theirs</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.dataButton} onPress={() => handleJoinChoice('merge')}>
-              <Text style={styles.dataButtonText}>Merge both</Text>
-            </TouchableOpacity>
-            {!!joinChoiceMsg && <Text style={styles.successText}>{joinChoiceMsg}</Text>}
-          </View>
         )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
