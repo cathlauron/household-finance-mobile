@@ -15,7 +15,13 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { TravelTrip, TravelChecklistItem, HouseholdModel, SavingsGoal } from '../types';
+import type {
+  TravelTrip,
+  TravelChecklistItem,
+  HouseholdModel,
+  SavingsGoal,
+  ManualTransaction,
+} from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -76,6 +82,59 @@ function syncTripSavingsGoal(
     createdAt: Date.now(),
   };
   return { goals: [...allGoals, newGoal], savingsGoalId: newGoal.id };
+}
+
+// Compares a trip's checklist before and after editing, and logs (or removes) a real
+// ManualTransaction for each item as it gets checked on/off — so completing a checklist
+// item doesn't just move a savings-goal number, it also shows up in Transactions.
+// - Item newly checked (with a cost) and no transaction yet -> create one.
+// - Item unchecked, and it had a transaction -> remove that transaction.
+// - Item still checked and already has a transaction -> keep its amount/label in sync.
+function reconcileTravelChecklistTransactions(
+  priorChecklist: TravelChecklistItem[],
+  newChecklist: TravelChecklistItem[],
+  transactions: ManualTransaction[],
+  tripName: string
+): { checklist: TravelChecklistItem[]; transactions: ManualTransaction[] } {
+  let txns = [...transactions];
+  const priorById = new Map(priorChecklist.map((i) => [i.id, i]));
+
+  const updatedChecklist = newChecklist.map((item) => {
+    const prior = priorById.get(item.id);
+    const wasChecked = prior?.checked ?? false;
+    const hasCost = typeof item.cost === 'number' && item.cost > 0;
+
+    if (item.checked && !wasChecked && hasCost && !item.expenseTransactionId) {
+      const newTxn: ManualTransaction = {
+        id: makeId('txn'),
+        date: item.completedDate || new Date().toISOString().slice(0, 10),
+        label: tripName + ': ' + item.title,
+        amount: item.cost as number,
+        direction: 'out',
+        owner: 'shared',
+        category: 'Travel',
+      };
+      txns = [...txns, newTxn];
+      return { ...item, expenseTransactionId: newTxn.id };
+    }
+
+    if (!item.checked && wasChecked && item.expenseTransactionId) {
+      txns = txns.filter((t) => t.id !== item.expenseTransactionId);
+      return { ...item, expenseTransactionId: undefined };
+    }
+
+    if (item.checked && item.expenseTransactionId && hasCost) {
+      txns = txns.map((t) =>
+        t.id === item.expenseTransactionId
+          ? { ...t, amount: item.cost as number, label: tripName + ': ' + item.title }
+          : t
+      );
+    }
+
+    return item;
+  });
+
+  return { checklist: updatedChecklist, transactions: txns };
 }
 
 function tripDateRangeLabel(trip: TravelTrip): string {
@@ -203,12 +262,19 @@ export default function TravelScreen() {
 
     const currentList = model.travel ?? [];
     const priorTrip = editingId ? currentList.find((t) => t.id === editingId) : undefined;
+    const { checklist: reconciledChecklist, transactions: reconciledTransactions } =
+      reconcileTravelChecklistTransactions(
+        priorTrip?.checklist ?? [],
+        checklist,
+        model.manualTransactions ?? [],
+        trimmedName
+      );
     const draftTrip: TravelTrip = {
       id: editingId ?? makeId('trip'),
       name: trimmedName,
       startDate: startDateInput.trim(),
       endDate: endDateInput.trim(),
-      checklist,
+      checklist: reconciledChecklist,
       trackInSavings,
       savingsGoalId: priorTrip?.savingsGoalId,
       createdAt: priorTrip?.createdAt ?? Date.now(),
@@ -223,7 +289,12 @@ export default function TravelScreen() {
     const updatedList: TravelTrip[] = editingId
       ? currentList.map((t) => (t.id === editingId ? finalTrip : t))
       : [...currentList, finalTrip];
-    const updated: HouseholdModel = { ...model, travel: updatedList, savingsGoals: syncedGoals };
+    const updated: HouseholdModel = {
+      ...model,
+      travel: updatedList,
+      savingsGoals: syncedGoals,
+      manualTransactions: reconciledTransactions,
+    };
     await saveModel(updated);
     closeModal();
   }
@@ -231,12 +302,20 @@ export default function TravelScreen() {
   async function handleDeleteTrip() {
     if (!editingId || !model) return;
     const tripBeingDeleted = (model.travel ?? []).find((t) => t.id === editingId);
+    const linkedTxnIds = new Set(
+      (tripBeingDeleted?.checklist ?? [])
+        .map((i) => i.expenseTransactionId)
+        .filter((id): id is string => !!id)
+    );
     const updated: HouseholdModel = {
       ...model,
       travel: (model.travel ?? []).filter((t) => t.id !== editingId),
       savingsGoals: tripBeingDeleted?.savingsGoalId
         ? (model.savingsGoals ?? []).filter((g) => g.id !== tripBeingDeleted.savingsGoalId)
         : model.savingsGoals,
+      manualTransactions: linkedTxnIds.size
+        ? (model.manualTransactions ?? []).filter((t) => !linkedTxnIds.has(t.id))
+        : model.manualTransactions,
     };
     await saveModel(updated);
     closeModal();

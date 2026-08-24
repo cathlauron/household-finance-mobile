@@ -15,7 +15,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { EventItem, HouseholdModel, SavingsGoal } from '../types';
+import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -89,6 +89,50 @@ function syncEventSavingsGoal(
     i === existingIndex ? { ...g, name: goalName, targetAmount: numericBudget } : g
   );
   return { goals, savingsGoalId: ev.savingsGoalId };
+}
+
+// Logs (or removes) a real ManualTransaction as an event is marked Completed / un-marked —
+// mirrors reconcileTravelChecklistTransactions in TravelScreen.tsx, one-shot instead of
+// per-checklist-item since an Event has a single budget rather than a checklist.
+function reconcileEventTransaction(
+  priorCompleted: boolean,
+  priorTransactionId: string | undefined,
+  newCompleted: boolean,
+  budget: number | '',
+  transactions: ManualTransaction[],
+  eventName: string,
+  completedDate: string | undefined
+): { transactionId: string | undefined; transactions: ManualTransaction[] } {
+  const hasBudget = typeof budget === 'number' && budget > 0;
+  let txns = [...transactions];
+
+  if (newCompleted && !priorCompleted && hasBudget && !priorTransactionId) {
+    const newTxn: ManualTransaction = {
+      id: makeId('txn'),
+      date: completedDate || new Date().toISOString().slice(0, 10),
+      label: eventName,
+      amount: budget as number,
+      direction: 'out',
+      owner: 'shared',
+      category: 'Events',
+    };
+    txns = [...txns, newTxn];
+    return { transactionId: newTxn.id, transactions: txns };
+  }
+
+  if (!newCompleted && priorCompleted && priorTransactionId) {
+    txns = txns.filter((t) => t.id !== priorTransactionId);
+    return { transactionId: undefined, transactions: txns };
+  }
+
+  if (newCompleted && priorTransactionId && hasBudget) {
+    txns = txns.map((t) =>
+      t.id === priorTransactionId ? { ...t, amount: budget as number, label: eventName } : t
+    );
+    return { transactionId: priorTransactionId, transactions: txns };
+  }
+
+  return { transactionId: priorTransactionId, transactions: txns };
 }
 
 export default function EventsScreen() {
@@ -210,6 +254,18 @@ export default function EventsScreen() {
       budget,
       model.savingsGoals ?? []
     );
+    const completedDate = completedInput
+      ? existingEvent?.completedDate ?? new Date().toISOString().slice(0, 10)
+      : undefined;
+    const { transactionId, transactions: reconciledTransactions } = reconcileEventTransaction(
+      existingEvent?.completed ?? false,
+      existingEvent?.expenseTransactionId,
+      completedInput,
+      budget,
+      model.manualTransactions ?? [],
+      trimmedName,
+      completedDate
+    );
 
     let updatedList: EventItem[];
     if (editingId) {
@@ -225,11 +281,10 @@ export default function EventsScreen() {
               onetimeDate,
               budget,
               completed: completedInput,
-              completedDate: completedInput
-                ? ev.completedDate ?? new Date().toISOString().slice(0, 10)
-                : undefined,
+              completedDate,
               trackInSavings: trackInSavingsInput,
               savingsGoalId: sync.savingsGoalId,
+              expenseTransactionId: transactionId,
             }
           : ev
       );
@@ -244,15 +299,21 @@ export default function EventsScreen() {
         onetimeDate,
         budget,
         completed: completedInput,
-        completedDate: completedInput ? new Date().toISOString().slice(0, 10) : undefined,
+        completedDate,
         trackInSavings: trackInSavingsInput,
         savingsGoalId: sync.savingsGoalId,
+        expenseTransactionId: transactionId,
         createdAt: Date.now(),
       };
       updatedList = [...currentList, newEvent];
     }
 
-    const updated: HouseholdModel = { ...model, events: updatedList, savingsGoals: sync.goals };
+    const updated: HouseholdModel = {
+      ...model,
+      events: updatedList,
+      savingsGoals: sync.goals,
+      manualTransactions: reconciledTransactions,
+    };
     await saveModel(updated);
     closeModal();
   }
@@ -266,6 +327,9 @@ export default function EventsScreen() {
       savingsGoals: deletedEvent?.savingsGoalId
         ? (model.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
         : model.savingsGoals ?? [],
+      manualTransactions: deletedEvent?.expenseTransactionId
+        ? (model.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
+        : model.manualTransactions,
     };
     await saveModel(updated);
     closeModal();

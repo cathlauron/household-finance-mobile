@@ -165,6 +165,9 @@ export type TravelChecklistItem = {
   cost: number | '';
   checked: boolean;
   completedDate?: string;
+  // Set once this item is checked (with a cost) and a matching ManualTransaction has been
+  // logged for it — lets us find and remove that transaction if the item gets unchecked.
+  expenseTransactionId?: string;
 };
 
 export type TravelTrip = {
@@ -206,6 +209,10 @@ export type EventItem = {
   trackInSavings?: boolean;
   savingsGoalId?: string;
   createdAt?: number;
+  // Set once this event is marked Completed (with a budget) and a matching
+  // ManualTransaction has been logged for it — lets us find and remove that transaction
+  // if it gets un-marked.
+  expenseTransactionId?: string;
 };
 
 // ---- Checkpoint 8.3: Year-End Goals ----
