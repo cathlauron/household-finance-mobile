@@ -11,9 +11,16 @@ import React, { createContext, useContext, useRef, useState, ReactNode } from 'r
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel } from './types';
 import { defaultModel } from './defaultModel';
-import { encryptJSON, decryptJSON } from './encryption';
-import { loadEncryptedProfileData, saveEncryptedProfileData } from './storage';
+import { deriveKey, generateSalt, encryptJSON, decryptJSON } from './encryption';
+import {
+  loadEncryptedProfileData,
+  saveEncryptedProfileData,
+  loadProfilesIndex,
+  updateProfileSalt,
+} from './storage';
 import { rescheduleBillNotifications } from './pushNotifications';
+
+type ChangePassphraseResult = { ok: boolean; error?: string };
 
 type DataContextValue = {
   model: HouseholdModel | null;
@@ -21,6 +28,7 @@ type DataContextValue = {
   loadModel: (username: string, key: CryptoJS.lib.WordArray) => Promise<void>;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
+  changePassphrase: (currentPassphrase: string, newPassphrase: string) => Promise<ChangePassphraseResult>;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -77,8 +85,53 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setModel(null);
   }
 
+  // ---- Checkpoint 11.3: change passphrase ----
+  // Verifies the CURRENT passphrase is actually correct (by re-deriving a key from it and
+  // successfully decrypting what's already saved) before touching anything — a wrong
+  // "current" passphrase must never be able to lock someone out or corrupt their data.
+  // Once verified: a brand new random salt is generated (a fresh salt per passphrase is
+  // the same practice used when the profile was first created), a new key is derived from
+  // the new passphrase + that new salt, everything currently in memory is re-encrypted with
+  // it and saved, the profiles index is updated to remember the new salt, and finally the
+  // in-memory key this session is using for future saves is swapped over — so the very next
+  // saveModel() call (e.g. editing a bill right after) keeps working correctly without
+  // needing to sign out and back in.
+  async function changePassphrase(
+    currentPassphrase: string,
+    newPassphrase: string
+  ): Promise<ChangePassphraseResult> {
+    const username = usernameRef.current;
+    if (!username) return { ok: false, error: 'Not signed in.' };
+
+    const profiles = await loadProfilesIndex();
+    const profile = profiles.find((p) => p.username === username);
+    if (!profile) return { ok: false, error: "Couldn't find your profile." };
+
+    const encrypted = await loadEncryptedProfileData(username);
+    if (!encrypted) return { ok: false, error: 'No saved data found for this profile.' };
+
+    const currentKey = deriveKey(currentPassphrase, profile.salt);
+    try {
+      decryptJSON(currentKey, encrypted);
+    } catch (e) {
+      return { ok: false, error: 'Your current passphrase is incorrect.' };
+    }
+
+    const newSalt = await generateSalt();
+    const newKey = deriveKey(newPassphrase, newSalt);
+    const currentModel = model ?? defaultModel();
+    const reEncrypted = await encryptJSON(newKey, currentModel);
+    await saveEncryptedProfileData(username, reEncrypted);
+    await updateProfileSalt(username, newSalt);
+
+    keyRef.current = newKey;
+    return { ok: true };
+  }
+
   return (
-    <DataContext.Provider value={{ model, loading, loadModel, saveModel, clearModel }}>
+    <DataContext.Provider
+      value={{ model, loading, loadModel, saveModel, clearModel, changePassphrase }}
+    >
       {children}
     </DataContext.Provider>
   );

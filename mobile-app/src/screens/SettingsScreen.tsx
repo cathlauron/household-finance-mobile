@@ -11,8 +11,11 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission, sendTestNotification } from '../pushNotifications';
@@ -49,7 +52,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, changePassphrase } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,6 +84,19 @@ export default function SettingsScreen() {
   const [ruleMaxInput, setRuleMaxInput] = useState('');
   const [ruleCategoryInput, setRuleCategoryInput] = useState('');
   const [ruleErrorMsg, setRuleErrorMsg] = useState('');
+
+  // ---- Checkpoint 11.3: Security (change passphrase) ----
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPass1Input, setNewPass1Input] = useState('');
+  const [newPass2Input, setNewPass2Input] = useState('');
+  const [passChangeMsg, setPassChangeMsg] = useState('');
+  const [passChangeBusy, setPassChangeBusy] = useState(false);
+
+  // ---- Checkpoint 11.3: Data (backup export + clear all data) ----
+  const [exportMsg, setExportMsg] = useState('');
+  const [exportBusy, setExportBusy] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
 
   if (!model) {
     return (
@@ -391,6 +407,72 @@ export default function SettingsScreen() {
     await saveModel(updated);
   }
 
+  // ---- Checkpoint 11.3: Security handler ----
+  async function handleChangePassphrase() {
+    setPassChangeMsg('');
+    if (!currentPassInput) {
+      setPassChangeMsg('Enter your current passphrase.');
+      return;
+    }
+    if (newPass1Input.length < 6) {
+      setPassChangeMsg('New passphrase must be at least 6 characters.');
+      return;
+    }
+    if (newPass1Input !== newPass2Input) {
+      setPassChangeMsg("New passphrases don't match.");
+      return;
+    }
+    if (newPass1Input === currentPassInput) {
+      setPassChangeMsg('New passphrase must be different from your current one.');
+      return;
+    }
+    setPassChangeBusy(true);
+    const result = await changePassphrase(currentPassInput, newPass1Input);
+    setPassChangeBusy(false);
+    if (!result.ok) {
+      setPassChangeMsg(result.error || 'Something went wrong. Please try again.');
+      return;
+    }
+    setCurrentPassInput('');
+    setNewPass1Input('');
+    setNewPass2Input('');
+    setPassChangeMsg('Passphrase changed.');
+  }
+
+  // ---- Checkpoint 11.3: Data handlers ----
+  async function handleExportBackup() {
+    if (!model) return;
+    setExportMsg('');
+    setExportBusy(true);
+    try {
+      const json = JSON.stringify(model, null, 2);
+      const fileUri = FileSystem.cacheDirectory + `household-finance-backup-${Date.now()}.json`;
+      await FileSystem.writeAsStringAsync(fileUri, json, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        setExportMsg('Saving/sharing files is not available on this device.');
+        setExportBusy(false);
+        return;
+      }
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'application/json',
+        dialogTitle: 'Save your backup',
+      });
+    } catch (e) {
+      setExportMsg("Couldn't create the backup file. Please try again.");
+    }
+    setExportBusy(false);
+  }
+
+  async function handleClearAllData() {
+    setClearBusy(true);
+    await saveModel(defaultModel());
+    setClearBusy(false);
+    setClearConfirmOpen(false);
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -573,6 +655,118 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.addButton} onPress={openAddRuleModal}>
           <Text style={styles.addButtonText}>+ Add rule</Text>
         </TouchableOpacity>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Security</Text>
+        <Text style={styles.sectionSub}>
+          Change the passphrase used to sign in and encrypt your data on this phone.
+        </Text>
+
+        <Text style={styles.inputLabel}>Current passphrase</Text>
+        <TextInput
+          style={styles.input}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholder="Enter your current passphrase"
+          placeholderTextColor={colors.inkFaint}
+          value={currentPassInput}
+          onChangeText={setCurrentPassInput}
+        />
+
+        <Text style={styles.inputLabel}>New passphrase</Text>
+        <TextInput
+          style={styles.input}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholder="At least 6 characters"
+          placeholderTextColor={colors.inkFaint}
+          value={newPass1Input}
+          onChangeText={setNewPass1Input}
+        />
+
+        <Text style={styles.inputLabel}>Confirm new passphrase</Text>
+        <TextInput
+          style={styles.input}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholder="Type it again"
+          placeholderTextColor={colors.inkFaint}
+          value={newPass2Input}
+          onChangeText={setNewPass2Input}
+        />
+
+        {!!passChangeMsg && (
+          <Text style={passChangeMsg === 'Passphrase changed.' ? styles.successText : styles.errorText}>
+            {passChangeMsg}
+          </Text>
+        )}
+
+        <TouchableOpacity
+          style={styles.primaryFullButton}
+          onPress={handleChangePassphrase}
+          disabled={passChangeBusy}
+        >
+          {passChangeBusy ? (
+            <ActivityIndicator color={colors.navy2} />
+          ) : (
+            <Text style={styles.saveButtonText}>Change passphrase</Text>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.hintText}>
+          There is no "forgot passphrase" recovery — save your new passphrase somewhere safe.
+        </Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
+        <Text style={styles.sectionSub}>
+          Sharing data between phones is coming in a future update. For now, this profile's
+          data stays only on this device.
+        </Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
+        <Text style={styles.sectionSub}>
+          Save a backup you can keep somewhere safe, or clear everything out and start fresh.
+        </Text>
+
+        <TouchableOpacity style={styles.dataButton} onPress={handleExportBackup} disabled={exportBusy}>
+          {exportBusy ? (
+            <ActivityIndicator color={colors.gold} />
+          ) : (
+            <Text style={styles.dataButtonText}>Save a backup</Text>
+          )}
+        </TouchableOpacity>
+        {!!exportMsg && <Text style={styles.errorText}>{exportMsg}</Text>}
+
+        {!clearConfirmOpen ? (
+          <TouchableOpacity style={styles.dangerButton} onPress={() => setClearConfirmOpen(true)}>
+            <Text style={styles.dangerButtonText}>Clear all data &amp; start fresh</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.dangerConfirmBox}>
+            <Text style={styles.dangerConfirmText}>
+              This clears every entry in this app — bills, debts, loans, income, savings,
+              accounts, and everything else — for this profile. Your username and passphrase
+              stay the same. This can't be undone.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
+                onPress={handleClearAllData}
+                disabled={clearBusy}
+              >
+                {clearBusy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.dangerButtonText}>Yes, clear everything</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cancelInlineButton, { flex: 1 }]}
+                onPress={() => setClearConfirmOpen(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
@@ -886,6 +1080,7 @@ function makeStyles(colors: any) {
     swatch: { width: 30, height: 30, borderRadius: 15 },
     swatchActive: { borderWidth: 3, borderColor: colors.ink },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
       borderRadius: 999,
@@ -894,6 +1089,44 @@ function makeStyles(colors: any) {
       marginBottom: 10,
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
+    primaryFullButton: {
+      backgroundColor: colors.gold,
+      borderRadius: 999,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginTop: 6,
+      marginBottom: 8,
+    },
+    hintText: { fontSize: 11.5, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
+    dataButton: {
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    dataButtonText: { fontSize: 14, fontWeight: '600', color: colors.gold },
+    dangerButton: {
+      backgroundColor: '#e5484d',
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    dangerButtonText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+    dangerConfirmBox: {
+      backgroundColor: 'rgba(229,72,77,0.08)',
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 8,
+    },
+    dangerConfirmText: { fontSize: 12.5, color: '#e5484d', lineHeight: 17, marginBottom: 12 },
+    cancelInlineButton: {
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
     deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
