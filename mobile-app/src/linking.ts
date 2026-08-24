@@ -3,7 +3,14 @@
 // Checkpoint 9.2a — "Start linking": one phone generates a short link code,
 // locks a fresh shared secret with that code, and uploads its own current
 // household data (locked with that secret) to Firebase — so a second phone
-// can later enter the same code and pull it back down (Checkpoint 9.2b).
+// can later enter the same code and pull it back down.
+//
+// Checkpoint 9.2b-ii (this addition) — "Join with a code": the second phone
+// takes that code, uses it to unlock the shared secret, and uses THAT secret
+// to unlock the first phone's data. Nothing is made permanent yet — the
+// calling screen shows both people's data side by side and lets the person
+// choose keep mine / keep theirs / merge, but actually creating the shared
+// household record is a later checkpoint.
 //
 // Nothing here ever travels in a readable form:
 //  - The link code (e.g. "7F3K9Q") only ever locks/unlocks the shared
@@ -20,9 +27,9 @@
 
 import * as Crypto from 'expo-crypto';
 import CryptoJS from 'crypto-js';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { generateSalt, deriveKey, encryptJSON } from './encryption';
+import { generateSalt, deriveKey, encryptJSON, decryptJSON } from './encryption';
 import type { HouseholdModel } from './types';
 
 // Chosen to avoid easy mix-ups when the code is read aloud or typed by hand
@@ -84,4 +91,43 @@ export async function startHouseholdLink(
   });
 
   return { code, secretHex };
+}
+
+// ---- Checkpoint 9.2b-ii: "Join with a code" ----
+
+export type JoinLinkResult = {
+  hostUsername: string;
+  hostModel: HouseholdModel;
+  secretHex: string;
+};
+
+// Looks up a code the other phone generated (via startHouseholdLink), uses
+// it to unwrap the shared secret, then uses that secret to unlock the other
+// phone's uploaded data. Throws a plain Error if the code doesn't exist or
+// doesn't decrypt (e.g. mistyped) — the calling screen should catch this
+// and show a friendly "check the code and try again" message rather than
+// showing the raw error.
+export async function joinHouseholdLink(codeInput: string): Promise<JoinLinkResult> {
+  const code = codeInput.trim().toUpperCase();
+  if (!code) throw new Error('Enter a code.');
+
+  const snap = await getDoc(doc(db, 'linkCodes', code));
+  if (!snap.exists()) {
+    throw new Error("That code doesn't look right, or it's expired.");
+  }
+
+  const data = snap.data() as {
+    codeSalt: string;
+    encryptedSecret: string;
+    encryptedHostData: string;
+    hostUsername: string;
+  };
+
+  const codeKey = deriveKey(code, data.codeSalt);
+  const secretHex = decryptJSON<string>(codeKey, data.encryptedSecret);
+
+  const secretKey = CryptoJS.enc.Hex.parse(secretHex);
+  const hostModel = decryptJSON<HouseholdModel>(secretKey, data.encryptedHostData);
+
+  return { hostUsername: data.hostUsername, hostModel, secretHex };
 }
