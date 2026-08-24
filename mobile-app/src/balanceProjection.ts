@@ -9,21 +9,28 @@
 // It starts from your Cash + Debit + Credit accounts, as of the
 // "as of" date you've set, then walks forward (or backward) day
 // by day applying anything dated: manual transactions, bill/debt
-// payments due, income due, and savings contributions.
+// payments due, income due, loan payments due, and savings
+// contributions.
 //
-// NOTE: Loans aren't included yet — the data model doesn't have
-// a due-date field for loans yet (only Bills and Debts do). This
-// will be added once Loans gets its own due-date fields.
+// NOTE: Loans with "Custom" recurrence aren't included yet — the
+// Loan data model doesn't have customStartDate/customFreq fields
+// (only Bills/Debts do), and the Loans screen's own recurrence
+// picker doesn't offer "Custom" as an option yet either. Monthly/
+// Annual/One-time loans (everything actually usable today) ARE
+// included.
+// NOTE: A "lent" loan (direction: 'lent' — money owed TO you) is
+// intentionally excluded from this projection. It isn't money
+// going out, so it shouldn't reduce your projected balance.
 // NOTE: Income "actual paid" logs aren't factored in yet — every
 // projected payday uses the expected amount, not a logged actual
 // amount. That refinement can come later, once there's a real
 // screen for logging actual paydays.
 // ============================================================
 
-import type { HouseholdModel, Bill, Debt, IncomeSource } from './types';
+import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
 
 export type CalendarEvent = {
-  type: 'income' | 'bill' | 'debt' | 'manual' | 'saving';
+  type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
   label: string;
   amount: number;
   direction?: 'in' | 'out' | 'saving'; // only set for manual transactions
@@ -68,6 +75,18 @@ export function outstandingBalance(record: Bill | Debt): number {
   return (record.cycles || []).reduce((sum, c) => sum + (toNumber(c.amountDue) - toNumber(c.amountPaid)), 0);
 }
 
+// ---- Loan outstanding amount ----
+// How much is still left to pay on a loan: the original total amount, minus every
+// actual payment logged against it so far. Only meaningful for loans you owe
+// (direction: 'borrowed') — a loan someone owes you isn't counted here, matching
+// how LoansScreen already filters out direction === 'lent' before totaling what's
+// owed for its own payoff-related calculations.
+export function loanOutstandingBalance(loan: Loan): number {
+  const total = toNumber(loan.totalAmount);
+  const paid = (loan.actualPayments || []).reduce((sum, p) => sum + toNumber(p.actual), 0);
+  return Math.max(0, total - paid);
+}
+
 // ---- Bill / Debt next-due-date resolver ----
 // Bills and Debts share the exact same recurrence shape, so one function handles both.
 function nextOccurrenceInMonth(record: Bill | Debt, year: number, monthIndex: number): number[] {
@@ -101,6 +120,40 @@ function nextOccurrenceInMonth(record: Bill | Debt, year: number, monthIndex: nu
       year,
       monthIndex
     );
+  }
+
+  return [];
+}
+
+// ---- Loan next-due-date-in-month resolver ----
+// Same day/month/date shape as Bills & Debts (see the type comment at the top of
+// this file for the dueDate shapes), but Loans don't have Custom recurrence wired
+// up on the data model yet — no customStartDate/customFreq/customOccurrenceCount
+// fields exist on the Loan type, and the Loans screen's own recurrence picker
+// doesn't offer "Custom" as a choice. So Custom loans simply produce no
+// occurrences here for now, same as they already do everywhere else in the app.
+function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): number[] {
+  const d = loan.dueDate || {};
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+  const recurringType = loan.recurringType || 'onetime';
+
+  if (recurringType === 'monthly') {
+    if (!d.day) return [];
+    const day = d.day === 'last' ? daysInMonth : parseInt(d.day, 10);
+    return day >= 1 && day <= daysInMonth ? [day] : [];
+  }
+
+  if (recurringType === 'annual') {
+    if (!d.day || !d.month || d.month !== monthIndex + 1) return [];
+    const day = d.day === 'last' ? daysInMonth : parseInt(d.day, 10);
+    return day >= 1 && day <= daysInMonth ? [day] : [];
+  }
+
+  if (recurringType === 'onetime') {
+    if (!d.date) return [];
+    const dt = parseISO(d.date);
+    if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return [];
+    return [dt.getDate()];
   }
 
   return [];
@@ -237,6 +290,15 @@ export function computeMonthEvents(
     });
   });
 
+  model.loans.forEach((loan) => {
+    if (loan.direction === 'lent') return; // money owed TO you, not an expense — skip
+    const amount = toNumber(loan.expectedPayment);
+    if (amount <= 0) return;
+    loanOccurrenceInMonth(loan, year, monthIndex).forEach((day) => {
+      push(day, { type: 'loan', label: loan.name || 'Loan', amount });
+    });
+  });
+
   model.income.forEach((source) => {
     const amount = toNumber(source.expectedAmount);
     incomeOccurrencesInMonth(source, year, monthIndex).forEach((day) => {
@@ -267,7 +329,7 @@ export function computeMonthEvents(
 function eventDelta(event: CalendarEvent): number {
   if (event.type === 'income') return event.amount;
   if (event.type === 'manual') return event.direction === 'in' ? event.amount : -event.amount;
-  return -event.amount; // bill, debt, saving
+  return -event.amount; // bill, debt, loan, saving
 }
 
 function accountsAsOfDate(model: HouseholdModel): Date {

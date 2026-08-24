@@ -5,17 +5,23 @@
 // (balanceProjection.ts, transactions.ts) into one at-a-glance
 // screen, rather than recalculating anything from scratch.
 //
-// NOT included yet: Loans. balanceProjection.ts's own comments
-// note loans don't have due-date support wired into the running
-// balance yet, so "Amount owed" and "Due soon" only cover Bills
-// and Debts for now, matching that same limitation.
+// Loans are now included in "Amount owed" and "Due soon" —
+// borrowed loans only (a loan someone owes you doesn't count as
+// an amount you owe). Loans with "Custom" recurrence are still
+// skipped, matching the same gap noted in balanceProjection.ts.
 // ============================================================
 
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../DataContext';
 import { useTheme } from '../ThemeContext';
-import { totalLiquidBalance, computeMonthEvents, outstandingBalance, formatPeso } from '../balanceProjection';
+import {
+  totalLiquidBalance,
+  computeMonthEvents,
+  outstandingBalance,
+  loanOutstandingBalance,
+  formatPeso,
+} from '../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../transactions';
 import type { HouseholdModel } from '../types';
 
@@ -27,7 +33,7 @@ type DueItem = {
   date: Date;
   label: string;
   amount: number;
-  type: 'bill' | 'debt';
+  type: 'bill' | 'debt' | 'loan';
 };
 
 function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueItem[] {
@@ -54,7 +60,7 @@ function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueItem[] {
       const date = new Date(y, m, day);
       if (date < today || date > cutoff) return;
       evs.forEach((ev) => {
-        if (ev.type !== 'bill' && ev.type !== 'debt') return;
+        if (ev.type !== 'bill' && ev.type !== 'debt' && ev.type !== 'loan') return;
         if (ev.amount <= 0) return;
         results.push({ date, label: ev.label, amount: ev.amount, type: ev.type });
       });
@@ -94,7 +100,10 @@ export default function DashboardScreen() {
 
   const billsOwed = model.bills.reduce((sum, b) => sum + Math.max(0, outstandingBalance(b)), 0);
   const debtsOwed = model.debts.reduce((sum, d) => sum + Math.max(0, outstandingBalance(d)), 0);
-  const totalOwed = billsOwed + debtsOwed;
+  const loansOwed = model.loans
+    .filter((l) => l.direction !== 'lent')
+    .reduce((sum, l) => sum + loanOutstandingBalance(l), 0);
+  const totalOwed = billsOwed + debtsOwed + loansOwed;
 
   const dueSoon = getUpcomingDue(model, 14);
 
@@ -144,6 +153,7 @@ export default function DashboardScreen() {
         <View style={styles.owedBreakdownRow}>
           <Text style={styles.cardNote}>Bills: {formatPeso(billsOwed)}</Text>
           <Text style={styles.cardNote}>Debts: {formatPeso(debtsOwed)}</Text>
+          <Text style={styles.cardNote}>Loans: {formatPeso(loansOwed)}</Text>
         </View>
       </View>
 
