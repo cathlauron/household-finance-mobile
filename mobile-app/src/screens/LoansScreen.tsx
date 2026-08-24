@@ -17,8 +17,9 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
-import type { Loan, HouseholdModel } from '../types';
+import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
+import PaymentMethodPicker from '../components/PaymentMethodPicker';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -39,6 +40,15 @@ function loanProgressPct(loan: Loan): number {
   if (total <= 0) return 0;
   const pct = (loanPaidTotal(loan) / total) * 100;
   return Math.min(100, Math.max(0, pct));
+}
+
+function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel): string {
+  if (!pm) return 'Not set';
+  if (pm.type === 'cash') return 'Cash';
+  const list = pm.type === 'debit' ? model.balanceAccounts.debit : model.balanceAccounts.credit;
+  const acct = list.find((a) => a.id === pm.accountId);
+  const label = pm.type === 'debit' ? 'Debit' : 'Credit';
+  return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
 }
 
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
@@ -75,6 +85,11 @@ export default function LoansScreen() {
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [paymentsInput, setPaymentsInput] = useState<LoanPayment[]>([]);
+  const [newPaymentDate, setNewPaymentDate] = useState('');
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethod | undefined>(undefined);
+  const [paymentError, setPaymentError] = useState('');
 
   if (!model) {
     return (
@@ -97,6 +112,11 @@ export default function LoansScreen() {
     setDayInput('');
     setMonthInput('');
     setErrorMsg('');
+    setPaymentsInput([]);
+    setNewPaymentDate('');
+    setNewPaymentAmount('');
+    setNewPaymentMethod(undefined);
+    setPaymentError('');
     setModalOpen(true);
   }
 
@@ -117,6 +137,11 @@ export default function LoansScreen() {
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
     setErrorMsg('');
+    setPaymentsInput(loan.actualPayments || []);
+    setNewPaymentDate('');
+    setNewPaymentAmount('');
+    setNewPaymentMethod(undefined);
+    setPaymentError('');
     setModalOpen(true);
   }
 
@@ -124,6 +149,34 @@ export default function LoansScreen() {
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+  }
+
+  function handleAddPayment() {
+    const trimmedDate = newPaymentDate.trim();
+    if (!trimmedDate || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      setPaymentError('Enter the payment date as YYYY-MM-DD, e.g. 2026-08-25.');
+      return;
+    }
+    const parsedAmount = parseFloat(newPaymentAmount);
+    if (newPaymentAmount.trim() === '' || isNaN(parsedAmount) || parsedAmount <= 0) {
+      setPaymentError('Enter a valid amount paid.');
+      return;
+    }
+    const newPayment: LoanPayment = {
+      id: makeId('lpay'),
+      date: trimmedDate,
+      actual: parsedAmount,
+      paymentMethod: newPaymentMethod,
+    };
+    setPaymentsInput([newPayment, ...paymentsInput]);
+    setNewPaymentDate('');
+    setNewPaymentAmount('');
+    setNewPaymentMethod(undefined);
+    setPaymentError('');
+  }
+
+  function handleRemovePayment(paymentId: string) {
+    setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
   }
 
   async function handleSave() {
@@ -205,6 +258,7 @@ export default function LoansScreen() {
           interestRate: parsedRate,
           recurringType: recurTypeInput,
           dueDate,
+          actualPayments: paymentsInput,
         };
       });
     } else {
@@ -478,6 +532,66 @@ export default function LoansScreen() {
                   and it'll assume 0%.
                 </Text>
 
+                {editingId ? (
+                  <View style={styles.paymentLogSection}>
+                    <Text style={styles.inputLabel}>Payment log</Text>
+
+                    {paymentsInput.length === 0 && (
+                      <Text style={styles.emptyText}>No payments logged yet.</Text>
+                    )}
+
+                    {paymentsInput.map((p) => (
+                      <View key={p.id} style={styles.paymentRow}>
+                        <View style={styles.paymentRowMain}>
+                          <Text style={styles.paymentRowDate}>{p.date}</Text>
+                          <Text style={styles.paymentRowMethod}>{paymentMethodLabel(p.paymentMethod, model)}</Text>
+                        </View>
+                        <Text style={styles.paymentRowAmount}>
+                          {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
+                        </Text>
+                        <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn}>
+                          <Text style={styles.paymentRemoveBtnText}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+
+                    <View style={styles.paymentAddBox}>
+                      <Text style={styles.inputLabel}>Log a new payment</Text>
+                      <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="2026-08-25"
+                        placeholderTextColor={colors.inkFaint}
+                        value={newPaymentDate}
+                        onChangeText={setNewPaymentDate}
+                      />
+                      <Text style={styles.inputLabel}>Amount paid</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="0.00"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="decimal-pad"
+                        value={newPaymentAmount}
+                        onChangeText={setNewPaymentAmount}
+                      />
+                      <PaymentMethodPicker
+                        value={newPaymentMethod}
+                        onChange={setNewPaymentMethod}
+                        debitAccounts={model.balanceAccounts.debit}
+                        creditAccounts={model.balanceAccounts.credit}
+                      />
+                      {!!paymentError && <Text style={styles.errorText}>{paymentError}</Text>}
+                      <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>
+                        <Text style={styles.paymentAddButtonText}>+ Add payment</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.fieldHint}>
+                    Save this loan first, then reopen it to log payments against it.
+                  </Text>
+                )}
+
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -596,6 +710,42 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     fieldHint: { fontSize: 11, color: colors.inkFaint, marginTop: -10, marginBottom: 14, lineHeight: 15 },
+    paymentLogSection: {
+      marginTop: 4,
+      marginBottom: 14,
+      paddingTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: colors.navy2,
+    },
+    paymentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.navy2,
+      borderRadius: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      marginBottom: 8,
+    },
+    paymentRowMain: { flex: 1, marginRight: 8 },
+    paymentRowDate: { fontSize: 12.5, fontWeight: '600', color: colors.ink },
+    paymentRowMethod: { fontSize: 11, color: colors.inkDim, marginTop: 1 },
+    paymentRowAmount: { fontSize: 12.5, fontWeight: '600', color: colors.ink, marginRight: 8 },
+    paymentRemoveBtn: { paddingHorizontal: 6, paddingVertical: 2 },
+    paymentRemoveBtnText: { fontSize: 13, color: colors.inkFaint },
+    paymentAddBox: {
+      backgroundColor: colors.navy2,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 4,
+    },
+    paymentAddButton: {
+      backgroundColor: colors.navy3,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
+      marginTop: 2,
+    },
+    paymentAddButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.gold },
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },

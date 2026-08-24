@@ -44,6 +44,17 @@ export type IncomeSource = {
   createdAt?: number;
 };
 
+// ---- Checkpoint 10.2a: payment method tracking ----
+// A shared shape used anywhere something gets paid — Bill cycles, Debt cycles (which reuse
+// BillCycle), Loan payments, and manual Transactions. accountId points at whichever
+// BalanceAccountEntry (from balanceAccounts.debit or balanceAccounts.credit) was used —
+// left blank for 'cash' since Cash is tracked as a single running total, not individual
+// accounts.
+export type PaymentMethod = {
+  type: 'cash' | 'debit' | 'credit';
+  accountId: string;
+};
+
 export type BillCycle = {
   id: string;
   dueDate: string;
@@ -51,6 +62,7 @@ export type BillCycle = {
   amountPaid: number | '';
   paidDate: string;
   notes: string;
+  paymentMethod?: PaymentMethod;
 };
 
 export type Bill = {
@@ -90,6 +102,7 @@ export type LoanPayment = {
   id: string;
   date: string;
   actual: number | '';
+  paymentMethod?: PaymentMethod;
 };
 
 export type Loan = {
@@ -238,6 +251,7 @@ export type ManualTransaction = {
   owner: string;
   category?: string;
   receiptPhoto?: string;
+  paymentMethod?: PaymentMethod;
 };
 
 export type Category = {

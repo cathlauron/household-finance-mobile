@@ -17,7 +17,8 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
-import type { Debt, HouseholdModel } from '../types';
+import type { Debt, HouseholdModel, PaymentMethod } from '../types';
+import PaymentMethodPicker from '../components/PaymentMethodPicker';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -56,6 +57,7 @@ export default function DebtsScreen() {
   const [interestRateInput, setInterestRateInput] = useState('');
   const [minPaymentInput, setMinPaymentInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
+  const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
@@ -77,6 +79,7 @@ export default function DebtsScreen() {
     setInterestRateInput('');
     setMinPaymentInput('');
     setNotesInput('');
+    setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
     setOnetimeDateInput('');
     setDayInput('');
@@ -102,6 +105,7 @@ export default function DebtsScreen() {
       typeof debt.minPayment === 'number' ? String(debt.minPayment) : ''
     );
     setNotesInput(debt.notes || '');
+    setPaymentMethodInput(debt.cycles && debt.cycles[0] ? debt.cycles[0].paymentMethod : undefined);
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = debt.dueDate || {};
@@ -191,8 +195,8 @@ export default function DebtsScreen() {
         if (d.id !== editingId) return d;
         const existingCycle = d.cycles[0];
         const cycle = existingCycle
-          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount }
-          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '' };
+          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput }
+          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '', paymentMethod: paymentMethodInput };
         return {
           ...d,
           creditorOrPerson: trimmedCreditor,
@@ -220,6 +224,7 @@ export default function DebtsScreen() {
             amountPaid: '',
             paidDate: '',
             notes: '',
+            paymentMethod: paymentMethodInput,
           },
         ],
         notes: notesInput,
@@ -413,6 +418,13 @@ export default function DebtsScreen() {
                   keyboardType="decimal-pad"
                   value={minPaymentInput}
                   onChangeText={setMinPaymentInput}
+                />
+
+                <PaymentMethodPicker
+                  value={paymentMethodInput}
+                  onChange={setPaymentMethodInput}
+                  debitAccounts={model.balanceAccounts.debit}
+                  creditAccounts={model.balanceAccounts.credit}
                 />
 
                 <Text style={styles.inputLabel}>Notes (optional)</Text>

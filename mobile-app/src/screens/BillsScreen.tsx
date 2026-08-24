@@ -17,7 +17,8 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
-import type { Bill, HouseholdModel, BillCycle } from '../types';
+import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
+import PaymentMethodPicker from '../components/PaymentMethodPicker';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -56,6 +57,7 @@ export default function BillsScreen() {
   const [amountInput, setAmountInput] = useState('');
   const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
   const [notesInput, setNotesInput] = useState('');
+  const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
@@ -76,6 +78,7 @@ export default function BillsScreen() {
     setAmountInput('');
     setPriorityInput('');
     setNotesInput('');
+    setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
     setOnetimeDateInput('');
     setDayInput('');
@@ -96,6 +99,7 @@ export default function BillsScreen() {
     setAmountInput(billAmount(bill) === 0 ? '' : String(billAmount(bill)));
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
+    setPaymentMethodInput(bill.cycles && bill.cycles[0] ? bill.cycles[0].paymentMethod : undefined);
     const rt = (bill.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = bill.dueDate || {};
@@ -171,8 +175,8 @@ export default function BillsScreen() {
         if (b.id !== editingId) return b;
         const existingCycle = b.cycles && b.cycles[0];
         const cycle: BillCycle = existingCycle
-          ? { ...existingCycle, amountDue: parsedAmount, dueDate: nextDueISO }
-          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '' };
+          ? { ...existingCycle, amountDue: parsedAmount, dueDate: nextDueISO, paymentMethod: paymentMethodInput }
+          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '', paymentMethod: paymentMethodInput };
         return {
           ...b,
           name: trimmedName,
@@ -195,7 +199,7 @@ export default function BillsScreen() {
         owner: 'shared',
         notes: notesInput,
         cycles: [
-          { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '' },
+          { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '', paymentMethod: paymentMethodInput },
         ],
         createdAt: Date.now(),
       };
@@ -380,6 +384,13 @@ export default function BillsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                <PaymentMethodPicker
+                  value={paymentMethodInput}
+                  onChange={setPaymentMethodInput}
+                  debitAccounts={model.balanceAccounts.debit}
+                  creditAccounts={model.balanceAccounts.credit}
+                />
 
                 <Text style={styles.inputLabel}>Notes (optional)</Text>
                 <TextInput
