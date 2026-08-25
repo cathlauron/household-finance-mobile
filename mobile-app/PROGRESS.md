@@ -2,7 +2,7 @@ Household Finance Mobile App — Progress Log
 
 This file tracks what's been built so far. Claude reads this at the start of every session, but always double-checks the actual code too, since notes can drift from reality.
 
-🎉 ROADMAP STATUS: FULLY COMPLETE. Every phase (0 through 11, including the shared-expense ledger decision in Phase 9) is built and confirmed working. What remains is optional polish only (see Known Issues) plus, if wanted, Phase 13 (Publishing — EAS Build / App Store), which was never part of this roadmap's earlier phases and hasn't been started.
+🎉 ROADMAP STATUS: FULLY COMPLETE. Every phase (0 through 11, including the shared-expense ledger decision in Phase 9) is built and confirmed working. Both previously-flagged optional polish items (Loan custom recurrence, Debt fees-portion tracking) are ALSO now confirmed done — see session entry below. What remains is one trivial doc cleanup (a stale code comment) plus, if wanted, Phase 13 (Publishing — EAS Build / App Store), which was never part of this roadmap's earlier phases and hasn't been started.
 
 ✅ Done
 
@@ -24,37 +24,36 @@ Phase 2 — Getting Around the App (M4)
 - 2.2 — Basic theming (colors/light-dark mode) ported over from the web app. ✅ Complete.
 
 Phase 3 — Calendar (M5)
-- 3.1, 3.2, 3.3 — Full Calendar tab (month grid, tap-a-day, running balance projection). ✅ Complete. Running-balance projection includes Loan payments (Monthly/Annual/One-time recurrence — Custom still excluded, see note below), confirmed showing correctly on a real phone.
+- 3.1, 3.2, 3.3 — Full Calendar tab (month grid, tap-a-day, running balance projection). ✅ Complete. Running-balance projection includes Loan payments across ALL recurrence types — Monthly, Annual, One-time, AND now Custom (confirmed this session — see below). No more exclusions.
 
 Phase 4 — Accounts (M6)
 - 4.1, 4.2 — Full Accounts tab (add/edit/delete Cash, Debit, Credit accounts; balance calculation engine). ✅ Complete.
 
 Phase 5 — Bills / Debts / Loans (M7) — ✅ FULLY COMPLETE
 - 5.1 — Add/edit/delete Bills. ✅ Complete. Bill cycles include a real payment-method picker (Cash/Debit/Credit, via the shared PaymentMethodPicker component), saved onto BillCycle.paymentMethod.
-- 5.2 — Add/edit/delete Debts. ✅ Complete. Debt cycles (which reuse the BillCycle type) also include the same payment-method picker.
+- 5.2 — Add/edit/delete Debts. ✅ Complete. Debt cycles (which reuse the BillCycle type) also include the same payment-method picker, PLUS a "Fees included in this payment" field (BillCycle.feesPortion) — confirmed wired in DebtsScreen.tsx and confirmed flowing into the Tax Summary report this session.
 - 5.3 — Loans, fully complete (list/add/edit/delete, To-Pay pill, Payoff Simulator). ✅ Complete.
 - 5.3b — Loan edit screen has a "Payment log" section — log individual loan payments (date, amount, and Cash/Debit/Credit payment method via PaymentMethodPicker), see all logged payments listed with their date/method/amount, and remove any of them. Confirmed working on a real phone.
-- 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, and Loans. ✅ Complete for Bills/Debts. NOTE: "Custom" recurrence is only usable for Bills/Debts — the Loan type has no customStartDate/customFreq/customOccurrenceCount fields, and the Loans screen's own recurrence dropdown doesn't offer "Custom" as a choice. Monthly/Annual/One-time loans work fully everywhere.
+- 5.4 — Recurring schedules (monthly, custom, etc.) for Bills, Debts, AND Loans. ✅ FULLY COMPLETE AS OF THIS SESSION. Loan type now has customStartDate/customFreq/customOccurrenceCount fields (types.ts), the Loans screen's recurrence picker offers "Custom" as a choice and saves those three fields (LoansScreen.tsx), and the shared date-math (balanceProjection.ts's loanOccurrenceInMonth()) has a real `recurringType === 'custom'` branch that calls the same customOccurrencesInMonth() helper Bills/Debts already used. Monthly/Annual/One-time/Custom all work for Bills, Debts, and Loans now — no exclusions left.
 
 Phase 6 — Transactions (M8) — ✅ FULLY COMPLETE
 - 6.1 — Unified transaction list. ✅ Complete.
 - 6.2 — Manually add a transaction, incl. receipt photo attachment, edit/delete. ✅ Complete and confirmed working on a real phone. Manual transactions also include the same payment-method picker (ManualTransaction.paymentMethod).
 - 6.2b — Manual transactions have a real "Belongs to" person picker (matching Income's pattern), replacing the previous hardcoded owner: 'shared'. ✅ Complete and confirmed working on a real phone.
-- 6.3 — CSV import. ✅ CONFIRMED FULLY BUILT AND WORKING THIS SESSION.
+- 6.3 — CSV import. ✅ CONFIRMED FULLY BUILT AND WORKING (confirmed in an earlier session).
   - `src/csvImport.ts` — real CSV parser: splits lines respecting quoted fields (incl. embedded commas and escaped "" quotes), requires a header row with date/label/amount columns (direction optional, defaults to "out"), accepts dates as YYYY-MM-DD or MM/DD/YYYY, per-row validation with a specific error message per failure (bad date, missing label, bad/zero amount, unrecognized direction).
   - `src/screens/CsvImportModal.tsx` — full modal UI: file picker restricted to .csv/.txt (with a friendly nudge if someone picks .xlsx by mistake), reads and parses the file, shows a preview (row count, first 8 valid rows with date/label/direction/amount, "+N more"), shows skipped/invalid rows with their specific reasons, a working "Import N transactions" button that appends them into `manualTransactions` via `saveModel()`, success/Done state, fully themed, no debug leftovers.
   - Confirmed wired into `TransactionsScreen.tsx` (imported, rendered, controlled by real `csvModalOpen` state, "Import CSV" button present).
   - Confirmed dependencies installed: `expo-document-picker` (~14.0.8), `expo-file-system` (~19.0.24).
-  - `npx tsc --noEmit` clean after this confirmation.
 
 Phase 7 — Income & Savings (M9) — ✅ FULLY COMPLETE
 - 7.1 — Income sources with pay schedules. ✅ Complete.
-- 7.2 — Savings goals + Emergency Fund/FI calculators. ✅ Complete and confirmed working on a real phone. EF's "Monthly essential expenses" and FI's "Annual expenses" now show a real, tappable auto-suggestion pulled from recurring Bills data (monthly bills at latest cycle amount, annual bills' latest cycle amount ÷ 12 — mirrors the web app's monthlyBudgetBaseline()). Suggestion never overwrites a saved value automatically — it's a tap-to-accept line under each field, confirmed working on a real phone.
+- 7.2 — Savings goals + Emergency Fund/FI calculators. ✅ Complete and confirmed working on a real phone. EF's "Monthly essential expenses" and FI's "Annual expenses" show a real, tappable auto-suggestion pulled from recurring Bills data (monthly bills at latest cycle amount, annual bills' latest cycle amount ÷ 12). Suggestion never overwrites a saved value automatically — it's a tap-to-accept line under each field, confirmed working on a real phone.
 
 Phase 8 — Groceries / Travel / Events / Goals (M10) — ✅ FULLY COMPLETE
 - 8.1 — Grocery list + calculator. ✅ Complete and confirmed working on a real phone.
-- 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone, including real savings-goal auto-sync (tripFullChecklistTotal/syncTripSavingsGoal) AND real transaction logging: checking off a checklist item (with a cost) creates a real ManualTransaction on Save; unchecking it removes that transaction; editing the cost while checked keeps the transaction's amount in sync. Confirmed working on a real phone this session. Deleting a trip also cleans up any transactions its checklist items created.
-- 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone, including Events' own savings-goal auto-sync (syncEventSavingsGoal) AND real transaction logging: marking an event "Completed" (with a budget set) creates a real ManualTransaction on Save; un-marking it removes that transaction. Confirmed working on a real phone this session. Deleting an event also cleans up any transaction it created.
+- 8.2 — Travel checklist. ✅ Complete and confirmed working on a real phone, including real savings-goal auto-sync AND real transaction logging: checking off a checklist item (with a cost) creates a real ManualTransaction on Save; unchecking it removes that transaction; editing the cost while checked keeps the transaction's amount in sync. Deleting a trip also cleans up any transactions its checklist items created.
+- 8.3 — Events + Year-End Goals. ✅ Complete and confirmed working on a real phone, including Events' own savings-goal auto-sync AND real transaction logging: marking an event "Completed" (with a budget set) creates a real ManualTransaction on Save; un-marking it removes that transaction. Deleting an event also cleans up any transaction it created.
 
 Phase 9 — Household Linking (M3) — ✅ COMPLETE. (M11, shared expense ledger, was explicitly SKIPPED by decision — see 9.3 below, not deferred.)
 - 9.1 — Set up the chosen sync/backend service. ✅ COMPLETE, CONFIRMED WORKING ON A REAL DEVICE.
@@ -74,8 +73,7 @@ Phase 10 — Dashboard & Reports (M12–M13) — ✅ FULLY COMPLETE
 - 10.1 — Core dashboard charts. ✅ Complete and confirmed working on a real phone. "Amount Owed" includes Bills/Debts/Loans (borrowed only); "Due in the Next 14 Days" includes upcoming loan payments.
 - 10.2 — Reports pages. ✅ COMPLETE — all NINE report pages built and wired into ReportsScreen.tsx: Monthly Close-out, Year in Review, Cash-Flow Forecast, Person Spending, Weekly Digest, Merchant Spending, Subscription Audit, Tax Summary, and Payment Methods.
   - Payment Methods report (`src/screens/reports/PaymentMethodsReport.tsx`) confirmed built and working — groups every paid Bill cycle, paid Debt cycle, non-"lent" Loan payment, and outgoing manual Transaction by PaymentMethod (Cash/Debit-account/Credit-account), "Not set" bucket for anything unpicked. Reads the raw model directly since `buildTransactionsList()` doesn't carry paymentMethod through.
-  - Tax Summary (`src/screens/reports/TaxSummaryReport.tsx`): year-picker, total income/expenses/saved, "Interest & Fees Paid" card, full expense-by-category breakdown. Confirmed working on a real phone.
-  - **LIMITATION, flagged on-screen:** Tax Summary's "Interest & fees paid" only counts loan late fees (a logged loan payment higher than expectedPayment). Debt-side fees are NOT included — Debt/BillCycle in types.ts has no feesPortion field.
+  - Tax Summary (`src/screens/reports/TaxSummaryReport.tsx`): year-picker, total income/expenses/saved, "Interest & Fees Paid" card, full expense-by-category breakdown. **UPDATED THIS SESSION: now includes BOTH loan late fees AND debt fees.** `interestFees = loanLateFeesInYear(model, year) + debtFeesInYear(model, year)` — confirmed this addition actually lands in the number shown on screen, not just computed and discarded. `debtFeesInYear()` sums BillCycle.feesPortion across every debt cycle paid within the selected year. The old limitation (debt fees not counted) is resolved.
 - Payment-method logging is fully rolled out across the whole app (Bills, Debts, Loans, manual Transactions), readable end-to-end via the Payment Methods report.
 
 Phase 11 — Settings (M14) — ✅ FULLY COMPLETE
@@ -84,94 +82,33 @@ Phase 11 — Settings (M14) — ✅ FULLY COMPLETE
 - 11.3 — Security & Household & Data. ✅ COMPLETE. Change passphrase, real household linking UI, backup (expo-file-system + expo-sharing), clear-all-data with confirm step. All confirmed on-device.
 
 ---
-## 📅 Session entry — EF/FI calculators now suggest real numbers from Bills data
+## 📅 Session entry — Verified BOTH optional polish items are fully done (Loan custom recurrence + Debt fees)
 
 **What happened this session:**
-Closed out the second (and last) optional-polish item flagged at the end of the previous
-session: the EF/FI calculators on the Savings tab only ever took manually-typed numbers,
-with no connection to real Bills data.
+This was a verification-only session (no new code written) — the person believed both items from the previous session's "optional polish" list were already done, and asked for confirmation. Walked the code end-to-end for each rather than trusting notes alone.
 
-- `src/screens/SavingsScreen.tsx` — added `billLatestCycleAmount()` and
-  `computeMonthlyExpenseBaseline()`, mirroring the web app's `monthlyBudgetBaseline()`:
-  monthly-recurring bills counted at their most recent cycle's `amountDue`, annual-recurring
-  bills' most recent cycle amount divided by 12. One-time/custom bills excluded (no reliable
-  "typical month" figure for those).
-- Emergency Fund's "Monthly essential expenses" field and FI's "Annual expenses" field
-  (annual = monthly baseline × 12) each now show a tappable suggestion line underneath —
-  "Based on your recurring Bills: ₱X,XXX/mo — tap to use this" — only when the computed
-  baseline is greater than 0.
-- Deliberately NOT auto-filled/silent: tapping the suggestion fills the input, but a
-  previously-saved `calculatorInputs` value is never overwritten automatically. Manual
-  entry/editing still works exactly as before.
-- Scoped down from the original plan: Income-based auto-fill for FI was dropped this
-  session, since the current FI calculator is expenses-only (`expenses × 25`, the standard
-  rule) and doesn't use an income figure anywhere — pulling in Income sources wouldn't have
-  fed into anything real. Flagged to the person before writing code; confirmed as the right
-  scope.
+**1. Loan custom recurrence — CONFIRMED FULLY DONE.**
+- `src/types.ts` — the `Loan` type now has `customFreq?`, `customStartDate?`, `customOccurrenceCount?` fields, matching `Bill` and `Debt`.
+- `src/screens/LoansScreen.tsx` — the recurrence-type picker offers "Custom" as a real option, form state (`customFreqInput`, `customStartDateInput`, parsed occurrence count) captures it, and both the create and update save-paths persist all three fields onto the Loan record.
+- `src/balanceProjection.ts` — `loanOccurrenceInMonth()` has a real `if (recurringType === 'custom')` branch calling the same `customOccurrencesInMonth()` helper Bills/Debts already use — so a Custom-recurrence loan now genuinely produces occurrences in the Calendar's running-balance math, not just in the form.
+- **One loose end (not a bug, just stale text):** the comment block sitting directly above `loanOccurrenceInMonth()` (around line ~122–127 in balanceProjection.ts) still reads "Loans don't have Custom recurrence wired up on the data model yet... Custom loans simply produce no occurrences here for now" — that's leftover from before this was built and now contradicts the working code three lines below it. Harmless (comments don't execute), but confusing to read later. Flagged as a trivial cleanup, not fixed yet this session.
 
-**Confirmed this session:**
-- `npx tsc --noEmit` — clean, no errors.
-- Manually tested on a real phone: with at least one monthly/annual Bill logged with a cycle
-  amount, the suggestion line appeared under both the EF and FI expense fields, and tapping
-  it filled the input correctly.
+**2. Debt fees tracking — CONFIRMED FULLY DONE.**
+- `src/types.ts` — `BillCycle` (shared by Bill and Debt cycles) has `feesPortion?: number | ''`.
+- `src/screens/DebtsScreen.tsx` — a real "Fees included in this payment" input, with its own state (`feesPortionInput`), populated when editing an existing cycle, parsed and saved into the cycle on both the create-cycle and update-cycle paths.
+- `src/screens/reports/TaxSummaryReport.tsx` — `debtFeesInYear()` sums `feesPortion` across every debt cycle paid within the selected year, and the report's headline "Interest & Fees Paid" figure is `loanLateFeesInYear(...) + debtFeesInYear(...)` — confirmed this is the actual number rendered on screen, not a dead calculation. The file's own header comment and inline comments have already been updated to describe this correctly (no stale-doc issue here, unlike the Loans one above).
 
----
-## 📅 Session entry — Travel/Events checklist items now log real transactions
-
-**What happened this session:**
-Closed out the first item from the optional-polish list: neither Travel nor Events was
-converting a completed checklist item / completed event into an actual logged transaction —
-both only synced a savings-goal target. Fixed both.
-
-- `src/types.ts` — added `expenseTransactionId?: string` to both `TravelChecklistItem` and
-  `EventItem`, so each remembers which transaction (if any) it created.
-- `src/screens/TravelScreen.tsx` — added `reconcileTravelChecklistTransactions()`, called from
-  `handleSaveTrip()`. Compares the checklist before/after editing: newly-checked item with a
-  cost → creates a ManualTransaction; unchecked item that had one → removes it; still-checked
-  item with an existing transaction → keeps amount/label in sync. `handleDeleteTrip()` now also
-  removes any transactions created by that trip's checklist items.
-- `src/screens/EventsScreen.tsx` — added `reconcileEventTransaction()` (same idea, one-shot
-  instead of per-item since an Event has a single budget, not a checklist), called from
-  `handleSaveEvent()`. Marking Completed (with a budget) creates a transaction; un-marking
-  removes it. `handleDeleteEvent()` now also removes the event's transaction if one exists.
-
-**Confirmed this session:**
-- `npx tsc --noEmit` — clean, no errors.
-- Manually tested on a real phone: added a Travel checklist item with a cost, checked it off,
-  saved → new transaction appeared in Transactions. Unchecked it, saved → transaction
-  disappeared. Repeated the same test for an Event marked Completed. Both confirmed working.
-
----
-## 📅 Session entry — Confirmed Checkpoint 6.3 (CSV Import) already fully built
-
-**What happened this session:**
-Following up on the previous session's flagged loose thread ("CsvImportModal.tsx exists and looks wired up, but wasn't read or tested"), both files were pulled and reviewed in full this session:
-
-- `src/csvImport.ts` (142 lines) — a real, complete CSV parser. Handles quoted fields with embedded commas/escaped quotes, requires date/label/amount columns by header name (order-independent), accepts two date formats, defaults blank direction to "out", and returns per-row validation errors with specific messages.
-- `src/screens/CsvImportModal.tsx` (287 lines) — a complete modal: file picker (restricted to .csv/.txt with a friendly nudge for wrong formats), reads and parses the file, shows a live preview of valid rows + a separate list of skipped rows with their reasons, and a working import button that appends the parsed transactions into `manualTransactions` via `saveModel()`. Fully themed, properly handles loading/error/done states.
-
-Also confirmed:
-- Both dependencies (`expo-document-picker`, `expo-file-system`) are present in `package.json`.
-- `TransactionsScreen.tsx` genuinely imports, renders, and controls `CsvImportModal` via real state (`csvModalOpen`) with an "Import CSV" button — not dead code.
-- `npx tsc --noEmit` run clean (no errors) both before and after this review.
-
-**Conclusion: Checkpoint 6.3 is fully complete. This closes out the last open item in the entire roadmap — every phase (0–11) is now done.**
-
-Also answered an unrelated Codespaces/VS Code UI question this session (the blue git-diff gutter/overview-ruler markers disappearing after a commit — expected behavior, not a bug; they reappear once there are new uncommitted changes to diff against).
+**Conclusion: both optional polish items from the prior list are genuinely complete, end-to-end, confirmed by reading the real code — not just present in types.ts.** The roadmap (all 11 phases) plus both polish items are now fully done. The only thing left is the one stale comment noted above (purely cosmetic) and, if ever wanted, Phase 13 (Publishing) or real Firebase Auth (longer-term, not currently planned).
 
 🧹 Code health
-- Files changed this session: **none** — PROGRESS.md only. This was a verification session.
+- Files changed this session: **none** — PROGRESS.md only. This was a verification session, same as the CSV-import confirmation session before it.
 - No new npm packages.
-- `npx tsc --noEmit` — clean, zero errors, run twice.
 
-⚠️ Known issues / gotchas (all optional polish, nothing blocking)
-- Loans with "Custom" recurrence are still excluded from the Calendar's running-balance projection and Dashboard (Loan type has no customStartDate/customFreq/customOccurrenceCount fields; Monthly/Annual/One-time loans work fully).
-- Debt-side "feesPortion" still doesn't exist in the data model — Tax Summary's Interest & Fees figure still only covers loan late fees, not debt fees. Clearly labeled on-screen as a known limitation.
-
-2. **Optional polish**, if wanted (none are urgent — the last two items from the original polish list are now both done): Custom recurrence for Loans; add a feesPortion field to Debts so Tax Summary's interest/fees figure covers debts, not just loan late fees.
+⚠️ Known issues / gotchas (nothing blocking — one trivial doc cleanup only)
+- **Stale comment in `src/balanceProjection.ts`**, just above `loanOccurrenceInMonth()` (~line 122–127): still says Loans "don't have Custom recurrence wired up on the data model yet" — this is now false; the code below it works correctly. Purely a documentation/readability issue, doesn't affect behavior. Easy one-comment fix whenever convenient.
 - Firestore rules still rely on document-ID secrecy rather than real per-user Firebase Auth (accepted limitation, see 9.4) — someone who already knows a household's exact link code/ID could still read/write to it.
-- Pasting an entire large file's contents in one `cat` command can silently truncate mid-file in this terminal — splitting into smaller `cat`/`sed -n`/`wc -l` calls reliably works around it (confirmed again this session).
-- PROGRESS.md can go stale relative to actual code — worth spot-checking real files (as done this session) rather than trusting notes blindly when something looks like it "should" already be done.
+- Pasting an entire large file's contents in one `cat` command can silently truncate mid-file in this terminal — splitting into smaller `cat`/`sed -n`/`wc -l` calls reliably works around it.
+- PROGRESS.md can go stale relative to actual code — worth spot-checking real files (as done this session, and the session before it) rather than trusting notes blindly when something looks like it "should" already be done. Both times so far, the code turned out to actually be further along than expected, not behind.
 
 📌 Decisions made
 - Firestore security model: rely on document-ID secrecy (a link code or household ID acting as an effective password) plus shape-validation rules, rather than building real Firebase Auth right now.
@@ -181,10 +118,10 @@ Also answered an unrelated Codespaces/VS Code UI question this session (the blue
 
 ▶️ Next step
 
-**The roadmap has no remaining required checkpoints.** Options for the next session, entirely up to the person:
+**The roadmap plus both optional polish items have no remaining required work.** Options for the next session, entirely up to the person:
 
-1. **Nothing — the app is done and usable as-is.** All 11 phases are built, tested, and confirmed working on real devices.
-2. **Optional polish**, if wanted (none are urgent): Custom recurrence for Loans; auto-pull EF/FI calculator figures from Bills/Income; auto-log a real transaction when a Travel/Events checklist item completes; add a feesPortion field to Debts so Tax Summary's interest/fees figure is complete.
+1. **Nothing — the app is done and usable as-is.** All 11 phases, plus both former "optional polish" items (Loan custom recurrence, Debt fees), are built, tested, and confirmed working.
+2. **Trivial cleanup, if wanted:** fix the one stale comment in `balanceProjection.ts` (~line 122–127) so it stops incorrectly claiming Loans lack Custom recurrence. Purely cosmetic — takes one small paste.
 3. **Phase 13 — Publishing** (from the original roadmap, never started): using Expo's EAS Build service to produce a real installable .apk file to put on your own phone directly (free), or optionally publishing to Google Play / Apple App Store (has real costs — Google ~$25 one-time, Apple ~$99/year — entirely optional).
 4. **Longer-term, not currently planned:** real Firebase Auth (per-user login) to close the remaining "knowing the ID/code is enough" gap in the security rules.
 
@@ -199,12 +136,12 @@ Files in the repo so far
 - PROGRESS.md (this file)
 - firestore.rules — reference copy of the live Firestore security rules (the real, enforced version lives in the Firebase Console → Firestore Database → Rules tab, not in the app bundle).
 - mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal)
-  - mobile-app/src/types.ts — data model types, including full Category/Payee/CategorizationRule types, and `paymentMethod?: PaymentMethod` on `BillCycle`, `LoanPayment`, and `ManualTransaction`.
+  - mobile-app/src/types.ts — data model types, including full Category/Payee/CategorizationRule types, `paymentMethod?: PaymentMethod` on `BillCycle`, `LoanPayment`, and `ManualTransaction`, `feesPortion?` on `BillCycle`, and `customFreq`/`customStartDate`/`customOccurrenceCount` on Bill, Debt, AND Loan.
   - mobile-app/src/firebase.ts — Initializes the Firebase app and exports `db`, a Firestore instance.
   - mobile-app/src/household.ts — Household-key generation/wrap/unwrap + Firestore helpers, built in 9.2a, currently unused by the live flow (see linking.ts).
   - mobile-app/src/linking.ts — The actual mechanism powering Phase 9's linking UI (`startHouseholdLink`, `joinHouseholdLink`). Firestore access now governed by firestore.rules (9.4).
-  - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math still Bills/Debts only)
-  - mobile-app/src/csvImport.ts — CSV parsing logic for Checkpoint 6.3: parseTransactionsCsv(), header/row validation, date normalization. CONFIRMED COMPLETE THIS SESSION.
+  - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math now confirmed used by all three).
+  - mobile-app/src/csvImport.ts — CSV parsing logic for Checkpoint 6.3: parseTransactionsCsv(), header/row validation, date normalization.
   - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals(). Does NOT carry paymentMethod through — PaymentMethodsReport.tsx reads the raw model directly instead.
   - mobile-app/src/components/PaymentMethodPicker.tsx — shared Cash/Debit/Credit picker component; used by BillsScreen.tsx, DebtsScreen.tsx, TransactionsScreen.tsx, and LoansScreen.tsx's payment log.
   - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
@@ -217,7 +154,7 @@ Files in the repo so far
   - mobile-app/src/theme.ts — color palette (light/dark), ported from the web app's Classic theme
   - mobile-app/src/ThemeContext.tsx — React context + useTheme() hook
   - mobile-app/src/storage.ts — reads/writes encrypted profile data and the profiles index, incl. updateProfileSalt(), saveEncryptedProfileData(), loadEncryptedProfileData(), householdId on ProfileIndexEntry + updateProfileHouseholdId() (not yet called anywhere).
-  - mobile-app/src/balanceProjection.ts — running-balance math + formatPeso() + outstandingBalance() + loanOutstandingBalance(). Includes Loans (Monthly/Annual/One-time), excluding "lent" and Custom-recurrence loans.
+  - mobile-app/src/balanceProjection.ts — running-balance math + formatPeso() + outstandingBalance() + loanOutstandingBalance(). Includes Loans across ALL recurrence types (Monthly/Annual/One-time/Custom), excluding only "lent" loans (by design — repayments received aren't a cost to you). Contains one stale comment near loanOccurrenceInMonth() flagged above — cosmetic only.
   - mobile-app/src/categorization.ts — computeAutoCategory(), used by TransactionsScreen.tsx to auto-fill category from Categorization Rules.
   - mobile-app/src/DataContext.tsx — shared in-memory data holder; wired to rescheduleBillNotifications(); includes changePassphrase().
   - mobile-app/src/screens/CreateProfileScreen.tsx
@@ -226,15 +163,15 @@ Files in the repo so far
   - mobile-app/src/screens/SetPinScreen.tsx
   - mobile-app/src/screens/PinUnlockScreen.tsx
   - mobile-app/src/screens/PlaceholderScreen.tsx
-  - mobile-app/src/screens/CalendarScreen.tsx — running balance reflects Loans too, confirmed on a real phone.
+  - mobile-app/src/screens/CalendarScreen.tsx — running balance reflects Loans of all recurrence types now, confirmed via code walkthrough this session.
   - mobile-app/src/screens/AccountsScreen.tsx
   - mobile-app/src/screens/BillsScreen.tsx — includes payment-method picker on bill cycles.
-  - mobile-app/src/screens/DebtsScreen.tsx — includes payment-method picker on debt cycles.
-  - mobile-app/src/screens/LoansScreen.tsx — full payment log with date/amount/payment-method logging and removal, inside the edit-loan modal.
+  - mobile-app/src/screens/DebtsScreen.tsx — includes payment-method picker AND "Fees included in this payment" field (feesPortion) on debt cycles — confirmed wired through to Tax Summary this session.
+  - mobile-app/src/screens/LoansScreen.tsx — full payment log with date/amount/payment-method logging and removal, PLUS a working "Custom" recurrence option (confirmed this session) alongside Monthly/Annual/One-time.
   - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
   - mobile-app/src/screens/ToPayScreen.tsx
-  - mobile-app/src/screens/TransactionsScreen.tsx — includes payment-method picker on manual transactions, and CsvImportModal wired via a working "Import CSV" button — CONFIRMED WORKING THIS SESSION.
-  - mobile-app/src/screens/CsvImportModal.tsx — CONFIRMED FULLY BUILT AND WORKING THIS SESSION. File picker, CSV parsing, preview, error reporting, import-confirm flow.
+  - mobile-app/src/screens/TransactionsScreen.tsx — includes payment-method picker on manual transactions, and CsvImportModal wired via a working "Import CSV" button.
+  - mobile-app/src/screens/CsvImportModal.tsx — File picker, CSV parsing, preview, error reporting, import-confirm flow.
   - mobile-app/src/screens/IncomeScreen.tsx
   - mobile-app/src/screens/SavingsScreen.tsx
   - mobile-app/src/screens/GroceriesScreen.tsx
@@ -252,7 +189,7 @@ Files in the repo so far
   - mobile-app/src/screens/reports/WeeklyDigestReport.tsx
   - mobile-app/src/screens/reports/MerchantSpendingReport.tsx
   - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx
-  - mobile-app/src/screens/reports/TaxSummaryReport.tsx — Year-picker, total income/expenses/saved, interest & fees (loan late fees only, clearly labeled), full expense-by-category breakdown.
+  - mobile-app/src/screens/reports/TaxSummaryReport.tsx — Year-picker, total income/expenses/saved, interest & fees (NOW includes both loan late fees AND debt fees — confirmed this session), full expense-by-category breakdown.
   - mobile-app/src/screens/reports/PaymentMethodsReport.tsx — Groups paid bill/debt cycles, non-lent loan payments, and outgoing manual transactions by PaymentMethod, with a "Not set" bucket, progress bars, and % of total.
   - mobile-app/src/screens/SettingsScreen.tsx — Categories/Payees/Categorization Rules (11.1), Appearance mode picker + Notifications settings (11.2), Security (change passphrase) / Data (backup + clear all) sections (11.3), and the real Household linking UI. No leftover debug UI.
   - mobile-app/src/navigation/MainTabs.tsx
