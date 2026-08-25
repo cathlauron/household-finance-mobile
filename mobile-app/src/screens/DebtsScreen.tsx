@@ -56,6 +56,7 @@ export default function DebtsScreen() {
   const [amountInput, setAmountInput] = useState('');
   const [interestRateInput, setInterestRateInput] = useState('');
   const [minPaymentInput, setMinPaymentInput] = useState('');
+  const [feesPortionInput, setFeesPortionInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
@@ -78,6 +79,7 @@ export default function DebtsScreen() {
     setAmountInput('');
     setInterestRateInput('');
     setMinPaymentInput('');
+    setFeesPortionInput('');
     setNotesInput('');
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
@@ -105,7 +107,8 @@ export default function DebtsScreen() {
       typeof debt.minPayment === 'number' ? String(debt.minPayment) : ''
     );
     setNotesInput(debt.notes || '');
-    setPaymentMethodInput(debt.cycles && debt.cycles[0] ? debt.cycles[0].paymentMethod : undefined);
+        setPaymentMethodInput(debt.cycles && debt.cycles[0] ? debt.cycles[0].paymentMethod : undefined);
+    setFeesPortionInput(debt.cycles && debt.cycles[0] && debt.cycles[0].feesPortion !== undefined && debt.cycles[0].feesPortion !== '' ? String(debt.cycles[0].feesPortion) : '');
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = debt.dueDate || {};
@@ -193,10 +196,11 @@ export default function DebtsScreen() {
     if (editingId) {
       updated.debts = updated.debts.map((d) => {
         if (d.id !== editingId) return d;
+        const parsedFeesPortion = feesPortionInput.trim() === '' ? ('' as const) : parseFloat(feesPortionInput);
         const existingCycle = d.cycles[0];
         const cycle = existingCycle
-          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput }
-          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '', paymentMethod: paymentMethodInput };
+          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }
+          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '', paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion };
         return {
           ...d,
           creditorOrPerson: trimmedCreditor,
@@ -225,6 +229,7 @@ export default function DebtsScreen() {
             paidDate: '',
             notes: '',
             paymentMethod: paymentMethodInput,
+            feesPortion: feesPortionInput.trim() === '' ? '' : parseFloat(feesPortionInput),
           },
         ],
         notes: notesInput,
@@ -418,6 +423,16 @@ export default function DebtsScreen() {
                   keyboardType="decimal-pad"
                   value={minPaymentInput}
                   onChangeText={setMinPaymentInput}
+                />
+
+                <Text style={styles.inputLabel}>Fees included in this payment (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. late fee or interest charged"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="decimal-pad"
+                  value={feesPortionInput}
+                  onChangeText={setFeesPortionInput}
                 />
 
                 <PaymentMethodPicker

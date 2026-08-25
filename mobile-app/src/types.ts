@@ -63,6 +63,7 @@ export type BillCycle = {
   paidDate: string;
   notes: string;
   paymentMethod?: PaymentMethod;
+  feesPortion?: number | '';
 };
 
 export type Bill = {

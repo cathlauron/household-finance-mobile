@@ -6,12 +6,11 @@
 // and total saved. This is NOT a finished tax form or tax
 // advice — just your own numbers organized in one place.
 //
-// "Interest & fees paid" currently only counts loan late fees —
-// a logged loan payment that came in higher than that loan's
-// expected payment (same "late fee" logic LoansScreen already
-// uses). Debt cycles have no feesPortion field in the mobile
-// data model yet, so debt-side fees aren't included — flagged
-// on-screen rather than silently left out.
+// "Interest & fees paid" counts loan late fees (a logged loan payment
+// that came in higher than that loan's expected payment) plus any
+// feesPortion manually logged on a paid debt cycle via DebtsScreen's
+// "Fees included in this payment" field. Debt fees are opt-in/manual —
+// nothing infers them automatically.
 // ============================================================
 
 import React, { useState } from 'react';
@@ -60,6 +59,20 @@ function loanLateFeesInYear(model: HouseholdModel, year: number): number {
   return total;
 }
 
+// Fees portion logged directly on a paid debt cycle (late fees, interest
+// charged, etc.) — see BillCycle.feesPortion in types.ts.
+function debtFeesInYear(model: HouseholdModel, year: number): number {
+  const prefix = `${year}-`;
+  let total = 0;
+  (model.debts || []).forEach((debt) => {
+    (debt.cycles || []).forEach((cycle) => {
+      if (!cycle.paidDate || !cycle.paidDate.startsWith(prefix)) return;
+      const fees = typeof cycle.feesPortion === 'number' ? cycle.feesPortion : 0;
+      total += fees;
+    });
+  });
+  return total;
+}
 export default function TaxSummaryReport() {
   const { model, loading } = useData();
   const { colors } = useTheme();
@@ -78,7 +91,8 @@ export default function TaxSummaryReport() {
   const yearTransactions = transactionsInYear(allTransactions, year);
   const yearTotals = transactionTotals(yearTransactions);
   const totalSaved = savingsContributedInYear(model, year);
-  const interestFees = loanLateFeesInYear(model, year);
+  const interestFees = loanLateFeesInYear(model, year) + debtFeesInYear(model, year);
+  const debtFees = debtFeesInYear(model, year);
 
   const categoryMap: Record<string, number> = {};
   yearTransactions
@@ -130,13 +144,14 @@ export default function TaxSummaryReport() {
         <View style={styles.feesBanner}>
           <View>
             <Text style={styles.feesBannerLabel}>{year}</Text>
-            <Text style={styles.feesBannerNote}>Loan late fees only</Text>
+            <Text style={styles.feesBannerNote}>Loan late fees + debt fees you've logged</Text>
           </View>
           <Text style={[styles.feesBannerAmount, { color: colors.orange }]}>{formatPeso(interestFees)}</Text>
         </View>
         <Text style={styles.footerNote}>
-          Only loan payments logged higher than their expected amount count here. Debt fees (like credit
-          card interest) aren't tracked separately in this app yet, so they're not included.
+          Includes loan payments logged higher than their expected amount, plus any "Fees included in this
+          payment" amount logged on a paid debt cycle. If you didn't log fees on a debt payment, they won't
+          show up here — this isn't automatic.
         </Text>
       </View>
 
