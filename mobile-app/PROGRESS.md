@@ -197,3 +197,144 @@ Files in the repo so far
   - mobile-app/package.json / package-lock.json — includes expo-sharing (~14.0.8), expo-document-picker (~14.0.8), expo-file-system (~19.0.24), and firebase.
 
 Note on mobile-app/ folder: This project lives entirely inside your Codespace and gets saved to GitHub via git add / git commit / git push in the terminal — not by uploading files through the GitHub website. Metro must be started from inside mobile-app (cd mobile-app first), always with --tunnel.
+
+---
+## 📅 Session entry — Closing out 3-ROADMAP.md (full recap); work continues in 4-REMAINING-WORK-ROADMAP.md
+
+This entry closes out 3-ROADMAP.md for good. Rather than just marking it "done," here's the full recap of everything that shipped under it, phase by phase, plus every decision made, known issue flagged, and the full file inventory — so none of this history is lost once the file is closed.
+
+### Phase-by-phase recap
+
+**Phase 0 — Decisions & Foundation.** Sync decision made (no cross-phone sync initially; deferred to what became Phase 9, then actually built there). Blank Expo project created and confirmed running. Offline behavior and minimum OS version decided.
+
+**Phase 1 — Security & Sign-In.** Full data model established. Create-profile and sign-in screens built with password protection. Data encrypted at rest. Quick PIN unlock built (set-a-PIN screen, safe storage, "Lock" button uses the PIN screen once one exists). Auto-lock timer built and confirmed on a real device — both backgrounding the app and idling trigger the lock screen.
+
+**Phase 2 — Getting Around the App.** Bottom tab bar with all 10 main sections built. Theming (colors/light-dark mode) ported over from the web app.
+
+**Phase 3 — Calendar.** Full month grid, tap-a-day detail, and running-balance projection built. The running-balance math includes Loan payments across every recurrence type — Monthly, Annual, One-time, and eventually Custom (confirmed working, see Phase 5 below).
+
+**Phase 4 — Accounts.** Add/edit/delete for Cash, Debit, and Credit accounts, with a working balance calculation engine.
+
+**Phase 5 — Bills / Debts / Loans.** Add/edit/delete built for all three. Bill and Debt payment cycles both got a real payment-method picker (Cash/Debit/Credit) via a shared component, plus Debt cycles specifically got a "Fees included in this payment" field. Loans got a full list/add/edit/delete flow, a To-Pay pill, a Payoff Simulator, and a payment log (date, amount, payment method, with removal support) — all confirmed working on a real phone. Recurring schedules (Monthly, Annual, One-time, and Custom) were built out for Bills and Debts first, and Loans' Custom recurrence was the very last piece — added later and confirmed end-to-end (data model fields, the recurrence picker UI, and the actual date-math in the shared balance projection all wired together) in a dedicated verification session.
+
+**Phase 6 — Transactions.** Unified transaction list built. Manual transaction entry built, including receipt photo attachment and a real "Belongs to" person picker (matching how Income handles it) and edit/delete, confirmed on a real phone. Manual transactions also got the same payment-method picker as Bills/Debts. CSV import was built as a full flow: a real parser (handles quoted fields, embedded commas, escaped quotes, flexible date formats), a modal with file picking restricted to CSV/text, a preview of valid rows plus specific per-row error messages for invalid ones, and a working "Import N transactions" button — confirmed fully wired into the Transactions screen in a later verification session.
+
+**Phase 7 — Income & Savings.** Income sources with pay schedules built. Savings goals plus Emergency Fund and FI calculators built, with a nice touch added later: both calculators show a tappable auto-suggestion pulled from your actual recurring Bills data, without ever overwriting a value you've already saved — confirmed working on a real phone.
+
+**Phase 8 — Groceries / Travel / Events / Goals.** Grocery list and calculator built. Travel checklist built, including savings-goal auto-sync and real transaction logging — checking off a costed checklist item creates a real transaction, unchecking removes it, editing the cost while checked keeps it in sync, and deleting a trip cleans up anything it created. Events and Year-End Goals built the same way, including the same savings-goal auto-sync and transaction-logging behavior for completed events with a budget. All confirmed on a real phone.
+
+**Phase 9 — Household Linking.** Firebase (Firestore) chosen and set up as the sync backend. Built a code-based linking mechanism (a 6-character code, encrypted shared secret) rather than the originally-planned username-lookup approach — "Start linking" (generate/share a code) and "Join with a code" (with a Keep mine / Keep theirs / Merge both comparison screen) both built and confirmed working end-to-end on two real phones. DataContext wired to read/write shared household data permanently once linked. The shared-expense-ledger/settle-up checkpoint that was originally part of this phase (M11) was explicitly skipped by decision — it didn't match how the household actually wanted to manage shared money — not deferred, just dropped. Real Firestore security rules were written and published live in the Firebase Console, replacing wide-open test mode: they restrict writes to the app's real document shapes and block listing/browsing/deletion outside of unlinking. The accepted limitation at the time: without real per-user Firebase Auth, anyone who already knew a household's exact ID/code could still read/write to it — rules only stopped malformed writes and deletions. (This is exactly the gap Phase A of the new roadmap below now closes.)
+
+**Phase 10 — Dashboard & Reports.** Core dashboard charts built, including an "Amount Owed" breakdown across Bills/Debts/Loans and a "Due in the Next 14 Days" view that includes upcoming loan payments. Nine full report pages were built: Monthly Close-out, Year in Review, Cash-Flow Forecast, Person Spending, Weekly Digest, Merchant Spending, Subscription Audit, Tax Summary, and Payment Methods. The Payment Methods report groups every paid bill/debt cycle, non-lent loan payment, and outgoing manual transaction by how it was paid, with a "Not set" bucket for anything unpicked. The Tax Summary report's "Interest & Fees Paid" figure originally only counted loan late fees; in a later session it was confirmed and fixed to also include debt fees (feesPortion) paid within the selected year, closing that gap.
+
+**Phase 11 — Settings.** Categories, Payees, and Categorization Rules built with full add/edit/delete, verified end-to-end on a real phone. Notifications (native push, local bill-due reminders) built and confirmed firing on a physical device. Security section (change passphrase), real household linking UI, backup (via file export/share), and clear-all-data (with a confirm step) all built and confirmed on-device.
+
+**Two items originally left as "optional polish" were later verified as fully complete in a dedicated confirmation session** (not just present in the data model, but actually wired through to real UI and real calculations): Loan custom recurrence (described under Phase 5 above), and Debt fees-portion tracking flowing into the Tax Summary report (described under Phase 10 above).
+
+**Net result:** all 13 phases of 3-ROADMAP.md (Phase 0 through Phase 12/M14), plus both former "optional polish" items, are built, tested, and confirmed working on real devices.
+
+### 🧹 Code health (as of closing)
+
+- No known bugs or half-finished code paths across the whole 3-ROADMAP.md build. Every phase listed above was independently confirmed either on a real device or via a full code walkthrough — several phases (CSV import, Loan custom recurrence, Debt fees) were specifically re-verified in dedicated sessions after being flagged as "should already be done," and both times the code turned out to be further along than the notes suggested, not behind.
+- Payment-method logging (Cash/Debit/Credit) is consistently rolled out end-to-end across Bills, Debts, Loans, and manual Transactions, all readable together via the Payment Methods report — no partial/one-off implementations.
+- One cosmetic-only loose end remains: a stale comment in `mobile-app/src/balanceProjection.ts`, sitting just above `loanOccurrenceInMonth()` (around line ~122–127), which still says Loans "don't have Custom recurrence wired up on the data model yet... Custom loans simply produce no occurrences here for now." This is left over from before Loan Custom recurrence was built and is now factually wrong — the code directly below it works correctly and was confirmed working. It's a plain code comment, so it has zero effect on how the app runs; it's just misleading to read later. Not fixed as of this closing entry — a trivial one-comment edit whenever convenient.
+- Large-file gotcha for future terminal work: pasting an entire big file's contents in one `cat` command has, at least once, silently truncated mid-file in this terminal. Splitting a large paste into smaller `cat`/`sed -n`/`wc -l` calls reliably avoids this. Worth remembering for Phase A/B/C work too.
+- No outstanding npm/package issues — final installed set included `expo-sharing` (~14.0.8), `expo-document-picker` (~14.0.8), `expo-file-system` (~19.0.24), and `firebase`, all confirmed working together.
+
+### 📌 Decisions made (carried forward — still in effect)
+
+- **Sync/backend service:** Firebase (Firestore) was chosen back in Phase 0/9, over other options considered at the time — this remains the backend Phase A (Auth) will build on top of.
+- **Firestore security model (as of Phase 9):** relies on document-ID secrecy (a link code or household ID acting as an effective password) plus shape-validation rules, rather than real Firebase Auth. **This is exactly the gap Phase A of the new roadmap is meant to close** — so this decision is being revisited, not repeated, going forward.
+- **Household linking mechanism:** code-based (`linking.ts` — a 6-character code + encrypted shared secret), not the originally-planned username-lookup design from the earlier `household.ts` file. `household.ts` still exists in the repo but is unused by the live flow; it may be revisited or removed later, but nothing currently depends on deciding that.
+- **Household linking design:** one shared random "household key" per household, wrapped separately per person's own passphrase-derived key — this underlying design is expected to still be compatible with adding real Firebase Auth on top in Phase A, since Auth changes *who* is allowed to unlock/access things, not how the shared data itself is encrypted.
+- **Checkpoint 9.3 (shared expense ledger + settle-up) will NOT be built.** Deliberate, confirmed scope decision — the household doesn't track who-owes-whom between partners. Do not resurface this as a pending checkpoint in future sessions, including during Phase A/B/C work.
+- **This session's new decision:** remaining work (Auth, UI/UX, Publishing) will be tracked in a new file rather than reusing 3-ROADMAP.md, and will be tackled in this order: **Firebase Auth → UI/UX polish → Publishing.**
+
+### ⚠️ Known issues / gotchas (carried forward — nothing blocking)
+
+- **Stale comment in `mobile-app/src/balanceProjection.ts`** (see Code health above) — cosmetic only, doesn't affect behavior.
+- **Firestore rules rely on document-ID secrecy rather than real per-user Firebase Auth** — someone who already knows a household's exact link code/ID could still read/write to it. This is the explicit reason Phase A (Firebase Auth) is next, and is the accepted, understood limitation of everything built under 3-ROADMAP.md up to this point.
+- **Large `cat` pastes can silently truncate** in this terminal environment — use smaller chunked pastes (`cat`/`sed -n`/`wc -l`) for big files, a lesson learned during this build that will still apply to Phase A/B/C work.
+- **PROGRESS.md can drift from actual code state** — worth spot-checking real files directly (as was done more than once during this build, always turning up the code being *further* along than notes suggested) rather than trusting written notes blindly when something looks like it "should" already be done.
+
+### Full file inventory as of closing 3-ROADMAP.md
+
+- 2-PROJECT-INSTRUCTIONS.md
+- 3-ROADMAP.md (now closed — kept in the repo as a historical record, no longer tracked as active or uploaded as a Project file going forward)
+- 4-REMAINING-WORK-ROADMAP.md (new — active roadmap going forward)
+- household-finance-app (3).html (reference web app)
+- household-finance-app-spec-and-scale.md
+- README.md
+- PROGRESS.md (this file)
+- firestore.rules — reference copy of the live Firestore security rules (the real, enforced version lives in the Firebase Console → Firestore Database → Rules tab, not in the app bundle). Expected to be revisited in Phase A once real Auth exists.
+- mobile-app/ folder (Expo project — built and saved directly via the Codespace terminal; must be started with `cd mobile-app` then Metro run with `--tunnel`)
+  - mobile-app/src/types.ts — data model types, including full Category/Payee/CategorizationRule types, `paymentMethod?: PaymentMethod` on `BillCycle`, `LoanPayment`, and `ManualTransaction`, `feesPortion?` on `BillCycle`, and `customFreq`/`customStartDate`/`customOccurrenceCount` on Bill, Debt, AND Loan.
+  - mobile-app/src/firebase.ts — initializes the Firebase app and exports `db`, a Firestore instance.
+  - mobile-app/src/household.ts — household-key generation/wrap/unwrap + Firestore helpers, built in 9.2a, currently unused by the live flow (see linking.ts). Status/future unchanged by this closing entry.
+  - mobile-app/src/linking.ts — the actual mechanism powering Phase 9's linking UI (`startHouseholdLink`, `joinHouseholdLink`). Firestore access now governed by firestore.rules (9.4). Expected to be touched in Phase A.
+  - mobile-app/src/recurrence.ts — shared recurrence helpers, used by Bills/Debts/Loans (Custom due-date math confirmed used by all three).
+  - mobile-app/src/csvImport.ts — CSV parsing logic for Checkpoint 6.3: parseTransactionsCsv(), header/row validation, date normalization.
+  - mobile-app/src/transactions.ts — buildTransactionsList(), sortTransactions(), transactionTotals(). Does NOT carry paymentMethod through — PaymentMethodsReport.tsx reads the raw model directly instead.
+  - mobile-app/src/components/PaymentMethodPicker.tsx — shared Cash/Debit/Credit picker component; used by BillsScreen.tsx, DebtsScreen.tsx, TransactionsScreen.tsx, and LoansScreen.tsx's payment log.
+  - mobile-app/src/autoLockSuppress.ts — setAutoLockSuppressed()/isAutoLockSuppressed()
+  - mobile-app/src/pushNotifications.ts — local bill-due notification scheduling, confirmed firing on a physical device.
+  - mobile-app/src/defaultModel.ts — empty/default data factory function
+  - mobile-app/src/auth.ts — username sanitizing / sign-in helpers. Expected to be touched or replaced in Phase A.
+  - mobile-app/src/encryption.ts — salt generation + encrypt/decrypt logic for profile data.
+  - mobile-app/src/pin.ts — PIN hashing, storage, and verification
+  - mobile-app/src/autoLock.ts — auto-lock idle-minutes setting (default 5)
+  - mobile-app/src/theme.ts — color palette (light/dark), ported from the web app's Classic theme. Expected to be a focus of Phase B (UI/UX).
+  - mobile-app/src/ThemeContext.tsx — React context + useTheme() hook
+  - mobile-app/src/storage.ts — reads/writes encrypted profile data and the profiles index, incl. updateProfileSalt(), saveEncryptedProfileData(), loadEncryptedProfileData(), householdId on ProfileIndexEntry + updateProfileHouseholdId() (not yet called anywhere as of closing).
+  - mobile-app/src/balanceProjection.ts — running-balance math + formatPeso() + outstandingBalance() + loanOutstandingBalance(). Includes Loans across ALL recurrence types (Monthly/Annual/One-time/Custom), excluding only "lent" loans (by design — repayments received aren't a cost to you). Contains one stale comment near loanOccurrenceInMonth() flagged above — cosmetic only.
+  - mobile-app/src/categorization.ts — computeAutoCategory(), used by TransactionsScreen.tsx to auto-fill category from Categorization Rules.
+  - mobile-app/src/DataContext.tsx — shared in-memory data holder; wired to rescheduleBillNotifications(); includes changePassphrase(). Expected to be touched in Phase A.
+  - mobile-app/src/screens/CreateProfileScreen.tsx — expected to be touched in Phase A.
+  - mobile-app/src/screens/SignInScreen.tsx — expected to be touched in Phase A.
+  - mobile-app/src/screens/HomeScreen.tsx
+  - mobile-app/src/screens/SetPinScreen.tsx
+  - mobile-app/src/screens/PinUnlockScreen.tsx
+  - mobile-app/src/screens/PlaceholderScreen.tsx
+  - mobile-app/src/screens/CalendarScreen.tsx — running balance reflects Loans of all recurrence types now, confirmed via code walkthrough.
+  - mobile-app/src/screens/AccountsScreen.tsx
+  - mobile-app/src/screens/BillsScreen.tsx — includes payment-method picker on bill cycles.
+  - mobile-app/src/screens/DebtsScreen.tsx — includes payment-method picker AND "Fees included in this payment" field (feesPortion) on debt cycles — confirmed wired through to Tax Summary.
+  - mobile-app/src/screens/LoansScreen.tsx — full payment log with date/amount/payment-method logging and removal, PLUS a working "Custom" recurrence option alongside Monthly/Annual/One-time.
+  - mobile-app/src/screens/LoanPayoffSimulatorModal.tsx
+  - mobile-app/src/screens/ToPayScreen.tsx
+  - mobile-app/src/screens/TransactionsScreen.tsx — includes payment-method picker on manual transactions, and CsvImportModal wired via a working "Import CSV" button.
+  - mobile-app/src/screens/CsvImportModal.tsx — file picker, CSV parsing, preview, error reporting, import-confirm flow.
+  - mobile-app/src/screens/IncomeScreen.tsx
+  - mobile-app/src/screens/SavingsScreen.tsx
+  - mobile-app/src/screens/GroceriesScreen.tsx
+  - mobile-app/src/screens/TravelScreen.tsx — real savings-goal auto-sync, confirmed working on a real phone.
+  - mobile-app/src/screens/EventsScreen.tsx — real savings-goal auto-sync, confirmed working on a real phone.
+  - mobile-app/src/screens/GoalsScreen.tsx
+  - mobile-app/src/screens/PlanningScreen.tsx
+  - mobile-app/src/screens/DashboardScreen.tsx — "Amount Owed" shows Bills/Debts/Loans breakdown; "Due Soon" includes loan payments. Confirmed working on a real phone.
+  - mobile-app/src/screens/InsightsScreen.tsx
+  - mobile-app/src/screens/ReportsScreen.tsx — pill-switcher between report pages, 9 pills including Payment Methods.
+  - mobile-app/src/screens/reports/MonthlyCloseOutReport.tsx
+  - mobile-app/src/screens/reports/YearInReviewReport.tsx
+  - mobile-app/src/screens/reports/CashFlowForecastReport.tsx
+  - mobile-app/src/screens/reports/PersonSpendingReport.tsx
+  - mobile-app/src/screens/reports/WeeklyDigestReport.tsx
+  - mobile-app/src/screens/reports/MerchantSpendingReport.tsx
+  - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx
+  - mobile-app/src/screens/reports/TaxSummaryReport.tsx — year-picker, total income/expenses/saved, interest & fees (includes both loan late fees AND debt fees), full expense-by-category breakdown.
+  - mobile-app/src/screens/reports/PaymentMethodsReport.tsx — groups paid bill/debt cycles, non-lent loan payments, and outgoing manual transactions by PaymentMethod, with a "Not set" bucket, progress bars, and % of total.
+  - mobile-app/src/screens/SettingsScreen.tsx — Categories/Payees/Categorization Rules (11.1), Appearance mode picker + Notifications settings (11.2), Security (change passphrase) / Data (backup + clear all) sections (11.3), and the real Household linking UI. Expected to be touched in both Phase A (linking/auth) and Phase B (UI/UX).
+  - mobile-app/src/navigation/MainTabs.tsx
+  - mobile-app/App.tsx
+  - mobile-app/package.json / package-lock.json — includes expo-sharing (~14.0.8), expo-document-picker (~14.0.8), expo-file-system (~19.0.24), and firebase. Expected to gain Firebase Auth-related packages in Phase A.
+
+### What's next
+
+**3-ROADMAP.md is now closed.** No further checkpoints will be tracked against it going forward — it remains in the repo purely as a historical record of the original 13-phase build.
+
+Remaining work is now tracked in a new file, **4-REMAINING-WORK-ROADMAP.md**, covering three phases in this decided order:
+1. **Phase A — Firebase Auth**: real per-user login, closing the "knowing the ID/code is enough" gap in the Firestore security rules noted above.
+2. **Phase B — UI/UX Polish**: an audit pass followed by phased visual/interaction improvements.
+3. **Phase C — Publishing**: EAS Build to get a real installable file on your phone, with app-store publishing as an optional, separate later step.
+
+▶️ Next step: see 4-REMAINING-WORK-ROADMAP.md, Checkpoint A.1.
