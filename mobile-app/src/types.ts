@@ -117,6 +117,9 @@ export type Loan = {
   interestRate?: number | '';
   recurringType?: 'monthly' | 'annual' | 'onetime' | 'custom';
   dueDate?: Record<string, any>;
+  customFreq?: string;
+  customStartDate?: string;
+  customOccurrenceCount?: number | '';
   createdAt?: number;
 };
 

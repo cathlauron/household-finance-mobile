@@ -12,12 +12,8 @@
 // payments due, income due, loan payments due, and savings
 // contributions.
 //
-// NOTE: Loans with "Custom" recurrence aren't included yet — the
-// Loan data model doesn't have customStartDate/customFreq fields
-// (only Bills/Debts do), and the Loans screen's own recurrence
-// picker doesn't offer "Custom" as an option yet either. Monthly/
-// Annual/One-time loans (everything actually usable today) ARE
-// included.
+// NOTE: Loans with "Custom" recurrence ARE included, sharing the same
+// customOccurrencesInMonth() helper as Bills/Debts.
 // NOTE: A "lent" loan (direction: 'lent' — money owed TO you) is
 // intentionally excluded from this projection. It isn't money
 // going out, so it shouldn't reduce your projected balance.
@@ -156,11 +152,21 @@ function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): nu
     return [dt.getDate()];
   }
 
+  if (recurringType === 'custom') {
+    return customOccurrencesInMonth(
+      loan.customStartDate,
+      loan.customFreq,
+      loan.customOccurrenceCount,
+      year,
+      monthIndex
+    );
+  }
+
   return [];
 }
 
 // ---- Custom recurrence (daily / weekly / biweekly / monthly / yearly) ----
-// Shared by Bills and Debts' "Custom" recurrence type.
+// Shared by Bills, Debts, and Loans' "Custom" recurrence type.
 function customOccurrencesInMonth(
   startDateStr: string | undefined,
   freq: string | undefined,

@@ -17,7 +17,7 @@
 // later as its own small checkpoint if it's actually needed.
 // ============================================================
 
-export type RecurringType = 'onetime' | 'monthly' | 'annual';
+export type RecurringType = 'onetime' | 'monthly' | 'annual' | 'custom';
 
 export function lastDayOfMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();
@@ -84,5 +84,6 @@ export function formatShortDate(d: Date | null): string {
 export function recurringTypeLabel(t: string): string {
   if (t === 'monthly') return 'Monthly';
   if (t === 'annual') return 'Annual';
+  if (t === 'custom') return 'Custom';
   return 'One-time';
 }

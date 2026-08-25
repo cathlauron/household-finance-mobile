@@ -51,7 +51,7 @@ function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel
   return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
 }
 
-const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 
 // Sorts loans by next due date (soonest first); loans with no computable due date yet
 // (e.g. saved before Checkpoint 5.4c, or never given a date) sort to the bottom.
@@ -83,8 +83,10 @@ export default function LoansScreen() {
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
   const [monthInput, setMonthInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [customFreqInput, setCustomFreqInput] = useState('monthly');
+  const [customStartDateInput, setCustomStartDateInput] = useState('');
+  const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');  const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [paymentsInput, setPaymentsInput] = useState<LoanPayment[]>([]);
   const [newPaymentDate, setNewPaymentDate] = useState('');
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
@@ -111,6 +113,9 @@ export default function LoansScreen() {
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
+    setCustomFreqInput('monthly');
+    setCustomStartDateInput('');
+    setCustomOccurrenceInput('');
     setErrorMsg('');
     setPaymentsInput([]);
     setNewPaymentDate('');
@@ -136,6 +141,11 @@ export default function LoansScreen() {
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
+    setCustomFreqInput(loan.customFreq || 'monthly');
+    setCustomStartDateInput(loan.customStartDate || '');
+    setCustomOccurrenceInput(
+      typeof loan.customOccurrenceCount === 'number' ? String(loan.customOccurrenceCount) : ''
+    );
     setErrorMsg('');
     setPaymentsInput(loan.actualPayments || []);
     setNewPaymentDate('');
@@ -243,6 +253,23 @@ export default function LoansScreen() {
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
 
+    let parsedOccurrenceCount: number | '' = '';
+    if (recurTypeInput === 'custom') {
+      const trimmedStart = customStartDateInput.trim();
+      if (!trimmedStart || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedStart)) {
+        setErrorMsg('Enter a start date as YYYY-MM-DD, e.g. 2026-08-25.');
+        return;
+      }
+      if (customOccurrenceInput.trim()) {
+        const n = parseInt(customOccurrenceInput, 10);
+        if (isNaN(n) || n <= 0) {
+          setErrorMsg('Occurrences should be a positive number, or left blank to repeat forever.');
+          return;
+        }
+        parsedOccurrenceCount = n;
+      }
+    }
+
     const updated: HouseholdModel = { ...model, loans: [...model.loans] };
 
     if (editingId) {
@@ -258,6 +285,9 @@ export default function LoansScreen() {
           interestRate: parsedRate,
           recurringType: recurTypeInput,
           dueDate,
+          customFreq: recurTypeInput === 'custom' ? customFreqInput : undefined,
+          customStartDate: recurTypeInput === 'custom' ? customStartDateInput.trim() : undefined,
+          customOccurrenceCount: recurTypeInput === 'custom' ? parsedOccurrenceCount : undefined,
           actualPayments: paymentsInput,
         };
       });
@@ -274,6 +304,9 @@ export default function LoansScreen() {
         direction: directionInput,
         recurringType: recurTypeInput,
         dueDate,
+        customFreq: recurTypeInput === 'custom' ? customFreqInput : undefined,
+        customStartDate: recurTypeInput === 'custom' ? customStartDateInput.trim() : undefined,
+        customOccurrenceCount: recurTypeInput === 'custom' ? parsedOccurrenceCount : undefined,
         createdAt: Date.now(),
       };
       updated.loans = [...updated.loans, newLoan];
@@ -516,6 +549,49 @@ export default function LoansScreen() {
                       />
                     </View>
                   </View>
+                )}
+
+                {recurTypeInput === 'custom' && (
+                  <>
+                    <Text style={styles.inputLabel}>Frequency</Text>
+                    <View style={styles.pillRow}>
+                      {['daily', 'weekly', 'biweekly', 'monthly', 'yearly'].map((freq) => (
+                        <TouchableOpacity
+                          key={freq}
+                          style={[styles.pillButton, customFreqInput === freq && styles.pillButtonActive]}
+                          onPress={() => setCustomFreqInput(freq)}
+                        >
+                          <Text
+                            style={[
+                              styles.pillButtonText,
+                              customFreqInput === freq && styles.pillButtonTextActive,
+                            ]}
+                          >
+                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text style={styles.inputLabel}>Starts on (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="2026-08-25"
+                      placeholderTextColor={colors.inkFaint}
+                      value={customStartDateInput}
+                      onChangeText={setCustomStartDateInput}
+                    />
+
+                    <Text style={styles.inputLabel}>Occurrences (optional)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Leave blank to repeat forever"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="number-pad"
+                      value={customOccurrenceInput}
+                      onChangeText={setCustomOccurrenceInput}
+                    />
+                  </>
                 )}
 
                 <Text style={styles.inputLabel}>Interest rate, annual % (optional)</Text>
