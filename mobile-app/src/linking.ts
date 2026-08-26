@@ -43,7 +43,7 @@
 
 import * as Crypto from 'expo-crypto';
 import CryptoJS from 'crypto-js';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { generateSalt, deriveKey, encryptJSON, decryptJSON } from './encryption';
 import type { HouseholdModel } from './types';
@@ -140,7 +140,15 @@ export async function joinHouseholdLink(codeInput: string): Promise<JoinLinkResu
   const code = codeInput.trim().toUpperCase();
   if (!code) throw new Error('Enter a code.');
 
-  const snap = await getDoc(doc(db, 'linkCodes', code));
+  // A code only stays readable for a short window after it's created (see
+  // firestore.rules) — past that, Firestore denies the read outright, which
+  // surfaces here as a thrown error rather than a "document not found."
+  let snap;
+  try {
+    snap = await getDoc(doc(db, 'linkCodes', code));
+  } catch (e) {
+    throw new Error("That code doesn't look right, or it's expired.");
+  }
   if (!snap.exists()) {
     throw new Error("That code doesn't look right, or it's expired.");
   }
@@ -223,7 +231,12 @@ export async function finishHostLink(
   secretHex: string,
   myPersonalKey: CryptoJS.lib.WordArray
 ): Promise<HostFinishResult> {
-  const snap = await getDoc(doc(db, 'linkCodes', code));
+  let snap;
+  try {
+    snap = await getDoc(doc(db, 'linkCodes', code));
+  } catch (e) {
+    throw new Error("That code can't be found anymore.");
+  }
   if (!snap.exists()) {
     throw new Error("That code can't be found anymore.");
   }
@@ -243,5 +256,16 @@ export async function finishHostLink(
   await saveWrappedHouseholdKey(myUsername, data.householdId, wrappedForMe);
   await updateProfileHouseholdId(myUsername, data.householdId);
   await clearPendingHostLink(myUsername);
+
+  // The code has now finished its one job (linking these two phones) —
+  // delete it outright so it can't be read or reused again, rather than
+  // leaving it sitting in Firestore as a still-working decryption key.
+  try {
+    await deleteDoc(doc(db, 'linkCodes', code));
+  } catch (e) {
+    // Not fatal — this phone is already fully linked either way, and the
+    // code becomes unreadable on its own once its 15-minute window passes.
+  }
+
   return { status: 'done', householdId: data.householdId };
 }

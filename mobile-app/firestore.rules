@@ -3,7 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /linkCodes/{code} {
-      allow get: if request.auth != null;
+      // A code is only readable for a short window after it's created — after
+      // that, Firestore denies the read outright, so an old code sitting in a
+      // screenshot or chat log can't be used to link into someone's data
+      // indefinitely.
+      allow get: if request.auth != null
+        && request.time < resource.data.createdAt + duration.value(15, 'm');
+
       allow write: if request.auth != null &&
         (
           (request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername'])
@@ -15,7 +21,12 @@ service cloud.firestore {
           (request.resource.data.finished == true
             && request.resource.data.householdId is string)
         );
-      allow delete: if false;
+
+      // Once a code has done its job (successfully used to link two
+      // profiles), it's deleted outright rather than left sitting around
+      // forever as a still-working decryption key.
+      allow delete: if request.auth != null && resource.data.finished == true;
+
       allow list: if false;
     }
 
