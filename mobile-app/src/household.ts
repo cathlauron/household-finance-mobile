@@ -23,7 +23,7 @@
 
 import CryptoJS from 'crypto-js';
 import * as Crypto from 'expo-crypto';
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON } from './encryption';
 import { getCurrentFirebaseUser } from './authFirebase';
@@ -109,10 +109,15 @@ export async function saveHouseholdData(householdId: string, encryptedPayload: s
 // call this when a second person links into an already-existing household.
 // arrayUnion is safe to call even if the uid is already in the list (it
 // won't create a duplicate).
-export async function addMemberToHousehold(householdId: string): Promise<void> {
+// Mirror image of addMemberToHousehold — removes the CURRENTLY signed-in
+// user from a household's members list. Call this when a profile unlinks
+// itself. The shared household data itself, and any other linked person,
+// are left completely untouched — this only removes this one person's
+// access to it.
+export async function removeMemberFromHousehold(householdId: string): Promise<void> {
   const uid = requireCurrentUid();
   await updateDoc(doc(db, 'households', householdId), {
-    members: arrayUnion(uid),
+    members: arrayRemove(uid),
   });
 }
 
