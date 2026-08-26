@@ -91,7 +91,30 @@ service cloud.firestore {
 
       allow list: if false;
     }
+    match /profileBackups/{username} {
+      // Checkpoint A.5 — one backup document per username, holding the salt
+      // (and, for a linked profile, the householdId) a brand-new device
+      // needs to restore itself. `data` is the encrypted personal model,
+      // only meaningful/present for an unlinked profile.
+      //
+      // NOTE: this collection is keyed by username, not uid — there's no
+      // `ownerUid` field on it the way householdKeys has, because it needs
+      // to be readable by anyone who knows the username (that's the whole
+      // point: a signed-in-but-brand-new device hasn't linked this username
+      // to anything locally yet). Being logged into Firebase Auth at all
+      // (request.auth != null) is what's gating access, not per-document
+      // ownership.
+      allow get: if request.auth != null;
 
+      allow write: if request.auth != null
+        && request.resource.data.keys().hasAll(['salt', 'updatedAt'])
+        && request.resource.data.salt is string
+        && request.resource.data.updatedAt is number
+        && (!('householdId' in request.resource.data) || request.resource.data.householdId is string)
+        && (!('data' in request.resource.data) || request.resource.data.data is string);
+
+      allow list: if false;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

@@ -3,8 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
-import { loadProfilesIndex, loadEncryptedProfileData } from '../storage';
+import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, ProfileIndexEntry } from '../storage';
 import { signInWithFirebase, createFirebaseAccount } from '../authFirebase';
+import { loadProfileCloudBackup } from '../cloudBackup';
+import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData } from '../household';
 
 type Props = {
   onSignedIn: (username: string, key: CryptoJS.lib.WordArray) => void;
@@ -21,7 +23,10 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
   // Firebase account for a profile that predates Firebase Auth. Just
   // changes the button's wording so it doesn't look like a plain sign-in.
   const [isMigrating, setIsMigrating] = useState(false);
-
+  // Checkpoint A.5 — true only while we're pulling a profile's backup down
+  // from the cloud for a brand-new device that has no local data yet. Also
+  // just changes the button's wording.
+  const [isRestoring, setIsRestoring] = useState(false);
   // The passphrase → encryption key step (deriveKey, below) is intentionally slow on
   // purpose — it's what makes the passphrase hard to brute-force — and on a phone it can
   // take anywhere from a few seconds to over a minute depending on the device. This just
@@ -67,6 +72,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     }
     setBusy(true);
     setIsMigrating(false);
+    setIsRestoring(false);
     try {
       // Firebase is the real, server-checked gate now — this is what
       // actually confirms who you are, before we touch any local data.
@@ -142,11 +148,75 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
+
       if (!profile) {
-        setError('No local profile with that username on this device.');
+        // Checkpoint A.5 — brand-new device: nothing has ever been saved locally here
+        // for this username. Before giving up, check whether this profile has an
+        // encrypted backup sitting in the cloud (every save already creates/refreshes
+        // one — see cloudBackup.ts) and, if so, pull it down and set this device up
+        // from that instead of failing outright.
+        setIsRestoring(true);
+        const cloudBackup = await loadProfileCloudBackup(username);
+        if (!cloudBackup) {
+          setIsRestoring(false);
+          setError('No account found with that username. Check the spelling, or create a new profile.');
+          setBusy(false);
+          return;
+        }
+
+        const key = deriveKey(password, cloudBackup.salt);
+
+        if (cloudBackup.householdId) {
+          // This profile is linked to a shared household — the actual data lives in
+          // the shared household document, not in this personal backup. Confirm the
+          // passphrase is correct by actually unwrapping the shared key and decrypting
+          // the shared data with it, before trusting any of this.
+          try {
+            const wrapped = await loadWrappedHouseholdKey(username);
+            if (!wrapped) throw new Error('missing wrapped household key');
+            const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
+            const encryptedHousehold = await loadHouseholdData(cloudBackup.householdId);
+            if (!encryptedHousehold) throw new Error('missing household data');
+            decryptJSON(householdKey, encryptedHousehold);
+          } catch (e) {
+            setIsRestoring(false);
+            setError('Incorrect username or passphrase.');
+            setBusy(false);
+            return;
+          }
+        } else {
+          // Personal (unlinked) profile — verify against the personal backup itself.
+          if (!cloudBackup.data) {
+            setIsRestoring(false);
+            setError('Could not find any saved data for that profile.');
+            setBusy(false);
+            return;
+          }
+          try {
+            decryptJSON(key, cloudBackup.data);
+          } catch (e) {
+            setIsRestoring(false);
+            setError('Incorrect username or passphrase.');
+            setBusy(false);
+            return;
+          }
+          // Passphrase confirmed correct — save a local copy so this device has its
+          // own working data going forward (and can work offline afterward too).
+          await saveEncryptedProfileData(username, cloudBackup.data);
+        }
+
+        // Passphrase confirmed correct either way — now safe to set this device up
+        // with its own local profile entry, same as if it had been created here.
+        const newEntry: ProfileIndexEntry = { username, salt: cloudBackup.salt };
+        if (cloudBackup.householdId) newEntry.householdId = cloudBackup.householdId;
+        await saveProfilesIndex([...profiles, newEntry]);
+
+        setIsRestoring(false);
         setBusy(false);
+        onSignedIn(username, key);
         return;
       }
+
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) {
         setError('Could not find any saved data for that profile.');
@@ -166,6 +236,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     } catch (e) {
       setBusy(false);
       setIsMigrating(false);
+      setIsRestoring(false);
       setError('Something went wrong signing in. Please try again.');
     }
   }
@@ -217,7 +288,11 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
           <View style={styles.busyRow}>
             <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
             <Text style={styles.primaryBtnText}>
-              {isMigrating ? 'Setting up secure sign-in…' : 'Signing in…'}
+              {isMigrating
+                ? 'Setting up secure sign-in…'
+                : isRestoring
+                ? 'Restoring your data…'
+                : 'Signing in…'}
             </Text>
           </View>
         ) : (

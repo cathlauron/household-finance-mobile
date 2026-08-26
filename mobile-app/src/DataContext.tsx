@@ -81,7 +81,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // both when this profile is personal/unlinked.
   const householdIdRef = useRef<string | undefined>(undefined);
   const householdKeyRef = useRef<CryptoJS.lib.WordArray | null>(null);
-
+  // Checkpoint A.5 — this profile's current salt, kept alongside the key/household refs
+  // so saveModel/changePassphrase can keep the cloud backup's salt field up to date
+  // without needing to re-look-up the profiles index on every save.
+  const saltRef = useRef<string | null>(null);
   async function loadModel(username: string, key: CryptoJS.lib.WordArray) {
     setLoading(true);
     usernameRef.current = username;
@@ -92,7 +95,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
       const householdId = profile?.householdId;
-
+      // Checkpoint A.5 — remember this profile's salt for the lifetime of this session,
+      // so every future save can keep the cloud backup's salt field fresh.
+      saltRef.current = profile?.salt ?? null;
       if (householdId) {
         // Linked profile: look up this profile's own wrapped copy of the
         // shared household key, unwrap it with the personal key, then load
@@ -151,6 +156,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const encrypted = await encryptJSON(householdKeyRef.current, updatedModel);
       await saveHouseholdData(householdIdRef.current, encrypted);
       rescheduleBillNotifications(updatedModel).catch(() => {});
+      // Checkpoint A.5 — keep this profile's cloud backup metadata (salt + which
+      // household it's linked to) fresh, so signing in on a brand-new device can find
+      // its way to the right shared household. No personal `data` to send here — a
+      // linked profile's real data lives in the household document saved just above.
+      if (saltRef.current) {
+        saveProfileCloudBackup(username, {
+          salt: saltRef.current,
+          householdId: householdIdRef.current,
+        }).catch(() => {});
+      }
       return;
     }
 
@@ -167,7 +182,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // awaited and silently ignored on failure (e.g. no internet), same pattern as
     // rescheduleBillNotifications above — a failed cloud backup should never block or
     // interrupt normal use of the app.
-    saveProfileCloudBackup(username, encrypted).catch(() => {});
+    if (saltRef.current) {
+      saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+    }
   }
 
   function clearModel() {
@@ -208,7 +225,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       householdKeyRef.current = null;
       setIsLinked(false);
 
-      saveProfileCloudBackup(username, encrypted).catch(() => {});
+      if (saltRef.current) {
+        saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+      }
 
       return { ok: true };
     } catch (e) {
@@ -254,10 +273,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const reEncrypted = await encryptJSON(newKey, currentModel);
     await saveEncryptedProfileData(username, reEncrypted);
     await updateProfileSalt(username, newSalt);
-    // Checkpoint 9.2b-i: the cloud backup was encrypted with the OLD key, so it needs
-    // to be refreshed here too, using the freshly re-encrypted data above — otherwise
-    // it would be left stuck, undecryptable with the new passphrase.
-    saveProfileCloudBackup(username, reEncrypted).catch(() => {});
+    // Checkpoint 9.2b-i / A.5: the cloud backup's salt AND its encrypted data were both
+    // tied to the OLD passphrase, so both need refreshing here — otherwise a future
+    // new-device sign-in (Checkpoint A.5) would derive the wrong key from the stale salt.
+    saltRef.current = newSalt;
+    saveProfileCloudBackup(username, {
+      salt: newSalt,
+      householdId: householdIdRef.current,
+      data: reEncrypted,
+    }).catch(() => {});
 
     keyRef.current = newKey;
     return { ok: true };
