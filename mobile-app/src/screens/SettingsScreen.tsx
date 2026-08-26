@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import type { Category, Payee, CategorizationRule, HouseholdModel } from '../typ
 import { requestNotificationPermission } from '../pushNotifications';
 import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink } from '../linking';
 import type { JoinChoice } from '../linking';
+import { loadPendingHostLink } from '../storage';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -119,6 +120,19 @@ export default function SettingsScreen() {
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErrorMsg, setLinkErrorMsg] = useState('');
 
+  // Restores an in-progress "start linking" (code + secret) if this screen opens and one
+  // was left unfinished — e.g. the app was closed, the phone restarted, or (as in testing)
+  // a different account was signed into and back out of before tapping "finish linking."
+  useEffect(() => {
+    if (!username || isLinked) return;
+    loadPendingHostLink(username).then((pending) => {
+      if (pending) {
+        setLinkCode(pending.code);
+        setLinkSecretHex(pending.secretHex);
+      }
+    });
+  }, [username, isLinked]);
+  
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   const [hostFinishBusy, setHostFinishBusy] = useState(false);
   const [hostFinishMsg, setHostFinishMsg] = useState('');

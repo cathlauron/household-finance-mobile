@@ -65,3 +65,38 @@ export async function saveEncryptedProfileData(username: string, encryptedPayloa
 export async function loadEncryptedProfileData(username: string): Promise<string | null> {
   return AsyncStorage.getItem(profileDataKey(username));
 }
+
+// ---- Pending host link (fix for lost "finish linking" state) ----
+// startHouseholdLink() saves the code + secret here the moment it succeeds, so the host
+// can come back and finish linking later even if the app was closed, the phone restarted,
+// or (for testing) a different account was signed into in between. finishHostLink() clears
+// this once linking actually completes.
+export type PendingHostLink = { code: string; secretHex: string };
+
+function pendingHostLinkKey(username: string): string {
+  return `profile:${username}:pending-host-link`;
+}
+
+export async function savePendingHostLink(
+  username: string,
+  code: string,
+  secretHex: string
+): Promise<void> {
+  await AsyncStorage.setItem(pendingHostLinkKey(username), JSON.stringify({ code, secretHex }));
+}
+
+export async function loadPendingHostLink(username: string): Promise<PendingHostLink | null> {
+  const raw = await AsyncStorage.getItem(pendingHostLinkKey(username));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.code === 'string' && typeof parsed?.secretHex === 'string') return parsed;
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function clearPendingHostLink(username: string): Promise<void> {
+  await AsyncStorage.removeItem(pendingHostLinkKey(username));
+}

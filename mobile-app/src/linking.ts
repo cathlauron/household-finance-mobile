@@ -54,7 +54,7 @@ import {
   saveWrappedHouseholdKey,
   addMemberToHousehold,
 } from './household';
-import { updateProfileHouseholdId } from './storage';
+import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink } from './storage';
 import { mergeModels } from './mergeModels';
 
 // Chosen to avoid easy mix-ups when the code is read aloud or typed by hand
@@ -114,6 +114,10 @@ export async function startHouseholdLink(
     hostUsername: username,
     createdAt: serverTimestamp(),
   });
+
+  // Remember this so "finish linking" can be completed later even if the app closes,
+  // the phone restarts, or a different account gets signed into in between.
+  await savePendingHostLink(username, code, secretHex);
 
   return { code, secretHex };
 }
@@ -238,5 +242,6 @@ export async function finishHostLink(
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
   await saveWrappedHouseholdKey(myUsername, data.householdId, wrappedForMe);
   await updateProfileHouseholdId(myUsername, data.householdId);
+  await clearPendingHostLink(myUsername);
   return { status: 'done', householdId: data.householdId };
 }
