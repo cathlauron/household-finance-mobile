@@ -8,8 +8,8 @@
 // How linking works, in plain terms:
 // 1. One random secret key ("household key") is generated once.
 // 2. That key gets wrapped (encrypted) separately for each linked
-//    person, using their own passphrase-derived key — so two people
-//    with two different passphrases can each unlock the same shared
+//    person, using their own password-derived key — so two people
+//    with two different passwords can each unlock the same shared
 //    household key.
 // 3. The real household data (bills, debts, everything) is encrypted
 //    with that shared household key and saved to Firestore, so both
@@ -58,7 +58,7 @@ export async function generateHouseholdKey(): Promise<CryptoJS.lib.WordArray> {
   return CryptoJS.enc.Hex.parse(bytesToHex(bytes));
 }
 
-// Encrypts the household key using one person's own passphrase-derived key,
+// Encrypts the household key using one person's own password-derived key,
 // so it can be safely stored/sent and only that person can unwrap it.
 export async function wrapHouseholdKey(
   householdKey: CryptoJS.lib.WordArray,
@@ -68,7 +68,7 @@ export async function wrapHouseholdKey(
 }
 
 // Reverses wrapHouseholdKey — throws if personalKey is wrong (e.g. wrong
-// passphrase), same behavior as decryptJSON itself.
+// password), same behavior as decryptJSON itself.
 export function unwrapHouseholdKey(
   wrapped: string,
   personalKey: CryptoJS.lib.WordArray
@@ -140,7 +140,7 @@ export async function loadHouseholdData(householdId: string): Promise<string | n
 // ---- Firestore: each linked person's own wrapped copy of the household key ----
 // Keyed by username so a phone can look up "what household is this username
 // linked to, and what's my wrapped key" from any device, using just the
-// username + passphrase (no separate device-pairing step needed).
+// username + password (no separate device-pairing step needed).
 
 export async function saveWrappedHouseholdKey(
   username: string,

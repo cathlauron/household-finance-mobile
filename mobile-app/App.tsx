@@ -109,7 +109,7 @@ function AppContent() {
         <PinUnlockScreen
           username={currentUsername}
           onUnlocked={() => setScreen('home')}
-          onUsePassphraseInstead={handleFullSignOut}
+          onUsePasswordInstead={handleFullSignOut}
         />
       </SafeAreaView>
     );

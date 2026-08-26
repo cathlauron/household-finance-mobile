@@ -5,10 +5,10 @@ import { verifyPin } from '../pin';
 type Props = {
   username: string;
   onUnlocked: () => void;
-  onUsePassphraseInstead: () => void;
+  onUsePasswordInstead: () => void;
 };
 
-export default function PinUnlockScreen({ username, onUnlocked, onUsePassphraseInstead }: Props) {
+export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordInstead }: Props) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -50,8 +50,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePassphraseI
         <Text style={styles.primaryBtnText}>{busy ? 'Checking…' : 'Unlock'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.ghostBtn} onPress={onUsePassphraseInstead}>
-        <Text style={styles.ghostBtnText}>Use passphrase instead</Text>
+      <TouchableOpacity style={styles.ghostBtn} onPress={onUsePasswordInstead}>
+        <Text style={styles.ghostBtnText}>Use password instead</Text>
       </TouchableOpacity>
     </View>
   );

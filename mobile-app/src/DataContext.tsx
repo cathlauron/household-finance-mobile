@@ -32,13 +32,15 @@ import { saveProfileCloudBackup } from './cloudBackup';
 import {
   loadWrappedHouseholdKey,
   unwrapHouseholdKey,
+  wrapHouseholdKey,
   loadHouseholdData,
   saveHouseholdData,
+  saveWrappedHouseholdKey,
   removeMemberFromHousehold,
   deleteWrappedHouseholdKey,
 } from './household';
 
-type ChangePassphraseResult = { ok: boolean; error?: string };
+type ChangePasswordResult = { ok: boolean; error?: string };
 
 type DataContextValue = {
   model: HouseholdModel | null;
@@ -46,15 +48,15 @@ type DataContextValue = {
   loadModel: (username: string, key: CryptoJS.lib.WordArray) => Promise<void>;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
-  changePassphrase: (
-    currentPassphrase: string,
-    newPassphrase: string
-  ) => Promise<ChangePassphraseResult>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<ChangePasswordResult>;
   username: string | null;
   // Checkpoint 9.2c: whether this profile is currently reading/writing
   // shared household data (true) or its own personal data (false).
   isLinked: boolean;
-  // The passphrase-derived key for THIS profile's own passphrase — needed
+  // The password-derived key for THIS profile's own password — needed
   // by the linking screens to wrap/unwrap a shared household key, without
   // every screen having to re-derive or pass it around separately.
   getPersonalKey: () => CryptoJS.lib.WordArray | null;
@@ -62,7 +64,7 @@ type DataContextValue = {
   // currently looks like, then removes this profile's access to the shared
   // household. The shared household data itself, and anyone else still
   // linked to it, are left completely untouched.
-  unlinkHousehold: () => Promise<ChangePassphraseResult>;
+  unlinkHousehold: () => Promise<ChangePasswordResult>;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -82,7 +84,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const householdIdRef = useRef<string | undefined>(undefined);
   const householdKeyRef = useRef<CryptoJS.lib.WordArray | null>(null);
   // Checkpoint A.5 — this profile's current salt, kept alongside the key/household refs
-  // so saveModel/changePassphrase can keep the cloud backup's salt field up to date
+  // so saveModel/changePassword can keep the cloud backup's salt field up to date
   // without needing to re-look-up the profiles index on every save.
   const saltRef = useRef<string | null>(null);
   async function loadModel(username: string, key: CryptoJS.lib.WordArray) {
@@ -200,7 +202,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return keyRef.current;
   }
 
-  async function unlinkHousehold(): Promise<ChangePassphraseResult> {
+  async function unlinkHousehold(): Promise<ChangePasswordResult> {
     const username = usernameRef.current;
     const personalKey = keyRef.current;
     const householdId = householdIdRef.current;
@@ -235,21 +237,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // ---- Checkpoint 11.3: change passphrase ----
-  // Verifies the CURRENT passphrase is actually correct (by re-deriving a key from it and
+  // ---- Checkpoint 11.3: change password ----
+  // Verifies the CURRENT password is actually correct (by re-deriving a key from it and
   // successfully decrypting what's already saved) before touching anything — a wrong
-  // "current" passphrase must never be able to lock someone out or corrupt their data.
-  // Once verified: a brand new random salt is generated (a fresh salt per passphrase is
+  // "current" password must never be able to lock someone out or corrupt their data.
+  // Once verified: a brand new random salt is generated (a fresh salt per password is
   // the same practice used when the profile was first created), a new key is derived from
-  // the new passphrase + that new salt, everything currently in memory is re-encrypted with
+  // the new password + that new salt, everything currently in memory is re-encrypted with
   // it and saved, the profiles index is updated to remember the new salt, and finally the
   // in-memory key this session is using for future saves is swapped over — so the very next
   // saveModel() call (e.g. editing a bill right after) keeps working correctly without
   // needing to sign out and back in.
-  async function changePassphrase(
-    currentPassphrase: string,
-    newPassphrase: string
-  ): Promise<ChangePassphraseResult> {
+  async function changePassword(
+    currentPassword: string,
+    newPassword: string
+  ): Promise<ChangePasswordResult> {
     const username = usernameRef.current;
     if (!username) return { ok: false, error: 'Not signed in.' };
 
@@ -257,24 +259,63 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const profile = profiles.find((p) => p.username === username);
     if (!profile) return { ok: false, error: "Couldn't find your profile." };
 
+    const currentKey = deriveKey(currentPassword, profile.salt);
+
+    // ---- Checkpoint A.6: linked-profile branch ----
+    // For a linked profile, the real source of truth is the shared household key/data,
+    // not this profile's own (unused, possibly stale) personal storage — so the current
+    // password is verified by actually unwrapping the household key with it, and the
+    // fix for the original bug lives here too: after deriving the new key, the SAME
+    // household key gets re-wrapped with it and saved, so the household key itself never
+    // changes (nothing shared breaks) — only the "lock" on it for this one profile does.
+    if (householdIdRef.current && householdKeyRef.current) {
+      const wrapped = await loadWrappedHouseholdKey(username);
+      if (!wrapped) return { ok: false, error: "Couldn't find your linked household key." };
+
+      try {
+        unwrapHouseholdKey(wrapped.wrappedKey, currentKey);
+      } catch (e) {
+        return { ok: false, error: 'Your current password is incorrect.' };
+      }
+
+      const newSalt = await generateSalt();
+      const newKey = deriveKey(newPassword, newSalt);
+
+      // Re-wrap the EXISTING household key (already in memory from when this profile
+      // loaded/linked) with the new password-derived key — the household key itself is
+      // untouched, so the other linked person's access is completely unaffected.
+      const reWrapped = await wrapHouseholdKey(householdKeyRef.current, newKey);
+      await saveWrappedHouseholdKey(username, householdIdRef.current, reWrapped);
+      await updateProfileSalt(username, newSalt);
+
+      saltRef.current = newSalt;
+      saveProfileCloudBackup(username, {
+        salt: newSalt,
+        householdId: householdIdRef.current,
+      }).catch(() => {});
+
+      keyRef.current = newKey;
+      return { ok: true };
+    }
+
+    // ---- Unlinked (personal) profile — unchanged from before ----
     const encrypted = await loadEncryptedProfileData(username);
     if (!encrypted) return { ok: false, error: 'No saved data found for this profile.' };
 
-    const currentKey = deriveKey(currentPassphrase, profile.salt);
     try {
       decryptJSON(currentKey, encrypted);
     } catch (e) {
-      return { ok: false, error: 'Your current passphrase is incorrect.' };
+      return { ok: false, error: 'Your current password is incorrect.' };
     }
 
     const newSalt = await generateSalt();
-    const newKey = deriveKey(newPassphrase, newSalt);
+    const newKey = deriveKey(newPassword, newSalt);
     const currentModel = model ?? defaultModel();
     const reEncrypted = await encryptJSON(newKey, currentModel);
     await saveEncryptedProfileData(username, reEncrypted);
     await updateProfileSalt(username, newSalt);
     // Checkpoint 9.2b-i / A.5: the cloud backup's salt AND its encrypted data were both
-    // tied to the OLD passphrase, so both need refreshing here — otherwise a future
+    // tied to the OLD password, so both need refreshing here — otherwise a future
     // new-device sign-in (Checkpoint A.5) would derive the wrong key from the stale salt.
     saltRef.current = newSalt;
     saveProfileCloudBackup(username, {
@@ -295,7 +336,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         loadModel,
         saveModel,
         clearModel,
-        changePassphrase,
+        changePassword,
         username: usernameRef.current,
         isLinked,
         getPersonalKey,

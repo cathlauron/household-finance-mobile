@@ -82,7 +82,7 @@ function summarizeModel(m: HouseholdModel): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { model, saveModel, changePassphrase, username, loadModel, isLinked, getPersonalKey, unlinkHousehold} = useData();
+  const { model, saveModel, changePassword, username, loadModel, isLinked, getPersonalKey, unlinkHousehold} = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -155,7 +155,7 @@ export default function SettingsScreen() {
   const [joinChoiceBusy, setJoinChoiceBusy] = useState(false);
   const [joinChoiceMsg, setJoinChoiceMsg] = useState('');
 
-  // ---- Checkpoint 11.3: Security (change passphrase) ----
+  // ---- Checkpoint 11.3: Security (change password) ----
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPass1Input, setNewPass1Input] = useState('');
   const [newPass2Input, setNewPass2Input] = useState('');
@@ -491,7 +491,7 @@ export default function SettingsScreen() {
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
   // says so and lets you try again after checking with them. If it has, this phone
-  // finishes its own side (wraps the real shared key with this phone's own passphrase)
+  // finishes its own side (wraps the real shared key with this phone's own password)
   // and reloads so the rest of the app immediately starts using the shared data.
   async function handleFinishHostLink() {
     if (!username || !linkCode || !linkSecretHex) return;
@@ -571,7 +571,7 @@ export default function SettingsScreen() {
 
   // ---- Checkpoint 9.2c: joiner side — mine/theirs/merge, made permanent ----
   // Creates the real shared household, saves the chosen data to it, wraps the shared
-  // key with this phone's own passphrase, and reloads so the rest of the app
+  // key with this phone's own password, and reloads so the rest of the app
   // immediately starts using the shared data.
   async function handleJoinChoice(choice: JoinChoice) {
     if (!model || !username || !joinResult || !joinedCode) return;
@@ -616,26 +616,26 @@ export default function SettingsScreen() {
     setUnlinkConfirmOpen(false);
   }
   // ---- Checkpoint 11.3: Security handler ----
-  async function handleChangePassphrase() {
+  async function handleChangePassword() {
     setPassChangeMsg('');
     if (!currentPassInput) {
-      setPassChangeMsg('Enter your current passphrase.');
+      setPassChangeMsg('Enter your current password.');
       return;
     }
     if (newPass1Input.length < 6) {
-      setPassChangeMsg('New passphrase must be at least 6 characters.');
+      setPassChangeMsg('New password must be at least 6 characters.');
       return;
     }
     if (newPass1Input !== newPass2Input) {
-      setPassChangeMsg("New passphrases don't match.");
+      setPassChangeMsg("New passwords don't match.");
       return;
     }
     if (newPass1Input === currentPassInput) {
-      setPassChangeMsg('New passphrase must be different from your current one.');
+      setPassChangeMsg('New password must be different from your current one.');
       return;
     }
     setPassChangeBusy(true);
-    const result = await changePassphrase(currentPassInput, newPass1Input);
+    const result = await changePassword(currentPassInput, newPass1Input);
     setPassChangeBusy(false);
     if (!result.ok) {
       setPassChangeMsg(result.error || 'Something went wrong. Please try again.');
@@ -644,7 +644,7 @@ export default function SettingsScreen() {
     setCurrentPassInput('');
     setNewPass1Input('');
     setNewPass2Input('');
-    setPassChangeMsg('Passphrase changed.');
+    setPassChangeMsg('Password changed.');
   }
 
   // ---- Checkpoint 11.3: Data handlers ----
@@ -858,21 +858,21 @@ export default function SettingsScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Security</Text>
         <Text style={styles.sectionSub}>
-          Change the passphrase used to sign in and encrypt your data on this phone.
+          Change the password used to sign in and encrypt your data on this phone.
         </Text>
 
-        <Text style={styles.inputLabel}>Current passphrase</Text>
+        <Text style={styles.inputLabel}>Current password</Text>
         <TextInput
           style={styles.input}
           secureTextEntry
           autoCapitalize="none"
-          placeholder="Enter your current passphrase"
+          placeholder="Enter your current password"
           placeholderTextColor={colors.inkFaint}
           value={currentPassInput}
           onChangeText={setCurrentPassInput}
         />
 
-        <Text style={styles.inputLabel}>New passphrase</Text>
+        <Text style={styles.inputLabel}>New password</Text>
         <TextInput
           style={styles.input}
           secureTextEntry
@@ -883,7 +883,7 @@ export default function SettingsScreen() {
           onChangeText={setNewPass1Input}
         />
 
-        <Text style={styles.inputLabel}>Confirm new passphrase</Text>
+        <Text style={styles.inputLabel}>Confirm new password</Text>
         <TextInput
           style={styles.input}
           secureTextEntry
@@ -895,24 +895,24 @@ export default function SettingsScreen() {
         />
 
         {!!passChangeMsg && (
-          <Text style={passChangeMsg === 'Passphrase changed.' ? styles.successText : styles.errorText}>
+          <Text style={passChangeMsg === 'Password changed.' ? styles.successText : styles.errorText}>
             {passChangeMsg}
           </Text>
         )}
 
         <TouchableOpacity
           style={styles.primaryFullButton}
-          onPress={handleChangePassphrase}
+          onPress={handleChangePassword}
           disabled={passChangeBusy}
         >
           {passChangeBusy ? (
             <ActivityIndicator color={colors.navy2} />
           ) : (
-            <Text style={styles.saveButtonText}>Change passphrase</Text>
+            <Text style={styles.saveButtonText}>Change password</Text>
           )}
         </TouchableOpacity>
         <Text style={styles.hintText}>
-          There is no "forgot passphrase" recovery — save your new passphrase somewhere safe.
+          There is no "forgot password" recovery — save your new password somewhere safe.
         </Text>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
@@ -1145,7 +1145,7 @@ export default function SettingsScreen() {
           <View style={styles.dangerConfirmBox}>
             <Text style={styles.dangerConfirmText}>
               This clears every entry in this app — bills, debts, loans, income, savings,
-              accounts, and everything else — for this profile. Your username and passphrase
+              accounts, and everything else — for this profile. Your username and password
               stay the same. This can't be undone.
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>

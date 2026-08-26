@@ -7,7 +7,7 @@
 //
 // Checkpoint A.5: this backup now also carries the two pieces of
 // information a brand-new device needs to set itself up from scratch —
-// the profile's salt (needed to turn a passphrase back into the right
+// the profile's salt (needed to turn a password back into the right
 // encryption key) and, if this profile is linked to a shared household,
 // which household that is. `data` (the encrypted personal model) is only
 // meaningful for an UNLINKED profile — a linked profile's real data lives

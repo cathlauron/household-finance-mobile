@@ -19,8 +19,8 @@
 //
 //   1. JOINER'S PHONE: after picking Mine/Theirs/Merge, finishJoinerLink()
 //      creates the real shared household in Firestore, wraps the shared
-//      key with the joiner's OWN passphrase-derived key (so they can
-//      unlock it with their own passphrase from now on), marks this
+//      key with the joiner's OWN password-derived key (so they can
+//      unlock it with their own password from now on), marks this
 //      profile as linked locally, and leaves a note on the same
 //      linkCodes/{code} record saying "this code is finished, here's the
 //      household id."
@@ -29,7 +29,7 @@
 //      finishHostLink() checks that same record for the joiner's note —
 //      if it's not there yet, it just says "not yet, try again after they
 //      finish." If it IS there, the host does its own version of step 1:
-//      wraps the shared key with ITS OWN passphrase-derived key, and
+//      wraps the shared key with ITS OWN password-derived key, and
 //      marks itself as linked too.
 //
 // Once both phones have finished, every future save on either phone reads
@@ -78,7 +78,7 @@ async function generateLinkCode(): Promise<string> {
 // The real shared household key — generated fresh, once, the first time two
 // profiles link. Never stored in plain form; only ever moved around locked
 // with the link code (this checkpoint) or wrapped with each linked
-// person's own passphrase (Checkpoint 9.2c).
+// person's own password (Checkpoint 9.2c).
 async function generateHouseholdSecretHex(): Promise<string> {
   const bytes = await Crypto.getRandomBytesAsync(32);
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -209,7 +209,7 @@ export type FinishJoinerResult = {
 
 // Runs on the JOINER's phone once they pick mine/theirs/merge. Creates the
 // real shared household, saves the chosen data to it, wraps the household
-// key with the joiner's own passphrase-derived key, marks this profile as
+// key with the joiner's own password-derived key, marks this profile as
 // linked locally, and leaves a note on the link code record so the host
 // phone can find out and finish its own side.
 export async function finishJoinerLink(
@@ -253,7 +253,7 @@ export type HostFinishResult =
 // Runs on the HOST's phone (the one that generated the code) after the
 // person taps "finish linking." Checks whether the joiner has finished
 // their side yet; if so, wraps the household key with the host's own
-// passphrase-derived key and marks the host's profile as linked too.
+// password-derived key and marks the host's profile as linked too.
 export async function finishHostLink(
   code: string,
   myUsername: string,

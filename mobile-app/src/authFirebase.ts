@@ -3,7 +3,7 @@
 // Real Firebase Authentication (email + password) — Checkpoint A.2.
 //
 // This is separate from src/auth.ts (which handles username sanitizing for
-// the existing local passphrase system — that stays exactly as it is).
+// the existing local password system — that stays exactly as it is).
 // This file is the NEW layer: a real, server-checked login that will be
 // required before the app can read/write Firestore at all, closing the
 // "knowing the link code is enough" gap from Phase 9.

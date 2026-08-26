@@ -26,8 +26,8 @@ export async function saveProfilesIndex(profiles: ProfileIndexEntry[]): Promise<
   await AsyncStorage.setItem(PROFILES_INDEX_KEY, JSON.stringify(profiles));
 }
 
-// Updates just one profile's stored salt — used when changing a passphrase, since a new
-// passphrase always gets a fresh salt (see encryption.ts's generateSalt()). Does nothing
+// Updates just one profile's stored salt — used when changing a password, since a new
+// password always gets a fresh salt (see encryption.ts's generateSalt()). Does nothing
 // if the username isn't found, so a caller can't accidentally add a stray new entry here.
 export async function updateProfileSalt(username: string, newSalt: string): Promise<void> {
   const profiles = await loadProfilesIndex();

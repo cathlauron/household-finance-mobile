@@ -40,7 +40,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
       <Text style={styles.eyebrow}>QUICK UNLOCK</Text>
       <Text style={styles.title}>Set a PIN</Text>
       <Text style={styles.sub}>
-        A short PIN just for re-opening the app quickly — your real passphrase is always the
+        A short PIN just for re-opening the app quickly — your real password is always the
         backup if you ever need it.
       </Text>
 

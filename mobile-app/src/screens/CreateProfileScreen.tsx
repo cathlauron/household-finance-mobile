@@ -50,11 +50,11 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       return;
     }
     if (password1.length < 6) {
-      setError('Use at least 6 characters for your passphrase.');
+      setError('Use at least 6 characters for your password.');
       return;
     }
     if (password1 !== password2) {
-      setError("Passphrases don't match.");
+      setError("Passwords don't match.");
       return;
     }
     setBusy(true);
@@ -78,7 +78,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       }
 
       // Only once the Firebase account exists do we create the local,
-      // passphrase-encrypted profile — exactly as before Phase A.
+      // password-encrypted profile — exactly as before Phase A.
       const salt = await generateSalt();
       const key = deriveKey(password1, salt);
       const encrypted = await encryptJSON(key, defaultModel());
@@ -98,8 +98,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       <Text style={styles.eyebrow}>FIRST-TIME SETUP</Text>
       <Text style={styles.title}>Create your profile</Text>
       <Text style={styles.sub}>
-        Choose a username and a passphrase, and enter your email — you'll use your username and
-        passphrase to sign in every time.
+        Choose a username and a password, and enter your email — you'll use your username and
+        password to sign in every time.
       </Text>
 
       <Text style={styles.label}>Email</Text>
@@ -123,7 +123,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         autoCorrect={false}
       />
 
-      <Text style={styles.label}>Passphrase</Text>
+      <Text style={styles.label}>Password</Text>
       <TextInput
         style={styles.input}
         value={password1}
@@ -133,7 +133,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         autoCapitalize="none"
       />
 
-      <Text style={styles.label}>Confirm passphrase</Text>
+      <Text style={styles.label}>Confirm password</Text>
       <TextInput
         style={styles.input}
         value={password2}
@@ -154,8 +154,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        There's no "forgot passphrase" recovery — your data is genuinely encrypted with this
-        passphrase, not just hidden. Remember it, like you would a password manager entry.
+        There's no "forgot password" recovery — your data is genuinely encrypted with this
+        password, not just hidden. Remember it, like you would a password manager entry.
       </Text>
     </View>
   );

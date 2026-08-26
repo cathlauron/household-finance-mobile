@@ -27,8 +27,8 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
   // from the cloud for a brand-new device that has no local data yet. Also
   // just changes the button's wording.
   const [isRestoring, setIsRestoring] = useState(false);
-  // The passphrase → encryption key step (deriveKey, below) is intentionally slow on
-  // purpose — it's what makes the passphrase hard to brute-force — and on a phone it can
+  // The password → encryption key step (deriveKey, below) is intentionally slow on
+  // purpose — it's what makes the password hard to brute-force — and on a phone it can
   // take anywhere from a few seconds to over a minute depending on the device. This just
   // shows a reassuring "this is normal" message once it's been running a couple seconds,
   // so it doesn't look frozen.
@@ -51,7 +51,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       code === 'auth/wrong-password' ||
       code === 'auth/user-not-found'
     ) {
-      return 'Incorrect email or passphrase.';
+      return 'Incorrect email or password.';
     }
     if (code === 'auth/invalid-email') {
       return "That doesn't look like a valid email address.";
@@ -67,7 +67,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     const username = sanitizeUsername(usernameInput);
     const email = emailInput.trim();
     if (!username || !email || !password) {
-      setError('Enter your email, username, and passphrase.');
+      setError('Enter your email, username, and password.');
       return;
     }
     setBusy(true);
@@ -81,16 +81,16 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       } catch (firebaseError: any) {
         // Checkpoint A.5 — profiles created before Firebase Auth existed
         // have no matching Firebase account at all, so sign-in always
-        // fails here for them, even with the correct passphrase. Before
+        // fails here for them, even with the correct password. Before
         // treating this as a real login failure, check whether that's
         // exactly what's happening: a local profile exists for this
-        // username, and the passphrase just entered actually unlocks it.
+        // username, and the password just entered actually unlocks it.
         // If so, this is a legitimate long-time user — quietly create the
-        // missing Firebase account using the email + passphrase they just
-        // typed, then finish signing in normally. If the passphrase is
+        // missing Firebase account using the email + password they just
+        // typed, then finish signing in normally. If the password is
         // wrong, this check fails too, and they see the same "incorrect"
         // message as before — this never helps someone who doesn't
-        // already know the correct passphrase.
+        // already know the correct password.
         const code = firebaseError?.code || '';
         const looksLikeMissingAccountOrWrongInfo =
           code === 'auth/invalid-credential' ||
@@ -104,14 +104,14 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             const encrypted = await loadEncryptedProfileData(username);
             if (encrypted) {
               const localKey = deriveKey(password, profile.salt);
-              let passphraseIsCorrect = false;
+              let passwordIsCorrect = false;
               try {
                 decryptJSON(localKey, encrypted);
-                passphraseIsCorrect = true;
+                passwordIsCorrect = true;
               } catch (e) {
-                passphraseIsCorrect = false;
+                passwordIsCorrect = false;
               }
-              if (passphraseIsCorrect) {
+              if (passwordIsCorrect) {
                 setIsMigrating(true);
                 try {
                   await createFirebaseAccount(email, password);
@@ -129,7 +129,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
                   const migCode = migrationError?.code || '';
                   if (migCode === 'auth/email-already-in-use') {
                     setError(
-                      "Your passphrase is correct, but that email is already used by a different account. Try the email you'd expect to be linked to this profile."
+                      "Your password is correct, but that email is already used by a different account. Try the email you'd expect to be linked to this profile."
                     );
                   } else {
                     setError('Could not finish setting up secure sign-in. Check your internet connection and try again.');
@@ -169,7 +169,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         if (cloudBackup.householdId) {
           // This profile is linked to a shared household — the actual data lives in
           // the shared household document, not in this personal backup. Confirm the
-          // passphrase is correct by actually unwrapping the shared key and decrypting
+          // password is correct by actually unwrapping the shared key and decrypting
           // the shared data with it, before trusting any of this.
           try {
             const wrapped = await loadWrappedHouseholdKey(username);
@@ -180,7 +180,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             decryptJSON(householdKey, encryptedHousehold);
           } catch (e) {
             setIsRestoring(false);
-            setError('Incorrect username or passphrase.');
+            setError('Incorrect username or password.');
             setBusy(false);
             return;
           }
@@ -196,16 +196,16 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             decryptJSON(key, cloudBackup.data);
           } catch (e) {
             setIsRestoring(false);
-            setError('Incorrect username or passphrase.');
+            setError('Incorrect username or password.');
             setBusy(false);
             return;
           }
-          // Passphrase confirmed correct — save a local copy so this device has its
+          // Password confirmed correct — save a local copy so this device has its
           // own working data going forward (and can work offline afterward too).
           await saveEncryptedProfileData(username, cloudBackup.data);
         }
 
-        // Passphrase confirmed correct either way — now safe to set this device up
+        // Password confirmed correct either way — now safe to set this device up
         // with its own local profile entry, same as if it had been created here.
         const newEntry: ProfileIndexEntry = { username, salt: cloudBackup.salt };
         if (cloudBackup.householdId) newEntry.householdId = cloudBackup.householdId;
@@ -227,7 +227,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       try {
         decryptJSON(key, encrypted);
       } catch (e) {
-        setError('Incorrect username or passphrase.');
+        setError('Incorrect username or password.');
         setBusy(false);
         return;
       }
@@ -245,7 +245,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     <View style={styles.container}>
       <Text style={styles.eyebrow}>SIGN IN</Text>
       <Text style={styles.title}>Welcome back</Text>
-      <Text style={styles.sub}>Enter your email, username, and passphrase.</Text>
+      <Text style={styles.sub}>Enter your email, username, and password.</Text>
 
       <Text style={styles.label}>Email</Text>
       <TextInput
@@ -270,7 +270,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         editable={!busy}
       />
 
-      <Text style={styles.label}>Passphrase</Text>
+      <Text style={styles.label}>Password</Text>
       <TextInput
         style={styles.input}
         value={password}
@@ -302,7 +302,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
       {showSlowHint && (
         <Text style={styles.slowHint}>
-          This can take up to a minute — your phone is turning your passphrase into your
+          This can take up to a minute — your phone is turning your password into your
           encryption key. This is normal and only happens on sign-in.
         </Text>
       )}

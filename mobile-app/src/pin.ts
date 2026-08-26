@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateSalt } from './encryption';
 
-// Same idea as a passphrase: never store the real PIN, only a scrambled "fingerprint" of it
+// Same idea as a password: never store the real PIN, only a scrambled "fingerprint" of it
 // (a hash) plus the random salt used to make that fingerprint. A saved hash can be checked
 // against a freshly typed PIN, but can't be reversed back into the original digits.
 type StoredPin = { hash: string; salt: string };
