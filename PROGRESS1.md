@@ -8,7 +8,9 @@ For everything already built before this — all 11 phases of the original app (
 
 Phase A — Firebase Auth
 - A.1 — Decision confirmed. Sign-in method: email + password via Firebase Authentication. The existing passphrase-based sign-in and data encryption stays exactly as it is — the passphrase still derives the encryption key, unchanged. Firebase Auth is added ALONGSIDE it, not replacing it: a real, logged-in Firebase account will now be required before the app can read/write Firestore at all, closing the "knowing the link code is enough" gap accepted at the end of Phase 9 (see PROGRESS.md). Existing profiles and the existing linked household must NOT be lost — that's the explicit job of Checkpoint A.5 later in this phase.
-- A.2 — Firebase Auth plumbing added to the project (see full session entry below). Email/Password enabled in Firebase console; `src/firebase.ts` updated to also initialize and export `auth`; new `src/authFirebase.ts` created with reusable sign-up/sign-in/sign-out/current-user/subscribe functions. Not yet wired into any screen at the time this checkpoint closed.
+- A.2 — Firebase Auth plumbing added to the project (see full session entry below). Email/Password enabled in Firebase console; `src/firebase.ts` updated to also initialize and export `auth`; new `src/authFirebase.ts` created with reusable sign-up/sign-in/sign-out/current-user/subscribe functions.
+- A.3 — CONFIRMED DONE. `SignInScreen.tsx` and `CreateProfileScreen.tsx` are fully wired to real Firebase Auth (`signInWithFirebase` / `createFirebaseAccount`). Real Firebase failures (wrong email/password, account already exists, etc.) are checked and gated BEFORE any local passphrase/profile logic runs — so a real Firebase Auth session is genuinely required to get into the app now, not just cosmetically wired up.
+- A.4 — CONFIRMED DONE. `firestore.rules` requires `request.auth != null` PLUS a matching uid on every real collection (`linkCodes`, `households`, `householdKeys`), with a deny-all fallback rule for anything else not explicitly covered. This session's earlier fix (see "Fix: host-side finish linking" session entry) added the narrower `members`-only update rule to `households` on top of this. The original "knowing the document ID is enough" gap from before Phase A is fully closed — confirmed, not just believed.
 - Household linking (built pre-Phase A, see PROGRESS.md) now confirmed working END-TO-END under real per-user Firebase Auth + uid-based Firestore security rules — see the "Fix: host-side finish linking" session entry below. Both the host and joiner side of linking (start code → join with code → mine/theirs/merge → finish linking on both phones) were tested together and both phones correctly end up "✓ Linked" sharing the same data.
 
 📌 Decisions made
@@ -17,12 +19,13 @@ Phase A — Firebase Auth
 - PROGRESS1.md lives at the REPO ROOT (`/workspaces/household-finance-mobile/PROGRESS1.md`), NOT inside `mobile-app/` where PROGRESS.md and most code live. Confirmed this session after some confusion — `cd` to the repo root, or use the full path, whenever reading/writing this file from the Codespace terminal. All app code changes (src/, firestore.rules, etc.) still happen from inside `mobile-app/` as before.
 
 ⚠️ Known issues / gotchas
-- (Carried forward context only, not new issues) Firestore rules currently rely on document-ID secrecy rather than real per-user auth for SOME collections — this is exactly what Phase A is closing. See PROGRESS.md for full detail on this accepted limitation as it stood before Phase A began. NOTE: as of this session, the `households` and `householdKeys` collections DO now have real uid-based rules (see firestore.rules) — it's unclear from this file alone whether `linkCodes` and every other collection have been fully reviewed/tightened yet as part of A.4. Worth explicitly re-checking A.4's status next session.
-- **New, resolved-but-worth-remembering:** `getReactNativePersistence` needs a `// @ts-ignore` above its import line in `firebase.ts` due to a types-resolution quirk in Firebase ^12.18.0 with this project's TS config. If this ever needs touching again (e.g. a Firebase version upgrade), re-check whether the `@ts-ignore` is still needed or whether a newer Firebase version fixed the types export properly.
-- **Resolved this session, but worth remembering the pattern:** Firestore security rules must be deployed separately from app code — editing `firestore.rules` in the repo does nothing on its own until `npx firebase-tools deploy --only firestore:rules` is actually run. See session entry below for the one-time setup this required (`.firebaserc`, `firebase.json`, `firebase login --no-localhost`).
+- **UNRESOLVED, real gap — Checkpoint A.5 (existing-profile migration) has NOT been built.** `ProfileIndexEntry` (in `storage.ts`) only stores `{ username, salt, householdId? }` — no email or Firebase uid is recorded against a local profile. `CreateProfileScreen.tsx` only ever creates a brand-new Firebase account for a brand-new local profile. There is currently NO code path for someone with a profile created before Firebase Auth was added (Checkpoint A.2) to sign back in — `SignInScreen.tsx` requires `signInWithFirebase()` to succeed first, but no matching Firebase account was ever created for a pre-A.2 profile, so sign-in would fail with "Incorrect email or passphrase" even with the correct passphrase. This needs a real migration step before it can be considered safe — e.g., on first sign-in attempt after this update, if the local profile exists but Firebase sign-in fails with "user not found" for that identifier, offer to create the matching Firebase account using the existing passphrase, rather than treating it as a wrong-password error.
+- (Carried forward) `getReactNativePersistence` needs a `// @ts-ignore` above its import line in `firebase.ts` due to a types-resolution quirk in Firebase ^12.18.0 with this project's TS config. Re-check if this ever needs touching again (e.g. a Firebase version upgrade).
+- (Carried forward) Firestore security rules must be deployed separately from app code — editing `firestore.rules` in the repo does nothing on its own until `npx firebase-tools deploy --only firestore:rules` is actually run.
+- (Carried forward, now resolved per A.4 confirmation above) Firestore rules previously relied partly on document-ID secrecy — this is now closed for `linkCodes`, `households`, and `householdKeys`, with a deny-all fallback for everything else.
 
 ▶️ Next step
-- Re-confirm current status of Checkpoints A.3, A.4, and A.5 at the start of next session — based on code seen this session (Firebase Auth wired into linking flows, uid-based security rules already live on `households`/`householdKeys`), meaningful progress may already exist beyond what this file's "Done" section currently reflects. Once confirmed, update this file accordingly and proceed with whichever of A.3/A.4/A.5 is genuinely still unfinished.
+- Checkpoint A.5 — Build the migration path for profiles that existed before Firebase Auth was added, so no one gets locked out of a profile they already had. Needs a decision first on scope: confirm whether any currently-in-use profile actually predates Checkpoint A.2 (if not, A.5 may be a smaller safety-net feature rather than an urgent fix for real, currently-locked-out data).
 
 Files in the repo (relevant to this phase)
 - See PROGRESS.md for the full file inventory as of closing 3-ROADMAP.md. This file will only note NEW files or MEANINGFULLY CHANGED files as Phase A/B/C proceeds.
@@ -34,7 +37,7 @@ Files in the repo (relevant to this phase)
 2. **Installed `@react-native-async-storage/async-storage`** — lets Firebase Auth remember a signed-in user between app opens on a phone, instead of signing them out every time.
 3. **`src/firebase.ts` updated** — now also initializes Firebase Auth (via `initializeAuth` + `getReactNativePersistence`, wrapped in the same try/catch-on-double-init pattern already used for the Firestore `app` setup, to survive Metro fast-refresh reloads) and exports `auth` alongside the existing `db`.
    - Known quirk hit and resolved: `getReactNativePersistence`'s TypeScript types don't resolve cleanly from the main `firebase/auth` import path in this installed Firebase version (^12.18.0) under this project's module resolution settings — confirmed it's a types-only issue (the function exists and works at runtime), fixed with a `// @ts-ignore` comment directly above that one import line rather than changing behavior.
-4. **New file `src/authFirebase.ts`** created — NOT yet used anywhere in the app (that's Checkpoint A.3). Exports:
+4. **New file `src/authFirebase.ts`** created. Exports:
    - `createFirebaseAccount(email, password)` — creates a new Firebase account.
    - `signInWithFirebase(email, password)` — signs in to an existing account.
    - `signOutFirebase()` — signs the current account out.
@@ -42,28 +45,15 @@ Files in the repo (relevant to this phase)
    - `subscribeToAuthChanges(callback)` — subscribe to sign-in/sign-out changes over time; returns an unsubscribe function.
 5. `npx tsc --noEmit` confirmed clean (zero errors) after the fix.
 
-**Important — nothing user-facing changed yet.** No screen currently calls any of this. Signing up, signing in, and the actual passphrase/Firebase-Auth relationship all still happen exactly as before Phase A started. This checkpoint only builds the underlying plumbing; A.3 is where the Sign In / Create Profile screens actually start using it.
-
 🧹 Code health
 - Files changed: `mobile-app/src/firebase.ts` (updated).
 - New file: `mobile-app/src/authFirebase.ts`.
 - New package: `@react-native-async-storage/async-storage`.
 - `npx tsc --noEmit` passes clean.
 
-⚠️ Known issues / gotchas
-- **New, resolved-but-worth-remembering:** `getReactNativePersistence` needs a `// @ts-ignore` above its import line in `firebase.ts` due to a types-resolution quirk in Firebase ^12.18.0 with this project's TS config. If this ever needs touching again (e.g. a Firebase version upgrade), re-check whether the `@ts-ignore` is still needed or whether a newer Firebase version fixed the types export properly.
-- (Carried forward) Firestore rules still rely on document-ID secrecy — this is what the rest of Phase A is closing.
-
-📌 Decisions made
-- No new decisions this checkpoint — A.1's decision (email+password via Firebase Auth, layered on top of the existing passphrase system) stands and is now partially implemented at the plumbing level.
-
-▶️ Next step
-- Checkpoint A.3 — Wire the Sign In / Create Profile screens to actually use `authFirebase.ts` (real Firebase sign-up/sign-in), so you can genuinely sign in/out with Firebase Auth on your phone. This is the first checkpoint where behavior actually changes for you as a user.
-
 Files in the repo (relevant to this phase — see PROGRESS.md for everything before Phase A)
 - mobile-app/src/firebase.ts — UPDATED. Now also sets up and exports `auth` (Firebase Authentication), alongside the existing `db` (Firestore).
-- mobile-app/src/authFirebase.ts — NEW. Real Firebase Auth functions (createFirebaseAccount, signInWithFirebase, signOutFirebase, getCurrentFirebaseUser, subscribeToAuthChanges). Not yet called from any screen.
-- mobile-app/package.json — added @react-native-async-storage/async-storage.
+- mobile-app/src/authFirebase.ts — NEW. Real Firebase Auth functions (createFirebaseAccount, signInWithFirebase, signOutFirebase, getCurrentFirebaseUser, subscribeToAuthChanges).
 
 ## 📅 Session entry — Fix: host-side "finish linking" was failing after Firebase Auth + uid-based Firestore rules went live
 
@@ -85,7 +75,7 @@ Fix — `firestore.rules`: added a second, narrower `allow update` rule for the 
 **Deploy tooling set up this session (previously never configured for this repo):**
 - Firebase CLI wasn't installed globally; used via `npx firebase-tools ...` instead (no permanent install needed).
 - Created `.firebaserc` at the repo root (`/workspaces/household-finance-mobile/.firebaserc`) pointing at project id `household-finance-mobile`.
-- Created `firebase.json` at the repo root pointing `firestore.rules` at the existing `mobile-app/firestore.rules` file. **CORRECTION noted this session:** initially both these files were created inside `mobile-app/` — need to double check next session whether they ended up in the right place relative to where `firestore.rules` actually lives, since PROGRESS1.md itself turned out to live at the repo root rather than inside `mobile-app/`. Re-verify `firebase.json`'s `firestore.rules` path is correct if the deploy command is ever run from a different working directory than this session used.
+- Created `firebase.json` at the repo root pointing `firestore.rules` at the existing `mobile-app/firestore.rules` file.
 - Logged in via `npx firebase-tools login --no-localhost` (device-code flow, since Codespaces has no local browser) — this is a one-time login per Codespace; may need to be redone if the Codespace is rebuilt/recreated from scratch.
 - Deployed successfully via `npx firebase-tools deploy --only firestore:rules`, run from inside `mobile-app/` (where `firestore.rules` lives).
 
@@ -93,12 +83,20 @@ Fix — `firestore.rules`: added a second, narrower `allow update` rule for the 
 
 🧹 Code health
 - Files changed: `mobile-app/src/storage.ts`, `mobile-app/src/linking.ts`, `mobile-app/src/screens/SettingsScreen.tsx`, `mobile-app/firestore.rules`.
-- New files: `.firebaserc`, `firebase.json` (repo root — see correction note above about verifying exact location next session).
+- New files: `.firebaserc`, `firebase.json` (repo root).
 - `npx tsc --noEmit` confirmed clean before pushing.
 - Firestore rules deployed live via `npx firebase-tools deploy --only firestore:rules` — confirmed "Deploy complete!" and tested working against the real production Firestore rules, not just locally.
 
+## 📅 Session entry — Confirmed real status of A.3, A.4, A.5
+
+**What was done:** Reviewed the actual code (not just prior notes) to settle whether A.3/A.4 were genuinely finished and what A.5 actually still needs.
+
+- **A.3 confirmed done:** `SignInScreen.tsx` and `CreateProfileScreen.tsx` both call real Firebase Auth functions (`signInWithFirebase`, `createFirebaseAccount`) and gate on their success/failure before any local passphrase logic runs.
+- **A.4 confirmed done:** `firestore.rules` requires `request.auth != null` plus a uid match on `linkCodes`, `households`, and `householdKeys`, with a deny-all fallback rule for anything not explicitly listed.
+- **A.5 confirmed NOT done, and genuinely necessary:** `ProfileIndexEntry` has no email/uid field, `CreateProfileScreen.tsx` only handles brand-new profiles, and `SignInScreen.tsx` has no fallback for a pre-A.2 profile with no matching Firebase account. This is a real gap, not a formality — flagged clearly rather than assumed fixed.
+
 📌 Decisions made
-- No scope decisions this session — this was entirely a bugfix session for the existing (pre-Phase A) household linking feature, surfaced by testing it for the first time under Phase A's new Firebase Auth + uid-based security rules.
+- None yet — next session should confirm whether any real, currently-used profile predates Checkpoint A.2 before scoping how big the A.5 migration work needs to be.
 
 ▶️ Next step
-- Same as above: re-confirm real current status of A.3/A.4/A.5 next session before continuing, given how much Firebase-Auth-dependent code (uid-based rules, linking screens using real auth) already appears to exist.
+- Checkpoint A.5 — scope and build the pre-A.2 profile migration path, pending the person confirming whether this affects real data currently in use.
