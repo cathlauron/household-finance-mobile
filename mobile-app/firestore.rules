@@ -34,6 +34,15 @@ service cloud.firestore {
         && request.auth.uid in resource.data.members
         && request.resource.data.keys().hasAll(['data', 'updatedAt']);
 
+      // Lets someone who isn't a member yet join by adding their own uid to
+      // the members list — this is what addMemberToHousehold() does when the
+      // host finishes linking into a household the joiner already created.
+      // Only the members field is allowed to change here (data/updatedAt are
+      // untouched), and the person can only add themselves, not anyone else.
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.auth.uid in request.resource.data.members;
+
       allow delete: if false;
       allow list: if false;
     }
