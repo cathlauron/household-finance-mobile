@@ -5,6 +5,7 @@ import { sanitizeUsername } from '../auth';
 import { generateSalt, deriveKey, encryptJSON } from '../encryption';
 import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '../storage';
 import { defaultModel } from '../defaultModel';
+import { createFirebaseAccount } from '../authFirebase';
 
 type Props = {
   onProfileCreated: (username: string, key: CryptoJS.lib.WordArray) => void;
@@ -13,16 +14,39 @@ type Props = {
 
 export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: Props) {
   const [usernameInput, setUsernameInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [password1, setPassword1] = useState('');
   const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Turns a raw Firebase error into a plain-English message. Firebase errors
+  // come with a `code` like "auth/email-already-in-use" — we check for the
+  // common ones and fall back to a generic message for anything else.
+  function friendlyFirebaseError(e: any): string {
+    const code = e?.code || '';
+    if (code === 'auth/email-already-in-use') {
+      return 'That email is already registered — try signing in instead, or use a different email.';
+    }
+    if (code === 'auth/invalid-email') {
+      return "That doesn't look like a valid email address.";
+    }
+    if (code === 'auth/weak-password') {
+      return 'Firebase requires at least 6 characters for the account password.';
+    }
+    return 'Something went wrong creating your account. Check your internet connection and try again.';
+  }
+
   async function handleCreate() {
     setError('');
     const username = sanitizeUsername(usernameInput);
+    const email = emailInput.trim();
     if (!username) {
       setError('Choose a username.');
+      return;
+    }
+    if (!email || !email.includes('@')) {
+      setError('Enter a valid email address.');
       return;
     }
     if (password1.length < 6) {
@@ -41,6 +65,20 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         setBusy(false);
         return;
       }
+
+      // Create the real Firebase account FIRST. If this fails (e.g. the
+      // email is already registered), nothing local has been created yet,
+      // so there's nothing to undo.
+      try {
+        await createFirebaseAccount(email, password1);
+      } catch (firebaseError) {
+        setBusy(false);
+        setError(friendlyFirebaseError(firebaseError));
+        return;
+      }
+
+      // Only once the Firebase account exists do we create the local,
+      // passphrase-encrypted profile — exactly as before Phase A.
       const salt = await generateSalt();
       const key = deriveKey(password1, salt);
       const encrypted = await encryptJSON(key, defaultModel());
@@ -60,8 +98,20 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       <Text style={styles.eyebrow}>FIRST-TIME SETUP</Text>
       <Text style={styles.title}>Create your profile</Text>
       <Text style={styles.sub}>
-        Choose a username and a passphrase. You'll use these to sign in every time.
+        Choose a username and a passphrase, and enter your email — you'll use your username and
+        passphrase to sign in every time.
       </Text>
+
+      <Text style={styles.label}>Email</Text>
+      <TextInput
+        style={styles.input}
+        value={emailInput}
+        onChangeText={setEmailInput}
+        placeholder="you@example.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+      />
 
       <Text style={styles.label}>Username</Text>
       <TextInput

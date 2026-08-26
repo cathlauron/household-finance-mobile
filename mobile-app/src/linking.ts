@@ -50,8 +50,9 @@ import type { HouseholdModel } from './types';
 import {
   generateHouseholdId,
   wrapHouseholdKey,
-  saveHouseholdData,
+  createHouseholdData,
   saveWrappedHouseholdKey,
+  addMemberToHousehold,
 } from './household';
 import { updateProfileHouseholdId } from './storage';
 import { mergeModels } from './mergeModels';
@@ -186,7 +187,7 @@ export async function finishJoinerLink(
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
 
   const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
-  await saveHouseholdData(householdId, encryptedHouseholdData);
+  await createHouseholdData(householdId, encryptedHouseholdData);
 
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
   await saveWrappedHouseholdKey(myUsername, householdId, wrappedForMe);
@@ -228,9 +229,14 @@ export async function finishHostLink(
   }
 
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
+
+  // The host is joining an EXISTING household (the joiner created it) —
+  // this is the step that records the host as an authorized member too,
+  // so the new security rules will let this phone read/write it.
+  await addMemberToHousehold(data.householdId);
+
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
   await saveWrappedHouseholdKey(myUsername, data.householdId, wrappedForMe);
   await updateProfileHouseholdId(myUsername, data.householdId);
-
   return { status: 'done', householdId: data.householdId };
 }

@@ -23,12 +23,25 @@
 
 import CryptoJS from 'crypto-js';
 import * as Crypto from 'expo-crypto';
-import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON } from './encryption';
+import { getCurrentFirebaseUser } from './authFirebase';
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Every function below that touches Firestore needs to know who's asking —
+// this reads the currently signed-in Firebase user's ID and throws a clear
+// error if, for some reason, nobody's signed in (shouldn't normally happen,
+// since Sign In / Create Profile now require Firebase auth first).
+function requireCurrentUid(): string {
+  const user = getCurrentFirebaseUser();
+  if (!user) {
+    throw new Error('You must be signed in to do this.');
+  }
+  return user.uid;
 }
 
 // A short random ID identifying one shared household in Firestore —
@@ -66,10 +79,40 @@ export function unwrapHouseholdKey(
 
 // ---- Firestore: the shared, encrypted household data itself ----
 
-export async function saveHouseholdData(householdId: string, encryptedPayload: string): Promise<void> {
+// Used the FIRST time a household is created. Records the creator's Firebase
+// uid in a `members` list — this is what the security rules check to decide
+// who's allowed to read/write this household's data.
+export async function createHouseholdData(householdId: string, encryptedPayload: string): Promise<void> {
+  const uid = requireCurrentUid();
   await setDoc(doc(db, 'households', householdId), {
     data: encryptedPayload,
     updatedAt: Date.now(),
+    members: [uid],
+  });
+}
+
+// Used every time AFTER creation, to save updated household data (e.g. after
+// an edit). Does not touch the `members` list — see addMemberToHousehold
+// below for that.
+export async function saveHouseholdData(householdId: string, encryptedPayload: string): Promise<void> {
+  await setDoc(
+    doc(db, 'households', householdId),
+    {
+      data: encryptedPayload,
+      updatedAt: Date.now(),
+    },
+    { merge: true }
+  );
+}
+
+// Adds the CURRENTLY signed-in user to an existing household's members list —
+// call this when a second person links into an already-existing household.
+// arrayUnion is safe to call even if the uid is already in the list (it
+// won't create a duplicate).
+export async function addMemberToHousehold(householdId: string): Promise<void> {
+  const uid = requireCurrentUid();
+  await updateDoc(doc(db, 'households', householdId), {
+    members: arrayUnion(uid),
   });
 }
 
@@ -92,10 +135,12 @@ export async function saveWrappedHouseholdKey(
   householdId: string,
   wrappedKey: string
 ): Promise<void> {
+  const uid = requireCurrentUid();
   await setDoc(doc(db, 'householdKeys', username), {
     householdId,
     wrappedKey,
     updatedAt: Date.now(),
+    ownerUid: uid,
   });
 }
 

@@ -4,6 +4,7 @@ import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
 import { loadProfilesIndex, loadEncryptedProfileData } from '../storage';
+import { signInWithFirebase } from '../authFirebase';
 
 type Props = {
   onSignedIn: (username: string, key: CryptoJS.lib.WordArray) => void;
@@ -12,6 +13,7 @@ type Props = {
 
 export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props) {
   const [usernameInput, setUsernameInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -32,19 +34,49 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     return () => clearTimeout(timer);
   }, [busy]);
 
+  // Turns a raw Firebase sign-in error into a plain-English message.
+  function friendlyFirebaseSignInError(e: any): string {
+    const code = e?.code || '';
+    if (
+      code === 'auth/invalid-credential' ||
+      code === 'auth/wrong-password' ||
+      code === 'auth/user-not-found'
+    ) {
+      return 'Incorrect email or passphrase.';
+    }
+    if (code === 'auth/invalid-email') {
+      return "That doesn't look like a valid email address.";
+    }
+    if (code === 'auth/too-many-requests') {
+      return 'Too many attempts — please wait a bit and try again.';
+    }
+    return 'Something went wrong signing in. Check your internet connection and try again.';
+  }
+
   async function handleSignIn() {
     setError('');
     const username = sanitizeUsername(usernameInput);
-    if (!username || !password) {
-      setError('Enter your username and passphrase.');
+    const email = emailInput.trim();
+    if (!username || !email || !password) {
+      setError('Enter your email, username, and passphrase.');
       return;
     }
     setBusy(true);
     try {
+      // Firebase is the real, server-checked gate now — this is what
+      // actually confirms who you are, before we touch any local data.
+      try {
+        await signInWithFirebase(email, password);
+      } catch (firebaseError) {
+        setBusy(false);
+        setError(friendlyFirebaseSignInError(firebaseError));
+        return;
+      }
+
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
       if (!profile) {
-        setError('No profile with that username.');
+        setError('No local profile with that username on this device.');
         setBusy(false);
         return;
       }
@@ -74,7 +106,19 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     <View style={styles.container}>
       <Text style={styles.eyebrow}>SIGN IN</Text>
       <Text style={styles.title}>Welcome back</Text>
-      <Text style={styles.sub}>Enter your username and passphrase.</Text>
+      <Text style={styles.sub}>Enter your email, username, and passphrase.</Text>
+
+      <Text style={styles.label}>Email</Text>
+      <TextInput
+        style={styles.input}
+        value={emailInput}
+        onChangeText={setEmailInput}
+        placeholder="you@example.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        editable={!busy}
+      />
 
       <Text style={styles.label}>Username</Text>
       <TextInput
