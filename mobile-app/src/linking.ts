@@ -136,7 +136,7 @@ export type JoinLinkResult = {
 // doesn't decrypt (e.g. mistyped) — the calling screen should catch this
 // and show a friendly "check the code and try again" message rather than
 // showing the raw error.
-export async function joinHouseholdLink(codeInput: string): Promise<JoinLinkResult> {
+export async function joinHouseholdLink(codeInput: string, myUsername: string): Promise<JoinLinkResult> {
   const code = codeInput.trim().toUpperCase();
   if (!code) throw new Error('Enter a code.');
 
@@ -166,7 +166,36 @@ export async function joinHouseholdLink(codeInput: string): Promise<JoinLinkResu
   const secretKey = CryptoJS.enc.Hex.parse(secretHex);
   const hostModel = decryptJSON<HouseholdModel>(secretKey, data.encryptedHostData);
 
+  // Checkpoint 9.2d — record who just unlocked the host's data, right away rather than
+  // only at finish time, so the host's phone can show "X wants to link" and require an
+  // explicit confirm before anything is finalized.
+  await setDoc(doc(db, 'linkCodes', code), { joinerUsername: myUsername }, { merge: true });
+
   return { hostUsername: data.hostUsername, hostModel, secretHex };
+}
+
+// ---- Checkpoint 9.2d: "Confirm joiner identity" ----
+// Lets the HOST's phone peek at who has entered the code so far, without finishing
+// or changing anything. Purely a read — the host still has to tap a separate
+// "confirm" button (handled entirely in the screen) before finishHostLink() runs.
+export type LinkCodeJoinerStatus =
+  | { status: 'noJoinerYet' }
+  | { status: 'joinerWaiting'; joinerUsername: string }
+  | { status: 'notFound' };
+
+export async function checkLinkCodeJoiner(code: string): Promise<LinkCodeJoinerStatus> {
+  let snap;
+  try {
+    snap = await getDoc(doc(db, 'linkCodes', code));
+  } catch (e) {
+    return { status: 'notFound' };
+  }
+  if (!snap.exists()) return { status: 'notFound' };
+  const data = snap.data() as { joinerUsername?: string };
+  if (data.joinerUsername) {
+    return { status: 'joinerWaiting', joinerUsername: data.joinerUsername };
+  }
+  return { status: 'noJoinerYet' };
 }
 
 // ---- Checkpoint 9.2c: "Finish linking" ----

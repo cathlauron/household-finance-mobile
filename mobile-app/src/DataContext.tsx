@@ -25,6 +25,7 @@ import {
   saveEncryptedProfileData,
   loadProfilesIndex,
   updateProfileSalt,
+  updateProfileHouseholdId,
 } from './storage';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup } from './cloudBackup';
@@ -33,6 +34,8 @@ import {
   unwrapHouseholdKey,
   loadHouseholdData,
   saveHouseholdData,
+  removeMemberFromHousehold,
+  deleteWrappedHouseholdKey,
 } from './household';
 
 type ChangePassphraseResult = { ok: boolean; error?: string };
@@ -55,6 +58,11 @@ type DataContextValue = {
   // by the linking screens to wrap/unwrap a shared household key, without
   // every screen having to re-derive or pass it around separately.
   getPersonalKey: () => CryptoJS.lib.WordArray | null;
+  // Gives this profile its own standalone copy of whatever the shared data
+  // currently looks like, then removes this profile's access to the shared
+  // household. The shared household data itself, and anyone else still
+  // linked to it, are left completely untouched.
+  unlinkHousehold: () => Promise<ChangePassphraseResult>;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -175,6 +183,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return keyRef.current;
   }
 
+  async function unlinkHousehold(): Promise<ChangePassphraseResult> {
+    const username = usernameRef.current;
+    const personalKey = keyRef.current;
+    const householdId = householdIdRef.current;
+    if (!username || !personalKey || !householdId) {
+      return { ok: false, error: 'This profile is not currently linked.' };
+    }
+    try {
+      // Give this profile a real, standalone copy of the data BEFORE cutting
+      // off its access to the shared version — so unlinking never leaves
+      // someone with nothing.
+      const currentModel = model ?? defaultModel();
+      const encrypted = await encryptJSON(personalKey, currentModel);
+      await saveEncryptedProfileData(username, encrypted);
+
+      // Now remove this profile's access. The shared household document
+      // itself, and anyone else still linked to it, are untouched.
+      await removeMemberFromHousehold(householdId);
+      await deleteWrappedHouseholdKey(username);
+      await updateProfileHouseholdId(username, undefined);
+
+      householdIdRef.current = undefined;
+      householdKeyRef.current = null;
+      setIsLinked(false);
+
+      saveProfileCloudBackup(username, encrypted).catch(() => {});
+
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: "Couldn't unlink — check your connection and try again." };
+    }
+  }
+
   // ---- Checkpoint 11.3: change passphrase ----
   // Verifies the CURRENT passphrase is actually correct (by re-deriving a key from it and
   // successfully decrypting what's already saved) before touching anything — a wrong
@@ -234,6 +275,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         username: usernameRef.current,
         isLinked,
         getPersonalKey,
+        unlinkHousehold,
       }}
     >
       {children}

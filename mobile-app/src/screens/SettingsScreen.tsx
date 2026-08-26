@@ -19,7 +19,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
-import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink } from '../linking';
+import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, checkLinkCodeJoiner } from '../linking';
 import type { JoinChoice } from '../linking';
 import { loadPendingHostLink } from '../storage';
 
@@ -82,7 +82,7 @@ function summarizeModel(m: HouseholdModel): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { model, saveModel, changePassphrase, username, loadModel, isLinked, getPersonalKey } = useData();
+  const { model, saveModel, changePassphrase, username, loadModel, isLinked, getPersonalKey, unlinkHousehold} = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -137,6 +137,11 @@ export default function SettingsScreen() {
   const [hostFinishBusy, setHostFinishBusy] = useState(false);
   const [hostFinishMsg, setHostFinishMsg] = useState('');
 
+  // ---- Checkpoint 9.2d: host side — confirm who's trying to join before finishing ----
+  const [pendingJoinerUsername, setPendingJoinerUsername] = useState('');
+  const [checkJoinerBusy, setCheckJoinerBusy] = useState(false);
+  const [checkJoinerMsg, setCheckJoinerMsg] = useState('');
+
   // ---- Checkpoint 9.2b-ii: Join with a code ----
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [joinedCode, setJoinedCode] = useState('');
@@ -161,6 +166,9 @@ export default function SettingsScreen() {
   const [exportMsg, setExportMsg] = useState('');
   const [exportBusy, setExportBusy] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+  const [unlinkBusy, setUnlinkBusy] = useState(false);
+  const [unlinkMsg, setUnlinkMsg] = useState('');
   const [clearBusy, setClearBusy] = useState(false);
 
   if (!model) {
@@ -491,12 +499,37 @@ export default function SettingsScreen() {
         );
       } else {
         setHostFinishMsg('Linked! Loading your shared data…');
+        setPendingJoinerUsername('');
         await loadModel(username, personalKey);
       }
     } catch (e) {
       setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
     }
     setHostFinishBusy(false);
+  }
+
+  // ---- Checkpoint 9.2d: host side — check who's entered the code so far ----
+  async function handleCheckForJoiner() {
+    if (!linkCode) return;
+    setCheckJoinerBusy(true);
+    setCheckJoinerMsg('');
+    try {
+      const result = await checkLinkCodeJoiner(linkCode);
+      if (result.status === 'joinerWaiting') {
+        setPendingJoinerUsername(result.joinerUsername);
+      } else if (result.status === 'noJoinerYet') {
+        setCheckJoinerMsg("No one's entered this code yet — check back after you've shared it.");
+      } else {
+        setCheckJoinerMsg("This code can't be found anymore — it may have expired.");
+      }
+    } catch (e) {
+      setCheckJoinerMsg("Couldn't check right now — try again.");
+    }
+    setCheckJoinerBusy(false);
+  }
+
+  function handleCancelJoiner() {
+    setPendingJoinerUsername('');
   }
 
   // ---- Checkpoint 9.2b-ii: Join with a code handler ----
@@ -509,10 +542,14 @@ export default function SettingsScreen() {
       setJoinErrorMsg('Enter the code from the other phone.');
       return;
     }
+    if (!username) {
+      setJoinErrorMsg('Something went wrong — please try again.');
+      return;
+    }
     setJoinBusy(true);
     try {
       const normalizedCode = joinCodeInput.trim().toUpperCase();
-      const result = await joinHouseholdLink(joinCodeInput);
+      const result = await joinHouseholdLink(joinCodeInput, username);
       setJoinResult(result);
       setJoinedCode(normalizedCode);
     } catch (e) {
@@ -550,11 +587,23 @@ export default function SettingsScreen() {
       setJoinCodeInput('');
       setJoinedCode('');
     } catch (e) {
+      console.error('finishJoinerLink failed:', e);
       setJoinChoiceMsg("Something went wrong — check your connection and try again.");
     }
     setJoinChoiceBusy(false);
   }
-
+  // ---- Unlink handler ----
+  async function handleUnlinkHousehold() {
+    setUnlinkMsg('');
+    setUnlinkBusy(true);
+    const result = await unlinkHousehold();
+    setUnlinkBusy(false);
+    if (!result.ok) {
+      setUnlinkMsg(result.error || 'Something went wrong. Please try again.');
+      return;
+    }
+    setUnlinkConfirmOpen(false);
+  }
   // ---- Checkpoint 11.3: Security handler ----
   async function handleChangePassphrase() {
     setPassChangeMsg('');
@@ -863,13 +912,50 @@ export default function SettingsScreen() {
         </Text>
 
         {isLinked ? (
-          <View style={styles.linkCodeBox}>
-            <Text style={styles.linkCodeLabel}>✓ Linked</Text>
-            <Text style={styles.hintText}>
-              This profile is currently sharing its data with another linked profile. Unlinking
-              isn't available yet — that's coming in a later update.
-            </Text>
-          </View>
+          !unlinkConfirmOpen ? (
+            <View style={styles.linkCodeBox}>
+              <Text style={styles.linkCodeLabel}>✓ Linked</Text>
+              <Text style={styles.hintText}>
+                This profile is currently sharing its data with another linked profile.
+                Unlinking gives this phone its own separate copy of the data going forward —
+                the shared data itself, and anyone else still linked, are left untouched.
+              </Text>
+              <TouchableOpacity
+                style={[styles.dangerButton, { marginTop: 10, alignSelf: 'stretch' }]}
+                onPress={() => setUnlinkConfirmOpen(true)}
+              >
+                <Text style={styles.dangerButtonText}>Unlink this device</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.dangerConfirmBox}>
+              <Text style={styles.dangerConfirmText}>
+                This gives this profile its own separate copy of the data going forward.
+                Anyone else still linked keeps sharing with each other, just not with this
+                profile anymore.
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
+                  onPress={handleUnlinkHousehold}
+                  disabled={unlinkBusy}
+                >
+                  {unlinkBusy ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.dangerButtonText}>Yes, unlink this device</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cancelInlineButton, { flex: 1 }]}
+                  onPress={() => setUnlinkConfirmOpen(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+              {!!unlinkMsg && <Text style={styles.errorText}>{unlinkMsg}</Text>}
+            </View>
+          )
         ) : (
           <>
             {!linkCode && !joinResult && (
@@ -917,21 +1003,53 @@ export default function SettingsScreen() {
                 <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
                 <Text style={styles.linkCodeText}>{linkCode}</Text>
                 <Text style={styles.hintText}>
-                  On the other phone, choose "Join with a code" and enter this. Once they've
-                  picked Keep mine / Keep theirs / Merge both on their end, come back here and
-                  tap the button below to finish linking on this phone too.
+                  On the other phone, choose "Join with a code" and enter this. Once they have,
+                  come back here and check who's trying to link before you finish.
                 </Text>
-                <TouchableOpacity
-                  style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
-                  onPress={handleFinishHostLink}
-                  disabled={hostFinishBusy}
-                >
-                  {hostFinishBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : (
-                    <Text style={styles.dataButtonText}>I've shared this code — finish linking</Text>
-                  )}
-                </TouchableOpacity>
+
+                {!pendingJoinerUsername ? (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
+                      onPress={handleCheckForJoiner}
+                      disabled={checkJoinerBusy}
+                    >
+                      {checkJoinerBusy ? (
+                        <ActivityIndicator color={colors.gold} />
+                      ) : (
+                        <Text style={styles.dataButtonText}>Check for joiner</Text>
+                      )}
+                    </TouchableOpacity>
+                    {!!checkJoinerMsg && <Text style={styles.hintText}>{checkJoinerMsg}</Text>}
+                  </>
+                ) : (
+                  <View style={styles.dangerConfirmBox}>
+                    <Text style={[styles.dangerConfirmText, { color: colors.ink }]}>
+                      "{pendingJoinerUsername}" wants to link using this code. Only confirm if
+                      you recognize this — finishing will share your household data with them.
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[styles.dataButton, { flex: 1, marginBottom: 0 }]}
+                        onPress={handleFinishHostLink}
+                        disabled={hostFinishBusy}
+                      >
+                        {hostFinishBusy ? (
+                          <ActivityIndicator color={colors.gold} />
+                        ) : (
+                          <Text style={styles.dataButtonText}>Confirm — finish linking</Text>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.cancelInlineButton, { flex: 1 }]}
+                        onPress={handleCancelJoiner}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
                 {!!hostFinishMsg && (
                   <Text style={hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
                     {hostFinishMsg}
