@@ -21,7 +21,7 @@ import type { Category, Payee, CategorizationRule, HouseholdModel } from '../typ
 import { requestNotificationPermission } from '../pushNotifications';
 import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, checkLinkCodeJoiner } from '../linking';
 import type { JoinChoice } from '../linking';
-import { loadPendingHostLink } from '../storage';
+import { loadPendingHostLink, clearPendingHostLink } from '../storage';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -476,7 +476,22 @@ export default function SettingsScreen() {
     }
     setLinkBusy(false);
   }
+        setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
+    }
+    setLinkBusy(false);
+  }
 
+  // Clears an old/expired code so a fresh one can be generated — for when the
+  // original code timed out before the other phone finished joining.
+  async function handleStartOverLinking() {
+    if (username) await clearPendingHostLink(username);
+    setLinkCode('');
+    setLinkSecretHex('');
+    setPendingJoinerUsername('');
+    setCheckJoinerMsg('');
+    setHostFinishMsg('');
+    await handleStartLinking();
+  }  
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
   // says so and lets you try again after checking with them. If it has, this phone
@@ -1055,6 +1070,17 @@ export default function SettingsScreen() {
                     {hostFinishMsg}
                   </Text>
                 )}
+                <TouchableOpacity
+                  style={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch' }]}
+                  onPress={handleStartOverLinking}
+                  disabled={linkBusy}
+                >
+                  {linkBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <Text style={styles.cancelButtonText}>Code expired? Start over with a new code</Text>
+                  )}
+                </TouchableOpacity>
               </View>
             )}
 
