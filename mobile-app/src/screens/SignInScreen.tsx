@@ -4,7 +4,7 @@ import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
 import { loadProfilesIndex, loadEncryptedProfileData } from '../storage';
-import { signInWithFirebase } from '../authFirebase';
+import { signInWithFirebase, createFirebaseAccount } from '../authFirebase';
 
 type Props = {
   onSignedIn: (username: string, key: CryptoJS.lib.WordArray) => void;
@@ -17,6 +17,10 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Checkpoint A.5 — true only while we're quietly creating a missing
+  // Firebase account for a profile that predates Firebase Auth. Just
+  // changes the button's wording so it doesn't look like a plain sign-in.
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // The passphrase → encryption key step (deriveKey, below) is intentionally slow on
   // purpose — it's what makes the passphrase hard to brute-force — and on a phone it can
@@ -62,12 +66,75 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       return;
     }
     setBusy(true);
+    setIsMigrating(false);
     try {
       // Firebase is the real, server-checked gate now — this is what
       // actually confirms who you are, before we touch any local data.
       try {
         await signInWithFirebase(email, password);
-      } catch (firebaseError) {
+      } catch (firebaseError: any) {
+        // Checkpoint A.5 — profiles created before Firebase Auth existed
+        // have no matching Firebase account at all, so sign-in always
+        // fails here for them, even with the correct passphrase. Before
+        // treating this as a real login failure, check whether that's
+        // exactly what's happening: a local profile exists for this
+        // username, and the passphrase just entered actually unlocks it.
+        // If so, this is a legitimate long-time user — quietly create the
+        // missing Firebase account using the email + passphrase they just
+        // typed, then finish signing in normally. If the passphrase is
+        // wrong, this check fails too, and they see the same "incorrect"
+        // message as before — this never helps someone who doesn't
+        // already know the correct passphrase.
+        const code = firebaseError?.code || '';
+        const looksLikeMissingAccountOrWrongInfo =
+          code === 'auth/invalid-credential' ||
+          code === 'auth/wrong-password' ||
+          code === 'auth/user-not-found';
+
+        if (looksLikeMissingAccountOrWrongInfo) {
+          const profiles = await loadProfilesIndex();
+          const profile = profiles.find((p) => p.username === username);
+          if (profile) {
+            const encrypted = await loadEncryptedProfileData(username);
+            if (encrypted) {
+              const localKey = deriveKey(password, profile.salt);
+              let passphraseIsCorrect = false;
+              try {
+                decryptJSON(localKey, encrypted);
+                passphraseIsCorrect = true;
+              } catch (e) {
+                passphraseIsCorrect = false;
+              }
+              if (passphraseIsCorrect) {
+                setIsMigrating(true);
+                try {
+                  await createFirebaseAccount(email, password);
+                  // createFirebaseAccount signs the new account in
+                  // automatically, so we're genuinely authenticated now —
+                  // finish signing in with the same local key we already
+                  // verified above.
+                  setIsMigrating(false);
+                  setBusy(false);
+                  onSignedIn(username, localKey);
+                  return;
+                } catch (migrationError: any) {
+                  setIsMigrating(false);
+                  setBusy(false);
+                  const migCode = migrationError?.code || '';
+                  if (migCode === 'auth/email-already-in-use') {
+                    setError(
+                      "Your passphrase is correct, but that email is already used by a different account. Try the email you'd expect to be linked to this profile."
+                    );
+                  } else {
+                    setError('Could not finish setting up secure sign-in. Check your internet connection and try again.');
+                  }
+                  return;
+                }
+              }
+            }
+          }
+        }
+
         setBusy(false);
         setError(friendlyFirebaseSignInError(firebaseError));
         return;
@@ -98,6 +165,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       onSignedIn(username, key);
     } catch (e) {
       setBusy(false);
+      setIsMigrating(false);
       setError('Something went wrong signing in. Please try again.');
     }
   }
@@ -148,7 +216,9 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         {busy ? (
           <View style={styles.busyRow}>
             <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
-            <Text style={styles.primaryBtnText}>Signing in…</Text>
+            <Text style={styles.primaryBtnText}>
+              {isMigrating ? 'Setting up secure sign-in…' : 'Signing in…'}
+            </Text>
           </View>
         ) : (
           <Text style={styles.primaryBtnText}>Sign in</Text>
