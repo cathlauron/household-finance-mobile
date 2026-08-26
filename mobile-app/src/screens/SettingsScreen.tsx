@@ -476,10 +476,6 @@ export default function SettingsScreen() {
     }
     setLinkBusy(false);
   }
-        setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
-    }
-    setLinkBusy(false);
-  }
 
   // Clears an old/expired code so a fresh one can be generated — for when the
   // original code timed out before the other phone finished joining.
