@@ -27,7 +27,7 @@ Security hardening on household linking (link-code lifecycle)
 - PROGRESS1.md lives at the REPO ROOT (`/workspaces/household-finance-mobile/PROGRESS1.md`), NOT inside `mobile-app/` where PROGRESS.md and most code live. Confirmed this session after some confusion — `cd` to the repo root, or use the full path, whenever reading/writing this file from the Codespace terminal. All app code changes (src/, firestore.rules, etc.) still happen from inside `mobile-app/` as before.
 - When running `grep`/`cat` on app source files from inside `mobile-app/`, do NOT prefix paths with `mobile-app/` again (e.g. use `src/household.ts`, not `mobile-app/src/household.ts`) — the terminal prompt shows which directory you're already in; check it before assuming the path.
 
---- PLANNING SESSION DECISIONS (this session) ---
+--- PLANNING SESSION DECISIONS ---
 
 - **Cloud storage stays on Firebase/Firestore.** No alternate service needed — it's free at this app's scale (Spark plan: 50K reads / 20K writes per day) and Auth + encrypted per-profile cloud backups already exist. The one real gap is sign-in on a device with zero local data, which is why Checkpoint A.5 is being REOPENED with new scope (see below) — the existing A.5 entry above only covers the one-time local-profile-to-Firebase migration case, not a genuinely new device.
 - **Checkpoint A.5 is reopened with new, larger scope:** sign in on a brand-new phone that has NEVER opened this app before. Flow: Firebase Auth succeeds → app checks for local encrypted data → none found → pull the encrypted backup from `profileBackups/{username}` in Firestore → decrypt using the passphrase just entered at sign-in → populate the app locally from that. This is the piece that actually delivers "log in on a different device," not just "recover a profile that already existed locally."
@@ -40,46 +40,100 @@ Security hardening on household linking (link-code lifecycle)
 - **Essential vs. additional feature split, confirmed for Phase B prioritization:**
   - Essential (core loop, gets full UI/UX polish priority): Sign-in/Security, Accounts, Calendar, Bills/Debts/Loans (To-Pay), Transactions, Income, Savings + Emergency Fund/FI calculators, Dashboard, Settings (Categories, Security, Backup).
   - Additional (real value, but the app is a complete product without them being polished first): Groceries, Travel, Events, Year-End Goals, deep Reports pages (Subscription Audit, Tax Summary, Merchant Spending, Weekly Digest, etc.), Shared Expense ledger/settle-up, CSV import, Payment-method breakdown.
-- **Phase B scope expanded** to include: three missing standard screens (Splash/Intro, Onboarding, standalone Profile screen split out of Settings); Accounts tab redesigned as Apple-Wallet-style colored/stacked account cards with an "Add account" bottom sheet; cards + bottom sheets adopted as the default add/edit interaction pattern app-wide (replacing full-screen navigation pushes for single-record add/edit flows); and a UI/UX-psychology pass (Hick's Law, Fitts's Law, Gestalt/proximity, cognitive load/progressive disclosure, color psychology) applied across all of the above rather than treated as a separate rebuild. Full checkpoint breakdown recorded in the chat/planning session — to be transcribed into this file's checkpoint table structure at the start of the next session, or sooner if requested.
+- **Phase B scope expanded** to include: three missing standard screens (Splash/Intro, Onboarding, standalone Profile screen split out of Settings); Accounts tab redesigned as Apple-Wallet-style colored/stacked account cards with an "Add account" bottom sheet; cards + bottom sheets adopted as the default add/edit interaction pattern app-wide (replacing full-screen navigation pushes for single-record add/edit flows); and a UI/UX-psychology pass (Hick's Law, Fitts's Law, Gestalt/proximity, cognitive load/progressive disclosure, color psychology) applied across all of the above rather than treated as a separate rebuild. Full checkpoint breakdown now recorded below, as its own numbered table (Checkpoint A.7 for the auth/linking loose ends, then the expanded Phase B table).
 - Subscription screen (from the "8 standard mobile screens" reference list) explicitly SKIPPED — not applicable, this is not a paid/monetized app. Revisit only if monetization is ever considered, which is not currently planned.
+
+--- CHECKPOINT A.7 PLANNING (this session) ---
+
+- **Checkpoint A.7 inserted before Phase B**, closing out remaining auth/linking/security loose ends before UI/UX polish begins. Full breakdown in the checkpoint table below.
+- A.7.8 ("PIN option not working," as originally phrased) is resolved into A.7.0 — confirmed to be the mobile app's existing Phase 1 PIN quick-unlock feature, which regressed at some point during the linking work (A.2–A.6-era changes), not a separate/new feature request.
+- A.7.6 (raise the link limit from 2 to up to 5 accounts) is understood to be a bigger lift than the rest of A.7 — it changes the shape of linking from pairwise ("link with one other profile") to "join a household," and will likely touch Firestore rules, the merge/keep-mine/keep-theirs UI, and the core linking flow itself. Sequenced last within A.7 for that reason.
+- A.7.2 (eye icon on password fields) is scoped as one reusable component applied everywhere a password/passphrase is typed: sign-in, create-profile, change-password, and the link-with-passphrase field — not four separate implementations.
+- A.7.3 (faster sign-in) explicitly calls for profiling the real sign-in path before optimizing anything — some of the current slowness (PBKDF2 at 200,000 iterations) is intentional security cost, not a bug, and should not be reduced without a separate explicit conversation.
+- **Boomer/Gen Z/Millennial onboarding research (new, folded into Phase B):** flagged specifically for the security-setup step within onboarding (B.2b-security) — biometric-first with PIN as a clearly labeled fallback, never a password-creation screen at this step, numeric-only keypad, and a visible step counter throughout onboarding. Sequenced to happen after A.7.0 fixes the underlying PIN regression, not before, so onboarding isn't built around a currently-broken feature.
+- **Date picker work (new, folded into Phase B as B.6a/B.6b):** a single reusable `<DateField>` component using `@react-native-community/datetimepicker`, rolled out first to Transactions and Bills (B.6a), then to every remaining screen with a date field — Debts, Loans, Income, Savings Goals, Events, Travel, and the Calendar tab's "balance as of" date (B.6b).
+- **Competitor-inspired features (new, folded into Phase B, sourced from Simplifi/Monarch/Rocket Money-style research):** "Left to Spend" hero stat (B.7), category watchlists (B.8), Yours/Mine/Ours labels + transaction comments (B.9), refund tracker (B.10), weekly spending recap push notification (B.11), expanded FI/retirement calculator with Social Security estimate + multiple accounts + scenario comparison (B.12), report filtering by tag (B.13), and a lightweight subscription cancel-reminder — flag + reminder + link-out only, explicitly NOT automated cancellation (B.14).
+- **Three items explicitly parked, not scheduled into the numbered sequence, pending a dedicated decision session:**
+  - Receipt OCR (auto-fill a transaction amount from a photo) — needs an on-device-vs-cloud-API privacy tradeoff decided first.
+  - An AI assistant for plain-English questions about your money — needs its own conversation about what data would leave the device and ongoing API cost.
+  - Guest/read-only access for linked households — needs confirming there's an actual real-world use case before taking on the permission-model change it would require.
 
 ⚠️ Known issues / gotchas
 - **OPEN BUG, ROOT CAUSE NOW UNDERSTOOD — see decisions above. Household linking fails intermittently after a code is generated and shared, because the existing "finish linking" flow is a manual two-sided button design with no live communication between phones (a structural deadlock risk, not a random bug).** Old debugging notes are kept below for reference, but the fix is no longer "find the bug in the manual-button flow" — it is Checkpoint A.6, replacing that flow with real-time Firestore listeners.
   - Confirmed the visible error messages are generic catch-block fallbacks in `SettingsScreen.tsx`, not the real underlying error — a `console.error('finishJoinerLink failed:', e)` line was added to the joiner's catch block (around the `finishJoinerLink(...)` call, currently ~line 575-590) specifically so the real error prints to the Metro terminal. This was never captured, and capturing it is now MOOT — A.6 replaces this code path rather than debugging it further.
   - Checked `finishJoinerLink()` in `linking.ts` and `firestore.rules` line-by-line — no structural mismatch found on paper; the write shapes matched what the rules require. This supports (rather than contradicts) the new diagnosis: the bug isn't a rules/write-shape mismatch, it's the missing real-time signal between the two phones.
   - **Likely contributing factor, still true:** repeated testing during debugging sessions caused link codes to sit unused past the 15-minute expiry window (see security hardening #2) while other issues were being chased — some observed failures may simply have been expired codes layered on top of the real structural issue.
-  - **Now-fixed UX gap found during that debugging (still valid, keep):** Phone A (host) had no way to generate a new code once one already existed/expired. A "Code expired? Start over with a new code" button (`handleStartOverLinking()` in `SettingsScreen.tsx`) was added and should be re-verified still present/working once A.6 touches this same screen area.
+  - **Now-fixed UX gap found during that debugging (still valid, keep):** Phone A (host) had no way to generate a new code once one already existed/expired. A "Code expired? Start over with a new code" button (`handleStartOverLinking()` in `SettingsScreen.tsx`) was added and should be re-verified still present/working once A.6 (and, later, A.7.4/A.7.5 below) touches this same screen area.
   - **Process note, still relevant for A.6 work:** after any "find/replace" instruction, verify with `sed -n` or `grep` that the OLD text is actually gone, not just that the new text is present — a prior session's incorrectly-applied replacement duplicated a code block and broke the Metro bundle with a syntax error. Checking only for the new text's presence is not sufficient to confirm a clean replacement.
 - **Accepted minor limitation (A.5, original one-time-migration scope):** if someone mistypes their email during the one-time auto-migration described above, `createFirebaseAccount` will succeed anyway (since that mistyped email isn't registered to anyone), silently creating a second, different Firebase account rather than erroring. This doesn't expose or lose any data — the local passphrase-encrypted data on the device is untouched either way — but it can leave an orphaned, unused Firebase account behind. Not fixed, since it's a personal app with a small number of profiles; worth remembering if a Firebase user list ever looks like it has more accounts than expected.
 - (Carried forward) `getReactNativePersistence` needs a `// @ts-ignore` above its import line in `firebase.ts` due to a types-resolution quirk in Firebase ^12.18.0 with this project's TS config. Re-check if this ever needs touching again (e.g. a Firebase version upgrade).
-- (Carried forward) Firestore security rules must be deployed separately from app code — editing `firestore.rules` in the repo does nothing on its own until `npx firebase-tools deploy --only firestore:rules` is actually run. **This matters for Checkpoint A.6 too** — confirm any `firestore.rules` changes needed for the new listener-based flow are actually deployed, not just saved locally, before testing.
+- (Carried forward) Firestore security rules must be deployed separately from app code — editing `firestore.rules` in the repo does nothing on its own until `npx firebase-tools deploy --only firestore:rules` is actually run. **This matters for Checkpoint A.6 too, and for A.7.6's household-linking rules changes** — confirm any `firestore.rules` changes are actually deployed, not just saved locally, before testing.
 - (Carried forward, now resolved per A.4 confirmation above) Firestore rules previously relied partly on document-ID secrecy — this is now closed for `linkCodes`, `households`, and `householdKeys`, with a deny-all fallback for everything else.
-- **New, from this planning session:** parking multi-device sessions (see decision above) means A.5's new-device sign-in ships with no way to see/revoke other active sessions. Documented as an accepted, non-new tradeoff — not a bug, but worth remembering when A.5 is being tested/reviewed.
+- **New, from the planning session:** parking multi-device sessions (see decision above) means A.5's new-device sign-in ships with no way to see/revoke other active sessions. Documented as an accepted, non-new tradeoff — not a bug, but worth remembering when A.5 is being tested/reviewed.
+- **New, this session:** A.7.0 (PIN quick-unlock regression) is a confirmed regression, not a new bug report — it was working and fully signed off in the original Phase 1 build (see PROGRESS.md), then broke sometime during the A.2–A.6-era linking work. Treat this as a targeted regression hunt (check what linking-related changes touched `SettingsScreen.tsx`, the lock screen, or the auto-lock timer) rather than a from-scratch debug.
+- **New, this session:** A.7.1 (change-password broken after linking) needs its root cause diagnosed before it can be fixed — specifically whether the failure is in Firebase Auth's own password-change call, or in the local passphrase-derived-key rewrap step that runs alongside it. Not yet determined which.
 
 ▶️ Next step
 
 1. **Checkpoint A.5 (reopened, new scope) — sign in on a brand-new device with no local data.** Firebase Auth succeeds → no local encrypted profile found → fetch the encrypted backup from `profileBackups/{username}` (already being written by every save, per 9.2b-i in PROGRESS.md) → decrypt with the passphrase just entered → populate the app locally. This is now the top priority, ahead of the linking rebuild, since it's the more fundamental "does the cloud backup actually let you log in elsewhere" gap.
 2. **Checkpoint A.6 — rebuild household linking's finish step using Firestore real-time listeners (`onSnapshot`)**, replacing the manual two-button finish flow entirely. Both phones subscribe live to `linkCodes/{code}`; the side that writes second automatically triggers completion on the other side; the doc is deleted via the existing kill-on-use rule once both sides are done. Stays on the Spark plan — no Cloud Function, no Blaze upgrade. Verify the existing "Code expired? Start over" button still works once this area of `SettingsScreen.tsx` is touched. `npx tsc --noEmit` and a real two-phone test (back-to-back, fresh code) required before marking this done.
-3. **Checkpoint A.4-followup / general:** none currently open — A.4 itself is confirmed done; just keep the "rules must be deployed separately" gotcha in mind while working on A.6's rules changes.
-4. Once A.5 and A.6 are both confirmed stable on real devices: **pick multi-device "active sessions" back up** (design already scoped in the decisions section above), OR move straight into Phase B depending on what feels like the better next use of a session at that point — revisit with the person then.
-5. **Phase B — UI/UX Polish**, expanded scope agreed this planning session (full detail in Decisions above). Rough checkpoint order when this phase starts:
-   - B.1 — (essentially already done via this planning session's essential/additional split — just needs formal write-up as its own checkpoint entry once B starts)
-   - B.2a — Splash/Intro screen
-   - B.2b — Onboarding (short, skippable, shown once after account creation)
-   - B.2c — Standalone Profile screen, split out of Settings
-   - B.3a/b/c — Accounts tab redesign: colored account cards → stacked/fanned view → "Add account" as a bottom sheet
-   - B.4a — Convert essential-screen add/edit flows to bottom sheets (one screen at a time)
-   - B.4b — Carry the collapsed-row/tap-to-expand pattern to every list screen that doesn't already have it
-   - B.5 — UI/UX psychology pass, applied throughout B.2–B.4 rather than as a separate step (Hick's Law → nav stays lean; Fitts's Law → large thumb-reachable primary buttons; Gestalt → tight in-card grouping, real space between cards; cognitive load → progressive disclosure via collapsed rows and a short onboarding; color psychology → consistent money colors, red reserved for real errors, blue tied to security contexts)
-6. **Custom recurrence for Loans** (carried from PROGRESS.md) — would need new fields on the Loan type (customStartDate/customFreq/customOccurrenceCount) plus a "Custom" option added to the Loans screen's recurrence dropdown, before balanceProjection.ts could use it.
-7. **Payment Methods report** (carried from PROGRESS.md, deferred) — requires a paymentMethod field added to the data model (BillCycle, Debt cycles, LoanPayment, ManualTransaction) AND a real Cash/Debit/Credit picker UI on the relevant payment-logging screens, not just a new report file.
-8. Smaller carried-forward loose ends: EF/FI calculators still don't auto-pull figures from Bills/Income; neither Travel nor Events converts a completed item into an actual logged expense/transaction yet (both currently only sync a savings goal target); debt-side "feesPortion" doesn't exist in the data model, so Tax Summary's Interest & Fees figure only covers loan late fees, not debt fees.
-9. **Optional/deferred, unchanged:** Checkpoint 6.3, CSV import for Transactions.
-10. **Phase C — Publishing**, unchanged from 4-REMAINING-WORK-ROADMAP.md: C.1 EAS Build → installable `.apk`/TestFlight link. C.2 (optional, real costs, entirely the person's call) → Play Store/App Store listing.
+3. **Checkpoint A.4-followup / general:** none currently open — A.4 itself is confirmed done; just keep the "rules must be deployed separately" gotcha in mind while working on A.6's and A.7.6's rules changes.
+4. **Checkpoint A.7 — Auth/Linking/Security fixes & features** (inserted before Phase B, closes out the linking/auth work before UI/UX polish begins):
+
+   | Order | Item | Type | Notes |
+   |---|---|---|---|
+   | A.7.0 | PIN quick-unlock regression | 🐛 Bug | Was working (Phase 1, ✅ complete), broke during linking work. Targeted regression hunt — inspect what A.6/pre-A.6 linking code touched in `SettingsScreen.tsx`, the lock screen, or auto-lock timer logic. |
+   | A.7.1 | Change password broken after linking | 🐛 Bug | Diagnose whether it's Firebase Auth's password or the local passphrase-derived key rewrap that's failing. |
+   | A.7.2 | Eye icon on all password fields | ✨ UI | One reusable component, applied to sign-in, create-profile, change-password, and the link-with-passphrase field. |
+   | A.7.3 | Faster sign-in | ⚡ Performance | Profile the sign-in path first — some slowness (PBKDF2, 200k iterations) is intentional security, not a bug; only optimize what's actually slow. |
+   | A.7.4 | Expired link code shouldn't just sit there | ✨ UX | Once expired/used, host screen clears the code automatically rather than leaving a dead code visible. |
+   | A.7.5 | 60-second cooldown before generating a new code | ✨ UX | Visible countdown, same session as A.7.4 (same screen area). |
+   | A.7.6 | Allow up to 5 linked accounts | 🔧 Feature | Biggest lift — becomes "join a household" rather than pairwise linking; touches Firestore rules, the merge/keep-mine/keep-theirs UI, and the linking flow itself. |
+   | A.7.7 | Show profiles of everyone you're linked to | ✨ Feature | New Settings section listing the household roster — natural pairing with A.7.6. |
+
+   (A.7.8 "PIN option not working" is resolved into A.7.0 above — confirmed as the mobile app's Phase 1 PIN feature, broken during linking work, not a separate item.)
+
+5. Once A.5, A.6, and A.7 are all confirmed stable on real devices: **pick multi-device "active sessions" back up** (design already scoped in the decisions section above), OR move straight into Phase B depending on what feels like the better next use of a session at that point — revisit with the person then.
+6. **Phase B — UI/UX Polish**, expanded scope agreed across planning sessions (full detail in Decisions above). Checkpoint order when this phase starts:
+
+   | Order | Item | Source |
+   |---|---|---|
+   | B.1 | Essential vs. additional feature split — formal write-up | Already decided in planning session; just needs its own checkpoint entry |
+   | B.2a | Splash/Intro screen | Standard-screens gap-check |
+   | B.2b | Onboarding (short, skippable, shown once after account creation) | Standard-screens gap-check |
+   | B.2b-security | Security setup step within onboarding — biometric-first, PIN as labeled fallback, never a password-creation screen, numeric-only keypad, visible step counter | Boomer/Gen Z/Millennial onboarding research; do after A.7.0 fixes PIN, not before |
+   | B.2c | Standalone Profile screen, split out of Settings | Standard-screens gap-check |
+   | B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
+   | B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
+   | B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
+   | B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time | Cards + bottom sheets as default interaction pattern |
+   | B.4b | Carry the collapsed-row/tap-to-expand pattern to every list screen that doesn't already have it | Cards + bottom sheets as default interaction pattern |
+   | B.5 | UI/UX psychology pass — Hick's Law, Fitts's Law, Gestalt/proximity, Miller's Law/chunking, cognitive load/progressive disclosure, color psychology, trust markers/explicit labeling, Picture Superiority Effect, persistent progress indicators, Jakob's Law | Cross-generational research (Gen Z/Millennial/Boomer), applied throughout B.2–B.4 rather than as a separate rebuild |
+   | B.6a | Date picker, part 1 — reusable `<DateField>` component (`@react-native-community/datetimepicker`), rolled out to Transactions and Bills first | Requested this session |
+   | B.6b | Date picker, part 2 — roll `<DateField>` out to every remaining screen (Debts, Loans, Income, Savings Goals, Events, Travel, Calendar's "balance as of" date) | Requested this session |
+   | B.7 | "Left to Spend" hero stat on Home tab | Simplifi-inspired |
+   | B.8 | Category watchlists under Insights | Simplifi-inspired |
+   | B.9 | Yours/Mine/Ours labels + transaction comments | Monarch-inspired |
+   | B.10 | Refund tracker | Simplifi-inspired |
+   | B.11 | Weekly spending recap push notification | Monarch-inspired |
+   | B.12 | Expanded FI/retirement calculator (Social Security estimate, multiple accounts, scenario comparison) | Simplifi-inspired |
+   | B.13 | Report filtering by tag | Simplifi-inspired |
+   | B.14 | Subscription cancel-reminder (flag + reminder + link-out, no automated cancellation) | Lightweight Rocket Money substitute |
+
+   **Parked for a later, dedicated decision — not scheduled into the numbered sequence above:**
+   - Receipt OCR (auto-fill amount from a photo) — on-device vs. cloud-API privacy tradeoff needs deciding first
+   - AI assistant for plain-English questions about your money — privacy (what data leaves the device) + ongoing API cost needs its own conversation
+   - Guest/read-only access for linked households — needs confirming there's an actual use case before taking on the permission-model change
+
+7. **Custom recurrence for Loans** (carried from PROGRESS.md) — would need new fields on the Loan type (customStartDate/customFreq/customOccurrenceCount) plus a "Custom" option added to the Loans screen's recurrence dropdown, before balanceProjection.ts could use it.
+8. **Payment Methods report** (carried from PROGRESS.md, deferred) — requires a paymentMethod field added to the data model (BillCycle, Debt cycles, LoanPayment, ManualTransaction) AND a real Cash/Debit/Credit picker UI on the relevant payment-logging screens, not just a new report file.
+9. Smaller carried-forward loose ends: EF/FI calculators still don't auto-pull figures from Bills/Income; neither Travel nor Events converts a completed item into an actual logged expense/transaction yet (both currently only sync a savings goal target); debt-side "feesPortion" doesn't exist in the data model, so Tax Summary's Interest & Fees figure only covers loan late fees, not debt fees.
+10. **Optional/deferred, unchanged:** Checkpoint 6.3, CSV import for Transactions.
+11. **Phase C — Publishing**, unchanged from 4-REMAINING-WORK-ROADMAP.md: C.1 EAS Build → installable `.apk`/TestFlight link. C.2 (optional, real costs, entirely the person's call) → Play Store/App Store listing.
 
 Files in the repo (relevant to this phase)
 - See PROGRESS.md for the full file inventory as of closing 3-ROADMAP.md. This file will only note NEW files or MEANINGFULLY CHANGED files as Phase A/B/C proceeds.
-- No code files were touched this session — this was a planning-only session. The next session (starting on the reopened Checkpoint A.5) will be the first to touch `SignInScreen.tsx` / `DataContext.tsx` / `cloudBackup.ts` again since this planning pass.
+- No code files were touched in the planning sessions — those were planning-only. The next session (starting on the reopened Checkpoint A.5) will be the first to touch `SignInScreen.tsx` / `DataContext.tsx` / `cloudBackup.ts` again since the planning passes.
 - mobile-app/src/screens/SettingsScreen.tsx — UPDATED in a prior session: added `handleStartOverLinking()` and its button; added `console.error('finishJoinerLink failed:', e)` for debugging (now moot per the A.6 decision — this whole area will be rebuilt in A.6); unlink UI (`handleUnlinkHousehold`, confirm dialog) confirmed present from a prior session.
 - mobile-app/src/household.ts — CONFIRMED in a prior session to contain `addMemberToHousehold` and `removeMemberFromHousehold` (unlink).
 - mobile-app/firestore.rules — CONFIRMED in a prior session to contain the kill-on-use delete rule, the 15-minute expiry read rule, and the members-removeAll unlink rule.
@@ -110,11 +164,15 @@ Files in the repo (relevant to this phase)
 
 **Full detail on all of the above is recorded in the 📌 Decisions made and ▶️ Next step sections above** — this session entry is a narrative summary, not the source of truth; the Tier 1 sections are.
 
+## 📅 Session entry — Checkpoint A.7 scoping + Phase B expansion (this session)
+
+**What was done:** No code changed this session — another planning-only session, this time closing out the remaining auth/linking/security loose ends into a formal Checkpoint A.7 (sequenced before Phase B), and folding several newly-requested items (onboarding security-step research, a reusable date-picker component, and a batch of Simplifi/Monarch/Rocket Money-inspired features) into the Phase B checkpoint table. Three items (receipt OCR, an in-app AI assistant, guest/read-only household access) were explicitly parked rather than scheduled, each pending its own dedicated decision session. Full detail recorded directly in the 📌 Decisions made, ⚠️ Known issues, and ▶️ Next step sections above — this entry is a narrative pointer, not the source of truth.
+
 🧹 Code health
-- No files changed this session. `npx tsc --noEmit` not run (nothing to check).
+- No files changed this session (or the prior planning session). `npx tsc --noEmit` not run (nothing to check).
 
 📌 Decisions made
-- See the "PLANNING SESSION DECISIONS" block within the main 📌 Decisions made section above — all decisions from this session are recorded there, not duplicated here.
+- See the "PLANNING SESSION DECISIONS" and "CHECKPOINT A.7 PLANNING" blocks within the main 📌 Decisions made section above — all decisions from these sessions are recorded there, not duplicated here.
 
 ▶️ Next step
 - Start the next working session on the reopened Checkpoint A.5 (new-device sign-in via cloud backup decrypt) — see ▶️ Next step at the top of this file for full detail.
