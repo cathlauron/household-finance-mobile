@@ -514,6 +514,7 @@ export default function SettingsScreen() {
         await loadModel(username, personalKey);
       }
     } catch (e) {
+      console.error('finishHostLink failed:', e);
       setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
     }
     setHostFinishBusy(false);
