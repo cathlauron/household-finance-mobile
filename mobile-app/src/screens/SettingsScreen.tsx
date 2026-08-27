@@ -19,7 +19,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
-import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, checkLinkCodeJoiner } from '../linking';
+import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, subscribeToLinkCode } from '../linking';
 import type { JoinChoice } from '../linking';
 import { loadPendingHostLink, clearPendingHostLink } from '../storage';
 
@@ -138,9 +138,7 @@ export default function SettingsScreen() {
   const [hostFinishMsg, setHostFinishMsg] = useState('');
 
   // ---- Checkpoint 9.2d: host side — confirm who's trying to join before finishing ----
-  const [pendingJoinerUsername, setPendingJoinerUsername] = useState('');
-  const [checkJoinerBusy, setCheckJoinerBusy] = useState(false);
-  const [checkJoinerMsg, setCheckJoinerMsg] = useState('');
+
 
   // ---- Checkpoint 9.2b-ii: Join with a code ----
   const [joinCodeInput, setJoinCodeInput] = useState('');
@@ -483,11 +481,34 @@ export default function SettingsScreen() {
     if (username) await clearPendingHostLink(username);
     setLinkCode('');
     setLinkSecretHex('');
-    setPendingJoinerUsername('');
-    setCheckJoinerMsg('');
     setHostFinishMsg('');
     await handleStartLinking();
-  }  
+  }
+
+  // ---- Checkpoint A.6: host side — finish automatically, no confirm tap ----
+  // As soon as linkCode is set, start listening for the joiner to finish. The
+  // instant they do, finish this phone's side too, with zero further taps.
+  useEffect(() => {
+    if (!linkCode || !linkSecretHex || !username) return;
+    const unsubscribe = subscribeToLinkCode(linkCode, async () => {
+      const personalKey = getPersonalKey();
+      if (!personalKey) return;
+      setHostFinishBusy(true);
+      setHostFinishMsg('');
+      try {
+        const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey);
+        if (result.status === 'done') {
+          setHostFinishMsg('Linked! Loading your shared data…');
+          await loadModel(username, personalKey);
+        }
+      } catch (e) {
+        console.error('auto finishHostLink failed:', e);
+        setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
+      }
+      setHostFinishBusy(false);
+    });
+    return unsubscribe;
+  }, [linkCode, linkSecretHex, username]);
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
   // says so and lets you try again after checking with them. If it has, this phone
@@ -510,7 +531,6 @@ export default function SettingsScreen() {
         );
       } else {
         setHostFinishMsg('Linked! Loading your shared data…');
-        setPendingJoinerUsername('');
         await loadModel(username, personalKey);
       }
     } catch (e) {
@@ -520,29 +540,7 @@ export default function SettingsScreen() {
     setHostFinishBusy(false);
   }
 
-  // ---- Checkpoint 9.2d: host side — check who's entered the code so far ----
-  async function handleCheckForJoiner() {
-    if (!linkCode) return;
-    setCheckJoinerBusy(true);
-    setCheckJoinerMsg('');
-    try {
-      const result = await checkLinkCodeJoiner(linkCode);
-      if (result.status === 'joinerWaiting') {
-        setPendingJoinerUsername(result.joinerUsername);
-      } else if (result.status === 'noJoinerYet') {
-        setCheckJoinerMsg("No one's entered this code yet — check back after you've shared it.");
-      } else {
-        setCheckJoinerMsg("This code can't be found anymore — it may have expired.");
-      }
-    } catch (e) {
-      setCheckJoinerMsg("Couldn't check right now — try again.");
-    }
-    setCheckJoinerBusy(false);
-  }
 
-  function handleCancelJoiner() {
-    setPendingJoinerUsername('');
-  }
 
   // ---- Checkpoint 9.2b-ii: Join with a code handler ----
   // Unlocks the other phone's data using the code, then shows a side-by-side
@@ -1019,48 +1017,14 @@ export default function SettingsScreen() {
                   come back here and check who's trying to link before you finish.
                 </Text>
 
-                {!pendingJoinerUsername ? (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
-                      onPress={handleCheckForJoiner}
-                      disabled={checkJoinerBusy}
-                    >
-                      {checkJoinerBusy ? (
-                        <ActivityIndicator color={colors.gold} />
-                      ) : (
-                        <Text style={styles.dataButtonText}>Check for joiner</Text>
-                      )}
-                    </TouchableOpacity>
-                    {!!checkJoinerMsg && <Text style={styles.hintText}>{checkJoinerMsg}</Text>}
-                  </>
-                ) : (
-                  <View style={styles.dangerConfirmBox}>
-                    <Text style={[styles.dangerConfirmText, { color: colors.ink }]}>
-                      "{pendingJoinerUsername}" wants to link using this code. Only confirm if
-                      you recognize this — finishing will share your household data with them.
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity
-                        style={[styles.dataButton, { flex: 1, marginBottom: 0 }]}
-                        onPress={handleFinishHostLink}
-                        disabled={hostFinishBusy}
-                      >
-                        {hostFinishBusy ? (
-                          <ActivityIndicator color={colors.gold} />
-                        ) : (
-                          <Text style={styles.dataButtonText}>Confirm — finish linking</Text>
-                        )}
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.cancelInlineButton, { flex: 1 }]}
-                        onPress={handleCancelJoiner}
-                      >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
+                <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
+                  {hostFinishBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  )}
+                  <Text style={styles.dataButtonText}>Waiting for the other phone to finish…</Text>
+                </View>
 
                 {!!hostFinishMsg && (
                   <Text style={hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText}>

@@ -43,7 +43,7 @@
 
 import * as Crypto from 'expo-crypto';
 import CryptoJS from 'crypto-js';
-import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { generateSalt, deriveKey, encryptJSON, decryptJSON } from './encryption';
 import type { HouseholdModel } from './types';
@@ -273,16 +273,23 @@ export async function finishHostLink(
   if (!data.finished || !data.householdId) {
     return { status: 'notYet' };
   }
-
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
 
   // The host is joining an EXISTING household (the joiner created it) —
   // this is the step that records the host as an authorized member too,
   // so the new security rules will let this phone read/write it.
-  await addMemberToHousehold(data.householdId);
+  try {
+    await addMemberToHousehold(data.householdId);
+  } catch (e) {
+    throw new Error('STEP addMemberToHousehold failed: ' + (e as Error).message);
+  }
 
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
-  await saveWrappedHouseholdKey(myUsername, data.householdId, wrappedForMe);
+  try {
+    await saveWrappedHouseholdKey(myUsername, data.householdId, wrappedForMe);
+  } catch (e) {
+    throw new Error('STEP saveWrappedHouseholdKey failed: ' + (e as Error).message);
+  }
   await updateProfileHouseholdId(myUsername, data.householdId);
   await clearPendingHostLink(myUsername);
 
@@ -297,4 +304,31 @@ export async function finishHostLink(
   }
 
   return { status: 'done', householdId: data.householdId };
+}
+
+// ---- Checkpoint A.6: real-time linking — host listens instead of polling ----
+// Watches the linkCodes/{code} document live. The moment the joiner picks
+// mine/theirs/merge (finishJoinerLink writes finished:true + householdId onto
+// this same doc), the callback fires automatically — no "check for joiner" /
+// "confirm" button-taps needed on the host's side anymore. Returns an
+// unsubscribe function; the calling screen must call it once linking is done
+// (or if the screen unmounts) so the listener doesn't run forever.
+export function subscribeToLinkCode(
+  code: string,
+  onFinished: (householdId: string) => void
+): () => void {
+  const unsubscribe = onSnapshot(
+    doc(db, 'linkCodes', code),
+    (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data() as { finished?: boolean; householdId?: string };
+      if (data.finished && data.householdId) {
+        onFinished(data.householdId);
+      }
+    },
+    (error) => {
+      console.error('subscribeToLinkCode listener error:', error);
+    }
+  );
+  return unsubscribe;
 }
