@@ -14,7 +14,8 @@
 // before, with no idea whether it's looking at personal or
 // shared data.
 // ============================================================
-
+import { getCurrentFirebaseUser } from './authFirebase';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useRef, useState, ReactNode } from 'react';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel } from './types';
@@ -277,7 +278,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         return { ok: false, error: 'Your current password is incorrect.' };
       }
-
+    // Keep Firebase Auth's real password in sync with the local one — this is
+    // what was missing before, causing the two to drift apart.
+    const firebaseUser = getCurrentFirebaseUser();
+    if (!firebaseUser || !firebaseUser.email) {
+      return { ok: false, error: 'You need to be signed in to change your password.' };
+    }
+    try {
+      const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+      await reauthenticateWithCredential(firebaseUser, credential);
+      await updatePassword(firebaseUser, newPassword);
+    } catch (e: any) {
+      if (e?.code === 'auth/wrong-password' || e?.code === 'auth/invalid-credential') {
+        return { ok: false, error: 'Your current password is incorrect.' };
+      }
+      return { ok: false, error: 'Could not update your sign-in password. Check your connection and try again.' };
+    }
       const newSalt = await generateSalt();
       const newKey = deriveKey(newPassword, newSalt);
 
@@ -307,7 +323,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       return { ok: false, error: 'Your current password is incorrect.' };
     }
-
+    // Keep Firebase Auth's real password in sync with the local one — this is
+    // what was missing before, causing the two to drift apart.
+    const firebaseUser = getCurrentFirebaseUser();
+    if (!firebaseUser || !firebaseUser.email) {
+      return { ok: false, error: 'You need to be signed in to change your password.' };
+    }
+    try {
+      const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+      await reauthenticateWithCredential(firebaseUser, credential);
+      await updatePassword(firebaseUser, newPassword);
+    } catch (e: any) {
+      if (e?.code === 'auth/wrong-password' || e?.code === 'auth/invalid-credential') {
+        return { ok: false, error: 'Your current password is incorrect.' };
+      }
+      return { ok: false, error: 'Could not update your sign-in password. Check your connection and try again.' };
+    }
     const newSalt = await generateSalt();
     const newKey = deriveKey(newPassword, newSalt);
     const currentModel = model ?? defaultModel();
