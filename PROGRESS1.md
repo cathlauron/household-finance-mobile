@@ -71,7 +71,7 @@ Security hardening on household linking (link-code lifecycle)
 - (Carried forward, now resolved per A.4 confirmation above) Firestore rules previously relied partly on document-ID secrecy — this is now closed for `linkCodes`, `households`, and `householdKeys`, with a deny-all fallback for everything else.
 - **New, from the planning session:** parking multi-device sessions (see decision above) means A.5's new-device sign-in ships with no way to see/revoke other active sessions. Documented as an accepted, non-new tradeoff — not a bug, but worth remembering when A.5 is being tested/reviewed.
 - **New, this session:** A.7.0 (PIN quick-unlock regression) is a confirmed regression, not a new bug report — it was working and fully signed off in the original Phase 1 build (see PROGRESS.md), then broke sometime during the A.2–A.6-era linking work. Treat this as a targeted regression hunt (check what linking-related changes touched `SettingsScreen.tsx`, the lock screen, or the auto-lock timer) rather than a from-scratch debug.
-- **New, this session:** A.7.1 (change-password broken after linking) needs its root cause diagnosed before it can be fixed — specifically whether the failure is in Firebase Auth's own password-change call, or in the local passphrase-derived-key rewrap step that runs alongside it. Not yet determined which.
+- **A.7.1 CONFIRMED via real two-phone test (unlinked-profile fix verified working first).** Test performed: unlinked profile password change → worked correctly, sign-out/sign-in with new password succeeded. Then, on a LINKED household: Phone A (host) changed password → app showed "password changed successfully" → Phone A signed out → Phone A tried signing in with the new password → **password error, locked out**. Phone B (joiner), which made no password change, was unaffected and could still sign in normally with its own unchanged password — confirming the shared household key/data itself is fine, and this is isolated to Phone A's own re-auth/rewrap step. Since the success message shows before this fails, the bug is likely that `updatePassword`/`reauthenticateWithCredential` silently fails or is skipped in the LINKED branch specifically (unlike the now-confirmed-working unlinked branch), while the local salt/key rewrap still proceeds and reports success regardless. Root cause not yet found — needs the linked-branch code re-read line by line against what was actually tested, most likely starting with whatever try/catch wraps the Firebase calls in that branch of `changePassword` in `DataContext.tsx`.
 
 ▶️ Next step
 
@@ -83,7 +83,7 @@ Security hardening on household linking (link-code lifecycle)
    | Order | Item | Type | Notes |
    |---|---|---|---|
    | A.7.0 | PIN quick-unlock regression | 🐛 Bug | Was working (Phase 1, ✅ complete), broke during linking work. Targeted regression hunt — inspect what A.6/pre-A.6 linking code touched in `SettingsScreen.tsx`, the lock screen, or auto-lock timer logic. |
-   | A.7.1 | Change password broken after linking | 🐛 Bug | Diagnose whether it's Firebase Auth's password or the local passphrase-derived key rewrap that's failing. |
+   | A.7.1 | Change password broken after linking | 🐛 Bug | **PARTIALLY FIXED — re-verify next session.** Unlinked-profile path confirmed fully working via real test. Linked-profile path still broken: host changes password, gets a false "success" message, then is locked out on next sign-in; joiner is unaffected. Needs the linked branch's Firebase call re-checked — likely fails silently there while the local rewrap still reports success. Re-read `DataContext.tsx`'s linked-profile `changePassword` branch top to bottom before touching anything. |
    | A.7.2 | Eye icon on all password fields | ✨ UI | One reusable component, applied to sign-in, create-profile, change-password, and the link-with-passphrase field. |
    | A.7.3 | Faster sign-in | ⚡ Performance | Profile the sign-in path first — some slowness (PBKDF2, 200k iterations) is intentional security, not a bug; only optimize what's actually slow. |
    | A.7.4 | Expired link code shouldn't just sit there | ✨ UX | Once expired/used, host screen clears the code automatically rather than leaving a dead code visible. |
@@ -163,7 +163,17 @@ Files in the repo (relevant to this phase)
 10. **Publishing.** Confirmed Phase C (EAS Build, optional store publishing) is unchanged from the existing roadmap — no new decisions needed there.
 
 **Full detail on all of the above is recorded in the 📌 Decisions made and ▶️ Next step sections above** — this session entry is a narrative summary, not the source of truth; the Tier 1 sections are.
+## 📅 Session entry — Password-sync bug fix applied + linked-account regression found (this session)
 
+**What was done:** Applied the previously-drafted `changePassword` patch (Firebase `reauthenticateWithCredential` + `updatePassword`, alongside the existing local rewrap) to BOTH code paths in `src/DataContext.tsx` — the linked-household branch and the unlinked-profile branch — closing the gap where only one path had been patched in a prior session. Confirmed via `git --no-pager diff` that both insertions landed correctly. `npx tsc --noEmit` ran clean. Committed and pushed successfully.
+
+Real-device testing then found: the unlinked-profile fix works correctly end-to-end (change password → sign out → sign in with new password succeeds). The linked-profile fix does NOT — host changes password, gets a false success message, then is locked out on next sign-in; the joiner is unaffected. This is now logged as a confirmed, reproduced bug (A.7.1), not a hypothesis — see ⚠️ Known issues and the A.7.1 row in ▶️ Next step above for full detail.
+
+No further code changes were made this session past this point — the person asked to log these findings first before continuing, so the next session should pick up directly on re-diagnosing the linked-branch Firebase call.
+
+🧹 Code health
+- `npx tsc --noEmit`: clean, no errors (checked before this session's real-device testing).
+- Committed + pushed this session's `DataContext.tsx` changes (both-branch password-sync fix) — confirmed via `git status` showing a clean, up-to-date tree afterward.
 ## 📅 Session entry — Checkpoint A.7 scoping + Phase B expansion (this session)
 
 **What was done:** No code changed this session — another planning-only session, this time closing out the remaining auth/linking/security loose ends into a formal Checkpoint A.7 (sequenced before Phase B), and folding several newly-requested items (onboarding security-step research, a reusable date-picker component, and a batch of Simplifi/Monarch/Rocket Money-inspired features) into the Phase B checkpoint table. Three items (receipt OCR, an in-app AI assistant, guest/read-only household access) were explicitly parked rather than scheduled, each pending its own dedicated decision session. Full detail recorded directly in the 📌 Decisions made, ⚠️ Known issues, and ▶️ Next step sections above — this entry is a narrative pointer, not the source of truth.
