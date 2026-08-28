@@ -56,6 +56,7 @@ import {
 } from './household';
 import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink } from './storage';
 import { mergeModels } from './mergeModels';
+import { getCurrentFirebaseUser } from './authFirebase';
 
 // Chosen to avoid easy mix-ups when the code is read aloud or typed by hand
 // (no 0/O, no 1/I/L).
@@ -258,8 +259,13 @@ export async function finishHostLink(
   code: string,
   myUsername: string,
   secretHex: string,
-  myPersonalKey: CryptoJS.lib.WordArray
+  myPersonalKey: CryptoJS.lib.WordArray,
+  expectedUid: string
 ): Promise<HostFinishResult> {
+  const currentUser = getCurrentFirebaseUser();
+  if (!currentUser || currentUser.uid !== expectedUid) {
+    throw new Error('The signed-in account changed while linking was in progress.');
+  }
   let snap;
   try {
     snap = await getDoc(doc(db, 'linkCodes', code));
@@ -279,6 +285,10 @@ export async function finishHostLink(
   // this is the step that records the host as an authorized member too,
   // so the new security rules will let this phone read/write it.
   try {
+    const currentUser = getCurrentFirebaseUser();
+    if (!currentUser || currentUser.uid !== expectedUid) {
+      throw new Error('The signed-in account changed while linking was in progress.');
+    }
     await addMemberToHousehold(data.householdId);
   } catch (e) {
     throw new Error('STEP addMemberToHousehold failed: ' + (e as Error).message);
@@ -286,6 +296,10 @@ export async function finishHostLink(
 
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
   try {
+    const currentUser = getCurrentFirebaseUser();
+    if (!currentUser || currentUser.uid !== expectedUid) {
+      throw new Error('The signed-in account changed while linking was in progress.');
+    }
     await saveWrappedHouseholdKey(myUsername, data.householdId, wrappedForMe);
   } catch (e) {
     throw new Error('STEP saveWrappedHouseholdKey failed: ' + (e as Error).message);

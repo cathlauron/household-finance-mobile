@@ -12,6 +12,7 @@ import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { DataProvider, useData } from './src/DataContext';
+import { signOutFirebase } from './src/authFirebase';
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
 
@@ -87,8 +88,13 @@ function AppContent() {
     return () => clearIdleTimer();
   }, [screen]);
 
-  function handleFullSignOut() {
+  async function handleFullSignOut() {
     clearIdleTimer();
+    try {
+      await signOutFirebase();
+    } catch (e) {
+      return;
+    }
     clearModel();
     setCurrentUsername(null);
     setDerivedKey(null);

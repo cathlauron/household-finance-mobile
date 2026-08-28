@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { requestNotificationPermission } from '../pushNotifications';
 import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, subscribeToLinkCode } from '../linking';
 import type { JoinChoice } from '../linking';
 import { loadPendingHostLink, clearPendingHostLink } from '../storage';
+import { getCurrentFirebaseUser } from '../authFirebase';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -136,6 +137,7 @@ export default function SettingsScreen() {
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   const [hostFinishBusy, setHostFinishBusy] = useState(false);
   const [hostFinishMsg, setHostFinishMsg] = useState('');
+  const hostFinishInFlightRef = useRef(false);
 
   // ---- Checkpoint 9.2d: host side — confirm who's trying to join before finishing ----
 
@@ -490,24 +492,33 @@ export default function SettingsScreen() {
   // instant they do, finish this phone's side too, with zero further taps.
   useEffect(() => {
     if (!linkCode || !linkSecretHex || !username) return;
+    const expectedUid = getCurrentFirebaseUser()?.uid;
+    if (!expectedUid) return;
+    let active = true;
     const unsubscribe = subscribeToLinkCode(linkCode, async () => {
+      if (!active || hostFinishInFlightRef.current) return;
       const personalKey = getPersonalKey();
       if (!personalKey) return;
+      hostFinishInFlightRef.current = true;
       setHostFinishBusy(true);
       setHostFinishMsg('');
       try {
-        const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey);
-        if (result.status === 'done') {
+        const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey, expectedUid);
+        if (active && result.status === 'done') {
           setHostFinishMsg('Linked! Loading your shared data…');
           await loadModel(username, personalKey);
         }
       } catch (e) {
         console.error('auto finishHostLink failed:', e);
-        setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
+        if (active) setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
       }
-      setHostFinishBusy(false);
+      hostFinishInFlightRef.current = false;
+      if (active) setHostFinishBusy(false);
     });
-    return unsubscribe;
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [linkCode, linkSecretHex, username]);
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
@@ -524,7 +535,9 @@ export default function SettingsScreen() {
     setHostFinishBusy(true);
     setHostFinishMsg('');
     try {
-      const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey);
+      const expectedUid = getCurrentFirebaseUser()?.uid;
+      if (!expectedUid) throw new Error('No signed-in Firebase account.');
+      const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey, expectedUid);
       if (result.status === 'notYet') {
         setHostFinishMsg(
           "They haven't finished on their end yet — ask them to pick Keep mine / Keep theirs / Merge both on their phone, then try this again."

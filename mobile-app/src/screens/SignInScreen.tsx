@@ -3,8 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
-import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, ProfileIndexEntry } from '../storage';
-import { signInWithFirebase, createFirebaseAccount } from '../authFirebase';
+import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, ProfileIndexEntry } from '../storage';
+import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
 import { loadProfileCloudBackup } from '../cloudBackup';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData } from '../household';
 
@@ -79,6 +79,15 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       try {
         await signInWithFirebase(email, password);
       } catch (firebaseError: any) {
+        // A failed sign-in must not leave a previously persisted Firebase user
+        // active while the local-profile migration or restore path runs.
+        try {
+          await signOutFirebase();
+        } catch (signOutError) {
+          setBusy(false);
+          setError('Could not reset the previous sign-in session. Please try again.');
+          return;
+        }
         // Checkpoint A.5 — profiles created before Firebase Auth existed
         // have no matching Firebase account at all, so sign-in always
         // fails here for them, even with the correct password. Before
@@ -217,13 +226,93 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         return;
       }
 
+      if (profile.householdId) {
+        // Linked profile: the real, up-to-date data lives in the shared
+        // household document, not this profile's own (possibly stale or
+        // missing) personal blob — saveModel() only ever writes the personal
+        // blob for UNLINKED profiles, so checking it here was the original bug.
+        //
+        // A second, separate issue: this device's LOCAL salt (profile.salt,
+        // from AsyncStorage) can go stale if the password was ever changed on
+        // a *different* device — the change only updates that other device's
+        // local copy, plus a cloud backup copy, but never this device's local
+        // copy. So: try the local salt first: if that fails, fall back to the
+        // cloud backup's salt. If the cloud one works, self-heal this
+        // device's local salt so this doesn't happen again next time.
+        const wrapped = await loadWrappedHouseholdKey(username);
+        if (!wrapped) {
+          setError('Incorrect username or password.');
+          setBusy(false);
+          return;
+        }
+
+        const tryUnwrap = async (
+          saltToTry: string
+        ): Promise<{ key: CryptoJS.lib.WordArray } | null> => {
+          const candidateKey = deriveKey(password, saltToTry);
+
+          let householdKey: CryptoJS.lib.WordArray;
+          try {
+            householdKey = unwrapHouseholdKey(wrapped.wrappedKey, candidateKey);
+            console.log('LINKED SIGN-IN DEBUG: unwrapHouseholdKey SUCCEEDED for salt', saltToTry);
+          } catch (e) {
+            console.log('LINKED SIGN-IN DEBUG: unwrapHouseholdKey FAILED for salt', saltToTry, '-', e);
+            return null;
+          }
+
+          const encryptedHousehold = await loadHouseholdData(profile.householdId!);
+          if (!encryptedHousehold) {
+            console.log('LINKED SIGN-IN DEBUG: no household data found at all for householdId', profile.householdId);
+            return null;
+          }
+
+          try {
+            decryptJSON(householdKey, encryptedHousehold);
+            console.log('LINKED SIGN-IN DEBUG: decryptJSON(householdKey, ...) SUCCEEDED for salt', saltToTry);
+          } catch (e) {
+            console.log('LINKED SIGN-IN DEBUG: decryptJSON(householdKey, ...) FAILED for salt', saltToTry, '-', e);
+            return null;
+          }
+
+          return { key: candidateKey };
+        };
+
+        console.log('LINKED SIGN-IN DEBUG: local profile.salt =', profile.salt, 'householdId =', profile.householdId);
+        let result = await tryUnwrap(profile.salt);
+
+        if (!result) {
+          const cloudBackup = await loadProfileCloudBackup(username);
+          console.log('LINKED SIGN-IN DEBUG: cloud backup =', cloudBackup);
+          if (cloudBackup && cloudBackup.salt !== profile.salt) {
+            result = await tryUnwrap(cloudBackup.salt);
+            if (result) {
+              // Self-heal: bring this device's local salt in line with the
+              // one that actually works, so next sign-in on this device
+              // succeeds on the first try.
+              await updateProfileSalt(username, cloudBackup.salt);
+            }
+          }
+        }
+
+        if (!result) {
+          setError('Incorrect username or password.');
+          setBusy(false);
+          return;
+        }
+
+        setBusy(false);
+        onSignedIn(username, result.key);
+        return;
+      }
+
+      // Unlinked (personal) profile — unchanged from before.
+      const key = deriveKey(password, profile.salt);
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) {
         setError('Could not find any saved data for that profile.');
         setBusy(false);
         return;
       }
-      const key = deriveKey(password, profile.salt);
       try {
         decryptJSON(key, encrypted);
       } catch (e) {
