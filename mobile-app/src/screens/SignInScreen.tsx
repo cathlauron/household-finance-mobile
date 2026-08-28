@@ -254,35 +254,28 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
           let householdKey: CryptoJS.lib.WordArray;
           try {
             householdKey = unwrapHouseholdKey(wrapped.wrappedKey, candidateKey);
-            console.log('LINKED SIGN-IN DEBUG: unwrapHouseholdKey SUCCEEDED for salt', saltToTry);
           } catch (e) {
-            console.log('LINKED SIGN-IN DEBUG: unwrapHouseholdKey FAILED for salt', saltToTry, '-', e);
             return null;
           }
 
           const encryptedHousehold = await loadHouseholdData(profile.householdId!);
           if (!encryptedHousehold) {
-            console.log('LINKED SIGN-IN DEBUG: no household data found at all for householdId', profile.householdId);
             return null;
           }
 
           try {
             decryptJSON(householdKey, encryptedHousehold);
-            console.log('LINKED SIGN-IN DEBUG: decryptJSON(householdKey, ...) SUCCEEDED for salt', saltToTry);
           } catch (e) {
-            console.log('LINKED SIGN-IN DEBUG: decryptJSON(householdKey, ...) FAILED for salt', saltToTry, '-', e);
             return null;
           }
 
           return { key: candidateKey };
         };
 
-        console.log('LINKED SIGN-IN DEBUG: local profile.salt =', profile.salt, 'householdId =', profile.householdId);
         let result = await tryUnwrap(profile.salt);
 
         if (!result) {
           const cloudBackup = await loadProfileCloudBackup(username);
-          console.log('LINKED SIGN-IN DEBUG: cloud backup =', cloudBackup);
           if (cloudBackup && cloudBackup.salt !== profile.salt) {
             result = await tryUnwrap(cloudBackup.salt);
             if (result) {
