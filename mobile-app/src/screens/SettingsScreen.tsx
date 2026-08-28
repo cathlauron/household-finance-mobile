@@ -507,6 +507,7 @@ export default function SettingsScreen() {
         if (active && result.status === 'done') {
           setHostFinishMsg('Linked! Loading your shared data…');
           await loadModel(username, personalKey);
+          unsubscribe();
         }
       } catch (e) {
         console.error('auto finishHostLink failed:', e);
