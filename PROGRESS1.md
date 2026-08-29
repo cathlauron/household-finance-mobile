@@ -106,7 +106,7 @@ Security hardening on household linking (link-code lifecycle)
    | ~~A.7.1~~ | ~~Change password broken after linking~~ | ✅ Done | Re-tested and confirmed fixed on both unlinked and linked profiles, both phones. |
   | ~~A.7.2~~ | ~~Eye icon on all password fields~~ | ✅ Done | One reusable `PasswordField` component, applied to sign-in, create-profile, and change-password (6 fields total). |
    | ~~A.7.3~~ | ~~Faster sign-in~~ | ✅ Done | Profiled first, then eliminated duplicate decrypt/model-reload + duplicate profile-index read + deferred notification scheduling. PBKDF2 itself left untouched. Confirmed correct on-device (normal, cloud-restore, and linked sign-in) — perceived speed unchanged, which was expected since the eliminated work was a smaller share of total time than PBKDF2 itself. |
-   | A.7.4 | Expired link code shouldn't just sit there | ✨ UX | Once expired/used, host screen clears the code automatically rather than leaving a dead code visible. |
+   | ~~A.7.4~~ | ~~Expired link code shouldn't just sit there~~ | ✅ Done | Local 15-minute expiry timer added to the host link-code screen, matching the Firestore linkCodes TTL; also wired the existing Firestore listener to detect a permission-denied read (the code's own expired-read signal) as a backup path. Bundled fix: a stale 'Linked!'/error message could remain on screen next to a freshly generated code — hostFinishMsg is now cleared whenever a new code is generated or the code expires. Verified on-device: expiry auto-clears the code, normal linking still completes successfully, and starting over cancels the old timer correctly. |
    | A.7.5 | 60-second cooldown before generating a new code | ✨ UX | Visible countdown, same session as A.7.4 (same screen area). |
    | A.7.6 | Allow up to 5 linked accounts | 🔧 Feature | Biggest lift — becomes "join a household" rather than pairwise linking; touches Firestore rules, the merge/keep-mine/keep-theirs UI, and the linking flow itself. |
    | A.7.7 | Show profiles of everyone you're linked to | ✨ Feature | New Settings section listing the household roster — natural pairing with A.7.6. |
@@ -206,7 +206,24 @@ This makes cloud-restore self-healing — even if a device has a stale/broken lo
 **What was done:** Re-tested change-password on a linked profile per the person's report that it now worked. Confirmed: host changed password, signed out fully, signed back in successfully with the new password; joiner phone still signs in normally with its own unchanged password. No code changes made this session — the earlier both-branch `DataContext.tsx` patch is now confirmed to have resolved this.
 
 ▶️ Next step
-- A.7.2 is done. Next open item in Checkpoint A.7 is **A.7.4 (expired link code shouldn't just sit there)**.
+- A.7.2 is done. Next open item in Checkpoint A.7 is **A.7.5 (60-second cooldown before generating a new code)**.
+
+## 📅 Session entry — 2026-08-29: A.7.4 (expired link code auto-clears) completed, plus bundled fix for stale status message
+
+**What was done:** Used the Claude+Copilot investigate-then-approve workflow. Copilot traced the host-side link code flow (SettingsScreen.tsx, linking.ts, firestore.rules) and confirmed: the code expires via a 15-minute Firestore rule TTL, but the UI had no local timer and no handling for the expired case — only a listener for when a joiner successfully finishes linking. An expired code was previously left sitting on screen indefinitely.
+
+**Implemented:**
+
+- linking.ts: added exported `LINK_CODE_TTL_MS` constant (15 min, commented to stay in sync with firestore.rules), and extended `subscribeToLinkCode()` with an optional `onExpired` callback fired on a permission-denied read (the expired-code signal).
+- SettingsScreen.tsx: added a local expiry timer started when a code is generated, cleared on reset/success/unmount, firing a new `handleLinkCodeExpired()` handler that clears the code and shows "This code expired — generate a new one."
+
+**Bundled fix (found during on-device testing, not part of the original A.7.4 description):** `hostFinishMsg` (the "Linked! Loading your shared data…" / error status text) was never cleared when a new code was generated — only on manual "Start over." This let a stale success/error message linger next to a freshly generated code's status. Fixed by clearing `hostFinishMsg` in both `handleStartLinking()` and the new `handleLinkCodeExpired()`.
+
+**Verification:** `npx tsc --noEmit` clean after each change. On-device testing (with a temporarily shortened TTL for practicality, reverted before final commit) confirmed all three scenarios: (1) an expired code auto-clears with the correct message, (2) normal linking between two devices still completes successfully with no leftover message, (3) tapping "Start over" before expiry correctly cancels the old timer so it doesn't wipe out the new code later.
+
+**Files touched:** linking.ts, SettingsScreen.tsx
+
+### **Commits:** 3af2d9c (expiry timer), cf10deb (stale hostFinishMsg fix)
 
 ## 📅 Session entry — Expo Go SDK mismatch fix + duplicate-bill-ID / stale-listener bug fixes via Claude+Copilot workflow (this session)
 
