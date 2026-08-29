@@ -132,13 +132,40 @@ export default function SettingsScreen() {
   const [linkSecretHex, setLinkSecretHex] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErrorMsg, setLinkErrorMsg] = useState('');
+  const [cooldownActive, setCooldownActive] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const linkCodeExpiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const linkCooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function clearLinkCodeExpiryTimer() {
     if (linkCodeExpiryTimerRef.current) {
       clearTimeout(linkCodeExpiryTimerRef.current);
       linkCodeExpiryTimerRef.current = null;
     }
+  }
+
+  function clearLinkCooldownTimer() {
+    if (linkCooldownTimerRef.current) {
+      clearInterval(linkCooldownTimerRef.current);
+      linkCooldownTimerRef.current = null;
+    }
+  }
+
+  function beginLinkCooldown() {
+    clearLinkCooldownTimer();
+    setCooldownActive(true);
+    setCooldownSeconds(60);
+
+    linkCooldownTimerRef.current = setInterval(() => {
+      setCooldownSeconds((prevSeconds) => {
+        if (prevSeconds <= 1) {
+          clearLinkCooldownTimer();
+          setCooldownActive(false);
+          return 0;
+        }
+        return prevSeconds - 1;
+      });
+    }, 1000);
   }
 
   function handleLinkCodeExpired() {
@@ -148,6 +175,13 @@ export default function SettingsScreen() {
     setHostFinishMsg('');
     setLinkErrorMsg('This code expired — generate a new one.');
   }
+
+  useEffect(() => {
+    return () => {
+      clearLinkCodeExpiryTimer();
+      clearLinkCooldownTimer();
+    };
+  }, []);
 
   // Restores an in-progress "start linking" (code + secret) if this screen opens and one
   // was left unfinished — e.g. the app was closed, the phone restarted, or (as in testing)
@@ -501,6 +535,7 @@ export default function SettingsScreen() {
       setLinkCode(result.code);
       setLinkSecretHex(result.secretHex);
       setHostFinishMsg('');
+      beginLinkCooldown();
       linkCodeExpiryTimerRef.current = setTimeout(handleLinkCodeExpired, LINK_CODE_TTL_MS);
     } catch (e) {
       setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
@@ -1033,14 +1068,19 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   style={styles.dataButton}
                   onPress={handleStartLinking}
-                  disabled={linkBusy}
+                  disabled={linkBusy || cooldownActive}
                 >
                   {linkBusy ? (
                     <ActivityIndicator color={colors.gold} />
+                  ) : cooldownActive ? (
+                    <Text style={styles.dataButtonText}>Generate a new code</Text>
                   ) : (
                     <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
                   )}
                 </TouchableOpacity>
+                {!!cooldownActive && (
+                  <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
+                )}
                 {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
                 <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
