@@ -22,6 +22,7 @@ import { requestNotificationPermission } from '../pushNotifications';
 import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, subscribeToLinkCode } from '../linking';
 import type { JoinChoice } from '../linking';
 import { loadPendingHostLink, clearPendingHostLink } from '../storage';
+import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 
 function makeId(prefix: string): string {
@@ -88,6 +89,16 @@ export default function SettingsScreen() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(5);
+
+  useEffect(() => {
+    getAutoLockMinutes().then(setAutoLockMinutesState);
+  }, []);
+
+  async function handleChangeAutoLock(minutes: number) {
+    setAutoLockMinutesState(minutes);
+    await setAutoLockMinutes(minutes);
+  }
   const [nameInput, setNameInput] = useState('');
   const [colorInput, setColorInput] = useState(COLOR_PALETTE[0]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -929,6 +940,27 @@ export default function SettingsScreen() {
         <Text style={styles.hintText}>
           There is no "forgot password" recovery — save your new password somewhere safe.
         </Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Auto-lock</Text>
+        <Text style={styles.sectionSub}>
+          How long the app can sit untouched before it locks itself (if you've set up a PIN or password).
+        </Text>
+        <View style={styles.modeRow}>
+          {AUTO_LOCK_OPTIONS.map((opt) => {
+            const active = autoLockMinutes === opt.minutes;
+            return (
+              <TouchableOpacity
+                key={opt.minutes}
+                style={[styles.modeButton, active && styles.modeButtonActive]}
+                onPress={() => handleChangeAutoLock(opt.minutes)}
+              >
+                <Text style={[styles.modeButtonText, active && styles.modeButtonTextActive]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
         <Text style={styles.sectionSub}>

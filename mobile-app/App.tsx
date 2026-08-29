@@ -8,7 +8,7 @@ import PinUnlockScreen from './src/screens/PinUnlockScreen';
 import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
-import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES } from './src/autoLock';
+import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { DataProvider, useData } from './src/DataContext';
@@ -44,6 +44,16 @@ function AppContent() {
     })();
   }, []);
 
+    // Whenever Settings changes the auto-lock time, update the timer immediately —
+  // without this, a change wouldn't take effect until the app was closed and reopened.
+  useEffect(() => {
+    const unsubscribe = subscribeToAutoLockMinutes((minutes) => {
+      autoLockMinutesRef.current = minutes;
+      resetIdleTimer();
+    });
+    return unsubscribe;
+  }, []);
+  
   async function lockIfPinIsSetUp() {
     if (isAutoLockSuppressed()) return;
     const username = usernameRef.current;
