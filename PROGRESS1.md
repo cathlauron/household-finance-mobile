@@ -42,6 +42,7 @@ Security hardening on household linking (link-code lifecycle)
 - Progress tracking for this remaining work (Phase A/B/C) is kept in this separate file, PROGRESS1.md, rather than appended to the original PROGRESS.md — done deliberately so the original file stays intact as a clean record of the first 11 phases.
 - PROGRESS1.md lives at the REPO ROOT (`/workspaces/household-finance-mobile/PROGRESS1.md`), NOT inside `mobile-app/` where PROGRESS.md and most code live. Confirmed this session after some confusion — `cd` to the repo root, or use the full path, whenever reading/writing this file from the Codespace terminal. All app code changes (src/, firestore.rules, etc.) still happen from inside `mobile-app/` as before.
 - When running `grep`/`cat` on app source files from inside `mobile-app/`, do NOT prefix paths with `mobile-app/` again (e.g. use `src/household.ts`, not `mobile-app/src/household.ts`) — the terminal prompt shows which directory you're already in; check it before assuming the path.
+- Cloud-restore sign-in (linked and unlinked) now always overwrites any existing local profile-index entry for the signed-in username, rather than appending. This is a permanent behavior change, not a one-off patch.
 
 --- PLANNING SESSION DECISIONS ---
 
@@ -89,6 +90,7 @@ Security hardening on household linking (link-code lifecycle)
 - **A.7.0 (PIN quick-unlock) — RESOLVED, moved to ✅ Done.** Turned out to be a false alarm (test accounts without a PIN set up), not a real regression — see the ✅ Done entry above for the confirmed root cause.
 - **A.7.1 — RESOLVED, moved to ✅ Done.** Re-tested on a linked profile: password change → sign out → sign in with new password all succeeded, joiner phone unaffected. No longer an open issue — the earlier lockout was not reproducible on retest.
 - **New gotcha for future sessions:** don't assume `@expo/vector-icons` (or any "ships with Expo by default" package) is actually present — check with `grep` on `package.json` first. This project didn't have it despite being a standard Expo template.
+- **(Resolved 2026-08-29)** Local profile-index entries in AsyncStorage are never deleted, only their householdId gets cleared on unlink. A stale/incomplete local entry for a username silently blocks cloud-restore from ever running again for that username on that device, even across sign-out/sign-in — because sign-in checks the local profiles-index for a matching username BEFORE ever considering cloud-restore. Fixed: cloud-restore now replaces (not appends) any existing local entry for that username, making it self-healing going forward. Worth remembering during future testing that repeatedly signs the same test username in/out across devices — a genuinely fresh cloud-restore is only guaranteed on a device where no local entry for that username currently exists.
 
 ▶️ Next step
 
@@ -165,6 +167,23 @@ Files in the repo (relevant to this phase)
 - mobile-app/src/components/PasswordField.tsx — NEW this session: shared password/passphrase input with eye-icon show/hide toggle.
 - mobile-app/src/screens/SignInScreen.tsx, CreateProfileScreen.tsx, SettingsScreen.tsx — UPDATED this session: swapped 6 raw `TextInput` password fields over to `PasswordField`.
 - mobile-app/package.json / package-lock.json — UPDATED this session: added `@expo/vector-icons` dependency.
+
+## Session — 2026-08-29: Fixed stale local profile entry blocking cloud-restore on linked accounts
+
+**What happened:** A user testing sign-in on a new device for an already-linked account ("cas", linked to "cath") found the account showed as unlinked after cloud-restore sign-in, and data logged on that device wasn't syncing to the other linked device. Signing out and back in did not fix it.
+
+**Root cause (confirmed via targeted debug logging):** The linked cloud-restore branch in SignInScreen.tsx was actually correct — it properly pulls householdId and the household key from Firestore and builds a correctly-linked local profile entry. The real bug was elsewhere: `saveProfilesIndex([...profiles, newEntry])` appended the new entry rather than replacing any existing one for that username. During this debugging session, an earlier sign-in attempt on the new device had created a local entry with no householdId. Every subsequent sign-in attempt then found that already-existing local entry first and took the "local profile exists" branch — skipping cloud-restore entirely — so it never self-corrected, even across sign-out/sign-in.
+
+**Fix applied:** Cloud-restore save logic in SignInScreen.tsx (both linked and unlinked branches) now filters out any existing local entry for the same username before saving the fresh one:
+
+  const updatedProfiles = [...profiles.filter((p) => p.username !== username), newEntry];
+  await saveProfilesIndex(updatedProfiles);
+
+This makes cloud-restore self-healing — even if a device has a stale/broken local profile entry for a username, a successful cloud-restore now always overwrites it with correct data instead of silently being blocked forever.
+
+**Verification:** Debug logging confirmed cloudBackup.householdId and the full linked payload were correctly assembled on a fresh attempt once the stale entry was cleared. After the permanent fix, tested on two different devices signing in as two different linked accounts (cas and cath) — confirmed linked status displayed correctly and test data synced across all devices. All temporary debug logging and the temporary dev-only "clear stale entry" button were removed after the fix was confirmed. npx tsc --noEmit passes clean.
+
+**Files touched:** SignInScreen.tsx (linked and unlinked cloud-restore save logic; temporary debug code added then fully removed)
 
 ## 📅 Session entry — A.7.1 re-tested and confirmed fixed
 

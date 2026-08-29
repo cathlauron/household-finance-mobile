@@ -27,6 +27,7 @@ import {
   loadProfilesIndex,
   updateProfileSalt,
   updateProfileHouseholdId,
+  type ProfileIndexEntry,
 } from './storage';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup } from './cloudBackup';
@@ -44,10 +45,22 @@ import {
 
 type ChangePasswordResult = { ok: boolean; error?: string };
 
+type LoadModelBootstrap = {
+  profile?: ProfileIndexEntry;
+  initialModel?: HouseholdModel;
+  householdId?: string;
+  householdKey?: CryptoJS.lib.WordArray;
+};
+
 type DataContextValue = {
   model: HouseholdModel | null;
   loading: boolean;
-  loadModel: (username: string, key: CryptoJS.lib.WordArray) => Promise<void>;
+  loadModel: (
+    username: string,
+    key: CryptoJS.lib.WordArray,
+    bootstrap?: LoadModelBootstrap,
+    options?: { deferNotifications?: boolean }
+  ) => Promise<HouseholdModel | null>;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
   changePassword: (
@@ -89,19 +102,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // so saveModel/changePassword can keep the cloud backup's salt field up to date
   // without needing to re-look-up the profiles index on every save.
   const saltRef = useRef<string | null>(null);
-  async function loadModel(username: string, key: CryptoJS.lib.WordArray) {
+  async function loadModel(
+    username: string,
+    key: CryptoJS.lib.WordArray,
+    bootstrap?: LoadModelBootstrap,
+    options: { deferNotifications?: boolean } = {}
+  ): Promise<HouseholdModel | null> {
     setLoading(true);
     usernameRef.current = username;
     keyRef.current = key;
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
     try {
-      const profiles = await loadProfilesIndex();
-      const profile = profiles.find((p) => p.username === username);
-      const householdId = profile?.householdId;
+      const profile = bootstrap?.profile ?? (await loadProfilesIndex()).find((p) => p.username === username);
+      const householdId = bootstrap?.householdId ?? profile?.householdId;
       // Checkpoint A.5 — remember this profile's salt for the lifetime of this session,
       // so every future save can keep the cloud backup's salt field fresh.
       saltRef.current = profile?.salt ?? null;
+
+      if (bootstrap?.householdKey && householdId) {
+        const loaded = sanitizeModelIds(bootstrap.initialModel ?? defaultModel());
+        householdIdRef.current = householdId;
+        householdKeyRef.current = bootstrap.householdKey;
+        setModel(loaded);
+        setIsLinked(true);
+        if (!options.deferNotifications) {
+          rescheduleBillNotifications(loaded).catch(() => {});
+        }
+        setLoading(false);
+        return loaded;
+      }
+
+      if (bootstrap?.initialModel && !householdId) {
+        const loaded = sanitizeModelIds(bootstrap.initialModel);
+        setModel(loaded);
+        setIsLinked(false);
+        if (!options.deferNotifications) {
+          rescheduleBillNotifications(loaded).catch(() => {});
+        }
+        setLoading(false);
+        return loaded;
+      }
+
       if (householdId) {
         // Linked profile: look up this profile's own wrapped copy of the
         // shared household key, unwrap it with the personal key, then load
@@ -116,9 +158,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
             householdKeyRef.current = householdKey;
             setModel(loaded);
             setIsLinked(true);
-            rescheduleBillNotifications(loaded).catch(() => {});
+            if (!options.deferNotifications) {
+              rescheduleBillNotifications(loaded).catch(() => {});
+            }
             setLoading(false);
-            return;
+            return loaded;
           }
         }
         // If we get here, something about the link is broken (e.g. the wrapped
@@ -136,14 +180,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       setModel(loaded);
       setIsLinked(false);
-      // Rebuild any due-bill alerts against whatever was just loaded — not awaited,
-      // since it shouldn't hold up the sign-in screen finishing its own transition.
-      rescheduleBillNotifications(loaded).catch(() => {});
+      if (!options.deferNotifications) {
+        // Rebuild any due-bill alerts against whatever was just loaded — not awaited,
+        // since it shouldn't hold up the sign-in screen finishing its own transition.
+        rescheduleBillNotifications(loaded).catch(() => {});
+      }
+      return loaded;
     } catch (e) {
       // Shouldn't normally happen, since this only ever runs after a verified sign-in —
       // but fall back to a blank model instead of crashing, just in case.
-      setModel(defaultModel());
+      const fallback = defaultModel();
+      setModel(fallback);
       setIsLinked(false);
+      return fallback;
     } finally {
       setLoading(false);
     }

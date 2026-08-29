@@ -4,13 +4,20 @@ import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
 import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, ProfileIndexEntry } from '../storage';
+import type { HouseholdModel } from '../types';
 import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
 import { loadProfileCloudBackup } from '../cloudBackup';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData } from '../household';
 import PasswordField from '../components/PasswordField';
 
 type Props = {
-  onSignedIn: (username: string, key: CryptoJS.lib.WordArray) => void;
+  onSignedIn: (
+    username: string,
+    key: CryptoJS.lib.WordArray,
+    initialModel?: HouseholdModel,
+    profile?: ProfileIndexEntry,
+    householdKey?: CryptoJS.lib.WordArray
+  ) => void;
   onGoToCreateProfile: () => void;
 };
 
@@ -115,13 +122,14 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             if (encrypted) {
               const localKey = deriveKey(password, profile.salt);
               let passwordIsCorrect = false;
+              let localModel: HouseholdModel | undefined;
               try {
-                decryptJSON(localKey, encrypted);
+                localModel = decryptJSON<HouseholdModel>(localKey, encrypted);
                 passwordIsCorrect = true;
               } catch (e) {
                 passwordIsCorrect = false;
               }
-              if (passwordIsCorrect) {
+              if (passwordIsCorrect && localModel) {
                 setIsMigrating(true);
                 try {
                   await createFirebaseAccount(email, password);
@@ -131,7 +139,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
                   // verified above.
                   setIsMigrating(false);
                   setBusy(false);
-                  onSignedIn(username, localKey);
+                  onSignedIn(username, localKey, localModel, profile);
                   return;
                 } catch (migrationError: any) {
                   setIsMigrating(false);
@@ -175,6 +183,8 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         }
 
         const key = deriveKey(password, cloudBackup.salt);
+        let restoredModel: HouseholdModel | undefined;
+        let restoredHouseholdKey: CryptoJS.lib.WordArray | undefined;
 
         if (cloudBackup.householdId) {
           // This profile is linked to a shared household — the actual data lives in
@@ -187,7 +197,8 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
             const encryptedHousehold = await loadHouseholdData(cloudBackup.householdId);
             if (!encryptedHousehold) throw new Error('missing household data');
-            decryptJSON(householdKey, encryptedHousehold);
+            restoredModel = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
+            restoredHouseholdKey = householdKey;
           } catch (e) {
             setIsRestoring(false);
             setError('Incorrect username or password.');
@@ -203,7 +214,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             return;
           }
           try {
-            decryptJSON(key, cloudBackup.data);
+            restoredModel = decryptJSON<HouseholdModel>(key, cloudBackup.data);
           } catch (e) {
             setIsRestoring(false);
             setError('Incorrect username or password.');
@@ -219,11 +230,12 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         // with its own local profile entry, same as if it had been created here.
         const newEntry: ProfileIndexEntry = { username, salt: cloudBackup.salt };
         if (cloudBackup.householdId) newEntry.householdId = cloudBackup.householdId;
-        await saveProfilesIndex([...profiles, newEntry]);
+        const updatedProfiles = [...profiles.filter((p) => p.username !== username), newEntry];
+        await saveProfilesIndex(updatedProfiles);
 
         setIsRestoring(false);
         setBusy(false);
-        onSignedIn(username, key);
+        onSignedIn(username, key, restoredModel, newEntry, restoredHouseholdKey);
         return;
       }
 
@@ -249,7 +261,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
         const tryUnwrap = async (
           saltToTry: string
-        ): Promise<{ key: CryptoJS.lib.WordArray } | null> => {
+        ): Promise<{ key: CryptoJS.lib.WordArray; householdKey: CryptoJS.lib.WordArray; model: HouseholdModel } | null> => {
           const candidateKey = deriveKey(password, saltToTry);
 
           let householdKey: CryptoJS.lib.WordArray;
@@ -265,12 +277,11 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
           }
 
           try {
-            decryptJSON(householdKey, encryptedHousehold);
+            const model = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
+            return { key: candidateKey, householdKey, model };
           } catch (e) {
             return null;
           }
-
-          return { key: candidateKey };
         };
 
         let result = await tryUnwrap(profile.salt);
@@ -295,7 +306,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         }
 
         setBusy(false);
-        onSignedIn(username, result.key);
+        onSignedIn(username, result.key, result.model, profile, result.householdKey);
         return;
       }
 
@@ -307,15 +318,16 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         setBusy(false);
         return;
       }
+      let loadedModel: HouseholdModel | undefined;
       try {
-        decryptJSON(key, encrypted);
+        loadedModel = decryptJSON<HouseholdModel>(key, encrypted);
       } catch (e) {
         setError('Incorrect username or password.');
         setBusy(false);
         return;
       }
       setBusy(false);
-      onSignedIn(username, key);
+      onSignedIn(username, key, loadedModel, profile);
     } catch (e) {
       setBusy(false);
       setIsMigrating(false);

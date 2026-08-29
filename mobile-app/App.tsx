@@ -13,6 +13,7 @@ import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { DataProvider, useData } from './src/DataContext';
 import { signOutFirebase } from './src/authFirebase';
+import { rescheduleBillNotifications } from './src/pushNotifications';
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
 
@@ -53,7 +54,7 @@ function AppContent() {
     });
     return unsubscribe;
   }, []);
-  
+
   async function lockIfPinIsSetUp() {
     if (isAutoLockSuppressed()) return;
     const username = usernameRef.current;
@@ -164,11 +165,26 @@ function AppContent() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
       <SignInScreen
-        onSignedIn={(username, key) => {
+        onSignedIn={(username, key, initialModel, profile, householdKey) => {
           setCurrentUsername(username);
           setDerivedKey(key);
-          loadModel(username, key);
+          loadModel(
+            username,
+            key,
+            {
+              profile,
+              initialModel,
+              householdId: profile?.householdId,
+              householdKey,
+            },
+            { deferNotifications: true }
+          ).catch(() => {});
           setScreen('home');
+          if (initialModel) {
+            setTimeout(() => {
+              rescheduleBillNotifications(initialModel).catch(() => {});
+            }, 0);
+          }
         }}
         onGoToCreateProfile={() => setScreen('createProfile')}
       />
