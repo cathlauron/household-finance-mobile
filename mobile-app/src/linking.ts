@@ -63,6 +63,9 @@ import { getCurrentFirebaseUser } from './authFirebase';
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
 
+// Keep in sync with firestore.rules: linkCodes/{code} can only be read for 15 minutes.
+export const LINK_CODE_TTL_MS = 15 * 60 * 1000;
+
 function randomCode(bytes: Uint8Array): string {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i++) {
@@ -329,7 +332,8 @@ export async function finishHostLink(
 // (or if the screen unmounts) so the listener doesn't run forever.
 export function subscribeToLinkCode(
   code: string,
-  onFinished: (householdId: string) => void
+  onFinished: (householdId: string) => void,
+  onExpired?: () => void
 ): () => void {
   const unsubscribe = onSnapshot(
     doc(db, 'linkCodes', code),
@@ -344,6 +348,7 @@ export function subscribeToLinkCode(
       const message = String((error as Error)?.message || '');
       const isExpectedExpiry = /permission|denied|missing or insufficient permissions/i.test(message);
       if (isExpectedExpiry) {
+        onExpired?.();
         return;
       }
       console.error('subscribeToLinkCode listener error:', error);

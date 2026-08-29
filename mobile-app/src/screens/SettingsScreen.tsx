@@ -19,7 +19,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
-import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, subscribeToLinkCode } from '../linking';
+import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, subscribeToLinkCode, LINK_CODE_TTL_MS } from '../linking';
 import type { JoinChoice } from '../linking';
 import { loadPendingHostLink, clearPendingHostLink } from '../storage';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
@@ -132,6 +132,21 @@ export default function SettingsScreen() {
   const [linkSecretHex, setLinkSecretHex] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErrorMsg, setLinkErrorMsg] = useState('');
+  const linkCodeExpiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearLinkCodeExpiryTimer() {
+    if (linkCodeExpiryTimerRef.current) {
+      clearTimeout(linkCodeExpiryTimerRef.current);
+      linkCodeExpiryTimerRef.current = null;
+    }
+  }
+
+  function handleLinkCodeExpired() {
+    clearLinkCodeExpiryTimer();
+    setLinkCode('');
+    setLinkSecretHex('');
+    setLinkErrorMsg('This code expired — generate a new one.');
+  }
 
   // Restores an in-progress "start linking" (code + secret) if this screen opens and one
   // was left unfinished — e.g. the app was closed, the phone restarted, or (as in testing)
@@ -481,8 +496,10 @@ export default function SettingsScreen() {
     setLinkBusy(true);
     try {
       const result = await startHouseholdLink(username, model);
+      clearLinkCodeExpiryTimer();
       setLinkCode(result.code);
       setLinkSecretHex(result.secretHex);
+      linkCodeExpiryTimerRef.current = setTimeout(handleLinkCodeExpired, LINK_CODE_TTL_MS);
     } catch (e) {
       setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
     }
@@ -493,6 +510,7 @@ export default function SettingsScreen() {
   // original code timed out before the other phone finished joining.
   async function handleStartOverLinking() {
     if (username) await clearPendingHostLink(username);
+    clearLinkCodeExpiryTimer();
     setLinkCode('');
     setLinkSecretHex('');
     setHostFinishMsg('');
@@ -517,6 +535,7 @@ export default function SettingsScreen() {
       try {
         const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey, expectedUid);
         if (active && result.status === 'done') {
+          clearLinkCodeExpiryTimer();
           setLinkCode('');
           setLinkSecretHex('');
           setHostFinishMsg('Linked! Loading your shared data…');
@@ -529,9 +548,10 @@ export default function SettingsScreen() {
       }
       hostFinishInFlightRef.current = false;
       if (active) setHostFinishBusy(false);
-    });
+    }, handleLinkCodeExpired);
     return () => {
       active = false;
+      clearLinkCodeExpiryTimer();
       unsubscribe();
     };
   }, [linkCode, linkSecretHex, username, loadModel]);
