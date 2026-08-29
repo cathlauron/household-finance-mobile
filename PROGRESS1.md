@@ -43,6 +43,7 @@ Security hardening on household linking (link-code lifecycle)
 - PROGRESS1.md lives at the REPO ROOT (`/workspaces/household-finance-mobile/PROGRESS1.md`), NOT inside `mobile-app/` where PROGRESS.md and most code live. Confirmed this session after some confusion — `cd` to the repo root, or use the full path, whenever reading/writing this file from the Codespace terminal. All app code changes (src/, firestore.rules, etc.) still happen from inside `mobile-app/` as before.
 - When running `grep`/`cat` on app source files from inside `mobile-app/`, do NOT prefix paths with `mobile-app/` again (e.g. use `src/household.ts`, not `mobile-app/src/household.ts`) — the terminal prompt shows which directory you're already in; check it before assuming the path.
 - Cloud-restore sign-in (linked and unlinked) now always overwrites any existing local profile-index entry for the signed-in username, rather than appending. This is a permanent behavior change, not a one-off patch.
+- A session-level cache of the derived encryption key/profile metadata (to speed up fresh cold sign-ins beyond the A.7.3 duplicate-decrypt fix) was explicitly considered and NOT adopted. The person's actual day-to-day slowness is background/foreground re-entry, already solved by the existing PIN quick-unlock feature — the remaining cold-sign-in PBKDF2 cost is accepted as intentional. Revisit only if a specific, recurring cold-sign-in pain point comes up again.
 
 --- PLANNING SESSION DECISIONS ---
 
@@ -66,7 +67,7 @@ Security hardening on household linking (link-code lifecycle)
 - A.7.8 ("PIN option not working," as originally phrased) is resolved into A.7.0 — confirmed to be the mobile app's existing Phase 1 PIN quick-unlock feature, which regressed at some point during the linking work (A.2–A.6-era changes), not a separate/new feature request.
 - A.7.6 (raise the link limit from 2 to up to 5 accounts) is understood to be a bigger lift than the rest of A.7 — it changes the shape of linking from pairwise ("link with one other profile") to "join a household," and will likely touch Firestore rules, the merge/keep-mine/keep-theirs UI, and the core linking flow itself. Sequenced last within A.7 for that reason.
 - A.7.2 (eye icon on password fields) is scoped as one reusable component applied everywhere a password/passphrase is typed: sign-in, create-profile, change-password, and the link-with-passphrase field — not four separate implementations.
-- A.7.3 (faster sign-in) explicitly calls for profiling the real sign-in path before optimizing anything — some of the current slowness (PBKDF2 at 200,000 iterations) is intentional security cost, not a bug, and should not be reduced without a separate explicit conversation.
+- A.7.3 (faster sign-in) explicitly calls for profiling the real sign-in path before optimizing anything — the actual current value is 100,000 PBKDF2 iterations, not 200,000 as previously noted here; that cost is intentional security work and was not weakened. This item was completed by profiling first and then removing duplicate decrypt/model reload work while leaving the PBKDF2 step untouched.
 - **Boomer/Gen Z/Millennial onboarding research (new, folded into Phase B):** flagged specifically for the security-setup step within onboarding (B.2b-security) — biometric-first with PIN as a clearly labeled fallback, never a password-creation screen at this step, numeric-only keypad, and a visible step counter throughout onboarding. Sequenced to happen after A.7.0 fixes the underlying PIN regression, not before, so onboarding isn't built around a currently-broken feature.
 - **Date picker work (new, folded into Phase B as B.6a/B.6b):** a single reusable `<DateField>` component using `@react-native-community/datetimepicker`, rolled out first to Transactions and Bills (B.6a), then to every remaining screen with a date field — Debts, Loans, Income, Savings Goals, Events, Travel, and the Calendar tab's "balance as of" date (B.6b).
 - **Competitor-inspired features (new, folded into Phase B, sourced from Simplifi/Monarch/Rocket Money-style research):** "Left to Spend" hero stat (B.7), category watchlists (B.8), Yours/Mine/Ours labels + transaction comments (B.9), refund tracker (B.10), weekly spending recap push notification (B.11), expanded FI/retirement calculator with Social Security estimate + multiple accounts + scenario comparison (B.12), report filtering by tag (B.13), and a lightweight subscription cancel-reminder — flag + reminder + link-out only, explicitly NOT automated cancellation (B.14).
@@ -104,7 +105,7 @@ Security hardening on household linking (link-code lifecycle)
    | ~~A.7.0~~ | ~~PIN quick-unlock regression~~ | ✅ Done | Confirmed a false alarm, not a real bug — see ✅ Done section. Bonus: added an adjustable auto-lock timer to Settings while investigating. |
    | ~~A.7.1~~ | ~~Change password broken after linking~~ | ✅ Done | Re-tested and confirmed fixed on both unlinked and linked profiles, both phones. |
   | ~~A.7.2~~ | ~~Eye icon on all password fields~~ | ✅ Done | One reusable `PasswordField` component, applied to sign-in, create-profile, and change-password (6 fields total). |
-   | A.7.3 | Faster sign-in | ⚡ Performance | Profile the sign-in path first — some slowness (PBKDF2, 200k iterations) is intentional security, not a bug; only optimize what's actually slow. |
+   | ~~A.7.3~~ | ~~Faster sign-in~~ | ✅ Done | Profiled first, then eliminated duplicate decrypt/model-reload + duplicate profile-index read + deferred notification scheduling. PBKDF2 itself left untouched. Confirmed correct on-device (normal, cloud-restore, and linked sign-in) — perceived speed unchanged, which was expected since the eliminated work was a smaller share of total time than PBKDF2 itself. |
    | A.7.4 | Expired link code shouldn't just sit there | ✨ UX | Once expired/used, host screen clears the code automatically rather than leaving a dead code visible. |
    | A.7.5 | 60-second cooldown before generating a new code | ✨ UX | Visible countdown, same session as A.7.4 (same screen area). |
    | A.7.6 | Allow up to 5 linked accounts | 🔧 Feature | Biggest lift — becomes "join a household" rather than pairwise linking; touches Firestore rules, the merge/keep-mine/keep-theirs UI, and the linking flow itself. |
@@ -168,6 +169,21 @@ Files in the repo (relevant to this phase)
 - mobile-app/src/screens/SignInScreen.tsx, CreateProfileScreen.tsx, SettingsScreen.tsx — UPDATED this session: swapped 6 raw `TextInput` password fields over to `PasswordField`.
 - mobile-app/package.json / package-lock.json — UPDATED this session: added `@expo/vector-icons` dependency.
 
+## Session — 2026-08-29: A.7.3 (faster sign-in) completed — profiled, fixed duplicate decrypt, session-cache idea explicitly deferred
+
+**What was done:** Used the Claude+Copilot investigate-then-approve workflow. Copilot traced the full sign-in flow (SignInScreen.tsx → authFirebase.ts → DataContext.tsx → App.tsx) and found the real bottleneck-adjacent issue: the app validates the password by decrypting profile/household data during sign-in, then DataContext.loadModel() immediately re-fetches and re-decrypts the exact same data — genuine duplicate work, separate from the intentional PBKDF2 cost.
+
+**Approved and implemented (PBKDF2 iteration count/algorithm explicitly left untouched):**
+- SignInScreen.tsx: each sign-in branch (legacy migration, cloud-restore, linked-profile, unlinked-profile) now keeps its already-validated derived key, decrypted model, profile entry, and household key, passing this through onSignedIn(...) as a "bootstrap" payload instead of forcing a second fetch+decrypt.
+- DataContext.tsx: loadModel() now accepts this bootstrap payload and reuses it when present, instead of re-reading the profiles index and re-decrypting from scratch.
+- App.tsx: onSignedIn callback now passes deferNotifications: true, so rescheduleBillNotifications() runs after the UI has already transitioned to the home screen rather than blocking sign-in.
+
+**Explicitly NOT implemented:** a session-level cache of the derived key/profile metadata across app restarts. Discussed in a dedicated follow-up conversation about the security tradeoff (a cached key surviving a full sign-out would weaken the "nothing useful on disk without the real passphrase" property). Decision: not pursued — the person confirmed their actual day-to-day friction is background/foreground re-entry, which the existing PIN quick-unlock feature already handles; the slow path they were testing was specifically cold/fresh sign-in, and once the PBKDF2 tradeoff was explained, the person confirmed they're satisfied leaving that as intentional cost.
+
+**Verification:** `npx tsc --noEmit` clean. Tested on-device across all three sign-in paths (normal, cloud-restore, and linked-profile) — confirmed no data missing or incorrect in any case. Perceived sign-in speed described as "felt about the same" — expected, since the eliminated duplicate work was a smaller share of total time than the PBKDF2 step itself, which was intentionally left unchanged.
+
+**Files touched:** SignInScreen.tsx, DataContext.tsx, App.tsx
+
 ## Session — 2026-08-29: Fixed stale local profile entry blocking cloud-restore on linked accounts
 
 **What happened:** A user testing sign-in on a new device for an already-linked account ("cas", linked to "cath") found the account showed as unlinked after cloud-restore sign-in, and data logged on that device wasn't syncing to the other linked device. Signing out and back in did not fix it.
@@ -190,7 +206,7 @@ This makes cloud-restore self-healing — even if a device has a stale/broken lo
 **What was done:** Re-tested change-password on a linked profile per the person's report that it now worked. Confirmed: host changed password, signed out fully, signed back in successfully with the new password; joiner phone still signs in normally with its own unchanged password. No code changes made this session — the earlier both-branch `DataContext.tsx` patch is now confirmed to have resolved this.
 
 ▶️ Next step
-- A.7.2 is done. Next open item in Checkpoint A.7 is **A.7.3 (faster sign-in)**.
+- A.7.2 is done. Next open item in Checkpoint A.7 is **A.7.4 (expired link code shouldn't just sit there)**.
 
 ## 📅 Session entry — Expo Go SDK mismatch fix + duplicate-bill-ID / stale-listener bug fixes via Claude+Copilot workflow (this session)
 
