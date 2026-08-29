@@ -30,6 +30,7 @@ import {
 } from './storage';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup } from './cloudBackup';
+import { sanitizeModelIds } from './mergeModels';
 import {
   loadWrappedHouseholdKey,
   unwrapHouseholdKey,
@@ -110,7 +111,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
           const encryptedHousehold = await loadHouseholdData(householdId);
           if (encryptedHousehold) {
-            const loaded = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
+            const loaded = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, encryptedHousehold));
             householdIdRef.current = householdId;
             householdKeyRef.current = householdKey;
             setModel(loaded);
@@ -131,7 +132,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!encrypted) {
         loaded = defaultModel();
       } else {
-        loaded = decryptJSON<HouseholdModel>(key, encrypted);
+        loaded = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
       }
       setModel(loaded);
       setIsLinked(false);
@@ -149,16 +150,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   async function saveModel(updatedModel: HouseholdModel) {
-    setModel(updatedModel);
+    const sanitizedModel = sanitizeModelIds(updatedModel);
+    setModel(sanitizedModel);
     const username = usernameRef.current;
     if (!username) return;
 
     if (householdIdRef.current && householdKeyRef.current) {
       // Linked profile: save to the shared household document instead of
       // this profile's own personal storage.
-      const encrypted = await encryptJSON(householdKeyRef.current, updatedModel);
+      const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
       await saveHouseholdData(householdIdRef.current, encrypted);
-      rescheduleBillNotifications(updatedModel).catch(() => {});
+      rescheduleBillNotifications(sanitizedModel).catch(() => {});
       // Checkpoint A.5 — keep this profile's cloud backup metadata (salt + which
       // household it's linked to) fresh, so signing in on a brand-new device can find
       // its way to the right shared household. No personal `data` to send here — a
@@ -174,11 +176,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const key = keyRef.current;
     if (!key) return;
-    const encrypted = await encryptJSON(key, updatedModel);
+    const encrypted = await encryptJSON(key, sanitizedModel);
     await saveEncryptedProfileData(username, encrypted);
     // Keep scheduled alerts in sync with whatever just changed (a new bill, a paid
     // bill, a changed due date, or the notification setting itself).
-    rescheduleBillNotifications(updatedModel).catch(() => {});
+    rescheduleBillNotifications(sanitizedModel).catch(() => {});
     // Checkpoint 9.2b-i: also keep an encrypted backup of this profile's data in the
     // cloud, so a future "link with another profile" screen has something to compare
     // against — and as a side benefit, a real backup if this phone is lost. Not

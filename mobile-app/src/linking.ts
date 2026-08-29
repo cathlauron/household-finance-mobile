@@ -341,6 +341,11 @@ export function subscribeToLinkCode(
       }
     },
     (error) => {
+      const message = String((error as Error)?.message || '');
+      const isExpectedExpiry = /permission|denied|missing or insufficient permissions/i.test(message);
+      if (isExpectedExpiry) {
+        return;
+      }
       console.error('subscribeToLinkCode listener error:', error);
     }
   );

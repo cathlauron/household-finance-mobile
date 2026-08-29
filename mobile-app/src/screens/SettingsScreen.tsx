@@ -505,6 +505,8 @@ export default function SettingsScreen() {
       try {
         const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey, expectedUid);
         if (active && result.status === 'done') {
+          setLinkCode('');
+          setLinkSecretHex('');
           setHostFinishMsg('Linked! Loading your shared data…');
           await loadModel(username, personalKey);
           unsubscribe();
@@ -520,7 +522,7 @@ export default function SettingsScreen() {
       active = false;
       unsubscribe();
     };
-  }, [linkCode, linkSecretHex, username]);
+  }, [linkCode, linkSecretHex, username, loadModel]);
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
   // says so and lets you try again after checking with them. If it has, this phone

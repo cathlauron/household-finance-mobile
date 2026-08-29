@@ -30,6 +30,63 @@ function normalizedName(name: string | undefined): string {
   return (name || '').trim().toLowerCase();
 }
 
+function makeUniqueId(existing: Set<string>, prefix: string, index: number): string {
+  let candidate = `${prefix}-${index}`;
+  let attempt = 1;
+  while (existing.has(candidate)) {
+    candidate = `${prefix}-${index}-${attempt}`;
+    attempt += 1;
+  }
+  return candidate;
+}
+
+function sanitizeIdList<T extends { id: string }>(items: T[] | undefined, prefix: string): T[] {
+  const normalized: T[] = (items ?? []).map((item) => ({ ...item }));
+  const seen = new Set<string>();
+  return normalized.map((item, index) => {
+    const raw = item.id && item.id.trim() ? item.id : makeUniqueId(seen, prefix, index);
+    if (!seen.has(raw)) {
+      seen.add(raw);
+      return item;
+    }
+
+    const uniqueId = makeUniqueId(seen, prefix, index);
+    seen.add(uniqueId);
+    return { ...item, id: uniqueId } as T;
+  });
+}
+
+export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
+  return {
+    ...model,
+    people: sanitizeIdList(model.people, 'person'),
+    income: sanitizeIdList(model.income, 'income'),
+    bills: sanitizeIdList(model.bills, 'bill'),
+    debts: sanitizeIdList(model.debts, 'debt'),
+    loans: sanitizeIdList(model.loans, 'loan'),
+    savingsGoals: sanitizeIdList(model.savingsGoals, 'goal'),
+    balanceAccounts: {
+      ...model.balanceAccounts,
+      cash: sanitizeIdList(model.balanceAccounts.cash, 'cash-account'),
+      debit: sanitizeIdList(model.balanceAccounts.debit, 'debit-account'),
+      credit: sanitizeIdList(model.balanceAccounts.credit, 'credit-account'),
+      investment: sanitizeIdList(model.balanceAccounts.investment, 'investment-account'),
+      property: sanitizeIdList(model.balanceAccounts.property, 'property-account'),
+      vehicle: sanitizeIdList(model.balanceAccounts.vehicle, 'vehicle-account'),
+    },
+    manualTransactions: sanitizeIdList(model.manualTransactions, 'txn'),
+    categories: sanitizeIdList(model.categories, 'cat'),
+    categoryBudgets: sanitizeIdList(model.categoryBudgets, 'budget'),
+    groceries: sanitizeIdList(model.groceries ?? [], 'grocery'),
+    groceryCalculator: sanitizeIdList(model.groceryCalculator ?? [], 'grocery-calc'),
+    travel: sanitizeIdList(model.travel ?? [], 'trip'),
+    events: sanitizeIdList(model.events ?? [], 'event'),
+    yearlyGoals: sanitizeIdList(model.yearlyGoals ?? [], 'ygoal'),
+    payees: sanitizeIdList(model.payees ?? [], 'payee'),
+    categorizationRules: sanitizeIdList(model.categorizationRules ?? [], 'rule'),
+  };
+}
+
 // Combines two lists of {name}-having items, matching by normalized name.
 // Anything from listA is always kept; anything from listB whose name
 // already exists in listA is skipped (listA's version wins on a clash).
@@ -107,7 +164,7 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     }),
   ];
 
-  return {
+  const mergedModel: HouseholdModel = {
     settings: a.settings,
     people: mergedPeople,
     income: mergedIncome,
@@ -136,4 +193,6 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     payees: mergedPayees,
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
   };
+
+  return sanitizeModelIds(mergedModel);
 }
