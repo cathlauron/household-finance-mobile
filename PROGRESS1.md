@@ -115,7 +115,8 @@ Security hardening on household linking (link-code lifecycle)
 
    (A.7.8 "PIN option not working" is resolved into A.7.0 above — confirmed as the mobile app's Phase 1 PIN feature, broken during linking work, not a separate item.)
 
-5. Once A.5, A.6, and A.7 are all confirmed stable on real devices: **pick multi-device "active sessions" back up** (design already scoped in the decisions section above), OR move straight into Phase B depending on what feels like the better next use of a session at that point — revisit with the person then.
+5. **Once A.7.6 and A.7.7 are both done, run a full Claude+Copilot code-health rundown before moving on** — Copilot investigates only (no edits), reporting bugs, stale/unused files, and unnecessary/dead lines across the codebase; findings get pasted back to Claude for review, and only what's actually worth fixing gets acted on (not everything a linter-style pass flags needs to be touched). Deliberately sequenced AFTER A.7.6/A.7.7 rather than now, since those two features still have significant work left in the same linking-related files (Firestore rules, merge/keep-mine/keep-theirs UI, linking.ts, SettingsScreen.tsx) that a cleanup pass now could get undone or made stale by.
+6. Once A.5, A.6, A.7, and the code-health rundown above are all done: **pick multi-device "active sessions" back up** (design already scoped in the decisions section above), OR move straight into Phase B depending on what feels like the better next use of a session at that point — revisit with the person then.
 6. **Phase B — UI/UX Polish**, expanded scope agreed across planning sessions (full detail in Decisions above). Checkpoint order when this phase starts:
 
    | Order | Item | Source |
