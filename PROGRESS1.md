@@ -34,6 +34,8 @@ Security hardening on household linking (link-code lifecycle)
 
 - **A.7.1 (change password broken after linking) — CONFIRMED FIXED, re-tested and verified.** Host changed password on a linked profile, signed out fully, signed back in with the new password successfully. Joiner phone confirmed still able to sign in normally with its own unchanged password. The both-branch `changePassword` patch applied to `DataContext.tsx` in an earlier session (see prior session entry) is now confirmed to have actually fixed the linked-profile path, not just the unlinked one — the earlier failed test likely caught a bad intermediate state or an already-superseded build.
 
+- **A.7.2 (eye icon on password fields) — CONFIRMED DONE.** New shared `src/components/PasswordField.tsx` component (Ionicons eye/eye-off toggle, wraps whatever `style` is passed in) applied to all 6 real password fields across 3 files: `SignInScreen.tsx` (1), `CreateProfileScreen.tsx` (2), `SettingsScreen.tsx` (3, the change-password fields). PIN screens (`PinUnlockScreen.tsx`, `SetPinScreen.tsx`) intentionally left untouched — different, numeric-only UX per the A.7.2 scope decision. `@expo/vector-icons` was NOT already installed in this project (unusual for Expo, but confirmed via `package.json`) — added via `npx expo install @expo/vector-icons` rather than plain npm install, so the version matches SDK 54. `npx tsc --noEmit` clean; confirmed working on-device.
+
 📌 Decisions made
 - **Claude + GitHub Copilot collaborative bug-fixing workflow — ADOPTED, going forward.** For bug fixes (not full feature builds), the process is: Claude investigates/scopes the issue and writes a "no edits yet, just explain your plan" prompt for Copilot → person pastes Copilot's plan back to Claude for review → Claude either approves or corrects the plan → person sends a final "go ahead" prompt to Copilot → Copilot implements → person pastes Copilot's change summary + `git status`/`git diff --stat` back to Claude for a sanity check before committing. Reasoning: Claude has the full project context (what's already built, what's planned, prior decisions) but no direct file access; Copilot has direct file access but no project memory. This combination worked well for the duplicate-bill-ID + stale-listener fix this session and is the default approach going forward, chosen partly to minimize Copilot credit usage (investigation/planning happens with Claude first, Copilot is only used for the actual edit).
 - Checkpoint A.1 (Firebase Auth approach) is DECIDED: email + password via Firebase Authentication, layered on top of (not replacing) the existing passphrase/encryption system.
@@ -86,6 +88,7 @@ Security hardening on household linking (link-code lifecycle)
 - **New, from the planning session:** parking multi-device sessions (see decision above) means A.5's new-device sign-in ships with no way to see/revoke other active sessions. Documented as an accepted, non-new tradeoff — not a bug, but worth remembering when A.5 is being tested/reviewed.
 - **A.7.0 (PIN quick-unlock) — RESOLVED, moved to ✅ Done.** Turned out to be a false alarm (test accounts without a PIN set up), not a real regression — see the ✅ Done entry above for the confirmed root cause.
 - **A.7.1 — RESOLVED, moved to ✅ Done.** Re-tested on a linked profile: password change → sign out → sign in with new password all succeeded, joiner phone unaffected. No longer an open issue — the earlier lockout was not reproducible on retest.
+- **New gotcha for future sessions:** don't assume `@expo/vector-icons` (or any "ships with Expo by default" package) is actually present — check with `grep` on `package.json` first. This project didn't have it despite being a standard Expo template.
 
 ▶️ Next step
 
@@ -98,7 +101,7 @@ Security hardening on household linking (link-code lifecycle)
    |---|---|---|---|
    | ~~A.7.0~~ | ~~PIN quick-unlock regression~~ | ✅ Done | Confirmed a false alarm, not a real bug — see ✅ Done section. Bonus: added an adjustable auto-lock timer to Settings while investigating. |
    | ~~A.7.1~~ | ~~Change password broken after linking~~ | ✅ Done | Re-tested and confirmed fixed on both unlinked and linked profiles, both phones. |
-   | A.7.2 | Eye icon on all password fields | ✨ UI | One reusable component, applied to sign-in, create-profile, change-password, and the link-with-passphrase field. |
+  | ~~A.7.2~~ | ~~Eye icon on all password fields~~ | ✅ Done | One reusable `PasswordField` component, applied to sign-in, create-profile, and change-password (6 fields total). |
    | A.7.3 | Faster sign-in | ⚡ Performance | Profile the sign-in path first — some slowness (PBKDF2, 200k iterations) is intentional security, not a bug; only optimize what's actually slow. |
    | A.7.4 | Expired link code shouldn't just sit there | ✨ UX | Once expired/used, host screen clears the code automatically rather than leaving a dead code visible. |
    | A.7.5 | 60-second cooldown before generating a new code | ✨ UX | Visible countdown, same session as A.7.4 (same screen area). |
@@ -159,14 +162,16 @@ Files in the repo (relevant to this phase)
 - mobile-app/src/autoLock.ts — UPDATED this session: added `AUTO_LOCK_OPTIONS` and a subscribe/notify pattern (`subscribeToAutoLockMinutes`) so a settings change applies live.
 - mobile-app/App.tsx — UPDATED this session: subscribes to auto-lock changes and resets the idle timer immediately when the setting changes.
 - mobile-app/src/screens/SettingsScreen.tsx — UPDATED this session: new "Auto-lock" section added under Security (1/5/15/30 min picker, styled to match the existing appearance-mode picker).
-
+- mobile-app/src/components/PasswordField.tsx — NEW this session: shared password/passphrase input with eye-icon show/hide toggle.
+- mobile-app/src/screens/SignInScreen.tsx, CreateProfileScreen.tsx, SettingsScreen.tsx — UPDATED this session: swapped 6 raw `TextInput` password fields over to `PasswordField`.
+- mobile-app/package.json / package-lock.json — UPDATED this session: added `@expo/vector-icons` dependency.
 
 ## 📅 Session entry — A.7.1 re-tested and confirmed fixed
 
 **What was done:** Re-tested change-password on a linked profile per the person's report that it now worked. Confirmed: host changed password, signed out fully, signed back in successfully with the new password; joiner phone still signs in normally with its own unchanged password. No code changes made this session — the earlier both-branch `DataContext.tsx` patch is now confirmed to have resolved this.
 
 ▶️ Next step
-- A.7.1 is done. Next open item in Checkpoint A.7 is **A.7.2 (eye icon on all password fields)**.
+- A.7.2 is done. Next open item in Checkpoint A.7 is **A.7.3 (faster sign-in)**.
 
 ## 📅 Session entry — Expo Go SDK mismatch fix + duplicate-bill-ID / stale-listener bug fixes via Claude+Copilot workflow (this session)
 
