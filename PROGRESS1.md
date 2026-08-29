@@ -324,6 +324,7 @@ No further code changes were made this session past this point — the person as
 - Committed + pushed this session's changes to `autoLock.ts`, `App.tsx`, and `SettingsScreen.tsx`.
 
 ▶️ Next step
+- **⚠️ SUPERSEDED — leftover from an earlier session, kept for history only.** A.7.1 was completed and re-confirmed fixed in later sessions (see ✅ Done section). A.7.6 is the actual next open item — see the ▶️ Next step section at the top of this file for the current, accurate status.
 - A.7.0 is done. Next open item in Checkpoint A.7 is **A.7.1 (change password broken after linking)** — still confirmed broken on the linked-profile path only (see ⚠️ Known issues for full detail); needs `DataContext.tsx`'s linked-profile `changePassword` branch re-read top to bottom before changing anything.
 
 ENDOFFILE
