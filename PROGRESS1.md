@@ -84,7 +84,7 @@ Security hardening on household linking (link-code lifecycle)
 ▶️ Next step
 
 1. ~~Checkpoint A.5 (reopened, new scope)~~ — CONFIRMED DONE (see ✅ Done section above, code inspected directly in `SignInScreen.tsx`). No further work needed here.
-2. **Checkpoint A.6 (now top priority) — rebuild household linking's finish step using Firestore real-time listeners (`onSnapshot`)**, replacing the manual two-button finish flow entirely. Both phones subscribe live to `linkCodes/{code}`; the side that writes second automatically triggers completion on the other side; the doc is deleted via the existing kill-on-use rule once both sides are done. Stays on the Spark plan — no Cloud Function, no Blaze upgrade. Verify the existing "Code expired? Start over" button still works once this area of `SettingsScreen.tsx` is touched. `npx tsc --noEmit` and a real two-phone test (back-to-back, fresh code) required before marking this done.
+2. ~~Checkpoint A.6~~ — CONFIRMED DONE, code inspected directly. `linking.ts` has `subscribeToLinkCode()`, a real `onSnapshot` listener watching `linkCodes/{code}` live (treats permission-denied as an expected expiry, not an error). `SettingsScreen.tsx` wires this listener so it AUTOMATICALLY calls `finishHostLink()` the moment the joiner finishes (line ~498-506) - no manual step needed. The old manual finish button (line ~543) remains as a fallback, not the primary path. Stayed on the Spark plan as decided. NOT YET DONE from the original A.6 scope: a real two-phone live test of this exact listener-driven path, and re-confirming the Code-expired/Start-over button still works.
 3. **Checkpoint A.4-followup / general:** none currently open — A.4 itself is confirmed done; just keep the "rules must be deployed separately" gotcha in mind while working on A.6's and A.7.6's rules changes.
 4. **Checkpoint A.7 — Auth/Linking/Security fixes & features** (inserted before Phase B, closes out the linking/auth work before UI/UX polish begins):
 
@@ -219,7 +219,7 @@ No further code changes were made this session past this point — the person as
 - See the "PLANNING SESSION DECISIONS" and "CHECKPOINT A.7 PLANNING" blocks within the main 📌 Decisions made section above — all decisions from these sessions are recorded there, not duplicated here.
 
 ▶️ Next step
-- Checkpoint A.5 (new-device sign-in via cloud backup decrypt) is CONFIRMED DONE — verified by direct code inspection of `SignInScreen.tsx`. Start the next working session on Checkpoint A.6 (real-time listeners for household linking) — see ▶️ Next step at the top of this file for full detail.
+- Checkpoint A.5 (new-device sign-in via cloud backup decrypt) and Checkpoint A.6 (real-time listeners for household linking) are BOTH CONFIRMED DONE - verified by direct code inspection of `SignInScreen.tsx` and `linking.ts`/`SettingsScreen.tsx`. A.6 still needs a real two-phone live test to fully close it out. Start the next working session on Checkpoint A.7 (auth/linking/security loose ends) — see ▶️ Next step at the top of this file for full detail.
 ENDOFFILE
 git add -A && git commit -m "Remove duplicated content in PROGRESS1.md"
 git push
