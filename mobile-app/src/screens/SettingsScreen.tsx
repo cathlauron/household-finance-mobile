@@ -145,6 +145,7 @@ export default function SettingsScreen() {
     clearLinkCodeExpiryTimer();
     setLinkCode('');
     setLinkSecretHex('');
+    setHostFinishMsg('');
     setLinkErrorMsg('This code expired — generate a new one.');
   }
 
@@ -499,6 +500,7 @@ export default function SettingsScreen() {
       clearLinkCodeExpiryTimer();
       setLinkCode(result.code);
       setLinkSecretHex(result.secretHex);
+      setHostFinishMsg('');
       linkCodeExpiryTimerRef.current = setTimeout(handleLinkCodeExpired, LINK_CODE_TTL_MS);
     } catch (e) {
       setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
