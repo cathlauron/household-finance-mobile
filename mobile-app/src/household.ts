@@ -88,6 +88,7 @@ export async function createHouseholdData(householdId: string, encryptedPayload:
     data: encryptedPayload,
     updatedAt: Date.now(),
     members: [uid],
+    owner: uid,
   });
 }
 
@@ -125,6 +126,19 @@ export async function removeMemberFromHousehold(householdId: string): Promise<vo
   const uid = requireCurrentUid();
   await updateDoc(doc(db, 'households', householdId), {
     members: arrayRemove(uid),
+  });
+}
+
+// Removes the CURRENTLY signed-in owner and assigns ownership to an existing
+// member in the same atomic Firestore update.
+export async function leaveHouseholdAndTransferOwnership(
+  householdId: string,
+  newOwnerUid: string
+): Promise<void> {
+  const uid = requireCurrentUid();
+  await updateDoc(doc(db, 'households', householdId), {
+    members: arrayRemove(uid),
+    owner: newOwnerUid,
   });
 }
 
