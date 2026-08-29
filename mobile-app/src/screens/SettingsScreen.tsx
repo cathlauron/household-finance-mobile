@@ -24,6 +24,7 @@ import type { JoinChoice } from '../linking';
 import { loadPendingHostLink, clearPendingHostLink } from '../storage';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
+import PasswordField from '../components/PasswordField';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -888,36 +889,25 @@ export default function SettingsScreen() {
         </Text>
 
         <Text style={styles.inputLabel}>Current password</Text>
-        <TextInput
+        <PasswordField
           style={styles.input}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="Enter your current password"
-          placeholderTextColor={colors.inkFaint}
           value={currentPassInput}
           onChangeText={setCurrentPassInput}
+          placeholder="Enter your current password"
         />
-
         <Text style={styles.inputLabel}>New password</Text>
-        <TextInput
+        <PasswordField
           style={styles.input}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="At least 6 characters"
-          placeholderTextColor={colors.inkFaint}
           value={newPass1Input}
           onChangeText={setNewPass1Input}
+          placeholder="At least 6 characters"
         />
-
         <Text style={styles.inputLabel}>Confirm new password</Text>
-        <TextInput
+        <PasswordField
           style={styles.input}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="Type it again"
-          placeholderTextColor={colors.inkFaint}
           value={newPass2Input}
           onChangeText={setNewPass2Input}
+          placeholder="Type it again"
         />
 
         {!!passChangeMsg && (

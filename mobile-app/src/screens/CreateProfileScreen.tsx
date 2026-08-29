@@ -6,6 +6,7 @@ import { generateSalt, deriveKey, encryptJSON } from '../encryption';
 import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '../storage';
 import { defaultModel } from '../defaultModel';
 import { createFirebaseAccount } from '../authFirebase';
+import PasswordField from '../components/PasswordField';
 
 type Props = {
   onProfileCreated: (username: string, key: CryptoJS.lib.WordArray) => void;
@@ -124,23 +125,18 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       />
 
       <Text style={styles.label}>Password</Text>
-      <TextInput
+      <PasswordField
         style={styles.input}
         value={password1}
         onChangeText={setPassword1}
         placeholder="At least 6 characters"
-        secureTextEntry
-        autoCapitalize="none"
       />
-
       <Text style={styles.label}>Confirm password</Text>
-      <TextInput
+      <PasswordField
         style={styles.input}
         value={password2}
         onChangeText={setPassword2}
         placeholder="Type it again"
-        secureTextEntry
-        autoCapitalize="none"
       />
 
       {!!error && <Text style={styles.error}>{error}</Text>}

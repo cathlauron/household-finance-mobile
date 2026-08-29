@@ -7,6 +7,7 @@ import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, 
 import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
 import { loadProfileCloudBackup } from '../cloudBackup';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData } from '../household';
+import PasswordField from '../components/PasswordField';
 
 type Props = {
   onSignedIn: (username: string, key: CryptoJS.lib.WordArray) => void;
@@ -353,13 +354,11 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       />
 
       <Text style={styles.label}>Password</Text>
-      <TextInput
+      <PasswordField
         style={styles.input}
         value={password}
         onChangeText={setPassword}
         placeholder="••••••••"
-        secureTextEntry
-        autoCapitalize="none"
         editable={!busy}
       />
 
