@@ -1068,19 +1068,17 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   style={styles.dataButton}
                   onPress={handleStartLinking}
-                  disabled={linkBusy || cooldownActive}
+                  disabled={linkBusy}
                 >
                   {linkBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : cooldownActive ? (
-                    <Text style={styles.dataButtonText}>Generate a new code</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <ActivityIndicator color={colors.gold} />
+                      <Text style={styles.hintText}>Generating your secure code...</Text>
+                    </View>
                   ) : (
                     <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
                   )}
                 </TouchableOpacity>
-                {!!cooldownActive && (
-                  <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
-                )}
                 {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
                 <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
@@ -1132,9 +1130,9 @@ export default function SettingsScreen() {
                   </Text>
                 )}
                 <TouchableOpacity
-                  style={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch' }]}
+                  style={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]}
                   onPress={handleStartOverLinking}
-                  disabled={linkBusy}
+                  disabled={linkBusy || cooldownActive}
                 >
                   {linkBusy ? (
                     <ActivityIndicator color={colors.gold} />
@@ -1142,6 +1140,9 @@ export default function SettingsScreen() {
                     <Text style={styles.cancelButtonText}>Code expired? Start over with a new code</Text>
                   )}
                 </TouchableOpacity>
+                {!!cooldownActive && (
+                  <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
+                )}
               </View>
             )}
 
