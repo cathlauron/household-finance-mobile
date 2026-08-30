@@ -289,7 +289,16 @@ export async function finishJoinerLink(
     householdId = existingHouseholdId;
     const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
     // The joiner must be a member before they can write the household data.
-    await addMemberToHousehold(householdId);
+    try {
+      await addMemberToHousehold(householdId);
+    } catch (e) {
+      const code = (e as any)?.code;
+      const msg = (e as Error)?.message || '';
+      if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
+        throw new Error('This household is full (5 of 5) or the invite is no longer valid.');
+      }
+      throw e;
+    }
     await saveHouseholdData(householdId, encryptedHouseholdData);
   } else {
     householdId = await generateHouseholdId();

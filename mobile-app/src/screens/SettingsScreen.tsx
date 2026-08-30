@@ -611,13 +611,16 @@ export default function SettingsScreen() {
       setLinkErrorMsg('This household is not ready for an invite right now.');
       return;
     }
-    if (householdMemberCount >= 5) {
-      setLinkErrorMsg('This household is already full (5 of 5).');
-      return;
-    }
     setLinkErrorMsg('');
     setLinkBusy(true);
     try {
+      const currentCount = await getHouseholdMemberCount(householdId);
+      setHouseholdMemberCount(currentCount);
+      if (currentCount >= 5) {
+        setLinkErrorMsg('This household is full (5 of 5) — remove someone before inviting another person.');
+        setLinkBusy(false);
+        return;
+      }
       const wrapped = await loadWrappedHouseholdKey(username);
       if (!wrapped || wrapped.householdId !== householdId) {
         throw new Error('Linked household key not found.');
@@ -781,7 +784,7 @@ export default function SettingsScreen() {
       setJoinedCode('');
     } catch (e) {
       console.error('finishJoinerLink failed:', e);
-      setJoinChoiceMsg("Something went wrong — check your connection and try again.");
+      setJoinChoiceMsg((e as Error)?.message || "Something went wrong — check your connection and try again.");
     }
     setJoinChoiceBusy(false);
   }
@@ -1119,7 +1122,14 @@ export default function SettingsScreen() {
             {!linkCode ? (
               !unlinkConfirmOpen ? (
                 <View style={styles.linkCodeBox}>
-                  <Text style={styles.linkCodeLabel}>✓ Linked</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={styles.linkCodeLabel}>✓ Linked</Text>
+                    {householdMemberCount > 0 && (
+                      <Text style={[styles.hintText, { color: colors.gold, fontWeight: '600' }]}>
+                        {householdMemberCount} of 5 linked
+                      </Text>
+                    )}
+                  </View>
                   <Text style={styles.hintText}>
                     This profile is currently sharing its data with another linked profile.
                     Unlinking gives this phone its own separate copy of the data going forward —
@@ -1145,7 +1155,7 @@ export default function SettingsScreen() {
 
                   {isOwner && householdMemberCount >= 5 && (
                     <Text style={[styles.hintText, { marginTop: 8 }]}>
-                      Household is full (5 of 5 members).
+                      This household is full (5 of 5) — remove someone before inviting another person.
                     </Text>
                   )}
 
