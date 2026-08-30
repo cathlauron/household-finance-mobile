@@ -159,7 +159,12 @@ export async function getHouseholdOwner(householdId: string): Promise<string | n
   const snap = await getDoc(doc(db, 'households', householdId));
   if (!snap.exists()) return null;
   const data = snap.data();
-  return typeof data.owner === 'string' ? data.owner : null;
+  if (typeof data.owner === 'string' && data.owner) return data.owner;
+  // Legacy household backfill (client-side only): treat first member as creator/owner
+  if (Array.isArray(data.members) && data.members.length > 0 && typeof data.members[0] === 'string') {
+    return data.members[0];
+  }
+  return null;
 }
 
 export async function getHouseholdMemberCount(householdId: string): Promise<number> {

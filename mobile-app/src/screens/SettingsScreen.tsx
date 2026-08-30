@@ -643,7 +643,11 @@ export default function SettingsScreen() {
     setLinkCode('');
     setLinkSecretHex('');
     setHostFinishMsg('');
-    await handleStartLinking();
+    if (isLinked) {
+      await handleStartHouseholdInvite();
+    } else {
+      await handleStartLinking();
+    }
   }
 
   // ---- Checkpoint A.6: host side — finish automatically, no confirm tap ----
@@ -1110,78 +1114,25 @@ export default function SettingsScreen() {
         </Text>
 
         {isLinked ? (
-          !unlinkConfirmOpen ? (
-            <View style={styles.linkCodeBox}>
-              <Text style={styles.linkCodeLabel}>✓ Linked</Text>
-              <Text style={styles.hintText}>
-                This profile is currently sharing its data with another linked profile.
-                Unlinking gives this phone its own separate copy of the data going forward —
-                the shared data itself, and anyone else still linked, are left untouched.
-              </Text>
-              <TouchableOpacity
-                style={[styles.dangerButton, { marginTop: 10, alignSelf: 'stretch' }]}
-                onPress={() => setUnlinkConfirmOpen(true)}
-              >
-                <Text style={styles.dangerButtonText}>Unlink this device</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.dangerConfirmBox}>
-              <Text style={styles.dangerConfirmText}>
-                This gives this profile its own separate copy of the data going forward.
-                Anyone else still linked keeps sharing with each other, just not with this
-                profile anymore.
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
-                  onPress={handleUnlinkHousehold}
-                  disabled={unlinkBusy}
-                >
-                  {unlinkBusy ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.dangerButtonText}>Yes, unlink this device</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.cancelInlineButton, { flex: 1 }]}
-                  onPress={() => setUnlinkConfirmOpen(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-              {!!unlinkMsg && <Text style={styles.errorText}>{unlinkMsg}</Text>}
-            </View>
-          )
-        ) : (
           <>
-            {!linkCode && !joinResult && (
-              <>
-                {!isLinked ? (
-                  <TouchableOpacity
-                    style={styles.dataButton}
-                    onPress={handleStartLinking}
-                    disabled={linkBusy}
-                  >
-                    {linkBusy ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <ActivityIndicator color={colors.gold} />
-                        <Text style={styles.hintText}>Generating your secure code...</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
-                    )}
-                  </TouchableOpacity>
-                ) : (
-                  isOwner && householdMemberCount < 5 && (
+            {!linkCode ? (
+              !unlinkConfirmOpen ? (
+                <View style={styles.linkCodeBox}>
+                  <Text style={styles.linkCodeLabel}>✓ Linked</Text>
+                  <Text style={styles.hintText}>
+                    This profile is currently sharing its data with another linked profile.
+                    Unlinking gives this phone its own separate copy of the data going forward —
+                    the shared data itself, and anyone else still linked, are left untouched.
+                  </Text>
+
+                  {isOwner && householdMemberCount < 5 && (
                     <TouchableOpacity
-                      style={styles.dataButton}
+                      style={[styles.dataButton, { marginTop: 12, alignSelf: 'stretch' }]}
                       onPress={handleStartHouseholdInvite}
                       disabled={linkBusy}
                     >
                       {linkBusy ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                           <ActivityIndicator color={colors.gold} />
                           <Text style={styles.hintText}>Generating the invite code...</Text>
                         </View>
@@ -1189,11 +1140,112 @@ export default function SettingsScreen() {
                         <Text style={styles.dataButtonText}>Invite someone</Text>
                       )}
                     </TouchableOpacity>
-                  )
+                  )}
+
+                  {isOwner && householdMemberCount >= 5 && (
+                    <Text style={[styles.hintText, { marginTop: 8 }]}>
+                      Household is full (5 of 5 members).
+                    </Text>
+                  )}
+
+                  {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
+
+                  <TouchableOpacity
+                    style={[styles.dangerButton, { marginTop: 12, alignSelf: 'stretch' }]}
+                    onPress={() => setUnlinkConfirmOpen(true)}
+                  >
+                    <Text style={styles.dangerButtonText}>Unlink this device</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.dangerConfirmBox}>
+                  <Text style={styles.dangerConfirmText}>
+                    This gives this profile its own separate copy of the data going forward.
+                    Anyone else still linked keeps sharing with each other, just not with this
+                    profile anymore.
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
+                      onPress={handleUnlinkHousehold}
+                      disabled={unlinkBusy}
+                    >
+                      {unlinkBusy ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.dangerButtonText}>Yes, unlink this device</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.cancelInlineButton, { flex: 1 }]}
+                      onPress={() => setUnlinkConfirmOpen(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {!!unlinkMsg && <Text style={styles.errorText}>{unlinkMsg}</Text>}
+                </View>
+              )
+            ) : (
+              <View style={styles.linkCodeBox}>
+                <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
+                <Text style={styles.linkCodeText}>{linkCode}</Text>
+                <Text style={styles.hintText}>
+                  On the other phone, choose "Join with a code" and enter this.
+                </Text>
+
+                <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
+                  {hostFinishBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  )}
+                  <Text style={styles.dataButtonText}>Waiting for the other phone to finish…</Text>
+                </View>
+
+                {!!hostFinishMsg && (
+                  <Text style={hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
+                    {hostFinishMsg}
+                  </Text>
                 )}
+                <TouchableOpacity
+                  style={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]}
+                  onPress={handleStartOverLinking}
+                  disabled={linkBusy || cooldownActive}
+                >
+                  {linkBusy ? (
+                    <ActivityIndicator color={colors.gold} />
+                  ) : (
+                    <Text style={styles.cancelButtonText}>Cancel invite / generate new code</Text>
+                  )}
+                </TouchableOpacity>
+                {!!cooldownActive && (
+                  <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
+                )}
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {!linkCode && !joinResult && (
+              <>
+                <TouchableOpacity
+                  style={styles.dataButton}
+                  onPress={handleStartLinking}
+                  disabled={linkBusy}
+                >
+                  {linkBusy ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <ActivityIndicator color={colors.gold} />
+                      <Text style={styles.hintText}>Generating your secure code...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
+                  )}
+                </TouchableOpacity>
                 {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
-                {!isLinked && <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>}
+                <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Enter the 6-character code"

@@ -55,7 +55,8 @@ import {
   saveWrappedHouseholdKey,
   addMemberToHousehold,
 } from './household';
-import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink } from './storage';
+import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
+import { saveProfileCloudBackup } from './cloudBackup';
 import { mergeModels } from './mergeModels';
 import { getCurrentFirebaseUser } from './authFirebase';
 
@@ -112,11 +113,17 @@ export async function startHouseholdLink(
   const secretKey = CryptoJS.enc.Hex.parse(secretHex);
   const encryptedHostData = await encryptJSON(secretKey, model);
 
+  // Host creates the shared household document first, recording the host as owner
+  // and ensuring compliance with Firestore security rules (owner == request.auth.uid).
+  const householdId = await generateHouseholdId();
+  await createHouseholdData(householdId, encryptedHostData);
+
   await setDoc(doc(db, 'linkCodes', code), {
     codeSalt,
     encryptedSecret,
     encryptedHostData,
     hostUsername: username,
+    existingHouseholdId: householdId,
     createdAt: serverTimestamp(),
   });
 
@@ -290,6 +297,15 @@ export async function finishJoinerLink(
   await saveWrappedHouseholdKey(myUsername, householdId, wrappedForMe);
   await updateProfileHouseholdId(myUsername, householdId);
 
+  // Sync cloud backup so new-device sign-in immediately detects the householdId
+  try {
+    const profiles = await loadProfilesIndex();
+    const mySalt = profiles.find((p) => p.username === myUsername)?.salt;
+    if (mySalt) {
+      saveProfileCloudBackup(myUsername, { salt: mySalt, householdId }).catch(() => {});
+    }
+  } catch (e) {}
+
   await setDoc(
     doc(db, 'linkCodes', code),
     { finished: true, householdId },
@@ -358,6 +374,15 @@ export async function finishHostLink(
   }
   await updateProfileHouseholdId(myUsername, data.householdId);
   await clearPendingHostLink(myUsername);
+
+  // Sync cloud backup so new-device sign-in immediately detects the householdId
+  try {
+    const profiles = await loadProfilesIndex();
+    const mySalt = profiles.find((p) => p.username === myUsername)?.salt;
+    if (mySalt) {
+      saveProfileCloudBackup(myUsername, { salt: mySalt, householdId: data.householdId }).catch(() => {});
+    }
+  } catch (e) {}
 
   // The code has now finished its one job (linking these two phones) —
   // delete it outright so it can't be read or reused again, rather than

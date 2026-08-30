@@ -3,10 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON } from '../encryption';
-import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, ProfileIndexEntry } from '../storage';
+import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, updateProfileHouseholdId, ProfileIndexEntry } from '../storage';
 import type { HouseholdModel } from '../types';
 import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
-import { loadProfileCloudBackup } from '../cloudBackup';
+import { loadProfileCloudBackup, saveProfileCloudBackup } from '../cloudBackup';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData } from '../household';
 import PasswordField from '../components/PasswordField';
 
@@ -175,27 +175,35 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         // from that instead of failing outright.
         setIsRestoring(true);
         const cloudBackup = await loadProfileCloudBackup(username);
-        if (!cloudBackup) {
+        const wrappedKeyInfo = await loadWrappedHouseholdKey(username);
+        if (!cloudBackup && !wrappedKeyInfo) {
           setIsRestoring(false);
           setError('No account found with that username. Check the spelling, or create a new profile.');
           setBusy(false);
           return;
         }
 
-        const key = deriveKey(password, cloudBackup.salt);
+        const effectiveSalt = cloudBackup?.salt;
+        if (!effectiveSalt) {
+          setIsRestoring(false);
+          setError('No saved profile found for that account.');
+          setBusy(false);
+          return;
+        }
+
+        const key = deriveKey(password, effectiveSalt);
         let restoredModel: HouseholdModel | undefined;
         let restoredHouseholdKey: CryptoJS.lib.WordArray | undefined;
+        const effectiveHouseholdId = wrappedKeyInfo?.householdId || cloudBackup?.householdId;
 
-        if (cloudBackup.householdId) {
+        if (effectiveHouseholdId && wrappedKeyInfo) {
           // This profile is linked to a shared household — the actual data lives in
           // the shared household document, not in this personal backup. Confirm the
           // password is correct by actually unwrapping the shared key and decrypting
           // the shared data with it, before trusting any of this.
           try {
-            const wrapped = await loadWrappedHouseholdKey(username);
-            if (!wrapped) throw new Error('missing wrapped household key');
-            const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
-            const encryptedHousehold = await loadHouseholdData(cloudBackup.householdId);
+            const householdKey = unwrapHouseholdKey(wrappedKeyInfo.wrappedKey, key);
+            const encryptedHousehold = await loadHouseholdData(effectiveHouseholdId);
             if (!encryptedHousehold) throw new Error('missing household data');
             restoredModel = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
             restoredHouseholdKey = householdKey;
@@ -207,7 +215,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
           }
         } else {
           // Personal (unlinked) profile — verify against the personal backup itself.
-          if (!cloudBackup.data) {
+          if (!cloudBackup?.data) {
             setIsRestoring(false);
             setError('Could not find any saved data for that profile.');
             setBusy(false);
@@ -228,10 +236,14 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
         // Password confirmed correct either way — now safe to set this device up
         // with its own local profile entry, same as if it had been created here.
-        const newEntry: ProfileIndexEntry = { username, salt: cloudBackup.salt };
-        if (cloudBackup.householdId) newEntry.householdId = cloudBackup.householdId;
+        const newEntry: ProfileIndexEntry = { username, salt: effectiveSalt };
+        if (effectiveHouseholdId) newEntry.householdId = effectiveHouseholdId;
         const updatedProfiles = [...profiles.filter((p) => p.username !== username), newEntry];
         await saveProfilesIndex(updatedProfiles);
+
+        if (effectiveHouseholdId) {
+          saveProfileCloudBackup(username, { salt: effectiveSalt, householdId: effectiveHouseholdId }).catch(() => {});
+        }
 
         setIsRestoring(false);
         setBusy(false);
@@ -295,6 +307,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
               // one that actually works, so next sign-in on this device
               // succeeds on the first try.
               await updateProfileSalt(username, cloudBackup.salt);
+              profile.salt = cloudBackup.salt;
             }
           }
         }
@@ -308,6 +321,59 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         setBusy(false);
         onSignedIn(username, result.key, result.model, profile, result.householdKey);
         return;
+      }
+
+      // Check if this profile was linked to a household on another device (self-heal)
+      const wrapped = await loadWrappedHouseholdKey(username);
+      if (wrapped?.householdId) {
+        const tryUnwrap = async (
+          saltToTry: string
+        ): Promise<{ key: CryptoJS.lib.WordArray; householdKey: CryptoJS.lib.WordArray; model: HouseholdModel } | null> => {
+          const candidateKey = deriveKey(password, saltToTry);
+
+          let householdKey: CryptoJS.lib.WordArray;
+          try {
+            householdKey = unwrapHouseholdKey(wrapped.wrappedKey, candidateKey);
+          } catch (e) {
+            return null;
+          }
+
+          const encryptedHousehold = await loadHouseholdData(wrapped.householdId);
+          if (!encryptedHousehold) {
+            return null;
+          }
+
+          try {
+            const model = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
+            return { key: candidateKey, householdKey, model };
+          } catch (e) {
+            return null;
+          }
+        };
+
+        let result = await tryUnwrap(profile.salt);
+
+        if (!result) {
+          const cloudBackup = await loadProfileCloudBackup(username);
+          if (cloudBackup && cloudBackup.salt !== profile.salt) {
+            result = await tryUnwrap(cloudBackup.salt);
+            if (result) {
+              await updateProfileSalt(username, cloudBackup.salt);
+              profile.salt = cloudBackup.salt;
+            }
+          }
+        }
+
+        if (result) {
+          // Self-heal: update local storage so future sign-ins immediately know it's linked
+          await updateProfileHouseholdId(username, wrapped.householdId);
+          profile.householdId = wrapped.householdId;
+          saveProfileCloudBackup(username, { salt: profile.salt, householdId: wrapped.householdId }).catch(() => {});
+
+          setBusy(false);
+          onSignedIn(username, result.key, result.model, profile, result.householdKey);
+          return;
+        }
       }
 
       // Unlinked (personal) profile — unchanged from before.
