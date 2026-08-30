@@ -163,6 +163,7 @@ export async function startHouseholdInvite(
     encryptedHostData,
     hostUsername,
     existingHouseholdId: householdId,
+    isInvite: true,
     createdAt: serverTimestamp(),
   });
 
@@ -176,6 +177,7 @@ export type JoinLinkResult = {
   hostModel: HouseholdModel;
   secretHex: string;
   existingHouseholdId?: string;
+  isInvite?: boolean;
 };
 
 // Looks up a code the other phone generated (via startHouseholdLink), uses
@@ -207,6 +209,7 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
     encryptedHostData: string;
     hostUsername: string;
     existingHouseholdId?: string;
+    isInvite?: boolean;
   };
 
   const codeKey = deriveKey(code, data.codeSalt);
@@ -225,6 +228,7 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
     hostModel,
     secretHex,
     existingHouseholdId: data.existingHouseholdId,
+    isInvite: Boolean(data.isInvite),
   };
 }
 

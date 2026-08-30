@@ -232,6 +232,7 @@ export default function SettingsScreen() {
     hostModel: HouseholdModel;
     secretHex: string;
     existingHouseholdId?: string;
+    isInvite?: boolean;
   } | null>(null);
   const [joinChoiceBusy, setJoinChoiceBusy] = useState(false);
   const [joinChoiceMsg, setJoinChoiceMsg] = useState('');
@@ -1321,7 +1322,7 @@ export default function SettingsScreen() {
                   Choose what the shared vault should start with — this can't be undone once
                   you pick, so double check with the other phone first if you're unsure.
                 </Text>
-                {!joinResult.existingHouseholdId && (
+                {!joinResult.isInvite && (
                   <TouchableOpacity
                     style={styles.dataButton}
                     onPress={() => handleJoinChoice('mine')}
@@ -1332,11 +1333,11 @@ export default function SettingsScreen() {
                 )}
                 <TouchableOpacity
                   style={styles.dataButton}
-                  onPress={() => handleJoinChoice(joinResult.existingHouseholdId ? 'theirs' : 'theirs')}
+                  onPress={() => handleJoinChoice('theirs')}
                   disabled={joinChoiceBusy}
                 >
                   <Text style={styles.dataButtonText}>
-                    {joinResult.existingHouseholdId ? 'Keep household data' : 'Keep theirs'}
+                    {joinResult.isInvite ? 'Keep household data' : 'Keep theirs'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1345,7 +1346,7 @@ export default function SettingsScreen() {
                   disabled={joinChoiceBusy}
                 >
                   <Text style={styles.dataButtonText}>
-                    {joinResult.existingHouseholdId ? 'Merge mine in' : 'Merge both'}
+                    {joinResult.isInvite ? 'Merge mine in' : 'Merge both'}
                   </Text>
                 </TouchableOpacity>
                 {joinChoiceBusy && <ActivityIndicator color={colors.gold} />}
