@@ -61,6 +61,9 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     ) {
       return 'Incorrect email or password.';
     }
+    if (code === 'auth/requires-recent-login') {
+      return 'For security, please sign out and back in, then try again.';
+    }
     if (code === 'auth/invalid-email') {
       return "That doesn't look like a valid email address.";
     }
@@ -398,7 +401,18 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       setBusy(false);
       setIsMigrating(false);
       setIsRestoring(false);
-      setError('Something went wrong signing in. Please try again.');
+      const friendly = friendlyFirebaseSignInError(e);
+      if (
+        friendly === 'Something went wrong signing in. Check your internet connection and try again.'
+      ) {
+        if (e instanceof Error && e.message) {
+          setError(e.message);
+          return;
+        }
+        setError('Something went wrong signing in. Please try again.');
+        return;
+      }
+      setError(friendly);
     }
   }
 

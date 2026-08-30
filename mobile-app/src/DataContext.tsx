@@ -517,6 +517,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (e?.code === 'auth/wrong-password' || e?.code === 'auth/invalid-credential') {
         return { ok: false, error: 'Your current password is incorrect.' };
       }
+      if (e?.code === 'auth/requires-recent-login') {
+        return {
+          ok: false,
+          error: 'For security, please sign out and back in, then try changing your password again.',
+        };
+      }
       return { ok: false, error: 'Could not update your sign-in password. Check your connection and try again.' };
     }
       const newSalt = await generateSalt();
@@ -533,7 +539,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveProfileCloudBackup(username, {
         salt: newSalt,
         householdId: householdIdRef.current,
-      }).catch(() => {});
+      }).catch((backupError) => {
+        console.error('Failed to update cloud backup after password change:', backupError);
+      });
 
       keyRef.current = newKey;
       return { ok: true };
@@ -562,6 +570,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (e?.code === 'auth/wrong-password' || e?.code === 'auth/invalid-credential') {
         return { ok: false, error: 'Your current password is incorrect.' };
       }
+      if (e?.code === 'auth/requires-recent-login') {
+        return {
+          ok: false,
+          error: 'For security, please sign out and back in, then try changing your password again.',
+        };
+      }
       return { ok: false, error: 'Could not update your sign-in password. Check your connection and try again.' };
     }
     const newSalt = await generateSalt();
@@ -578,7 +592,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       salt: newSalt,
       householdId: householdIdRef.current,
       data: reEncrypted,
-    }).catch(() => {});
+    }).catch((backupError) => {
+      console.error('Failed to update cloud backup after password change:', backupError);
+    });
 
     keyRef.current = newKey;
     return { ok: true };
