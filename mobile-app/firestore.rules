@@ -42,7 +42,11 @@ service cloud.firestore {
         && request.resource.data.members.size() <= 5
         && request.resource.data.owner is string
         && request.resource.data.owner == request.auth.uid
-        && request.auth.uid in request.resource.data.members;
+        && request.auth.uid in request.resource.data.members
+        && (!('memberUsernames' in request.resource.data)
+            || (request.resource.data.memberUsernames is map
+                && request.resource.data.memberUsernames.keys().hasOnly([request.auth.uid])
+                && request.resource.data.memberUsernames[request.auth.uid] is string));
 
       // Normal edits to the encrypted household data itself — the members
       // list must stay exactly as it was; joining/leaving is handled by the
@@ -57,10 +61,14 @@ service cloud.firestore {
       // Only the members field is allowed to change here, and the person can
       // only add themselves, not anyone else.
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberUsernames'])
         && request.auth.uid in request.resource.data.members
         && request.resource.data.members.size() <= 5
-        && request.resource.data.members == resource.data.members.concat([request.auth.uid]);
+        && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+        && (!('memberUsernames' in request.resource.data)
+            || (request.resource.data.memberUsernames is map
+                && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])
+                && request.resource.data.memberUsernames[request.auth.uid] is string));
       // Mirror image of the rule above — lets a currently-linked member
       // remove ONLY THEMSELVES from the members list. This is what
       // removeMemberFromHousehold() does when a profile unlinks. A member
@@ -68,35 +76,48 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.auth.uid in resource.data.members
         && resource.data.get('owner', null) != request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberUsernames'])
         && !(request.auth.uid in request.resource.data.members)
-        && request.resource.data.members == resource.data.members.removeAll([request.auth.uid]);
+        && request.resource.data.members == resource.data.members.removeAll([request.auth.uid])
+        && (!('memberUsernames' in request.resource.data)
+            || (request.resource.data.memberUsernames is map
+                && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])));
 
       // Lets the owner remove another member while remaining in the household.
       // The resulting members list may only remove existing members; it cannot
       // add arbitrary UIDs outside the link-code flow.
       allow update: if request.auth != null
         && resource.data.get('owner', null) == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberUsernames'])
         && request.resource.data.members is list
         && request.resource.data.members.size() <= 5
         && request.auth.uid in request.resource.data.members
-        && resource.data.members.hasAll(request.resource.data.members);
+        && resource.data.members.hasAll(request.resource.data.members)
+        && (!('memberUsernames' in request.resource.data)
+            || (request.resource.data.memberUsernames is map
+                && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly(resource.data.members.removeAll(request.resource.data.members))));
 
       // Lets the owner leave while transferring ownership to an existing
       // member, atomically removing the old owner and setting the new owner.
       allow update: if request.auth != null
         && resource.data.get('owner', null) == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'owner'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'owner', 'memberUsernames'])
         && request.resource.data.members is list
         && request.resource.data.members.size() <= 5
         && !(request.auth.uid in request.resource.data.members)
         && request.resource.data.owner is string
         && request.resource.data.owner in resource.data.members
         && request.resource.data.owner in request.resource.data.members
-        && resource.data.members.hasAll(request.resource.data.members);
+        && resource.data.members.hasAll(request.resource.data.members)
+        && (!('memberUsernames' in request.resource.data)
+            || (request.resource.data.memberUsernames is map
+                && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])));
 
-      allow delete: if false;
+      // Dissolve household (sole remaining member only)
+      allow delete: if request.auth != null
+        && request.auth.uid in resource.data.members
+        && resource.data.members.size() == 1;
+
       allow list: if false;
     }
 

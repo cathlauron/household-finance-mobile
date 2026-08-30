@@ -37,8 +37,11 @@ import {
 import {
   getHouseholdOwner,
   getHouseholdMemberCount,
+  getHouseholdMembers,
+  removeMemberByOwner,
   loadWrappedHouseholdKey,
   unwrapHouseholdKey,
+  type HouseholdMemberInfo,
 } from '../household';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -103,7 +106,19 @@ function summarizeModel(m: HouseholdModel): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
-  const { model, saveModel, changePassword, username, loadModel, isLinked, getPersonalKey, unlinkHousehold} = useData();
+  const {
+    model,
+    saveModel,
+    changePassword,
+    username,
+    loadModel,
+    isLinked,
+    getPersonalKey,
+    unlinkHousehold,
+    unlinkAndTransferOwnership,
+    linkNoticeMsg,
+    clearLinkNoticeMsg,
+  } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -219,14 +234,13 @@ export default function SettingsScreen() {
   const [hostFinishMsg, setHostFinishMsg] = useState('');
   const hostFinishInFlightRef = useRef(false);
 
-  // ---- Checkpoint 9.2d: host side — confirm who's trying to join before finishing ----
-
-
   // ---- Checkpoint 9.2b-ii: Join with a code ----
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [joinedCode, setJoinedCode] = useState('');
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinErrorMsg, setJoinErrorMsg] = useState('');
+
+  const [joinStep, setJoinStep] = useState<'idle' | 'busy' | 'choice'>('idle');
   const [joinResult, setJoinResult] = useState<{
     hostUsername: string;
     hostModel: HouseholdModel;
@@ -239,11 +253,22 @@ export default function SettingsScreen() {
 
   const [isOwner, setIsOwner] = useState(false);
   const [householdMemberCount, setHouseholdMemberCount] = useState<number>(0);
+  const [householdMembers, setHouseholdMembers] = useState<HouseholdMemberInfo[]>([]);
+
+  const [memberToRemove, setMemberToRemove] = useState<HouseholdMemberInfo | null>(null);
+  const [removeMemberBusy, setRemoveMemberBusy] = useState(false);
+  const [removeMemberMsg, setRemoveMemberMsg] = useState('');
+
+  const [transferOwnerModalOpen, setTransferOwnerModalOpen] = useState(false);
+  const [selectedSuccessorUid, setSelectedSuccessorUid] = useState<string>('');
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferMsg, setTransferMsg] = useState('');
 
   useEffect(() => {
     if (!isLinked || !username) {
       setIsOwner(false);
       setHouseholdMemberCount(0);
+      setHouseholdMembers([]);
       return;
     }
     let cancelled = false;
@@ -255,20 +280,24 @@ export default function SettingsScreen() {
         if (!householdId || cancelled) {
           setIsOwner(false);
           setHouseholdMemberCount(0);
+          setHouseholdMembers([]);
           return;
         }
         const currentUid = getCurrentFirebaseUser()?.uid;
-        const [owner, count] = await Promise.all([
+        const [owner, count, members] = await Promise.all([
           getHouseholdOwner(householdId),
           getHouseholdMemberCount(householdId),
+          getHouseholdMembers(householdId),
         ]);
         if (cancelled) return;
         setIsOwner(Boolean(currentUid && owner === currentUid));
         setHouseholdMemberCount(count);
+        setHouseholdMembers(members);
       } catch (e) {
         if (!cancelled) {
           setIsOwner(false);
           setHouseholdMemberCount(0);
+          setHouseholdMembers([]);
         }
       }
     })();
@@ -800,6 +829,45 @@ export default function SettingsScreen() {
     }
     setUnlinkConfirmOpen(false);
   }
+
+  // ---- Owner remove member handler ----
+  async function handleRemoveMember() {
+    if (!memberToRemove || !username) return;
+    setRemoveMemberBusy(true);
+    setRemoveMemberMsg('');
+    try {
+      const profiles = await loadProfilesIndex();
+      const profile = profiles.find((p) => p.username === username);
+      const householdId = profile?.householdId;
+      if (!householdId) throw new Error('Not linked to a household.');
+      await removeMemberByOwner(householdId, memberToRemove.uid);
+      const [count, members] = await Promise.all([
+        getHouseholdMemberCount(householdId),
+        getHouseholdMembers(householdId),
+      ]);
+      setHouseholdMemberCount(count);
+      setHouseholdMembers(members);
+      setMemberToRemove(null);
+    } catch (e: any) {
+      setRemoveMemberMsg(e?.message || 'Failed to remove member.');
+    } finally {
+      setRemoveMemberBusy(false);
+    }
+  }
+
+  // ---- Owner transfer ownership and unlink handler ----
+  async function handleTransferAndUnlink() {
+    if (!selectedSuccessorUid) return;
+    setTransferBusy(true);
+    setTransferMsg('');
+    const result = await unlinkAndTransferOwnership(selectedSuccessorUid);
+    setTransferBusy(false);
+    if (!result.ok) {
+      setTransferMsg(result.error || 'Failed to transfer ownership.');
+      return;
+    }
+    setTransferOwnerModalOpen(false);
+  }
   // ---- Checkpoint 11.3: Security handler ----
   async function handleChangePassword() {
     setPassChangeMsg('');
@@ -1117,10 +1185,24 @@ export default function SettingsScreen() {
             : 'Link this profile with another phone so you both see and edit the same data.'}
         </Text>
 
+        {!!linkNoticeMsg && (
+          <View style={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy2, marginBottom: 14 }]}>
+            <Text style={[styles.hintText, { color: colors.ink, fontWeight: '600', marginBottom: 8 }]}>
+              {linkNoticeMsg}
+            </Text>
+            <TouchableOpacity
+              style={[styles.dataButton, { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 12 }]}
+              onPress={clearLinkNoticeMsg}
+            >
+              <Text style={styles.dataButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {isLinked ? (
           <>
             {!linkCode ? (
-              !unlinkConfirmOpen ? (
+              !unlinkConfirmOpen && !transferOwnerModalOpen ? (
                 <View style={styles.linkCodeBox}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <Text style={styles.linkCodeLabel}>✓ Linked</Text>
@@ -1136,9 +1218,84 @@ export default function SettingsScreen() {
                     the shared data itself, and anyone else still linked, are left untouched.
                   </Text>
 
+                  {/* Member Roster */}
+                  {householdMembers.length > 0 && (
+                    <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.navy4 }}>
+                      <Text style={[styles.hintText, { fontWeight: '700', marginBottom: 6 }]}>Household Members</Text>
+                      {householdMembers.map((m) => {
+                        const isMe = m.uid === getCurrentFirebaseUser()?.uid;
+                        return (
+                          <View
+                            key={m.uid}
+                            style={{
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              paddingVertical: 6,
+                              borderBottomWidth: 1,
+                              borderBottomColor: colors.navy4,
+                            }}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ color: colors.ink, fontWeight: isMe ? '700' : '400', fontSize: 14 }}>
+                                {m.username} {isMe ? '(You)' : ''}
+                              </Text>
+                              {m.isOwner && (
+                                <Text style={{ fontSize: 11, color: colors.gold, fontWeight: '700' }}>
+                                  Owner
+                                </Text>
+                              )}
+                            </View>
+                            {isOwner && !isMe && (
+                              <TouchableOpacity
+                                style={[styles.dangerButton, { paddingVertical: 4, paddingHorizontal: 10, marginVertical: 0 }]}
+                                onPress={() => {
+                                  setRemoveMemberMsg('');
+                                  setMemberToRemove(m);
+                                }}
+                              >
+                                <Text style={[styles.dangerButtonText, { fontSize: 12 }]}>Remove</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  {/* Remove Member Confirmation Box */}
+                  {memberToRemove && (
+                    <View style={[styles.dangerConfirmBox, { marginTop: 12 }]}>
+                      <Text style={styles.dangerConfirmText}>
+                        Remove {memberToRemove.username} from the household? They'll keep their own copy of everything as a separate personal profile.
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                        <TouchableOpacity
+                          style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
+                          onPress={handleRemoveMember}
+                          disabled={removeMemberBusy}
+                        >
+                          {removeMemberBusy ? (
+                            <ActivityIndicator color="#fff" />
+                          ) : (
+                            <Text style={styles.dangerButtonText}>Yes, remove</Text>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.cancelInlineButton, { flex: 1 }]}
+                          onPress={() => setMemberToRemove(null)}
+                          disabled={removeMemberBusy}
+                        >
+                          <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {!!removeMemberMsg && <Text style={[styles.errorText, { marginTop: 6 }]}>{removeMemberMsg}</Text>}
+                    </View>
+                  )}
+
                   {isOwner && householdMemberCount < 5 && (
                     <TouchableOpacity
-                      style={[styles.dataButton, { marginTop: 12, alignSelf: 'stretch' }]}
+                      style={[styles.dataButton, { marginTop: 14, alignSelf: 'stretch' }]}
                       onPress={handleStartHouseholdInvite}
                       disabled={linkBusy}
                     >
@@ -1163,17 +1320,93 @@ export default function SettingsScreen() {
 
                   <TouchableOpacity
                     style={[styles.dangerButton, { marginTop: 12, alignSelf: 'stretch' }]}
-                    onPress={() => setUnlinkConfirmOpen(true)}
+                    onPress={() => {
+                      const currentUid = getCurrentFirebaseUser()?.uid;
+                      const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
+                      if (isOwner && otherMembers.length > 0) {
+                        setSelectedSuccessorUid(otherMembers[0].uid);
+                        setTransferMsg('');
+                        setTransferOwnerModalOpen(true);
+                      } else {
+                        setUnlinkConfirmOpen(true);
+                      }
+                    }}
                   >
                     <Text style={styles.dangerButtonText}>Unlink this device</Text>
                   </TouchableOpacity>
                 </View>
+              ) : transferOwnerModalOpen ? (
+                <View style={styles.dangerConfirmBox}>
+                  <Text style={styles.linkCodeLabel}>Transfer Ownership & Unlink</Text>
+                  {(() => {
+                    const currentUid = getCurrentFirebaseUser()?.uid;
+                    const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
+                    if (otherMembers.length === 1) {
+                      return (
+                        <Text style={styles.dangerConfirmText}>
+                          Transfer ownership to {otherMembers[0].username} and leave? Since only one person will remain, the household will convert to personal data.
+                        </Text>
+                      );
+                    }
+                    return (
+                      <>
+                        <Text style={styles.dangerConfirmText}>
+                          Choose who takes over this household before you leave. You'll keep your own copy of all current data as a separate personal profile.
+                        </Text>
+                        <View style={{ marginVertical: 10, gap: 6 }}>
+                          {otherMembers.map((m) => {
+                            const isSelected = selectedSuccessorUid === m.uid;
+                            return (
+                              <TouchableOpacity
+                                key={m.uid}
+                                style={[
+                                  styles.modeButton,
+                                  isSelected && styles.modeButtonActive,
+                                  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }
+                                ]}
+                                onPress={() => setSelectedSuccessorUid(m.uid)}
+                              >
+                                <Text style={[styles.modeButtonText, isSelected && styles.modeButtonTextActive]}>
+                                  {m.username}
+                                </Text>
+                                {isSelected && <Text style={{ color: colors.gold, fontWeight: '700' }}>✓ New Owner</Text>}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </>
+                    );
+                  })()}
+
+                  {!!transferMsg && <Text style={styles.errorText}>{transferMsg}</Text>}
+
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
+                      onPress={handleTransferAndUnlink}
+                      disabled={transferBusy || !selectedSuccessorUid}
+                    >
+                      {transferBusy ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.dangerButtonText}>Transfer & Leave</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.cancelInlineButton, { flex: 1 }]}
+                      onPress={() => setTransferOwnerModalOpen(false)}
+                      disabled={transferBusy}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ) : (
                 <View style={styles.dangerConfirmBox}>
                   <Text style={styles.dangerConfirmText}>
-                    This gives this profile its own separate copy of the data going forward.
-                    Anyone else still linked keeps sharing with each other, just not with this
-                    profile anymore.
+                    {householdMemberCount <= 1
+                      ? "Unlinking will dissolve this household since you're the only member. Your data will be converted to your personal profile."
+                      : "This gives this profile its own separate copy of the data going forward. Anyone else still linked keeps sharing with each other, just not with this profile anymore."}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
@@ -1190,6 +1423,7 @@ export default function SettingsScreen() {
                     <TouchableOpacity
                       style={[styles.cancelInlineButton, { flex: 1 }]}
                       onPress={() => setUnlinkConfirmOpen(false)}
+                      disabled={unlinkBusy}
                     >
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </TouchableOpacity>

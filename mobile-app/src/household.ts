@@ -23,7 +23,7 @@
 
 import CryptoJS from 'crypto-js';
 import * as Crypto from 'expo-crypto';
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON } from './encryption';
 import { getCurrentFirebaseUser } from './authFirebase';
@@ -82,13 +82,19 @@ export function unwrapHouseholdKey(
 // Used the FIRST time a household is created. Records the creator's Firebase
 // uid in a `members` list — this is what the security rules check to decide
 // who's allowed to read/write this household's data.
-export async function createHouseholdData(householdId: string, encryptedPayload: string): Promise<void> {
+export async function createHouseholdData(
+  householdId: string,
+  encryptedPayload: string,
+  creatorUsername?: string
+): Promise<void> {
   const uid = requireCurrentUid();
+  const memberUsernames: Record<string, string> = creatorUsername ? { [uid]: creatorUsername } : {};
   await setDoc(doc(db, 'households', householdId), {
     data: encryptedPayload,
     updatedAt: Date.now(),
     members: [uid],
     owner: uid,
+    memberUsernames,
   });
 }
 
@@ -110,11 +116,15 @@ export async function saveHouseholdData(householdId: string, encryptedPayload: s
 // call this when a second person links into an already-existing household.
 // arrayUnion is safe to call even if the uid is already in the list (it
 // won't create a duplicate).
-export async function addMemberToHousehold(householdId: string): Promise<void> {
+export async function addMemberToHousehold(householdId: string, username?: string): Promise<void> {
   const uid = requireCurrentUid();
-  await updateDoc(doc(db, 'households', householdId), {
+  const updatePayload: Record<string, any> = {
     members: arrayUnion(uid),
-  });
+  };
+  if (username) {
+    updatePayload[`memberUsernames.${uid}`] = username;
+  }
+  await updateDoc(doc(db, 'households', householdId), updatePayload);
 }
 
 // Mirror image of addMemberToHousehold — removes the CURRENTLY signed-in
@@ -126,6 +136,15 @@ export async function removeMemberFromHousehold(householdId: string): Promise<vo
   const uid = requireCurrentUid();
   await updateDoc(doc(db, 'households', householdId), {
     members: arrayRemove(uid),
+    [`memberUsernames.${uid}`]: deleteField(),
+  });
+}
+
+// Lets the owner remove another member from the household.
+export async function removeMemberByOwner(householdId: string, targetUid: string): Promise<void> {
+  await updateDoc(doc(db, 'households', householdId), {
+    members: arrayRemove(targetUid),
+    [`memberUsernames.${targetUid}`]: deleteField(),
   });
 }
 
@@ -139,7 +158,13 @@ export async function leaveHouseholdAndTransferOwnership(
   await updateDoc(doc(db, 'households', householdId), {
     members: arrayRemove(uid),
     owner: newOwnerUid,
+    [`memberUsernames.${uid}`]: deleteField(),
   });
+}
+
+// Deletes the household document in Firestore when the household dissolves.
+export async function deleteHousehold(householdId: string): Promise<void> {
+  await deleteDoc(doc(db, 'households', householdId));
 }
 
 // Returns the raw encrypted string, or null if nothing's been saved yet.
@@ -172,6 +197,60 @@ export async function getHouseholdMemberCount(householdId: string): Promise<numb
   if (!snap.exists()) return 0;
   const data = snap.data();
   return Array.isArray(data.members) ? data.members.length : 0;
+}
+
+export type HouseholdMemberInfo = {
+  uid: string;
+  username: string;
+  isOwner: boolean;
+};
+
+export async function getHouseholdMembers(householdId: string): Promise<HouseholdMemberInfo[]> {
+  const snap = await getDoc(doc(db, 'households', householdId));
+  if (!snap.exists()) return [];
+  const data = snap.data();
+  const members: string[] = Array.isArray(data.members) ? data.members : [];
+  const ownerUid: string | null = typeof data.owner === 'string' ? data.owner : members[0] ?? null;
+  const usernames: Record<string, string> =
+    typeof data.memberUsernames === 'object' && data.memberUsernames ? data.memberUsernames : {};
+
+  return members.map((uid) => ({
+    uid,
+    username: usernames[uid] || (uid === ownerUid ? 'Owner' : 'Member'),
+    isOwner: uid === ownerUid,
+  }));
+}
+
+export type HouseholdDocSnapshot = {
+  members: string[];
+  owner: string;
+  memberUsernames?: Record<string, string>;
+};
+
+// Watches the household document live for membership changes, dissolutions, or revocations.
+export function subscribeToHousehold(
+  householdId: string,
+  onUpdate: (data: HouseholdDocSnapshot | null) => void,
+  onError?: (error: Error) => void
+): () => void {
+  return onSnapshot(
+    doc(db, 'households', householdId),
+    (snap) => {
+      if (!snap.exists()) {
+        onUpdate(null);
+        return;
+      }
+      const data = snap.data();
+      onUpdate({
+        members: Array.isArray(data.members) ? data.members : [],
+        owner: typeof data.owner === 'string' ? data.owner : '',
+        memberUsernames: typeof data.memberUsernames === 'object' ? data.memberUsernames : {},
+      });
+    },
+    (error) => {
+      onError?.(error as Error);
+    }
+  );
 }
 
 // ---- Firestore: each linked person's own wrapped copy of the household key ----

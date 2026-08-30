@@ -41,6 +41,10 @@ import {
   saveWrappedHouseholdKey,
   removeMemberFromHousehold,
   deleteWrappedHouseholdKey,
+  deleteHousehold,
+  leaveHouseholdAndTransferOwnership,
+  getHouseholdMemberCount,
+  subscribeToHousehold,
 } from './household';
 
 type ChangePasswordResult = { ok: boolean; error?: string };
@@ -80,6 +84,9 @@ type DataContextValue = {
   // household. The shared household data itself, and anyone else still
   // linked to it, are left completely untouched.
   unlinkHousehold: () => Promise<ChangePasswordResult>;
+  unlinkAndTransferOwnership: (newOwnerUid: string) => Promise<ChangePasswordResult>;
+  linkNoticeMsg: string | null;
+  clearLinkNoticeMsg: () => void;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -88,6 +95,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<HouseholdModel | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
+  const [linkNoticeMsg, setLinkNoticeMsg] = useState<string | null>(null);
+  const householdUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Kept outside React state (in refs) since we only need them for the next save/load
   // call, not for anything that should trigger a re-render on its own.
@@ -102,6 +111,103 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // so saveModel/changePassword can keep the cloud backup's salt field up to date
   // without needing to re-look-up the profiles index on every save.
   const saltRef = useRef<string | null>(null);
+
+  function cleanupHouseholdListener() {
+    if (householdUnsubscribeRef.current) {
+      householdUnsubscribeRef.current();
+      householdUnsubscribeRef.current = null;
+    }
+  }
+
+  // Shared dissolve/revocation logic used by live listener, loadModel self-heal, and self-unlink
+  async function performDissolve(
+    targetHouseholdId: string,
+    opts: {
+      reason: 'selfUnlink' | 'alone' | 'revoked';
+      fallbackModel?: HouseholdModel;
+      deleteDoc?: boolean;
+    }
+  ) {
+    cleanupHouseholdListener();
+    const username = usernameRef.current;
+    const personalKey = keyRef.current;
+    if (!username || !personalKey) return;
+
+    let modelToSave = opts.fallbackModel ?? model;
+    if (!modelToSave) {
+      const encryptedLocal = await loadEncryptedProfileData(username);
+      modelToSave = encryptedLocal
+        ? sanitizeModelIds(decryptJSON<HouseholdModel>(personalKey, encryptedLocal))
+        : defaultModel();
+    }
+
+    const encrypted = await encryptJSON(personalKey, modelToSave);
+    await saveEncryptedProfileData(username, encrypted);
+
+    if (opts.deleteDoc) {
+      try {
+        await deleteHousehold(targetHouseholdId);
+      } catch (e) {}
+    }
+
+    try {
+      await deleteWrappedHouseholdKey(username);
+    } catch (e) {}
+    await updateProfileHouseholdId(username, undefined);
+
+    householdIdRef.current = undefined;
+    householdKeyRef.current = null;
+    setModel(modelToSave);
+    setIsLinked(false);
+
+    if (saltRef.current) {
+      saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+    }
+
+    if (opts.reason === 'alone') {
+      setLinkNoticeMsg('The other member(s) have left the household. Your data has been converted to your personal profile.');
+    } else if (opts.reason === 'revoked') {
+      setLinkNoticeMsg('You are no longer part of this household. Your data has been preserved as a personal profile.');
+    }
+  }
+
+  function setupHouseholdListener(householdId: string) {
+    cleanupHouseholdListener();
+    const currentUid = getCurrentFirebaseUser()?.uid;
+    if (!currentUid) return;
+
+    householdUnsubscribeRef.current = subscribeToHousehold(
+      householdId,
+      async (snapshotData) => {
+        if (!snapshotData) {
+          // Document was deleted (dissolved by someone else)
+          await performDissolve(householdId, { reason: 'alone', deleteDoc: false });
+          return;
+        }
+
+        const members = snapshotData.members;
+        if (!members.includes(currentUid)) {
+          // Current user was removed from members by owner
+          await performDissolve(householdId, { reason: 'revoked', deleteDoc: false });
+          return;
+        }
+
+        if (members.length === 1 && members[0] === currentUid) {
+          // Current user is the sole member remaining -> live auto-dissolve!
+          await performDissolve(householdId, { reason: 'alone', deleteDoc: true });
+        }
+      },
+      async (error) => {
+        const code = (error as any)?.code;
+        const msg = error?.message || '';
+        if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
+          // Access revoked or household deleted
+          await performDissolve(householdId, { reason: 'revoked', deleteDoc: false });
+        }
+      }
+    );
+  }
+
   async function loadModel(
     username: string,
     key: CryptoJS.lib.WordArray,
@@ -109,6 +215,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     options: { deferNotifications?: boolean } = {}
   ): Promise<HouseholdModel | null> {
     setLoading(true);
+    cleanupHouseholdListener();
     usernameRef.current = username;
     keyRef.current = key;
     householdIdRef.current = undefined;
@@ -126,6 +233,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         householdKeyRef.current = bootstrap.householdKey;
         setModel(loaded);
         setIsLinked(true);
+        saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
+        setupHouseholdListener(householdId);
         if (!options.deferNotifications) {
           rescheduleBillNotifications(loaded).catch(() => {});
         }
@@ -151,13 +260,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const wrapped = await loadWrappedHouseholdKey(username);
         if (wrapped && wrapped.householdId === householdId) {
           const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
-          const encryptedHousehold = await loadHouseholdData(householdId);
+          let encryptedHousehold: string | null = null;
+          try {
+            encryptedHousehold = await loadHouseholdData(householdId);
+          } catch (err) {
+            const code = (err as any)?.code;
+            const msg = (err as Error)?.message || '';
+            if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
+              // Access revoked or removed by owner -> self-heal
+              await performDissolve(householdId, { reason: 'revoked', deleteDoc: false });
+              const encrypted = await loadEncryptedProfileData(username);
+              const fallback = encrypted ? sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted)) : defaultModel();
+              setModel(fallback);
+              setIsLinked(false);
+              setLoading(false);
+              return fallback;
+            }
+          }
+
           if (encryptedHousehold) {
             const loaded = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, encryptedHousehold));
+            const memberCount = await getHouseholdMemberCount(householdId);
+            if (memberCount <= 1) {
+              // Only 1 member left -> auto-dissolve
+              await performDissolve(householdId, { reason: 'alone', deleteDoc: true, fallbackModel: loaded });
+              if (!options.deferNotifications) {
+                rescheduleBillNotifications(loaded).catch(() => {});
+              }
+              setLoading(false);
+              return loaded;
+            }
+
             householdIdRef.current = householdId;
             householdKeyRef.current = householdKey;
             setModel(loaded);
             setIsLinked(true);
+            saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
+            setupHouseholdListener(householdId);
             if (!options.deferNotifications) {
               rescheduleBillNotifications(loaded).catch(() => {});
             }
@@ -165,10 +304,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             return loaded;
           }
         }
-        // If we get here, something about the link is broken (e.g. the wrapped
-        // key wasn't found, or the shared data hasn't been saved yet) — fall
-        // through to personal data below rather than showing a blank/broken
-        // screen. This shouldn't normally happen.
+        // If we get here, something about the link is broken — fall back to personal
       }
 
       const encrypted = await loadEncryptedProfileData(username);
@@ -181,14 +317,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setModel(loaded);
       setIsLinked(false);
       if (!options.deferNotifications) {
-        // Rebuild any due-bill alerts against whatever was just loaded — not awaited,
-        // since it shouldn't hold up the sign-in screen finishing its own transition.
         rescheduleBillNotifications(loaded).catch(() => {});
       }
       return loaded;
     } catch (e) {
-      // Shouldn't normally happen, since this only ever runs after a verified sign-in —
-      // but fall back to a blank model instead of crashing, just in case.
       const fallback = defaultModel();
       setModel(fallback);
       setIsLinked(false);
@@ -205,15 +337,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!username) return;
 
     if (householdIdRef.current && householdKeyRef.current) {
-      // Linked profile: save to the shared household document instead of
-      // this profile's own personal storage.
+      // Linked profile: save to the shared household document
       const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
       await saveHouseholdData(householdIdRef.current, encrypted);
       rescheduleBillNotifications(sanitizedModel).catch(() => {});
-      // Checkpoint A.5 — keep this profile's cloud backup metadata (salt + which
-      // household it's linked to) fresh, so signing in on a brand-new device can find
-      // its way to the right shared household. No personal `data` to send here — a
-      // linked profile's real data lives in the household document saved just above.
+
+      // Continuous local snapshotting: keep an up-to-date personal copy in local storage
+      const key = keyRef.current;
+      if (key) {
+        saveEncryptedProfileData(username, await encryptJSON(key, sanitizedModel)).catch(() => {});
+      }
+
       if (saltRef.current) {
         saveProfileCloudBackup(username, {
           salt: saltRef.current,
@@ -227,27 +361,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!key) return;
     const encrypted = await encryptJSON(key, sanitizedModel);
     await saveEncryptedProfileData(username, encrypted);
-    // Keep scheduled alerts in sync with whatever just changed (a new bill, a paid
-    // bill, a changed due date, or the notification setting itself).
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
-    // Checkpoint 9.2b-i: also keep an encrypted backup of this profile's data in the
-    // cloud, so a future "link with another profile" screen has something to compare
-    // against — and as a side benefit, a real backup if this phone is lost. Not
-    // awaited and silently ignored on failure (e.g. no internet), same pattern as
-    // rescheduleBillNotifications above — a failed cloud backup should never block or
-    // interrupt normal use of the app.
+
     if (saltRef.current) {
       saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
     }
   }
 
   function clearModel() {
+    cleanupHouseholdListener();
     usernameRef.current = null;
     keyRef.current = null;
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
     setModel(null);
     setIsLinked(false);
+    setLinkNoticeMsg(null);
+  }
+
+  function clearLinkNoticeMsg() {
+    setLinkNoticeMsg(null);
   }
 
   function getPersonalKey(): CryptoJS.lib.WordArray | null {
@@ -255,6 +388,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   async function unlinkHousehold(): Promise<ChangePasswordResult> {
+    cleanupHouseholdListener();
     const username = usernameRef.current;
     const personalKey = keyRef.current;
     const householdId = householdIdRef.current;
@@ -262,15 +396,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: 'This profile is not currently linked.' };
     }
     try {
-      // Give this profile a real, standalone copy of the data BEFORE cutting
-      // off its access to the shared version — so unlinking never leaves
-      // someone with nothing.
+      const memberCount = await getHouseholdMemberCount(householdId);
+      if (memberCount <= 1) {
+        await performDissolve(householdId, { reason: 'selfUnlink', deleteDoc: true });
+        return { ok: true };
+      }
+
+      // Multi-member household: normal self-unlink
       const currentModel = model ?? defaultModel();
       const encrypted = await encryptJSON(personalKey, currentModel);
       await saveEncryptedProfileData(username, encrypted);
 
-      // Now remove this profile's access. The shared household document
-      // itself, and anyone else still linked to it, are untouched.
       await removeMemberFromHousehold(householdId);
       await deleteWrappedHouseholdKey(username);
       await updateProfileHouseholdId(username, undefined);
@@ -286,6 +422,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     } catch (e) {
       return { ok: false, error: "Couldn't unlink — check your connection and try again." };
+    }
+  }
+
+  async function unlinkAndTransferOwnership(newOwnerUid: string): Promise<ChangePasswordResult> {
+    cleanupHouseholdListener();
+    const username = usernameRef.current;
+    const personalKey = keyRef.current;
+    const householdId = householdIdRef.current;
+    if (!username || !personalKey || !householdId) {
+      return { ok: false, error: 'This profile is not currently linked.' };
+    }
+    try {
+      const currentModel = model ?? defaultModel();
+      const encrypted = await encryptJSON(personalKey, currentModel);
+      await saveEncryptedProfileData(username, encrypted);
+
+      await leaveHouseholdAndTransferOwnership(householdId, newOwnerUid);
+      await deleteWrappedHouseholdKey(username);
+      await updateProfileHouseholdId(username, undefined);
+
+      householdIdRef.current = undefined;
+      householdKeyRef.current = null;
+      setIsLinked(false);
+
+      if (saltRef.current) {
+        saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+      }
+
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: "Couldn't transfer ownership and unlink — check your connection and try again." };
     }
   }
 
@@ -423,6 +590,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isLinked,
         getPersonalKey,
         unlinkHousehold,
+        unlinkAndTransferOwnership,
+        linkNoticeMsg,
+        clearLinkNoticeMsg,
       }}
     >
       {children}

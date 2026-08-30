@@ -116,7 +116,7 @@ export async function startHouseholdLink(
   // Host creates the shared household document first, recording the host as owner
   // and ensuring compliance with Firestore security rules (owner == request.auth.uid).
   const householdId = await generateHouseholdId();
-  await createHouseholdData(householdId, encryptedHostData);
+  await createHouseholdData(householdId, encryptedHostData, username);
 
   await setDoc(doc(db, 'linkCodes', code), {
     codeSalt,
@@ -290,7 +290,7 @@ export async function finishJoinerLink(
     const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
     // The joiner must be a member before they can write the household data.
     try {
-      await addMemberToHousehold(householdId);
+      await addMemberToHousehold(householdId, myUsername);
     } catch (e) {
       const code = (e as any)?.code;
       const msg = (e as Error)?.message || '';
@@ -303,7 +303,7 @@ export async function finishJoinerLink(
   } else {
     householdId = await generateHouseholdId();
     const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
-    await createHouseholdData(householdId, encryptedHouseholdData);
+    await createHouseholdData(householdId, encryptedHouseholdData, myUsername);
   }
 
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
@@ -370,7 +370,7 @@ export async function finishHostLink(
     if (!currentUser || currentUser.uid !== expectedUid) {
       throw new Error('The signed-in account changed while linking was in progress.');
     }
-    await addMemberToHousehold(data.householdId);
+    await addMemberToHousehold(data.householdId, myUsername);
   } catch (e) {
     throw new Error('STEP addMemberToHousehold failed: ' + (e as Error).message);
   }
