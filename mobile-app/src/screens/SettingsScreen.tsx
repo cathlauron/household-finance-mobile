@@ -19,9 +19,27 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
-import { startHouseholdLink, joinHouseholdLink, finishJoinerLink, finishHostLink, subscribeToLinkCode, LINK_CODE_TTL_MS } from '../linking';
+import {
+  startHouseholdLink,
+  startHouseholdInvite,
+  joinHouseholdLink,
+  finishJoinerLink,
+  finishHostLink,
+  subscribeToLinkCode,
+  LINK_CODE_TTL_MS,
+} from '../linking';
 import type { JoinChoice } from '../linking';
-import { loadPendingHostLink, clearPendingHostLink } from '../storage';
+import {
+  loadPendingHostLink,
+  clearPendingHostLink,
+  loadProfilesIndex,
+} from '../storage';
+import {
+  getHouseholdOwner,
+  getHouseholdMemberCount,
+  loadWrappedHouseholdKey,
+  unwrapHouseholdKey,
+} from '../household';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import PasswordField from '../components/PasswordField';
@@ -213,9 +231,50 @@ export default function SettingsScreen() {
     hostUsername: string;
     hostModel: HouseholdModel;
     secretHex: string;
+    existingHouseholdId?: string;
   } | null>(null);
   const [joinChoiceBusy, setJoinChoiceBusy] = useState(false);
   const [joinChoiceMsg, setJoinChoiceMsg] = useState('');
+
+  const [isOwner, setIsOwner] = useState(false);
+  const [householdMemberCount, setHouseholdMemberCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!isLinked || !username) {
+      setIsOwner(false);
+      setHouseholdMemberCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const profiles = await loadProfilesIndex();
+        const profile = profiles.find((p) => p.username === username);
+        const householdId = profile?.householdId;
+        if (!householdId || cancelled) {
+          setIsOwner(false);
+          setHouseholdMemberCount(0);
+          return;
+        }
+        const currentUid = getCurrentFirebaseUser()?.uid;
+        const [owner, count] = await Promise.all([
+          getHouseholdOwner(householdId),
+          getHouseholdMemberCount(householdId),
+        ]);
+        if (cancelled) return;
+        setIsOwner(Boolean(currentUid && owner === currentUid));
+        setHouseholdMemberCount(count);
+      } catch (e) {
+        if (!cancelled) {
+          setIsOwner(false);
+          setHouseholdMemberCount(0);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLinked, username]);
 
   // ---- Checkpoint 11.3: Security (change password) ----
   const [currentPassInput, setCurrentPassInput] = useState('');
@@ -543,6 +602,39 @@ export default function SettingsScreen() {
     setLinkBusy(false);
   }
 
+  async function handleStartHouseholdInvite() {
+    if (!model || !username || !isLinked) return;
+    const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
+    const personalKey = getPersonalKey();
+    if (!householdId || !personalKey) {
+      setLinkErrorMsg('This household is not ready for an invite right now.');
+      return;
+    }
+    if (householdMemberCount >= 5) {
+      setLinkErrorMsg('This household is already full (5 of 5).');
+      return;
+    }
+    setLinkErrorMsg('');
+    setLinkBusy(true);
+    try {
+      const wrapped = await loadWrappedHouseholdKey(username);
+      if (!wrapped || wrapped.householdId !== householdId) {
+        throw new Error('Linked household key not found.');
+      }
+      const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, personalKey);
+      const result = await startHouseholdInvite(householdId, householdKey, model, username);
+      clearLinkCodeExpiryTimer();
+      setLinkCode(result.code);
+      setLinkSecretHex(result.secretHex);
+      setHostFinishMsg('');
+      beginLinkCooldown();
+      linkCodeExpiryTimerRef.current = setTimeout(handleLinkCodeExpired, LINK_CODE_TTL_MS);
+    } catch (e) {
+      setLinkErrorMsg("Couldn't create the invite — check your connection and try again.");
+    }
+    setLinkBusy(false);
+  }
+
   // Clears an old/expired code so a fresh one can be generated — for when the
   // original code timed out before the other phone finished joining.
   async function handleStartOverLinking() {
@@ -674,7 +766,8 @@ export default function SettingsScreen() {
         model,
         joinResult.hostModel,
         joinResult.secretHex,
-        personalKey
+        personalKey,
+        joinResult.existingHouseholdId
       );
       setJoinChoiceMsg('Linked! Loading your shared data…');
       await loadModel(username, personalKey);
@@ -1065,23 +1158,42 @@ export default function SettingsScreen() {
           <>
             {!linkCode && !joinResult && (
               <>
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={handleStartLinking}
-                  disabled={linkBusy}
-                >
-                  {linkBusy ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <ActivityIndicator color={colors.gold} />
-                      <Text style={styles.hintText}>Generating your secure code...</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
-                  )}
-                </TouchableOpacity>
+                {!isLinked ? (
+                  <TouchableOpacity
+                    style={styles.dataButton}
+                    onPress={handleStartLinking}
+                    disabled={linkBusy}
+                  >
+                    {linkBusy ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActivityIndicator color={colors.gold} />
+                        <Text style={styles.hintText}>Generating your secure code...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  isOwner && householdMemberCount < 5 && (
+                    <TouchableOpacity
+                      style={styles.dataButton}
+                      onPress={handleStartHouseholdInvite}
+                      disabled={linkBusy}
+                    >
+                      {linkBusy ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <ActivityIndicator color={colors.gold} />
+                          <Text style={styles.hintText}>Generating the invite code...</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.dataButtonText}>Invite someone</Text>
+                      )}
+                    </TouchableOpacity>
+                  )
+                )}
                 {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
-                <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
+                {!isLinked && <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>}
                 <TextInput
                   style={styles.input}
                   placeholder="Enter the 6-character code"
@@ -1157,26 +1269,32 @@ export default function SettingsScreen() {
                   Choose what the shared vault should start with — this can't be undone once
                   you pick, so double check with the other phone first if you're unsure.
                 </Text>
+                {!joinResult.existingHouseholdId && (
+                  <TouchableOpacity
+                    style={styles.dataButton}
+                    onPress={() => handleJoinChoice('mine')}
+                    disabled={joinChoiceBusy}
+                  >
+                    <Text style={styles.dataButtonText}>Keep mine</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={styles.dataButton}
-                  onPress={() => handleJoinChoice('mine')}
+                  onPress={() => handleJoinChoice(joinResult.existingHouseholdId ? 'theirs' : 'theirs')}
                   disabled={joinChoiceBusy}
                 >
-                  <Text style={styles.dataButtonText}>Keep mine</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={() => handleJoinChoice('theirs')}
-                  disabled={joinChoiceBusy}
-                >
-                  <Text style={styles.dataButtonText}>Keep theirs</Text>
+                  <Text style={styles.dataButtonText}>
+                    {joinResult.existingHouseholdId ? 'Keep household data' : 'Keep theirs'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.dataButton}
                   onPress={() => handleJoinChoice('merge')}
                   disabled={joinChoiceBusy}
                 >
-                  <Text style={styles.dataButtonText}>Merge both</Text>
+                  <Text style={styles.dataButtonText}>
+                    {joinResult.existingHouseholdId ? 'Merge mine in' : 'Merge both'}
+                  </Text>
                 </TouchableOpacity>
                 {joinChoiceBusy && <ActivityIndicator color={colors.gold} />}
                 {!!joinChoiceMsg && (

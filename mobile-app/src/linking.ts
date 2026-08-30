@@ -51,6 +51,7 @@ import {
   generateHouseholdId,
   wrapHouseholdKey,
   createHouseholdData,
+  saveHouseholdData,
   saveWrappedHouseholdKey,
   addMemberToHousehold,
 } from './household';
@@ -126,12 +127,48 @@ export async function startHouseholdLink(
   return { code, secretHex };
 }
 
+export type StartInviteResult = {
+  code: string;
+  secretHex: string;
+};
+
+// Owner-only invite into an EXISTING household — distinct from
+// startHouseholdLink, which always creates a brand-new household. This
+// reuses the household's own existing shared key (secretHex) rather than
+// generating a new one, since the joiner needs to end up wrapping the
+// SAME household key everyone else already has, not a different one.
+export async function startHouseholdInvite(
+  householdId: string,
+  householdKey: CryptoJS.lib.WordArray,
+  householdModel: HouseholdModel,
+  hostUsername: string
+): Promise<StartInviteResult> {
+  const code = await generateLinkCode();
+  const secretHex = householdKey.toString(CryptoJS.enc.Hex);
+  const codeSalt = await generateSalt();
+  const codeKey = deriveKey(code, codeSalt);
+  const encryptedSecret = await encryptJSON(codeKey, secretHex);
+  const encryptedHostData = await encryptJSON(householdKey, householdModel);
+
+  await setDoc(doc(db, 'linkCodes', code), {
+    codeSalt,
+    encryptedSecret,
+    encryptedHostData,
+    hostUsername,
+    existingHouseholdId: householdId,
+    createdAt: serverTimestamp(),
+  });
+
+  return { code, secretHex };
+}
+
 // ---- Checkpoint 9.2b-ii: "Join with a code" ----
 
 export type JoinLinkResult = {
   hostUsername: string;
   hostModel: HouseholdModel;
   secretHex: string;
+  existingHouseholdId?: string;
 };
 
 // Looks up a code the other phone generated (via startHouseholdLink), uses
@@ -162,6 +199,7 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
     encryptedSecret: string;
     encryptedHostData: string;
     hostUsername: string;
+    existingHouseholdId?: string;
   };
 
   const codeKey = deriveKey(code, data.codeSalt);
@@ -175,7 +213,12 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   // explicit confirm before anything is finalized.
   await setDoc(doc(db, 'linkCodes', code), { joinerUsername: myUsername }, { merge: true });
 
-  return { hostUsername: data.hostUsername, hostModel, secretHex };
+  return {
+    hostUsername: data.hostUsername,
+    hostModel,
+    secretHex,
+    existingHouseholdId: data.existingHouseholdId,
+  };
 }
 
 // ---- Checkpoint 9.2d: "Confirm joiner identity" ----
@@ -223,24 +266,30 @@ export async function finishJoinerLink(
   myModel: HouseholdModel,
   hostModel: HouseholdModel,
   secretHex: string,
-  myPersonalKey: CryptoJS.lib.WordArray
+  myPersonalKey: CryptoJS.lib.WordArray,
+  existingHouseholdId?: string
 ): Promise<FinishJoinerResult> {
   const chosenModel: HouseholdModel =
     choice === 'mine' ? myModel : choice === 'theirs' ? hostModel : mergeModels(myModel, hostModel);
-
-  const householdId = await generateHouseholdId();
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
 
-  const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
-  await createHouseholdData(householdId, encryptedHouseholdData);
+  let householdId: string;
+  if (existingHouseholdId) {
+    householdId = existingHouseholdId;
+    const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
+    // The joiner must be a member before they can write the household data.
+    await addMemberToHousehold(householdId);
+    await saveHouseholdData(householdId, encryptedHouseholdData);
+  } else {
+    householdId = await generateHouseholdId();
+    const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
+    await createHouseholdData(householdId, encryptedHouseholdData);
+  }
 
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
   await saveWrappedHouseholdKey(myUsername, householdId, wrappedForMe);
   await updateProfileHouseholdId(myUsername, householdId);
 
-  // Leave a note on the same code record so the host phone can find out
-  // this finished, and which household id to use — the host still has to
-  // tap its own "finish linking" button, this alone doesn't link them.
   await setDoc(
     doc(db, 'linkCodes', code),
     { finished: true, householdId },

@@ -151,6 +151,24 @@ export async function loadHouseholdData(householdId: string): Promise<string | n
   return typeof data.data === 'string' ? data.data : null;
 }
 
+// Reads just the owner field off a household document — used client-side
+// to decide whether the current user is allowed to invite/remove members.
+// Returns null if the household doesn't exist or has no owner field yet
+// (defensive default for any pre-A.7.6a household).
+export async function getHouseholdOwner(householdId: string): Promise<string | null> {
+  const snap = await getDoc(doc(db, 'households', householdId));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return typeof data.owner === 'string' ? data.owner : null;
+}
+
+export async function getHouseholdMemberCount(householdId: string): Promise<number> {
+  const snap = await getDoc(doc(db, 'households', householdId));
+  if (!snap.exists()) return 0;
+  const data = snap.data();
+  return Array.isArray(data.members) ? data.members.length : 0;
+}
+
 // ---- Firestore: each linked person's own wrapped copy of the household key ----
 // Keyed by username so a phone can look up "what household is this username
 // linked to, and what's my wrapped key" from any device, using just the
