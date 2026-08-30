@@ -418,3 +418,17 @@ No further code changes were made this session past this point — the person as
 ▶️ Next step
 - **⚠️ SUPERSEDED — leftover from an earlier session, kept for history only.** A.7.1 was completed and re-confirmed fixed in later sessions (see ✅ Done section). A.7.6 is the actual next open item — see the ▶️ Next step section at the top of this file for the current, accurate status.
 - A.7.0 is done. Next open item in Checkpoint A.7 is **A.7.1 (change password broken after linking)** — still confirmed broken on the linked-profile path only (see ⚠️ Known issues for full detail); needs `DataContext.tsx`'s linked-profile `changePassword` branch re-read top to bottom before changing anything.
+## 📅 Session entry — Fixed TS2451 duplicate `memberCount` declaration in `unlinkHousehold` (A.7.6d cleanup)
+
+**What happened:** After implementing A.7.6d, `npx tsc --noEmit` surfaced a TS2451 error — `memberCount` was declared twice with `const` in the same `try` block inside `unlinkHousehold()` in `DataContext.tsx`.
+
+**First fix attempt failed silently.** Antigravity's first investigation correctly diagnosed the duplicate declaration and reported it fixed, but the change was never actually saved to disk — confirmed via direct file read after VS Code's Problems panel kept showing the same 2 errors even after a TS server restart. A second, more explicit prompt (quoting the exact buggy code and asking Antigravity to verify its own edit via `tsc`/`Select-String` before reporting back) produced the real fix.
+
+**Root cause (confirmed):** two issues stacked together — (1) a leftover second `getHouseholdMemberCount()` call, duplicate of the one at the top of the function; (2) dead/unreachable logic beneath it (`if (memberCount <= 1) { deleteHousehold } else { removeMemberFromHousehold }` followed by an unconditional extra `removeMemberFromHousehold` call) — dead because the function already handles and returns early on the `memberCount <= 1` case at the very top, so by the time execution reached this second block, more than 1 member was already guaranteed. Fixed by deleting the whole redundant block, leaving just the single `removeMemberFromHousehold(householdId)` call needed for the multi-member self-unlink path.
+
+**Verification:** `npx tsc --noEmit` clean, 0 errors. `Select-String` for `const memberCount` now returns exactly 2 matches file-wide (line ~283 in `loadModel`'s offline catch-up check, line ~399 in `unlinkHousehold`'s early-exit check) — confirmed no duplicate remains.
+
+**Lesson for future Copilot/Antigravity sessions:** always independently re-verify a reported fix by reading the actual file content (e.g. `Select-String`) rather than trusting a tool's own summary that it applied and verified a change — this session's first attempt reported success and clean verification output while the file itself was untouched.
+
+**Files touched:** mobile-app/src/DataContext.tsx (removed duplicate `const memberCount` declaration + the dead if/else + extra `removeMemberFromHousehold` call beneath it, inside `unlinkHousehold()`)
+
