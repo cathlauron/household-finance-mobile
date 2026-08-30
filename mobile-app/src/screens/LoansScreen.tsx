@@ -57,8 +57,22 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 // (e.g. saved before Checkpoint 5.4c, or never given a date) sort to the bottom.
 function sortByNextDue(loans: Loan[]): Loan[] {
   return [...loans].sort((a, b) => {
-    const da = getNextDueDate((a.recurringType as RecurringType) || 'onetime', a.dueDate || {});
-    const db = getNextDueDate((b.recurringType as RecurringType) || 'onetime', b.dueDate || {});
+    const da = getNextDueDate(
+      (a.recurringType as RecurringType) || 'onetime',
+      a.dueDate || {},
+      new Date(),
+      a.customStartDate,
+      a.customFreq,
+      a.customOccurrenceCount
+    );
+    const db = getNextDueDate(
+      (b.recurringType as RecurringType) || 'onetime',
+      b.dueDate || {},
+      new Date(),
+      b.customStartDate,
+      b.customFreq,
+      b.customOccurrenceCount
+    );
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
@@ -372,7 +386,14 @@ export default function LoansScreen() {
           const total = loanTotal(loan);
           const pct = loanProgressPct(loan);
           const isLent = loan.direction === 'lent';
-          const nextDue = getNextDueDate((loan.recurringType as RecurringType) || 'onetime', loan.dueDate || {});
+          const nextDue = getNextDueDate(
+            (loan.recurringType as RecurringType) || 'onetime',
+            loan.dueDate || {},
+            new Date(),
+            loan.customStartDate,
+            loan.customFreq,
+            loan.customOccurrenceCount
+          );
           return (
             <TouchableOpacity
               key={loan.id}

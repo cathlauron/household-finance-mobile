@@ -407,8 +407,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const encrypted = await encryptJSON(personalKey, currentModel);
       await saveEncryptedProfileData(username, encrypted);
 
-      const memberCount = await getHouseholdMemberCount(householdId);
-      if (memberCount <= 1) {
+      const memberCountAfterUpdate = await getHouseholdMemberCount(householdId);
+      if (memberCountAfterUpdate <= 1) {
         await deleteHousehold(householdId);
       } else {
         await removeMemberFromHousehold(householdId);

@@ -16,7 +16,7 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill } from '../types';
+import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
 
 function makeId(prefix: string): string {
   return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -90,6 +90,20 @@ function computeMonthlyExpenseBaseline(bills: Bill[]): number {
     }
   }
   return total;
+}
+
+function incomeSourceMonthlyAmount(source: IncomeSource): number {
+  const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
+  if (amount <= 0) return 0;
+  if (source.frequency === 'monthly') return amount;
+  if (source.frequency === 'weekly') return amount * 52 / 12;
+  if (source.frequency === 'biweekly') return amount * 26 / 12;
+  if (source.frequency === 'semimonthly') return amount * 24 / 12;
+  return amount;
+}
+
+function computeMonthlyIncomeBaseline(income: IncomeSource[]): number {
+  return income.reduce((sum, source) => sum + incomeSourceMonthlyAmount(source), 0);
 }
 
 type ContribRow = { id: string; date: string; amountInput: string };
@@ -326,6 +340,7 @@ export default function SavingsScreen() {
 
   const suggestedMonthlyExpenses = computeMonthlyExpenseBaseline(model.bills);
   const suggestedAnnualExpenses = suggestedMonthlyExpenses * 12;
+  const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
   const storedCalc = calcInputsFromModel();
   const efExpensesDisplay =
@@ -336,6 +351,11 @@ export default function SavingsScreen() {
     fiExpensesInput !== '' ? fiExpensesInput : storedCalc.fiAnnualExpenses === '' ? '' : String(storedCalc.fiAnnualExpenses);
   const fiSavingsDisplay =
     fiSavingsInput !== '' ? fiSavingsInput : storedCalc.fiCurrentSavings === '' ? '' : String(storedCalc.fiCurrentSavings);
+
+  const efIncomeDisplay =
+    suggestedMonthlyIncome > 0 ? `Your income sources add up to ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
+  const fiIncomeDisplay =
+    suggestedMonthlyIncome > 0 ? `Your income sources add up to ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
 
   const efExpensesNum = parseFloat(efExpensesDisplay);
   const efSavingsNum = parseFloat(efSavingsDisplay);
@@ -455,6 +475,12 @@ export default function SavingsScreen() {
             </TouchableOpacity>
           )}
 
+          {efIncomeDisplay && (
+            <View style={styles.suggestionRow}>
+              <Text style={styles.suggestionText}>{efIncomeDisplay}</Text>
+            </View>
+          )}
+
           <Text style={styles.inputLabel}>Current savings set aside for this</Text>
           <TextInput
             style={styles.input}
@@ -506,6 +532,12 @@ export default function SavingsScreen() {
                 Based on your recurring Bills: {formatPeso(suggestedAnnualExpenses)}/yr — tap to use this
               </Text>
             </TouchableOpacity>
+          )}
+
+          {fiIncomeDisplay && (
+            <View style={styles.suggestionRow}>
+              <Text style={styles.suggestionText}>{fiIncomeDisplay}</Text>
+            </View>
           )}
 
           <Text style={styles.inputLabel}>Current savings / investments</Text>

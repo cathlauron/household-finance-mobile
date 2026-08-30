@@ -27,12 +27,72 @@ function stripTime(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+function parseISO(iso: string | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function customOccurrencesInMonth(
+  startDateStr: string | undefined,
+  freq: string | undefined,
+  occurrenceCount: number | '' | undefined,
+  year: number,
+  monthIndex: number
+): number[] {
+  if (!startDateStr) return [];
+  const start = parseISO(startDateStr);
+  if (!start) return [];
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+  const frequency = freq || 'monthly';
+  const count = typeof occurrenceCount === 'number' && occurrenceCount > 0 ? occurrenceCount : null;
+
+  if (count) {
+    const results: number[] = [];
+    const d = new Date(start);
+    for (let i = 0; i < count; i++) {
+      if (d.getFullYear() === year && d.getMonth() === monthIndex) results.push(d.getDate());
+      if (frequency === 'daily') d.setDate(d.getDate() + 1);
+      else if (frequency === 'weekly') d.setDate(d.getDate() + 7);
+      else if (frequency === 'biweekly') d.setDate(d.getDate() + 14);
+      else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + 1);
+      else d.setMonth(d.getMonth() + 1);
+    }
+    return results;
+  }
+
+  const results: number[] = [];
+  if (frequency === 'monthly') {
+    const day = Math.min(start.getDate(), daysInMonth);
+    const candidate = new Date(year, monthIndex, day);
+    if (stripTime(candidate) >= stripTime(start)) results.push(day);
+  } else if (frequency === 'yearly') {
+    if (start.getMonth() === monthIndex && year >= start.getFullYear()) results.push(start.getDate());
+  } else if (frequency === 'daily') {
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (stripTime(new Date(year, monthIndex, day)) >= stripTime(start)) results.push(day);
+    }
+  } else if (frequency === 'weekly' || frequency === 'biweekly') {
+    const interval = frequency === 'weekly' ? 7 : 14;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dt = stripTime(new Date(year, monthIndex, day));
+      if (dt < stripTime(start)) continue;
+      const diffDays = Math.round((dt.getTime() - stripTime(start).getTime()) / 86400000);
+      if (diffDays % interval === 0) results.push(day);
+    }
+  }
+  return results;
+}
+
 // Returns the next due date on/after today, or null if there isn't enough
 // info yet to compute one (e.g. no day set).
 export function getNextDueDate(
   recurringType: RecurringType | string,
   dueDate: Record<string, any> | undefined,
-  today: Date = new Date()
+  today: Date = new Date(),
+  customStartDate?: string,
+  customFreq?: string,
+  customOccurrenceCount?: number | ''
 ): Date | null {
   const d = dueDate || {};
 
@@ -71,6 +131,29 @@ export function getNextDueDate(
       candidate = new Date(y, monthIdx, day);
     }
     return candidate;
+  }
+
+  if (recurringType === 'custom') {
+    const start = customStartDate || d.customStartDate || '';
+    const freq = customFreq || d.customFreq || 'monthly';
+    const count = typeof customOccurrenceCount === 'number'
+      ? customOccurrenceCount
+      : typeof d.customOccurrenceCount === 'number'
+        ? d.customOccurrenceCount
+        : undefined;
+    if (!start) return null;
+    const scanDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    for (let offset = 0; offset < 60; offset++) {
+      const year = scanDate.getFullYear();
+      const monthIndex = scanDate.getMonth();
+      const days = customOccurrencesInMonth(start, freq, count, year, monthIndex);
+      for (const day of days) {
+        const candidate = new Date(year, monthIndex, day);
+        if (stripTime(candidate) >= stripTime(today)) return candidate;
+      }
+      scanDate.setMonth(scanDate.getMonth() + 1);
+    }
+    return null;
   }
 
   return null;

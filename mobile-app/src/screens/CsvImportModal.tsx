@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -15,7 +15,15 @@ import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
-import { parseTransactionsCsv, CsvParseResult } from '../csvImport';
+import {
+  parseTransactionsCsv,
+  CsvParseResult,
+  CsvColumnMapping,
+  CsvTargetField,
+  CSV_TARGET_FIELDS,
+  applyCsvMapping,
+  flagDuplicateRows,
+} from '../csvImport';
 import type { ManualTransaction, HouseholdModel } from '../types';
 
 function makeId(prefix: string): string {
@@ -27,6 +35,36 @@ type Props = {
   onClose: () => void;
 };
 
+const TARGET_LABELS: Record<CsvTargetField, string> = {
+  date: 'Date',
+  label: 'Label',
+  amount: 'Amount',
+  direction: 'Direction',
+};
+
+function defaultAssignments(headers: string[], detectedMapping: CsvColumnMapping): Record<string, CsvTargetField | null> {
+  const assignments: Record<string, CsvTargetField | null> = {};
+  headers.forEach((header) => {
+    const field = (Object.keys(detectedMapping) as CsvTargetField[]).find(
+      (key) => detectedMapping[key] === header
+    ) ?? null;
+    assignments[header] = field;
+  });
+  return assignments;
+}
+
+function mappingFromAssignments(
+  assignments: Record<string, CsvTargetField | null>,
+  headers: string[]
+): CsvColumnMapping {
+  const next: CsvColumnMapping = { date: null, label: null, amount: null, direction: null };
+  headers.forEach((header) => {
+    const field = assignments[header];
+    if (field) next[field] = header;
+  });
+  return next;
+}
+
 export default function CsvImportModal({ visible, onClose }: Props) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -34,21 +72,63 @@ export default function CsvImportModal({ visible, onClose }: Props) {
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [result, setResult] = useState<CsvParseResult | null>(null);
+  const [columnAssignments, setColumnAssignments] = useState<Record<string, CsvTargetField | null>>({});
+  const [mappingMenuOpen, setMappingMenuOpen] = useState(false);
+  const [selectedHeader, setSelectedHeader] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [doneMsg, setDoneMsg] = useState('');
+  const [excludedDuplicateRows, setExcludedDuplicateRows] = useState<Set<number>>(new Set());
+
+  const previewRows = useMemo(() => {
+    if (!result || result.headerError || !model || Object.keys(columnAssignments).length === 0) {
+      return null;
+    }
+    const mapping = mappingFromAssignments(columnAssignments, result.headers);
+    const mapped = applyCsvMapping(result, mapping);
+    const flagged = flagDuplicateRows(mapped.validRows, model.manualTransactions || []);
+    return { ...mapped, validRows: flagged };
+  }, [result, columnAssignments, model]);
+
+  useEffect(() => {
+    if (!previewRows) return;
+    const duplicateRows = previewRows.validRows
+      .filter((row) => row.isPossibleDuplicate)
+      .map((row) => row.rowNumber);
+    setExcludedDuplicateRows(new Set(duplicateRows));
+  }, [previewRows]);
 
   function resetState() {
     setFileName(null);
     setResult(null);
+    setColumnAssignments({});
+    setSelectedHeader(null);
     setErrorMsg('');
     setDoneMsg('');
+    setExcludedDuplicateRows(new Set());
   }
 
   function handleClose() {
     resetState();
     onClose();
+  }
+
+  function openMappingMenu(header: string) {
+    setSelectedHeader(header);
+    setMappingMenuOpen(true);
+  }
+
+  function setHeaderTarget(field: CsvTargetField | null) {
+    if (!selectedHeader) return;
+    const next: Record<string, CsvTargetField | null> = { ...columnAssignments };
+    Object.keys(next).forEach((header) => {
+      if (next[header] === field) delete next[header];
+    });
+    if (field) next[selectedHeader] = field;
+    setColumnAssignments(next);
+    setMappingMenuOpen(false);
+    setSelectedHeader(null);
   }
 
   async function handlePickFile() {
@@ -75,6 +155,9 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       const parsed = parseTransactionsCsv(text);
       setFileName(asset.name || 'CSV file');
       setResult(parsed);
+      if (!parsed.headerError) {
+        setColumnAssignments(defaultAssignments(parsed.headers, parsed.detectedMapping));
+      }
     } catch (e) {
       setErrorMsg("Couldn't read that file. Make sure it's a plain CSV file, then try again.");
     } finally {
@@ -83,11 +166,19 @@ export default function CsvImportModal({ visible, onClose }: Props) {
     }
   }
 
+  const importableRows = previewRows?.validRows.filter((row) => {
+    if (!row.isPossibleDuplicate) return true;
+    return !excludedDuplicateRows.has(row.rowNumber);
+  }) ?? [];
+
   async function handleConfirmImport() {
-    if (!model || !result || result.validRows.length === 0) return;
+    if (!model || !previewRows || importableRows.length === 0) {
+      setErrorMsg('There are no rows ready to import after your review.');
+      return;
+    }
     setImporting(true);
     try {
-      const newTxns: ManualTransaction[] = result.validRows.map((r) => ({
+      const newTxns: ManualTransaction[] = importableRows.map((r) => ({
         id: makeId('txn'),
         date: r.date,
         label: r.label,
@@ -104,6 +195,8 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       setDoneMsg(`Imported ${newTxns.length} transaction${newTxns.length === 1 ? '' : 's'}.`);
       setResult(null);
       setFileName(null);
+      setColumnAssignments({});
+      setExcludedDuplicateRows(new Set());
     } catch (e) {
       setErrorMsg("Something went wrong saving these — please try again.");
     } finally {
@@ -148,60 +241,107 @@ export default function CsvImportModal({ visible, onClose }: Props) {
 
             {result && !result.headerError && (
               <View>
-                <Text style={styles.summaryText}>
-                  Found {result.rows.length} row{result.rows.length === 1 ? '' : 's'}:{' '}
-                  {result.validRows.length} ready to import
-                  {result.invalidRows.length > 0
-                    ? `, ${result.invalidRows.length} skipped (see below)`
-                    : ''}
-                  .
-                </Text>
-
-                {result.validRows.slice(0, 8).map((r) => (
-                  <View key={r.rowNumber} style={styles.previewRow}>
-                    <View style={styles.previewMain}>
-                      <Text style={styles.previewLabel} numberOfLines={1}>{r.label}</Text>
-                      <Text style={styles.previewSub}>{r.date} · {r.direction}</Text>
+                <Text style={styles.summaryText}>Map each column before previewing rows.</Text>
+                {result.headers.map((header, idx) => {
+                  const mappedField = columnAssignments[header] ?? null;
+                  const display = mappedField ? TARGET_LABELS[mappedField] : 'Choose field';
+                  return (
+                    <View key={`${header}-${idx}`} style={styles.mappingRow}>
+                      <View style={styles.mappingHeaderWrap}>
+                        <Text style={styles.mappingHeaderText} numberOfLines={1}>{header || `Column ${idx + 1}`}</Text>
+                      </View>
+                      <TouchableOpacity style={styles.mappingSelect} onPress={() => openMappingMenu(header)}>
+                        <Text style={styles.mappingSelectText}>{display}</Text>
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.previewAmount}>{formatPeso(r.amount)}</Text>
-                  </View>
-                ))}
-                {result.validRows.length > 8 && (
-                  <Text style={styles.moreText}>
-                    + {result.validRows.length - 8} more row{result.validRows.length - 8 === 1 ? '' : 's'}
-                  </Text>
-                )}
+                  );
+                })}
 
-                {result.invalidRows.length > 0 && (
-                  <View style={styles.invalidBox}>
-                    <Text style={styles.invalidTitle}>Skipped rows</Text>
-                    {result.invalidRows.slice(0, 6).map((r) => (
-                      <Text key={r.rowNumber} style={styles.invalidLine}>
-                        Row {r.rowNumber}: {r.error}
-                      </Text>
-                    ))}
-                    {result.invalidRows.length > 6 && (
-                      <Text style={styles.invalidLine}>
-                        + {result.invalidRows.length - 6} more
+                {previewRows && (
+                  <>
+                    <Text style={styles.summaryText}>
+                      Found {previewRows.rows.length} row{previewRows.rows.length === 1 ? '' : 's'}:{' '}
+                      {previewRows.validRows.length} ready to import
+                      {previewRows.invalidRows.length > 0 ? `, ${previewRows.invalidRows.length} skipped` : ''}
+                      .
+                    </Text>
+
+                    {previewRows.validRows.slice(0, 8).map((r) => {
+                      const isDuplicate = !!r.isPossibleDuplicate;
+                      const excluded = isDuplicate && excludedDuplicateRows.has(r.rowNumber);
+                      return (
+                        <View key={r.rowNumber} style={[styles.previewRow, isDuplicate && styles.previewRowDuplicate]}>
+                          <View style={styles.previewMain}>
+                            <View style={styles.previewTopLine}>
+                              <Text style={styles.previewLabel} numberOfLines={1}>{r.label}</Text>
+                              {isDuplicate && (
+                                <Text style={[styles.badge, excluded ? styles.badgeMuted : styles.badgeWarning]}>
+                                  {excluded ? 'Possible duplicate — excluded' : 'Possible duplicate'}
+                                </Text>
+                              )}
+                            </View>
+                            <Text style={styles.previewSub}>{r.date} · {r.direction}</Text>
+                            {isDuplicate && (
+                              <TouchableOpacity
+                                style={styles.checkboxRow}
+                                onPress={() =>
+                                  setExcludedDuplicateRows((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(r.rowNumber)) next.delete(r.rowNumber);
+                                    else next.add(r.rowNumber);
+                                    return next;
+                                  })
+                                }
+                              >
+                                <View style={[styles.checkbox, !excluded && styles.checkboxChecked]}>
+                                  {!excluded && <Text style={styles.checkboxMark}>✓</Text>}
+                                </View>
+                                <Text style={styles.checkboxText}>{excluded ? 'Include in import' : 'Exclude from import'}</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                          <Text style={styles.previewAmount}>{formatPeso(r.amount)}</Text>
+                        </View>
+                      );
+                    })}
+                    {previewRows.validRows.length > 8 && (
+                      <Text style={styles.moreText}>
+                        + {previewRows.validRows.length - 8} more row{previewRows.validRows.length - 8 === 1 ? '' : 's'}
                       </Text>
                     )}
-                  </View>
-                )}
 
-                {result.validRows.length > 0 && (
-                  <TouchableOpacity
-                    style={styles.importConfirmButton}
-                    onPress={handleConfirmImport}
-                    disabled={importing}
-                  >
-                    {importing ? (
-                      <ActivityIndicator color={colors.navy2} />
-                    ) : (
-                      <Text style={styles.importConfirmButtonText}>
-                        Import {result.validRows.length} transaction{result.validRows.length === 1 ? '' : 's'}
-                      </Text>
+                    {previewRows.invalidRows.length > 0 && (
+                      <View style={styles.invalidBox}>
+                        <Text style={styles.invalidTitle}>Skipped rows</Text>
+                        {previewRows.invalidRows.slice(0, 6).map((r) => (
+                          <Text key={r.rowNumber} style={styles.invalidLine}>
+                            Row {r.rowNumber}: {r.error}
+                          </Text>
+                        ))}
+                        {previewRows.invalidRows.length > 6 && (
+                          <Text style={styles.invalidLine}>
+                            + {previewRows.invalidRows.length - 6} more
+                          </Text>
+                        )}
+                      </View>
                     )}
-                  </TouchableOpacity>
+
+                    {importableRows.length > 0 && (
+                      <TouchableOpacity
+                        style={styles.importConfirmButton}
+                        onPress={handleConfirmImport}
+                        disabled={importing}
+                      >
+                        {importing ? (
+                          <ActivityIndicator color={colors.navy2} />
+                        ) : (
+                          <Text style={styles.importConfirmButtonText}>
+                            Import {importableRows.length} transaction{importableRows.length === 1 ? '' : 's'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </>
                 )}
               </View>
             )}
@@ -212,6 +352,22 @@ export default function CsvImportModal({ visible, onClose }: Props) {
           </ScrollView>
         </Pressable>
       </Pressable>
+
+      <Modal visible={mappingMenuOpen} transparent animationType="fade" onRequestClose={() => setMappingMenuOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setMappingMenuOpen(false)}>
+          <Pressable style={styles.mappingModalCard} onPress={() => {}}>
+            <Text style={styles.title}>Choose field</Text>
+            <TouchableOpacity style={styles.optionButton} onPress={() => setHeaderTarget(null)}>
+              <Text style={styles.optionText}>Unmapped</Text>
+            </TouchableOpacity>
+            {CSV_TARGET_FIELDS.map((field) => (
+              <TouchableOpacity key={field} style={styles.optionButton} onPress={() => setHeaderTarget(field)}>
+                <Text style={styles.optionText}>{TARGET_LABELS[field]}</Text>
+              </TouchableOpacity>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
@@ -248,6 +404,24 @@ function makeStyles(colors: any) {
     errorText: { fontSize: 12.5, color: '#e5484d', marginBottom: 12, lineHeight: 17 },
     doneText: { fontSize: 13.5, color: '#2f9e44', fontWeight: '600', marginBottom: 12 },
     summaryText: { fontSize: 12.5, color: colors.inkDim, marginBottom: 10, lineHeight: 17 },
+    mappingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 8,
+    },
+    mappingHeaderWrap: { flex: 1, overflow: 'hidden' },
+    mappingHeaderText: { fontSize: 12.5, color: colors.ink, fontWeight: '600' },
+    mappingSelect: {
+      minWidth: 120,
+      backgroundColor: colors.navy2,
+      borderRadius: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+    },
+    mappingSelectText: { fontSize: 12.5, color: colors.gold, fontWeight: '600' },
     previewRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -258,30 +432,62 @@ function makeStyles(colors: any) {
       paddingHorizontal: 10,
       marginBottom: 6,
     },
+    previewRowDuplicate: { borderWidth: 1, borderColor: '#f59e0b' },
     previewMain: { flex: 1, marginRight: 8 },
-    previewLabel: { fontSize: 12.5, fontWeight: '600', color: colors.ink },
-    previewSub: { fontSize: 10.5, color: colors.inkFaint, marginTop: 1 },
-    previewAmount: { fontSize: 12.5, fontWeight: '700', color: colors.ink },
-    moreText: { fontSize: 11.5, color: colors.inkFaint, marginBottom: 10 },
+    previewTopLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    previewLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.ink },
+    previewSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
+    previewAmount: { fontSize: 13, fontWeight: '700', color: colors.ink },
+    badge: { fontSize: 9, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
+    badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e' },
+    badgeMuted: { backgroundColor: colors.navy1, color: colors.inkDim },
+    checkboxRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+    checkbox: {
+      width: 16,
+      height: 16,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.inkDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 6,
+    },
+    checkboxChecked: { backgroundColor: colors.gold, borderColor: colors.gold },
+    checkboxMark: { fontSize: 10, color: colors.navy2, fontWeight: '700' },
+    checkboxText: { fontSize: 11.5, color: colors.inkDim },
+    moreText: { fontSize: 11.5, color: colors.inkFaint, marginTop: 6, marginBottom: 10 },
     invalidBox: {
+      marginTop: 12,
       backgroundColor: colors.navy2,
       borderRadius: 8,
       padding: 10,
-      marginTop: 4,
-      marginBottom: 14,
     },
-    invalidTitle: { fontSize: 11, fontWeight: '700', color: colors.inkDim, marginBottom: 6 },
-    invalidLine: { fontSize: 11, color: colors.inkFaint, marginBottom: 3 },
+    invalidTitle: { fontSize: 11.5, color: colors.inkDim, fontWeight: '700', marginBottom: 4 },
+    invalidLine: { fontSize: 11.5, color: '#e5484d', marginTop: 2 },
     importConfirmButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
+      borderRadius: 10,
       paddingVertical: 12,
       alignItems: 'center',
-      marginTop: 4,
-      marginBottom: 12,
+      marginTop: 12,
     },
-    importConfirmButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
-    closeButton: { alignItems: 'center', paddingVertical: 8 },
-    closeButtonText: { fontSize: 13, color: colors.inkDim },
+    importConfirmButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.navy2 },
+    closeButton: { marginTop: 12, alignItems: 'center' },
+    closeButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    mappingModalCard: {
+      width: '100%',
+      maxWidth: 280,
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      padding: 18,
+    },
+    optionButton: {
+      backgroundColor: colors.navy2,
+      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      marginTop: 8,
+    },
+    optionText: { fontSize: 13, color: colors.ink, fontWeight: '600' },
   });
 }

@@ -24,6 +24,7 @@
 // ============================================================
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
+import { customOccurrencesInMonth } from './recurrence';
 
 export type CalendarEvent = {
   type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
@@ -165,61 +166,6 @@ function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): nu
   return [];
 }
 
-// ---- Custom recurrence (daily / weekly / biweekly / monthly / yearly) ----
-// Shared by Bills, Debts, and Loans' "Custom" recurrence type.
-function customOccurrencesInMonth(
-  startDateStr: string | undefined,
-  freq: string | undefined,
-  occurrenceCount: number | '' | undefined,
-  year: number,
-  monthIndex: number
-): number[] {
-  if (!startDateStr) return [];
-  const start = parseISO(startDateStr);
-  if (!start) return [];
-  const daysInMonth = lastDayOfMonth(year, monthIndex);
-  const frequency = freq || 'monthly';
-  const count = typeof occurrenceCount === 'number' && occurrenceCount > 0 ? occurrenceCount : null;
-
-  // If there's a finite occurrence count, generate every occurrence date up front and
-  // just filter down to the ones that land in this month.
-  if (count) {
-    const results: number[] = [];
-    const d = new Date(start);
-    for (let i = 0; i < count; i++) {
-      if (d.getFullYear() === year && d.getMonth() === monthIndex) results.push(d.getDate());
-      if (frequency === 'daily') d.setDate(d.getDate() + 1);
-      else if (frequency === 'weekly') d.setDate(d.getDate() + 7);
-      else if (frequency === 'biweekly') d.setDate(d.getDate() + 14);
-      else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + 1);
-      else d.setMonth(d.getMonth() + 1); // monthly
-    }
-    return results;
-  }
-
-  // Repeats forever — figure out which day(s) in this specific month it lands on.
-  const results: number[] = [];
-  if (frequency === 'monthly') {
-    const day = Math.min(start.getDate(), daysInMonth);
-    const candidate = new Date(year, monthIndex, day);
-    if (stripTime(candidate) >= stripTime(start)) results.push(day);
-  } else if (frequency === 'yearly') {
-    if (start.getMonth() === monthIndex && year >= start.getFullYear()) results.push(start.getDate());
-  } else if (frequency === 'daily') {
-    for (let day = 1; day <= daysInMonth; day++) {
-      if (stripTime(new Date(year, monthIndex, day)) >= stripTime(start)) results.push(day);
-    }
-  } else if (frequency === 'weekly' || frequency === 'biweekly') {
-    const interval = frequency === 'weekly' ? 7 : 14;
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dt = stripTime(new Date(year, monthIndex, day));
-      if (dt < stripTime(start)) continue;
-      const diffDays = Math.round((dt.getTime() - stripTime(start).getTime()) / 86400000);
-      if (diffDays % interval === 0) results.push(day);
-    }
-  }
-  return results;
-}
 
 // ---- Income next-payday resolver ----
 function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex: number): number[] {
