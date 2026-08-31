@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -9,19 +9,20 @@ type Props = {
   onChangeText: (text: string) => void;
   placeholder?: string;
   editable?: boolean;
+  testID?: string;
 };
 
-// One shared password/passphrase input with a show/hide eye icon — used everywhere a
+// One shared password/passphrase input with a show/hide eye icon - used everywhere a
 // real password is typed (sign-in, create-profile, change-password). Deliberately NOT
 // used on the 4-digit PIN screens, which have their own numeric-only UX.
-export default function PasswordField({ style, value, onChangeText, placeholder, editable = true }: Props) {
+export default function PasswordField({ style, value, onChangeText, placeholder, editable = true, testID }: Props) {
   const { colors } = useTheme();
   const [hidden, setHidden] = useState(true);
   const styles = makeStyles(colors);
-
   return (
     <View style={styles.wrap}>
       <TextInput
+        testID={testID}
         style={[style, styles.input]}
         value={value}
         onChangeText={onChangeText}
@@ -41,7 +42,6 @@ export default function PasswordField({ style, value, onChangeText, placeholder,
     </View>
   );
 }
-
 function makeStyles(colors: any) {
   return StyleSheet.create({
     wrap: { position: 'relative', justifyContent: 'center' },

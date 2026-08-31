@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -22,12 +22,12 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
   const [busy, setBusy] = useState(false);
 
   // Turns a raw Firebase error into a plain-English message. Firebase errors
-  // come with a `code` like "auth/email-already-in-use" — we check for the
+  // come with a `code` like "auth/email-already-in-use" - we check for the
   // common ones and fall back to a generic message for anything else.
   function friendlyFirebaseError(e: any): string {
     const code = e?.code || '';
     if (code === 'auth/email-already-in-use') {
-      return 'That email is already registered — try signing in instead, or use a different email.';
+      return 'That email is already registered - try signing in instead, or use a different email.';
     }
     if (code === 'auth/invalid-email') {
       return "That doesn't look like a valid email address.";
@@ -62,7 +62,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
     try {
       const profiles = await loadProfilesIndex();
       if (profiles.some((p) => p.username === username)) {
-        setError('That username is taken — choose another, or sign in instead.');
+        setError('That username is taken - choose another, or sign in instead.');
         setBusy(false);
         return;
       }
@@ -79,7 +79,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       }
 
       // Only once the Firebase account exists do we create the local,
-      // password-encrypted profile — exactly as before Phase A.
+      // password-encrypted profile - exactly as before Phase A.
       const salt = await generateSalt();
       const key = deriveKey(password1, salt);
       const encrypted = await encryptJSON(key, defaultModel());
@@ -99,12 +99,13 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       <Text style={styles.eyebrow}>FIRST-TIME SETUP</Text>
       <Text style={styles.title}>Create your profile</Text>
       <Text style={styles.sub}>
-        Choose a username and a password, and enter your email — you'll use your username and
+        Choose a username and a password, and enter your email - you'll use your username and
         password to sign in every time.
       </Text>
 
       <Text style={styles.label}>Email</Text>
       <TextInput
+        testID="email-input"
         style={styles.input}
         value={emailInput}
         onChangeText={setEmailInput}
@@ -116,6 +117,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
       <Text style={styles.label}>Username</Text>
       <TextInput
+        testID="username-input"
         style={styles.input}
         value={usernameInput}
         onChangeText={setUsernameInput}
@@ -126,6 +128,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
       <Text style={styles.label}>Password</Text>
       <PasswordField
+        testID="password-input"
         style={styles.input}
         value={password1}
         onChangeText={setPassword1}
@@ -133,6 +136,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       />
       <Text style={styles.label}>Confirm password</Text>
       <PasswordField
+        testID="confirm-password-input"
         style={styles.input}
         value={password2}
         onChangeText={setPassword2}
@@ -141,8 +145,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.primaryBtn} onPress={handleCreate} disabled={busy}>
-        <Text style={styles.primaryBtnText}>{busy ? 'Creating…' : 'Create profile'}</Text>
+      <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={handleCreate} disabled={busy}>
+        <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.ghostBtn} onPress={onGoToSignIn}>
@@ -150,7 +154,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        There's no "forgot password" recovery — your data is genuinely encrypted with this
+        There's no "forgot password" recovery - your data is genuinely encrypted with this
         password, not just hidden. Remember it, like you would a password manager entry.
       </Text>
     </View>

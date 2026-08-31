@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -27,16 +27,16 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  // Checkpoint A.5 — true only while we're quietly creating a missing
+  // Checkpoint A.5 - true only while we're quietly creating a missing
   // Firebase account for a profile that predates Firebase Auth. Just
   // changes the button's wording so it doesn't look like a plain sign-in.
   const [isMigrating, setIsMigrating] = useState(false);
-  // Checkpoint A.5 — true only while we're pulling a profile's backup down
+  // Checkpoint A.5 - true only while we're pulling a profile's backup down
   // from the cloud for a brand-new device that has no local data yet. Also
   // just changes the button's wording.
   const [isRestoring, setIsRestoring] = useState(false);
-  // The password → encryption key step (deriveKey, below) is intentionally slow on
-  // purpose — it's what makes the password hard to brute-force — and on a phone it can
+  // The password -> encryption key step (deriveKey, below) is intentionally slow on
+  // purpose - it's what makes the password hard to brute-force - and on a phone it can
   // take anywhere from a few seconds to over a minute depending on the device. This just
   // shows a reassuring "this is normal" message once it's been running a couple seconds,
   // so it doesn't look frozen.
@@ -68,7 +68,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       return "That doesn't look like a valid email address.";
     }
     if (code === 'auth/too-many-requests') {
-      return 'Too many attempts — please wait a bit and try again.';
+      return 'Too many attempts - please wait a bit and try again.';
     }
     return 'Something went wrong signing in. Check your internet connection and try again.';
   }
@@ -85,7 +85,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
     setIsMigrating(false);
     setIsRestoring(false);
     try {
-      // Firebase is the real, server-checked gate now — this is what
+      // Firebase is the real, server-checked gate now - this is what
       // actually confirms who you are, before we touch any local data.
       try {
         await signInWithFirebase(email, password);
@@ -99,17 +99,17 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
           setError('Could not reset the previous sign-in session. Please try again.');
           return;
         }
-        // Checkpoint A.5 — profiles created before Firebase Auth existed
+        // Checkpoint A.5 - profiles created before Firebase Auth existed
         // have no matching Firebase account at all, so sign-in always
         // fails here for them, even with the correct password. Before
         // treating this as a real login failure, check whether that's
         // exactly what's happening: a local profile exists for this
         // username, and the password just entered actually unlocks it.
-        // If so, this is a legitimate long-time user — quietly create the
+        // If so, this is a legitimate long-time user - quietly create the
         // missing Firebase account using the email + password they just
         // typed, then finish signing in normally. If the password is
         // wrong, this check fails too, and they see the same "incorrect"
-        // message as before — this never helps someone who doesn't
+        // message as before - this never helps someone who doesn't
         // already know the correct password.
         const code = firebaseError?.code || '';
         const looksLikeMissingAccountOrWrongInfo =
@@ -137,7 +137,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
                 try {
                   await createFirebaseAccount(email, password);
                   // createFirebaseAccount signs the new account in
-                  // automatically, so we're genuinely authenticated now —
+                  // automatically, so we're genuinely authenticated now -
                   // finish signing in with the same local key we already
                   // verified above.
                   setIsMigrating(false);
@@ -171,10 +171,10 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       const profile = profiles.find((p) => p.username === username);
 
       if (!profile) {
-        // Checkpoint A.5 — brand-new device: nothing has ever been saved locally here
+        // Checkpoint A.5 - brand-new device: nothing has ever been saved locally here
         // for this username. Before giving up, check whether this profile has an
         // encrypted backup sitting in the cloud (every save already creates/refreshes
-        // one — see cloudBackup.ts) and, if so, pull it down and set this device up
+        // one - see cloudBackup.ts) and, if so, pull it down and set this device up
         // from that instead of failing outright.
         setIsRestoring(true);
         const cloudBackup = await loadProfileCloudBackup(username);
@@ -200,7 +200,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         const effectiveHouseholdId = wrappedKeyInfo?.householdId || cloudBackup?.householdId;
 
         if (effectiveHouseholdId && wrappedKeyInfo) {
-          // This profile is linked to a shared household — the actual data lives in
+          // This profile is linked to a shared household - the actual data lives in
           // the shared household document, not in this personal backup. Confirm the
           // password is correct by actually unwrapping the shared key and decrypting
           // the shared data with it, before trusting any of this.
@@ -217,7 +217,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             return;
           }
         } else {
-          // Personal (unlinked) profile — verify against the personal backup itself.
+          // Personal (unlinked) profile - verify against the personal backup itself.
           if (!cloudBackup?.data) {
             setIsRestoring(false);
             setError('Could not find any saved data for that profile.');
@@ -232,12 +232,12 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             setBusy(false);
             return;
           }
-          // Password confirmed correct — save a local copy so this device has its
+          // Password confirmed correct - save a local copy so this device has its
           // own working data going forward (and can work offline afterward too).
           await saveEncryptedProfileData(username, cloudBackup.data);
         }
 
-        // Password confirmed correct either way — now safe to set this device up
+        // Password confirmed correct either way - now safe to set this device up
         // with its own local profile entry, same as if it had been created here.
         const newEntry: ProfileIndexEntry = { username, salt: effectiveSalt };
         if (effectiveHouseholdId) newEntry.householdId = effectiveHouseholdId;
@@ -257,12 +257,12 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       if (profile.householdId) {
         // Linked profile: the real, up-to-date data lives in the shared
         // household document, not this profile's own (possibly stale or
-        // missing) personal blob — saveModel() only ever writes the personal
+        // missing) personal blob - saveModel() only ever writes the personal
         // blob for UNLINKED profiles, so checking it here was the original bug.
         //
         // A second, separate issue: this device's LOCAL salt (profile.salt,
         // from AsyncStorage) can go stale if the password was ever changed on
-        // a *different* device — the change only updates that other device's
+        // a *different* device - the change only updates that other device's
         // local copy, plus a cloud backup copy, but never this device's local
         // copy. So: try the local salt first: if that fails, fall back to the
         // cloud backup's salt. If the cloud one works, self-heal this
@@ -379,7 +379,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         }
       }
 
-      // Unlinked (personal) profile — unchanged from before.
+      // Unlinked (personal) profile - unchanged from before.
       const key = deriveKey(password, profile.salt);
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) {
@@ -424,6 +424,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
       <Text style={styles.label}>Email</Text>
       <TextInput
+        testID="email-input"
         style={styles.input}
         value={emailInput}
         onChangeText={setEmailInput}
@@ -436,6 +437,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
       <Text style={styles.label}>Username</Text>
       <TextInput
+        testID="username-input"
         style={styles.input}
         value={usernameInput}
         onChangeText={setUsernameInput}
@@ -447,25 +449,26 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
       <Text style={styles.label}>Password</Text>
       <PasswordField
+        testID="password-input"
         style={styles.input}
         value={password}
         onChangeText={setPassword}
-        placeholder="••••••••"
+        placeholder="********"
         editable={!busy}
       />
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.primaryBtn} onPress={handleSignIn} disabled={busy}>
+      <TouchableOpacity testID="sign-in-button" style={styles.primaryBtn} onPress={handleSignIn} disabled={busy}>
         {busy ? (
           <View style={styles.busyRow}>
             <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
             <Text style={styles.primaryBtnText}>
               {isMigrating
-                ? 'Setting up secure sign-in…'
+                ? 'Setting up secure sign-in...'
                 : isRestoring
-                ? 'Restoring your data…'
-                : 'Signing in…'}
+                ? 'Restoring your data...'
+                : 'Signing in...'}
             </Text>
           </View>
         ) : (
@@ -475,7 +478,7 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
 
       {showSlowHint && (
         <Text style={styles.slowHint}>
-          This can take up to a minute — your phone is turning your password into your
+          This can take up to a minute - your phone is turning your password into your
           encryption key. This is normal and only happens on sign-in.
         </Text>
       )}
