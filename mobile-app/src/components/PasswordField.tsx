@@ -12,7 +12,7 @@ type Props = {
   testID?: string;
 };
 
-// One shared password/passphrase input with a show/hide eye icon - used everywhere a
+// One shared password/passphrase input with a show/hide eye icon — used everywhere a
 // real password is typed (sign-in, create-profile, change-password). Deliberately NOT
 // used on the 4-digit PIN screens, which have their own numeric-only UX.
 export default function PasswordField({ style, value, onChangeText, placeholder, editable = true, testID }: Props) {
