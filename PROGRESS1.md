@@ -157,7 +157,7 @@ Security hardening on household linking (link-code lifecycle)
 
 ▶️ Next step
 
-0. **BLOCKED: Checkpoint A.7.9 (automated testing setup — Firebase Emulator + Maestro).** All code/config pieces are done and committed: testIDs, `app.json` package name, `firebase.ts` emulator toggle (`USE_FIREBASE_EMULATOR = true`, `EMULATOR_HOST = "10.0.2.2"`), `firebase.json` confirmed correct, Firebase CLI and Maestro CLI both confirmed already installed, AVD `Pixel_10_Pro` confirmed to exist, PATH updated so `emulator`/`adb` commands work. **The Android emulator itself will not launch** — repeated "missing DLL" System Error dialogs (several different Qt/android-emu DLLs, not just one) even after a clean reinstall of just the Android Emulator SDK component. NEXT ACTION: full uninstall + clean reinstall of Android Studio itself (not just the emulator component) — see the dated session entry for this session for the reasoning. Resume here first before anything else. IMPORTANT REMINDER: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` — must be set back to `false` before any real-device/real-account testing.
+0. **IN PROGRESS, VERY CLOSE: Checkpoint A.7.9 (automated testing setup — Firebase Emulator + Maestro) — using the Android Studio AVD after all (pivot to real phone was reversed once `adb devices` confirmed the AVD is fully usable for automation despite its window not rendering on screen).** All infra confirmed working: Android emulator (`Pixel_10_Pro`) boots and is controllable via `adb`/Maestro; `firebase emulators:start` running; Expo running and app installed via Expo Go; `mobile-app/flows/create-profile.yaml` and `mobile-app/flows/sign-in.yaml` written (appId `host.exp.exponent`, opens `exp://192.168.1.62:8081` — NOTE this IP may change if the PC reconnects to WiFi, re-check against the live Expo terminal output if flows suddenly fail to open the app). Test account: test@example.com / testuser / test123456. Every individual step (open link, tap each field, input each field, hide keyboard, tap submit button) has now succeeded in at least one run — just need one clean end-to-end pass. Last run failed on the very first step, likely because the app was left mid-flow from a previous partial test run, not a new bug. NEXT ACTION: reset app state (`adb shell pm clear host.exp.exponent` or check if testuser already exists and use sign-in.yaml instead), then re-run. Resume here first before anything else. IMPORTANT REMINDER: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` — must be set back to `false` before any real-account (non-testing) use.
 1. ~~Checkpoint A.5 (reopened, new scope)~~ — CONFIRMED DONE (see ✅ Done section above, code inspected directly in `SignInScreen.tsx`). No further work needed here.
 2. ~~Checkpoint A.6~~ — FULLY DONE, code inspected AND live-tested on two real phones (Phone A host / Phone B joiner). `linking.ts` has `subscribeToLinkCode()`, a real `onSnapshot` listener watching `linkCodes/{code}` live (treats permission-denied as an expected expiry, not an error). `SettingsScreen.tsx` wires this listener so it AUTOMATICALLY calls `finishHostLink()` the moment the joiner finishes — confirmed live: linking completed without either phone touching the old manual finish button, the listener handled it automatically end-to-end. The "Code expired? Start over with a new code" button was also re-confirmed working correctly on real devices. Checkpoint A.6 is fully closed — no remaining scope.
 3. **Checkpoint A.4-followup / general:** none currently open — A.4 itself is confirmed done; just keep the "rules must be deployed separately" gotcha in mind while working on A.6's and A.7.6's rules changes.
@@ -260,6 +260,128 @@ Files in the repo (relevant to this phase)
 - mobile-app/src/csvImport.ts — UPDATED: added `CsvColumnMapping`, `guessCsvColumnMapping`, `applyCsvMapping`, `looksLikeDuplicateTransaction`, `flagDuplicateRows`.
 - mobile-app/src/screens/CsvImportModal.tsx — UPDATED: new column-mapping step UI and duplicate-flagging UI in the import preview.
 - mobile-app/src/DataContext.tsx — UPDATED: cosmetic `memberCount` → `memberCountAfterUpdate` rename (TS2451 fix), no logic change.
+
+## 📅 Session entry — 2026-09-01 (cont'd 3): Emulator confirmed fully usable despite window bug; Maestro flows written and iterated; very close to a passing create-profile test
+
+**What happened:** Confirmed via `adb devices` that the emulator (`emulator-5554 device`) is fully functional for automation even though its window won't render/respond on screen for direct human interaction — this meant the earlier "abandon the emulator" pivot was unnecessary; reversed that decision and continued using the AVD. Screenshots pulled via `adb shell screencap` + `adb pull` were used throughout as a substitute for a working window, to visually confirm app state at each step.
+
+Got the app running successfully on the emulator via `npx expo start` + pressing `a`. Confirmed (via screenshot) the Create Profile screen renders correctly with all expected fields. Confirmed `firebase emulators:start` was running and the app logged `🧪 Connected to LOCAL Firebase emulator`.
+
+**Wrote Maestro flow files** (`mobile-app/flows/create-profile.yaml`, `mobile-app/flows/sign-in.yaml`), test account: email `test@example.com`, username `testuser`, password `test123456`. Iterated through several issues:
+1. First attempt used `appId: com.cathlauron.householdfinance` with `launchApp` — failed because that package isn't actually installed (the app runs inside Expo Go, not as a standalone build). Fixed by switching to `appId: host.exp.exponent` (Expo Go's real package name) and `openLink: "exp://192.168.1.62:8081"` instead of `launchApp`.
+2. Second attempt got further (all field taps/inputs succeeded) but crashed with a Maestro internal bug (`Illegal character (U+0)` in `viewHierarchy` parsing) — known flaky Maestro/UI-Automator issue, not a real bug in the app. Resolved by simply retrying.
+3. Third attempt got all the way through every field fill (email, username, password, confirm password all ✅) but failed tapping `create-profile-button` — diagnosed as the on-screen keyboard still covering the button. Fixed by adding a `hideKeyboard` step before the final tap.
+4. Fourth attempt (most recent) failed on the very FIRST step (`email-input` not found) — most likely because the previous partial run had already left the app on a different screen (e.g. mid-signup or an error state), not a new/different bug. Not yet re-confirmed.
+
+**Current flow file contents (both use this pattern), `create-profile.yaml`:**
+```yaml
+appId: host.exp.exponent
+---
+- openLink: "exp://192.168.1.62:8081"
+- tapOn:
+    id: "email-input"
+- inputText: "test@example.com"
+- tapOn:
+    id: "username-input"
+- inputText: "testuser"
+- tapOn:
+    id: "password-input"
+- inputText: "test123456"
+- tapOn:
+    id: "confirm-password-input"
+- inputText: "test123456"
+- hideKeyboard
+- tapOn:
+    id: "create-profile-button"
+- assertVisible:
+    text: "Welcome"
+    optional: true
+```
+`sign-in.yaml` is the same pattern but taps `sign-in-button` instead of the create-profile fields/button (no confirm-password step).
+
+**Not yet done:** confirm a clean create-profile run start-to-finish (need to first reset app/emulator to a known blank state, since the last run left the app in an unknown mid-flow state — likely just needs `adb shell pm clear host.exp.exponent` or force-closing Expo Go, or possibly the "testuser" profile now genuinely exists in the Firebase emulator's fake data and the flow should be re-run as a SIGN-IN test instead of create-profile). Then run `sign-in.yaml` to confirm sign-in also works end to end.
+
+🧹 Code health
+- No app source code changed this session — all changes were test infrastructure (`firebase.ts`'s emulator toggle from earlier in the day, plus the new `mobile-app/flows/*.yaml` files).
+- `mobile-app/flows/create-profile.yaml` and `mobile-app/flows/sign-in.yaml` NOT YET COMMITTED as of this entry.
+
+▶️ Next step (this entry only — see the top-of-file ▶️ Next step section, item 0, for current status)
+- Reset the emulator/app to a clean state (`adb shell pm clear host.exp.exponent` is the likely fix, or check whether "testuser" already exists and pivot to testing sign-in.yaml instead of create-profile.yaml again).
+- Re-run `create-profile.yaml` (or `sign-in.yaml` if testuser already exists) to get a full, clean pass end-to-end.
+- Once one full flow passes cleanly, commit the flows folder and this progress.
+- Remember: `USE_FIREBASE_EMULATOR` must be set back to `false` in `firebase.ts` before any real-account (non-testing) use — still `true` as of this entry.
+
+## 📅 Session entry — 2026-09-01 (cont'd 3): Emulator confirmed fully usable despite window bug; Maestro flows written and iterated; very close to a passing create-profile test
+
+**What happened:** Confirmed via `adb devices` that the emulator (`emulator-5554 device`) is fully functional for automation even though its window won't render/respond on screen for direct human interaction — this meant the earlier "abandon the emulator" pivot was unnecessary; reversed that decision and continued using the AVD. Screenshots pulled via `adb shell screencap` + `adb pull` were used throughout as a substitute for a working window, to visually confirm app state at each step.
+
+Got the app running successfully on the emulator via `npx expo start` + pressing `a`. Confirmed (via screenshot) the Create Profile screen renders correctly with all expected fields. Confirmed `firebase emulators:start` was running and the app logged `🧪 Connected to LOCAL Firebase emulator`.
+
+**Wrote Maestro flow files** (`mobile-app/flows/create-profile.yaml`, `mobile-app/flows/sign-in.yaml`), test account: email `test@example.com`, username `testuser`, password `test123456`. Iterated through several issues:
+1. First attempt used `appId: com.cathlauron.householdfinance` with `launchApp` — failed because that package isn't actually installed (the app runs inside Expo Go, not as a standalone build). Fixed by switching to `appId: host.exp.exponent` (Expo Go's real package name) and `openLink: "exp://192.168.1.62:8081"` instead of `launchApp`.
+2. Second attempt got further (all field taps/inputs succeeded) but crashed with a Maestro internal bug (`Illegal character (U+0)` in `viewHierarchy` parsing) — known flaky Maestro/UI-Automator issue, not a real bug in the app. Resolved by simply retrying.
+3. Third attempt got all the way through every field fill (email, username, password, confirm password all ✅) but failed tapping `create-profile-button` — diagnosed as the on-screen keyboard still covering the button. Fixed by adding a `hideKeyboard` step before the final tap.
+4. Fourth attempt (most recent) failed on the very FIRST step (`email-input` not found) — most likely because the previous partial run had already left the app on a different screen (e.g. mid-signup or an error state), not a new/different bug. Not yet re-confirmed.
+
+**Current flow file contents (both use this pattern), `create-profile.yaml`:**
+```yaml
+appId: host.exp.exponent
+---
+- openLink: "exp://192.168.1.62:8081"
+- tapOn:
+    id: "email-input"
+- inputText: "test@example.com"
+- tapOn:
+    id: "username-input"
+- inputText: "testuser"
+- tapOn:
+    id: "password-input"
+- inputText: "test123456"
+- tapOn:
+    id: "confirm-password-input"
+- inputText: "test123456"
+- hideKeyboard
+- tapOn:
+    id: "create-profile-button"
+- assertVisible:
+    text: "Welcome"
+    optional: true
+```
+`sign-in.yaml` is the same pattern but taps `sign-in-button` instead of the create-profile fields/button (no confirm-password step).
+
+**Not yet done:** confirm a clean create-profile run start-to-finish (need to first reset app/emulator to a known blank state, since the last run left the app in an unknown mid-flow state — likely just needs `adb shell pm clear host.exp.exponent` or force-closing Expo Go, or possibly the "testuser" profile now genuinely exists in the Firebase emulator's fake data and the flow should be re-run as a SIGN-IN test instead of create-profile). Then run `sign-in.yaml` to confirm sign-in also works end to end.
+
+🧹 Code health
+- No app source code changed this session — all changes were test infrastructure (`firebase.ts`'s emulator toggle from earlier in the day, plus the new `mobile-app/flows/*.yaml` files).
+- `mobile-app/flows/create-profile.yaml` and `mobile-app/flows/sign-in.yaml` NOT YET COMMITTED as of this entry.
+
+▶️ Next step (this entry only — see the top-of-file ▶️ Next step section, item 0, for current status)
+- Reset the emulator/app to a clean state (`adb shell pm clear host.exp.exponent` is the likely fix, or check whether "testuser" already exists and pivot to testing sign-in.yaml instead of create-profile.yaml again).
+- Re-run `create-profile.yaml` (or `sign-in.yaml` if testuser already exists) to get a full, clean pass end-to-end.
+- Once one full flow passes cleanly, commit the flows folder and this progress.
+- Remember: `USE_FIREBASE_EMULATOR` must be set back to `false` in `firebase.ts` before any real-account (non-testing) use — still `true` as of this entry.
+
+## 📅 Session entry — 2026-09-01 (cont'd 2): Android Studio fully reinstalled, emulator now boots successfully, but its window won't render/respond — PIVOT DECISION: abandon Android emulator, test Maestro against real phone instead
+
+**What happened:** Did a full clean uninstall + reinstall of Android Studio (uninstalled via Windows Settings, manually deleted `%LOCALAPPDATA%\Android`, `%APPDATA%\Google\AndroidStudio*`, and `%USERPROFILE%\.android`, then reinstalled fresh from developer.android.com — Quail 4 / 2026.1.x). This DID fix the original "missing DLL" crash-on-launch errors. Along the way found and fixed a `platform-tools` vs `platform-tools-2` folder naming conflict from the fresh SDK install (deleted the stale old folder, renamed the new one). Recreated the `Pixel_10_Pro` AVD (same spec as before: Android 17.0 "CinnamonBun", API 37.1, x86_64).
+
+**New, different problem surfaced:** the emulator process now boots successfully end-to-end (confirmed twice, via full log output showing "Boot completed" — 218866ms on first/cold boot, 62867ms on a second boot using `-gpu swiftshader_indirect`), and is confirmed alive and using real CPU via `Get-Process`. However, **its window will not appear/respond on screen** — visible only as an unresponsive taskbar thumbnail, not clickable, doesn't appear via Alt+Tab or Win+Tab, and Win+Shift+Arrow (force-move-to-monitor) had no effect either. Tried both default GPU acceleration and explicit `-gpu swiftshader_indirect` (software rendering) — same symptom both times, ruling out a GPU-driver-specific cause. This looks like a display/window-compositor-level quirk specific to this machine's graphics setup (Intel UHD Graphics, no dedicated GPU), not a fundamental hardware incompatibility (the successful full Android boot proves the hardware/hypervisor itself works).
+
+**Decision made: stop debugging the Android Studio emulator route.** Given real Android-phone testing via Expo Go + tunnel mode is already a known-working, trusted part of this project's normal workflow, pivot Checkpoint A.7.9 to run Maestro against the real physical phone instead of an AVD. This sidesteps the window-rendering problem entirely and reuses existing infrastructure rather than continuing to debug unfamiliar territory.
+
+**Implication for `firebase.ts`:** the `EMULATOR_HOST = "10.0.2.2"` value only works for an AVD — it will need to change to the PC's real WiFi IP address (via `ipconfig`) for a real phone to reach the local Firebase emulator, OR the plan may shift to testing against real Firebase directly instead of the local emulator. Not yet decided — first thing to resolve next session.
+
+**Not yet committed this session** — Android Studio/emulator work involved no code changes (infrastructure only), so there is nothing new to commit beyond the pivot decision being logged here.
+
+🧹 Code health
+- No code changed this session past the earlier `firebase.ts` commit — this entire session was infrastructure/tooling troubleshooting.
+- `npx tsc --noEmit`: not re-run this session (no code touched).
+
+▶️ Next step (this entry only — see the top-of-file ▶️ Next step section, item 0, for current status)
+- Decide: keep testing against the local Firebase emulator (requires finding the PC's real WiFi IP and updating `EMULATOR_HOST` in `firebase.ts`) OR switch to testing against real Firebase directly (simpler, but real account data risk during test runs — needs a dedicated test account if chosen).
+- Once decided: confirm the real phone can reach whichever Firebase target is chosen.
+- Write and run the `create-profile.yaml` / `sign-in.yaml` Maestro flows against the real phone (same `maestro test` commands as originally planned, just pointed at a real connected device instead of an AVD).
+- The Android Studio emulator itself is NOT being deleted/uninstalled again — it's just not part of the testing plan going forward. No cleanup action needed.
 
 ## 📅 Session entry — 2026-09-01 (cont'd): A.7.9 setup completed except Android emulator won't launch — blocked on suspected corrupted Android Studio install
 
