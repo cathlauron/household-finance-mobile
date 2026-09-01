@@ -1,0 +1,21 @@
+﻿appId: host.exp.exponent
+---
+- openLink: "exp://192.168.1.62:8081"
+- tapOn:
+    id: "email-input"
+- inputText: "test@example.com"
+- tapOn:
+    id: "username-input"
+- inputText: "testuser"
+- tapOn:
+    id: "password-input"
+- inputText: "test123456"
+- tapOn:
+    id: "confirm-password-input"
+- inputText: "test123456"
+- hideKeyboard
+- tapOn:
+    id: "create-profile-button"
+- assertVisible:
+    text: "Welcome"
+    optional: true
