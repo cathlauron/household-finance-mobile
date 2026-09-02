@@ -57,7 +57,7 @@ import {
 } from './household';
 import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
 import { saveProfileCloudBackup } from './cloudBackup';
-import { mergeModels } from './mergeModels';
+import { mergeModels, sanitizeModelIds } from './mergeModels';
 import { getCurrentFirebaseUser } from './authFirebase';
 
 // Chosen to avoid easy mix-ups when the code is read aloud or typed by hand
@@ -280,8 +280,9 @@ export async function finishJoinerLink(
   myPersonalKey: CryptoJS.lib.WordArray,
   existingHouseholdId?: string
 ): Promise<FinishJoinerResult> {
-  const chosenModel: HouseholdModel =
+  const baseChosenModel: HouseholdModel =
     choice === 'mine' ? myModel : choice === 'theirs' ? hostModel : mergeModels(myModel, hostModel);
+  const chosenModel: HouseholdModel = sanitizeModelIds(baseChosenModel);
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
 
   let householdId: string;

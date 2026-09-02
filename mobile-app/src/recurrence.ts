@@ -50,13 +50,18 @@ export function customOccurrencesInMonth(
   if (count) {
     const results: number[] = [];
     const d = new Date(start);
+    const anchorDay = start.getDate();
     for (let i = 0; i < count; i++) {
       if (d.getFullYear() === year && d.getMonth() === monthIndex) results.push(d.getDate());
       if (frequency === 'daily') d.setDate(d.getDate() + 1);
       else if (frequency === 'weekly') d.setDate(d.getDate() + 7);
       else if (frequency === 'biweekly') d.setDate(d.getDate() + 14);
       else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + 1);
-      else d.setMonth(d.getMonth() + 1);
+      else {
+        d.setDate(1);
+        d.setMonth(d.getMonth() + 1);
+        d.setDate(Math.min(anchorDay, lastDayOfMonth(d.getFullYear(), d.getMonth())));
+      }
     }
     return results;
   }
@@ -103,31 +108,35 @@ export function getNextDueDate(
   }
 
   if (recurringType === 'monthly') {
-    const dayNum = parseInt(d.day, 10);
-    if (isNaN(dayNum)) return null;
+    if (d.day === undefined || d.day === '') return null;
+    const isLast = d.day === 'last';
+    const dayNum = isLast ? 0 : parseInt(d.day, 10);
+    if (!isLast && isNaN(dayNum)) return null;
     let y = today.getFullYear();
     let m = today.getMonth();
-    let day = Math.min(dayNum, lastDayOfMonth(y, m));
+    let day = isLast ? lastDayOfMonth(y, m) : Math.min(dayNum, lastDayOfMonth(y, m));
     let candidate = new Date(y, m, day);
     if (stripTime(candidate) < stripTime(today)) {
       m += 1;
       if (m > 11) { m = 0; y += 1; }
-      day = Math.min(dayNum, lastDayOfMonth(y, m));
+      day = isLast ? lastDayOfMonth(y, m) : Math.min(dayNum, lastDayOfMonth(y, m));
       candidate = new Date(y, m, day);
     }
     return candidate;
   }
 
   if (recurringType === 'annual') {
-    const dayNum = parseInt(d.day, 10);
+    if (d.day === undefined || d.day === '') return null;
+    const isLast = d.day === 'last';
+    const dayNum = isLast ? 0 : parseInt(d.day, 10);
     const monthIdx = parseInt(d.month, 10) - 1;
-    if (isNaN(dayNum) || isNaN(monthIdx)) return null;
+    if ((!isLast && isNaN(dayNum)) || isNaN(monthIdx)) return null;
     let y = today.getFullYear();
-    let day = Math.min(dayNum, lastDayOfMonth(y, monthIdx));
+    let day = isLast ? lastDayOfMonth(y, monthIdx) : Math.min(dayNum, lastDayOfMonth(y, monthIdx));
     let candidate = new Date(y, monthIdx, day);
     if (stripTime(candidate) < stripTime(today)) {
       y += 1;
-      day = Math.min(dayNum, lastDayOfMonth(y, monthIdx));
+      day = isLast ? lastDayOfMonth(y, monthIdx) : Math.min(dayNum, lastDayOfMonth(y, monthIdx));
       candidate = new Date(y, monthIdx, day);
     }
     return candidate;

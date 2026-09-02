@@ -30,7 +30,6 @@ export type CsvParseResult = {
   headerError?: string;
 };
 
-const REQUIRED_COLUMNS = ['date', 'label', 'amount'];
 export const CSV_TARGET_FIELDS: CsvTargetField[] = ['date', 'label', 'amount', 'direction'];
 
 export function normalizeCsvHeader(value: string): string {
@@ -176,54 +175,47 @@ export function parseTransactionsCsv(text: string): CsvParseResult {
   }
 
   const rawHeaders = splitCsvLine(lines[0]);
-  const headerFields = rawHeaders.map((h) => normalizeCsvHeader(h));
-  const colIndex: Record<string, number> = {};
-  headerFields.forEach((h, i) => {
-    colIndex[h] = i;
-  });
+  if (rawHeaders.length === 0 || (rawHeaders.length === 1 && !rawHeaders[0].trim())) {
+    return {
+      rows: [],
+      validRows: [],
+      invalidRows: [],
+      headers: [],
+      detectedMapping: { date: null, label: null, amount: null, direction: null },
+      headerError: 'No columns found in the header row.',
+    };
+  }
 
-  const missing = REQUIRED_COLUMNS.filter((c) => !(c in colIndex));
-  if (missing.length > 0) {
+  if (lines.length === 1) {
     return {
       rows: [],
       validRows: [],
       invalidRows: [],
       headers: rawHeaders,
       detectedMapping: guessCsvColumnMapping(rawHeaders),
-      headerError: `The first row needs a column for each of: date, label, amount (direction is optional). Missing: ${missing.join(', ')}.`,
+      headerError: 'The file has a header row but no data rows.',
     };
   }
 
-  const directionIdx = 'direction' in colIndex ? colIndex.direction : -1;
   const detectedMapping = guessCsvColumnMapping(rawHeaders);
 
   const rows: ParsedCsvRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const fields = splitCsvLine(lines[i]);
     const rowNumber = i + 1;
-    const rawDate = fields[colIndex.date] || '';
-    const rawLabel = fields[colIndex.label] || '';
-    const rawAmount = fields[colIndex.amount] || '';
-    const rawDirection = directionIdx >= 0 ? fields[directionIdx] || '' : '';
-
-    const date = normalizeDate(rawDate);
-    const amount = parseFloat(rawAmount.replace(/[^0-9.\-]/g, ''));
-    const direction = normalizeDirection(rawDirection);
-
-    let error: string | undefined;
-    if (!date) error = 'Unrecognized date — use YYYY-MM-DD or MM/DD/YYYY.';
-    else if (!rawLabel.trim()) error = 'Missing a label.';
-    else if (isNaN(amount) || amount <= 0) error = 'Amount must be a number greater than 0.';
-    else if (!direction) error = `Unrecognized direction "${rawDirection}" — use in, out, or saving.`;
+    const rawValues = Object.fromEntries(
+      rawHeaders.map((header, idx) => [normalizeCsvHeader(header), fields[idx] || ''])
+    );
+    const mapped = buildRowFromMapping(rawValues, detectedMapping);
 
     rows.push({
       rowNumber,
-      date: date || rawDate,
-      label: rawLabel,
-      amount: isNaN(amount) ? 0 : amount,
-      direction: direction || 'out',
-      error,
-      rawValues: Object.fromEntries(rawHeaders.map((header, idx) => [normalizeCsvHeader(header), fields[idx] || ''])),
+      date: mapped.date,
+      label: mapped.label,
+      amount: mapped.amount,
+      direction: mapped.direction,
+      error: mapped.error,
+      rawValues,
     });
   }
 

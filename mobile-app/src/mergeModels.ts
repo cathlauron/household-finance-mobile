@@ -40,9 +40,13 @@ function makeUniqueId(existing: Set<string>, prefix: string, index: number): str
   return candidate;
 }
 
-function sanitizeIdList<T extends { id: string }>(items: T[] | undefined, prefix: string): T[] {
+function sanitizeIdList<T extends { id: string }>(
+  items: T[] | undefined,
+  prefix: string,
+  seenSet?: Set<string>
+): T[] {
   const normalized: T[] = (items ?? []).map((item) => ({ ...item }));
-  const seen = new Set<string>();
+  const seen = seenSet ?? new Set<string>();
   return normalized.map((item, index) => {
     const raw = item.id && item.id.trim() ? item.id : makeUniqueId(seen, prefix, index);
     if (!seen.has(raw)) {
@@ -57,14 +61,36 @@ function sanitizeIdList<T extends { id: string }>(items: T[] | undefined, prefix
 }
 
 export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
+  const seenBillCycles = new Set<string>();
+  const seenDebtCycles = new Set<string>();
+  const seenLoanPayments = new Set<string>();
+  const seenSavingsContribs = new Set<string>();
+  const seenIncomeLogs = new Set<string>();
+  const seenTravelItems = new Set<string>();
+
   return {
     ...model,
     people: sanitizeIdList(model.people, 'person'),
-    income: sanitizeIdList(model.income, 'income'),
-    bills: sanitizeIdList(model.bills, 'bill'),
-    debts: sanitizeIdList(model.debts, 'debt'),
-    loans: sanitizeIdList(model.loans, 'loan'),
-    savingsGoals: sanitizeIdList(model.savingsGoals, 'goal'),
+    income: sanitizeIdList(model.income, 'income').map((source) => ({
+      ...source,
+      paymentLog: sanitizeIdList(source.paymentLog, 'paylog', seenIncomeLogs),
+    })),
+    bills: sanitizeIdList(model.bills, 'bill').map((bill) => ({
+      ...bill,
+      cycles: sanitizeIdList(bill.cycles, 'cycle', seenBillCycles),
+    })),
+    debts: sanitizeIdList(model.debts, 'debt').map((debt) => ({
+      ...debt,
+      cycles: sanitizeIdList(debt.cycles, 'cycle', seenDebtCycles),
+    })),
+    loans: sanitizeIdList(model.loans, 'loan').map((loan) => ({
+      ...loan,
+      actualPayments: sanitizeIdList(loan.actualPayments, 'lpay', seenLoanPayments),
+    })),
+    savingsGoals: sanitizeIdList(model.savingsGoals, 'goal').map((goal) => ({
+      ...goal,
+      contributions: sanitizeIdList(goal.contributions, 'contrib', seenSavingsContribs),
+    })),
     balanceAccounts: {
       ...model.balanceAccounts,
       cash: sanitizeIdList(model.balanceAccounts.cash, 'cash-account'),
@@ -79,7 +105,10 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
     categoryBudgets: sanitizeIdList(model.categoryBudgets, 'budget'),
     groceries: sanitizeIdList(model.groceries ?? [], 'grocery'),
     groceryCalculator: sanitizeIdList(model.groceryCalculator ?? [], 'grocery-calc'),
-    travel: sanitizeIdList(model.travel ?? [], 'trip'),
+    travel: sanitizeIdList(model.travel ?? [], 'trip').map((trip) => ({
+      ...trip,
+      checklist: sanitizeIdList(trip.checklist, 'travelitem', seenTravelItems),
+    })),
     events: sanitizeIdList(model.events ?? [], 'event'),
     yearlyGoals: sanitizeIdList(model.yearlyGoals ?? [], 'ygoal'),
     payees: sanitizeIdList(model.payees ?? [], 'payee'),
