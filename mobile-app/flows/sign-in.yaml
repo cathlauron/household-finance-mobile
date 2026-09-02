@@ -11,7 +11,9 @@
     id: "password-input"
 - inputText: "test123456"
 - tapOn:
+    point: "50%,10%"
+- tapOn:
     id: "sign-in-button"
 - assertVisible:
-    text: "Welcome"
+    text: "signed in"
     optional: true

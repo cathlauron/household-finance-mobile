@@ -252,7 +252,7 @@ Files in the repo (relevant to this phase)
 
 - mobile-app/src/screens/SettingsScreen.tsx â€” UPDATED this session (A.7.6d): new household member roster UI (name/You/Owner labels, owner-only Remove button with confirm dialog); new successor-picker screen shown when the owner chooses to leave a 2+ person household; displays `linkNoticeMsg` when present.
 
-(PASTE HERE)
+- mobile-app/flows/sign-in.yaml — NEW this session (A.7.9): Maestro flow testing sign-in against the local Firebase emulator; surfaced a real, not-yet-diagnosed bug (see Known issues) rather than confirming sign-in works. Not yet committed as of this entry.
 - mobile-app/src/screens/LoansScreen.tsx â€” UPDATED: loan recurrence call sites now pass custom-recurrence fields into `getNextDueDate()`.
 - mobile-app/src/recurrence.ts â€” UPDATED: now owns `customOccurrencesInMonth()`; `getNextDueDate()` gained the `custom` branch.
 - mobile-app/src/balanceProjection.ts â€” UPDATED: imports the shared helper instead of defining its own copy.
@@ -751,3 +751,29 @@ Re-ran `maestro test flows\create-profile.yaml` — hit one more path mistake fi
 - Write and run `sign-in.yaml` (same test account) from inside `mobile-app/`, with the Firebase emulator running from the repo root, to confirm sign-in also works end-to-end.
 - Consider updating `create-profile.yaml`'s final assertion from `"Welcome"` to `"You're signed in"` so it actually reflects your app's real success screen instead of always warning.
 - Once both flows are clean, remove temporary debug logging from `CreateProfileScreen.tsx`, set `USE_FIREBASE_EMULATOR` back to `false` in `firebase.ts`, and commit everything from this and the prior A.7.9 sessions together.
+
+
+## 📅 Session entry — 2026-09-01 (cont'd 6): sign-in.yaml written and run — mechanical flow passes, but surfaces a real bug: sign-in fails to find an existing account after local storage is wiped
+
+**What happened:** Confirmed `git status` was clean (the earlier `firebase-debug.log` update pushed cleanly as commit `8ed95e9`). Wrote `mobile-app/flows/sign-in.yaml`, reusing the same tap-blank-area keyboard-dismiss fix already proven in `create-profile.yaml`. Before running it, reset the emulator app's state via `adb shell pm clear host.exp.exponent` — necessary since the app was still signed in as `testuser` from the earlier successful create-profile run, and `sign-in.yaml` assumes it will land on the sign-in screen.
+
+First save attempt hit a copy-paste snag: only the raw YAML content got pasted into PowerShell (without the `cd` line or the here-string wrapper), so PowerShell tried to run each YAML line as its own command and threw a wall of parser errors -- no files were corrupted, this was caught immediately and just needed a clean re-paste of the full block.
+
+Once saved correctly and run via `maestro test flows\sign-in.yaml`, every mechanical step passed: open link, tap+fill email/username/password fields, dismiss keyboard via a blank-area tap, tap the Sign In button -- all succeeded. The one thing that did not pass was the flow's own optional `assertVisible: "signed in"` check, which warned rather than failed.
+
+**Took a screenshot to see what was actually on screen, and found a real problem:** the app showed "No account found with that username. Check the spelling, or create a new profile." -- meaning sign-in genuinely failed, not just a mismatched assertion string. This is a real, previously-unknown bug, and a good early validation that this new Maestro-based testing setup actually catches real issues.
+
+**Why this is unexpected:** `testuser` is not a made-up account -- it is the exact account created earlier this session by the successful `create-profile.yaml` run, against the same Firebase emulator that has been running continuously since. Per the Checkpoint A.5 entry (marked "CONFIRMED DONE, code inspected directly" in this file), signing in with no local data present should fall through to a cloud-restore path: pull the encrypted backup from `profileBackups/{username}` in Firestore, and decrypt it with the password just entered. Instead, the app appears to hit a local-only "no account found" check and stop there, without ever reaching that cloud-restore logic.
+
+**Not yet done:** `SignInScreen.tsx` was not pulled or reviewed before this session ended, so the actual root cause is still unknown -- it could be a real regression (a local check now runs and short-circuits before Firebase Auth/cloud-restore is attempted) or something more subtle about how/when that A.5 code path is reached. This needs to be traced carefully before jumping to a fix.
+
+Code health
+- No app source code changed this session -- only a new test file (`mobile-app/flows/sign-in.yaml`) was added.
+- `npx tsc --noEmit` not run (no source code touched).
+- `mobile-app/flows/sign-in.yaml` -- NOT YET COMMITTED as of this entry.
+
+Next step (this entry only -- see the top-of-file Next step section, item 0, for current status)
+- Pull the full contents of `src/screens/SignInScreen.tsx` and trace exactly what the sign-in button's handler does, in order, to find why the cloud-restore/A.5 path isn't being reached before the "no account found" error shows.
+- Once the root cause is found, use the Claude+Copilot (or Antigravity) investigate-then-approve workflow to plan and apply a fix, the same as prior bug fixes in this project.
+- Re-run `sign-in.yaml` after any fix to confirm it now passes cleanly (including the "signed in" text actually appearing, which may also need its exact wording double-checked against the real success screen).
+- Commit `mobile-app/flows/sign-in.yaml` together with this progress update.
