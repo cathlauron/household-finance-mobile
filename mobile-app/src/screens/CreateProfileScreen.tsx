@@ -72,7 +72,10 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       // so there's nothing to undo.
       try {
         await createFirebaseAccount(email, password1);
-      } catch (firebaseError) {
+      } catch (firebaseError: any) {
+        console.error('createFirebaseAccount failed:', firebaseError);
+        console.error('Firebase auth code:', firebaseError?.code);
+        console.error('Firebase auth message:', firebaseError?.message);
         setBusy(false);
         setError(friendlyFirebaseError(firebaseError));
         return;

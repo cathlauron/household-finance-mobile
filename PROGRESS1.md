@@ -361,6 +361,32 @@ appId: host.exp.exponent
 - Once one full flow passes cleanly, commit the flows folder and this progress.
 - Remember: `USE_FIREBASE_EMULATOR` must be set back to `false` in `firebase.ts` before any real-account (non-testing) use — still `true` as of this entry.
 
+## 📅 Session entry — 2026-09-01 (cont'd 4): Fixed Maestro's hideKeyboard bug (was exiting the app); full create-profile flow now runs clean end-to-end
+
+**What happened:** Continued Checkpoint A.7.9. Diagnosed why `maestro test flows\create-profile.yaml` was failing on the final `create-profile-button` tap: the flow's `hideKeyboard` step was found to be the cause via a debug screenshot, which showed the emulator sitting on **Expo Go's own home screen** instead of the app -- confirming the app had been exited entirely, not just had its keyboard closed. Root cause: on Android, Maestro's `hideKeyboard` step is implemented as a back-button press; since the Create Profile screen is the first screen in the app with nothing to navigate back to, that back-press exited the app instead of dismissing the keyboard.
+
+**Fix applied:** replaced the `hideKeyboard` step in `flows\create-profile.yaml` with `tapOn: { point: "50%,10%" }` (tapping a blank area near the screen's top, away from any input field) -- this dismisses the keyboard the normal way without triggering back-navigation.
+
+**Also carried over from earlier in this session (see prior entries):** `USE_FIREBASE_EMULATOR` flipped from `false` to `true` in `src/firebase.ts` (was mistakenly left off), and temporary debug logging (`console.error`) added to the Firebase-account-creation catch block in `CreateProfileScreen.tsx`, via the Claude+Copilot investigate-then-approve workflow -- both changes confirmed via `npx tsc --noEmit` (clean) before being applied.
+
+**Result:** re-ran `maestro test flows\create-profile.yaml` -- every single step now passes, including the previously-failing button tap: Open link, tap+input all 4 fields (email/username/password/confirm), tap the blank area, tap "create-profile-button" -- all ✅. Only the final, optional `assertVisible: "Welcome"` check warned (not failed) -- expected, since the exact post-signup success text/screen hasn't been confirmed yet, and this assertion was deliberately marked `optional: true` from the start.
+
+**Not yet confirmed as of this entry:** whether the account itself was actually created successfully against the local Firebase emulator, or whether it still fails with a real (now-visible, thanks to the debug logging) Firebase error. Terminal 3's console output was not yet reviewed before this session ended -- this is the very next thing to check.
+
+🧹 Code health
+- `npx tsc --noEmit`: clean (confirmed by Copilot before the emulator-flag + debug-logging changes were applied).
+- `flows\create-profile.yaml`: UPDATED this session (hideKeyboard -> tapOn point). **Not yet committed.**
+- `src/firebase.ts`: UPDATED earlier this session (USE_FIREBASE_EMULATOR flag). **Not yet committed.**
+- `src/screens/CreateProfileScreen.tsx`: UPDATED earlier this session (temporary debug logging). **Not yet committed.**
+
+▶️ Next step (this entry only -- see the top-of-file Next step section, item 0, for current status)
+- Check Terminal 3's (Expo) console output from the most recent test run for any `createFirebaseAccount failed` / `Firebase auth code` / `Firebase auth message` lines -- this tells us whether account creation actually succeeded or is still failing for a different reason.
+- If it succeeded: mark the create-profile flow as fully working, remove the temporary debug logging from `CreateProfileScreen.tsx` (or leave it for now if more testing is planned), commit everything from this session together (`flows/create-profile.yaml`, `src/firebase.ts`, `CreateProfileScreen.tsx`).
+- If it still fails: paste the real Firebase error here and we will diagnose from there -- do NOT guess at a fix without seeing the actual error text.
+- Remember: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` -- must be set back to `false` before any real-account (non-testing) use, once this testing phase wraps up.
+- Once create-profile is fully confirmed working end-to-end, move to writing/running `sign-in.yaml` as the next flow to validate, then proceed through the Emulator Testing Checklist built in an earlier session.
+'@ | Add-Content -Path "PROGRESS1.md" -Encoding UTF8
+
 ## 📅 Session entry — 2026-09-01 (cont'd 2): Android Studio fully reinstalled, emulator now boots successfully, but its window won't render/respond — PIVOT DECISION: abandon Android emulator, test Maestro against real phone instead
 
 **What happened:** Did a full clean uninstall + reinstall of Android Studio (uninstalled via Windows Settings, manually deleted `%LOCALAPPDATA%\Android`, `%APPDATA%\Google\AndroidStudio*`, and `%USERPROFILE%\.android`, then reinstalled fresh from developer.android.com — Quail 4 / 2026.1.x). This DID fix the original "missing DLL" crash-on-launch errors. Along the way found and fixed a `platform-tools` vs `platform-tools-2` folder naming conflict from the fresh SDK install (deleted the stale old folder, renamed the new one). Recreated the `Pixel_10_Pro` AVD (same spec as before: Android 17.0 "CinnamonBun", API 37.1, x86_64).

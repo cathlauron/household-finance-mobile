@@ -13,7 +13,8 @@
 - tapOn:
     id: "confirm-password-input"
 - inputText: "test123456"
-- hideKeyboard
+- tapOn:
+    point: "50%,10%"
 - tapOn:
     id: "create-profile-button"
 - assertVisible:
