@@ -1,4 +1,4 @@
-﻿appId: host.exp.exponent
+appId: host.exp.exponent
 ---
 - openLink: "exp://192.168.1.62:8081"
 - tapOn:
@@ -13,10 +13,13 @@
 - tapOn:
     id: "confirm-password-input"
 - inputText: "test123456"
-- tapOn:
-    point: "50%,10%"
+- hideKeyboard
 - tapOn:
     id: "create-profile-button"
+- extendedWaitUntil:
+    visible:
+      text: "You're signed in.*"
+    timeout: 45000
 - assertVisible:
-    text: "Welcome"
+    text: "You're signed in.*"
     optional: true

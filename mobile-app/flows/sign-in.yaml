@@ -1,4 +1,4 @@
-﻿appId: host.exp.exponent
+appId: host.exp.exponent
 ---
 - openLink: "exp://192.168.1.62:8081"
 - tapOn:
@@ -10,10 +10,13 @@
 - tapOn:
     id: "password-input"
 - inputText: "test123456"
-- tapOn:
-    point: "50%,10%"
+- hideKeyboard
 - tapOn:
     id: "sign-in-button"
+- extendedWaitUntil:
+    visible:
+      text: ".*signed in.*"
+    timeout: 75000
 - assertVisible:
-    text: "signed in"
+    text: ".*signed in.*"
     optional: true
