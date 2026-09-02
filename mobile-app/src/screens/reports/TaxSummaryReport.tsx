@@ -92,6 +92,7 @@ export default function TaxSummaryReport() {
   const yearTotals = transactionTotals(yearTransactions);
   const totalSaved = savingsContributedInYear(model, year);
   const interestFees = loanLateFeesInYear(model, year) + debtFeesInYear(model, year);
+  const debtFees = debtFeesInYear(model, year);
 
   const categoryMap: Record<string, number> = {};
   yearTransactions
