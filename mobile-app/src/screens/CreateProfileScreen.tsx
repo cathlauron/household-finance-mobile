@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -6,6 +6,7 @@ import { generateSalt, deriveKey, encryptJSON } from '../encryption';
 import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '../storage';
 import { defaultModel } from '../defaultModel';
 import { createFirebaseAccount } from '../authFirebase';
+import { saveProfileCloudBackup } from '../cloudBackup';
 import PasswordField from '../components/PasswordField';
 
 type Props = {
@@ -89,6 +90,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       profiles.push({ username, salt });
       await saveProfilesIndex(profiles);
       await saveEncryptedProfileData(username, encrypted);
+      await saveProfileCloudBackup(username, { salt, data: encrypted });
       setBusy(false);
       onProfileCreated(username, key);
     } catch (e) {

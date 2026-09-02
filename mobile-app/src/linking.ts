@@ -367,19 +367,6 @@ export async function finishHostLink(
   }
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
 
-  // The host is joining an EXISTING household (the joiner created it) —
-  // this is the step that records the host as an authorized member too,
-  // so the new security rules will let this phone read/write it.
-  try {
-    const currentUser = getCurrentFirebaseUser();
-    if (!currentUser || currentUser.uid !== expectedUid) {
-      throw new Error('The signed-in account changed while linking was in progress.');
-    }
-    await addMemberToHousehold(data.householdId, myUsername);
-  } catch (e) {
-    throw new Error('STEP addMemberToHousehold failed: ' + (e as Error).message);
-  }
-
   const wrappedForMe = await wrapHouseholdKey(householdKey, myPersonalKey);
   try {
     const currentUser = getCurrentFirebaseUser();

@@ -49,12 +49,14 @@ export function guessCsvColumnMapping(headers: string[]): CsvColumnMapping {
   return map;
 }
 
-function buildRowFromMapping(rawRow: string[], headers: string[], mapping: CsvColumnMapping): { date: string; label: string; amount: number; direction: 'in' | 'out' | 'saving'; error?: string } {
+function buildRowFromMapping(
+  rawValues: Record<string, string> | undefined,
+  mapping: CsvColumnMapping
+): { date: string; label: string; amount: number; direction: 'in' | 'out' | 'saving'; error?: string } {
   const getValue = (field: CsvTargetField) => {
     const mappedHeader = mapping[field];
-    if (!mappedHeader) return '';
-    const idx = headers.findIndex((header) => normalizeCsvHeader(header) === normalizeCsvHeader(mappedHeader));
-    return idx >= 0 ? (rawRow[idx] || '') : '';
+    if (!mappedHeader || !rawValues) return '';
+    return rawValues[normalizeCsvHeader(mappedHeader)] || '';
   };
 
   const rawDate = getValue('date');
@@ -87,8 +89,7 @@ export function applyCsvMapping(
 ): { rows: ParsedCsvRow[]; validRows: ParsedCsvRow[]; invalidRows: ParsedCsvRow[] } {
   const rows: ParsedCsvRow[] = [];
   parsed.rows.forEach((row) => {
-    const rawRow = row.rawValues ? Object.values(row.rawValues) : [];
-    const mapped = buildRowFromMapping(rawRow, parsed.headers, mapping);
+    const mapped = buildRowFromMapping(row.rawValues, mapping);
     rows.push({
       ...row,
       date: mapped.date,

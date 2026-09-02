@@ -414,7 +414,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await removeMemberFromHousehold(householdId);
       }
 
-      await removeMemberFromHousehold(householdId);
       await deleteWrappedHouseholdKey(username);
       await updateProfileHouseholdId(username, undefined);
 
