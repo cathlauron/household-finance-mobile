@@ -1,4 +1,4 @@
-﻿// src/firebase.ts
+// src/firebase.ts
 //
 // Connects the app to our Firebase project (the cloud "filing cabinet" set
 // up in Checkpoint 9.1a). This file only opens the connection - it does not
@@ -60,7 +60,6 @@ try {
 if (USE_FIREBASE_EMULATOR) {
   connectFirestoreEmulator(db, EMULATOR_HOST, 8080);
   connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`);
-  console.log("🧪 Connected to LOCAL Firebase emulator - not using real production data.");
 }
 
 export { auth };

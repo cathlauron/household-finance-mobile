@@ -240,7 +240,6 @@ export default function SettingsScreen() {
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinErrorMsg, setJoinErrorMsg] = useState('');
 
-  const [joinStep, setJoinStep] = useState<'idle' | 'busy' | 'choice'>('idle');
   const [joinResult, setJoinResult] = useState<{
     hostUsername: string;
     hostModel: HouseholdModel;
@@ -709,7 +708,6 @@ export default function SettingsScreen() {
           unsubscribe();
         }
       } catch (e) {
-        console.error('auto finishHostLink failed:', e);
         if (active) setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
       }
       hostFinishInFlightRef.current = false;
@@ -721,40 +719,6 @@ export default function SettingsScreen() {
       unsubscribe();
     };
   }, [linkCode, linkSecretHex, username, loadModel]);
-  // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
-  // Checks whether the other phone has finished picking mine/theirs/merge yet. If not,
-  // says so and lets you try again after checking with them. If it has, this phone
-  // finishes its own side (wraps the real shared key with this phone's own password)
-  // and reloads so the rest of the app immediately starts using the shared data.
-  async function handleFinishHostLink() {
-    if (!username || !linkCode || !linkSecretHex) return;
-    const personalKey = getPersonalKey();
-    if (!personalKey) {
-      setHostFinishMsg('Something went wrong — please try again.');
-      return;
-    }
-    setHostFinishBusy(true);
-    setHostFinishMsg('');
-    try {
-      const expectedUid = getCurrentFirebaseUser()?.uid;
-      if (!expectedUid) throw new Error('No signed-in Firebase account.');
-      const result = await finishHostLink(linkCode, username, linkSecretHex, personalKey, expectedUid);
-      if (result.status === 'notYet') {
-        setHostFinishMsg(
-          "They haven't finished on their end yet — ask them to pick Keep mine / Keep theirs / Merge both on their phone, then try this again."
-        );
-      } else {
-        setHostFinishMsg('Linked! Loading your shared data…');
-        await loadModel(username, personalKey);
-      }
-    } catch (e) {
-      console.error('finishHostLink failed:', e);
-      setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
-    }
-    setHostFinishBusy(false);
-  }
-
-
 
   // ---- Checkpoint 9.2b-ii: Join with a code handler ----
   // Unlocks the other phone's data using the code, then shows a side-by-side
@@ -812,7 +776,6 @@ export default function SettingsScreen() {
       setJoinCodeInput('');
       setJoinedCode('');
     } catch (e) {
-      console.error('finishJoinerLink failed:', e);
       setJoinChoiceMsg((e as Error)?.message || "Something went wrong — check your connection and try again.");
     }
     setJoinChoiceBusy(false);

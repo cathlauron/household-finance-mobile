@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -18,7 +18,7 @@ type Props = {
 export default function PasswordField({ style, value, onChangeText, placeholder, editable = true, testID }: Props) {
   const { colors } = useTheme();
   const [hidden, setHidden] = useState(true);
-  const styles = makeStyles(colors);
+  const styles = makeStyles();
   return (
     <View style={styles.wrap}>
       <TextInput
@@ -42,7 +42,7 @@ export default function PasswordField({ style, value, onChangeText, placeholder,
     </View>
   );
 }
-function makeStyles(colors: any) {
+function makeStyles() {
   return StyleSheet.create({
     wrap: { position: 'relative', justifyContent: 'center' },
     input: { paddingRight: 44 },

@@ -21,7 +21,7 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-nat
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
-import type { Bill, BillCycle } from '../../types';
+import type { Bill } from '../../types';
 
 type AuditRow = {
   bill: Bill;
