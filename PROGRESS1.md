@@ -8,6 +8,8 @@ For everything already built before this — all 11 phases of the original app (
 
 - Automated Maestro test for Change Password (create profile -> change password -> sign out -> sign in with new password -> revert to original), full pass. testIDs added to password fields, sign-out button, and Home/Settings tabs. (A.7.9)
 
+- Automated Maestro tests for sign-out/sign-in round trip and PIN quick-unlock re-configuration, both full pass, both made resilient to either a locked or unlocked starting state via a conditional-unlock guard (`runFlow: when: visible:`) at the top of each flow file. Confirmed via 4 back-to-back runs covering every real-world starting condition: create-profile from fresh (A), first-time PIN setup while already on Home (B), full sign-out/sign-in while the app happened to be locked (C), and re-configuring an already-set-up PIN starting from locked (D). testIDs added to `HomeScreen.tsx`, `PinUnlockScreen.tsx`, and `SetPinScreen.tsx` to support this. (A.7.9)
+
 Checkpoint A.7.9 (automated testing setup) — IN PROGRESS, blocked on Android emulator
 - Decided to build automated testing using the fully-free path: Firebase Emulator Suite + Maestro (no Claude Code adopted). Decided to test against the local Firebase emulator (not real Firebase) to avoid any risk to production data, and to use an Android emulator (AVD via Android Studio) rather than a real phone for this testing setup specifically.
 - Added `testID` props to the three input fields + sign-in button so Maestro can reliably find them:
@@ -165,7 +167,7 @@ Security hardening on household linking (link-code lifecycle)
 ▶️ Next step
 
 **Note added this session:** before resuming item 0 below, remember the temporary debug logging that had been added to `CreateProfileScreen.tsx`'s Firebase-account-creation catch block for troubleshooting has since been REMOVED as part of this session's cleanup pass. If create-profile testing hits an unclear failure again, that logging will need to be re-added temporarily rather than assumed to still be there.
-0. **Checkpoint A.7.9 — two automated Maestro tests now fully passing: create-profile/sign-in, and change-password (with revert).** Both confirmed committed and pushed (latest: commit f681477). Next candidate test: PIN quick-unlock (recent regression risk, A.7.0) or a full sign-out -> sign-in round trip. Household linking deferred to manual live testing (needs two devices). IMPORTANT REMINDER: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` — must be set back to `false` before any real-account (non-testing) use.
+0. **Checkpoint A.7.9 — four automated Maestro tests now fully passing: create-profile/sign-in, change-password (with revert), sign-out/sign-in round trip, and PIN quick-unlock re-configuration.** All confirmed committed and pushed (latest: commit 905361a). Both newer flows (sign-out-round-trip, pin-quick-unlock) were made resilient to the app's locked/unlocked state via a conditional-unlock guard, rather than assuming a specific run order. Household linking still deferred to manual live testing (needs two devices) — no Maestro coverage planned for it given the two-device requirement. IMPORTANT REMINDER: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` — must be set back to `false` before any real-account (non-testing) use.
 1. ~~Checkpoint A.5 (reopened, new scope)~~ — CONFIRMED DONE (see ✅ Done section above, code inspected directly in `SignInScreen.tsx`). No further work needed here.
 2. ~~Checkpoint A.6~~ — FULLY DONE, code inspected AND live-tested on two real phones (Phone A host / Phone B joiner). `linking.ts` has `subscribeToLinkCode()`, a real `onSnapshot` listener watching `linkCodes/{code}` live (treats permission-denied as an expected expiry, not an error). `SettingsScreen.tsx` wires this listener so it AUTOMATICALLY calls `finishHostLink()` the moment the joiner finishes — confirmed live: linking completed without either phone touching the old manual finish button, the listener handled it automatically end-to-end. The "Code expired? Start over with a new code" button was also re-confirmed working correctly on real devices. Checkpoint A.6 is fully closed — no remaining scope.
 3. **Checkpoint A.4-followup / general:** none currently open — A.4 itself is confirmed done; just keep the "rules must be deployed separately" gotcha in mind while working on A.6's and A.7.6's rules changes.
@@ -236,6 +238,9 @@ Files in the repo (relevant to this phase)
 - mobile-app/flows/create-profile.yaml — UPDATED (A.7.9): timeout raised to 120s.
 - mobile-app/src/screens/SignInScreen.tsx — UPDATED (A.7.9, this session): added `testID`s to email/username/password inputs and the sign-in button.
 - mobile-app/app.json — UPDATED (A.7.9, this session): added `android.package: "com.cathlauron.householdfinance"` (was missing).
+- mobile-app/flows/sign-out-round-trip.yaml — NEW (A.7.9): tests full sign-out -> sign-in round trip; starts with a conditional-unlock guard so it works whether the app opens locked or on Home.
+- mobile-app/flows/pin-quick-unlock.yaml — UPDATED (A.7.9, this session): added the same conditional-unlock guard at the top; tests first-time PIN setup, locking, and unlocking.
+- mobile-app/src/screens/HomeScreen.tsx, PinUnlockScreen.tsx, SetPinScreen.tsx — UPDATED (A.7.9, this session): testIDs added to support the two flows above (exact IDs: `unlock-pin-input`, `unlock-button`, `set-pin-button`, `pin-input`, `confirm-pin-input`, `save-pin-button`, `lock-button`).
 - See PROGRESS.md for the full file inventory as of closing 3-ROADMAP.md. This file will only note NEW files or MEANINGFULLY CHANGED files as Phase A/B/C proceeds.
 - No code files were touched in the planning sessions — those were planning-only. The next session (starting on the reopened Checkpoint A.5) will be the first to touch `SignInScreen.tsx` / `DataContext.tsx` / `cloudBackup.ts` again since the planning passes.
 - mobile-app/src/screens/SettingsScreen.tsx — UPDATED in a prior session: added `handleStartOverLinking()` and its button; added `console.error('finishJoinerLink failed:', e)` for debugging (now moot per the A.6 decision — this whole area will be rebuilt in A.6); unlink UI (`handleUnlinkHousehold`, confirm dialog) confirmed present from a prior session.
@@ -330,6 +335,24 @@ going forward.
 **Files changed:** mobile-app/flows/create-profile.yaml (timeout raised to 120s), 
 mobile-app/src/navigation/MainTabs.tsx, mobile-app/src/screens/HomeScreen.tsx, 
 mobile-app/src/screens/SettingsScreen.tsx, mobile-app/flows/change-password.yaml (new)
+
+## 📅 Session entry — 2026-09-02: Two more Maestro flows made resilient to locked/unlocked app state — 4 flows now passing total
+
+**What happened:** Continued Checkpoint A.7.9. `sign-out-round-trip.yaml` initially failed because `hideKeyboard` triggered Android's Back action, which backgrounded/locked the app when the PIN from a prior test run was still set — the flow then tried to tap `sign-in-button` while the app was minimized. Diagnosed via logcat (`ActivityManager: freezing host.exp.exponent`) and a failure screenshot showing the Android home launcher instead of the app.
+
+**Fix:** rather than removing the risky `hideKeyboard` step, added a conditional-unlock guard at the very start of both `sign-out-round-trip.yaml` and (once the same problem recurred) `pin-quick-unlock.yaml`, using Maestro's `runFlow: when: visible:` syntax — if `unlock-pin-input` is visible, unlock with PIN 1234 first; if not, skip straight to the rest of the flow. This makes both flows resilient to whatever state the previous test run left the app in, rather than depending on a specific run order.
+
+**Result — 4 flows run back-to-back, all passed:**
+- (A) `create-profile.yaml` from a fresh profile — passed
+- (B) `pin-quick-unlock.yaml`, first-time PIN setup while on Home — passed
+- (C) `sign-out-round-trip.yaml`, starting locked (conditional guard fires) — passed
+- (D) `pin-quick-unlock.yaml` again, re-configuring an already-set PIN starting locked (conditional guard fires) — passed
+
+`npx tsc --noEmit` clean. Committed and pushed via Antigravity (approved by Claude per this project's investigate-then-approve workflow) — commit `905361a`, `git status` confirmed clean afterward.
+
+▶️ Next step (this entry only — see the top-of-file ▶️ Next step section, item 0, for current status)
+- Consider whether any further Maestro coverage is worth adding, or move on to resuming whatever Phase A/A.7 work was next before this testing detour. Household linking itself is not planned for Maestro coverage (needs two real devices).
+- Remember: `USE_FIREBASE_EMULATOR` is still `true` in `firebase.ts` — must be set back to `false` before any real (non-testing) use.
 
 ## 📅 Session entry — 2026-09-02: Checkpoint A.7.9 core goal achieved — both Maestro flows (create-profile, sign-in) passing cleanly end-to-end via Antigravity
 
