@@ -308,6 +308,28 @@ Files touched during the code-health audit this session:
 - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx — UPDATED: removed unused `BillCycle` type import (round 3).
 - mobile-app/src/screens/reports/TaxSummaryReport.tsx — UPDATED: removed unused `debtFees` computed variable (round 3).
 
+## 📅 Session entry — Issue C retest CONFIRMED PASSING (household linking now fully resolved)
+
+**What happened:** Manually retested Issue C (stale invite code still working after a new 
+one is generated) live. The fix from the earlier session — cancelLinkCode() now called from 
+both startHouseholdLink() and startHouseholdInvite() before generating a new code, the 
+simplified linkCodes delete rule (`allow delete: if request.auth != null;`), and the 
+isFinished flag added to subscribeToLinkCode() to suppress the false "code expired" message — 
+is confirmed working. Generating a new code correctly invalidates the old one; a joiner can 
+no longer link using a superseded code.
+
+This closes out household linking Issues A, B, and C — all three are now confirmed fixed via 
+live two-phone testing. No code changes made this session; this is a test-result log entry only.
+
+🧹 Code health
+- No files changed this session.
+- Nothing to commit beyond this PROGRESS1.md update.
+
+▶️ Next step (this entry only — see the top-of-file ▶️ Next step section for current status)
+- Issue C is closed. Resume wherever Checkpoint A.7 left off next — check the top of this file 
+  for the current accurate next step, since several items may have been implemented but not 
+  yet live-tested (A.7.6b/c/d) per the batch-testing decision.
+  
 ## 📅 Session entry — [today's date]: Household linking Issues A, B, C revisited — A & B fixed and retested (PASS), Issue C fix deployed but retest FAILED
 
 **What happened:** Continued investigating three previously-scoped household-linking bugs (Issue A: leave-flow successor picker shown incorrectly in a 2-member household; Issue B: real-time updates not propagating for several linking scenarios; Issue C: stale invite codes still working after a new one is generated), using the Claude+Copilot investigate-then-approve workflow across several rounds.
