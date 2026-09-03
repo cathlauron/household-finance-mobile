@@ -132,7 +132,7 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow update: if request.auth != null
-        && request.auth.uid == resource.data.ownerUid
+        && request.auth.uid == resource.data.get('ownerUid', request.auth.uid)
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow delete: if request.auth != null

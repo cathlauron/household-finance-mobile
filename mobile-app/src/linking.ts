@@ -290,21 +290,18 @@ export async function finishJoinerLink(
     householdId = existingHouseholdId;
     const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
 
-    // Validate the actual household doc before trying to add the joiner.
-    // The array that tracks the joined users is the `members` array on the
-    // households/{householdId} document; `memberUsernames` is only a mapping of
-    // uid -> username and is not the membership list itself.
-    const householdSnap = await getDoc(doc(db, 'households', householdId));
-    if (!householdSnap.exists()) {
-      throw new Error('This invite is no longer valid.');
-    }
-    const members = Array.isArray(householdSnap.data().members) ? householdSnap.data().members : [];
-    if (members.length >= 5) {
-      throw new Error('This household is full (5 of 5).');
-    }
-
     // The joiner must be a member before they can write the household data.
-    await addMemberToHousehold(householdId, myUsername);
+    // If the household already has 5 members, Firestore's security rule rejects this write.
+    try {
+      await addMemberToHousehold(householdId, myUsername);
+    } catch (e: any) {
+      const code = e?.code;
+      const msg = (e as Error)?.message || '';
+      if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
+        throw new Error('This household is full (5 of 5) or the invite is no longer valid.');
+      }
+      throw e;
+    }
     await saveHouseholdData(householdId, encryptedHouseholdData);
   } else {
     householdId = await generateHouseholdId();
