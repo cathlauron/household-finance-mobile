@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { generateSalt, deriveKey, encryptJSON } from '../encryption';
@@ -7,7 +7,6 @@ import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '
 import { defaultModel } from '../defaultModel';
 import { createFirebaseAccount } from '../authFirebase';
 import { saveProfileCloudBackup } from '../cloudBackup';
-import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
 import PasswordField from '../components/PasswordField';
 
 type Props = {
@@ -22,9 +21,6 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
   const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [createdInfo, setCreatedInfo] = useState<{ username: string; key: CryptoJS.lib.WordArray } | null>(null);
-  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
-  const [savedAcknowledged, setSavedAcknowledged] = useState(false);
 
   // Turns a raw Firebase error into a plain-English message. Firebase errors
   // come with a `code` like "auth/email-already-in-use" - we check for the
@@ -95,14 +91,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       await saveProfilesIndex(profiles);
       await saveEncryptedProfileData(username, encrypted);
       await saveProfileCloudBackup(username, { salt, data: encrypted });
-
-      // Generate and upload the Secret Recovery Key for this account
-      const code = await generateRecoveryCode();
-      await saveRecoveryKey(username, key, false, code);
-
-      setCreatedInfo({ username, key });
-      setRecoveryCode(code);
       setBusy(false);
+      onProfileCreated(username, key);
     } catch (e) {
       setBusy(false);
       setError('Something went wrong saving your profile. Please try again.');
@@ -169,52 +159,9 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        Your data is genuinely encrypted with this password. You will receive a Secret
-        Recovery Key next to protect your account against forgotten passwords.
+        There's no "forgot password" recovery - your data is genuinely encrypted with this
+        password, not just hidden. Remember it, like you would a password manager entry.
       </Text>
-
-      <Modal visible={!!recoveryCode} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.eyebrow}>CRITICAL SECURITY STEP</Text>
-            <Text style={styles.modalTitle}>Your Secret Recovery Key</Text>
-            <Text style={styles.modalSub}>
-              Save this key in a safe place. If you ever reset or forget your account password,
-              this is the only way to restore your encrypted financial data.
-            </Text>
-
-            <View style={styles.codeBox}>
-              <Text selectable style={styles.codeText}>
-                {recoveryCode}
-              </Text>
-            </View>
-
-            <Pressable
-              style={styles.checkRow}
-              onPress={() => setSavedAcknowledged((prev) => !prev)}
-            >
-              <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
-                {savedAcknowledged && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={styles.checkLabel}>
-                I have written down or saved this recovery key in a safe place.
-              </Text>
-            </Pressable>
-
-            <TouchableOpacity
-              style={[styles.primaryBtn, !savedAcknowledged && styles.btnDisabled]}
-              disabled={!savedAcknowledged}
-              onPress={() => {
-                if (createdInfo) {
-                  onProfileCreated(createdInfo.username, createdInfo.key);
-                }
-              }}
-            >
-              <Text style={styles.primaryBtnText}>Continue to App</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -232,26 +179,7 @@ const styles = StyleSheet.create({
   error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
   primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 24 },
   primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
-  btnDisabled: { opacity: 0.4 },
   ghostBtn: { paddingVertical: 14, marginTop: 4 },
   ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
   hint: { fontSize: 11, color: '#A8A29E', textAlign: 'center', marginTop: 24, lineHeight: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 24, width: '100%', maxWidth: 420 },
-  modalTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: '#1C1917', marginBottom: 8 },
-  modalSub: { fontSize: 13, color: '#57534E', textAlign: 'center', lineHeight: 18, marginBottom: 20 },
-  codeBox: {
-    backgroundColor: '#F5F5F4', borderWidth: 1, borderColor: '#D6D3D1', borderRadius: 8,
-    paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
-  },
-  codeText: { fontSize: 17, fontWeight: '700', letterSpacing: 2, color: '#0F172A', fontFamily: 'monospace' },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, borderColor: '#78716C',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
-  },
-  checkboxActive: { backgroundColor: '#1C1917', borderColor: '#1C1917' },
-  checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
-  checkLabel: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 18 },
 });

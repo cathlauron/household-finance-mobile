@@ -111,13 +111,6 @@ service cloud.firestore {
             || (request.resource.data.memberUsernames is map
                 && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])));
 
-      // Allows an existing member to set or clear pendingRecoveryRequestId
-      allow update: if request.auth != null
-        && request.auth.uid in resource.data.members
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pendingRecoveryRequestId'])
-        && (request.resource.data.pendingRecoveryRequestId == null
-            || request.resource.data.pendingRecoveryRequestId is string);
-
       // Dissolve household (sole remaining member, or owner dissolving a 2-member household)
       allow delete: if request.auth != null
         && request.auth.uid in resource.data.members
@@ -166,57 +159,6 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number
         && (!('householdId' in request.resource.data) || request.resource.data.householdId is string)
         && (!('data' in request.resource.data) || request.resource.data.data is string);
-
-      allow list: if false;
-    }
-    match /recoveryKeys/{username} {
-      allow get: if request.auth != null && resource.data.ownerUid == request.auth.uid;
-
-      allow create: if request.auth != null
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.keys().hasAll(['ownerUid', 'recoverySalt', 'wrappedKey', 'isHouseholdKey', 'updatedAt'])
-        && request.resource.data.ownerUid is string
-        && request.resource.data.recoverySalt is string
-        && request.resource.data.wrappedKey is string
-        && request.resource.data.isHouseholdKey is bool
-        && request.resource.data.updatedAt is number;
-
-      allow update: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid
-        && request.resource.data.ownerUid == request.auth.uid;
-
-      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
-
-      allow list: if false;
-    }
-    match /householdRecovery/{requestId} {
-      allow get: if request.auth != null
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members;
-
-      allow create: if request.auth != null
-        && request.resource.data.requesterUid == request.auth.uid
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.members
-        && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasAll(['householdId', 'requesterUid', 'requesterUsername', 'transferSalt', 'status', 'createdAt', 'expiresAt'])
-        && request.resource.data.householdId is string
-        && request.resource.data.requesterUsername is string
-        && request.resource.data.transferSalt is string
-        && request.resource.data.createdAt is number
-        && request.resource.data.expiresAt is number;
-
-      allow update: if request.auth != null
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members
-        && request.auth.uid != resource.data.requesterUid
-        && resource.data.status == 'pending'
-        && request.resource.data.status == 'approved'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'encryptedHouseholdKey', 'approverUid', 'approvedAt'])
-        && request.resource.data.encryptedHouseholdKey is string
-        && request.resource.data.approverUid == request.auth.uid
-        && request.resource.data.approvedAt is number;
-
-      allow delete: if request.auth != null
-        && (request.auth.uid == resource.data.requesterUid
-            || request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members);
 
       allow list: if false;
     }

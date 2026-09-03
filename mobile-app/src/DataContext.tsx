@@ -83,8 +83,6 @@ type DataContextValue = {
   // by the linking screens to wrap/unwrap a shared household key, without
   // every screen having to re-derive or pass it around separately.
   getPersonalKey: () => CryptoJS.lib.WordArray | null;
-  getHouseholdKey: () => CryptoJS.lib.WordArray | null;
-  getHouseholdId: () => string | undefined;
   // Gives this profile its own standalone copy of whatever the shared data
   // currently looks like, then removes this profile's access to the shared
   // household. The shared household data itself, and anyone else still
@@ -399,14 +397,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return keyRef.current;
   }
 
-  function getHouseholdKey(): CryptoJS.lib.WordArray | null {
-    return householdKeyRef.current;
-  }
-
-  function getHouseholdId(): string | undefined {
-    return householdIdRef.current;
-  }
-
   async function unlinkHousehold(): Promise<ChangePasswordResult> {
     cleanupHouseholdListener();
     const username = usernameRef.current;
@@ -647,8 +637,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         username: usernameRef.current,
         isLinked,
         getPersonalKey,
-        getHouseholdKey,
-        getHouseholdId,
         unlinkHousehold,
         unlinkAndTransferOwnership,
         linkNoticeMsg,
