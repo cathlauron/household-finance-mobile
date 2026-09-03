@@ -27,11 +27,8 @@ import {
   loadProfilesIndex,
   updateProfileSalt,
   updateProfileHouseholdId,
-  loadPendingHostLink,
-  clearPendingHostLink,
   type ProfileIndexEntry,
 } from './storage';
-import { cancelLinkCode } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup } from './cloudBackup';
 import { sanitizeModelIds } from './mergeModels';
@@ -158,12 +155,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await deleteWrappedHouseholdKey(username);
     } catch (e) {}
     await updateProfileHouseholdId(username, undefined);
-
-    try {
-      const pending = await loadPendingHostLink(username);
-      if (pending?.code) await cancelLinkCode(pending.code);
-      await clearPendingHostLink(username);
-    } catch (e) {}
 
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
@@ -431,12 +422,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await deleteWrappedHouseholdKey(username);
       await updateProfileHouseholdId(username, undefined);
 
-      try {
-        const pending = await loadPendingHostLink(username);
-        if (pending?.code) await cancelLinkCode(pending.code);
-        await clearPendingHostLink(username);
-      } catch (e) {}
-
       householdIdRef.current = undefined;
       householdKeyRef.current = null;
       setIsLinked(false);
@@ -467,12 +452,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await leaveHouseholdAndTransferOwnership(householdId, newOwnerUid);
       await deleteWrappedHouseholdKey(username);
       await updateProfileHouseholdId(username, undefined);
-
-      try {
-        const pending = await loadPendingHostLink(username);
-        if (pending?.code) await cancelLinkCode(pending.code);
-        await clearPendingHostLink(username);
-      } catch (e) {}
 
       householdIdRef.current = undefined;
       householdKeyRef.current = null;

@@ -22,8 +22,10 @@ service cloud.firestore {
             && request.resource.data.householdId is string)
         );
 
-      // Codes can be deleted once finished, or when cancelled/superseded by a new code
-      allow delete: if request.auth != null;
+      // Once a code has done its job (successfully used to link two
+      // profiles), it's deleted outright rather than left sitting around
+      // forever as a still-working decryption key.
+      allow delete: if request.auth != null && resource.data.finished == true;
 
       allow list: if false;
     }

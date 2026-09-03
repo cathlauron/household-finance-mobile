@@ -55,7 +55,7 @@ import {
   saveWrappedHouseholdKey,
   addMemberToHousehold,
 } from './household';
-import { updateProfileHouseholdId, savePendingHostLink, loadPendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
+import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
 import { saveProfileCloudBackup } from './cloudBackup';
 import { mergeModels, sanitizeModelIds } from './mergeModels';
 import { getCurrentFirebaseUser } from './authFirebase';
@@ -103,14 +103,6 @@ export async function startHouseholdLink(
   username: string,
   model: HouseholdModel
 ): Promise<StartLinkResult> {
-  // Cancel any existing active code for this user before creating a new one
-  try {
-    const pending = await loadPendingHostLink(username);
-    if (pending?.code) {
-      await cancelLinkCode(pending.code);
-    }
-  } catch (e) {}
-
   const code = await generateLinkCode();
   const secretHex = await generateHouseholdSecretHex();
 
@@ -158,14 +150,6 @@ export async function startHouseholdInvite(
   householdModel: HouseholdModel,
   hostUsername: string
 ): Promise<StartInviteResult> {
-  // Cancel any existing active code for this user before creating a new one
-  try {
-    const pending = await loadPendingHostLink(hostUsername);
-    if (pending?.code) {
-      await cancelLinkCode(pending.code);
-    }
-  } catch (e) {}
-
   const code = await generateLinkCode();
   const secretHex = householdKey.toString(CryptoJS.enc.Hex);
   const codeSalt = await generateSalt();
@@ -182,10 +166,6 @@ export async function startHouseholdInvite(
     isInvite: true,
     createdAt: serverTimestamp(),
   });
-
-  // Remember this invite code so navigating away/back restores it, and any
-  // future code generation cleanly supersedes it.
-  await savePendingHostLink(hostUsername, code, secretHex);
 
   return { code, secretHex };
 }
@@ -418,15 +398,6 @@ export async function finishHostLink(
   }
 
   return { status: 'done', householdId: data.householdId };
-}
-
-export async function cancelLinkCode(code: string): Promise<void> {
-  if (!code) return;
-  try {
-    await deleteDoc(doc(db, 'linkCodes', code));
-  } catch (e) {
-    // Non-fatal: code will expire naturally in Firestore if deletion fails
-  }
 }
 
 // ---- Checkpoint A.6: real-time linking — host listens instead of polling ----
