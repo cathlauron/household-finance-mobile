@@ -41,6 +41,7 @@ import {
   removeMemberByOwner,
   loadWrappedHouseholdKey,
   unwrapHouseholdKey,
+  subscribeToHousehold,
   type HouseholdMemberInfo,
 } from '../household';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
@@ -270,38 +271,66 @@ export default function SettingsScreen() {
       setHouseholdMembers([]);
       return;
     }
-    let cancelled = false;
+    let unsubscribeHousehold: (() => void) | null = null;
+    let active = true;
+
     (async () => {
       try {
         const profiles = await loadProfilesIndex();
         const profile = profiles.find((p) => p.username === username);
         const householdId = profile?.householdId;
-        if (!householdId || cancelled) {
+        if (!householdId || !active) {
           setIsOwner(false);
           setHouseholdMemberCount(0);
           setHouseholdMembers([]);
           return;
         }
+
         const currentUid = getCurrentFirebaseUser()?.uid;
-        const [owner, count, members] = await Promise.all([
-          getHouseholdOwner(householdId),
-          getHouseholdMemberCount(householdId),
-          getHouseholdMembers(householdId),
-        ]);
-        if (cancelled) return;
-        setIsOwner(Boolean(currentUid && owner === currentUid));
-        setHouseholdMemberCount(count);
-        setHouseholdMembers(members);
+
+        unsubscribeHousehold = subscribeToHousehold(
+          householdId,
+          (snapshotData) => {
+            if (!active) return;
+            if (!snapshotData) {
+              setIsOwner(false);
+              setHouseholdMemberCount(0);
+              setHouseholdMembers([]);
+              return;
+            }
+            const members = snapshotData.members || [];
+            const ownerUid = snapshotData.owner || members[0] || null;
+            const usernames = snapshotData.memberUsernames || {};
+            const memberList: HouseholdMemberInfo[] = members.map((uid) => ({
+              uid,
+              username: usernames[uid] || (uid === ownerUid ? 'Owner' : 'Member'),
+              isOwner: uid === ownerUid,
+            }));
+            setIsOwner(Boolean(currentUid && ownerUid === currentUid));
+            setHouseholdMemberCount(members.length);
+            setHouseholdMembers(memberList);
+          },
+          () => {
+            if (!active) return;
+            setIsOwner(false);
+            setHouseholdMemberCount(0);
+            setHouseholdMembers([]);
+          }
+        );
       } catch (e) {
-        if (!cancelled) {
+        if (active) {
           setIsOwner(false);
           setHouseholdMemberCount(0);
           setHouseholdMembers([]);
         }
       }
     })();
+
     return () => {
-      cancelled = true;
+      active = false;
+      if (unsubscribeHousehold) {
+        unsubscribeHousehold();
+      }
     };
   }, [isLinked, username]);
 
@@ -703,6 +732,7 @@ export default function SettingsScreen() {
           clearLinkCodeExpiryTimer();
           setLinkCode('');
           setLinkSecretHex('');
+          setLinkErrorMsg('');
           setHostFinishMsg('Linked! Loading your shared data…');
           await loadModel(username, personalKey);
           unsubscribe();
@@ -1290,7 +1320,7 @@ export default function SettingsScreen() {
                     onPress={() => {
                       const currentUid = getCurrentFirebaseUser()?.uid;
                       const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
-                      if (isOwner && otherMembers.length > 0) {
+                      if (isOwner && otherMembers.length > 1) {
                         setSelectedSuccessorUid(otherMembers[0].uid);
                         setTransferMsg('');
                         setTransferOwnerModalOpen(true);
@@ -1371,8 +1401,8 @@ export default function SettingsScreen() {
               ) : (
                 <View style={styles.dangerConfirmBox}>
                   <Text style={styles.dangerConfirmText}>
-                    {householdMemberCount <= 1
-                      ? "Unlinking will dissolve this household since you're the only member. Your data will be converted to your personal profile."
+                    {householdMemberCount <= 1 || (isOwner && householdMemberCount <= 2)
+                      ? "Unlinking will dissolve this household. Your data will be converted to your personal profile."
                       : "This gives this profile its own separate copy of the data going forward. Anyone else still linked keeps sharing with each other, just not with this profile anymore."}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>

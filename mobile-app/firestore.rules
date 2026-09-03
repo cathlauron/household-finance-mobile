@@ -113,10 +113,10 @@ service cloud.firestore {
             || (request.resource.data.memberUsernames is map
                 && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])));
 
-      // Dissolve household (sole remaining member only)
+      // Dissolve household (sole remaining member, or owner dissolving a 2-member household)
       allow delete: if request.auth != null
         && request.auth.uid in resource.data.members
-        && resource.data.members.size() == 1;
+        && (resource.data.members.size() == 1 || (resource.data.members.size() <= 2 && resource.data.get('owner', null) == request.auth.uid));
 
       allow list: if false;
     }

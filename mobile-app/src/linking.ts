@@ -412,16 +412,22 @@ export function subscribeToLinkCode(
   onFinished: (householdId: string) => void,
   onExpired?: () => void
 ): () => void {
+  let isFinished = false;
   const unsubscribe = onSnapshot(
     doc(db, 'linkCodes', code),
     (snap) => {
       if (!snap.exists()) return;
       const data = snap.data() as { finished?: boolean; householdId?: string };
       if (data.finished && data.householdId) {
+        isFinished = true;
         onFinished(data.householdId);
       }
     },
     (error) => {
+      if (isFinished) {
+        // Document was finished and deleted as part of linking cleanup — not an expiration
+        return;
+      }
       const message = String((error as Error)?.message || '');
       const isExpectedExpiry = /permission|denied|missing or insufficient permissions/i.test(message);
       if (isExpectedExpiry) {

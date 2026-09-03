@@ -44,6 +44,7 @@ import {
   deleteHousehold,
   leaveHouseholdAndTransferOwnership,
   getHouseholdMemberCount,
+  getHouseholdOwner,
   subscribeToHousehold,
 } from './household';
 
@@ -397,7 +398,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     try {
       const memberCount = await getHouseholdMemberCount(householdId);
-      if (memberCount <= 1) {
+      const ownerUid = await getHouseholdOwner(householdId);
+      const currentUid = getCurrentFirebaseUser()?.uid;
+      const isOwner = Boolean(currentUid && ownerUid === currentUid);
+
+      if (memberCount <= 1 || (isOwner && memberCount <= 2)) {
         await performDissolve(householdId, { reason: 'selfUnlink', deleteDoc: true });
         return { ok: true };
       }
