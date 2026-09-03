@@ -1,13 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
-import { deriveKey, decryptJSON } from '../encryption';
+import { deriveKey, decryptJSON, generateSalt, encryptJSON } from '../encryption';
 import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, updateProfileHouseholdId, ProfileIndexEntry } from '../storage';
 import type { HouseholdModel } from '../types';
 import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
-import { loadProfileCloudBackup, saveProfileCloudBackup } from '../cloudBackup';
-import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData } from '../household';
+import { loadProfileCloudBackup, saveProfileCloudBackup, ProfileCloudBackup } from '../cloudBackup';
+import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData, wrapHouseholdKey, saveWrappedHouseholdKey } from '../household';
+import {
+  recoverKeyWithCode,
+  saveRecoveryKey,
+  generatePeerTransferCode,
+  createPeerRecoveryRequest,
+  cancelPeerRecoveryRequest,
+  subscribeToPeerRecoveryRequest,
+  decryptTransferredHouseholdKey,
+} from '../recovery';
 import PasswordField from '../components/PasswordField';
 
 type Props = {
@@ -41,6 +50,227 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
   // shows a reassuring "this is normal" message once it's been running a couple seconds,
   // so it doesn't look frozen.
   const [showSlowHint, setShowSlowHint] = useState(false);
+
+  // Recovery flow state (triggered if Firebase Auth succeeds but decryption fails)
+  type RecoveryContext = {
+    username: string;
+    email: string;
+    password: string;
+    effectiveHouseholdId?: string;
+    effectiveSalt: string;
+    profile?: ProfileIndexEntry;
+    cloudBackup?: ProfileCloudBackup | null;
+    wrappedKeyInfo?: { householdId: string; wrappedKey: string } | null;
+    isLinked: boolean;
+  };
+
+  const [recoveryContext, setRecoveryContext] = useState<RecoveryContext | null>(null);
+  const [recoveryKeyInput, setRecoveryKeyInput] = useState('');
+  const [recoveryError, setRecoveryError] = useState('');
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+
+  // Peer recovery state
+  const [isWaitingForPeer, setIsWaitingForPeer] = useState(false);
+  const [peerTransferCode, setPeerTransferCode] = useState('');
+  const [peerBusy, setPeerBusy] = useState(false);
+  const [peerError, setPeerError] = useState('');
+  const peerRequestIdRef = useRef<string | null>(null);
+  const peerTransferKeyRef = useRef<CryptoJS.lib.WordArray | null>(null);
+  const peerUnsubscribeRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (peerUnsubscribeRef.current) {
+        peerUnsubscribeRef.current();
+        peerUnsubscribeRef.current = null;
+      }
+    };
+  }, []);
+
+  function triggerRecovery(ctx: RecoveryContext) {
+    setRecoveryContext(ctx);
+    setRecoveryKeyInput('');
+    setRecoveryError('');
+    setPeerError('');
+    setIsWaitingForPeer(false);
+    setIsRestoring(false);
+    setBusy(false);
+  }
+
+  async function handleRecoverWithKey() {
+    if (!recoveryContext || !recoveryKeyInput.trim()) {
+      setRecoveryError('Enter your recovery key.');
+      return;
+    }
+    setRecoveryBusy(true);
+    setRecoveryError('');
+    try {
+      const { key: unwrappedKey, isHouseholdKey } = await recoverKeyWithCode(
+        recoveryContext.username,
+        recoveryKeyInput.trim()
+      );
+
+      if (recoveryContext.isLinked || isHouseholdKey) {
+        const householdId = recoveryContext.effectiveHouseholdId;
+        if (!householdId) throw new Error('Missing household ID.');
+        const encryptedHousehold = await loadHouseholdData(householdId);
+        if (!encryptedHousehold) throw new Error('Household data not found.');
+        const restoredModel = decryptJSON<HouseholdModel>(unwrappedKey, encryptedHousehold);
+
+        // Re-wrap the household key under the newly authenticated Firebase password
+        const newKey = deriveKey(recoveryContext.password, recoveryContext.effectiveSalt);
+        const newWrappedKey = await wrapHouseholdKey(unwrappedKey, newKey);
+        await saveWrappedHouseholdKey(recoveryContext.username, householdId, newWrappedKey);
+
+        let profileEntry = recoveryContext.profile;
+        if (!profileEntry) {
+          profileEntry = {
+            username: recoveryContext.username,
+            salt: recoveryContext.effectiveSalt,
+            householdId,
+          };
+          const profiles = await loadProfilesIndex();
+          const updated = [...profiles.filter((p) => p.username !== recoveryContext.username), profileEntry];
+          await saveProfilesIndex(updated);
+        }
+        await saveProfileCloudBackup(recoveryContext.username, {
+          salt: recoveryContext.effectiveSalt,
+          householdId,
+        });
+
+        setRecoveryBusy(false);
+        setRecoveryContext(null);
+        onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, unwrappedKey);
+        return;
+      }
+
+      // Solo / Unlinked Profile
+      let encrypted = await loadEncryptedProfileData(recoveryContext.username);
+      if (!encrypted && recoveryContext.cloudBackup?.data) {
+        encrypted = recoveryContext.cloudBackup.data;
+      }
+      if (!encrypted) throw new Error('No encrypted data found to recover.');
+      const restoredModel = decryptJSON<HouseholdModel>(unwrappedKey, encrypted);
+
+      const newSalt = await generateSalt();
+      const newKey = deriveKey(recoveryContext.password, newSalt);
+      const reEncrypted = await encryptJSON(newKey, restoredModel);
+
+      await saveEncryptedProfileData(recoveryContext.username, reEncrypted);
+      await updateProfileSalt(recoveryContext.username, newSalt);
+
+      let profileEntry = recoveryContext.profile;
+      if (!profileEntry) {
+        profileEntry = { username: recoveryContext.username, salt: newSalt };
+        const profiles = await loadProfilesIndex();
+        const updated = [...profiles.filter((p) => p.username !== recoveryContext.username), profileEntry];
+        await saveProfilesIndex(updated);
+      } else {
+        profileEntry.salt = newSalt;
+      }
+
+      await saveProfileCloudBackup(recoveryContext.username, { salt: newSalt, data: reEncrypted });
+      await saveRecoveryKey(recoveryContext.username, newKey, false, recoveryKeyInput.trim()).catch(() => {});
+
+      setRecoveryBusy(false);
+      setRecoveryContext(null);
+      onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry);
+    } catch (e: any) {
+      setRecoveryBusy(false);
+      setRecoveryError(e?.message || 'Could not recover with this key. Please check it and try again.');
+    }
+  }
+
+  async function handleStartPeerRecovery() {
+    if (!recoveryContext || !recoveryContext.effectiveHouseholdId) return;
+    setPeerBusy(true);
+    setPeerError('');
+    try {
+      const code = await generatePeerTransferCode();
+      setPeerTransferCode(code);
+      const { requestId, transferKey } = await createPeerRecoveryRequest(
+        recoveryContext.effectiveHouseholdId,
+        recoveryContext.username,
+        code
+      );
+      peerRequestIdRef.current = requestId;
+      peerTransferKeyRef.current = transferKey;
+      setIsWaitingForPeer(true);
+      setPeerBusy(false);
+
+      peerUnsubscribeRef.current = subscribeToPeerRecoveryRequest(
+        requestId,
+        async (encryptedHouseholdKey) => {
+          if (peerUnsubscribeRef.current) {
+            peerUnsubscribeRef.current();
+            peerUnsubscribeRef.current = null;
+          }
+          try {
+            const householdKey = decryptTransferredHouseholdKey(encryptedHouseholdKey, transferKey);
+            const householdId = recoveryContext.effectiveHouseholdId!;
+            const encryptedHousehold = await loadHouseholdData(householdId);
+            if (!encryptedHousehold) throw new Error('Missing household data');
+            const restoredModel = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
+
+            const newKey = deriveKey(recoveryContext.password, recoveryContext.effectiveSalt);
+            const newWrappedKey = await wrapHouseholdKey(householdKey, newKey);
+            await saveWrappedHouseholdKey(recoveryContext.username, householdId, newWrappedKey);
+
+            let profileEntry = recoveryContext.profile;
+            if (!profileEntry) {
+              profileEntry = {
+                username: recoveryContext.username,
+                salt: recoveryContext.effectiveSalt,
+                householdId,
+              };
+              const profiles = await loadProfilesIndex();
+              const updated = [...profiles.filter((p) => p.username !== recoveryContext.username), profileEntry];
+              await saveProfilesIndex(updated);
+            }
+            await saveProfileCloudBackup(recoveryContext.username, {
+              salt: recoveryContext.effectiveSalt,
+              householdId,
+            });
+
+            setIsWaitingForPeer(false);
+            setRecoveryContext(null);
+            onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, householdKey);
+          } catch (err: any) {
+            setPeerError(err?.message || 'Failed to complete peer recovery.');
+          }
+        },
+        () => {
+          setIsWaitingForPeer(false);
+          setPeerError('The recovery request was cancelled or expired.');
+        }
+      );
+    } catch (e: any) {
+      setPeerBusy(false);
+      setPeerError(e?.message || 'Could not start peer recovery. Please try again.');
+    }
+  }
+
+  async function handleCancelPeerRecovery() {
+    if (peerUnsubscribeRef.current) {
+      peerUnsubscribeRef.current();
+      peerUnsubscribeRef.current = null;
+    }
+    if (recoveryContext?.effectiveHouseholdId && peerRequestIdRef.current) {
+      await cancelPeerRecoveryRequest(recoveryContext.effectiveHouseholdId, peerRequestIdRef.current).catch(() => {});
+    }
+    peerRequestIdRef.current = null;
+    peerTransferKeyRef.current = null;
+    setIsWaitingForPeer(false);
+  }
+
+  async function handleCloseRecovery() {
+    await handleCancelPeerRecovery();
+    setRecoveryContext(null);
+    setRecoveryKeyInput('');
+    setRecoveryError('');
+    setPeerError('');
+    await signOutFirebase().catch(() => {});
+  }
 
   useEffect(() => {
     if (!busy) {
@@ -211,9 +441,16 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
             restoredModel = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
             restoredHouseholdKey = householdKey;
           } catch (e) {
-            setIsRestoring(false);
-            setError('Incorrect username or password.');
-            setBusy(false);
+            triggerRecovery({
+              username,
+              email,
+              password,
+              effectiveHouseholdId,
+              effectiveSalt,
+              cloudBackup,
+              wrappedKeyInfo,
+              isLinked: true,
+            });
             return;
           }
         } else {
@@ -227,9 +464,14 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
           try {
             restoredModel = decryptJSON<HouseholdModel>(key, cloudBackup.data);
           } catch (e) {
-            setIsRestoring(false);
-            setError('Incorrect username or password.');
-            setBusy(false);
+            triggerRecovery({
+              username,
+              email,
+              password,
+              effectiveSalt,
+              cloudBackup,
+              isLinked: false,
+            });
             return;
           }
           // Password confirmed correct - save a local copy so this device has its
@@ -316,8 +558,16 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
         }
 
         if (!result) {
-          setError('Incorrect username or password.');
-          setBusy(false);
+          triggerRecovery({
+            username,
+            email,
+            password,
+            effectiveHouseholdId: profile.householdId,
+            effectiveSalt: profile.salt,
+            profile,
+            wrappedKeyInfo: wrapped,
+            isLinked: true,
+          });
           return;
         }
 
@@ -391,8 +641,14 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       try {
         loadedModel = decryptJSON<HouseholdModel>(key, encrypted);
       } catch (e) {
-        setError('Incorrect username or password.');
-        setBusy(false);
+        triggerRecovery({
+          username,
+          email,
+          password,
+          effectiveSalt: profile.salt,
+          profile,
+          isLinked: false,
+        });
         return;
       }
       setBusy(false);
@@ -486,6 +742,113 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       <TouchableOpacity style={styles.ghostBtn} onPress={onGoToCreateProfile} disabled={busy}>
         <Text style={styles.ghostBtnText}>Create a new profile</Text>
       </TouchableOpacity>
+
+      <Modal visible={!!recoveryContext} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalEyebrow}>ACCOUNT RECOVERY</Text>
+              <Text style={styles.modalTitle}>Password Accepted, But Data Locked</Text>
+              <Text style={styles.modalSub}>
+                Your sign-in password was verified, but your data could not be unlocked.
+                This happens if you reset your password, because your financial data is
+                still encrypted with your previous password.
+              </Text>
+
+              {/* Option 1: Recovery Key */}
+              <View style={styles.recoverySection}>
+                <Text style={styles.sectionHeading}>Option 1: Secret Recovery Key</Text>
+                <Text style={styles.sectionDesc}>
+                  Enter the 16-character recovery key saved when your profile was created.
+                </Text>
+                <TextInput
+                  style={styles.recoveryInput}
+                  value={recoveryKeyInput}
+                  onChangeText={setRecoveryKeyInput}
+                  placeholder="e.g. 4B9X-7M2K-W8Q3-P1Z6"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  editable={!recoveryBusy && !peerBusy}
+                />
+                {!!recoveryError && <Text style={styles.errorText}>{recoveryError}</Text>}
+                <TouchableOpacity
+                  style={[styles.primaryBtn, (!recoveryKeyInput.trim() || recoveryBusy) && styles.btnDisabled]}
+                  onPress={handleRecoverWithKey}
+                  disabled={!recoveryKeyInput.trim() || recoveryBusy || peerBusy}
+                >
+                  {recoveryBusy ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Unlock &amp; Restore Data</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Option 2: Peer Recovery */}
+              {recoveryContext?.isLinked && (
+                <View style={[styles.recoverySection, { marginTop: 16 }]}>
+                  <Text style={styles.sectionHeading}>Option 2: Ask a Household Member</Text>
+                  <Text style={styles.sectionDesc}>
+                    Another member of your household can verify your identity and hand over the household key.
+                  </Text>
+
+                  {!isWaitingForPeer ? (
+                    <TouchableOpacity
+                      style={[styles.secondaryBtn, peerBusy && styles.btnDisabled]}
+                      onPress={handleStartPeerRecovery}
+                      disabled={peerBusy || recoveryBusy}
+                    >
+                      {peerBusy ? (
+                        <ActivityIndicator color="#1C1917" />
+                      ) : (
+                        <Text style={styles.secondaryBtnText}>Request Member Approval</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.peerWaitingCard}>
+                      <ActivityIndicator color="#D97706" style={{ marginBottom: 8 }} />
+                      <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
+                      <Text style={styles.peerWaitingDesc}>
+                        Ask another household member to open Settings &gt; Household on their phone and enter this code:
+                      </Text>
+                      <View style={styles.transferCodeBox}>
+                        <Text style={styles.transferCodeText}>
+                          {peerTransferCode.slice(0, 3)} - {peerTransferCode.slice(3)}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.cancelInlineBtn}
+                        onPress={handleCancelPeerRecovery}
+                      >
+                        <Text style={styles.cancelInlineBtnText}>Cancel Request</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {!!peerError && <Text style={styles.errorText}>{peerError}</Text>}
+                </View>
+              )}
+
+              {/* Dead-end guidance per Correction 2 */}
+              <View style={styles.deadEndSection}>
+                <Text style={styles.deadEndTitle}>Lost both password and recovery key?</Text>
+                <Text style={styles.deadEndDesc}>
+                  Without your password or recovery key, existing data cannot be decrypted.
+                  If you are signed into another device, you can access your data there or use
+                  "Clear all data &amp; start fresh" in Settings &gt; Data.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.ghostBtn}
+                onPress={handleCloseRecovery}
+                disabled={recoveryBusy || peerBusy}
+              >
+                <Text style={styles.ghostBtnText}>Cancel &amp; Return to Sign In</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -501,11 +864,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917',
   },
   error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 24 },
+  primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 14 },
   primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+  secondaryBtn: {
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D6D3D1', borderRadius: 8,
+    paddingVertical: 12, marginTop: 10,
+  },
+  secondaryBtnText: { color: '#1C1917', textAlign: 'center', fontWeight: '600', fontSize: 14 },
+  btnDisabled: { opacity: 0.4 },
   busyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   spinner: { marginRight: 8 },
   slowHint: { color: '#78716C', fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 8 },
-  ghostBtn: { paddingVertical: 14, marginTop: 4 },
+  ghostBtn: { paddingVertical: 14, marginTop: 8 },
   ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  modalCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%' },
+  modalEyebrow: { fontSize: 11, letterSpacing: 2, color: '#D97706', textAlign: 'center', fontWeight: '700', marginBottom: 6 },
+  modalTitle: { fontSize: 19, fontWeight: '700', textAlign: 'center', color: '#1C1917', marginBottom: 6 },
+  modalSub: { fontSize: 13, color: '#57534E', textAlign: 'center', lineHeight: 18, marginBottom: 16 },
+  recoverySection: { backgroundColor: '#FAFAF9', borderRadius: 10, borderWidth: 1, borderColor: '#E7E5E4', padding: 14 },
+  sectionHeading: { fontSize: 14, fontWeight: '700', color: '#1C1917', marginBottom: 4 },
+  sectionDesc: { fontSize: 12, color: '#78716C', lineHeight: 16, marginBottom: 10 },
+  recoveryInput: {
+    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#D6D3D1',
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1C1917',
+    fontFamily: 'monospace', letterSpacing: 1,
+  },
+  errorText: { color: '#E11D48', fontSize: 12, marginTop: 6, textAlign: 'center' },
+  peerWaitingCard: {
+    backgroundColor: '#FFFBEB', borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A',
+    padding: 14, alignItems: 'center', marginTop: 10,
+  },
+  peerWaitingTitle: { fontSize: 14, fontWeight: '700', color: '#92400E', marginBottom: 4 },
+  peerWaitingDesc: { fontSize: 12, color: '#78350F', textAlign: 'center', lineHeight: 16, marginBottom: 10 },
+  transferCodeBox: {
+    backgroundColor: '#FFFFFF', borderRadius: 6, borderWidth: 1, borderColor: '#F59E0B',
+    paddingVertical: 8, paddingHorizontal: 16, marginBottom: 10,
+  },
+  transferCodeText: { fontSize: 20, fontWeight: '700', color: '#B45309', letterSpacing: 3, fontFamily: 'monospace' },
+  cancelInlineBtn: { paddingVertical: 6, paddingHorizontal: 12 },
+  cancelInlineBtnText: { fontSize: 12, color: '#78716C', textDecorationLine: 'underline' },
+  deadEndSection: { backgroundColor: '#F5F5F4', borderRadius: 8, padding: 12, marginTop: 16 },
+  deadEndTitle: { fontSize: 12, fontWeight: '700', color: '#57534E', marginBottom: 4 },
+  deadEndDesc: { fontSize: 11, color: '#78716C', lineHeight: 15 },
 });
