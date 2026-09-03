@@ -34,6 +34,7 @@ import {
   loadPendingHostLink,
   clearPendingHostLink,
   loadProfilesIndex,
+  loadEncryptedProfileData,
 } from '../storage';
 import {
   getHouseholdOwner,
@@ -45,6 +46,14 @@ import {
   subscribeToHousehold,
   type HouseholdMemberInfo,
 } from '../household';
+import {
+  getPeerRecoveryRequest,
+  approvePeerRecoveryRequest,
+  generateRecoveryCode,
+  saveRecoveryKey,
+  type PeerRecoveryRequestDoc,
+} from '../recovery';
+import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import PasswordField from '../components/PasswordField';
@@ -116,12 +125,29 @@ export default function SettingsScreen() {
     loadModel,
     isLinked,
     getPersonalKey,
+    getHouseholdKey,
+    getHouseholdId,
     unlinkHousehold,
     unlinkAndTransferOwnership,
     linkNoticeMsg,
     clearLinkNoticeMsg,
   } = useData();
   const styles = makeStyles(colors);
+
+  // Peer recovery approval state
+  const [pendingRecovery, setPendingRecovery] = useState<PeerRecoveryRequestDoc | null>(null);
+  const [pendingRecoveryId, setPendingRecoveryId] = useState<string | null>(null);
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [approvalCodeInput, setApprovalCodeInput] = useState('');
+  const [approvalBusy, setApprovalBusy] = useState(false);
+  const [approvalErrorMsg, setApprovalErrorMsg] = useState('');
+
+  // Retroactive recovery key setup state
+  const [retroactiveModalOpen, setRetroactiveModalOpen] = useState(false);
+  const [retroactiveVerifyPass, setRetroactiveVerifyPass] = useState('');
+  const [retroactiveSuccessCode, setRetroactiveSuccessCode] = useState<string | null>(null);
+  const [retroactiveBusy, setRetroactiveBusy] = useState(false);
+  const [retroactiveError, setRetroactiveError] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -310,12 +336,33 @@ export default function SettingsScreen() {
             setIsOwner(Boolean(currentUid && ownerUid === currentUid));
             setHouseholdMemberCount(members.length);
             setHouseholdMembers(memberList);
+
+            const pendingReqId = snapshotData.pendingRecoveryRequestId;
+            if (pendingReqId) {
+              getPeerRecoveryRequest(pendingReqId)
+                .then((req) => {
+                  if (!active) return;
+                  if (req && req.status === 'pending' && req.requesterUid !== currentUid) {
+                    setPendingRecovery(req);
+                    setPendingRecoveryId(pendingReqId);
+                  } else {
+                    setPendingRecovery(null);
+                    setPendingRecoveryId(null);
+                  }
+                })
+                .catch(() => {});
+            } else {
+              setPendingRecovery(null);
+              setPendingRecoveryId(null);
+            }
           },
           () => {
             if (!active) return;
             setIsOwner(false);
             setHouseholdMemberCount(0);
             setHouseholdMembers([]);
+            setPendingRecovery(null);
+            setPendingRecoveryId(null);
           }
         );
       } catch (e) {
@@ -913,6 +960,78 @@ export default function SettingsScreen() {
     setPassChangeMsg('Password changed.');
   }
 
+  async function handleApprovePeerRecovery() {
+    if (!pendingRecoveryId) return;
+    const householdId = getHouseholdId();
+    const householdKey = getHouseholdKey();
+    if (!householdId || !householdKey) {
+      setApprovalErrorMsg('Could not find shared household key in memory.');
+      return;
+    }
+    setApprovalBusy(true);
+    setApprovalErrorMsg('');
+    try {
+      await approvePeerRecoveryRequest(
+        householdId,
+        pendingRecoveryId,
+        approvalCodeInput.trim(),
+        householdKey
+      );
+      setApprovalBusy(false);
+      setApprovalModalOpen(false);
+      setPendingRecovery(null);
+      setPendingRecoveryId(null);
+      setApprovalCodeInput('');
+    } catch (e: any) {
+      setApprovalBusy(false);
+      setApprovalErrorMsg(e?.message || 'Could not approve request. Check the code and try again.');
+    }
+  }
+
+  async function handleGenerateRetroactiveRecoveryKey() {
+    if (!username || !retroactiveVerifyPass) {
+      setRetroactiveError('Enter your current password.');
+      return;
+    }
+    setRetroactiveBusy(true);
+    setRetroactiveError('');
+    try {
+      const profiles = await loadProfilesIndex();
+      const profile = profiles.find((p) => p.username === username);
+      if (!profile) throw new Error('Profile not found.');
+
+      let targetKeyToWrap: CryptoJS.lib.WordArray | null = null;
+      let isHousehold = false;
+
+      if (isLinked) {
+        const householdKey = getHouseholdKey();
+        if (!householdKey) throw new Error('Could not access household key.');
+        targetKeyToWrap = householdKey;
+        isHousehold = true;
+      } else {
+        const candidateKey = deriveKey(retroactiveVerifyPass, profile.salt);
+        const encrypted = await loadEncryptedProfileData(username);
+        if (encrypted) {
+          try {
+            decryptJSON(candidateKey, encrypted);
+          } catch (e) {
+            throw new Error('Your password was incorrect.');
+          }
+        }
+        targetKeyToWrap = candidateKey;
+        isHousehold = false;
+      }
+
+      const code = await generateRecoveryCode();
+      await saveRecoveryKey(username, targetKeyToWrap, isHousehold, code);
+      setRetroactiveSuccessCode(code);
+      setRetroactiveBusy(false);
+    } catch (e: any) {
+      setRetroactiveBusy(false);
+      setRetroactiveError(e?.message || 'Failed to generate recovery key.');
+    }
+  }
+
   // ---- Checkpoint 11.3: Data handlers ----
   async function handleExportBackup() {
     if (!model) return;
@@ -1170,9 +1289,23 @@ export default function SettingsScreen() {
             <Text style={styles.saveButtonText}>Change password</Text>
           )}
         </TouchableOpacity>
-        <Text style={styles.hintText}>
-          There is no "forgot password" recovery — save your new password somewhere safe.
-        </Text>
+        <View style={[styles.linkCodeBox, { marginTop: 16 }]}>
+          <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
+          <Text style={styles.hintText}>
+            A 16-character recovery key lets you regain access to your encrypted financial data if you ever reset or forget your account password.
+          </Text>
+          <TouchableOpacity
+            style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
+            onPress={() => {
+              setRetroactiveVerifyPass('');
+              setRetroactiveError('');
+              setRetroactiveSuccessCode(null);
+              setRetroactiveModalOpen(true);
+            }}
+          >
+            <Text style={styles.dataButtonText}>Generate / Reset Recovery Key</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Auto-lock</Text>
         <Text style={styles.sectionSub}>
@@ -1212,6 +1345,27 @@ export default function SettingsScreen() {
               onPress={clearLinkNoticeMsg}
             >
               <Text style={styles.dataButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!!pendingRecovery && (
+          <View style={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy3, marginBottom: 14 }]}>
+            <Text style={[styles.hintText, { color: colors.gold, fontWeight: '700', marginBottom: 4 }]}>
+              ⚠️ Account Recovery Request
+            </Text>
+            <Text style={[styles.hintText, { color: colors.ink, marginBottom: 8 }]}>
+              {pendingRecovery.requesterUsername} is requesting recovery for their account. If you are with them, you can verify their identity and send them the household key.
+            </Text>
+            <TouchableOpacity
+              style={[styles.dataButton, { alignSelf: 'flex-start' }]}
+              onPress={() => {
+                setApprovalCodeInput('');
+                setApprovalErrorMsg('');
+                setApprovalModalOpen(true);
+              }}
+            >
+              <Text style={styles.dataButtonText}>Review &amp; Approve</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1829,6 +1983,142 @@ export default function SettingsScreen() {
 
             <TouchableOpacity style={styles.cancelButton} onPress={closeRuleModal}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Peer Recovery Approval Modal */}
+      <Modal
+        visible={approvalModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setApprovalModalOpen(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setApprovalModalOpen(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Approve Account Recovery</Text>
+            <Text style={styles.sectionSub}>
+              Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify their identity and transfer the household key.
+            </Text>
+
+            <Text style={styles.inputLabel}>6-Digit Code</Text>
+            <TextInput
+              style={[styles.input, { letterSpacing: 4, fontSize: 18, textAlign: 'center' }]}
+              placeholder="000000"
+              placeholderTextColor={colors.inkFaint}
+              keyboardType="number-pad"
+              maxLength={6}
+              value={approvalCodeInput}
+              onChangeText={setApprovalCodeInput}
+            />
+
+            {!!approvalErrorMsg && <Text style={styles.errorText}>{approvalErrorMsg}</Text>}
+
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                (approvalCodeInput.trim().length !== 6 || approvalBusy) && { opacity: 0.4 },
+              ]}
+              disabled={approvalCodeInput.trim().length !== 6 || approvalBusy}
+              onPress={handleApprovePeerRecovery}
+            >
+              {approvalBusy ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Approve &amp; Send Key</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setApprovalModalOpen(false)}
+              disabled={approvalBusy}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Retroactive Recovery Key Modal */}
+      <Modal
+        visible={retroactiveModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRetroactiveModalOpen(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setRetroactiveModalOpen(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Secret Recovery Key</Text>
+
+            {!retroactiveSuccessCode ? (
+              <>
+                <Text style={styles.sectionSub}>
+                  Enter your current password to generate and encrypt a new Secret Recovery Key for this account.
+                </Text>
+                <Text style={styles.inputLabel}>Current Password</Text>
+                <PasswordField
+                  style={styles.input}
+                  placeholder="Enter your current password"
+                  value={retroactiveVerifyPass}
+                  onChangeText={setRetroactiveVerifyPass}
+                />
+                {!!retroactiveError && <Text style={styles.errorText}>{retroactiveError}</Text>}
+
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    (!retroactiveVerifyPass || retroactiveBusy) && { opacity: 0.4 },
+                  ]}
+                  disabled={!retroactiveVerifyPass || retroactiveBusy}
+                  onPress={handleGenerateRetroactiveRecoveryKey}
+                >
+                  {retroactiveBusy ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Generate Key</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sectionSub}>
+                  Save this key in a safe place. If you ever reset or forget your password, this is the only way to recover your data:
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: colors.navy3,
+                    borderRadius: 8,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    marginVertical: 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    selectable
+                    style={{
+                      fontSize: 18,
+                      fontWeight: '700',
+                      letterSpacing: 2,
+                      color: colors.gold,
+                    }}
+                  >
+                    {retroactiveSuccessCode}
+                  </Text>
+                </View>
+                <Text style={[styles.hintText, { marginBottom: 12 }]}>
+                  Keep this written down somewhere private (e.g. in your password manager notes).
+                </Text>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setRetroactiveModalOpen(false)}
+            >
+              <Text style={styles.cancelButtonText}>Close</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
