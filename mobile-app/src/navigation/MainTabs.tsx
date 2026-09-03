@@ -32,7 +32,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
         tabBarInactiveTintColor: colors.inkFaint,
       }}
     >
-      <Tab.Screen name="Home">
+      <Tab.Screen name="Home" options={{ tabBarButtonTestID: 'home-tab' }}>
         {() => <HomeScreen username={username} onLock={onLock} onSignOut={onSignOut} />}
       </Tab.Screen>
       <Tab.Screen name="Calendar" component={CalendarScreen} />
@@ -43,7 +43,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       <Tab.Screen name="Insights" component={InsightsScreen} />
       <Tab.Screen name="Income" component={IncomeScreen} />
       <Tab.Screen name="Savings" component={SavingsScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarButtonTestID: 'settings-tab' }} />
     </Tab.Navigator>
   );
 }

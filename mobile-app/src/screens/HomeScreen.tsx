@@ -50,6 +50,7 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
       </TouchableOpacity>
 
       <TouchableOpacity
+        testID={pinIsSet ? undefined : 'sign-out-button'}
         style={[styles.lockBtn, { backgroundColor: colors.navy1 }]}
         onPress={pinIsSet ? onLock : onSignOut}
       >
@@ -57,7 +58,7 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
       </TouchableOpacity>
 
       {pinIsSet && (
-        <TouchableOpacity style={styles.signOutBtn} onPress={onSignOut}>
+        <TouchableOpacity testID="sign-out-button" style={styles.signOutBtn} onPress={onSignOut}>
           <Text style={[styles.signOutText, { color: colors.inkDim }]}>Sign out completely</Text>
         </TouchableOpacity>
       )}

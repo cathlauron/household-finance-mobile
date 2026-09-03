@@ -1079,6 +1079,7 @@ export default function SettingsScreen() {
 
         <Text style={styles.inputLabel}>Current password</Text>
         <PasswordField
+          testID="current-password-input"
           style={styles.input}
           value={currentPassInput}
           onChangeText={setCurrentPassInput}
@@ -1086,6 +1087,7 @@ export default function SettingsScreen() {
         />
         <Text style={styles.inputLabel}>New password</Text>
         <PasswordField
+          testID="new-password-input"
           style={styles.input}
           value={newPass1Input}
           onChangeText={setNewPass1Input}
@@ -1093,6 +1095,7 @@ export default function SettingsScreen() {
         />
         <Text style={styles.inputLabel}>Confirm new password</Text>
         <PasswordField
+          testID="confirm-new-password-input"
           style={styles.input}
           value={newPass2Input}
           onChangeText={setNewPass2Input}
@@ -1106,6 +1109,7 @@ export default function SettingsScreen() {
         )}
 
         <TouchableOpacity
+          testID="change-password-button"
           style={styles.primaryFullButton}
           onPress={handleChangePassword}
           disabled={passChangeBusy}

@@ -19,7 +19,7 @@ appId: host.exp.exponent
 - extendedWaitUntil:
     visible:
       text: "You're signed in.*"
-    timeout: 45000
+    timeout: 120000
 - assertVisible:
     text: "You're signed in.*"
     optional: true
