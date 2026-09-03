@@ -1,0 +1,62 @@
+﻿appId: host.exp.exponent
+---
+- openLink: "exp://192.168.1.62:8081"
+
+# Unlock if app is on the lock screen
+- runFlow:
+    when:
+      visible:
+        id: "unlock-pin-input"
+    commands:
+      - tapOn:
+          id: "unlock-pin-input"
+      - inputText: "1234"
+      - hideKeyboard
+      - tapOn:
+          id: "unlock-button"
+      - extendedWaitUntil:
+          visible:
+            id: "home-tab"
+          timeout: 15000
+
+# 1. Ensure on Home tab
+- tapOn:
+    id: "home-tab"
+
+# 2. Sign out
+- tapOn:
+    id: "sign-out-button"
+
+# 3. Assert landed on Sign In screen
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-button"
+    timeout: 15000
+
+# 4. Fill sign-in credentials
+- tapOn:
+    id: "email-input"
+- inputText: "test@example.com"
+
+- tapOn:
+    id: "username-input"
+- inputText: "testuser"
+
+- tapOn:
+    id: "password-input"
+- inputText: "test123456"
+
+- hideKeyboard
+
+# 5. Tap sign-in button
+- tapOn:
+    id: "sign-in-button"
+
+# 6. Confirm signed in (PBKDF2 derivation + Firebase Auth)
+- extendedWaitUntil:
+    visible:
+      text: ".*signed in.*"
+    timeout: 120000
+- assertVisible:
+    text: ".*signed in.*"
+    optional: true

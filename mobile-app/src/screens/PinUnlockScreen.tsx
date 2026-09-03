@@ -46,8 +46,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordIns
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.primaryBtn} onPress={handleUnlock} disabled={busy || pin.length < 4}>
-        <Text style={styles.primaryBtnText}>{busy ? 'Checking…' : 'Unlock'}</Text>
+      <TouchableOpacity testID="unlock-button" style={styles.primaryBtn} onPress={handleUnlock} disabled={busy || pin.length < 4}>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.ghostBtn} onPress={onUsePasswordInstead}>

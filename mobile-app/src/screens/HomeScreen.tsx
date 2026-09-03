@@ -43,6 +43,7 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
       </Text>
 
       <TouchableOpacity
+        testID="set-pin-button"
         style={[styles.pinBtn, { backgroundColor: colors.gold }]}
         onPress={() => setShowSetPin(true)}
       >
@@ -50,7 +51,7 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
       </TouchableOpacity>
 
       <TouchableOpacity
-        testID={pinIsSet ? undefined : 'sign-out-button'}
+        testID={pinIsSet ? 'lock-button' : 'sign-out-button'}
         style={[styles.lockBtn, { backgroundColor: colors.navy1 }]}
         onPress={pinIsSet ? onLock : onSignOut}
       >

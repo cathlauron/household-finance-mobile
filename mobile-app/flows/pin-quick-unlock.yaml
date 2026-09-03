@@ -1,0 +1,87 @@
+appId: host.exp.exponent
+---
+- openLink: "exp://192.168.1.62:8081"
+
+# Unlock if app is on the lock screen
+- runFlow:
+    when:
+      visible:
+        id: "unlock-pin-input"
+    commands:
+      - tapOn:
+          id: "unlock-pin-input"
+      - inputText: "1234"
+      - hideKeyboard
+      - tapOn:
+          id: "unlock-button"
+      - extendedWaitUntil:
+          visible:
+            id: "home-tab"
+          timeout: 15000
+
+# 1. Ensure on Home tab
+- tapOn:
+    id: "home-tab"
+
+# 2. Tap Set a Quick PIN / Change my PIN button
+- tapOn:
+    id: "set-pin-button"
+
+# 3. Wait for Set PIN screen
+- extendedWaitUntil:
+    visible:
+      id: "pin-input"
+    timeout: 15000
+
+# 4. Fill PIN fields
+- tapOn:
+    id: "pin-input"
+- inputText: "1234"
+
+- tapOn:
+    id: "confirm-pin-input"
+- inputText: "1234"
+
+- hideKeyboard
+
+# 5. Save PIN
+- tapOn:
+    id: "save-pin-button"
+
+# 6. Confirm returned to Home and Lock button is visible
+- extendedWaitUntil:
+    visible:
+      id: "lock-button"
+    timeout: 15000
+- assertVisible:
+    id: "lock-button"
+
+# 7. Tap Lock button to trigger lock immediately
+- tapOn:
+    id: "lock-button"
+
+# 8. Confirm on Locked screen
+- extendedWaitUntil:
+    visible:
+      id: "unlock-pin-input"
+    timeout: 15000
+- assertVisible:
+    id: "unlock-pin-input"
+
+# 9. Unlock with PIN
+- tapOn:
+    id: "unlock-pin-input"
+- inputText: "1234"
+- hideKeyboard
+
+- tapOn:
+    id: "unlock-button"
+
+# 10. Confirm unlocked and back on Home
+- extendedWaitUntil:
+    visible:
+      text: ".*signed in, testuser!.*"
+    timeout: 15000
+- assertVisible:
+    text: ".*signed in, testuser!.*"
+    optional: true

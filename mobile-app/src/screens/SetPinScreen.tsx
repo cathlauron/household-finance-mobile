@@ -46,6 +46,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
 
       <Text style={styles.label}>Choose a PIN (4–6 digits)</Text>
       <TextInput
+        testID="pin-input"
         style={styles.input}
         value={pin1}
         onChangeText={setPin1}
@@ -57,6 +58,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
 
       <Text style={styles.label}>Confirm PIN</Text>
       <TextInput
+        testID="confirm-pin-input"
         style={styles.input}
         value={pin2}
         onChangeText={setPin2}
@@ -68,7 +70,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.primaryBtn} onPress={handleSave} disabled={busy}>
+      <TouchableOpacity testID="save-pin-button" style={styles.primaryBtn} onPress={handleSave} disabled={busy}>
         <Text style={styles.primaryBtnText}>{busy ? 'Saving…' : 'Save PIN'}</Text>
       </TouchableOpacity>
 
