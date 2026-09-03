@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // production Firebase project. Used for automated testing (Maestro flows)
 // so tests never touch or risk real account data. Must be false for normal
 // day-to-day development and for any real device testing.
-const USE_FIREBASE_EMULATOR = true;
+const USE_FIREBASE_EMULATOR = false;
 
 // "10.0.2.2" is a special fixed IP address that ONLY works from inside an
 // Android emulator (AVD, via Android Studio) - it means "the computer this
