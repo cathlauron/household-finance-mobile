@@ -170,10 +170,19 @@ export async function deleteHousehold(householdId: string): Promise<void> {
 // Returns the raw encrypted string, or null if nothing's been saved yet.
 // Callers decrypt it themselves with decryptJSON, using the household key.
 export async function loadHouseholdData(householdId: string): Promise<string | null> {
-  const snap = await getDoc(doc(db, 'households', householdId));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return typeof data.data === 'string' ? data.data : null;
+  try {
+    const snap = await getDoc(doc(db, 'households', householdId));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return typeof data.data === 'string' ? data.data : null;
+  } catch (e: any) {
+    const code = e?.code;
+    const msg = e?.message || '';
+    if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 // Reads just the owner field off a household document — used client-side
@@ -275,11 +284,20 @@ export async function saveWrappedHouseholdKey(
 export async function loadWrappedHouseholdKey(
   username: string
 ): Promise<{ householdId: string; wrappedKey: string } | null> {
-  const snap = await getDoc(doc(db, 'householdKeys', username));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  if (typeof data.householdId !== 'string' || typeof data.wrappedKey !== 'string') return null;
-  return { householdId: data.householdId, wrappedKey: data.wrappedKey };
+  try {
+    const snap = await getDoc(doc(db, 'householdKeys', username));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    if (typeof data.householdId !== 'string' || typeof data.wrappedKey !== 'string') return null;
+    return { householdId: data.householdId, wrappedKey: data.wrappedKey };
+  } catch (e: any) {
+    const code = e?.code;
+    const msg = e?.message || '';
+    if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 // Used when unlinking a profile — removes just this username's wrapped key,

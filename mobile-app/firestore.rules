@@ -122,8 +122,7 @@ service cloud.firestore {
     }
 
     match /householdKeys/{username} {
-      allow get: if request.auth != null
-        && request.auth.uid == resource.data.ownerUid;
+      allow get: if request.auth != null;
 
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt', 'ownerUid'])
