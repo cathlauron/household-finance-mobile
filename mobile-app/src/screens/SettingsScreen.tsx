@@ -26,6 +26,7 @@ import {
   finishJoinerLink,
   finishHostLink,
   subscribeToLinkCode,
+  cancelLinkCode,
   LINK_CODE_TTL_MS,
 } from '../linking';
 import type { JoinChoice } from '../linking';
@@ -221,14 +222,14 @@ export default function SettingsScreen() {
   // was left unfinished — e.g. the app was closed, the phone restarted, or (as in testing)
   // a different account was signed into and back out of before tapping "finish linking."
   useEffect(() => {
-    if (!username || isLinked) return;
+    if (!username) return;
     loadPendingHostLink(username).then((pending) => {
       if (pending) {
         setLinkCode(pending.code);
         setLinkSecretHex(pending.secretHex);
       }
     });
-  }, [username, isLinked]);
+  }, [username]);
   
   // ---- Checkpoint 9.2c: host side — "I've shared this code, finish linking" ----
   const [hostFinishBusy, setHostFinishBusy] = useState(false);
@@ -670,6 +671,11 @@ export default function SettingsScreen() {
     }
     setLinkErrorMsg('');
     setLinkBusy(true);
+    if (linkCode) {
+      await cancelLinkCode(linkCode);
+      setLinkCode('');
+      setLinkSecretHex('');
+    }
     try {
       const currentCount = await getHouseholdMemberCount(householdId);
       setHouseholdMemberCount(currentCount);
@@ -699,6 +705,10 @@ export default function SettingsScreen() {
   // Clears an old/expired code so a fresh one can be generated — for when the
   // original code timed out before the other phone finished joining.
   async function handleStartOverLinking() {
+    const oldCode = linkCode;
+    if (oldCode) {
+      await cancelLinkCode(oldCode);
+    }
     if (username) await clearPendingHostLink(username);
     clearLinkCodeExpiryTimer();
     setLinkCode('');
@@ -814,6 +824,11 @@ export default function SettingsScreen() {
   async function handleUnlinkHousehold() {
     setUnlinkMsg('');
     setUnlinkBusy(true);
+    if (linkCode) {
+      cancelLinkCode(linkCode).catch(() => {});
+      setLinkCode('');
+      setLinkSecretHex('');
+    }
     const result = await unlinkHousehold();
     setUnlinkBusy(false);
     if (!result.ok) {
@@ -853,6 +868,11 @@ export default function SettingsScreen() {
     if (!selectedSuccessorUid) return;
     setTransferBusy(true);
     setTransferMsg('');
+    if (linkCode) {
+      cancelLinkCode(linkCode).catch(() => {});
+      setLinkCode('');
+      setLinkSecretHex('');
+    }
     const result = await unlinkAndTransferOwnership(selectedSuccessorUid);
     setTransferBusy(false);
     if (!result.ok) {

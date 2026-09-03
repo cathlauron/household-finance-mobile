@@ -43,7 +43,7 @@
 
 import * as Crypto from 'expo-crypto';
 import CryptoJS from 'crypto-js';
-import { doc, setDoc, getDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocFromServer, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { generateSalt, deriveKey, encryptJSON, decryptJSON } from './encryption';
 import type { HouseholdModel } from './types';
@@ -55,7 +55,7 @@ import {
   saveWrappedHouseholdKey,
   addMemberToHousehold,
 } from './household';
-import { updateProfileHouseholdId, savePendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
+import { updateProfileHouseholdId, savePendingHostLink, loadPendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
 import { saveProfileCloudBackup } from './cloudBackup';
 import { mergeModels, sanitizeModelIds } from './mergeModels';
 import { getCurrentFirebaseUser } from './authFirebase';
@@ -103,6 +103,14 @@ export async function startHouseholdLink(
   username: string,
   model: HouseholdModel
 ): Promise<StartLinkResult> {
+  // Cancel any existing active code for this user before creating a new one
+  try {
+    const pending = await loadPendingHostLink(username);
+    if (pending?.code) {
+      await cancelLinkCode(pending.code);
+    }
+  } catch (e) {}
+
   const code = await generateLinkCode();
   const secretHex = await generateHouseholdSecretHex();
 
@@ -150,6 +158,14 @@ export async function startHouseholdInvite(
   householdModel: HouseholdModel,
   hostUsername: string
 ): Promise<StartInviteResult> {
+  // Cancel any existing active code for this user before creating a new one
+  try {
+    const pending = await loadPendingHostLink(hostUsername);
+    if (pending?.code) {
+      await cancelLinkCode(pending.code);
+    }
+  } catch (e) {}
+
   const code = await generateLinkCode();
   const secretHex = householdKey.toString(CryptoJS.enc.Hex);
   const codeSalt = await generateSalt();
@@ -166,6 +182,10 @@ export async function startHouseholdInvite(
     isInvite: true,
     createdAt: serverTimestamp(),
   });
+
+  // Remember this invite code so navigating away/back restores it, and any
+  // future code generation cleanly supersedes it.
+  await savePendingHostLink(hostUsername, code, secretHex);
 
   return { code, secretHex };
 }
@@ -195,7 +215,7 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   // surfaces here as a thrown error rather than a "document not found."
   let snap;
   try {
-    snap = await getDoc(doc(db, 'linkCodes', code));
+    snap = await getDocFromServer(doc(db, 'linkCodes', code));
   } catch (e) {
     throw new Error("That code doesn't look right, or it's expired.");
   }
@@ -289,6 +309,16 @@ export async function finishJoinerLink(
   if (existingHouseholdId) {
     householdId = existingHouseholdId;
     const encryptedHouseholdData = await encryptJSON(householdKey, chosenModel);
+
+    // Verify the invite code still exists on the server and has not been cancelled/superseded
+    try {
+      const codeSnap = await getDocFromServer(doc(db, 'linkCodes', code));
+      if (!codeSnap.exists()) {
+        throw new Error('This invite is no longer valid.');
+      }
+    } catch (e: any) {
+      throw new Error('This invite is no longer valid.');
+    }
 
     // The joiner must be a member before they can write the household data.
     // If the household already has 5 members, Firestore's security rule rejects this write.
@@ -398,6 +428,15 @@ export async function finishHostLink(
   }
 
   return { status: 'done', householdId: data.householdId };
+}
+
+export async function cancelLinkCode(code: string): Promise<void> {
+  if (!code) return;
+  try {
+    await deleteDoc(doc(db, 'linkCodes', code));
+  } catch (e: any) {
+    console.error(`[FAILED TO CANCEL OLD LINK CODE] Could not delete linkCodes/${code}:`, e?.message || e);
+  }
 }
 
 // ---- Checkpoint A.6: real-time linking — host listens instead of polling ----
