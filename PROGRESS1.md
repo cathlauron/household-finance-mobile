@@ -6,6 +6,8 @@ For everything already built before this — all 11 phases of the original app (
 
 ✅ Done
 
+- Automated Maestro test for Change Password (create profile -> change password -> sign out -> sign in with new password -> revert to original), full pass. testIDs added to password fields, sign-out button, and Home/Settings tabs. (A.7.9)
+
 Checkpoint A.7.9 (automated testing setup) — IN PROGRESS, blocked on Android emulator
 - Decided to build automated testing using the fully-free path: Firebase Emulator Suite + Maestro (no Claude Code adopted). Decided to test against the local Firebase emulator (not real Firebase) to avoid any risk to production data, and to use an Android emulator (AVD via Android Studio) rather than a real phone for this testing setup specifically.
 - Added `testID` props to the three input fields + sign-in button so Maestro can reliably find them:
@@ -132,6 +134,8 @@ Security hardening on household linking (link-code lifecycle)
 - **If/when this is picked up as real work, it should become its own small checkpoint** (tentatively "Checkpoint A.7.9" or a standalone "Testing Setup" checkpoint, sequenced wherever it's decided to fit) rather than being folded into an existing one — it's infrastructure, not a specific bug fix or feature.
 
 ⚠️ Known issues / gotchas
+- Maestro tests involving a password change (re-encryption) are genuinely slow (~2 min per change) due to PBKDF2 (100,000 rounds) run twice, on top of emulator slowness. Use at least a 3-minute timeout for any test step involving a password change.
+- Maestro scroll steps may not reliably bring an off-screen element fully into view without `centerElement: true`.
 - **RESOLVED — root cause of stray junk files in the repo, found while migrating to VS Code.** Two literal files existed in the repo at some point named `= {` and `t darkTheme: ThemeColors = {`. These blocked `git clone` from ever completing on a fresh machine (`error: invalid path 't darkTheme: ThemeColors = {'` — Windows forbids colons in filenames). Root cause: a bash heredoc-style file-save command (`cat > file << 'EOF' ... EOF`) had been pasted into a PowerShell terminal at some point rather than a bash terminal; PowerShell doesn't understand heredoc syntax and instead tried to interpret each line of pasted file content as its own command, which created these garbage-named files as a side effect. Fixed by deleting both files directly on GitHub (a one-time repair action, not a normal workflow step) before re-cloning. Permanent fix: PowerShell here-strings are now used for all file-save commands going forward — see 📌 Decisions made and the Project Instructions (v7).
 - **OPEN BUG, ROOT CAUSE NOW UNDERSTOOD — see decisions above. Household linking fails intermittently after a code is generated and shared, because the existing "finish linking" flow is a manual two-sided button design with no live communication between phones (a structural deadlock risk, not a random bug).** Old debugging notes are kept below for reference, but the fix is no longer "find the bug in the manual-button flow" — it is Checkpoint A.6, replacing that flow with real-time Firestore listeners.
   - Confirmed the visible error messages are generic catch-block fallbacks in `SettingsScreen.tsx`, not the real underlying error — a `console.error('finishJoinerLink failed:', e)` line was added to the joiner's catch block (around the `finishJoinerLink(...)` call, currently ~line 575-590) specifically so the real error prints to the Metro terminal. This was never captured, and capturing it is now MOOT — A.6 replaces this code path rather than debugging it further.
@@ -161,7 +165,7 @@ Security hardening on household linking (link-code lifecycle)
 ▶️ Next step
 
 **Note added this session:** before resuming item 0 below, remember the temporary debug logging that had been added to `CreateProfileScreen.tsx`'s Firebase-account-creation catch block for troubleshooting has since been REMOVED as part of this session's cleanup pass. If create-profile testing hits an unclear failure again, that logging will need to be re-added temporarily rather than assumed to still be there.
-0. **IN PROGRESS, VERY CLOSE: Checkpoint A.7.9 (automated testing setup — Firebase Emulator + Maestro) — using the Android Studio AVD after all (pivot to real phone was reversed once `adb devices` confirmed the AVD is fully usable for automation despite its window not rendering on screen).** All infra confirmed working: Android emulator (`Pixel_10_Pro`) boots and is controllable via `adb`/Maestro; `firebase emulators:start` running; Expo running and app installed via Expo Go; `mobile-app/flows/create-profile.yaml` and `mobile-app/flows/sign-in.yaml` written (appId `host.exp.exponent`, opens `exp://192.168.1.62:8081` — NOTE this IP may change if the PC reconnects to WiFi, re-check against the live Expo terminal output if flows suddenly fail to open the app). Test account: test@example.com / testuser / test123456. Every individual step (open link, tap each field, input each field, hide keyboard, tap submit button) has now succeeded in at least one run — just need one clean end-to-end pass. Last run failed on the very first step, likely because the app was left mid-flow from a previous partial test run, not a new bug. NEXT ACTION: reset app state (`adb shell pm clear host.exp.exponent` or check if testuser already exists and use sign-in.yaml instead), then re-run. Resume here first before anything else. IMPORTANT REMINDER: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` — must be set back to `false` before any real-account (non-testing) use.
+0. **Checkpoint A.7.9 — two automated Maestro tests now fully passing: create-profile/sign-in, and change-password (with revert).** Both confirmed committed and pushed (latest: commit f681477). Next candidate test: PIN quick-unlock (recent regression risk, A.7.0) or a full sign-out -> sign-in round trip. Household linking deferred to manual live testing (needs two devices). IMPORTANT REMINDER: `USE_FIREBASE_EMULATOR` is currently `true` in `firebase.ts` — must be set back to `false` before any real-account (non-testing) use.
 1. ~~Checkpoint A.5 (reopened, new scope)~~ — CONFIRMED DONE (see ✅ Done section above, code inspected directly in `SignInScreen.tsx`). No further work needed here.
 2. ~~Checkpoint A.6~~ — FULLY DONE, code inspected AND live-tested on two real phones (Phone A host / Phone B joiner). `linking.ts` has `subscribeToLinkCode()`, a real `onSnapshot` listener watching `linkCodes/{code}` live (treats permission-denied as an expected expiry, not an error). `SettingsScreen.tsx` wires this listener so it AUTOMATICALLY calls `finishHostLink()` the moment the joiner finishes — confirmed live: linking completed without either phone touching the old manual finish button, the listener handled it automatically end-to-end. The "Code expired? Start over with a new code" button was also re-confirmed working correctly on real devices. Checkpoint A.6 is fully closed — no remaining scope.
 3. **Checkpoint A.4-followup / general:** none currently open — A.4 itself is confirmed done; just keep the "rules must be deployed separately" gotcha in mind while working on A.6's and A.7.6's rules changes.
@@ -225,6 +229,11 @@ Security hardening on household linking (link-code lifecycle)
 
 Files in the repo (relevant to this phase)
 - mobile-app/src/components/PasswordField.tsx — UPDATED (A.7.9, this session): added `testID?: string` prop, forwarded to inner `TextInput`, for Maestro tap-targeting.
+- mobile-app/flows/change-password.yaml — NEW (A.7.9): tests change password -> sign out -> sign in with new password -> reverts password back to original. Idempotent, repeatable run.
+- mobile-app/src/navigation/MainTabs.tsx — UPDATED (A.7.9): added `home-tab`/`settings-tab` testIDs.
+- mobile-app/src/screens/HomeScreen.tsx — UPDATED (A.7.9): added `sign-out-button` testID.
+- mobile-app/src/screens/SettingsScreen.tsx — UPDATED (A.7.9): added `current-password-input`, `new-password-input`, `confirm-new-password-input`, `change-password-button` testIDs.
+- mobile-app/flows/create-profile.yaml — UPDATED (A.7.9): timeout raised to 120s.
 - mobile-app/src/screens/SignInScreen.tsx — UPDATED (A.7.9, this session): added `testID`s to email/username/password inputs and the sign-in button.
 - mobile-app/app.json — UPDATED (A.7.9, this session): added `android.package: "com.cathlauron.householdfinance"` (was missing).
 - See PROGRESS.md for the full file inventory as of closing 3-ROADMAP.md. This file will only note NEW files or MEANINGFULLY CHANGED files as Phase A/B/C proceeds.
@@ -283,6 +292,44 @@ Files touched during the code-health audit this session:
 - mobile-app/src/screens/GoalsScreen.tsx — UPDATED: removed unused `formatPeso` import (round 3).
 - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx — UPDATED: removed unused `BillCycle` type import (round 3).
 - mobile-app/src/screens/reports/TaxSummaryReport.tsx — UPDATED: removed unused `debtFees` computed variable (round 3).
+
+## Session — [today's date]: Automated test for Change Password (A.7.9)
+
+**Why:** Change Password had two real bugs found by hand in an earlier session (A.7.1). 
+Wanted a robot-run test that would catch this automatically going forward, following the 
+same pattern proven in the previous session's sign-up/sign-in tests.
+
+**What was done:**
+- Added testIDs to 4 password fields/button in SettingsScreen.tsx (current-password-input, 
+  new-password-input, confirm-new-password-input, change-password-button), plus 
+  sign-out-button in HomeScreen.tsx and home-tab/settings-tab in MainTabs.tsx.
+- Built mobile-app/flows/change-password.yaml: creates a test account, signs in, navigates 
+  to Settings, scrolls to the Security section, changes the password, signs out, signs back 
+  in with the NEW password to prove the change worked, then reverts the password back to 
+  the original (test123456 <-> newpass123) so the test is repeatable without manual cleanup.
+- Confirmed via `npx tsc --noEmit` that nothing broke.
+
+**Known issue found and fixed:** Maestro's scroll didn't reliably bring the password fields 
+into view on the first try -- fixed by adding `centerElement: true` to the scroll steps.
+
+**Known issue found and fixed:** The test's timeout was initially too short. Changing a 
+password does two full rounds of slow, deliberate security work (PBKDF2, 100,000 rounds 
+each way -- once to unlock with the old password, once to re-encrypt with the new one), 
+and this is running in a software Android emulator (much slower than a real phone). This 
+single step alone took 110-130 seconds in testing. Timeout was raised twice, settled at 
+3 minutes. **Note for future sessions:** any new Maestro test involving a password 
+change/re-encryption step should start with at least a 3-minute timeout on that step, 
+rather than rediscovering this from scratch.
+
+**Result:** Full change-password.yaml test passes end-to-end, including the revert step. 
+Proves the earlier A.7.1 password-change bugs are genuinely fixed, with automated coverage 
+going forward.
+
+**Committed & pushed:** commit f681477 -- 
+"test: add change-password Maestro flow with testIDs; adjust timeouts for emulator - A.7.9"
+**Files changed:** mobile-app/flows/create-profile.yaml (timeout raised to 120s), 
+mobile-app/src/navigation/MainTabs.tsx, mobile-app/src/screens/HomeScreen.tsx, 
+mobile-app/src/screens/SettingsScreen.tsx, mobile-app/flows/change-password.yaml (new)
 
 ## 📅 Session entry — 2026-09-02: Checkpoint A.7.9 core goal achieved — both Maestro flows (create-profile, sign-in) passing cleanly end-to-end via Antigravity
 
