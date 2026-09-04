@@ -241,6 +241,7 @@ export type BalanceAccountEntry = {
   amount: number | '';
   currency?: string;
   owner?: string;
+  color?: string;
 };
 
 export type BalanceAccounts = {

@@ -17,6 +17,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
+import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
 
 type AccountGroup = 'cash' | 'debit' | 'credit';
 
@@ -46,6 +47,7 @@ export default function AccountsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
+  const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!model) {
@@ -61,6 +63,7 @@ export default function AccountsScreen() {
     setEditingId(null);
     setNameInput('');
     setAmountInput('');
+    setColorInput(DEFAULT_GROUP_COLORS[group]);
     setErrorMsg('');
   }
 
@@ -69,6 +72,7 @@ export default function AccountsScreen() {
     setEditingId(account.id);
     setNameInput(account.name);
     setAmountInput(account.amount === '' ? '' : String(account.amount));
+    setColorInput(account.color || DEFAULT_GROUP_COLORS[group]);
     setErrorMsg('');
   }
 
@@ -99,13 +103,14 @@ export default function AccountsScreen() {
 
     if (editingId) {
       updated.balanceAccounts[activeGroup] = currentList.map((a) =>
-        a.id === editingId ? { ...a, name: trimmedName, amount: parsedAmount } : a
+        a.id === editingId ? { ...a, name: trimmedName, amount: parsedAmount, color: colorInput } : a
       );
     } else {
       const newAccount: BalanceAccountEntry = {
         id: makeId(),
         name: trimmedName,
         amount: parsedAmount,
+        color: colorInput,
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
     }
@@ -154,19 +159,12 @@ export default function AccountsScreen() {
               )}
 
               {accounts.map((account) => (
-                <TouchableOpacity
+                <AccountCard
                   key={account.id}
-                  style={styles.accountRow}
-                  activeOpacity={0.7}
+                  account={account}
+                  group={group}
                   onPress={() => openEditModal(group, account)}
-                >
-                  <Text style={styles.accountName} numberOfLines={1}>
-                    {account.name || 'Untitled account'}
-                  </Text>
-                  <Text style={styles.accountAmount}>
-                    {formatPeso(accountAmountNumber(account))}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
 
               <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(group)}>
@@ -210,6 +208,25 @@ export default function AccountsScreen() {
                 value={amountInput}
                 onChangeText={setAmountInput}
               />
+
+              <Text style={styles.inputLabel}>Card color</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.swatchRow}
+              >
+                {COLOR_PALETTE.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[
+                      styles.swatch,
+                      { backgroundColor: c },
+                      colorInput === c && styles.swatchActive,
+                    ]}
+                    onPress={() => setColorInput(c)}
+                  />
+                ))}
+              </ScrollView>
 
               {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
@@ -292,27 +309,6 @@ function makeStyles(colors: any) {
       marginBottom: 8,
       fontStyle: 'italic',
     },
-    accountRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
-    },
-    accountName: {
-      fontSize: 14,
-      color: colors.ink,
-      flex: 1,
-      marginRight: 10,
-    },
-    accountAmount: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.ink,
-    },
     addButton: {
       alignSelf: 'flex-start',
       paddingVertical: 8,
@@ -362,6 +358,22 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    swatchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 16,
+      paddingVertical: 4,
+    },
+    swatch: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+    },
+    swatchActive: {
+      borderWidth: 3,
+      borderColor: colors.ink,
     },
     errorText: {
       fontSize: 12,
