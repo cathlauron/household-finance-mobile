@@ -445,7 +445,7 @@ export async function cancelLinkCode(code: string): Promise<void> {
   try {
     await deleteDoc(doc(db, 'linkCodes', code));
   } catch (e: any) {
-    console.error(`[FAILED TO CANCEL OLD LINK CODE] Could not delete linkCodes/${code}:`, e?.message || e);
+    console.warn(`Could not delete linkCodes/${code}:`, e?.message || e);
   }
 }
 

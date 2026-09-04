@@ -687,8 +687,13 @@ export default function SignInScreen({
       <Text style={styles.title}>Welcome back</Text>
       <Text style={styles.sub}>Enter your email, username, and password.</Text>
       {!!remoteRevokeNotice && (
-        <View style={styles.revokedBanner}>
-          <Text style={styles.revokedBannerText}>⚠️ {remoteRevokeNotice}</Text>
+        <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+          <Text style={[styles.revokedBannerText, { flex: 1 }]}>⚠️ {remoteRevokeNotice}</Text>
+          {!!onClearRemoteRevokeNotice && (
+            <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={[styles.revokedBannerText, { fontWeight: '700', paddingLeft: 8 }]}>✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
