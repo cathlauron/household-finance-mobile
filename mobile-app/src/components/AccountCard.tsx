@@ -48,9 +48,11 @@ type Props = {
   onPress?: () => void;
   style?: ViewStyle;
   testID?: string;
+  isStacked?: boolean;
+  isExpanded?: boolean;
 };
 
-export default function AccountCard({ account, group, onPress, style, testID }: Props) {
+export default function AccountCard({ account, group, onPress, style, testID, isStacked, isExpanded }: Props) {
   const cardColor = account.color || DEFAULT_GROUP_COLORS[group];
   const isLight = isLightBackground(cardColor);
 
@@ -70,6 +72,7 @@ export default function AccountCard({ account, group, onPress, style, testID }: 
       style={[
         styles.card,
         { backgroundColor: cardColor, borderColor },
+        isExpanded && styles.cardExpanded,
         style,
       ]}
     >
@@ -79,11 +82,19 @@ export default function AccountCard({ account, group, onPress, style, testID }: 
             {GROUP_LABELS[group].toUpperCase()}
           </Text>
         </View>
-        <Ionicons
-          name={GROUP_ICONS[group]}
-          size={18}
-          color={subTextColor}
-        />
+        <View style={styles.topRightIcons}>
+          {isExpanded && (
+            <View style={[styles.editHintBadge, { backgroundColor: badgeBg }]}>
+              <Ionicons name="pencil" size={10} color={textColor} style={{ marginRight: 3 }} />
+              <Text style={[styles.editHintText, { color: textColor }]}>Tap to edit</Text>
+            </View>
+          )}
+          <Ionicons
+            name={GROUP_ICONS[group]}
+            size={18}
+            color={subTextColor}
+          />
+        </View>
       </View>
 
       <View style={styles.nameWrap}>
@@ -119,6 +130,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
+  },
+  cardExpanded: {
+    borderColor: '#FFFFFF',
+    borderWidth: 1.5,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  topRightIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editHintBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  editHintText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.4,
   },
   topRow: {
     flexDirection: 'row',

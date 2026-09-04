@@ -12,12 +12,19 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type AccountGroup = 'cash' | 'debit' | 'credit';
 
@@ -40,6 +47,11 @@ export default function AccountsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
+
+  // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
+  const [viewMode, setViewMode] = useState<'stacked' | 'list'>('stacked');
+  // Which account card is currently expanded in stacked view, or null if all collapsed.
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   // Which group's add/edit form is open in the modal right now, or null if closed.
   const [activeGroup, setActiveGroup] = useState<AccountGroup | null>(null);
@@ -80,6 +92,28 @@ export default function AccountsScreen() {
     setActiveGroup(null);
     setEditingId(null);
     setErrorMsg('');
+  }
+
+  function handleCardPress(group: AccountGroup, account: BalanceAccountEntry, isAlreadyExpanded: boolean) {
+    if (isAlreadyExpanded) {
+      // Step 2: tapping the already-expanded card opens the edit modal
+      openEditModal(group, account);
+    } else {
+      // Step 1: tapping a collapsed card brings it to front and expands it
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpandedAccountId(account.id);
+    }
+  }
+
+  function handleCollapse() {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedAccountId(null);
+  }
+
+  function handleToggleViewMode(mode: 'stacked' | 'list') {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setViewMode(mode);
+    setExpandedAccountId(null);
   }
 
   async function handleSave() {
@@ -136,20 +170,69 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.balanceBanner}>
-          <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+          <View>
+            <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
+            <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+          </View>
+          <View style={styles.viewToggleWrap}>
+            <TouchableOpacity
+              style={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]}
+              onPress={() => handleToggleViewMode('stacked')}
+              accessibilityLabel="Stacked card view"
+            >
+              <Ionicons
+                name="albums"
+                size={13}
+                color={viewMode === 'stacked' ? colors.navy2 : colors.inkDim}
+              />
+              <Text style={[styles.toggleBtnText, viewMode === 'stacked' && styles.toggleBtnTextActive]}>
+                Cards
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+              onPress={() => handleToggleViewMode('list')}
+              accessibilityLabel="List card view"
+            >
+              <Ionicons
+                name="reorder-three"
+                size={15}
+                color={viewMode === 'list' ? colors.navy2 : colors.inkDim}
+              />
+              <Text style={[styles.toggleBtnText, viewMode === 'list' && styles.toggleBtnTextActive]}>
+                List
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {GROUPS.map((group) => {
           const accounts = model.balanceAccounts[group];
           const groupTotal = accounts.reduce((sum, a) => sum + accountAmountNumber(a), 0);
+          const isStackedSection = viewMode === 'stacked' && accounts.length >= 2;
+          const sectionHasExpanded = isStackedSection && accounts.some((a) => a.id === expandedAccountId);
           return (
             <View key={group} style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>{GROUP_LABELS[group]}</Text>
-                <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
+                <View style={styles.sectionHeaderRight}>
+                  {sectionHasExpanded && (
+                    <TouchableOpacity
+                      style={styles.collapseChip}
+                      onPress={handleCollapse}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="chevron-up" size={13} color={colors.gold} />
+                      <Text style={styles.collapseChipText}>Collapse</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
+                </View>
               </View>
 
               {accounts.length === 0 && (
@@ -158,14 +241,49 @@ export default function AccountsScreen() {
                 </Text>
               )}
 
-              {accounts.map((account) => (
-                <AccountCard
-                  key={account.id}
-                  account={account}
-                  group={group}
-                  onPress={() => openEditModal(group, account)}
-                />
-              ))}
+              {accounts.map((account, index) => {
+                if (!isStackedSection) {
+                  return (
+                    <AccountCard
+                      key={account.id}
+                      account={account}
+                      group={group}
+                      onPress={() => openEditModal(group, account)}
+                    />
+                  );
+                }
+
+                const isExpanded = expandedAccountId === account.id;
+                const expandedIndex = accounts.findIndex((a) => a.id === expandedAccountId);
+
+                let marginTop = 0;
+                if (index > 0) {
+                  if (expandedIndex !== -1 && index === expandedIndex + 1) {
+                    marginTop = 14;
+                  } else {
+                    marginTop = -80;
+                  }
+                }
+
+                const isDimmed = expandedIndex !== -1 && !isExpanded;
+
+                return (
+                  <AccountCard
+                    key={account.id}
+                    account={account}
+                    group={group}
+                    isStacked={true}
+                    isExpanded={isExpanded}
+                    style={{
+                      marginTop,
+                      marginBottom: index === accounts.length - 1 ? 12 : 0,
+                      zIndex: isExpanded ? 20 : index + 1,
+                      opacity: isDimmed ? 0.78 : 1,
+                    }}
+                    onPress={() => handleCardPress(group, account, isExpanded)}
+                  />
+                );
+              })}
 
               <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(group)}>
                 <Text style={styles.addButtonText}>
@@ -272,6 +390,54 @@ function makeStyles(colors: any) {
       paddingVertical: 14,
       paddingHorizontal: 16,
       marginBottom: 18,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    viewToggleWrap: {
+      flexDirection: 'row',
+      backgroundColor: colors.navy2,
+      borderRadius: 999,
+      padding: 3,
+    },
+    toggleBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+    },
+    toggleBtnActive: {
+      backgroundColor: colors.gold,
+    },
+    toggleBtnText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.inkDim,
+    },
+    toggleBtnTextActive: {
+      color: colors.navy2,
+      fontWeight: '700',
+    },
+    sectionHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    collapseChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      backgroundColor: 'rgba(233,196,106,0.12)',
+    },
+    collapseChipText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.gold,
     },
     balanceBannerLabel: {
       fontSize: 10,
