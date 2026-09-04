@@ -6,6 +6,7 @@ import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import PinUnlockScreen from './src/screens/PinUnlockScreen';
+import IntroScreen from './src/screens/IntroScreen';
 import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
@@ -92,7 +93,8 @@ function AppContent() {
 
   useEffect(() => {
     (async () => {
-      const profiles = await loadProfilesIndex();
+      const minDelay = new Promise((resolve) => setTimeout(resolve, 1600));
+      const [profiles] = await Promise.all([loadProfilesIndex(), minDelay]);
       setScreen(profiles.length ? 'signIn' : 'createProfile');
       autoLockMinutesRef.current = await getAutoLockMinutes();
     })();
@@ -186,11 +188,7 @@ function AppContent() {
   }
 
   if (screen === 'loading') {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.accent} />
-      </SafeAreaView>
-    );
+    return <IntroScreen />;
   }
 
   if (screen === 'locked' && currentUsername && derivedKey) {

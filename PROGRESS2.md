@@ -11,6 +11,17 @@ original 11 phases before that. Nothing from either file is repeated here.
 - **Tier 2 audit fixes — VERIFIED COMPLETE (all 7 items confirmed against real code).** 6 of 7 turned out to already be implemented in the code (link-code hijacking protection, household update rule type checks, app.json fixes, modern notification trigger format, and the profile-creation username-stranding fix) but had never been deployed/committed as "done" — deployed via `firebase deploy --only firestore:rules` and confirmed live this session. The 1 real gap found (solo profile cloud backups failing silently) was fixed, reviewed, and pushed as commit `70431f9`. `npx tsc --noEmit` clean. See ⚠️ Known issues below for full detail.
 - **Tier 3 audit cleanup — VERIFIED COMPLETE (all 7 items confirmed against real code and fixed).** Independently re-verified all 7 previously-identified Tier 3 items before touching anything — all 7 confirmed still present with real code shown. Reviewed and approved 7 of 8 proposed fixes (1 bonus finding included), applied them, `npx tsc --noEmit` clean (0 errors), real `git diff` reviewed line-by-line, committed and pushed. The 8th item (orphaned household docs from abandoned link codes) was investigated separately and deliberately deferred rather than partially fixed — see 📌 Decisions and ⚠️ Known issues below.
 - **B.1 — Essential vs. additional feature split, formal write-up — COMPLETE.** Documentation-only checkpoint; no code touched, nothing to test. Turned the split already decided in Phase A into an explicit, standalone reference table — see the new "📋 Phase B Feature Priority" section below. Phase B officially begins.
+- **B.2a — Splash/Intro screen — COMPLETE.** New `IntroScreen.tsx`: an animated padlock 
+  logo (muted single-family green — lock body a touch darker than the shackle outline so 
+  the two pieces read as one cohesive mark) with a `$` on the lock body, scale+spring 
+  "bounce and settle" entrance (overshoots slightly then eases back), followed by a 
+  deliberate pause and then an "HOUSEHOLD FINANCE" eyebrow-style label (small, uppercase, 
+  letter-spaced, `colors.gold` so it respects light/dark mode) fading in underneath. 
+  Wired into `App.tsx` in place of the old plain `ActivityIndicator` spinner on the 
+  `loading` screen state. Real profile-index load and a minimum display timer now run in 
+  parallel via `Promise.all`, floored at 1.6s — long enough for the full bounce → pause → 
+  fade sequence (~1.5s) to finish before the screen transitions away, regardless of how 
+  fast the real check completes.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -56,6 +67,14 @@ original 11 phases before that. Nothing from either file is repeated here.
   Functions infrastructure gets added for some other reason. No security or data-loss 
 risk — these docs contain only encrypted ciphertext and are fully isolated by 
   Firestore security rules, so it's pure database clutter.
+- **New this session:** IntroScreen's currency glyph is a fixed `$`, not the user's 
+  configured app currency — it's brand/icon dressing only (chosen for the dollar's 
+  recognizability as a global reserve currency), and is intentionally decoupled from 
+  the real currency setting used everywhere else in the app.
+- **New this session:** The splash screen's minimum display duration (`minDelay` in 
+  App.tsx) is deliberately tied to IntroScreen's actual animation length. If 
+  IntroScreen's animation timing is ever changed, App.tsx's `minDelay` value must be 
+  re-checked and adjusted to match, or the text fade can get cut off.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -126,6 +145,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   up-to-date tree) after push.
 
   **Feature ideas surfaced by the audit (not bugs — for Phase B consideration, not yet scheduled):** a "Sign out all other devices" button in Active Devices; wiring up the already-present-but-unused `onClearRemoteRevokeNotice` to dismiss the revoke banner; pull-to-refresh on Dashboard/Bills/Transactions as a manual sync option (this would help make Tier 1's live-sync gap less painful even after it's fixed).
+- **IntroScreen animation timing not verified on slow/low-end devices.** The 1.6s 
+  minimum display floor was tuned against the animation's timing on a normal device — 
+  on a much slower device the animation itself could conceivably still be running past 
+  1.6s, cutting the text fade short. Not yet reported as an issue; low priority, revisit 
+  if it comes up.
 
 - **Carried forward from PROGRESS1.md — still relevant:**
   - Watch for duplicate-import bugs reappearing in App.tsx after multi-part edits to 
@@ -148,13 +172,14 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   — the orphaned household-doc cleanup — is a deliberate, documented deferral, not an 
   open task; see 📌 Decisions above). The full pre-Phase-B audit is now closed out.
 - **B.1 is complete** — see the new "📋 Phase B Feature Priority" section above.
-- **Next up: B.2a — Splash/Intro screen**, per the checkpoint table below:
+- **B.2a is complete.** Next up: **B.2b — Onboarding** (short, skippable, shown once 
+  after account creation), per the checkpoint table below:
 
   | Order | Item | Source |
   |---|---|---|
   | ✅ B.1 | Essential vs. additional feature split — formal write-up | Already decided |
-  | ▶️ B.2a | Splash/Intro screen | Standard-screens gap-check |
-  | B.2b | Onboarding (short, skippable, shown once after account creation) | Standard-screens gap-check |
+  | ✅ B.2a | Splash/Intro screen | Standard-screens gap-check |
+  | ▶️ B.2b | Onboarding (short, skippable, shown once after account creation) | Standard-screens gap-check |
   | B.2b-security | Security setup step within onboarding — biometric-first, PIN as labeled fallback | Onboarding research |
   | B.2c | Standalone Profile screen, split out of Settings | Standard-screens gap-check |
   | B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
@@ -178,8 +203,36 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   this table is a working copy for convenience, not a replacement.
 
 Files in the repo (relevant to Phase B/C)
-- (Nothing yet — will be filled in as Phase B work begins.)
+- `mobile-app/src/screens/IntroScreen.tsx` — new. Animated splash/intro screen (padlock 
+  logo bounce-in + "HOUSEHOLD FINANCE" text fade) shown while the app checks for 
+  existing profiles on launch.
+- `mobile-app/App.tsx` — modified. Imports `IntroScreen`; the `screen === 'loading'` 
+  branch now returns `<IntroScreen />` instead of a plain spinner; the profile-index 
+  load and a 1.6s minimum-display timer now run together via `Promise.all`.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+
+### Session entry — B.2a Splash/Intro screen built, animated, and tuned
+**What happened:** Built `IntroScreen.tsx` from scratch and wired it into App.tsx's 
+loading state in place of the old `ActivityIndicator` spinner. Went through several 
+rounds of visual/timing feedback in the same session: initial version used a two-tone 
+green padlock with a flat fade — revised to a slower, more deliberate scale+spring 
+"bounce and settle" entrance for the logo, followed by a paused, separately-timed text 
+fade for "HOUSEHOLD FINANCE" underneath, since the first pass moved too fast to actually 
+read the text before the screen changed. Also swapped the lock's currency glyph from ₱ 
+to $ per a deliberate branding choice (dollar as a globally recognizable reserve 
+currency, independent of the app's real configurable currency setting).
+
+**Result:** Final IntroScreen sequence is: logo fades/bounces in (~350ms fade + a 
+softened spring overshoot), a deliberate 250ms pause, then the text fades in over 450ms 
+— roughly 1.4–1.5s total. App.tsx's `minDelay` was extended from an initial 900ms to 
+1600ms to comfortably cover the full sequence via `Promise.all` against the real 
+`loadProfilesIndex()` call, so the screen never transitions away mid-animation 
+regardless of how fast the real check finishes. Confirmed working and approved.
+
+**Design decision made this session:** Splash-screen minimum display time and the 
+splash animation's own timing are treated as a matched pair going forward — changing 
+one without checking the other risks either an awkward long pause (timer too long) or 
+a cut-off animation (timer too short).
 
 ### Session entry — Tier 3 verified against real code; 7 of 8 items fixed; 1 deliberately deferred
 **What happened:** Ran a dedicated Antigravity investigation prompt covering all 7 
