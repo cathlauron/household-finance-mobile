@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { verifyPin } from '../pin';
+import PinField from '../components/PinField';
 
 type Props = {
   username: string;
@@ -33,14 +34,12 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordIns
       <Text style={styles.sub}>Enter your PIN to keep going, right where you left off.</Text>
 
       <Text style={styles.label}>PIN</Text>
-      <TextInput
+      <PinField
+        testID="unlock-pin-input"
         style={styles.input}
         value={pin}
         onChangeText={setPin}
-        placeholder="••••"
-        secureTextEntry
-        keyboardType="number-pad"
-        maxLength={6}
+        centered
         autoFocus
       />
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { isValidPinFormat, savePin } from '../pin';
+import PinField from '../components/PinField';
 
 type Props = {
   username: string;
@@ -45,27 +46,19 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
       </Text>
 
       <Text style={styles.label}>Choose a PIN (4–6 digits)</Text>
-      <TextInput
+      <PinField
         testID="pin-input"
         style={styles.input}
         value={pin1}
         onChangeText={setPin1}
-        placeholder="••••"
-        secureTextEntry
-        keyboardType="number-pad"
-        maxLength={6}
       />
 
       <Text style={styles.label}>Confirm PIN</Text>
-      <TextInput
+      <PinField
         testID="confirm-pin-input"
         style={styles.input}
         value={pin2}
         onChangeText={setPin2}
-        placeholder="••••"
-        secureTextEntry
-        keyboardType="number-pad"
-        maxLength={6}
       />
 
       {!!error && <Text style={styles.error}>{error}</Text>}

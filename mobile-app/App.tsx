@@ -6,6 +6,7 @@ import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import PinUnlockScreen from './src/screens/PinUnlockScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
 import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
@@ -23,7 +24,7 @@ import {
   updateDeviceHeartbeat,
 } from './src/sessions';
 
-type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
+type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding';
 
 function AppContent() {
   const { colors } = useTheme();
@@ -217,6 +218,17 @@ function AppContent() {
     );
   }
 
+  if (screen === 'onboarding' && currentUsername && derivedKey) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+        <OnboardingScreen
+          username={currentUsername}
+          onFinish={() => setScreen('home')}
+        />
+      </SafeAreaView>
+    );
+  }
+
   if (screen === 'createProfile') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
@@ -230,7 +242,7 @@ function AppContent() {
             if (user) {
               registerAndListenDeviceSession(user.uid).catch(() => {});
             }
-            setScreen('home');
+            setScreen('onboarding');
           }}
           onGoToSignIn={() => setScreen('signIn')}
         />
