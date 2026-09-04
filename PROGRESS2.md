@@ -163,6 +163,31 @@ original 11 phases before that. Nothing from either file is repeated here.
   `main`. Manually verified on-device: colored cards render correctly, the color swatch
   picker works and updates the card color on save, and the auto-default colors
   (green/blue/slate for Cash/Debit/Credit) display as expected.
+- **B.3b — Accounts tab redesign: stacked/fanned card view — COMPLETE, VERIFIED ON DEVICE.**
+  Added a fanned/stacked view on top of B.3a's colored `<AccountCard />`, using React
+  Native's built-in `LayoutAnimation` API only — no new dependencies. Kept the existing
+  Cash/Debit/Credit sections intact (headers, totals, "+ Add account" unchanged); within
+  each section, 2+ accounts fan into a stacked pile in Stacked view, while 0-1 accounts
+  render normally. Two-step tap interaction: tapping a peeking/collapsed card brings it
+  to the front and expands it (other cards in that section's stack slide down, dim to
+  78% opacity); tapping the already-expanded card opens the existing Edit Account modal
+  (no new modal built); tapping a different card in the same stack switches focus.
+  Expanded cards get a white border highlight, deeper shadow, and a "Tap to edit" hint
+  badge next to the group icon. A "Collapse" chip appears in a section's header whenever
+  that section has an expanded card, so the stack can always be collapsed back — added
+  specifically so the UI can never get stuck expanded with no way out. Added a
+  Cards/List segmented toggle in the top TOTAL BALANCE banner so the flat list view
+  (from before B.3b) remains available; **Stacked is the default** (explicit decision —
+  showcases the checkpoint's purpose and avoids scrolling past Credit accounts on
+  typical 4-8 account households). Modified `src/components/AccountCard.tsx` (added
+  `isStacked`/`isExpanded` props, expanded-state styling, edit hint badge) and
+  `src/screens/AccountsScreen.tsx` (view mode state, expanded-account state, stacking
+  margin/zIndex/opacity math, toggle UI, Collapse chip). `npx tsc --noEmit` clean (0
+  errors), diff reviewed line-by-line before approval, hand-pasted per standing small-fix
+  policy. Manually verified on-device: opens in Stacked view by default; tapping a
+  peeking card brings it to front; tapping the front card again opens edit; Collapse
+  chip works; Cards/List toggle switches views correctly; single-account sections
+  display normally without stacking.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -222,6 +247,19 @@ original 11 phases before that. Nothing from either file is repeated here.
   is not practical — this is a legitimate use of the existing carve-out allowing
   Antigravity to apply and commit (but never push) directly for large, well-reviewed
   changes, rather than the default hand-paste-small-snippets workflow.
+- **New this session (B.3b):** When an investigation's written explanation describes a
+  behavior (e.g. "tapping the background collapses the stack") that the actual proposed
+  diff doesn't implement, catch and flag the mismatch explicitly before approving —
+  don't assume the prose and the code agree just because they were presented together.
+  In this case the gap was minor and didn't block approval (a different mechanism, the
+  section header's Collapse chip, already satisfied the real requirement), but it's a
+  reminder to verify claims against the actual diff line-by-line, the same discipline
+  already applied to Antigravity's "fix implemented" claims.
+- **New this session (B.3b):** When a design choice is explicitly left to Antigravity's
+  judgment (e.g. "pick a sensible default, but tell me clearly which you chose"), treat
+  that as still requiring the person's explicit confirmation before implementation —
+  don't let "Antigravity's judgment call" quietly skip the standard confirm-before-code
+  step.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -287,9 +325,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **Tier 1, Tier 2, and Tier 3 pre-Phase-B audit fixes are all fully verified and
   complete** (the orphaned household-doc cleanup is a deliberate, documented deferral).
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
-- **B.3a is complete and verified on-device.**
-- Next up is **B.3b — Accounts tab redesign: stacked/fanned card view**, per the
-  checkpoint table below:
+- **B.3a and B.3b are both complete and verified on-device.**
+- Next up is **B.3c — Accounts tab redesign: "Add account" as a bottom sheet**, per
+  the checkpoint table below:
 
   | Order | Item | Source |
   |---|---|---|
@@ -299,8 +337,8 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.2b-security | Security setup step within onboarding — PIN eye icon + real biometric unlock (Face ID/Touch ID/Fingerprint), auto-offered opt-out | Onboarding research |
   | ✅ B.2c | Standalone Profile screen, split out of Settings | Standard-screens gap-check |
   | ✅ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
-  | ▶️ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
-  | B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
+  | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
+  | ▶️ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
   | B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time | Cards + bottom sheets pattern |
   | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
@@ -381,7 +419,14 @@ Files in the repo (relevant to Phase B/C)
   `AccountCard` component itself (props: `account`, `group`, `onPress`, `style`, `testID`).
 - `mobile-app/src/screens/AccountsScreen.tsx` — modified. Renders each account via
   `<AccountCard />` instead of a plain row; Add/Edit modal gained a horizontal color
-  swatch picker wired to the new `color` field.
+  swatch picker wired to the new `color` field. B.3b added: `viewMode`
+  ('stacked'/'list', defaults to 'stacked') and `expandedAccountId` state; stacking
+  margin/zIndex/opacity math per section; a Cards/List segmented toggle in the TOTAL
+  BALANCE banner; a "Collapse" chip in each section's header when that section has an
+  expanded card.
+- `mobile-app/src/components/AccountCard.tsx` — modified (B.3b). Added `isStacked` and
+  `isExpanded` props; expanded cards get a white border highlight, deeper shadow, and a
+  "Tap to edit" hint badge next to the group icon.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
