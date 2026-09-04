@@ -10,6 +10,7 @@ original 11 phases before that. Nothing from either file is repeated here.
 - **Tier 1 audit fixes — VERIFIED COMPLETE (all 4 items confirmed against real code, not just commit messages).** See ⚠️ Known issues below for full detail, including a regression that was caught during verification and fixed.
 - **Tier 2 audit fixes — VERIFIED COMPLETE (all 7 items confirmed against real code).** 6 of 7 turned out to already be implemented in the code (link-code hijacking protection, household update rule type checks, app.json fixes, modern notification trigger format, and the profile-creation username-stranding fix) but had never been deployed/committed as "done" — deployed via `firebase deploy --only firestore:rules` and confirmed live this session. The 1 real gap found (solo profile cloud backups failing silently) was fixed, reviewed, and pushed as commit `70431f9`. `npx tsc --noEmit` clean. See ⚠️ Known issues below for full detail.
 - **Tier 3 audit cleanup — VERIFIED COMPLETE (all 7 items confirmed against real code and fixed).** Independently re-verified all 7 previously-identified Tier 3 items before touching anything — all 7 confirmed still present with real code shown. Reviewed and approved 7 of 8 proposed fixes (1 bonus finding included), applied them, `npx tsc --noEmit` clean (0 errors), real `git diff` reviewed line-by-line, committed and pushed. The 8th item (orphaned household docs from abandoned link codes) was investigated separately and deliberately deferred rather than partially fixed — see 📌 Decisions and ⚠️ Known issues below.
+- **B.1 — Essential vs. additional feature split, formal write-up — COMPLETE.** Documentation-only checkpoint; no code touched, nothing to test. Turned the split already decided in Phase A into an explicit, standalone reference table — see the new "📋 Phase B Feature Priority" section below. Phase B officially begins.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -53,8 +54,24 @@ original 11 phases before that. Nothing from either file is repeated here.
   server-side scheduled cleanup (a Firebase Cloud Function or Firestore TTL policy) — 
   real infrastructure, not a client-side patch. Decision: defer until/unless Cloud 
   Functions infrastructure gets added for some other reason. No security or data-loss 
-  risk — these docs contain only encrypted ciphertext and are fully isolated by 
+risk — these docs contain only encrypted ciphertext and are fully isolated by 
   Firestore security rules, so it's pure database clutter.
+
+📋 Phase B Feature Priority (B.1 — finalized reference)
+This is the standing checklist for "is this essential or can it wait" throughout the
+rest of Phase B. The underlying decision was made back in Phase A (see PROGRESS1.md);
+this is just the formal, standalone version so future sessions don't need to dig for it.
+
+**Essential — polish/build these first:**
+Sign-in & Security, Accounts, Calendar, Bills/Debts/Loans, Transactions, Income,
+Savings (including the EF/FI calculators), Dashboard, Settings.
+
+**Additional — later, or as time allows:**
+Groceries, Travel, Events, Year-End Goals, the deeper Reports pages, the Shared
+Expense ledger, CSV import, Payment-method breakdown.
+
+When in doubt about whether a Phase B item belongs in the "essential" bucket, it
+should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
 - **Pre-Phase-B audit findings — TIER 1 AND TIER 2 FULLY VERIFIED & COMPLETE. Tier 3 still open.**
@@ -130,14 +147,13 @@ original 11 phases before that. Nothing from either file is repeated here.
 - **Tier 1, Tier 2, and Tier 3 are all fully verified and complete** (the sole exception 
   — the orphaned household-doc cleanup — is a deliberate, documented deferral, not an 
   open task; see 📌 Decisions above). The full pre-Phase-B audit is now closed out.
-- **Next up: begin Phase B at B.1** (essential vs. additional feature split — formal 
-  write-up) per the checkpoint table in PROGRESS1.md's ▶️ Next step section (item 6), 
-  copied below for convenience:
+- **B.1 is complete** — see the new "📋 Phase B Feature Priority" section above.
+- **Next up: B.2a — Splash/Intro screen**, per the checkpoint table below:
 
   | Order | Item | Source |
   |---|---|---|
-  | B.1 | Essential vs. additional feature split — formal write-up | Already decided |
-  | B.2a | Splash/Intro screen | Standard-screens gap-check |
+  | ✅ B.1 | Essential vs. additional feature split — formal write-up | Already decided |
+  | ▶️ B.2a | Splash/Intro screen | Standard-screens gap-check |
   | B.2b | Onboarding (short, skippable, shown once after account creation) | Standard-screens gap-check |
   | B.2b-security | Security setup step within onboarding — biometric-first, PIN as labeled fallback | Onboarding research |
   | B.2c | Standalone Profile screen, split out of Settings | Standard-screens gap-check |
