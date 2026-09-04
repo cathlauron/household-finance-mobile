@@ -6,7 +6,8 @@ which is now closed and kept only as a historical record. PROGRESS.md covers the
 original 11 phases before that. Nothing from either file is repeated here.
 
 ✅ Done
-- **Pre-Phase-B code-health/security audit — COMPLETE (investigation only, zero code changed).** Full report-only pass via Antigravity across bugs, dead code, security rules, config, and feature-gap suggestions. Found 5 real bugs (2 high-priority: silent household data overwrite risk, and a solo password-change that silently breaks the Secret Recovery Key), 4 security findings (2 high-priority: a brute-forceable peer-recovery PIN doc that's never deleted, and a missing ownership check letting any user overwrite anyone's cloud backup), 4 unused-import/variable cleanup items, 5 leftover debug logs, and 3 config inconsistencies (app.json dark-mode setting, missing notifications plugin, a deprecated notification trigger format). `npx tsc --noEmit` clean. Full finding-by-finding detail in ⚠️ Known issues below. Triaged into 3 approval tiers — none yet approved/fixed.
+- **Pre-Phase-B code-health/security audit — COMPLETE (investigation only, zero code changed).** Full report-only pass via Antigravity across bugs, dead code, security rules, config, and feature-gap suggestions. Found 5 real bugs (2 high-priority: silent household data overwrite risk, and a solo password-change that silently breaks the Secret Recovery Key), 4 security findings (2 high-priority: a brute-forceable peer-recovery PIN doc that's never deleted, and a missing ownership check letting any user overwrite anyone's cloud backup), 4 unused-import/variable cleanup items, 5 leftover debug logs, and 3 config inconsistencies (app.json dark-mode setting, missing notifications plugin, a deprecated notification trigger format). `npx tsc --noEmit` clean. Full finding-by-finding detail in ⚠️ Known issues below. Triaged into 3 approval tiers.
+- **Tier 1 audit fixes — VERIFIED COMPLETE (all 4 items confirmed against real code, not just commit messages).** See ⚠️ Known issues below for full detail, including a regression that was caught during verification and fixed.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -32,22 +33,23 @@ original 11 phases before that. Nothing from either file is repeated here.
     command output/diffs from Antigravity, not summaries; close/Save All open VS Code 
     tabs before any session involving file edits (see PROGRESS1.md for the incident 
     this prevents); report-only-first workflow for any full-codebase audit.
+- **New this session:** After any Antigravity-reported "fix implemented" claim, 
+  independently re-verify against real code before trusting it as done — a prior 
+  session's Tier 1 completion claim turned out to have one item silently reverted by 
+  an unrelated routine commit. Verification is now standard practice, not a one-off.
 
 ⚠️ Known issues / gotchas
-- **Pre-Phase-B audit findings — TIER 1 FIXED & DEPLOYED (see session entry below). Tiers 2 and 3 still open.**
+- **Pre-Phase-B audit findings — TIER 1 FULLY VERIFIED & COMPLETE. Tiers 2 and 3 still open.**
 
-  **TIER 1 — ✅ FIXED (2026-XX-XX, commit 03df99b, firestore.rules deployed):**
-  - **[Bug] No live sync for a shared household's financial data.** `subscribeToHousehold`/`setupHouseholdListener` only watch `members`/`owner`/`memberUsernames` — never the encrypted `data` field itself. If Member A adds a bill, Member B's app doesn't see it live; if Member B then saves anything, their stale in-memory model overwrites Member A's edit in Firestore. Fix: also deliver `data`/`updatedAt` through the listener and merge/reload when the household's data changed elsewhere.
-  - **[Bug] Solo password change silently breaks the Secret Recovery Key.** `changePassword()` re-encrypts personal data under a new key but never re-wraps `recoveryKeys/{username}` in Firestore. If the person later forgets their new password and tries the Secret Recovery Key, it unwraps the OLD key and fails — permanent lockout with no clear reason why. Fix: prompt to regenerate the recovery key on password change, or flag it stale in Settings.
-  - **[Security] Peer-recovery's ephemeral transfer document is never deleted.** Once household peer recovery succeeds, `householdRecovery/{requestId}` (containing the household key encrypted under a 6-digit numeric PIN — only 1,000,000 possible combinations) stays in Firestore indefinitely, readable/brute-forceable by any household member. Fix: delete the doc immediately after successful decryption in `SignInScreen.tsx`.
-  - **[Security] `profileBackups/{username}` has no ownership check on writes.** Any authenticated user can overwrite ANY username's cloud backup salt/data — corrupting a different person's account so their next new-device sign-in fails. Fix: add an `ownerUid` field, enforced on create and update.
+  **TIER 1 — ✅ FIXED, DEPLOYED, AND INDEPENDENTLY VERIFIED against real code:**
+  - **[Bug] No live sync for a shared household's financial data.** Fixed in `household.ts`/`DataContext.tsx` — `subscribeToHousehold` now delivers `data`/`updatedAt`, and `DataContext.tsx` tracks its own last-written payload (`lastEncryptedDataRef`) to tell its own writes apart from a household-mate's remote change. **Verified against live code** — real listener/ref code confirmed present and correct.
+  - **[Bug] Solo password change silently breaks the Secret Recovery Key.** `changePassword()` deletes the stale `recoveryKeys/{username}` doc via `deleteRecoveryKey()` (recovery.ts) — confirmed working. **The Settings > Security "Needs regenerating"/"Active" badge UI was accidentally reverted by a later unrelated commit** (`91df290`, a routine "session checkpoint" commit that picked up a stale unsaved VS Code tab) — this was caught during independent verification, not assumed. **Re-fixed and re-verified in commit `8821ff3`**: badge UI restored, `hasRecoveryKeySetUp` import and `hasRecoveryKey` state re-wired, optimistic state updates added (flips to "Needs regenerating" immediately on password change, flips to "Active" immediately on generating a new key). `npx tsc --noEmit` clean. Pushed and confirmed on `main`.
+  - **[Security] Peer-recovery's ephemeral transfer document is never deleted.** Fixed — `SignInScreen.tsx` calls `deletePeerRecoveryRequest()` immediately after successful decryption, removing `householdRecovery/{requestId}` from Firestore. **Verified against live code.**
+  - **[Security] `profileBackups/{username}` has no ownership check on writes.** Fixed — `cloudBackup.ts` stamps `ownerUid` on every save; `firestore.rules` requires `ownerUid == request.auth.uid` on create/update/delete. **Verified against live code AND confirmed actually deployed** (not just committed) via `firebase deploy --only firestore:rules` output and Firebase console rules history.
 
-  **How each Tier 1 item was fixed:**
-  - Live sync: `subscribeToHousehold` in `household.ts` now also delivers `data`/`updatedAt`. `DataContext.tsx` tracks the last encrypted payload it wrote itself (`lastEncryptedDataRef`) so it can tell its own writes apart from a household-mate's remote change, and only reloads/redecrypts on genuine remote updates.
-  - Stale recovery key: `changePassword()` in `DataContext.tsx` now deletes the old `recoveryKeys/{username}` doc (via new `deleteRecoveryKey()` in `recovery.ts`) on a solo password change, since it can't be re-wrapped without the original recovery code. Settings > Security now shows a "Needs regenerating" / "Active" badge (via new `hasRecoveryKeySetUp()` check) so the person knows to make a fresh one.
-  - Peer-recovery PIN doc: `SignInScreen.tsx` now calls new `deletePeerRecoveryRequest()` immediately after a successful transfer, removing the brute-forceable 6-digit-PIN-wrapped doc from Firestore.
-  - `profileBackups` ownership: `cloudBackup.ts` now stamps `ownerUid` on every save; `firestore.rules` requires `ownerUid == request.auth.uid` on create/update/delete. **Deployed** via `firebase deploy --only firestore:rules` — confirmed live in the Firebase console.
-  - Reviewed and approved via Antigravity investigate-then-approve workflow; verified with `npx tsc --noEmit` (clean) both before and after; committed as `03df99b`, pushed to `main`.
+  **How Tier 1 was originally fixed (commit `03df99b`):** Live sync: `subscribeToHousehold` in `household.ts` now also delivers `data`/`updatedAt`. `DataContext.tsx` tracks the last encrypted payload it wrote itself so it can tell its own writes apart from a household-mate's remote change, and only reloads/redecrypts on genuine remote updates. Stale recovery key: `changePassword()` deletes the old `recoveryKeys/{username}` doc (via `deleteRecoveryKey()`) on a solo password change, since it can't be re-wrapped without the original recovery code; Settings > Security shows a status badge (via `hasRecoveryKeySetUp()`). Peer-recovery PIN doc: `SignInScreen.tsx` calls `deletePeerRecoveryRequest()` immediately after a successful transfer. `profileBackups` ownership: `cloudBackup.ts` stamps `ownerUid` on every save; `firestore.rules` enforces it. Deployed via `firebase deploy --only firestore:rules` — confirmed live.
+
+  **Regression + fix (this session):** The Settings badge from `03df99b` was silently lost in the very next commit (`91df290`, an unrelated routine checkpoint) because `SettingsScreen.tsx` had unsaved changes open in a VS Code tab at commit time — exactly the failure mode PROGRESS1.md already warned about. Caught by independently re-verifying each Tier 1 claim against real code (via a dedicated Antigravity investigation prompt) rather than trusting the original "implemented & deployed" note at face value. Re-applied in commit `8821ff3`, reviewed, `npx tsc --noEmit` clean, pushed. A `git fatal: .git/index: index file smaller than expected` error appeared mid-session (likely from an interrupted git operation) — resolved by deleting and rebuilding the local index (`Remove-Item .git\index` + `git reset`); this only affects git's local staging bookkeeping, not commit history or file contents, and did not require any further action once resolved.
 
   **TIER 2 — fix now, lower urgency (approve after Tier 1):**
   - **[Bug] `saveModel`'s Firestore write isn't wrapped in try/catch.** If offline/network drops mid-save, the UI already shows the edit (local React state updated first) but it was never actually written to disk or Firestore — silently lost on app restart/lock.
@@ -69,7 +71,12 @@ original 11 phases before that. Nothing from either file is repeated here.
   - Watch for duplicate-import bugs reappearing in App.tsx after multi-part edits to 
     its import block — always close/reload the file in the VS Code tab before restarting 
     Metro after editing it.
-  - CSV import: no upfront warning if Date/Label/Amount are left unmapped — minor, 
+  - **Now demonstrated in practice, not just theoretical**: a routine "session checkpoint" 
+    commit can silently revert real work if a file is open with unsaved/stale changes in 
+    a VS Code tab — this is exactly what happened to the recovery-key badge fix. 
+    Close/Save All tabs before the start-of-session commit block, not just before 
+    edit sessions.
+  - CSV import: no upfront warning if Date/Label/Amount are left unmapped — minor,
     not fixed, low priority.
   - The two new EF/FI income-info lines in SavingsScreen.tsx have not been visually 
     confirmed on a real device yet (functionally fine, just not eyeballed).
@@ -77,11 +84,12 @@ original 11 phases before that. Nothing from either file is repeated here.
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
-- **Tier 1 is done and deployed (see ⚠️ Known issues above).** Next up: approve and 
+- **Tier 1 is fully verified and complete (see ⚠️ Known issues above).** Next up: approve and 
   implement Tier 2 (3 bugs + 2 security findings + 3 config fixes), then Tier 3 
   cleanup, each as its own scoped Antigravity approval round, per this project's 
   established audit workflow (report first, approve in numbered batches, no broad 
-  "fix everything" authorization).
+  "fix everything" authorization, and now — independently re-verify claimed fixes 
+  against real code before marking them done).
 - Once all 3 tiers are resolved and re-verified (`npx tsc --noEmit` clean, rules 
   redeployed if changed): begin Phase B at B.1 (essential vs. additional feature
   split — formal write-up) per the checkpoint table in PROGRESS1.md's ▶️ Next step 
@@ -117,6 +125,30 @@ original 11 phases before that. Nothing from either file is repeated here.
 Files in the repo (relevant to Phase B/C)
 - (Nothing yet — will be filled in as Phase B work begins.)
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+
+### Session entry — Tier 1 audit fixes independently verified; one regression found & fixed
+**What happened:** Rather than trusting the prior session's "Tier 1 fixed & deployed" note 
+at face value, ran a dedicated Antigravity investigation prompt to re-check all 4 Tier 1 
+fixes against real, current code (not commit messages or summaries). 3 of 4 checked out 
+cleanly with real code evidence. The 4th (Settings > Security recovery-key status badge) 
+had been silently reverted by an unrelated, later "session checkpoint" commit (`91df290`) 
+— caused by `SettingsScreen.tsx` having unsaved/stale changes open in a VS Code tab at 
+commit time.
+
+**Result:** Diagnosed precisely via `git diff 03df99b 91df290 -- SettingsScreen.tsx`. 
+Re-applied the exact reverted diff via a second Antigravity prompt, reviewed the new diff 
+line-by-line (39 insertions, 1 deletion — clean, no scope creep), confirmed `npx tsc --noEmit` 
+clean, then approved a commit+push. Hit a `git fatal: .git/index: index file smaller than 
+expected` error mid-session — resolved by rebuilding the local git index 
+(`Remove-Item .git\index` + `git reset`), which only affects local staging bookkeeping and 
+did not touch commit history or file contents. Commit `8821ff3` pushed successfully; 
+`git status` confirms clean, up-to-date tree.
+
+**Design decision made this session:** Independent re-verification of any "fix implemented" 
+claim — via real code inspection, not summaries — is now standard practice for this project 
+going forward, not a one-off. This session is the concrete example of why: a routine, 
+unrelated commit silently undid real work, and it would not have been caught without 
+checking.
 
 ### Session entry — Tier 1 audit fixes implemented & deployed
 **What happened:** Reviewed the 4 Tier 1 findings from the pre-Phase-B audit (household 
