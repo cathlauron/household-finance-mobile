@@ -6,11 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Pressable,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Image,
   Alert,
@@ -30,6 +27,7 @@ import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
 
 function personName(people: Person[], id: string): string {
@@ -367,16 +365,11 @@ export default function TransactionsScreen() {
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit transaction' : 'New transaction'}</Text>
-
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit transaction' : 'New transaction'}
+      >
                 <Text style={styles.inputLabel}>Label</Text>
                 <TextInput
                   style={styles.input}
@@ -487,11 +480,7 @@ export default function TransactionsScreen() {
                 <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-              </ScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -555,23 +544,6 @@ function makeStyles(colors: any) {
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     importButton: { paddingVertical: 8, paddingHorizontal: 4 },
     importButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '85%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 360,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,
