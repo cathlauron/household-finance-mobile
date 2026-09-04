@@ -141,8 +141,7 @@ original 11 phases before that. Nothing from either file is repeated here.
   clean (0 errors), `git diff --stat` showed exactly the expected 1,025 deletions with
   no unexpected changes, committed as `c5fd7d0` ("fix: restore B.2c SettingsScreen.tsx
   cleanup that was accidentally reverted by a later PROGRESS2.md commit"), pushed to `main`.
-- **B.3a — Accounts tab redesign: colored account cards — CODE COMPLETE, PENDING DEVICE
-  VERIFICATION.** Added optional `color?: string` field to `BalanceAccountEntry` in
+- **B.3a — Accounts tab redesign: colored account cards — COMPLETE, VERIFIED ON DEVICE.** Added optional `color?: string` field to `BalanceAccountEntry` in
   `types.ts`. Built new reusable `src/components/AccountCard.tsx`: an Apple Wallet-style
   card (rounded corners, colored background, group badge + icon, account name, formatted
   balance, drop shadow) with an automatic luminance check (`isLightBackground`) so text
@@ -161,7 +160,9 @@ original 11 phases before that. Nothing from either file is repeated here.
   clean (0 errors), diff reviewed line-by-line before approval, hand-pasted (not
   Antigravity-applied) per standing small-fix policy, committed as `51f4dba`
   ("feat(accounts): B.3a colored account cards with customizable colors"), pushed to
-  `main`. **Not yet manually verified on a real device/emulator** — see ⚠️ Known issues.
+  `main`. Manually verified on-device: colored cards render correctly, the color swatch
+  picker works and updates the card color on save, and the auto-default colors
+  (green/blue/slate for Cash/Debit/Credit) display as expected.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -260,12 +261,6 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   confirm the OS-level permission dialog, the debounce behavior under rapid backgrounding,
   or the Settings toggle round-trip. Worth doing before considering B.2b-security fully
   closed out in practice, not just in code.
-- **B.3a colored account cards not yet visually confirmed on a real device/emulator.**
-  `npx tsc --noEmit` is clean and the diff was reviewed line-by-line, but nobody has yet
-  opened the Accounts tab on a phone to confirm the cards render correctly, the color
-  swatch picker works and changes the card color on save, and the auto-default colors
-  (green/blue/slate for Cash/Debit/Credit) look right. Low risk given the clean compile,
-  but not yet eyeballed — do this before marking B.3a fully done.
 - **A routine PROGRESS2.md-only commit can silently revert real code changes if a file
   is open with unsaved/stale changes in a VS Code tab — this has now happened twice**
   (previously the Settings recovery-key badge in an earlier session; this session, the
@@ -292,11 +287,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **Tier 1, Tier 2, and Tier 3 pre-Phase-B audit fixes are all fully verified and
   complete** (the orphaned household-doc cleanup is a deliberate, documented deferral).
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
-- **B.3a is code-complete and pushed, but still needs a real-device visual check**
-  (open Accounts tab, confirm colored cards render, tap Add/Edit, confirm the color
-  swatch picker works and saves correctly) before it's marked fully done.
-- Once B.3a is confirmed on-device, next up is **B.3b — Accounts tab redesign:
-  stacked/fanned card view**, per the checkpoint table below:
+- **B.3a is complete and verified on-device.**
+- Next up is **B.3b — Accounts tab redesign: stacked/fanned card view**, per the
+  checkpoint table below:
 
   | Order | Item | Source |
   |---|---|---|
