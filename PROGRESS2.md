@@ -8,6 +8,7 @@ original 11 phases before that. Nothing from either file is repeated here.
 ✅ Done
 - **Pre-Phase-B code-health/security audit — COMPLETE (investigation only, zero code changed).** Full report-only pass via Antigravity across bugs, dead code, security rules, config, and feature-gap suggestions. Found 5 real bugs (2 high-priority: silent household data overwrite risk, and a solo password-change that silently breaks the Secret Recovery Key), 4 security findings (2 high-priority: a brute-forceable peer-recovery PIN doc that's never deleted, and a missing ownership check letting any user overwrite anyone's cloud backup), 4 unused-import/variable cleanup items, 5 leftover debug logs, and 3 config inconsistencies (app.json dark-mode setting, missing notifications plugin, a deprecated notification trigger format). `npx tsc --noEmit` clean. Full finding-by-finding detail in ⚠️ Known issues below. Triaged into 3 approval tiers.
 - **Tier 1 audit fixes — VERIFIED COMPLETE (all 4 items confirmed against real code, not just commit messages).** See ⚠️ Known issues below for full detail, including a regression that was caught during verification and fixed.
+- **Tier 2 audit fixes — VERIFIED COMPLETE (all 7 items confirmed against real code).** 6 of 7 turned out to already be implemented in the code (link-code hijacking protection, household update rule type checks, app.json fixes, modern notification trigger format, and the profile-creation username-stranding fix) but had never been deployed/committed as "done" — deployed via `firebase deploy --only firestore:rules` and confirmed live this session. The 1 real gap found (solo profile cloud backups failing silently) was fixed, reviewed, and pushed as commit `70431f9`. `npx tsc --noEmit` clean. See ⚠️ Known issues below for full detail.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -39,7 +40,7 @@ original 11 phases before that. Nothing from either file is repeated here.
   an unrelated routine commit. Verification is now standard practice, not a one-off.
 
 ⚠️ Known issues / gotchas
-- **Pre-Phase-B audit findings — TIER 1 FULLY VERIFIED & COMPLETE. Tiers 2 and 3 still open.**
+- **Pre-Phase-B audit findings — TIER 1 AND TIER 2 FULLY VERIFIED & COMPLETE. Tier 3 still open.**
 
   **TIER 1 — ✅ FIXED, DEPLOYED, AND INDEPENDENTLY VERIFIED against real code:**
   - **[Bug] No live sync for a shared household's financial data.** Fixed in `household.ts`/`DataContext.tsx` — `subscribeToHousehold` now delivers `data`/`updatedAt`, and `DataContext.tsx` tracks its own last-written payload (`lastEncryptedDataRef`) to tell its own writes apart from a household-mate's remote change. **Verified against live code** — real listener/ref code confirmed present and correct.
@@ -51,14 +52,14 @@ original 11 phases before that. Nothing from either file is repeated here.
 
   **Regression + fix (this session):** The Settings badge from `03df99b` was silently lost in the very next commit (`91df290`, an unrelated routine checkpoint) because `SettingsScreen.tsx` had unsaved changes open in a VS Code tab at commit time — exactly the failure mode PROGRESS1.md already warned about. Caught by independently re-verifying each Tier 1 claim against real code (via a dedicated Antigravity investigation prompt) rather than trusting the original "implemented & deployed" note at face value. Re-applied in commit `8821ff3`, reviewed, `npx tsc --noEmit` clean, pushed. A `git fatal: .git/index: index file smaller than expected` error appeared mid-session (likely from an interrupted git operation) — resolved by deleting and rebuilding the local index (`Remove-Item .git\index` + `git reset`); this only affects git's local staging bookkeeping, not commit history or file contents, and did not require any further action once resolved.
 
-  **TIER 2 — fix now, lower urgency (approve after Tier 1):**
-  - **[Bug] `saveModel`'s Firestore write isn't wrapped in try/catch.** If offline/network drops mid-save, the UI already shows the edit (local React state updated first) but it was never actually written to disk or Firestore — silently lost on app restart/lock.
-  - **[Bug] A failed `saveRecoveryKey()` during profile creation can strand a username as permanently "taken."** Firebase account + local profile already exist by that point; if recovery-key save fails, the person can't retry with the same username.
-  - **[Security] Any authenticated user can delete or overwrite another user's in-flight `linkCodes/{code}`** if they guess/iterate the 6-character code. Fix: record `hostUid` and require a match.
-  - **[Security] Household `update` rule lacks a type check** that `create` already has (`data is string`, `updatedAt is number`) — a buggy client could write a corrupted payload.
-  - **[Config] `app.json`'s `userInterfaceStyle` is set to `"light"`**, which can suppress the app's own dark-mode/device-theme listener in a real (non-Expo-Go) build. Should be `"automatic"`.
-  - **[Config] Missing `expo-notifications` config plugin in `app.json`** — needed for Android 13+ notification permissions in a standalone build.
-  - **[Config] Deprecated date-trigger format used in `pushNotifications.ts`** (`trigger: alertDate as any`) — should use the newer `{ type: SchedulableTriggerInputTypes.DATE, date: ... }` shape.
+  **TIER 2 — ✅ VERIFIED COMPLETE (all 7 items confirmed against real code, not just commit messages):**
+  - **[Bug] `saveModel`'s Firestore write is wrapped in try/catch for the household path** — confirmed, with a real `Alert.alert('Sync Failed', ...)` shown to the user if the write fails. **The solo (non-household) profile's cloud backup path was found to still be silently swallowing failures** (`.catch(() => {})` with no user alert) — this was the one genuine gap. Fixed this session: wrapped in `try`/`await`/`catch` with a new `'Backup Failed'` alert, scoped to just that one code path. Diff reviewed, `npx tsc --noEmit` clean (0 errors), committed as `70431f9`, pushed to `main`, `git status` confirmed clean.
+  - **[Bug] A failed `saveRecoveryKey()` during profile creation can strand a username as permanently "taken."** Verified already fixed — `CreateProfileScreen.tsx` wraps the recovery-key save in its own try/catch separate from the generic form error, and on failure shows an "Retry" / "Continue to App" alert rather than trapping the user on the form. The Firebase account and username are never lost.
+  - **[Security] Any authenticated user can delete or overwrite another user's in-flight `linkCodes/{code}`** — verified already fixed in code: `linking.ts` now records `hostUid` on creation for both the host-link and invite-link flows, and `firestore.rules` requires `hostUid == request.auth.uid` on `delete`, and prevents `hostUid` itself from being changed on `update`. **Was written but not yet deployed** — deployed this session via `firebase deploy --only firestore:rules` (confirmed via real "Deploy complete!" output and live Firebase console link).
+  - **[Security] Household `update` rule lacks a type check** that `create` already has — verified already fixed in code (`data is string`, `updatedAt is number` now present on both `create` and `update`). Same deployment gap as above — deployed and confirmed live this session.
+  - **[Config] `app.json`'s `userInterfaceStyle`** — verified already set to `"automatic"` (not `"light"`).
+  - **[Config] `expo-notifications` config plugin in `app.json`** — verified already present in the `plugins` array, with icon/color configured.
+  - **[Config] Deprecated date-trigger format used in `pushNotifications.ts`** — verified already using the modern `{ type: SchedulableTriggerInputTypes.DATE, date: ... }` shape for all scheduled bill notifications (the only remaining `as any` usage is in a manual 10-second test-notification helper, not real scheduling — low priority, folded into Tier 3 below).
 
   **TIER 3 — cleanup only (no functional risk):**
   - **[Bug, low] Cancelled/expired link codes leave an orphaned `households/{householdId}` doc behind** (1-member household nobody ever joined) — Firestore clutter, not a data-loss or security issue.
@@ -84,16 +85,14 @@ original 11 phases before that. Nothing from either file is repeated here.
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
-- **Tier 1 is fully verified and complete (see ⚠️ Known issues above).** Next up: approve and 
-  implement Tier 2 (3 bugs + 2 security findings + 3 config fixes), then Tier 3 
-  cleanup, each as its own scoped Antigravity approval round, per this project's 
-  established audit workflow (report first, approve in numbered batches, no broad 
-  "fix everything" authorization, and now — independently re-verify claimed fixes 
-  against real code before marking them done).
-- Once all 3 tiers are resolved and re-verified (`npx tsc --noEmit` clean, rules 
-  redeployed if changed): begin Phase B at B.1 (essential vs. additional feature
-  split — formal write-up) per the checkpoint table in PROGRESS1.md's ▶️ Next step 
-  section (item 6), copied below for convenience:
+- **Tier 1 and Tier 2 are both fully verified and complete (see ⚠️ Known issues above).** 
+  Next up: Tier 3 cleanup (4 unused imports/variables, 5 leftover debug logs, 1 orphaned-
+  household-doc low-priority bug, plus the leftover `as any` trigger in the manual test-
+  notification helper) — same investigate-then-approve Antigravity workflow, and continue 
+  independently re-verifying claimed fixes against real code before marking anything done.
+- Once Tier 3 is resolved and re-verified (`npx tsc --noEmit` clean): begin Phase B at B.1 
+  (essential vs. additional feature split — formal write-up) per the checkpoint table in 
+  PROGRESS1.md's ▶️ Next step section (item 6), copied below for convenience:
 
   | Order | Item | Source |
   |---|---|---|
@@ -125,6 +124,35 @@ original 11 phases before that. Nothing from either file is repeated here.
 Files in the repo (relevant to Phase B/C)
 - (Nothing yet — will be filled in as Phase B work begins.)
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+
+### Session entry — Tier 2 verified against real code; rules deployed; one real gap fixed
+**What happened:** Ran a dedicated Antigravity investigation prompt covering all 11 
+Tier 1 + Tier 2 items, checking each against real, current code rather than trusting 
+prior notes. All 4 Tier 1 items re-confirmed intact. Of the 7 Tier 2 items, 6 turned 
+out to already be implemented in the code (hostUid on linkCodes, household update rule 
+type checks, app.json userInterfaceStyle/notifications plugin, modern notification 
+trigger format, profile-creation username-stranding handling) but two security-rule 
+fixes had never actually been deployed to Firebase, and the code itself had silently 
+drifted ahead of what was live. The 1 genuine gap: solo (non-household) profile cloud 
+backups failed silently with no user-facing alert, unlike the household path which 
+already alerts on sync failure.
+
+**Result:** Had Antigravity (a) run `firebase deploy --only firestore:rules` directly, 
+confirmed via real "Deploy complete!" output and a live Firebase console link — the 
+linkCodes hostUid protection and household update type checks are now actually live, 
+not just written; and (b) propose a fix for the solo-backup silent-failure gap only, 
+without applying it. Reviewed the proposed diff (3 lines changed, correctly scoped, 
+mirrors the already-correct household-path pattern) and approved. Sent a follow-up 
+prompt authorizing apply + verify + commit + push. `npx tsc --noEmit` came back clean 
+(0 errors), the real git diff was reviewed and matched what was proposed exactly, 
+committed as `70431f9` ("Surface user-facing alert when solo profile cloud backup 
+fails in saveModel"), pushed to `main`, `git status` confirmed clean and up to date.
+
+**Design decision made this session:** No new decision — this session reinforced the 
+one made last session (independently re-verify "fix implemented" claims against real 
+code, never trust notes alone) and additionally surfaced that a fix being present *in 
+code* doesn't mean it's *live* — Firestore rules specifically need their own deploy 
+step, checked separately from code review.
 
 ### Session entry — Tier 1 audit fixes independently verified; one regression found & fixed
 **What happened:** Rather than trusting the prior session's "Tier 1 fixed & deployed" note 
