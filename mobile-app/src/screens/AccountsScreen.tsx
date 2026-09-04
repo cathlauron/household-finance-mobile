@@ -6,11 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Pressable,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   LayoutAnimation,
   UIManager,
@@ -21,6 +18,7 @@ import { useData } from '../DataContext';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+import BottomSheet from '../components/BottomSheet';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -295,76 +293,69 @@ export default function AccountsScreen() {
         })}
       </ScrollView>
 
-      <Modal visible={activeGroup !== null} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <Text style={styles.modalTitle}>
-                {editingId
-                  ? 'Edit account'
-                  : `New ${activeGroup ? GROUP_LABELS[activeGroup].toLowerCase() : ''} account`}
-              </Text>
+      <BottomSheet
+        visible={activeGroup !== null}
+        onClose={closeModal}
+        title={
+          editingId
+            ? 'Edit account'
+            : `New ${activeGroup ? GROUP_LABELS[activeGroup].toLowerCase() : ''} account`
+        }
+      >
+        <Text style={styles.inputLabel}>Account name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. GCash, BPI Savings"
+          placeholderTextColor={colors.inkFaint}
+          value={nameInput}
+          onChangeText={setNameInput}
+        />
 
-              <Text style={styles.inputLabel}>Account name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. GCash, BPI Savings"
-                placeholderTextColor={colors.inkFaint}
-                value={nameInput}
-                onChangeText={setNameInput}
-              />
+        <Text style={styles.inputLabel}>Balance</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="0.00"
+          placeholderTextColor={colors.inkFaint}
+          keyboardType="decimal-pad"
+          value={amountInput}
+          onChangeText={setAmountInput}
+        />
 
-              <Text style={styles.inputLabel}>Balance</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0.00"
-                placeholderTextColor={colors.inkFaint}
-                keyboardType="decimal-pad"
-                value={amountInput}
-                onChangeText={setAmountInput}
-              />
+        <Text style={styles.inputLabel}>Card color</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.swatchRow}
+        >
+          {COLOR_PALETTE.map((c) => (
+            <TouchableOpacity
+              key={c}
+              style={[
+                styles.swatch,
+                { backgroundColor: c },
+                colorInput === c && styles.swatchActive,
+              ]}
+              onPress={() => setColorInput(c)}
+            />
+          ))}
+        </ScrollView>
 
-              <Text style={styles.inputLabel}>Card color</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.swatchRow}
-              >
-                {COLOR_PALETTE.map((c) => (
-                  <TouchableOpacity
-                    key={c}
-                    style={[
-                      styles.swatch,
-                      { backgroundColor: c },
-                      colorInput === c && styles.swatchActive,
-                    ]}
-                    onPress={() => setColorInput(c)}
-                  />
-                ))}
-              </ScrollView>
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-              {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
 
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
+        {editingId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Remove this account</Text>
+          </TouchableOpacity>
+        )}
 
-              {editingId && (
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                  <Text style={styles.deleteButtonText}>Remove this account</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -484,30 +475,6 @@ function makeStyles(colors: any) {
       fontSize: 13,
       fontWeight: '600',
       color: colors.gold,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: {
-      width: '100%',
-      alignItems: 'center',
-    },
-    modalCard: {
-      width: '100%',
-      maxWidth: 360,
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.ink,
-      marginBottom: 16,
     },
     inputLabel: {
       fontSize: 11,
