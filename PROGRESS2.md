@@ -188,6 +188,35 @@ original 11 phases before that. Nothing from either file is repeated here.
   peeking card brings it to front; tapping the front card again opens edit; Collapse
   chip works; Cards/List toggle switches views correctly; single-account sections
   display normally without stacking.
+- **B.3c — Accounts tab redesign: "Add account" as a bottom sheet — COMPLETE, VERIFIED
+  ON DEVICE.** Converted the Add/Edit account flow from a centered popup modal into a
+  slide-up bottom sheet. Built as a genuinely reusable new component,
+  `src/components/BottomSheet.tsx` (props: `visible`, `onClose`, `title`, `children`),
+  specifically so upcoming checkpoint B.4a (rolling the same pattern out to Bills,
+  Debts, Transactions, and other essential screens) can reuse it without rebuilding
+  sheet boilerplate each time — confirmed via investigation that no bottom sheet
+  component existed anywhere in the app before this checkpoint, and every other screen
+  still uses the old centered-modal pattern pending B.4a. Uses React Native's built-in
+  `Modal` with `animationType="slide"` only — no new dependencies (`@gorhom/bottom-sheet`,
+  `react-native-reanimated`, `react-native-gesture-handler` were all confirmed absent
+  from `package.json` and deliberately not added). Sheet has rounded top corners only,
+  a centered drag-handle pill, a dimmed tap-to-close backdrop, safe-area bottom padding
+  (via `SafeAreaView`) so buttons clear the home indicator on notched/edge-to-edge
+  devices, and an internal scrollable area capped at ~85% of screen height with
+  `KeyboardAvoidingView` so the keyboard doesn't cover inputs or buttons. The Add/Edit
+  form itself was not touched at all — `nameInput`, `amountInput`, `colorInput`,
+  `handleSave`, `handleDelete`, `closeModal`, the color swatch picker, and validation
+  are all identical to before; this checkpoint changed only the container/presentation.
+  Removed the now-unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle`
+  styles from `AccountsScreen.tsx` after confirming nothing else in the file referenced
+  them. `npx tsc --noEmit` clean (0 errors), diff reviewed line-by-line before approval,
+  hand-pasted per standing small-fix policy. Manually verified on-device: sheet slides
+  up from the bottom with drag handle and rounded corners visible; tapping the backdrop
+  closes it; keyboard doesn't cover the Name/Balance fields; color swatch picker still
+  works; Save, Delete, and Cancel all behave the same as before.
+- **B.3 — Accounts tab redesign (B.3a + B.3b + B.3c) — FULLY COMPLETE.** All three
+  Apple Wallet-inspired sub-checkpoints (colored cards, stacked/fanned view, bottom
+  sheet add/edit) are done and verified on-device.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -325,9 +354,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **Tier 1, Tier 2, and Tier 3 pre-Phase-B audit fixes are all fully verified and
   complete** (the orphaned household-doc cleanup is a deliberate, documented deferral).
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
-- **B.3a and B.3b are both complete and verified on-device.**
-- Next up is **B.3c — Accounts tab redesign: "Add account" as a bottom sheet**, per
-  the checkpoint table below:
+- **B.3 (B.3a + B.3b + B.3c) — Accounts tab redesign — is fully complete and verified
+  on-device.**
+- Next up is **B.4a — Convert essential-screen add/edit flows to bottom sheets, one
+  screen at a time**, reusing the new `src/components/BottomSheet.tsx` built in B.3c,
+  per the checkpoint table below:
 
   | Order | Item | Source |
   |---|---|---|
@@ -338,8 +369,8 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.2c | Standalone Profile screen, split out of Settings | Standard-screens gap-check |
   | ✅ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
   | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
-  | ▶️ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
-  | B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time | Cards + bottom sheets pattern |
+  | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
+  | ▶️ B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time | Cards + bottom sheets pattern |
   | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
@@ -427,6 +458,16 @@ Files in the repo (relevant to Phase B/C)
 - `mobile-app/src/components/AccountCard.tsx` — modified (B.3b). Added `isStacked` and
   `isExpanded` props; expanded cards get a white border highlight, deeper shadow, and a
   "Tap to edit" hint badge next to the group icon.
+- `mobile-app/src/components/BottomSheet.tsx` — new (B.3c). Reusable bottom sheet
+  component built on React Native's built-in `Modal` (`animationType="slide"`, no new
+  dependencies). Props: `visible`, `onClose`, `title`, `children`, `testID`. Rounded top
+  corners, drag-handle pill, tap-to-close backdrop, safe-area bottom padding, internal
+  scrollable content capped at ~85% screen height with keyboard avoidance. Intended for
+  reuse across every essential-screen add/edit flow in B.4a.
+- `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.3c). Add/Edit account now
+  renders inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/state
+  unchanged. Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle`
+  styles.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
