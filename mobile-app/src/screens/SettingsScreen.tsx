@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import BottomSheet from '../components/BottomSheet';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
@@ -1112,170 +1113,152 @@ export default function SettingsScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>{editingId ? 'Edit category' : 'New category'}</Text>
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit category' : 'New category'}
+      >
+        <Text style={styles.inputLabel}>Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Groceries, Utilities"
+          placeholderTextColor={colors.inkFaint}
+          value={nameInput}
+          onChangeText={setNameInput}
+        />
 
-            <Text style={styles.inputLabel}>Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Groceries, Utilities"
-              placeholderTextColor={colors.inkFaint}
-              value={nameInput}
-              onChangeText={setNameInput}
+        <Text style={styles.inputLabel}>Color</Text>
+        <View style={styles.swatchRow}>
+          {COLOR_PALETTE.map((c) => (
+            <TouchableOpacity
+              key={c}
+              style={[
+                styles.swatch,
+                { backgroundColor: c },
+                colorInput === c && styles.swatchActive,
+              ]}
+              onPress={() => setColorInput(c)}
             />
+          ))}
+        </View>
 
-            <Text style={styles.inputLabel}>Color</Text>
-            <View style={styles.swatchRow}>
-              {COLOR_PALETTE.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  style={[
-                    styles.swatch,
-                    { backgroundColor: c },
-                    colorInput === c && styles.swatchActive,
-                  ]}
-                  onPress={() => setColorInput(c)}
-                />
-              ))}
-            </View>
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-            {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
+        {editingId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Delete this category</Text>
+          </TouchableOpacity>
+        )}
 
-            {editingId && (
-              <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                <Text style={styles.deleteButtonText}>Delete this category</Text>
-              </TouchableOpacity>
-            )}
+        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
 
-            <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Modal
+      <BottomSheet
         visible={payeeModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closePayeeModal}
+        onClose={closePayeeModal}
+        title={editingPayeeId ? 'Edit payee' : 'New payee'}
       >
-        <Pressable style={styles.modalOverlay} onPress={closePayeeModal}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>
-              {editingPayeeId ? 'Edit payee' : 'New payee'}
-            </Text>
+        <Text style={styles.inputLabel}>Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. SM Supermarket, Meralco"
+          placeholderTextColor={colors.inkFaint}
+          value={payeeNameInput}
+          onChangeText={setPayeeNameInput}
+        />
 
-            <Text style={styles.inputLabel}>Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. SM Supermarket, Meralco"
-              placeholderTextColor={colors.inkFaint}
-              value={payeeNameInput}
-              onChangeText={setPayeeNameInput}
-            />
+        <Text style={styles.inputLabel}>Default category (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Groceries, Utilities"
+          placeholderTextColor={colors.inkFaint}
+          value={payeeCategoryInput}
+          onChangeText={setPayeeCategoryInput}
+        />
 
-            <Text style={styles.inputLabel}>Default category (optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Groceries, Utilities"
-              placeholderTextColor={colors.inkFaint}
-              value={payeeCategoryInput}
-              onChangeText={setPayeeCategoryInput}
-            />
+        {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
 
-            {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
+        <TouchableOpacity style={styles.saveButton} onPress={handleSavePayee}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity style={styles.saveButton} onPress={handleSavePayee}>
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
+        {editingPayeeId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePayee}>
+            <Text style={styles.deleteButtonText}>Delete this payee</Text>
+          </TouchableOpacity>
+        )}
 
-            {editingPayeeId && (
-              <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePayee}>
-                <Text style={styles.deleteButtonText}>Delete this payee</Text>
-              </TouchableOpacity>
-            )}
+        <TouchableOpacity style={styles.cancelButton} onPress={closePayeeModal}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
 
-            <TouchableOpacity style={styles.cancelButton} onPress={closePayeeModal}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Modal
+      <BottomSheet
         visible={ruleModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeRuleModal}
+        onClose={closeRuleModal}
+        title={editingRuleId ? 'Edit rule' : 'New rule'}
       >
-        <Pressable style={styles.modalOverlay} onPress={closeRuleModal}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>{editingRuleId ? 'Edit rule' : 'New rule'}</Text>
+        <Text style={styles.inputLabel}>If the label contains</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. jollibee, meralco, grab"
+          placeholderTextColor={colors.inkFaint}
+          value={ruleContainsInput}
+          onChangeText={setRuleContainsInput}
+          autoCapitalize="none"
+        />
 
-            <Text style={styles.inputLabel}>If the label contains</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. jollibee, meralco, grab"
-              placeholderTextColor={colors.inkFaint}
-              value={ruleContainsInput}
-              onChangeText={setRuleContainsInput}
-              autoCapitalize="none"
-            />
+        <Text style={styles.inputLabel}>Minimum amount (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="No minimum"
+          placeholderTextColor={colors.inkFaint}
+          keyboardType="decimal-pad"
+          value={ruleMinInput}
+          onChangeText={setRuleMinInput}
+        />
 
-            <Text style={styles.inputLabel}>Minimum amount (optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="No minimum"
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
-              value={ruleMinInput}
-              onChangeText={setRuleMinInput}
-            />
+        <Text style={styles.inputLabel}>Maximum amount (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="No maximum"
+          placeholderTextColor={colors.inkFaint}
+          keyboardType="decimal-pad"
+          value={ruleMaxInput}
+          onChangeText={setRuleMaxInput}
+        />
 
-            <Text style={styles.inputLabel}>Maximum amount (optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="No maximum"
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
-              value={ruleMaxInput}
-              onChangeText={setRuleMaxInput}
-            />
+        <Text style={styles.inputLabel}>Set category to</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Groceries, Utilities"
+          placeholderTextColor={colors.inkFaint}
+          value={ruleCategoryInput}
+          onChangeText={setRuleCategoryInput}
+        />
 
-            <Text style={styles.inputLabel}>Set category to</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Groceries, Utilities"
-              placeholderTextColor={colors.inkFaint}
-              value={ruleCategoryInput}
-              onChangeText={setRuleCategoryInput}
-            />
+        {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
 
-            {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
+        <TouchableOpacity style={styles.saveButton} onPress={handleSaveRule}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveRule}>
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
+        {editingRuleId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteRule}>
+            <Text style={styles.deleteButtonText}>Delete this rule</Text>
+          </TouchableOpacity>
+        )}
 
-            {editingRuleId && (
-              <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteRule}>
-                <Text style={styles.deleteButtonText}>Delete this rule</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={styles.cancelButton} onPress={closeRuleModal}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        <TouchableOpacity style={styles.cancelButton} onPress={closeRuleModal}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
 
 
       {/* Retroactive Recovery Key Modal */}

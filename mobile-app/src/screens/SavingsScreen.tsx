@@ -6,13 +6,10 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Pressable,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -566,17 +563,12 @@ export default function SavingsScreen() {
         </ScrollView>
       )}
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit goal' : 'New goal'}</Text>
-
-                <Text style={styles.inputLabel}>Goal name</Text>
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit goal' : 'New goal'}
+      >
+        <Text style={styles.inputLabel}>Goal name</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Emergency fund, New laptop"
@@ -649,14 +641,10 @@ export default function SavingsScreen() {
                   </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -761,23 +749,6 @@ function makeStyles(colors: any) {
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '85%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 360,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
     contribRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     contribDateInput: { flex: 1.3 },
     contribAmountInput: { flex: 1 },
