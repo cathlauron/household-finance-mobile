@@ -123,6 +123,10 @@ export async function startHouseholdLink(
 
   // Host creates the shared household document first, recording the host as owner
   // and ensuring compliance with Firestore security rules (owner == request.auth.uid).
+  const currentUser = getCurrentFirebaseUser();
+  if (!currentUser) throw new Error('You must be signed in to link.');
+  const hostUid = currentUser.uid;
+
   const householdId = await generateHouseholdId();
   await createHouseholdData(householdId, encryptedHostData, username);
 
@@ -132,6 +136,7 @@ export async function startHouseholdLink(
     encryptedHostData,
     hostUsername: username,
     existingHouseholdId: householdId,
+    hostUid,
     createdAt: serverTimestamp(),
   });
 
@@ -166,6 +171,10 @@ export async function startHouseholdInvite(
     }
   } catch (e) {}
 
+  const currentUser = getCurrentFirebaseUser();
+  if (!currentUser) throw new Error('You must be signed in to invite.');
+  const hostUid = currentUser.uid;
+
   const code = await generateLinkCode();
   const secretHex = householdKey.toString(CryptoJS.enc.Hex);
   const codeSalt = await generateSalt();
@@ -180,6 +189,7 @@ export async function startHouseholdInvite(
     hostUsername,
     existingHouseholdId: householdId,
     isInvite: true,
+    hostUid,
     createdAt: serverTimestamp(),
   });
 

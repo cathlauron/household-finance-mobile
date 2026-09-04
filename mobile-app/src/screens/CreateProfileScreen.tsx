@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, Alert } from 'react-native';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { generateSalt, deriveKey, encryptJSON } from '../encryption';
@@ -98,7 +98,36 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
       // Generate and upload the Secret Recovery Key for this account
       const code = await generateRecoveryCode();
-      await saveRecoveryKey(username, key, false, code);
+      try {
+        await saveRecoveryKey(username, key, false, code);
+      } catch (recovErr) {
+        // Profile & auth succeeded; only the recovery key cloud save failed
+        setCreatedInfo({ username, key });
+        setRecoveryCode(code);
+        setBusy(false);
+        Alert.alert(
+          'Recovery Key Setup Incomplete',
+          'Your profile was created, but we could not save your Secret Recovery Key to the cloud due to a connection issue. You can retry now, or generate one later in Settings > Security.',
+          [
+            {
+              text: 'Retry',
+              onPress: async () => {
+                setBusy(true);
+                try {
+                  await saveRecoveryKey(username, key, false, code);
+                  Alert.alert('Saved', 'Secret Recovery Key saved successfully.');
+                } catch {
+                  Alert.alert('Still Offline', 'Could not save to the cloud. You can generate a new key anytime in Settings > Security.');
+                } finally {
+                  setBusy(false);
+                }
+              },
+            },
+            { text: 'Continue to App', style: 'cancel' },
+          ]
+        );
+        return;
+      }
 
       setCreatedInfo({ username, key });
       setRecoveryCode(code);

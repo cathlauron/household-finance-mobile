@@ -10,20 +10,34 @@ service cloud.firestore {
       allow get: if request.auth != null
         && request.time < resource.data.createdAt + duration.value(15, 'm');
 
-      allow write: if request.auth != null &&
-        (
-          (request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername'])
-            && request.resource.data.codeSalt is string
-            && request.resource.data.encryptedSecret is string
-            && request.resource.data.encryptedHostData is string
-            && request.resource.data.hostUsername is string)
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid'])
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.hostUid is string
+        && request.resource.data.codeSalt is string
+        && request.resource.data.encryptedSecret is string
+        && request.resource.data.encryptedHostData is string
+        && request.resource.data.hostUsername is string;
+
+      allow update: if request.auth != null
+        && request.resource.data.hostUid == resource.data.hostUid
+        && (
+          // Host updating their own code
+          request.auth.uid == resource.data.hostUid
           ||
-          (request.resource.data.finished == true
+          // Joiner announcing their username (Checkpoint 9.2d)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinerUsername'])
+            && request.resource.data.joinerUsername is string)
+          ||
+          // Joiner completing the link (Checkpoint 9.2c)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['finished', 'householdId'])
+            && request.resource.data.finished == true
             && request.resource.data.householdId is string)
         );
 
-      // Codes can be deleted once finished, or when cancelled/superseded by a new code
-      allow delete: if request.auth != null;
+      // Only the host who created the code can delete or cancel it
+      allow delete: if request.auth != null
+        && resource.data.hostUid == request.auth.uid;
 
       allow list: if false;
     }
@@ -52,7 +66,9 @@ service cloud.firestore {
       // sneak a membership change through alongside a data edit.
       allow update: if request.auth != null
         && request.auth.uid in resource.data.members
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt'])
+        && request.resource.data.data is string
+        && request.resource.data.updatedAt is number;
       // Lets someone who isn't a member yet join by adding their own uid to
       // the members list — this is what addMemberToHousehold() does when the
       // host finishes linking into a household the joiner already created.

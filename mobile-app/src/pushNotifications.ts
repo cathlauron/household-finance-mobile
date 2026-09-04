@@ -17,6 +17,7 @@
 // ============================================================
 
 import * as Notifications from 'expo-notifications';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { HouseholdModel, Bill } from './types';
 import { getNextDueDate } from './recurrence';
@@ -94,7 +95,10 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
         title: `${bill.name || 'A bill'} is due soon`,
         body: `Due ${nextDue.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`,
       },
-      trigger: alertDate as any,
+      trigger: {
+        type: SchedulableTriggerInputTypes.DATE,
+        date: alertDate,
+      },
     });
   }
 }

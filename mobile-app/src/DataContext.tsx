@@ -17,6 +17,7 @@
 import { getCurrentFirebaseUser } from './authFirebase';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useRef, useState, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel } from './types';
 import { defaultModel } from './defaultModel';
@@ -393,15 +394,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (householdIdRef.current && householdKeyRef.current) {
       // Linked profile: save to the shared household document
       const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
-      lastEncryptedDataRef.current = encrypted;
-      await saveHouseholdData(householdIdRef.current, encrypted);
-      rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
-      // Continuous local snapshotting: keep an up-to-date personal copy in local storage
+      // Continuous local snapshotting: keep an up-to-date personal copy in local storage first
       const key = keyRef.current;
       if (key) {
         saveEncryptedProfileData(username, await encryptJSON(key, sanitizedModel)).catch(() => {});
       }
+
+      try {
+        await saveHouseholdData(householdIdRef.current, encrypted);
+        lastEncryptedDataRef.current = encrypted;
+      } catch (err) {
+        Alert.alert(
+          'Sync Failed',
+          'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
+        );
+      }
+
+      rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
       if (saltRef.current) {
         saveProfileCloudBackup(username, {
