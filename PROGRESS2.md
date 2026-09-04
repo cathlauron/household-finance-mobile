@@ -243,6 +243,26 @@ original 11 phases before that. Nothing from either file is repeated here.
   verified on-device: sheet slides up correctly; all fields work (name, category,
   amount, recurrence pills + conditional date fields, priority pills, payment method
   picker, notes); form scrolls smoothly; Save/Delete/Cancel all work as before.
+- **B.4a (Debts) — Convert Add/Edit Debt to a bottom sheet — COMPLETE, VERIFIED ON
+  DEVICE.** Second screen converted, following the exact same pattern established by
+  Bills. Confirmed only one modal existed in `DebtsScreen.tsx` with no secondary
+  dialogs. Swapped the centered `Modal`/`Pressable`/`KeyboardAvoidingView`/`ScrollView`
+  wrapper for `<BottomSheet />`; all form state, handlers, and validation
+  (`creditorInput`, `categoryInput`, `amountInput`, `recurTypeInput`,
+  `onetimeDateInput`, `dayInput`, `monthInput`, `interestRateInput`,
+  `minPaymentInput`, `feesPortionInput`, `paymentMethodInput`, `notesInput`,
+  `errorMsg`, `handleSave`, `handleDelete`) left completely untouched. Removed the
+  now-unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+  This form has 10+ fields (the most complex converted so far after Bills) and was
+  confirmed to exceed `BottomSheet`'s 85%-screen-height cap on typical phones —
+  unlike Bills, which mostly fit without scrolling, Debts genuinely relies on the
+  sheet's internal scroll to reach Save/Delete/Cancel, and this was flagged and
+  verified rather than assumed. `npx tsc --noEmit` clean (0 errors), diff reviewed
+  line-by-line before approval, hand-pasted per standing small-fix policy, committed
+  as "feat(debts): B.4a convert Add/Edit Debt to bottom sheet", pushed to `main`.
+  Manually verified on-device: sheet slides up correctly; all fields work including
+  interest rate, minimum payment, and fees portion; form scrolls smoothly all the way
+  to Save/Delete/Cancel with nothing cut off; Save/Delete/Cancel all work as before.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -382,13 +402,13 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
 - **B.3 (B.3a + B.3b + B.3c) — Accounts tab redesign — is fully complete and verified
   on-device.**
-- **B.4a is in progress.** Bills is done and verified on-device (see ✅ Done above).
-  Remaining screens still to convert, in planned order: **Debts** (next — same
-  To-Pay-tab pattern as Bills), then Loans, Transactions, Income, Savings, and the
+- **B.4a is in progress.** Bills and Debts are both done and verified on-device (see
+  ✅ Done above). Remaining screens still to convert, in planned order: **Loans**
+  (next — completes the To-Pay-tab trio), then Transactions, Income, Savings, and the
   three small Settings modals (Category, Payee, Rule). Calendar and Home/Dashboard
   need no conversion (no add/edit modals exist there).
-- Checkpoint table below (B.4a shown as in-progress, not yet checked off since Debts/
-  Loans/Transactions/Income/Savings/Settings modals remain):
+- Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
+  Transactions/Income/Savings/Settings modals remain):
 
   | Order | Item | Source |
   |---|---|---|
@@ -400,7 +420,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
   | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
-  | 🔧 B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time (Bills done; Debts next) | Cards + bottom sheets pattern |
+  | 🔧 B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time (Bills, Debts done; Loans next) | Cards + bottom sheets pattern |
   | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
@@ -499,6 +519,9 @@ Files in the repo (relevant to Phase B/C)
   unchanged. Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle`
   styles.
 - `mobile-app/src/screens/BillsScreen.tsx` — modified (B.4a). Add/Edit Bill now renders
+  inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/state unchanged.
+  Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+- `mobile-app/src/screens/DebtsScreen.tsx` — modified (B.4a). Add/Edit Debt now renders
   inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/state unchanged.
   Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
