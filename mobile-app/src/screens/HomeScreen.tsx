@@ -6,11 +6,10 @@ import { useTheme } from '../ThemeContext';
 
 type Props = {
   username: string;
-  onSignOut: () => void;
   onLock: () => void;
 };
 
-export default function HomeScreen({ username, onSignOut, onLock }: Props) {
+export default function HomeScreen({ username, onLock }: Props) {
   const { colors } = useTheme();
   const [showSetPin, setShowSetPin] = useState(false);
   const [pinIsSet, setPinIsSet] = useState(false);
@@ -51,18 +50,12 @@ export default function HomeScreen({ username, onSignOut, onLock }: Props) {
       </TouchableOpacity>
 
       <TouchableOpacity
-        testID={pinIsSet ? 'lock-button' : 'sign-out-button'}
+        testID="lock-button"
         style={[styles.lockBtn, { backgroundColor: colors.navy1 }]}
-        onPress={pinIsSet ? onLock : onSignOut}
+        onPress={onLock}
       >
-        <Text style={[styles.lockBtnText, { color: colors.ink }]}>{pinIsSet ? 'Lock' : 'Sign out'}</Text>
+        <Text style={[styles.lockBtnText, { color: colors.ink }]}>Lock</Text>
       </TouchableOpacity>
-
-      {pinIsSet && (
-        <TouchableOpacity testID="sign-out-button" style={styles.signOutBtn} onPress={onSignOut}>
-          <Text style={[styles.signOutText, { color: colors.inkDim }]}>Sign out completely</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -75,6 +68,4 @@ const styles = StyleSheet.create({
   pinBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   lockBtn: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 6 },
   lockBtnText: { fontWeight: '600', fontSize: 14 },
-  signOutBtn: { paddingVertical: 12, paddingHorizontal: 20 },
-  signOutText: { fontSize: 13 },
 });

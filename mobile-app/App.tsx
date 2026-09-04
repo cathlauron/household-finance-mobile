@@ -8,7 +8,7 @@ import SignInScreen from './src/screens/SignInScreen';
 import PinUnlockScreen from './src/screens/PinUnlockScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
-import MainTabs from './src/navigation/MainTabs';
+import RootStack from './src/navigation/RootStack';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
 import { getBiometricState } from './src/biometrics';
@@ -112,13 +112,10 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
-  async function lockIfPinIsSetUp() {
   async function lockIfConfigured() {
     if (isAutoLockSuppressed()) return;
     const username = usernameRef.current;
     if (screenRef.current !== 'home' || !username) return;
-    const pinIsSetUp = await hasPinSetUp(username);
-    if (pinIsSetUp) {
     const [pinIsSetUp, biometricState] = await Promise.all([
       hasPinSetUp(username),
       getBiometricState(username),
@@ -140,7 +137,6 @@ function AppContent() {
     if (screenRef.current !== 'home') return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
-      lockIfPinIsSetUp();
       lockIfConfigured();
     }, timeoutMs);
   }
@@ -148,7 +144,6 @@ function AppContent() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
-        lockIfPinIsSetUp();
         lockIfConfigured();
       }
       if (nextState === 'active') {
@@ -217,7 +212,7 @@ function AppContent() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.navy2 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
         <NavigationContainer>
-          <MainTabs
+          <RootStack
             username={currentUsername}
             onSignOut={handleFullSignOut}
             onLock={() => setScreen('locked')}

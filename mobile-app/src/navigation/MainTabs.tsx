@@ -15,7 +15,7 @@ const Tab = createBottomTabNavigator();
 type MainTabsProps = {
   username: string;
   onLock: () => void;
-  onSignOut: () => void;
+  onSignOut?: () => void;
 };
 export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps) {
   const { colors } = useTheme();
@@ -33,7 +33,7 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       }}
     >
       <Tab.Screen name="Home" options={{ tabBarButtonTestID: 'home-tab' }}>
-        {() => <HomeScreen username={username} onLock={onLock} onSignOut={onSignOut} />}
+        {() => <HomeScreen username={username} onLock={onLock} />}
       </Tab.Screen>
       <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Accounts" component={AccountsScreen} />

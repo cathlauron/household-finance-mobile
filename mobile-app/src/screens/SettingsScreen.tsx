@@ -19,6 +19,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
+import { useNavigation } from '@react-navigation/native';
 import {
   startHouseholdLink,
   startHouseholdInvite,
@@ -53,6 +54,7 @@ import {
   hasRecoveryKeySetUp,
   type PeerRecoveryRequestDoc,
 } from '../recovery';
+import { getInitials } from './ProfileScreen';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -126,6 +128,7 @@ function summarizeModel(m: HouseholdModel): string {
 
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
+  const navigation = useNavigation<any>();
   const {
     model,
     saveModel,
@@ -1172,6 +1175,26 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionTitle}>Appearance</Text>
+        {/* Profile Card */}
+        <TouchableOpacity
+          testID="profile-card"
+          style={styles.profileCard}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <View style={styles.profileAvatarCircle}>
+            <Text style={styles.profileAvatarText}>{getInitials(username || '')}</Text>
+          </View>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.profileUsernameText}>@{username || 'user'}</Text>
+            <Text style={styles.profileVaultText}>
+              {isLinked ? 'Shared Household Vault' : 'Solo Vault (Personal)'}
+            </Text>
+          </View>
+          <Text style={styles.profileChevron}>›</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
         <Text style={styles.sectionSub}>
           Choose how the app looks — Light, Dark, or match your phone's own setting.
         </Text>
@@ -2415,6 +2438,49 @@ function makeStyles(colors: any) {
     container: { flex: 1, backgroundColor: colors.navy2 },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
+    profileCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.navy4,
+    },
+    profileAvatarCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.navy2,
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    profileAvatarText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.gold,
+    },
+    profileUsernameText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.ink,
+      marginBottom: 2,
+    },
+    profileVaultText: {
+      fontSize: 12,
+      color: colors.gold,
+      fontWeight: '500',
+    },
+    profileChevron: {
+      fontSize: 22,
+      color: colors.inkDim,
+      fontWeight: '600',
+    },
     sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 4 },
     sectionSub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 17 },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
