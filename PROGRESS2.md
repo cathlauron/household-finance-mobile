@@ -34,13 +34,20 @@ original 11 phases before that. Nothing from either file is repeated here.
     this prevents); report-only-first workflow for any full-codebase audit.
 
 ⚠️ Known issues / gotchas
-- **Pre-Phase-B audit findings (this session) — none fixed yet, triaged into 3 tiers:**
+- **Pre-Phase-B audit findings — TIER 1 FIXED & DEPLOYED (see session entry below). Tiers 2 and 3 still open.**
 
-  **TIER 1 — fix now (security/data-loss risk):**
+  **TIER 1 — ✅ FIXED (2026-XX-XX, commit 03df99b, firestore.rules deployed):**
   - **[Bug] No live sync for a shared household's financial data.** `subscribeToHousehold`/`setupHouseholdListener` only watch `members`/`owner`/`memberUsernames` — never the encrypted `data` field itself. If Member A adds a bill, Member B's app doesn't see it live; if Member B then saves anything, their stale in-memory model overwrites Member A's edit in Firestore. Fix: also deliver `data`/`updatedAt` through the listener and merge/reload when the household's data changed elsewhere.
   - **[Bug] Solo password change silently breaks the Secret Recovery Key.** `changePassword()` re-encrypts personal data under a new key but never re-wraps `recoveryKeys/{username}` in Firestore. If the person later forgets their new password and tries the Secret Recovery Key, it unwraps the OLD key and fails — permanent lockout with no clear reason why. Fix: prompt to regenerate the recovery key on password change, or flag it stale in Settings.
   - **[Security] Peer-recovery's ephemeral transfer document is never deleted.** Once household peer recovery succeeds, `householdRecovery/{requestId}` (containing the household key encrypted under a 6-digit numeric PIN — only 1,000,000 possible combinations) stays in Firestore indefinitely, readable/brute-forceable by any household member. Fix: delete the doc immediately after successful decryption in `SignInScreen.tsx`.
   - **[Security] `profileBackups/{username}` has no ownership check on writes.** Any authenticated user can overwrite ANY username's cloud backup salt/data — corrupting a different person's account so their next new-device sign-in fails. Fix: add an `ownerUid` field, enforced on create and update.
+
+  **How each Tier 1 item was fixed:**
+  - Live sync: `subscribeToHousehold` in `household.ts` now also delivers `data`/`updatedAt`. `DataContext.tsx` tracks the last encrypted payload it wrote itself (`lastEncryptedDataRef`) so it can tell its own writes apart from a household-mate's remote change, and only reloads/redecrypts on genuine remote updates.
+  - Stale recovery key: `changePassword()` in `DataContext.tsx` now deletes the old `recoveryKeys/{username}` doc (via new `deleteRecoveryKey()` in `recovery.ts`) on a solo password change, since it can't be re-wrapped without the original recovery code. Settings > Security now shows a "Needs regenerating" / "Active" badge (via new `hasRecoveryKeySetUp()` check) so the person knows to make a fresh one.
+  - Peer-recovery PIN doc: `SignInScreen.tsx` now calls new `deletePeerRecoveryRequest()` immediately after a successful transfer, removing the brute-forceable 6-digit-PIN-wrapped doc from Firestore.
+  - `profileBackups` ownership: `cloudBackup.ts` now stamps `ownerUid` on every save; `firestore.rules` requires `ownerUid == request.auth.uid` on create/update/delete. **Deployed** via `firebase deploy --only firestore:rules` — confirmed live in the Firebase console.
+  - Reviewed and approved via Antigravity investigate-then-approve workflow; verified with `npx tsc --noEmit` (clean) both before and after; committed as `03df99b`, pushed to `main`.
 
   **TIER 2 — fix now, lower urgency (approve after Tier 1):**
   - **[Bug] `saveModel`'s Firestore write isn't wrapped in try/catch.** If offline/network drops mid-save, the UI already shows the edit (local React state updated first) but it was never actually written to disk or Firestore — silently lost on app restart/lock.
@@ -70,11 +77,11 @@ original 11 phases before that. Nothing from either file is repeated here.
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
-- **Audit is done and triaged (see ⚠️ Known issues above) — nothing fixed yet.** 
-  Approve and implement Tier 1 first (the 2 bugs + 2 security findings), then Tier 2, 
-  then Tier 3 cleanup, each as its own scoped Antigravity approval round, per this 
-  project's established audit workflow (report first, approve in numbered batches, 
-  no broad "fix everything" authorization).
+- **Tier 1 is done and deployed (see ⚠️ Known issues above).** Next up: approve and 
+  implement Tier 2 (3 bugs + 2 security findings + 3 config fixes), then Tier 3 
+  cleanup, each as its own scoped Antigravity approval round, per this project's 
+  established audit workflow (report first, approve in numbered batches, no broad 
+  "fix everything" authorization).
 - Once all 3 tiers are resolved and re-verified (`npx tsc --noEmit` clean, rules 
   redeployed if changed): begin Phase B at B.1 (essential vs. additional feature
   split — formal write-up) per the checkpoint table in PROGRESS1.md's ▶️ Next step 
@@ -110,3 +117,24 @@ original 11 phases before that. Nothing from either file is repeated here.
 Files in the repo (relevant to Phase B/C)
 - (Nothing yet — will be filled in as Phase B work begins.)
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+
+### Session entry — Tier 1 audit fixes implemented & deployed
+**What happened:** Reviewed the 4 Tier 1 findings from the pre-Phase-B audit (household 
+live-sync gap, solo-password-change breaking the recovery key, undeleted peer-recovery 
+PIN doc, missing ownership check on `profileBackups`). Antigravity proposed diffs for 
+all 4 files touched (`household.ts`, `DataContext.tsx`, `recovery.ts`, 
+`SettingsScreen.tsx`, `SignInScreen.tsx`, `cloudBackup.ts`) plus the `firestore.rules` 
+change, without committing anything. Reviewed each diff — all correct, no concerns. 
+Approved. Sent a follow-up prompt authorizing apply + deploy + commit.
+
+**Result:** `npx tsc --noEmit` clean (0 errors). `firebase deploy --only firestore:rules` 
+succeeded — new rules confirmed live via the Firebase console link in the deploy output. 
+7 files committed as `03df99b` ("Tier 1 security fixes: household live-sync, stale 
+recovery key handling, profileBackups ownership rules, peer recovery cleanup"), pushed 
+to `main`. `git status` confirms clean, up-to-date tree.
+
+**Design decision made this session:** For the stale-recovery-key fix, chose to delete 
+the invalid `recoveryKeys/{username}` doc and surface a "Needs regenerating" badge in 
+Settings > Security, rather than trying to silently re-wrap it — re-wrapping is 
+cryptographically impossible without the original 16-character recovery code, which 
+isn't (and shouldn't be) collected during a normal password change.
