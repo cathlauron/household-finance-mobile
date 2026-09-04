@@ -9,6 +9,7 @@ original 11 phases before that. Nothing from either file is repeated here.
 - **Pre-Phase-B code-health/security audit — COMPLETE (investigation only, zero code changed).** Full report-only pass via Antigravity across bugs, dead code, security rules, config, and feature-gap suggestions. Found 5 real bugs (2 high-priority: silent household data overwrite risk, and a solo password-change that silently breaks the Secret Recovery Key), 4 security findings (2 high-priority: a brute-forceable peer-recovery PIN doc that's never deleted, and a missing ownership check letting any user overwrite anyone's cloud backup), 4 unused-import/variable cleanup items, 5 leftover debug logs, and 3 config inconsistencies (app.json dark-mode setting, missing notifications plugin, a deprecated notification trigger format). `npx tsc --noEmit` clean. Full finding-by-finding detail in ⚠️ Known issues below. Triaged into 3 approval tiers.
 - **Tier 1 audit fixes — VERIFIED COMPLETE (all 4 items confirmed against real code, not just commit messages).** See ⚠️ Known issues below for full detail, including a regression that was caught during verification and fixed.
 - **Tier 2 audit fixes — VERIFIED COMPLETE (all 7 items confirmed against real code).** 6 of 7 turned out to already be implemented in the code (link-code hijacking protection, household update rule type checks, app.json fixes, modern notification trigger format, and the profile-creation username-stranding fix) but had never been deployed/committed as "done" — deployed via `firebase deploy --only firestore:rules` and confirmed live this session. The 1 real gap found (solo profile cloud backups failing silently) was fixed, reviewed, and pushed as commit `70431f9`. `npx tsc --noEmit` clean. See ⚠️ Known issues below for full detail.
+- **Tier 3 audit cleanup — VERIFIED COMPLETE (all 7 items confirmed against real code and fixed).** Independently re-verified all 7 previously-identified Tier 3 items before touching anything — all 7 confirmed still present with real code shown. Reviewed and approved 7 of 8 proposed fixes (1 bonus finding included), applied them, `npx tsc --noEmit` clean (0 errors), real `git diff` reviewed line-by-line, committed and pushed. The 8th item (orphaned household docs from abandoned link codes) was investigated separately and deliberately deferred rather than partially fixed — see 📌 Decisions and ⚠️ Known issues below.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -38,6 +39,22 @@ original 11 phases before that. Nothing from either file is repeated here.
   independently re-verify against real code before trusting it as done — a prior 
   session's Tier 1 completion claim turned out to have one item silently reverted by 
   an unrelated routine commit. Verification is now standard practice, not a one-off.
+- **New this session:** Orphaned `households/{householdId}` documents left behind by 
+  abandoned/expired link codes are a known, accepted limitation — deferred rather than 
+  fixed. Investigated the real cause (household doc is created up front by 
+  `startHouseholdLink()`/`startHouseholdInvite()`, but `cancelLinkCode()` only ever 
+  deletes the `linkCodes/{code}` doc, never the household doc) and confirmed a real 
+  `deleteHousehold()` function already exists in `household.ts` but nothing calls it 
+  from `cancelLinkCode()`. Fixing that alone would only cover explicit cancel/start-over/
+  unlink flows (8 call sites found) — it would NOT cover the more common abandonment 
+  case (app closed, phone locked, or the 15-minute Firestore-rules expiry lapsing 
+  without anyone joining), since neither the Firestore rules expiry nor the client-side 
+  `handleLinkCodeExpired()` timer ever deletes the household doc. A complete fix needs 
+  server-side scheduled cleanup (a Firebase Cloud Function or Firestore TTL policy) — 
+  real infrastructure, not a client-side patch. Decision: defer until/unless Cloud 
+  Functions infrastructure gets added for some other reason. No security or data-loss 
+  risk — these docs contain only encrypted ciphertext and are fully isolated by 
+  Firestore security rules, so it's pure database clutter.
 
 ⚠️ Known issues / gotchas
 - **Pre-Phase-B audit findings — TIER 1 AND TIER 2 FULLY VERIFIED & COMPLETE. Tier 3 still open.**
@@ -61,10 +78,35 @@ original 11 phases before that. Nothing from either file is repeated here.
   - **[Config] `expo-notifications` config plugin in `app.json`** — verified already present in the `plugins` array, with icon/color configured.
   - **[Config] Deprecated date-trigger format used in `pushNotifications.ts`** — verified already using the modern `{ type: SchedulableTriggerInputTypes.DATE, date: ... }` shape for all scheduled bill notifications (the only remaining `as any` usage is in a manual 10-second test-notification helper, not real scheduling — low priority, folded into Tier 3 below).
 
-  **TIER 3 — cleanup only (no functional risk):**
-  - **[Bug, low] Cancelled/expired link codes leave an orphaned `households/{householdId}` doc behind** (1-member household nobody ever joined) — Firestore clutter, not a data-loss or security issue.
-  - 4 unused imports/variables: `onClearRemoteRevokeNotice` (SignInScreen — wired but never called), `getHouseholdOwner` (SettingsScreen import), `formatPeso` (GoalsScreen import), a duplicate `debtFees` calc (TaxSummaryReport).
-  - 5 leftover debug `console.error` logs: 3 in `CreateProfileScreen.tsx`, 1 in `linking.ts` (bracketed `[FAILED TO CANCEL...]` format), plus the ones already known from PROGRESS1.md's earlier audit round.
+  **TIER 3 — ✅ FIXED, VERIFIED, AND PUSHED (7 of 8 items) — 1 deliberately deferred:**
+  - **[Fixed] `onClearRemoteRevokeNotice` in SignInScreen.tsx** — was imported and 
+    accepted as a prop but never called. Now wired to a real dismiss ("✕") button on 
+    the remote-revoke banner.
+  - **[Fixed] Unused import `getHouseholdOwner`** in SettingsScreen.tsx — removed.
+  - **[Fixed] Unused import `formatPeso`** in GoalsScreen.tsx — removed.
+  - **[Fixed] Duplicate `debtFeesInYear()` calculation** in TaxSummaryReport.tsx — was 
+    computed twice in a row, with the second (`debtFees`) never used anywhere; removed, 
+    kept `interestFees` which already used the correct calculation.
+  - **[Fixed] Leftover debug logs** — removed 3 `console.error` lines in 
+    CreateProfileScreen.tsx's Firebase-account-creation catch block (redundant with the 
+    already-shown `friendlyFirebaseError()` message); changed a bracketed 
+    `[FAILED TO CANCEL OLD LINK CODE]` `console.error` in linking.ts to a plain 
+    `console.warn`.
+  - **[Fixed] Dead code with deprecated notification trigger** — removed the entire 
+    `sendTestNotification()` helper from pushNotifications.ts (confirmed unused 
+    anywhere in the app), which also removed its deprecated `{ seconds: 10 } as any` 
+    trigger shape. Real scheduled bill notifications already used the modern format 
+    (confirmed in Tier 2).
+  - **[Fixed, bonus finding] Duplicate "Secret Recovery Key" label** in 
+    SettingsScreen.tsx — the label was rendered twice in a row (once standalone, once 
+    inside the row with the status badge); removed the redundant standalone copy.
+  - **[Deferred, not fixed] Orphaned `households/{householdId}` doc on cancelled/expired 
+    link codes** — see 📌 Decisions above for full reasoning. Accepted as a known 
+    limitation, not scheduled for a fix.
+
+  All 7 fixes reviewed via real `git diff` before commit, `npx tsc --noEmit` clean 
+  (0 errors), committed and pushed to `main`. Confirmed via `git status` (clean, 
+  up-to-date tree) after push.
 
   **Feature ideas surfaced by the audit (not bugs — for Phase B consideration, not yet scheduled):** a "Sign out all other devices" button in Active Devices; wiring up the already-present-but-unused `onClearRemoteRevokeNotice` to dismiss the revoke banner; pull-to-refresh on Dashboard/Bills/Transactions as a manual sync option (this would help make Tier 1's live-sync gap less painful even after it's fixed).
 
@@ -85,14 +127,12 @@ original 11 phases before that. Nothing from either file is repeated here.
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
-- **Tier 1 and Tier 2 are both fully verified and complete (see ⚠️ Known issues above).** 
-  Next up: Tier 3 cleanup (4 unused imports/variables, 5 leftover debug logs, 1 orphaned-
-  household-doc low-priority bug, plus the leftover `as any` trigger in the manual test-
-  notification helper) — same investigate-then-approve Antigravity workflow, and continue 
-  independently re-verifying claimed fixes against real code before marking anything done.
-- Once Tier 3 is resolved and re-verified (`npx tsc --noEmit` clean): begin Phase B at B.1 
-  (essential vs. additional feature split — formal write-up) per the checkpoint table in 
-  PROGRESS1.md's ▶️ Next step section (item 6), copied below for convenience:
+- **Tier 1, Tier 2, and Tier 3 are all fully verified and complete** (the sole exception 
+  — the orphaned household-doc cleanup — is a deliberate, documented deferral, not an 
+  open task; see 📌 Decisions above). The full pre-Phase-B audit is now closed out.
+- **Next up: begin Phase B at B.1** (essential vs. additional feature split — formal 
+  write-up) per the checkpoint table in PROGRESS1.md's ▶️ Next step section (item 6), 
+  copied below for convenience:
 
   | Order | Item | Source |
   |---|---|---|
@@ -124,6 +164,34 @@ original 11 phases before that. Nothing from either file is repeated here.
 Files in the repo (relevant to Phase B/C)
 - (Nothing yet — will be filled in as Phase B work begins.)
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+
+### Session entry — Tier 3 verified against real code; 7 of 8 items fixed; 1 deliberately deferred
+**What happened:** Ran a dedicated Antigravity investigation prompt covering all 7 
+previously-identified Tier 3 items plus a general "flag anything new" sweep of the same 
+touched files. All 7 confirmed still present, with real code shown for each. Reviewed 
+and approved 7 fixes (the original 7, plus 1 bonus finding — a duplicate "Secret Recovery 
+Key" label spotted in SettingsScreen.tsx while already in that file). Explicitly withheld 
+approval on the 8th item (orphaned household docs) pending further investigation, since 
+the proposed diff referenced a `deleteHousehold()` function that hadn't been confirmed to 
+exist and didn't wire up any of its call sites.
+
+**Result:** Sent a two-part follow-up prompt — Part A applied and verified the 7 approved 
+fixes (`npx tsc --noEmit` clean, real `git diff` reviewed and matched exactly what was 
+proposed, no scope creep); Part B investigated the orphaned-household-doc question without 
+applying anything, confirming `deleteHousehold()` does exist in household.ts but is never 
+called, finding all 8 call sites of `cancelLinkCode()` across 3 files, and confirming that 
+neither the Firestore-rules 15-minute expiry nor the client-side timer ever cleans up the 
+household doc. Based on that honest picture, decided to defer rather than half-fix it — see 
+📌 Decisions above. Committed the 7 Tier 3 fixes; hit the same `git fatal: .git/index: index 
+file smaller than expected` error as a prior session, resolved the same way 
+(`Remove-Item .git\index` + `git reset`, confirmed via `git status` that all 7 modified 
+files were intact before recommitting). Pushed successfully; `git status` confirmed clean.
+
+**Design decision made this session:** Don't approve a proposed fix that references a 
+function or capability not yet confirmed to exist in the real codebase — verify it's real 
+first, even if the diff "looks" reasonable. Also: it's fine (and often correct) to 
+investigate an item fully, understand it well, and still choose to defer it — a documented, 
+reasoned deferral is a valid outcome of the audit process, not a failure to complete it.
 
 ### Session entry — Tier 2 verified against real code; rules deployed; one real gap fixed
 **What happened:** Ran a dedicated Antigravity investigation prompt covering all 11 
