@@ -429,7 +429,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
-      saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
       try {
         await saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted });
       } catch (err) {

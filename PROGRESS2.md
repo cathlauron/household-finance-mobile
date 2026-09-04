@@ -76,6 +76,25 @@ original 11 phases before that. Nothing from either file is repeated here.
     fingerprint), auto-offered by default with PIN/password fallback (Checkpoint B)") is 
     committed locally and ready to push at the start of the next session (see 📌 
     Decisions below on who runs `git push`).
+- **Post-B.2b-security cleanup: TypeScript syntax errors fixed, then a full independent
+  audit verification pass — COMPLETE.** After Checkpoint B, `npx tsc --noEmit` surfaced 9,
+  then 18, then a final round of syntax errors — all the same root cause: leftover old
+  code left in place when new code was pasted on top of it during the biometrics work
+  (duplicate imports, a stray unclosed `<MainTabs` tag inside `App.tsx`'s render, two
+  functions merged into one with unclosed braces, duplicate function bodies/props/JSX
+  blocks across `App.tsx`, `HomeScreen.tsx`, `OnboardingScreen.tsx`, `MainTabs.tsx`,
+  `PinUnlockScreen.tsx`, and `SettingsScreen.tsx`). All fixed across three rounds via
+  Antigravity investigation + manually-applied snippets (the person editing files
+  directly rather than Antigravity committing, specifically to avoid the git index
+  corruption seen in earlier sessions). `npx tsc --noEmit` confirmed clean, pushed as
+  `d0375c6`. Followed immediately by a dedicated verification audit (see 📌 Decisions
+  below) re-checking every "done" item in this file against real code rather than
+  trusting the notes — everything confirmed genuinely working except one real bug: the
+  Tier 2 solo-profile-cloud-backup fix had the same leftover-old-code problem (the old
+  broken `.catch(() => {})` call was never deleted when the new `try`/`catch`/`Alert`
+  version was added right below it, so the backup was silently firing twice per save).
+  Fixed by deleting the stray duplicate line in `DataContext.tsx`. `npx tsc --noEmit`
+  clean.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -151,6 +170,23 @@ risk — these docs contain only encrypted ciphertext and are fully isolated by
   locally, but never runs `git push` — that's always run manually from the person's own 
   VS Code terminal. Every approval prompt should now explicitly instruct "commit locally, 
   do NOT push" and ask for `git log -1` + `git status` to confirm the commit exists.
+- **New this session (superseding the above where practical):** For any fix small enough 
+  to hand-paste, the workflow is now Antigravity investigates + proposes a diff only, and 
+  the person applies it directly via paste/replace snippets and runs `git add`/`commit`/
+  `push` themselves — Antigravity does not touch the working tree or run git commands at 
+  all for these. This was adopted specifically because letting a coding tool commit while 
+  the person might also have files open/edited in VS Code was the root cause of a prior 
+  `git fatal: .git/index: index file smaller than expected` error. Antigravity applying 
+  and committing directly is still fine for larger, well-reviewed multi-file changes 
+  where hand-pasting isn't practical — this is a preference for smaller fixes, not an 
+  absolute rule.
+- **New this session:** After any round of fixes (whether hand-pasted or 
+  Antigravity-applied), run a dedicated independent verification pass — a fresh 
+  Antigravity investigation prompt that re-checks every claimed-done item against real, 
+  current code, not against this progress log or prior commit messages — before 
+  considering a checkpoint truly closed. This caught a real bug this session (the 
+  duplicated solo-backup call in DataContext.tsx) that `npx tsc --noEmit` alone could not 
+  have caught, since it was a logic duplication, not a syntax error.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -226,11 +262,15 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   on a much slower device the animation itself could conceivably still be running past 
   1.6s, cutting the text fade short. Not yet reported as an issue; low priority, revisit 
   if it comes up.
-- **Checkpoint B's commit is local-only, not yet on GitHub as of end of session.** 
-  Commit `d5ba690` exists locally on `main`, one commit ahead of `origin/main`, verified 
-  via `git status`. Next session should start by running `git push` (or confirming it 
-  was already pushed) before anything else, since the usual start-of-session sync check 
-  will show "ahead of origin by 1 commit" until that happens.
+- **Resolved: Checkpoint B's commit is pushed.** Was local-only at the end of the prior 
+  session (`d5ba690`); confirmed pushed to `origin/main` this session (now superseded by 
+  further commits through `d0375c6`).
+- **Resolved: solo-profile cloud backup was firing twice per save.** Found during this 
+  session's independent verification audit — the Tier 2 fix for silent backup failures 
+  had left the old, un-awaited `.catch(() => {})` call in place directly above the new, 
+  correct `try`/`await`/`catch`/`Alert.alert` version in `DataContext.tsx`, so every solo 
+  (non-household) save was dispatching the backup twice. Fixed by deleting the stray old 
+  line. `npx tsc --noEmit` clean.
 - **Biometric unlock has not yet been tested on a real device.** All verification this 
   session was `npx tsc --noEmit` (type-checks clean) plus line-by-line diff review — 
   nobody has yet triggered the actual Face ID/Fingerprint prompt on a physical phone to 
@@ -261,9 +301,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.1 is complete** — see the new "📋 Phase B Feature Priority" section above.
 - **B.2a is complete.**
 - **B.2b is complete** (onboarding flow).
-- **B.2b-security is complete** (PIN eye icon + real biometric unlock, Checkpoints A & B). 
-  **Before anything else next session: run `git push` to publish commit `d5ba690`**, then 
-  the usual sync-check block, then move on to B.2c.
+- **B.2b-security is complete and independently audit-verified against real code** (PIN 
+  eye icon + real biometric unlock, Checkpoints A & B) — see ✅ Done above. All related 
+  TypeScript syntax errors are resolved and pushed (`d0375c6`); the one real bug the 
+  verification audit turned up (duplicated solo cloud-backup call) is fixed and confirmed 
+  via a clean `npx tsc --noEmit`.
 - Next up: **B.2c — Standalone Profile screen, split out of Settings**, per the checkpoint 
   table below:
 
@@ -330,7 +372,51 @@ Files in the repo (relevant to Phase B/C)
 - `mobile-app/app.json` — modified. Added `NSFaceIDUsageDescription` (iOS), 
   `USE_BIOMETRIC` permission (Android), and the `expo-local-authentication` config plugin.
 - `mobile-app/package.json` — modified. Added `expo-local-authentication`.
+- `mobile-app/src/DataContext.tsx` — modified. Removed a stray duplicate, un-awaited 
+  cloud-backup call left in place from an earlier session's fix, which was causing solo 
+  (non-household) profile backups to fire twice per save.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+
+### Session entry — Post-B.2b-security syntax cleanup, then a full independent verification audit; one real bug found & fixed
+**What happened:** Picked up with `npx tsc --noEmit` failing after the prior session's 
+biometrics work (Checkpoint B), showing 9 errors across `App.tsx`, `HomeScreen.tsx`, and 
+`OnboardingScreen.tsx`. Rather than guess at fixes, sent the real error output to 
+Antigravity for investigation each round; it consistently found the same root cause — 
+old code left in place when new code was pasted on top of it (duplicate imports, an 
+unclosed `<MainTabs` tag, two functions merged with unclosed braces, duplicate function 
+bodies/JSX blocks). Fixed via three rounds of Antigravity-proposed diffs, each turned 
+into hand-paste find/replace snippets rather than letting Antigravity apply and commit 
+directly — a deliberate change from the prior session's workflow, specifically to avoid 
+repeating the `git fatal: .git/index` corruption seen before. Each round ended with a 
+fresh `npx tsc --noEmit` run; the third round came back clean (0 errors), and the result 
+was pushed as `d0375c6`.
+
+With the codebase compiling cleanly, ran a dedicated independent verification audit — a 
+single Antigravity investigation prompt covering every item marked "done" across B.2a, 
+B.2b, B.2b-security, and the Tier 1/2/3 audit fixes, explicitly instructed to check real 
+current code rather than trust this progress log or commit messages, and to report 
+"CONFIRMED WORKING" (with real code shown) or "NOT AS DESCRIBED" for each item, with no 
+fixes proposed yet.
+
+**Result:** 10 of 11 items confirmed genuinely working with real code evidence (IntroScreen 
+timing, onboarding routing, PinField usage, biometrics wiring including the previously-
+fixed missing Unlock button text, the recovery-key status badge, the remote-revoke dismiss 
+button, and clean unused imports). One item came back "NOT AS DESCRIBED": the Tier 2 fix 
+for silent solo-profile cloud-backup failures was only half-applied — the new 
+`try`/`await`/`catch`/`Alert.alert('Backup Failed', ...)` code was real and functional, but 
+the old, broken `.catch(() => {})` call it was meant to replace had never been deleted, so 
+`DataContext.tsx` was firing the backup save twice on every solo save. Fixed by deleting 
+the stray old line; confirmed via a clean `npx tsc --noEmit` (this particular bug was a 
+logic duplication, not a syntax error, so the compiler alone couldn't have caught it).
+
+**Design decisions made this session:** (1) For fixes small enough to hand-paste, the 
+person applies changes directly via find/replace snippets and runs git themselves, rather 
+than Antigravity committing on its own — adopted specifically to prevent a repeat of the 
+earlier git index corruption. (2) After any round of fixes, run a dedicated, from-scratch 
+verification audit against real code before considering a checkpoint closed — this is now 
+standard practice, and this session is direct proof of its value: a real, functional-
+looking bug (doubled backup calls) survived a clean TypeScript compile and would not have 
+been caught without it.
 
 ### Session entry — B.2b + B.2b-security built across two split checkpoints (onboarding, PIN eye icon, real biometric unlock)
 **What happened:** Investigated the existing `CreateProfileScreen` → `App.tsx` flow, 
