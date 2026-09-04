@@ -1,5 +1,7 @@
+import React, { useState } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { verifyPin } from '../pin';
 import { verifyPin, hasPinSetUp } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, BiometricState } from '../biometrics';
 import PinField from '../components/PinField';

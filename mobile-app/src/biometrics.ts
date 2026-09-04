@@ -77,3 +77,4 @@ export async function attemptBiometricAuth(promptMessage: string): Promise<boole
     return false;
   }
 }
+

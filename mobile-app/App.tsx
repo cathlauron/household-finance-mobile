@@ -112,10 +112,13 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
+  async function lockIfPinIsSetUp() {
   async function lockIfConfigured() {
     if (isAutoLockSuppressed()) return;
     const username = usernameRef.current;
     if (screenRef.current !== 'home' || !username) return;
+    const pinIsSetUp = await hasPinSetUp(username);
+    if (pinIsSetUp) {
     const [pinIsSetUp, biometricState] = await Promise.all([
       hasPinSetUp(username),
       getBiometricState(username),
@@ -137,6 +140,7 @@ function AppContent() {
     if (screenRef.current !== 'home') return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
+      lockIfPinIsSetUp();
       lockIfConfigured();
     }, timeoutMs);
   }
@@ -144,6 +148,7 @@ function AppContent() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
+        lockIfPinIsSetUp();
         lockIfConfigured();
       }
       if (nextState === 'active') {

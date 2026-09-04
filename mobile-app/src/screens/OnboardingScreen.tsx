@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -154,6 +155,12 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
               Protect your app with a fast, everyday unlock method so you don't have to enter your full password every time.
             </Text>
 
+            {/* Informational Coming Soon Badge for Biometrics */}
+            <View style={styles.comingSoonBanner}>
+              <Ionicons name="sparkles-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.comingSoonTitle}>Face ID & Fingerprint Unlock</Text>
+                <Text style={styles.comingSoonSub}>Coming in a future update — set a Quick PIN below for fast access today.</Text>
             {biometricsAvailable ? (
               <View style={styles.biometricActiveCard}>
                 <Ionicons name="scan-outline" size={24} color={colors.accent} style={{ marginRight: 12, marginTop: 2 }} />
@@ -164,6 +171,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
                   </Text>
                 </View>
               </View>
+            </View>
             ) : (
               <View style={styles.comingSoonBanner}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.inkDim} style={{ marginRight: 10 }} />
@@ -225,6 +233,12 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
             <Text style={styles.title}>You're all set!</Text>
             <Text style={styles.sub}>Your profile is ready to go.</Text>
 
+            {pinSaved && (
+              <View style={styles.pinConfirmedBadge}>
+                <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
+                <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
+              </View>
+            )}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {biometricsAvailable && (
                 <View style={styles.pinConfirmedBadge}>
