@@ -20,10 +20,7 @@ import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } fr
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {

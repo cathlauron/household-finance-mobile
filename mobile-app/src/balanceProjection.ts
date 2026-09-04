@@ -24,7 +24,7 @@
 // ============================================================
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
-import { customOccurrencesInMonth } from './recurrence';
+import { customOccurrencesInMonth, stripTime } from './recurrence';
 
 export type CalendarEvent = {
   type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
@@ -35,10 +35,6 @@ export type CalendarEvent = {
 
 function toNumber(v: number | '' | undefined): number {
   return typeof v === 'number' && !isNaN(v) ? v : 0;
-}
-
-function stripTime(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function toISO(d: Date): string {

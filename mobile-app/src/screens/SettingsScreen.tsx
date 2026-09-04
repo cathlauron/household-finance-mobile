@@ -66,10 +66,7 @@ import {
   type DeviceSession,
 } from '../sessions';
 import PasswordField from '../components/PasswordField';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa

@@ -120,7 +120,6 @@ export async function deleteDeviceSession(uid: string, deviceId: string): Promis
     // Ignore offline or update errors
   }
 }
-export const markDeviceSignedOut = deleteDeviceSession;
 
 // Watches this device's own document live for remote revocation
 export function subscribeToDeviceSession(

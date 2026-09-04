@@ -25,10 +25,7 @@ import {
   formatShortDate,
 } from '../income';
 import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."

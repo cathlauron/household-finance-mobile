@@ -16,10 +16,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '../types';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },

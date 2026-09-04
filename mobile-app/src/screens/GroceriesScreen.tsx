@@ -16,10 +16,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 function plannedTotal(items: GroceryItem[]): number {
   return items.reduce((sum, g) => sum + (typeof g.plannedAmount === 'number' ? g.plannedAmount : 0), 0);

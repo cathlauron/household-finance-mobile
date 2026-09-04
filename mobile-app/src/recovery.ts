@@ -23,24 +23,12 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { getCurrentFirebaseUser } from './authFirebase';
-import { generateSalt, deriveKey, encryptJSON, decryptJSON } from './encryption';
+import { requireCurrentUid } from './authFirebase';
+import { generateSalt, deriveKey, encryptJSON, decryptJSON, bytesToHex } from './encryption';
 
 const RECOVERY_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const RECOVERY_LENGTH = 16;
 const TRANSFER_CODE_LENGTH = 6;
-
-function requireCurrentUid(): string {
-  const user = getCurrentFirebaseUser();
-  if (!user) {
-    throw new Error('You must be signed in to perform this action.');
-  }
-  return user.uid;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
 // Generates a 16-character high-entropy alphanumeric recovery code formatted as XXXX-XXXX-XXXX-XXXX
 export async function generateRecoveryCode(): Promise<string> {

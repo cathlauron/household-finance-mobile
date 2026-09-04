@@ -25,24 +25,8 @@ import CryptoJS from 'crypto-js';
 import * as Crypto from 'expo-crypto';
 import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
-import { encryptJSON, decryptJSON } from './encryption';
-import { getCurrentFirebaseUser } from './authFirebase';
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Every function below that touches Firestore needs to know who's asking —
-// this reads the currently signed-in Firebase user's ID and throws a clear
-// error if, for some reason, nobody's signed in (shouldn't normally happen,
-// since Sign In / Create Profile now require Firebase auth first).
-function requireCurrentUid(): string {
-  const user = getCurrentFirebaseUser();
-  if (!user) {
-    throw new Error('You must be signed in to do this.');
-  }
-  return user.uid;
-}
+import { encryptJSON, decryptJSON, bytesToHex } from './encryption';
+import { getCurrentFirebaseUser, requireCurrentUid } from './authFirebase';
 
 // A short random ID identifying one shared household in Firestore —
 // not secret, just a "which document" pointer (like a folder name).

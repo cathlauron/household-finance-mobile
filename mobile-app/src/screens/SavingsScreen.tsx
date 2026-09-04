@@ -17,10 +17,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 function todayISO(): string {
   const d = new Date();

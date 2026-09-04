@@ -14,14 +14,11 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { computeRunningBalances, formatPeso } from '../../balanceProjection';
+import { stripTime } from '../../recurrence';
 import type { HouseholdModel } from '../../types';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_OPTIONS = [30, 60, 90];
-
-function stripTime(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
 
 function shortDate(d: Date): string {
   return `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;

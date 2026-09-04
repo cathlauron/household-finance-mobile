@@ -30,6 +30,7 @@ import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import { makeId } from '../utils';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -53,10 +54,6 @@ function findOrCreatePerson(
     role: people.length === 0 ? 'primary' : 'partner',
   };
   return { people: [...people, newPerson], personId: newPerson.id };
-}
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 function formatDateLabel(dateStr: string): string {

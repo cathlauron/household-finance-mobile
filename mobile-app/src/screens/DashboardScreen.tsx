@@ -23,11 +23,8 @@ import {
   formatPeso,
 } from '../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../transactions';
+import { stripTime } from '../recurrence';
 import type { HouseholdModel } from '../types';
-
-function stripTime(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
 
 type DueItem = {
   date: Date;

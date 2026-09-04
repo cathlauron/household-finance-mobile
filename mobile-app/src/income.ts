@@ -8,6 +8,8 @@
 // wasn't worth the added complexity for this checkpoint.
 // ============================================================
 
+import { stripTime } from './recurrence';
+
 export type Frequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'onetime';
 
 export const FREQUENCIES: Frequency[] = ['monthly', 'semimonthly', 'biweekly', 'weekly', 'onetime'];
@@ -27,10 +29,6 @@ export function frequencyLabel(f: Frequency): string {
 
 function lastDayOfMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();
-}
-
-function stripTime(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 export function formatShortDate(d: Date | null): string {

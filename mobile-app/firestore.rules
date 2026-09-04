@@ -11,13 +11,14 @@ service cloud.firestore {
         && request.time < resource.data.createdAt + duration.value(15, 'm');
 
       allow create: if request.auth != null
-        && request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid'])
+        && request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid', 'createdAt'])
         && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.hostUid is string
         && request.resource.data.codeSalt is string
         && request.resource.data.encryptedSecret is string
         && request.resource.data.encryptedHostData is string
-        && request.resource.data.hostUsername is string;
+        && request.resource.data.hostUsername is string
+        && request.resource.data.createdAt == request.time;
 
       allow update: if request.auth != null
         && request.resource.data.hostUid == resource.data.hostUid
@@ -143,7 +144,8 @@ service cloud.firestore {
     }
 
     match /householdKeys/{username} {
-      allow get: if request.auth != null;
+      allow get: if request.auth != null
+        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid;
 
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt', 'ownerUid'])
@@ -173,7 +175,8 @@ service cloud.firestore {
       //
       // Pre-Phase-B Tier 1 fix: ownerUid field added on create and required
       // on update so only the owning user can modify their backup.
-      allow get: if request.auth != null;
+      allow get: if request.auth != null
+        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid;
 
       allow create: if request.auth != null
         && request.resource.data.ownerUid == request.auth.uid

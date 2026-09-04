@@ -15,7 +15,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged,
   User,
 } from "firebase/auth";
 import { auth } from "./firebase";
@@ -54,11 +53,11 @@ export function getCurrentFirebaseUser(): User | null {
   return auth.currentUser;
 }
 
-// Subscribes to sign-in/sign-out changes over time (e.g. so the app can
-// automatically show the sign-in screen if the user gets signed out).
-// Call the returned function to unsubscribe when no longer needed.
-export function subscribeToAuthChanges(
-  callback: (user: User | null) => void
-): () => void {
-  return onAuthStateChanged(auth, callback);
+// Throws if no Firebase user is currently signed in; returns their uid.
+export function requireCurrentUid(): string {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('You must be signed in to do this.');
+  }
+  return user.uid;
 }

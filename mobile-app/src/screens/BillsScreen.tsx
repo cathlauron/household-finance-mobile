@@ -19,10 +19,7 @@ import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
-
-function makeId(prefix: string): string {
-  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
+import { makeId } from '../utils';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
