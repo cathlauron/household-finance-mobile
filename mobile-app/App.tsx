@@ -11,6 +11,7 @@ import IntroScreen from './src/screens/IntroScreen';
 import MainTabs from './src/navigation/MainTabs';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
+import { getBiometricState } from './src/biometrics';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
@@ -111,12 +112,15 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
-  async function lockIfPinIsSetUp() {
+  async function lockIfConfigured() {
     if (isAutoLockSuppressed()) return;
     const username = usernameRef.current;
     if (screenRef.current !== 'home' || !username) return;
-    const pinIsSetUp = await hasPinSetUp(username);
-    if (pinIsSetUp) {
+    const [pinIsSetUp, biometricState] = await Promise.all([
+      hasPinSetUp(username),
+      getBiometricState(username),
+    ]);
+    if (pinIsSetUp || biometricState === 'ENABLED') {
       setScreen('locked');
     }
   }
@@ -133,14 +137,14 @@ function AppContent() {
     if (screenRef.current !== 'home') return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
-      lockIfPinIsSetUp();
+      lockIfConfigured();
     }, timeoutMs);
   }
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
-        lockIfPinIsSetUp();
+        lockIfConfigured();
       }
       if (nextState === 'active') {
         const user = getCurrentFirebaseUser();

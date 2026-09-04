@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { isValidPinFormat, savePin } from '../pin';
+import { getBiometricState, getBiometricLabel } from '../biometrics';
 import { markOnboardingCompleted } from '../onboarding';
 import PinField from '../components/PinField';
 
@@ -31,6 +32,19 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
   const [pinError, setPinError] = useState('');
   const [pinSaved, setPinSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState('Biometric');
+
+  useEffect(() => {
+    (async () => {
+      const [state, label] = await Promise.all([
+        getBiometricState(username),
+        getBiometricLabel(),
+      ]);
+      setBiometricsAvailable(state === 'ENABLED');
+      setBiometricLabel(label);
+    })();
+  }, [username]);
 
   const styles = makeStyles(colors);
 
@@ -140,14 +154,24 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
               Protect your app with a fast, everyday unlock method so you don't have to enter your full password every time.
             </Text>
 
-            {/* Informational Coming Soon Badge for Biometrics */}
-            <View style={styles.comingSoonBanner}>
-              <Ionicons name="sparkles-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.comingSoonTitle}>Face ID & Fingerprint Unlock</Text>
-                <Text style={styles.comingSoonSub}>Coming in a future update — set a Quick PIN below for fast access today.</Text>
+            {biometricsAvailable ? (
+              <View style={styles.biometricActiveCard}>
+                <Ionicons name="scan-outline" size={24} color={colors.accent} style={{ marginRight: 12, marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.biometricActiveTitle}>{biometricLabel} Enabled</Text>
+                  <Text style={styles.biometricActiveSub}>
+                    {biometricLabel} unlock is enabled automatically on this device. You can turn this off anytime in Settings.
+                  </Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.comingSoonBanner}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.inkDim} style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.comingSoonSub}>Biometric unlock isn't available on this device. Set a PIN below for quick access.</Text>
+                </View>
+              </View>
+            )}
 
             <View style={styles.formSection}>
               <Text style={styles.inputLabel}>Choose a 4–6 digit Quick PIN</Text>
@@ -201,12 +225,20 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
             <Text style={styles.title}>You're all set!</Text>
             <Text style={styles.sub}>Your profile is ready to go.</Text>
 
-            {pinSaved && (
-              <View style={styles.pinConfirmedBadge}>
-                <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
-              </View>
-            )}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+              {biometricsAvailable && (
+                <View style={styles.pinConfirmedBadge}>
+                  <Ionicons name="scan-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.pinConfirmedText}>{biometricLabel} enabled automatically</Text>
+                </View>
+              )}
+              {pinSaved && (
+                <View style={styles.pinConfirmedBadge}>
+                  <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
+                </View>
+              )}
+            </View>
 
             <View style={styles.tipCard}>
               <Ionicons name="information-circle-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
@@ -342,6 +374,28 @@ function makeStyles(colors: any) {
       marginBottom: 4,
     },
     featureDesc: {
+      fontSize: 13,
+      color: colors.inkDim,
+      lineHeight: 18,
+    },
+    biometricActiveCard: {
+      width: '100%',
+      flexDirection: 'row',
+      backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'flex-start',
+      marginBottom: 24,
+    },
+    biometricActiveTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.ink,
+      marginBottom: 4,
+    },
+    biometricActiveSub: {
       fontSize: 13,
       color: colors.inkDim,
       lineHeight: 18,

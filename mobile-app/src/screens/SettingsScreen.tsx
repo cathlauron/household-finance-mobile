@@ -56,6 +56,9 @@ import {
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
+import { hasPinSetUp } from '../pin';
+import { getBiometricState, getBiometricLabel, setBiometricsDisabled, attemptBiometricAuth, BiometricState } from '../biometrics';
+import SetPinScreen from './SetPinScreen';
 import {
   subscribeToUserDevices,
   revokeDeviceSession,
@@ -156,6 +159,13 @@ export default function SettingsScreen() {
   const [retroactiveError, setRetroactiveError] = useState('');
   const [hasRecoveryKey, setHasRecoveryKey] = useState<boolean | null>(null);
 
+  // Quick Unlock & Biometrics state
+  const [biometricState, setBiometricState] = useState<BiometricState>('UNAVAILABLE');
+  const [biometricLabel, setBiometricLabel] = useState('Biometric Unlock');
+  const [biometricError, setBiometricError] = useState('');
+  const [pinIsSet, setPinIsSet] = useState(false);
+  const [showSetPinModal, setShowSetPinModal] = useState(false);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(5);
@@ -192,6 +202,37 @@ export default function SettingsScreen() {
       setRevokeError('Could not sign out device. Check your connection.');
     } finally {
       setRevokeBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!username) return;
+    (async () => {
+      const [state, label, pinSetUp] = await Promise.all([
+        getBiometricState(username),
+        getBiometricLabel(),
+        hasPinSetUp(username),
+      ]);
+      setBiometricState(state);
+      setBiometricLabel(label);
+      setPinIsSet(pinSetUp);
+    })();
+  }, [username]);
+
+  async function handleToggleBiometrics() {
+    if (!username || biometricState === 'UNAVAILABLE') return;
+    setBiometricError('');
+    if (biometricState === 'ENABLED') {
+      await setBiometricsDisabled(username, true);
+      setBiometricState('DISABLED');
+    } else {
+      const verified = await attemptBiometricAuth(`Verify ${biometricLabel} to enable`);
+      if (verified) {
+        await setBiometricsDisabled(username, false);
+        setBiometricState('ENABLED');
+      } else {
+        setBiometricError("Couldn't verify — try again");
+      }
     }
   }
 
@@ -1384,6 +1425,56 @@ export default function SettingsScreen() {
             <Text style={styles.dataButtonText}>Generate / Reset Recovery Key</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Quick Unlock & Biometrics */}
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Quick Unlock</Text>
+        <Text style={styles.sectionSub}>
+          Re-open the app quickly using your device's biometric security or a short PIN.
+        </Text>
+
+        {biometricState === 'UNAVAILABLE' ? (
+          <View style={styles.row}>
+            <Text style={[styles.rowName, { color: colors.inkFaint }]}>
+              Biometric unlock isn't available on this device
+            </Text>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={handleToggleBiometrics}>
+              <Text style={styles.rowName}>{biometricLabel} Unlock</Text>
+              <View style={[styles.toggleTrack, biometricState === 'ENABLED' && styles.toggleTrackActive]}>
+                <View style={[styles.toggleThumb, biometricState === 'ENABLED' && styles.toggleThumbActive]} />
+              </View>
+            </TouchableOpacity>
+            {!!biometricError && <Text style={[styles.errorText, { textAlign: 'left', marginTop: 4 }]}>{biometricError}</Text>}
+          </>
+        )}
+
+        <View style={[styles.row, { marginTop: 8 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowName}>Quick PIN</Text>
+            <Text style={styles.hintText}>{pinIsSet ? 'Active as fallback' : 'Not configured'}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.dataButton, { alignSelf: 'center' }]}
+            onPress={() => setShowSetPinModal(true)}
+          >
+            <Text style={styles.dataButtonText}>{pinIsSet ? 'Change PIN' : 'Set a Quick PIN'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showSetPinModal && username && (
+          <Modal visible={showSetPinModal} animationType="slide">
+            <SetPinScreen
+              username={username}
+              onDone={() => {
+                setShowSetPinModal(false);
+                setPinIsSet(true);
+              }}
+              onCancel={() => setShowSetPinModal(false)}
+            />
+          </Modal>
+        )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Auto-lock</Text>
         <Text style={styles.sectionSub}>
