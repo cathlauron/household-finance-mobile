@@ -102,21 +102,3 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
     });
   }
 }
-
-// ---- Checkpoint 11.2 verification: temporary test notification ----
-// Fires one real notification 10 seconds after being called, using the exact same
-// Notifications.scheduleNotificationAsync() call rescheduleBillNotifications() uses above,
-// just with a short relative delay as the trigger instead of a computed bill-due date.
-// This exists purely so a real notification can be confirmed working right now, instead of
-// waiting until the next 9:00AM alert window — remove this function (and the button that
-// calls it) once that's confirmed.
-export async function sendTestNotification(): Promise<void> {
-  await ensureNotificationChannel();
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Test notification',
-      body: 'If you can see this, notifications are working!',
-    },
-    trigger: { seconds: 10 } as any,
-  });
-}

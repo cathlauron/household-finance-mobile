@@ -262,30 +262,6 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   };
 }
 
-// ---- Checkpoint 9.2d: "Confirm joiner identity" ----
-// Lets the HOST's phone peek at who has entered the code so far, without finishing
-// or changing anything. Purely a read — the host still has to tap a separate
-// "confirm" button (handled entirely in the screen) before finishHostLink() runs.
-export type LinkCodeJoinerStatus =
-  | { status: 'noJoinerYet' }
-  | { status: 'joinerWaiting'; joinerUsername: string }
-  | { status: 'notFound' };
-
-export async function checkLinkCodeJoiner(code: string): Promise<LinkCodeJoinerStatus> {
-  let snap;
-  try {
-    snap = await getDoc(doc(db, 'linkCodes', code));
-  } catch (e) {
-    return { status: 'notFound' };
-  }
-  if (!snap.exists()) return { status: 'notFound' };
-  const data = snap.data() as { joinerUsername?: string };
-  if (data.joinerUsername) {
-    return { status: 'joinerWaiting', joinerUsername: data.joinerUsername };
-  }
-  return { status: 'noJoinerYet' };
-}
-
 // ---- Checkpoint 9.2c: "Finish linking" ----
 
 export type JoinChoice = 'mine' | 'theirs' | 'merge';
@@ -445,7 +421,6 @@ export async function cancelLinkCode(code: string): Promise<void> {
   try {
     await deleteDoc(doc(db, 'linkCodes', code));
   } catch (e: any) {
-    console.error(`[FAILED TO CANCEL OLD LINK CODE] Could not delete linkCodes/${code}:`, e?.message || e);
     console.warn(`Could not delete linkCodes/${code}:`, e?.message || e);
   }
 }
