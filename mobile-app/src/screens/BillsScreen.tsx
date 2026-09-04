@@ -6,11 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Pressable,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -19,6 +16,7 @@ import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
 
 function billAmount(bill: Bill): number {
@@ -260,17 +258,12 @@ export default function BillsScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit bill' : 'New bill'}</Text>
-
-                <Text style={styles.inputLabel}>Bill name</Text>
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit bill' : 'New bill'}
+      >
+        <Text style={styles.inputLabel}>Bill name</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Meralco, Netflix, Car insurance"
@@ -411,14 +404,10 @@ export default function BillsScreen() {
                   </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -454,23 +443,6 @@ function makeStyles(colors: any) {
     billAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '85%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 360,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,
