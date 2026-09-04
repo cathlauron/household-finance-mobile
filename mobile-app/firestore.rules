@@ -241,6 +241,10 @@ service cloud.firestore {
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt'])
            && request.resource.data.lastActiveAt is number)
           ||
+          // Self sign-out: only signedOutAt changes
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['signedOutAt'])
+           && request.resource.data.signedOutAt is number)
+          ||
           // Remote revocation: revoked transitions to true
           (request.resource.data.revoked == true
            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked', 'revokedAt'])

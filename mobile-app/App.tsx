@@ -62,6 +62,7 @@ function AppContent() {
       deviceSessionUnsubRef.current();
       deviceSessionUnsubRef.current = null;
     }
+    // 2. Clear current device reference (document is already marked revoked: true in Firestore)
     // 2. Clean up device session document
     const user = getCurrentFirebaseUser();
     const deviceId = currentDeviceIdRef.current;

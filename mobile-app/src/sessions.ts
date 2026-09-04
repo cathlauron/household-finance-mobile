@@ -26,7 +26,16 @@ export type DeviceSession = {
   createdAt: number;
   revoked: boolean;
   revokedAt?: number;
+  signedOutAt?: number;
 };
+
+export type DeviceStatus = 'active' | 'signed_out' | 'revoked';
+
+export function getDeviceStatus(session: DeviceSession): DeviceStatus {
+  if (session.revoked) return 'revoked';
+  if (session.signedOutAt) return 'signed_out';
+  return 'active';
+}
 
 const DEVICE_ID_KEY = '@household_device_id';
 let cachedDeviceId: string | null = null;
@@ -101,14 +110,17 @@ export async function registerDeviceSession(uid: string): Promise<string> {
   return deviceId;
 }
 
-// Normal sign out: cleanly deletes this device's own session document (Correction 2 & 4)
+// Normal sign out: marks this device's own session document as signed out
 export async function deleteDeviceSession(uid: string, deviceId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'sessions', uid, 'devices', deviceId));
+    await updateDoc(doc(db, 'sessions', uid, 'devices', deviceId), {
+      signedOutAt: Date.now(),
+    });
   } catch (e) {
-    // Ignore delete errors
+    // Ignore offline or update errors
   }
 }
+export const markDeviceSignedOut = deleteDeviceSession;
 
 // Watches this device's own document live for remote revocation
 export function subscribeToDeviceSession(
@@ -133,7 +145,7 @@ export function subscribeToDeviceSession(
   );
 }
 
-// Subscribes to the list of active devices under this user's account for Settings
+// Subscribes to all devices under this user's account for Settings (active first, then lastActiveAt desc)
 export function subscribeToUserDevices(
   uid: string,
   onUpdate: (devices: DeviceSession[]) => void
@@ -145,12 +157,15 @@ export function subscribeToUserDevices(
       const list: DeviceSession[] = [];
       snap.forEach((docSnap) => {
         const data = docSnap.data() as DeviceSession;
-        // Only display active (unrevoked) devices in the active sessions list
-        if (!data.revoked) {
-          list.push(data);
-        }
+        list.push(data);
       });
-      list.sort((a, b) => b.lastActiveAt - a.lastActiveAt);
+      list.sort((a, b) => {
+        const aActive = getDeviceStatus(a) === 'active';
+        const bActive = getDeviceStatus(b) === 'active';
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        return b.lastActiveAt - a.lastActiveAt;
+      });
       onUpdate(list);
     },
     (err) => {
@@ -188,14 +203,19 @@ export async function updateDeviceHeartbeat(
   }
 }
 
-export function formatRelativeTime(timestamp: number): string {
+export function formatTimeAgo(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
   const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'Active just now';
+  if (diffSec < 60) return 'just now';
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `Active ${diffMin}m ago`;
+  if (diffMin < 60) return `${diffMin}m ago`;
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `Active ${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `Active ${diffDays}d ago`;
+  return `${diffDays}d ago`;
+}
+
+export function formatRelativeTime(timestamp: number): string {
+  const ago = formatTimeAgo(timestamp);
+  return ago === 'just now' ? 'Active just now' : `Active ${ago}`;
 }

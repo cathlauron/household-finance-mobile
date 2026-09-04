@@ -61,6 +61,8 @@ import {
   revokeDeviceSession,
   getDeviceId,
   formatRelativeTime,
+  formatTimeAgo,
+  getDeviceStatus,
   type DeviceSession,
 } from '../sessions';
 import PasswordField from '../components/PasswordField';
@@ -1372,19 +1374,44 @@ export default function SettingsScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Active Devices</Text>
         <Text style={styles.sectionSub}>
-          Devices currently signed in to your account. You can remotely sign out other devices.
+          Devices that have accessed your account. You can remotely sign out other active devices.
         </Text>
 
         {deviceSessions.map((dev) => {
           const isThisDevice = dev.deviceId === myDeviceId;
+          const status = getDeviceStatus(dev);
+          const isActive = status === 'active';
+
+          let statusDetail = formatRelativeTime(dev.lastActiveAt);
+          if (status === 'signed_out') {
+            statusDetail = `Signed out ${formatTimeAgo(dev.signedOutAt || dev.lastActiveAt)}`;
+          } else if (status === 'revoked') {
+            statusDetail = `Revoked ${formatTimeAgo(dev.revokedAt || dev.lastActiveAt)}`;
+          }
+
           return (
             <View
               key={dev.deviceId}
               style={[styles.deviceItemRow, isThisDevice && styles.deviceItemRowCurrent]}
             >
               <View style={{ flex: 1, marginRight: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   <Text style={styles.deviceNameText}>{dev.deviceName}</Text>
+                  {status === 'active' && (
+                    <View style={styles.statusBadgeActive}>
+                      <Text style={styles.statusBadgeTextActive}>Active</Text>
+                    </View>
+                  )}
+                  {status === 'signed_out' && (
+                    <View style={styles.statusBadgeSignedOut}>
+                      <Text style={styles.statusBadgeTextSignedOut}>Signed out</Text>
+                    </View>
+                  )}
+                  {status === 'revoked' && (
+                    <View style={styles.statusBadgeRevoked}>
+                      <Text style={styles.statusBadgeTextRevoked}>Revoked</Text>
+                    </View>
+                  )}
                   {isThisDevice && (
                     <View style={styles.thisDeviceBadge}>
                       <Text style={styles.thisDeviceBadgeText}>This device</Text>
@@ -1392,11 +1419,11 @@ export default function SettingsScreen() {
                   )}
                 </View>
                 <Text style={styles.deviceMetaText}>
-                  {dev.platform.toUpperCase()} • {formatRelativeTime(dev.lastActiveAt)}
+                  {dev.platform.toUpperCase()} • {statusDetail}
                 </Text>
               </View>
 
-              {!isThisDevice && (
+              {!isThisDevice && isActive && (
                 <TouchableOpacity
                   style={styles.deviceSignOutBtn}
                   onPress={() => {
@@ -1411,7 +1438,7 @@ export default function SettingsScreen() {
           );
         })}
         {deviceSessions.length === 0 && (
-          <Text style={styles.emptyDevicesText}>No active devices detected.</Text>
+          <Text style={styles.emptyDevicesText}>No devices detected.</Text>
         )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
@@ -2484,6 +2511,43 @@ function makeStyles(colors: any) {
       fontSize: 10,
       fontWeight: '700',
       color: colors.navy1,
+    },
+    statusBadgeActive: {
+      backgroundColor: colors.ok + '22',
+      borderColor: colors.ok,
+      borderWidth: 1,
+      borderRadius: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+    },
+    statusBadgeTextActive: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.ok,
+    },
+    statusBadgeSignedOut: {
+      backgroundColor: colors.navy4,
+      borderRadius: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+    },
+    statusBadgeTextSignedOut: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.inkDim,
+    },
+    statusBadgeRevoked: {
+      backgroundColor: colors.errorBg,
+      borderColor: colors.error,
+      borderWidth: 1,
+      borderRadius: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+    },
+    statusBadgeTextRevoked: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.error,
     },
     deviceMetaText: {
       fontSize: 12,
