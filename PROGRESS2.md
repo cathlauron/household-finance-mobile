@@ -308,6 +308,47 @@ original 11 phases before that. Nothing from either file is repeated here.
   auto-categorization work; person chips and payment method picker work; receipt photo
   attach/preview/remove works; form scrolls smoothly to reach Save/Delete/Cancel with
   nothing cut off; "Import CSV" still opens its own separate, unaffected popup.
+- **B.4a (Income, Savings, Settings modals) — Convert the remaining 5 Add/Edit forms
+  to bottom sheets — COMPLETE, VERIFIED ON DEVICE.** Final batch of B.4a conversions,
+  done in a single investigation pass covering Income, Savings, and 3 Settings modals
+  (Category, Payee/Merchant, Categorization Rule). Investigated via a dedicated
+  Antigravity prompt: located and confirmed all 5 as genuine add/edit forms (none
+  were confirmation dialogs or pickers); confirmed `IncomeScreen.tsx` and
+  `SavingsScreen.tsx` each have exactly one modal (no sibling dialogs); confirmed
+  `SettingsScreen.tsx` has 3 *other* modals that must NOT be touched — Quick PIN setup
+  (hosts `<SetPinScreen>`), the Secret Recovery Key generator, and the "sign out this
+  device" confirmation — all three explicitly flagged as using `Modal`/`Pressable` and
+  the `modalOverlay`/`modalCard`/`modalTitle` styles, meaning none of that import or
+  those styles could be removed from `SettingsScreen.tsx` the way they were removed in
+  every single-modal file before it. Mapped every form state variable and handler for
+  all 5 forms before touching anything (Income: person/category/source-name/amount/
+  frequency fields, all 4 frequency-conditional date pickers, payment log add/remove;
+  Savings: name/target-amount/target-date, contribution row add/remove; Category:
+  name + 15-swatch color picker; Payee: name + default category; Categorization Rule:
+  contains-text, min/max amount, target category). Swapped each centered
+  `Modal`/`Pressable`(/`KeyboardAvoidingView`/`ScrollView` where present) wrapper for
+  `<BottomSheet />`; all form state, handlers, and validation left completely
+  untouched across all 5. Removed the 4 now-unused styles
+  (`modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle`) from `IncomeScreen.tsx`
+  and `SavingsScreen.tsx` only — deliberately left every one of those styles, plus
+  `Modal`/`Pressable` in the import list, fully intact in `SettingsScreen.tsx` since
+  the 3 other modals there still depend on them. `npx tsc --noEmit` clean (0 errors),
+  diff reviewed line-by-line before approval, hand-pasted per standing small-fix
+  policy, committed as "feat(income,savings,settings): B.4a convert remaining add/edit
+  forms to bottom sheets", pushed to `main`. Manually verified on-device: Income add/
+  edit works across all frequency variants (monthly/semimonthly/weekly/biweekly/
+  onetime) plus payment log add/remove; Savings add/edit works with contribution row
+  add/remove; Settings → Categories add/edit + color swatch picker works; Settings →
+  Merchants & Payees add/edit works; Settings → Categorization Rules add/edit works;
+  and — critically — the 3 untouched Settings modals (Quick PIN setup, Secret Recovery
+  Key, sign-out-this-device confirmation) were separately re-tested and confirmed
+  still fully functional.
+- **B.4a — ALL essential-screen Add/Edit flows converted to bottom sheets — FULLY
+  COMPLETE, ALL VERIFIED ON DEVICE.** Accounts (B.3c), Bills, Debts, Loans,
+  Transactions, Income, Savings, and the 3 Settings modals (Category, Payee,
+  Categorization Rule) are all done. Calendar (read-only day-details modal) and
+  Home/Dashboard (no modals) needed no conversion, confirmed during initial B.4a
+  investigation.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -447,11 +488,10 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
 - **B.3 (B.3a + B.3b + B.3c) — Accounts tab redesign — is fully complete and verified
   on-device.**
-- **B.4a is in progress.** Bills, Debts, Loans, and Transactions are all done and
-  verified on-device (see ✅ Done above) — the entire To-Pay tab trio plus Transactions
-  is complete. Remaining screens still to convert, in planned order: **Income** (next),
-  then Savings, and the three small Settings modals (Category, Payee, Rule). Calendar
-  and Home/Dashboard need no conversion (no add/edit modals exist there).
+- **B.4a is fully complete.** Every essential-screen Add/Edit flow now uses
+  `<BottomSheet />` — Accounts, Bills, Debts, Loans, Transactions, Income, Savings, and
+  the 3 Settings modals (Category, Payee, Categorization Rule). All verified on-device.
+  **Next up: B.4b** — carry the collapsed-row/tap-to-expand pattern to every list screen.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -465,7 +505,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
   | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
-  | 🔧 B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time (Bills, Debts, Loans done; Transactions next) | Cards + bottom sheets pattern |
+  | ✅ B.4a | Convert essential-screen add/edit flows to bottom sheets (Accounts, Bills, Debts, Loans, Transactions, Income, Savings, 3 Settings modals) | Cards + bottom sheets pattern |
   | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
@@ -578,6 +618,20 @@ Files in the repo (relevant to Phase B/C)
   form logic/state unchanged. Removed unused
   `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
   `CsvImportModal` (a separate CSV import wizard) left untouched.
+- `mobile-app/src/screens/IncomeScreen.tsx` — modified (B.4a). Add/Edit Income Source
+  now renders inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/
+  state unchanged (including all frequency-conditional fields and the payment log).
+  Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+- `mobile-app/src/screens/SavingsScreen.tsx` — modified (B.4a). Add/Edit Savings Goal
+  now renders inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/
+  state unchanged (including contribution row add/remove). Removed unused
+  `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+- `mobile-app/src/screens/SettingsScreen.tsx` — modified (B.4a). 3 modals converted to
+  `<BottomSheet />`: Add/Edit Category, Add/Edit Payee/Merchant, Add/Edit
+  Categorization Rule — form logic/state unchanged for all 3. `Modal`, `Pressable`,
+  and the `modalOverlay`/`modalCard`/`modalTitle` styles were deliberately **kept** in
+  this file (not removed) since the Quick PIN setup modal, the Secret Recovery Key
+  modal, and the "sign out this device" confirmation modal all still use them.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
