@@ -6,11 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Pressable,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -20,6 +17,7 @@ import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } fr
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
 
 function loanPaidTotal(loan: Loan): number {
@@ -428,16 +426,11 @@ export default function LoansScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit loan' : 'New loan'}</Text>
-
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Edit loan' : 'New loan'}
+      >
                 <Text style={styles.inputLabel}>Loan name</Text>
                 <TextInput
                   style={styles.input}
@@ -701,11 +694,7 @@ export default function LoansScreen() {
                 <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-              </ScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+      </BottomSheet>
 
       <LoanPayoffSimulatorModal
         visible={simulatorOpen}
@@ -770,23 +759,6 @@ function makeStyles(colors: any) {
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '85%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 360,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,

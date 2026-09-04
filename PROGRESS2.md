@@ -263,6 +263,33 @@ original 11 phases before that. Nothing from either file is repeated here.
   Manually verified on-device: sheet slides up correctly; all fields work including
   interest rate, minimum payment, and fees portion; form scrolls smoothly all the way
   to Save/Delete/Cancel with nothing cut off; Save/Delete/Cancel all work as before.
+- **B.4a (Loans) — Convert Add/Edit Loan to a bottom sheet — COMPLETE, VERIFIED ON
+  DEVICE.** Third screen converted, completing the To-Pay tab trio (Bills, Debts,
+  Loans). Investigated via a dedicated Antigravity prompt first: confirmed only one
+  modal exists for Add/Edit Loan (a separate `LoanPayoffSimulatorModal` also lives in
+  the file but is untouched — a distinct payoff-projection popup, not part of the
+  Add/Edit form); mapped every form state variable, ref, and handler
+  (`nameInput`, `loanTypeInput`, `directionInput`, `totalAmountInput`,
+  `expectedPaymentInput`, `interestRateInput`, `recurTypeInput` + its conditional
+  date fields, `paymentsInput` + the payment-log add/remove handlers, `errorMsg`,
+  `handleSave`, `handleDelete`, `openAddModal`, `openEditModal`, `closeModal`);
+  confirmed exactly 4 unused styles to remove
+  (`modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle`); flagged that — like
+  Debts — the form (especially in Edit mode with the full payment log visible) exceeds
+  `BottomSheet`'s 85%-screen-height cap and relies on its internal scroll to reach
+  Save/Delete/Cancel. Swapped the centered
+  `Modal`/`Pressable`/`KeyboardAvoidingView`/`ScrollView` wrapper for `<BottomSheet />`;
+  all form state, handlers, and validation left completely untouched. Removed the
+  4 now-unused styles. `npx tsc --noEmit` clean (0 errors), diff reviewed line-by-line
+  before approval, hand-pasted per standing small-fix policy, committed as
+  "feat(loans): B.4a convert Add/Edit Loan to bottom sheet", pushed to `main`. Manually
+  verified on-device: sheet slides up correctly; all fields work including the payment
+  log (add/remove entries, payment method picker) when editing an existing loan; form
+  scrolls smoothly to Save/Delete/Cancel; the separate Payoff Simulator button still
+  opens its own popup untouched.
+- **B.4a (Bills, Debts, Loans) — the entire To-Pay tab trio — FULLY COMPLETE, ALL
+  VERIFIED ON DEVICE.** Remaining B.4a screens: Transactions, Income, Savings, and
+  three small Settings modals (Category, Payee, Rule).
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -402,9 +429,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
 - **B.3 (B.3a + B.3b + B.3c) — Accounts tab redesign — is fully complete and verified
   on-device.**
-- **B.4a is in progress.** Bills and Debts are both done and verified on-device (see
-  ✅ Done above). Remaining screens still to convert, in planned order: **Loans**
-  (next — completes the To-Pay-tab trio), then Transactions, Income, Savings, and the
+- **B.4a is in progress.** Bills, Debts, and Loans are all done and verified on-device
+  (see ✅ Done above) — the entire To-Pay tab trio is complete. Remaining screens still
+  to convert, in planned order: **Transactions** (next), then Income, Savings, and the
   three small Settings modals (Category, Payee, Rule). Calendar and Home/Dashboard
   need no conversion (no add/edit modals exist there).
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
@@ -420,7 +447,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
   | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
-  | 🔧 B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time (Bills, Debts done; Loans next) | Cards + bottom sheets pattern |
+  | 🔧 B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time (Bills, Debts, Loans done; Transactions next) | Cards + bottom sheets pattern |
   | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
@@ -524,6 +551,10 @@ Files in the repo (relevant to Phase B/C)
 - `mobile-app/src/screens/DebtsScreen.tsx` — modified (B.4a). Add/Edit Debt now renders
   inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/state unchanged.
   Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+- `mobile-app/src/screens/LoansScreen.tsx` — modified (B.4a). Add/Edit Loan now renders
+  inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/state unchanged.
+  Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+  `LoanPayoffSimulatorModal` (a separate payoff-projection popup) left untouched.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
