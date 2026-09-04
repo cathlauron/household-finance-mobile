@@ -429,7 +429,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
-      saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+      try {
+        await saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted });
+      } catch (err) {
+        Alert.alert(
+          'Backup Failed',
+          'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
+        );
+      }
     }
   }
 
