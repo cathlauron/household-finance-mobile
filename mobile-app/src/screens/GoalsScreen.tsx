@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { formatPeso } from '../balanceProjection';
 import type { YearlyGoal, HouseholdModel } from '../types';
 
 function makeId(prefix: string): string {

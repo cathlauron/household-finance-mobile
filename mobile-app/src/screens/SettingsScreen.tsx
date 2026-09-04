@@ -37,6 +37,7 @@ import {
   loadEncryptedProfileData,
 } from '../storage';
 import {
+  getHouseholdOwner,
   getHouseholdMemberCount,
   getHouseholdMembers,
   removeMemberByOwner,
@@ -1354,6 +1355,7 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
         <View style={[styles.linkCodeBox, { marginTop: 16 }]}>
+          <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
             <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
             {hasRecoveryKey === false && (
