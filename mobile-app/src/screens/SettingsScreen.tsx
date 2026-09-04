@@ -56,6 +56,13 @@ import {
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
+import {
+  subscribeToUserDevices,
+  revokeDeviceSession,
+  getDeviceId,
+  formatRelativeTime,
+  type DeviceSession,
+} from '../sessions';
 import PasswordField from '../components/PasswordField';
 
 function makeId(prefix: string): string {
@@ -152,6 +159,41 @@ export default function SettingsScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(5);
+
+  // Active Devices state
+  const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
+  const [myDeviceId, setMyDeviceId] = useState<string | null>(null);
+  const [deviceToRevoke, setDeviceToRevoke] = useState<DeviceSession | null>(null);
+  const [revokeBusy, setRevokeBusy] = useState(false);
+  const [revokeError, setRevokeError] = useState('');
+
+  useEffect(() => {
+    getDeviceId().then((id) => setMyDeviceId(id));
+    const user = getCurrentFirebaseUser();
+    if (!user) return;
+    const unsubscribe = subscribeToUserDevices(user.uid, (devices) => {
+      setDeviceSessions(devices);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  async function handleConfirmRevoke() {
+    if (!deviceToRevoke) return;
+    const user = getCurrentFirebaseUser();
+    if (!user) return;
+    setRevokeBusy(true);
+    setRevokeError('');
+    try {
+      await revokeDeviceSession(user.uid, deviceToRevoke.deviceId);
+      setDeviceToRevoke(null);
+    } catch (e: any) {
+      setRevokeError('Could not sign out device. Check your connection.');
+    } finally {
+      setRevokeBusy(false);
+    }
+  }
 
   useEffect(() => {
     getAutoLockMinutes().then(setAutoLockMinutesState);
@@ -1328,6 +1370,50 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Active Devices</Text>
+        <Text style={styles.sectionSub}>
+          Devices currently signed in to your account. You can remotely sign out other devices.
+        </Text>
+
+        {deviceSessions.map((dev) => {
+          const isThisDevice = dev.deviceId === myDeviceId;
+          return (
+            <View
+              key={dev.deviceId}
+              style={[styles.deviceItemRow, isThisDevice && styles.deviceItemRowCurrent]}
+            >
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.deviceNameText}>{dev.deviceName}</Text>
+                  {isThisDevice && (
+                    <View style={styles.thisDeviceBadge}>
+                      <Text style={styles.thisDeviceBadgeText}>This device</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.deviceMetaText}>
+                  {dev.platform.toUpperCase()} • {formatRelativeTime(dev.lastActiveAt)}
+                </Text>
+              </View>
+
+              {!isThisDevice && (
+                <TouchableOpacity
+                  style={styles.deviceSignOutBtn}
+                  onPress={() => {
+                    setDeviceToRevoke(dev);
+                    setRevokeError('');
+                  }}
+                >
+                  <Text style={styles.deviceSignOutBtnText}>Sign out</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+        {deviceSessions.length === 0 && (
+          <Text style={styles.emptyDevicesText}>No active devices detected.</Text>
+        )}
+
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Household</Text>
         <Text style={styles.sectionSub}>
           {isLinked
@@ -2123,6 +2209,51 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Remote Device Revocation Confirmation Modal */}
+      <Modal
+        visible={!!deviceToRevoke}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!revokeBusy) setDeviceToRevoke(null);
+        }}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => {
+            if (!revokeBusy) setDeviceToRevoke(null);
+          }}
+        >
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Sign Out Device</Text>
+            <Text style={styles.sectionSub}>
+              Are you sure you want to sign out {deviceToRevoke?.deviceName}? This device will be disconnected immediately and required to sign in again.
+            </Text>
+            {!!revokeError && <Text style={styles.errorText}>{revokeError}</Text>}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
+                onPress={handleConfirmRevoke}
+                disabled={revokeBusy}
+              >
+                {revokeBusy ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.dangerButtonText}>Sign out device</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cancelInlineButton, { flex: 1 }]}
+                onPress={() => setDeviceToRevoke(null)}
+                disabled={revokeBusy}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2324,5 +2455,58 @@ function makeStyles(colors: any) {
     deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
+    deviceItemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 8,
+    },
+    deviceItemRowCurrent: {
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+    },
+    deviceNameText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    thisDeviceBadge: {
+      backgroundColor: colors.gold,
+      borderRadius: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    thisDeviceBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.navy1,
+    },
+    deviceMetaText: {
+      fontSize: 12,
+      color: colors.inkDim,
+      marginTop: 2,
+    },
+    deviceSignOutBtn: {
+      backgroundColor: '#e5484d',
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    deviceSignOutBtnText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    emptyDevicesText: {
+      color: colors.inkDim,
+      fontSize: 13,
+      textAlign: 'center',
+      marginVertical: 10,
+      fontStyle: 'italic',
+    },
   });
 }

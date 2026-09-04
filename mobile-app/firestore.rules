@@ -220,6 +220,35 @@ service cloud.firestore {
 
       allow list: if false;
     }
+    match /sessions/{uid}/devices/{deviceId} {
+      allow get, list: if request.auth != null && request.auth.uid == uid;
+
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasAll(['deviceId', 'deviceName', 'platform', 'lastActiveAt', 'createdAt', 'revoked'])
+        && request.resource.data.deviceId == deviceId
+        && request.resource.data.deviceName is string
+        && request.resource.data.platform is string
+        && request.resource.data.lastActiveAt is number
+        && request.resource.data.createdAt is number
+        && request.resource.data.revoked == false;
+
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && resource.data.revoked == false
+        && (
+          // Throttled heartbeat update: only lastActiveAt changes
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt'])
+           && request.resource.data.lastActiveAt is number)
+          ||
+          // Remote revocation: revoked transitions to true
+          (request.resource.data.revoked == true
+           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked', 'revokedAt'])
+           && (!('revokedAt' in request.resource.data) || request.resource.data.revokedAt is number))
+        );
+
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

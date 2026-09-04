@@ -28,9 +28,16 @@ type Props = {
     householdKey?: CryptoJS.lib.WordArray
   ) => void;
   onGoToCreateProfile: () => void;
+  remoteRevokeNotice?: string | null;
+  onClearRemoteRevokeNotice?: () => void;
 };
 
-export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props) {
+export default function SignInScreen({
+  onSignedIn,
+  onGoToCreateProfile,
+  remoteRevokeNotice,
+  onClearRemoteRevokeNotice,
+}: Props) {
   const [usernameInput, setUsernameInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [password, setPassword] = useState('');
@@ -677,6 +684,11 @@ export default function SignInScreen({ onSignedIn, onGoToCreateProfile }: Props)
       <Text style={styles.eyebrow}>SIGN IN</Text>
       <Text style={styles.title}>Welcome back</Text>
       <Text style={styles.sub}>Enter your email, username, and password.</Text>
+      {!!remoteRevokeNotice && (
+        <View style={styles.revokedBanner}>
+          <Text style={styles.revokedBannerText}>⚠️ {remoteRevokeNotice}</Text>
+        </View>
+      )}
 
       <Text style={styles.label}>Email</Text>
       <TextInput
@@ -907,4 +919,21 @@ const styles = StyleSheet.create({
   deadEndSection: { backgroundColor: '#F5F5F4', borderRadius: 8, padding: 12, marginTop: 16 },
   deadEndTitle: { fontSize: 12, fontWeight: '700', color: '#57534E', marginBottom: 4 },
   deadEndDesc: { fontSize: 11, color: '#78716C', lineHeight: 15 },
+  revokedBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  revokedBannerText: {
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });

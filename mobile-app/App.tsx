@@ -13,8 +13,14 @@ import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinut
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { DataProvider, useData } from './src/DataContext';
-import { signOutFirebase } from './src/authFirebase';
+import { getCurrentFirebaseUser, signOutFirebase } from './src/authFirebase';
 import { rescheduleBillNotifications } from './src/pushNotifications';
+import {
+  registerDeviceSession,
+  deleteDeviceSession,
+  subscribeToDeviceSession,
+  updateDeviceHeartbeat,
+} from './src/sessions';
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked';
 
@@ -24,11 +30,56 @@ function AppContent() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [derivedKey, setDerivedKey] = useState<CryptoJS.lib.WordArray | null>(null);
+  const [remoteRevokeNotice, setRemoteRevokeNotice] = useState<string | null>(null);
 
   const screenRef = useRef<Screen>('loading');
   const usernameRef = useRef<string | null>(null);
   const autoLockMinutesRef = useRef<number>(DEFAULT_AUTO_LOCK_MINUTES);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentDeviceIdRef = useRef<string | null>(null);
+  const deviceSessionUnsubRef = useRef<(() => void) | null>(null);
+
+  async function registerAndListenDeviceSession(uid: string) {
+    if (deviceSessionUnsubRef.current) {
+      deviceSessionUnsubRef.current();
+      deviceSessionUnsubRef.current = null;
+    }
+    try {
+      const deviceId = await registerDeviceSession(uid);
+      currentDeviceIdRef.current = deviceId;
+      deviceSessionUnsubRef.current = subscribeToDeviceSession(uid, deviceId, () => {
+        handleRemoteRevoked();
+      });
+    } catch (e) {
+      console.error('Failed to register device session:', e);
+    }
+  }
+
+  async function handleRemoteRevoked() {
+    clearIdleTimer();
+    // 1. Unsubscribe listener FIRST (Correction 3)
+    if (deviceSessionUnsubRef.current) {
+      deviceSessionUnsubRef.current();
+      deviceSessionUnsubRef.current = null;
+    }
+    // 2. Clean up device session document
+    const user = getCurrentFirebaseUser();
+    const deviceId = currentDeviceIdRef.current;
+    if (user && deviceId) {
+      await deleteDeviceSession(user.uid, deviceId).catch(() => {});
+    }
+    currentDeviceIdRef.current = null;
+
+    try {
+      await signOutFirebase();
+    } catch (e) {}
+
+    clearModel();
+    setCurrentUsername(null);
+    setDerivedKey(null);
+    setRemoteRevokeNotice('You were signed out from another device.');
+    setScreen('signIn');
+  }
 
   useEffect(() => {
     screenRef.current = screen;
@@ -87,6 +138,13 @@ function AppContent() {
       if (nextState === 'background' || nextState === 'inactive') {
         lockIfPinIsSetUp();
       }
+      if (nextState === 'active') {
+        const user = getCurrentFirebaseUser();
+        const deviceId = currentDeviceIdRef.current;
+        if (user && deviceId) {
+          updateDeviceHeartbeat(user.uid, deviceId).catch(() => {});
+        }
+      }
     });
     return () => subscription.remove();
   }, []);
@@ -102,6 +160,19 @@ function AppContent() {
 
   async function handleFullSignOut() {
     clearIdleTimer();
+    // 1. Unsubscribe listener FIRST (Correction 3)
+    if (deviceSessionUnsubRef.current) {
+      deviceSessionUnsubRef.current();
+      deviceSessionUnsubRef.current = null;
+    }
+    // 2. Clean up this device's session document (Correction 2 & 4)
+    const user = getCurrentFirebaseUser();
+    const deviceId = currentDeviceIdRef.current;
+    if (user && deviceId) {
+      await deleteDeviceSession(user.uid, deviceId).catch(() => {});
+    }
+    currentDeviceIdRef.current = null;
+
     try {
       await signOutFirebase();
     } catch (e) {
@@ -152,9 +223,14 @@ function AppContent() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <CreateProfileScreen
           onProfileCreated={(username, key) => {
+            setRemoteRevokeNotice(null);
             setCurrentUsername(username);
             setDerivedKey(key);
             loadModel(username, key);
+            const user = getCurrentFirebaseUser();
+            if (user) {
+              registerAndListenDeviceSession(user.uid).catch(() => {});
+            }
             setScreen('home');
           }}
           onGoToSignIn={() => setScreen('signIn')}
@@ -166,7 +242,10 @@ function AppContent() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
       <SignInScreen
+        remoteRevokeNotice={remoteRevokeNotice}
+        onClearRemoteRevokeNotice={() => setRemoteRevokeNotice(null)}
         onSignedIn={(username, key, initialModel, profile, householdKey) => {
+          setRemoteRevokeNotice(null);
           setCurrentUsername(username);
           setDerivedKey(key);
           loadModel(
@@ -180,6 +259,10 @@ function AppContent() {
             },
             { deferNotifications: true }
           ).catch(() => {});
+          const user = getCurrentFirebaseUser();
+          if (user) {
+            registerAndListenDeviceSession(user.uid).catch(() => {});
+          }
           setScreen('home');
           if (initialModel) {
             setTimeout(() => {
