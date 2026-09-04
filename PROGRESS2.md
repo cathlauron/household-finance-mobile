@@ -126,6 +126,42 @@ original 11 phases before that. Nothing from either file is repeated here.
   Security (Change Password + Secret Recovery Key), Quick Unlock (PIN/biometrics),
   Auto-lock, Active Devices, and Data (export/clear). All Household/linking/roster/
   peer-recovery functionality now lives solely in `ProfileScreen.tsx`.
+- **B.2c accidental revert caught & fixed — COMPLETE.** A routine commit made purely to
+  update `PROGRESS2.md` (`c8cc133`) had accidentally reintroduced the old, un-cleaned-up
+  version of `SettingsScreen.tsx` alongside it — silently undoing the entire 1,025-line
+  B.2c Household-section removal without anyone noticing at the time. Surfaced when
+  `npx tsc --noEmit` started failing with duplicate `React`/`useState`/`useEffect`
+  identifier errors (two `import ... from 'react'` lines at the top of the file — the
+  old pre-cleanup line sitting above the post-cleanup line). Investigated via Antigravity
+  rather than patching the import line directly, since a surface-level import fix would
+  have left the reverted 1,025 duplicate lines in place. Confirmed via `git show --stat`
+  and `git diff` between commits `302e52d` and `c8cc133` that the revert was accidental,
+  not intentional. Fixed by restoring the known-good file from commit `302e52d`
+  (`git checkout 302e52d -- src/screens/SettingsScreen.tsx`), confirmed `npx tsc --noEmit`
+  clean (0 errors), `git diff --stat` showed exactly the expected 1,025 deletions with
+  no unexpected changes, committed as `c5fd7d0` ("fix: restore B.2c SettingsScreen.tsx
+  cleanup that was accidentally reverted by a later PROGRESS2.md commit"), pushed to `main`.
+- **B.3a — Accounts tab redesign: colored account cards — CODE COMPLETE, PENDING DEVICE
+  VERIFICATION.** Added optional `color?: string` field to `BalanceAccountEntry` in
+  `types.ts`. Built new reusable `src/components/AccountCard.tsx`: an Apple Wallet-style
+  card (rounded corners, colored background, group badge + icon, account name, formatted
+  balance, drop shadow) with an automatic luminance check (`isLightBackground`) so text
+  renders white on dark/saturated card colors and dark ink on light colors like gold.
+  Exports `DEFAULT_GROUP_COLORS` (cash = emerald green `#059669`, debit = cobalt blue
+  `#2563EB`, credit = slate/graphite `#264653`) and `COLOR_PALETTE` (the same 15-color
+  palette already used for category colors in `SettingsScreen.tsx`, for visual
+  consistency app-wide). `AccountsScreen.tsx` now renders each account as an
+  `<AccountCard />` instead of a plain gray row; the Add/Edit modal gained a horizontal
+  color-swatch picker so users can override the auto-assigned default color per account,
+  saved to the new `color` field. New accounts with no explicit color chosen fall back to
+  their group's default color automatically. Verified: `PaymentMethodPicker.tsx`,
+  `PaymentMethodsReport.tsx`, `balanceProjection.ts`, `HomeScreen.tsx`, and
+  `mergeModels.ts` all confirmed unaffected (they only read `id`/`name`/`amount`, or
+  spread the object in a way that preserves the new field automatically). `npx tsc --noEmit`
+  clean (0 errors), diff reviewed line-by-line before approval, hand-pasted (not
+  Antigravity-applied) per standing small-fix policy, committed as `51f4dba`
+  ("feat(accounts): B.3a colored account cards with customizable colors"), pushed to
+  `main`. **Not yet manually verified on a real device/emulator** — see ⚠️ Known issues.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -224,6 +260,18 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   confirm the OS-level permission dialog, the debounce behavior under rapid backgrounding,
   or the Settings toggle round-trip. Worth doing before considering B.2b-security fully
   closed out in practice, not just in code.
+- **B.3a colored account cards not yet visually confirmed on a real device/emulator.**
+  `npx tsc --noEmit` is clean and the diff was reviewed line-by-line, but nobody has yet
+  opened the Accounts tab on a phone to confirm the cards render correctly, the color
+  swatch picker works and changes the card color on save, and the auto-default colors
+  (green/blue/slate for Cash/Debit/Credit) look right. Low risk given the clean compile,
+  but not yet eyeballed — do this before marking B.3a fully done.
+- **A routine PROGRESS2.md-only commit can silently revert real code changes if a file
+  is open with unsaved/stale changes in a VS Code tab — this has now happened twice**
+  (previously the Settings recovery-key badge in an earlier session; this session, the
+  entire B.2c 1,025-line SettingsScreen.tsx cleanup). Close/Save All tabs before *any*
+  commit, including ones that are only meant to touch PROGRESS2.md — not just before
+  dedicated edit sessions.
 
 - **Carried forward from PROGRESS1.md — still relevant:**
   - Watch for duplicate-import bugs reappearing in App.tsx after multi-part edits to
@@ -244,8 +292,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **Tier 1, Tier 2, and Tier 3 pre-Phase-B audit fixes are all fully verified and
   complete** (the orphaned household-doc cleanup is a deliberate, documented deferral).
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
-- Next up: **B.3a — Accounts tab redesign: colored account cards**, per the checkpoint
-  table below:
+- **B.3a is code-complete and pushed, but still needs a real-device visual check**
+  (open Accounts tab, confirm colored cards render, tap Add/Edit, confirm the color
+  swatch picker works and saves correctly) before it's marked fully done.
+- Once B.3a is confirmed on-device, next up is **B.3b — Accounts tab redesign:
+  stacked/fanned card view**, per the checkpoint table below:
 
   | Order | Item | Source |
   |---|---|---|
@@ -254,8 +305,8 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.2b | Onboarding (short, skippable, shown once after account creation) | Standard-screens gap-check |
   | ✅ B.2b-security | Security setup step within onboarding — PIN eye icon + real biometric unlock (Face ID/Touch ID/Fingerprint), auto-offered opt-out | Onboarding research |
   | ✅ B.2c | Standalone Profile screen, split out of Settings | Standard-screens gap-check |
-  | ▶️ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
-  | B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
+  | ✅ B.3a | Accounts tab redesign: colored account cards | Apple Wallet-inspired |
+  | ▶️ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
   | B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
   | B.4a | Convert essential-screen add/edit flows to bottom sheets, one screen at a time | Cards + bottom sheets pattern |
   | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
@@ -325,9 +376,19 @@ Files in the repo (relevant to Phase B/C)
   removed (moved to `ProfileScreen.tsx`).
 - `mobile-app/src/screens/SettingsScreen.tsx` — modified (Profile Card added in commit
   `d0375c6`; ~1,025 lines of duplicated Household/linking/peer-recovery/roster logic
-  removed this session, commit `302e52d`). Now contains only: Profile Card, Appearance,
-  Notifications, Categories, Merchants & Payees, Categorization Rules, Security (Change
-  Password + Secret Recovery Key), Quick Unlock, Auto-lock, Active Devices, and Data.
+  removed in commit `302e52d`; that removal was accidentally reverted by an unrelated
+  PROGRESS2.md-only commit, then restored again this session in commit `c5fd7d0`). Now
+  contains only: Profile Card, Appearance, Notifications, Categories, Merchants & Payees,
+  Categorization Rules, Security (Change Password + Secret Recovery Key), Quick Unlock,
+  Auto-lock, Active Devices, and Data.
+- `mobile-app/src/types.ts` — modified. Added optional `color?: string` field to
+  `BalanceAccountEntry`.
+- `mobile-app/src/components/AccountCard.tsx` — new. Reusable Apple Wallet-style colored
+  account card component. Exports `DEFAULT_GROUP_COLORS`, `COLOR_PALETTE`, and the
+  `AccountCard` component itself (props: `account`, `group`, `onPress`, `style`, `testID`).
+- `mobile-app/src/screens/AccountsScreen.tsx` — modified. Renders each account via
+  `<AccountCard />` instead of a plain row; Add/Edit modal gained a horizontal color
+  swatch picker wired to the new `color` field.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
