@@ -6,7 +6,7 @@ which is now closed and kept only as a historical record. PROGRESS.md covers the
 original 11 phases before that. Nothing from either file is repeated here.
 
 ✅ Done
-- (Nothing yet — this file starts at the beginning of Phase B.)
+- **Pre-Phase-B code-health/security audit — COMPLETE (investigation only, zero code changed).** Full report-only pass via Antigravity across bugs, dead code, security rules, config, and feature-gap suggestions. Found 5 real bugs (2 high-priority: silent household data overwrite risk, and a solo password-change that silently breaks the Secret Recovery Key), 4 security findings (2 high-priority: a brute-forceable peer-recovery PIN doc that's never deleted, and a missing ownership check letting any user overwrite anyone's cloud backup), 4 unused-import/variable cleanup items, 5 leftover debug logs, and 3 config inconsistencies (app.json dark-mode setting, missing notifications plugin, a deprecated notification trigger format). `npx tsc --noEmit` clean. Full finding-by-finding detail in ⚠️ Known issues below. Triaged into 3 approval tiers — none yet approved/fixed.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -34,6 +34,30 @@ original 11 phases before that. Nothing from either file is repeated here.
     this prevents); report-only-first workflow for any full-codebase audit.
 
 ⚠️ Known issues / gotchas
+- **Pre-Phase-B audit findings (this session) — none fixed yet, triaged into 3 tiers:**
+
+  **TIER 1 — fix now (security/data-loss risk):**
+  - **[Bug] No live sync for a shared household's financial data.** `subscribeToHousehold`/`setupHouseholdListener` only watch `members`/`owner`/`memberUsernames` — never the encrypted `data` field itself. If Member A adds a bill, Member B's app doesn't see it live; if Member B then saves anything, their stale in-memory model overwrites Member A's edit in Firestore. Fix: also deliver `data`/`updatedAt` through the listener and merge/reload when the household's data changed elsewhere.
+  - **[Bug] Solo password change silently breaks the Secret Recovery Key.** `changePassword()` re-encrypts personal data under a new key but never re-wraps `recoveryKeys/{username}` in Firestore. If the person later forgets their new password and tries the Secret Recovery Key, it unwraps the OLD key and fails — permanent lockout with no clear reason why. Fix: prompt to regenerate the recovery key on password change, or flag it stale in Settings.
+  - **[Security] Peer-recovery's ephemeral transfer document is never deleted.** Once household peer recovery succeeds, `householdRecovery/{requestId}` (containing the household key encrypted under a 6-digit numeric PIN — only 1,000,000 possible combinations) stays in Firestore indefinitely, readable/brute-forceable by any household member. Fix: delete the doc immediately after successful decryption in `SignInScreen.tsx`.
+  - **[Security] `profileBackups/{username}` has no ownership check on writes.** Any authenticated user can overwrite ANY username's cloud backup salt/data — corrupting a different person's account so their next new-device sign-in fails. Fix: add an `ownerUid` field, enforced on create and update.
+
+  **TIER 2 — fix now, lower urgency (approve after Tier 1):**
+  - **[Bug] `saveModel`'s Firestore write isn't wrapped in try/catch.** If offline/network drops mid-save, the UI already shows the edit (local React state updated first) but it was never actually written to disk or Firestore — silently lost on app restart/lock.
+  - **[Bug] A failed `saveRecoveryKey()` during profile creation can strand a username as permanently "taken."** Firebase account + local profile already exist by that point; if recovery-key save fails, the person can't retry with the same username.
+  - **[Security] Any authenticated user can delete or overwrite another user's in-flight `linkCodes/{code}`** if they guess/iterate the 6-character code. Fix: record `hostUid` and require a match.
+  - **[Security] Household `update` rule lacks a type check** that `create` already has (`data is string`, `updatedAt is number`) — a buggy client could write a corrupted payload.
+  - **[Config] `app.json`'s `userInterfaceStyle` is set to `"light"`**, which can suppress the app's own dark-mode/device-theme listener in a real (non-Expo-Go) build. Should be `"automatic"`.
+  - **[Config] Missing `expo-notifications` config plugin in `app.json`** — needed for Android 13+ notification permissions in a standalone build.
+  - **[Config] Deprecated date-trigger format used in `pushNotifications.ts`** (`trigger: alertDate as any`) — should use the newer `{ type: SchedulableTriggerInputTypes.DATE, date: ... }` shape.
+
+  **TIER 3 — cleanup only (no functional risk):**
+  - **[Bug, low] Cancelled/expired link codes leave an orphaned `households/{householdId}` doc behind** (1-member household nobody ever joined) — Firestore clutter, not a data-loss or security issue.
+  - 4 unused imports/variables: `onClearRemoteRevokeNotice` (SignInScreen — wired but never called), `getHouseholdOwner` (SettingsScreen import), `formatPeso` (GoalsScreen import), a duplicate `debtFees` calc (TaxSummaryReport).
+  - 5 leftover debug `console.error` logs: 3 in `CreateProfileScreen.tsx`, 1 in `linking.ts` (bracketed `[FAILED TO CANCEL...]` format), plus the ones already known from PROGRESS1.md's earlier audit round.
+
+  **Feature ideas surfaced by the audit (not bugs — for Phase B consideration, not yet scheduled):** a "Sign out all other devices" button in Active Devices; wiring up the already-present-but-unused `onClearRemoteRevokeNotice` to dismiss the revoke banner; pull-to-refresh on Dashboard/Bills/Transactions as a manual sync option (this would help make Tier 1's live-sync gap less painful even after it's fixed).
+
 - **Carried forward from PROGRESS1.md — still relevant:**
   - Watch for duplicate-import bugs reappearing in App.tsx after multi-part edits to 
     its import block — always close/reload the file in the VS Code tab before restarting 
@@ -46,10 +70,13 @@ original 11 phases before that. Nothing from either file is repeated here.
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
-- Pending: results of the pre-Phase-B code-health/security audit (requested this 
-  session, prompt already sent to Antigravity — see PROGRESS1.md's final session entry 
-  for the exact prompt). Triage and approve fixes from that audit first.
-- Once the audit is clear: begin Phase B at B.1 (essential vs. additional feature 
+- **Audit is done and triaged (see ⚠️ Known issues above) — nothing fixed yet.** 
+  Approve and implement Tier 1 first (the 2 bugs + 2 security findings), then Tier 2, 
+  then Tier 3 cleanup, each as its own scoped Antigravity approval round, per this 
+  project's established audit workflow (report first, approve in numbered batches, 
+  no broad "fix everything" authorization).
+- Once all 3 tiers are resolved and re-verified (`npx tsc --noEmit` clean, rules 
+  redeployed if changed): begin Phase B at B.1 (essential vs. additional feature
   split — formal write-up) per the checkpoint table in PROGRESS1.md's ▶️ Next step 
   section (item 6), copied below for convenience:
 
