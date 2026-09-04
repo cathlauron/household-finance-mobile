@@ -35,6 +35,7 @@ import { cancelLinkCode } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup } from './cloudBackup';
 import { sanitizeModelIds } from './mergeModels';
+import { deleteRecoveryKey } from './recovery';
 import {
   loadWrappedHouseholdKey,
   unwrapHouseholdKey,
@@ -117,6 +118,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // so saveModel/changePassword can keep the cloud backup's salt field up to date
   // without needing to re-look-up the profiles index on every save.
   const saltRef = useRef<string | null>(null);
+  // Pre-Phase-B Tier 1: tracks the last known encrypted payload for live household sync,
+  // preventing echo-reloads when this device saves, while detecting remote updates.
+  const lastEncryptedDataRef = useRef<string | null>(null);
 
   function cleanupHouseholdListener() {
     if (householdUnsubscribeRef.current) {
@@ -169,6 +173,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
+    lastEncryptedDataRef.current = null;
     setModel(modelToSave);
     setIsLinked(false);
 
@@ -206,7 +211,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         if (members.length === 1 && members[0] === currentUid) {
           // Current user is the sole member remaining -> live auto-dissolve!
-          await performDissolve(householdId, { reason: 'alone', deleteDoc: true });
+          let fallbackModel: HouseholdModel | undefined = undefined;
+          if (snapshotData.data && householdKeyRef.current) {
+            try {
+              fallbackModel = sanitizeModelIds(
+                decryptJSON<HouseholdModel>(householdKeyRef.current, snapshotData.data)
+              );
+            } catch (e) {}
+          }
+          await performDissolve(householdId, { reason: 'alone', deleteDoc: true, fallbackModel });
+          return;
+        }
+
+        // Live household sync: reload/merge in-memory model when household data was changed elsewhere
+        if (
+          snapshotData.data &&
+          snapshotData.data !== lastEncryptedDataRef.current &&
+          householdKeyRef.current
+        ) {
+          try {
+            const incomingModel = sanitizeModelIds(
+              decryptJSON<HouseholdModel>(householdKeyRef.current, snapshotData.data)
+            );
+            lastEncryptedDataRef.current = snapshotData.data;
+            setModel(incomingModel);
+
+            // Keep personal local backup fresh
+            const username = usernameRef.current;
+            const personalKey = keyRef.current;
+            if (username && personalKey) {
+              encryptJSON(personalKey, incomingModel)
+                .then((enc) => saveEncryptedProfileData(username, enc))
+                .catch(() => {});
+            }
+            rescheduleBillNotifications(incomingModel).catch(() => {});
+          } catch (err) {
+            console.error('Failed to decrypt live household data update:', err);
+          }
         }
       },
       async (error) => {
@@ -305,6 +346,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
             householdIdRef.current = householdId;
             householdKeyRef.current = householdKey;
+            lastEncryptedDataRef.current = encryptedHousehold;
             setModel(loaded);
             setIsLinked(true);
             saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
@@ -351,6 +393,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (householdIdRef.current && householdKeyRef.current) {
       // Linked profile: save to the shared household document
       const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
+      lastEncryptedDataRef.current = encrypted;
       await saveHouseholdData(householdIdRef.current, encrypted);
       rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
@@ -386,6 +429,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     keyRef.current = null;
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
+    lastEncryptedDataRef.current = null;
     setModel(null);
     setIsLinked(false);
     setLinkNoticeMsg(null);
@@ -629,6 +673,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       data: reEncrypted,
     }).catch((backupError) => {
       console.error('Failed to update cloud backup after password change:', backupError);
+    });
+
+    // Pre-Phase-B Tier 1 fix: for unlinked profiles, the old recovery key doc wrapped the OLD
+    // password-derived key and is now invalid. Delete it so the user isn't misled, and so
+    // Settings > Security can show that the recovery key needs regenerating.
+    deleteRecoveryKey(username).catch((err) => {
+      console.error('Failed to delete stale recovery key after password change:', err);
     });
 
     keyRef.current = newKey;

@@ -51,6 +51,7 @@ import {
   approvePeerRecoveryRequest,
   generateRecoveryCode,
   saveRecoveryKey,
+  hasRecoveryKeySetUp,
   type PeerRecoveryRequestDoc,
 } from '../recovery';
 import { deriveKey, decryptJSON } from '../encryption';
@@ -157,6 +158,7 @@ export default function SettingsScreen() {
   const [retroactiveSuccessCode, setRetroactiveSuccessCode] = useState<string | null>(null);
   const [retroactiveBusy, setRetroactiveBusy] = useState(false);
   const [retroactiveError, setRetroactiveError] = useState('');
+  const [hasRecoveryKey, setHasRecoveryKey] = useState<boolean | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -425,6 +427,21 @@ export default function SettingsScreen() {
       }
     };
   }, [isLinked, username]);
+
+  useEffect(() => {
+    if (!username) return;
+    let active = true;
+    hasRecoveryKeySetUp(username)
+      .then((exists) => {
+        if (active) setHasRecoveryKey(exists);
+      })
+      .catch(() => {
+        if (active) setHasRecoveryKey(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [username]);
 
   // ---- Checkpoint 11.3: Security (change password) ----
   const [currentPassInput, setCurrentPassInput] = useState('');
@@ -1002,6 +1019,9 @@ export default function SettingsScreen() {
     setNewPass1Input('');
     setNewPass2Input('');
     setPassChangeMsg('Password changed.');
+    if (!isLinked) {
+      setHasRecoveryKey(false);
+    }
   }
 
   async function handleApprovePeerRecovery() {
@@ -1069,6 +1089,7 @@ export default function SettingsScreen() {
       const code = await generateRecoveryCode();
       await saveRecoveryKey(username, targetKeyToWrap, isHousehold, code);
       setRetroactiveSuccessCode(code);
+      setHasRecoveryKey(true);
       setRetroactiveBusy(false);
     } catch (e: any) {
       setRetroactiveBusy(false);
@@ -1334,7 +1355,24 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
         <View style={[styles.linkCodeBox, { marginTop: 16 }]}>
-          <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+            <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
+            {hasRecoveryKey === false && (
+              <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: '700' }}>Needs regenerating</Text>
+              </View>
+            )}
+            {hasRecoveryKey === true && (
+              <View style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ color: '#22c55e', fontSize: 11, fontWeight: '600' }}>Active</Text>
+              </View>
+            )}
+          </View>
+          {hasRecoveryKey === false && (
+            <Text style={[styles.hintText, { color: '#f59e0b', marginTop: 2, marginBottom: 4, fontWeight: '500' }]}>
+              Your password was changed. Your previous recovery key is no longer valid and needs regenerating.
+            </Text>
+          )}
           <Text style={styles.hintText}>
             A 16-character recovery key lets you regain access to your encrypted financial data if you ever reset or forget your account password.
           </Text>

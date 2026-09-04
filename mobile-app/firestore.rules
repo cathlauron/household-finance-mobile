@@ -151,21 +151,30 @@ service cloud.firestore {
       // needs to restore itself. `data` is the encrypted personal model,
       // only meaningful/present for an unlinked profile.
       //
-      // NOTE: this collection is keyed by username, not uid — there's no
-      // `ownerUid` field on it the way householdKeys has, because it needs
-      // to be readable by anyone who knows the username (that's the whole
-      // point: a signed-in-but-brand-new device hasn't linked this username
-      // to anything locally yet). Being logged into Firebase Auth at all
-      // (request.auth != null) is what's gating access, not per-document
-      // ownership.
+      // Pre-Phase-B Tier 1 fix: ownerUid field added on create and required
+      // on update so only the owning user can modify their backup.
       allow get: if request.auth != null;
 
-      allow write: if request.auth != null
-        && request.resource.data.keys().hasAll(['salt', 'updatedAt'])
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasAll(['salt', 'updatedAt', 'ownerUid'])
+        && request.resource.data.ownerUid is string
         && request.resource.data.salt is string
         && request.resource.data.updatedAt is number
         && (!('householdId' in request.resource.data) || request.resource.data.householdId is string)
         && (!('data' in request.resource.data) || request.resource.data.data is string);
+
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasAll(['salt', 'updatedAt', 'ownerUid'])
+        && request.resource.data.ownerUid is string
+        && request.resource.data.salt is string
+        && request.resource.data.updatedAt is number
+        && (!('householdId' in request.resource.data) || request.resource.data.householdId is string)
+        && (!('data' in request.resource.data) || request.resource.data.data is string);
+
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
 
       allow list: if false;
     }

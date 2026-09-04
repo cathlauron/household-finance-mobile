@@ -14,6 +14,7 @@ import {
   generatePeerTransferCode,
   createPeerRecoveryRequest,
   cancelPeerRecoveryRequest,
+  deletePeerRecoveryRequest,
   subscribeToPeerRecoveryRequest,
   decryptTransferredHouseholdKey,
 } from '../recovery';
@@ -214,6 +215,7 @@ export default function SignInScreen({
           }
           try {
             const householdKey = decryptTransferredHouseholdKey(encryptedHouseholdKey, transferKey);
+            await deletePeerRecoveryRequest(requestId);
             const householdId = recoveryContext.effectiveHouseholdId!;
             const encryptedHousehold = await loadHouseholdData(householdId);
             if (!encryptedHousehold) throw new Error('Missing household data');

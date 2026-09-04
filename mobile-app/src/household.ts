@@ -235,6 +235,8 @@ export type HouseholdDocSnapshot = {
   owner: string;
   memberUsernames?: Record<string, string>;
   pendingRecoveryRequestId?: string | null;
+  data?: string;
+  updatedAt?: number;
 };
 
 // Watches the household document live for membership changes, dissolutions, or revocations.
@@ -257,6 +259,8 @@ export function subscribeToHousehold(
         memberUsernames: typeof data.memberUsernames === 'object' ? data.memberUsernames : {},
         pendingRecoveryRequestId:
           typeof data.pendingRecoveryRequestId === 'string' ? data.pendingRecoveryRequestId : null,
+        data: typeof data.data === 'string' ? data.data : undefined,
+        updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : undefined,
       });
     },
     (error) => {

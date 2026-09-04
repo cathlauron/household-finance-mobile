@@ -140,6 +140,13 @@ export async function hasRecoveryKeySetUp(username: string): Promise<boolean> {
   }
 }
 
+// Deletes a stored recovery key document (e.g. when an unlinked password change invalidates it)
+export async function deleteRecoveryKey(username: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'recoveryKeys', username));
+  } catch (e) {}
+}
+
 // Loads and un-wraps the master key using the typed recovery code
 export async function recoverKeyWithCode(
   username: string,
@@ -231,6 +238,13 @@ export async function cancelPeerRecoveryRequest(
     });
   } catch (e) {}
 
+  try {
+    await deleteDoc(doc(db, 'householdRecovery', requestId));
+  } catch (e) {}
+}
+
+// Deletes a peer recovery request document (e.g. after successful transfer or cancellation)
+export async function deletePeerRecoveryRequest(requestId: string): Promise<void> {
   try {
     await deleteDoc(doc(db, 'householdRecovery', requestId));
   } catch (e) {}
