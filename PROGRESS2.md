@@ -288,8 +288,26 @@ original 11 phases before that. Nothing from either file is repeated here.
   scrolls smoothly to Save/Delete/Cancel; the separate Payoff Simulator button still
   opens its own popup untouched.
 - **B.4a (Bills, Debts, Loans) — the entire To-Pay tab trio — FULLY COMPLETE, ALL
-  VERIFIED ON DEVICE.** Remaining B.4a screens: Transactions, Income, Savings, and
-  three small Settings modals (Category, Payee, Rule).
+  VERIFIED ON DEVICE.**
+- **B.4a (Transactions) — Convert Add/Edit Transaction to a bottom sheet — COMPLETE,
+  VERIFIED ON DEVICE.** Fourth screen converted. Investigated via a dedicated
+  Antigravity prompt first: confirmed `TransactionsScreen.tsx` has two distinct modals
+  — the Add/Edit Transaction form (the one being converted) and a separate CSV Import
+  wizard (`CsvImportModal`, its own component, rendered independently and explicitly
+  confirmed untouched by the conversion). Mapped every form state variable and handler
+  before touching anything (label/amount/category/person-chip fields, auto-categorization
+  via `computeAutoCategory`, payment method picker, receipt photo attach/remove,
+  `handleSave`, `handleDelete`, `closeModal`); confirmed exactly 4 unused styles to
+  remove (`modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle`). Swapped the
+  centered `Modal`/`Pressable`/`KeyboardAvoidingView`/`ScrollView` wrapper for
+  `<BottomSheet />`; all form state, handlers, and validation left completely untouched.
+  Removed the 4 now-unused styles. `npx tsc --noEmit` clean (0 errors), diff reviewed
+  line-by-line before approval, hand-pasted per standing small-fix policy, committed as
+  "feat(transactions): B.4a convert Add/Edit Transaction to bottom sheet", pushed to
+  `main`. Manually verified on-device: sheet slides up correctly; label/amount entry and
+  auto-categorization work; person chips and payment method picker work; receipt photo
+  attach/preview/remove works; form scrolls smoothly to reach Save/Delete/Cancel with
+  nothing cut off; "Import CSV" still opens its own separate, unaffected popup.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -429,11 +447,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
 - **B.3 (B.3a + B.3b + B.3c) — Accounts tab redesign — is fully complete and verified
   on-device.**
-- **B.4a is in progress.** Bills, Debts, and Loans are all done and verified on-device
-  (see ✅ Done above) — the entire To-Pay tab trio is complete. Remaining screens still
-  to convert, in planned order: **Transactions** (next), then Income, Savings, and the
-  three small Settings modals (Category, Payee, Rule). Calendar and Home/Dashboard
-  need no conversion (no add/edit modals exist there).
+- **B.4a is in progress.** Bills, Debts, Loans, and Transactions are all done and
+  verified on-device (see ✅ Done above) — the entire To-Pay tab trio plus Transactions
+  is complete. Remaining screens still to convert, in planned order: **Income** (next),
+  then Savings, and the three small Settings modals (Category, Payee, Rule). Calendar
+  and Home/Dashboard need no conversion (no add/edit modals exist there).
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -555,6 +573,11 @@ Files in the repo (relevant to Phase B/C)
   inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/state unchanged.
   Removed unused `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
   `LoanPayoffSimulatorModal` (a separate payoff-projection popup) left untouched.
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.4a). Add/Edit
+  Transaction now renders inside `<BottomSheet />` instead of a centered `<Modal>`;
+  form logic/state unchanged. Removed unused
+  `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+  `CsvImportModal` (a separate CSV import wizard) left untouched.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
