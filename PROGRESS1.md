@@ -6,6 +6,23 @@ For everything already built before this — all 11 phases of the original app (
 
 ✅ Done
 
+- Multi-device "Active Devices" (Phase A add-on, parked feature): COMPLETE.
+  - sessions/{uid}/devices/{deviceId} Firestore collection: device registration on
+    sign-in, throttled heartbeat (reuses existing AppState listener, no second one added),
+    real-time revocation listener, remote revoke from Settings.
+  - Settings > Active Devices section: shows every device ever signed in, with status
+    tags Active / Signed out / Revoked. "Sign out" button only shown next to other
+    Active devices.
+  - Firestore rules: revoked is irreversible once true (no further updates allowed at
+    all once set); update rule allows only heartbeat (lastActiveAt), self sign-out
+    (signedOutAt), or revoke (revoked+revokedAt) as isolated field changes.
+  - All 5 core scenarios manually verified on real devices: normal sign-out (no
+    self-triggered banner), active list accuracy, remote revoke + banner, revoke while
+    on PIN-lock screen (kicks to full sign-in), offline reconnect.
+  - History view add-on: normal sign-out now marks signedOutAt instead of deleting the
+    doc, so devices persist in the list as "Signed out" rather than disappearing.
+    All 4 retest scenarios verified (signed-out status shows, re-sign-in flips back to
+    Active, revoke still works, sign-out button hidden for non-Active devices).
 - **Account Recovery (Secret Recovery Key + Household Peer Recovery) — CONFIRMED DONE, live-tested both paths successfully.** Two new recovery features built to close the gap where Firebase Auth's password and the app's local data-encryption passphrase are the same typed value with no reset path — resetting a Firebase password alone would otherwise permanently lock someone out of their own encrypted data. **Feature A (Secret Recovery Key):** every profile (solo or linked) gets a one-time 16-character recovery code shown during profile creation (and generatable retroactively for existing profiles via Settings > Security), which wraps a copy of the profile's data-encryption key under a recovery-code-derived key and stores it in a new `recoveryKeys/{username}` Firestore collection. **Feature B (Household Peer Recovery):** a linked member who's locked out can request recovery from another linked member currently signed in — the approver reviews the request in Settings > Household and approves it by entering a 6-digit code shown on the requester's screen, which hands over the shared household key via a one-time ephemeral transfer key. Both features intercept the specific failure mode of "Firebase Auth succeeds but the typed password no longer decrypts the local/cloud data" (the tell-tale sign of a password reset done outside the app) across all 4 sign-in call sites, replacing the old generic "Incorrect username or password" message with a real recovery screen. Built via the Claude+Antigravity investigate-then-approve workflow across an initial investigation/scoping pass and an implementation pass with 2 corrections applied before approval (pending-request discovery moved onto the `households/{householdId}` document instead of an unsupported open-ended Firestore query; reused the existing "Clear all data & start fresh" Danger Zone button for the both-lost dead-end case instead of building a duplicate). `npx tsc --noEmit` and a full Android bundle export both confirmed clean; `firestore.rules` deployed live via `firebase deploy --only firestore:rules`.
 - **Incident, fully resolved this session: the above work was accidentally wiped by an unsaved VS Code tab overwrite, then restored.** After the original implementation was committed and pushed (`7cfe26f`), open/unsaved editor tabs for the same 7 files silently flushed their stale contents back to disk about 2 minutes later, reverting the files (including truncating `recovery.ts` to 0 bytes); the next session's normal sync-check checkpoint commit then faithfully committed and pushed that reversion (`abf86f1`), deleting the feature from `origin/main`. Root cause was confirmed via VS Code's Local History timestamps and `git reflog` (no `git reset`/`checkout`/`stash` was involved — this was an editor issue, not a git issue). Restored cleanly via `git revert --no-edit abf86f1` (commit `7b6e989`), verified via a 0-difference diff against the original `7cfe26f` state (including `recovery.ts` back to its full 332 lines), Firestore rules re-deployed, and both `npx tsc --noEmit` and an Android bundle export re-confirmed clean. **New standing habit adopted because of this: close or Save All open VS Code tabs before starting any session where Claude/Antigravity will be editing files** — see 📌 Decisions made.
 - **Both recovery paths (solo Secret Recovery Key and Household Peer Recovery) confirmed working via real, hands-on testing — not just "compiles cleanly."** Solo: generated a Secret Recovery Key on an existing profile via Settings > Security, tested successfully. Linked: tested using two throwaway linked test profiles, manufacturing the locked-out state via Firebase Console's built-in "Reset password" action (confirmed this only changes the Firebase Auth side, correctly leaving the local encryption passphrase mismatched — the in-app "Change password" flow was confirmed to always keep both in sync, so it was deliberately avoided for this test) — full peer-recovery handshake (6-digit code request → approval from the other linked device → automatic unlock) worked end-to-end.
@@ -80,6 +97,16 @@ Security hardening on household linking (link-code lifecycle)
 - **CSV import: column mapping + duplicate detection — DONE.** `csvImport.ts`/`CsvImportModal.tsx` no longer require exact fixed column names — headers are read from the file, `guessCsvColumnMapping()` auto-guesses each target field, and mapping is overridable by hand before preview. `flagDuplicateRows()` checks each row against `model.manualTransactions` (exact date+amount, case-insensitive exact-or-substring label match); flagged rows default to excluded, with an opt-in checkbox to import anyway.
 
 📌 Decisions made
+- Normal sign-out marks the device doc with signedOutAt (kept, not deleted) instead of
+  removing it — chosen so Settings can show full sign-in history, not just currently
+  active sessions. Revoked stays reserved exclusively for remote sign-out by another
+  device; a device can never revoke itself.
+- Device status is derived, not stored directly: revoked==true -> Revoked; else
+  signedOutAt set -> Signed out; else -> Active. Re-registering on a fresh sign-in
+  (delete-then-create) naturally resets a device back to Active.
+- On receiving a remote revoke (handleRemoteRevoked), the device does NOT write back to
+  its own Firestore doc — it's already marked revoked by the other device, and the
+  rules would reject any further write anyway once revoked==true.
 - **New standing habit: close (or Save All) any open VS Code tabs for files Claude/Antigravity is about to edit, before starting a session.** Adopted after an incident where stale, unsaved editor-tab contents silently overwrote 7 freshly-committed files on disk, which the next sync-check checkpoint then faithfully committed and pushed as a deletion of that work (see the Account Recovery ✅ Done entry and its own session entry below for the full incident). This is now a required pre-session step alongside the existing sync-check routine, not optional.
 - **Development environment migrated from GitHub Codespaces to local VS Code on Windows (PowerShell terminal).** Reason: hit the Codespaces free 60-hour/month limit. All workflow instructions (Project Instructions doc, this file) updated to v7/reflect this — commands now use PowerShell syntax throughout (`type` instead of `cat`, PowerShell here-strings instead of bash heredoc). This is a tooling change only; the repo, the code, and every other decision/workflow rule are unchanged.
 - **Permanent rule adopted: never give bash heredoc syntax for saving files in this project — always use a PowerShell here-string instead.** This is now written directly into the Project Instructions custom instructions (v7) so every one of the 20 Gmail-account conversations follows it. See the "Migrated from Codespaces to VS Code" session entry below for the full incident this rule was created to prevent from recurring.
@@ -145,6 +172,13 @@ Security hardening on household linking (link-code lifecycle)
 - **If/when this is picked up as real work, it should become its own small checkpoint** (tentatively "Checkpoint A.7.9" or a standalone "Testing Setup" checkpoint, sequenced wherever it's decided to fit) rather than being folded into an existing one — it's infrastructure, not a specific bug fix or feature.
 
 ⚠️ Known issues / gotchas
+- Watch for duplicate-import bugs reappearing in App.tsx after multi-part edits to its
+  import block — this happened twice this project (signOutFirebase imported on two
+  lines), and was traced to an unsaved editor buffer overwriting a disk fix. Always
+  close/reload App.tsx in the VS Code tab before restarting Metro after any edit to it.
+- When reviewing Antigravity's work, insist on real command output / real diffs, not
+  summaries — this session caught two cases where a summary looked right but didn't
+  match reality (a skipped diff request, and a misattributed function location).
 - **RESOLVED this session — a real incident, not hypothetical.** Unsaved, open VS Code editor tabs for a set of just-committed files can silently overwrite them on disk via an editor "workspace edit" flush, with no warning. If a sync-check checkpoint commit runs afterward, it will faithfully commit and push that overwrite, appearing to delete already-completed work. See the Account Recovery ✅ Done entry above for the full incident (commit `7cfe26f` reverted by `abf86f1`, restored via `7b6e989`). Mitigation is now a standing habit (see 📌 Decisions made) — close/Save All relevant tabs before any session involving file edits.
 - Maestro tests involving a password change (re-encryption) are genuinely slow (~2 min per change) due to PBKDF2 (100,000 rounds) run twice, on top of emulator slowness. Use at least a 3-minute timeout for any test step involving a password change.
 - Maestro scroll steps may not reliably bring an off-screen element fully into view without `centerElement: true`.
@@ -205,8 +239,11 @@ Security hardening on household linking (link-code lifecycle)
 
 5. **Live two-phone test of A.7.6d before it can be marked confirmed-done.** Specifically: link two phones, then have one leave (or have the owner remove it) while the OTHER phone has the app open in the foreground — confirm that phone dissolves back to a personal profile live, without needing to background/reopen the app. This is the scenario the live Firestore listener exists for; the offline catch-up path (app closed, then reopened) is a separate, easier-to-hit code path and passing that alone wouldn't confirm the listener itself works. Also worth covering in the same pass: owner removes a member, owner transfers ownership and leaves a 2+ person household, and owner leaves a 2-person household (should route straight to dissolve, no pointless 1-person picker). Once this passes, batch-test A.7.6b/A.7.6c together with it per the earlier batch-testing decision.
 6. ~~Once A.7.6d's live test is confirmed, run a full Claude+Copilot code-health rundown before moving on~~ — ✅ DONE this session (out of the originally-planned order — done via Antigravity rather than Copilot, and ahead of A.7.6d's live test rather than after it, since it made sense to clear known bugs before any more testing). See ✅ Done for the full 9-bug + 13-cleanup-item breakdown across 3 commits. Not yet re-verified against a live emulator/device test.
-6. Once A.5, A.6, A.7, and the code-health rundown above are all done: **pick multi-device "active sessions" back up** (design already scoped in the decisions section above), OR move straight into Phase B depending on what feels like the better next use of a session at that point — revisit with the person then.
-6. **Phase B — UI/UX Polish**, expanded scope agreed across planning sessions (full detail in Decisions above). Checkpoint order when this phase starts:
+6. ~~Multi-device "active sessions"~~ — ✅ DONE (see ✅ Done section above). Built,
+   live-tested (5/5 core scenarios), extended with a sign-in history view (4/4 retests
+   passed), committed and pushed across two commits, Firestore rules deployed twice.
+   Nothing is open before Phase B anymore.
+6. **Phase B — UI/UX Polish** — START HERE NEXT SESSION. Expanded scope agreed across planning sessions (full detail in Decisions above). Checkpoint order when this phase starts:
 
    | Order | Item | Source |
    |---|---|---|
@@ -244,6 +281,8 @@ Security hardening on household linking (link-code lifecycle)
 11. **Phase C — Publishing**, unchanged from 4-REMAINING-WORK-ROADMAP.md: C.1 EAS Build → installable `.apk`/TestFlight link. C.2 (optional, real costs, entirely the person's call) → Play Store/App Store listing.
 
 Files in the repo (relevant to this phase)
+- mobile-app/src/sessions.ts (new): device session registration, heartbeat, revoke,
+  sign-in history status logic (getDeviceStatus, formatTimeAgo, formatRelativeTime).
 - mobile-app/src/recovery.ts — NEW (Account Recovery, this session, restored via revert `7b6e989` after an accidental wipe): recovery-code generation/formatting/validation, key wrap/unwrap helpers, Firestore operations for `recoveryKeys/{username}`, and the peer-recovery handshake (`createPeerRecoveryRequest`, `approvePeerRecoveryRequest`, `subscribeToPeerRecoveryRequest`, `decryptTransferredHouseholdKey`). 332 lines.
 - mobile-app/src/screens/CreateProfileScreen.tsx — UPDATED (Account Recovery, this session): generates and saves a Secret Recovery Key on profile creation; presents it in a modal requiring an "I've saved this" checkbox before continuing.
 - mobile-app/src/screens/SignInScreen.tsx — UPDATED (Account Recovery, this session): intercepts decryption failures at all 4 sign-in call sites (new-device cloud restore, linked-profile self-heal, solo profile) when Firebase Auth succeeded but the typed password doesn't decrypt the data; offers Secret Recovery Key entry or, if linked, a Household Peer Recovery request with a live 6-digit-code approval listener.
@@ -323,6 +362,32 @@ Files touched during the code-health audit this session:
 - mobile-app/src/screens/GoalsScreen.tsx — UPDATED: removed unused `formatPeso` import (round 3).
 - mobile-app/src/screens/reports/SubscriptionAuditReport.tsx — UPDATED: removed unused `BillCycle` type import (round 3).
 - mobile-app/src/screens/reports/TaxSummaryReport.tsx — UPDATED: removed unused `debtFees` computed variable (round 3).
+
+## 📅 Session entry — 2026-09-03: Multi-device Active Sessions build + sign-in history add-on
+
+**What happened:**
+- Fixed leftover duplicate signOutFirebase import bug in App.tsx from prior session
+  (confirmed via raw before/after file read + fresh LastWriteTime, not a summary).
+- Built and shipped multi-device Active Sessions feature end-to-end: sessions.ts,
+  firestore.rules, App.tsx integration, SettingsScreen.tsx UI. 5/5 manual tests passed.
+- Caught and corrected two review issues before deploy: (1) Antigravity's response
+  skipped a requested SignInScreen.tsx diff — asked again and got it, was clean;
+  (2) A "handleFullSignOut() lost its cleanup call" concern turned out to be a
+  misattributed diff hunk (it was actually in handleRemoteRevoked(), correctly removed
+  since that path can't/shouldn't write back). Confirmed via full re-diff.
+- Added sign-in history: normal sign-out now marks signedOutAt instead of deleting the
+  device doc. Added Active/Signed out/Revoked status tags in Settings. 4/4 retests passed.
+- Committed and pushed in two commits (dde5e72, 5264768); Firestore rules deployed
+  twice (once per feature addition), both confirmed via real deploy output.
+
+🧹 Code health
+- `npx tsc --noEmit`: clean after every round.
+- Both commits confirmed pushed; `git status` clean after each.
+- Firestore rules deployed live twice, both confirmed via "Deploy complete!" output.
+
+▶️ Next step (this entry only — see the top-of-file ▶️ Next step section for current status)
+- Multi-device Active Sessions is fully complete. Nothing is open before Phase B anymore
+  — next session should begin Phase B (UI/UX Polish).
 
 ## 📅 Session entry — Account Recovery (Secret Recovery Key + Household Peer Recovery) built, accidentally wiped, restored, and confirmed working live
 
