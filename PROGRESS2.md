@@ -655,8 +655,16 @@ original 11 phases before that. Nothing from either file is repeated here.
   currently persisted (AsyncStorage vs. the household model/Firestore) so the new
   `cautionThresholdPercent` field syncs across a linked household rather than being
   stuck on one phone; and whether a slider component is already installed. Session
-  ended before this was run — prompt is ready to paste into Antigravity at the start
-  of next session, response not yet reviewed.
+  ended before this was run —   prompt is ready to paste into Antigravity at the start of next session, response not
+  yet reviewed.
+- **Full on-device testing pass — COMPLETE across B.4b, B.5 (Batch 1 + Batch 2 +
+  Calendar), B.6 (all 9 date fields), and the older loose ends (IntroScreen timing,
+  the `profileBackups` rule fix on a linked profile).** The master checklist that had
+  been deliberately deferred since the "testing is batched, not per-checkpoint"
+  decision was finally run end-to-end on a real device. The large majority of it is
+  confirmed working exactly as built — see the updated ⚠️ Known issues below for the
+  short list of real bugs and open questions this pass surfaced, which now take
+  priority over continuing further down the B.7+ checklist.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -810,67 +818,105 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **Testing is being held until the person is ready — see 📌 Decisions above.**
-  Everything below this line that says "not yet tested on-device" is being
-  deliberately accumulated into one master checklist rather than tested
-  screen-by-screen. Nothing in this list is stale or forgotten — it's the working
-  draft of that eventual checklist, added to as each new code-complete feature
-  ships. Do not test any of it until the person explicitly says they're ready.
-- **B.5 (Batch 1 + Batch 2 + Calendar) is code-complete and `tsc`-clean, but has
-  NOT been tested on-device yet — do this before considering B.5 closed.**
-  Specifically check: every delete action (Accounts, Bills, Debts, Loans,
-  Transactions, Income, Savings Goals) and Sign Out actually pop a confirm dialog
-  with a working Cancel; the EF/FI calculator fields can be backspaced to fully
-  empty and retyped; the EF "Months Covered" result changes color
-  (red/orange/green) with a value change; PinUnlockScreen hides the PIN box and
-  shows a primary biometric button when no PIN is set, but still shows the normal
-  PIN flow when one is set; CreateProfileScreen's "Copy Recovery Key" button
-  copies correctly and flips to "Copied! ✓" briefly; Loans shows LENT/BORROWED
-  badges with correctly colored amounts and the split banner; Debts amounts show
-  in orange; Income shows the green hero banner and `+`-prefixed green row
-  amounts; the Home tab shows the real Dashboard (with the small username/PIN/Lock
-  header row still working) instead of the old placeholder text; **and (new)
-  Calendar shows small colored dots under any day with a bill/debt/loan/income/
-  manual transaction due, and tapping a day shows a real scrollable list of what's
-  due with amounts instead of the old placeholder sentence,   correctly falling back
-  to "Nothing due on this day" for days with nothing on them; **and (new) every
-  converted date field — Transactions, Bills, Debts, Loans (due date, custom-schedule
-  start date, payment log), Income (one-time date, payment log), Savings (target date,
-  contribution row), Goals (target date), Events (one-time date), and Travel (start/end
-  date) — opens the native date picker correctly on tap, displays a friendly formatted
-  date once picked, the "×" clear button works on the fields that have one, and nothing
-  looks visually broken on any of the 9 converted screens.**
-- **`profileBackups` Firestore rule fix has only been deployed and
-  spot-checked once, on one profile/account.** Confirmed working for the
-  account tested during this session, but hasn't been separately confirmed
-  on a second, linked/household profile (versus a solo profile) yet. Low
-  risk — the fix uses the exact same fallback pattern already proven working
-  elsewhere in the rules file — but worth keeping in mind if a similar
-  "Backup Failed" alert ever resurfaces specifically for a linked profile.
+- **Every item on the deferred on-device testing checklist has now been run on a
+  real device — CONFIRMED WORKING** for: all delete confirmations (Accounts, Bills,
+  Debts, Loans, Transactions, Income, Savings Goals) and Sign Out; the EF "Months
+  Covered" red/orange/green status coloring; PinUnlockScreen's hide-the-PIN-box-when-
+  none-is-set behavior; the "Copy Recovery Key" button on CreateProfileScreen; Loans'
+  LENT/BORROWED badges + split banner; Debts' orange amounts; Income's green hero
+  banner + `+`-prefixed amounts; Home showing the real Dashboard with its header row;
+  Calendar's colored dots, real day-list popup, and empty-day fallback; all 9
+  converted date fields (open/format/clear, nothing visually broken); and the
+  `profileBackups` Firestore rule fix on a second, linked/household profile. The
+  bullets below are the real bugs and open questions this testing pass actually
+  surfaced — these are the new priority.
+- **EF/FI calculator backspace-to-empty — reported as still possibly not working,
+  but needs more detail before it can be investigated.** Doesn't say which of the
+  four inputs, or what happens after backspacing to empty (snaps to the old value?
+  to a default? to "auto"?). The backspace-to-null fix was already applied to all
+  four inputs in B.5 Batch 2, so before touching this again, get a precise repro:
+  which field, and what it shows immediately after clearing it.
+- **Unclear where the Savings-screen Save button navigates/scrolls to after saving
+  a goal.** Flagged as confusing during testing; not yet investigated. Needs a look
+  at `SavingsScreen.tsx`'s save handler to see what happens after a successful save
+  (closes the sheet? scrolls to the row? nothing visible?) and whether that's right.
+- **No way to turn PIN unlock back OFF once it's set up — Settings > Security's
+  Quick Unlock section only offers "Change PIN."** Needs a "Turn off PIN" (or
+  similar) action added alongside it. Not yet built.
+- **Lock screen's "Use password instead" flow is wrong — it currently re-shows the
+  entire Create/Sign-In screen (email + username + password) instead of a
+  lightweight password-only re-entry.** Desired behavior: once a device has
+  successfully signed in to an account before, choosing "Use password instead" from
+  the lock screen should only ask for that account's password going forward. If more
+  than one account has signed in on that device, show a chooser for which account's
+  email/username to unlock, then ask only for that one's password. Exception: if the
+  account/session has been remotely revoked, it should require the full email +
+  username + password once, and only remember the device again after that complete
+  sign-in succeeds. Not yet investigated or built — this touches the real Firebase
+  Auth / session-persistence flow, not a UI-only tweak, and needs its own dedicated
+  investigation session.
+- **"Copy Recovery Key" should also appear in Settings' Secret Recovery Key section,
+  not just on CreateProfileScreen.** The copy-to-clipboard + "Copied! ✓" button built
+  in B.5 Batch 2 currently only exists on the one-time account-creation screen —
+  Settings > Security's existing Secret Recovery Key area needs the same treatment.
+  Not yet built.
+- **Calendar's native date-picker popup looks visually inconsistent with the rest of
+  the app on Android** — reported as "looks off" when tested on an Android device.
+  `<DateField />` (B.6a) deliberately uses the OS's native `DatePickerDialog` on
+  Android specifically to avoid the iOS nested-`Modal` conflict every form already
+  has via `<BottomSheet />` — worth investigating whether a themed custom calendar
+  UI is feasible without reintroducing that conflict, or whether this should just be
+  documented as an accepted platform limitation. Not yet investigated.
+- **List-row summary line ordering is inconsistent across Bills/Debts/Loans (and
+  possibly other screens) — needs a consistency pass.** Bills' collapsed row shows
+  repeats → date → category; Debts shows category → repeat → date; Loans shows only
+  category, with no repeat/date info at all. Desired: every list screen's collapsed
+  row should follow Debts' order — **category, then repeat/one-time, then date** —
+  applied consistently to Bills, Loans, and any other screen using
+  `<CollapsibleRow />` (or similar) that would benefit from matching. Not yet
+  investigated — needs a dedicated pass across `BillsScreen.tsx`/`LoansScreen.tsx`
+  (plus a check of Transactions/Income/Savings Goals to see which others need it)
+  before writing any fix.
+- **Save button feels unresponsive on at least some forms — needs an instant save,
+  or a visible loading state if it can't be instant.** Reported as sometimes needing
+  multiple taps, or just feeling slow, before the save actually registers. Not yet
+  investigated — needs a look at the relevant `handleSave` functions (likely awaiting
+  a Firestore/cloud write before dismissing the sheet) to either make the local/
+  optimistic part feel instant, or add a spinner/disabled state on the button while
+  the real save is in flight.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
   Full finding-by-finding detail preserved in this file's session-entry history below.
 - **B.2c cleanup: verify the actual on-device Settings/Profile UI once, before calling
-  it fully closed.** Everything was verified via `npx tsc --noEmit` (clean) and
+  it fully closed — still open, more detail below since this was flagged as unclear
+  during testing.** Everything was verified via `npx tsc --noEmit` (clean) and
   line-by-line diff review, but nobody has yet manually tapped through Settings →
-  Profile Card → back on a real device/simulator since the ~1,025-line removal, to
-  visually confirm there's no leftover blank gap where the Household section used to
-  sit in Settings, and that the Profile Card/chevron/nav still behaves correctly.
-  Low risk given the clean compile and reviewed diff, but not yet eyeballed.
+  Profile Card → back on a real device/simulator since the ~1,025-line removal. What
+  this specifically means: B.2c's cleanup deleted the entire duplicated Household
+  section (roster, invite/link codes, peer recovery, etc.) that used to render
+  directly inside `SettingsScreen.tsx`, leaving only the small Profile Card that now
+  navigates to `ProfileScreen.tsx` for all of that. The open question is whether that
+  removal left any leftover empty space behind in Settings — e.g. a container `View`
+  with no content, extra scroll room, or a visible gap where that section used to sit
+  — once you actually scroll through Settings on a device, tap into the Profile Card,
+  and come back. Low risk given the clean compile and reviewed diff, but still not
+  yet eyeballed.
 
-- **IntroScreen animation timing not verified on slow/low-end devices.** The 1.6s
-  minimum display floor was tuned against the animation's timing on a normal device —
-  on a much slower device the animation itself could conceivably still be running past
-  1.6s, cutting the text fade short. Not yet reported as an issue; low priority, revisit
-  if it comes up.
-  
-- **Biometric unlock has not yet been tested on a real device.** All verification so
-  far has been `npx tsc --noEmit` (type-checks clean) plus line-by-line diff review —
-  nobody has yet triggered the actual Face ID/Fingerprint prompt on a physical phone to
-  confirm the OS-level permission dialog, the debounce behavior under rapid backgrounding,
-  or the Settings toggle round-trip. Worth doing before considering B.2b-security fully
-  closed out in practice, not just in code.
+- **IntroScreen animation timing — CONFIRMED FINE on a real device during this
+  session's full testing pass.** No cut-off text or animation reported. Closed out.
+
+- **Biometric unlock — CONFIRMED WORKING on a real device this session (the real
+  Face ID/Fingerprint prompt, the debounce behavior, and the Settings toggle
+  round-trip were all tested), but with one real bug found: the app always labels
+  the prompt/UI "Face ID," even on a device enrolled for fingerprint only.** Tested
+  on a device set up for fingerprint unlock, and the app still showed Face ID
+  wording throughout (PinUnlockScreen's retry button, onboarding Step 2/3 copy, and
+  the Settings toggle label — all driven by `getBiometricLabel()` in
+  `biometrics.ts`). `getBiometricLabel()` needs to actually branch on which
+  biometric type the device has enrolled (via
+  `LocalAuthentication.supportedAuthenticationTypesAsync()`) rather than defaulting
+  to Face ID wording. Not yet fixed — needs its own small investigate-then-fix pass.
 - **A routine PROGRESS2.md-only commit can silently revert real code changes if a file
   is open with unsaved/stale changes in a VS Code tab — this has now happened twice**
   (previously the Settings recovery-key badge in an earlier session; this session, the
@@ -894,6 +940,16 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
+- **New priority, ahead of B.7: fix the real bugs and open questions surfaced by this
+  session's full on-device testing pass (see ⚠️ Known issues above for the full
+  list)** — the biometric label bug, the missing "turn off PIN" option, the
+  lock-screen password-only re-entry flow, the missing Recovery Key copy button in
+  Settings, Calendar's Android date-picker styling, the Bills/Debts/Loans
+  summary-line consistency pass, and the save-button responsiveness/loading-state
+  issue. Two items need a quick clarification from the person before they can be
+  investigated: exactly which EF/FI calculator field(s) still misbehave on
+  backspace-to-empty, and what "where does the Savings Save button go" is actually
+  describing.
 - **Tier 1, Tier 2, and Tier 3 pre-Phase-B audit fixes are all fully verified and
   complete** (the orphaned household-doc cleanup is a deliberate, documented deferral).
 - **B.1, B.2a, B.2b, B.2b-security, and B.2c are all complete.**
