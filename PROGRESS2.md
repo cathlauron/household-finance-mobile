@@ -474,11 +474,46 @@ original 11 phases before that. Nothing from either file is repeated here.
   button routing to the bottom sheet for Income/Savings, the disabled-edit
   behavior on non-manual Transaction rows, and the logged-payments/
   contribution summary text) — pending, same outstanding gap as B.4b-1/B.4b-2.
-- **B.4b (Bills, Debts, Loans, Transactions, Income, Savings Goals) — ALL SIX
-  essential list screens converted to `<CollapsibleRow />` — CODE COMPLETE.**
-  On-device verification remains outstanding for Bills, Loans, Transactions,
-  Income, and Savings Goals (Debts was already verified working from before
-  this checkpoint was tracked).
+- **B.4b (Bills, Debts, Loans, Transactions, Income, Savings Goals) — FULLY
+  COMPLETE, ALL SIX VERIFIED ON DEVICE.** A pre-verification code review
+  (Antigravity, investigation-only) confirmed all six screens' `expanded*Id`
+  state, `onToggle`/`onEdit` wiring, and `makeStyles(colors)` style
+  definitions were correct, and that `LayoutAnimation.configureNext()` fires
+  before the state update on every call site. It also flagged several
+  harmless leftovers from the hand-paste conversions (an unused `Platform`
+  import in Bills/Debts/Loans/Transactions, an unused `loanProgressPct()`
+  helper and two unused `progressTrack`/`progressFill` styles in
+  `LoansScreen.tsx`, and one line where two `useState` declarations had been
+  merged onto a single line) — all cleaned up, `npx tsc --noEmit` clean,
+  committed as `3a48191`. Manual on-device testing then confirmed expand/
+  collapse, single-row-open-at-a-time behavior, and Edit-button routing
+  work correctly on all six screens, including Transactions' non-manual
+  entries correctly showing "edit on its own tab" with no Edit button.
+- **Real bug found during B.4b on-device testing, root-caused and fixed:
+  Firestore rule regression silently broke cloud backup for every existing
+  profile — COMPLETE, VERIFIED FIXED ON DEVICE.** Every single account
+  save during testing triggered a "Backup Failed" alert. Investigated via
+  Antigravity (real code + real git diff/log review, no guessing): the
+  Tier 1 security fix (`03df99b`, from before Phase B) had added a strict
+  `resource.data.ownerUid == request.auth.uid` check to the
+  `profileBackups` collection's `allow update` rule — correct for new
+  documents, but any backup document that existed *before* that fix has no
+  `ownerUid` field stored on it at all, so the direct-equality check always
+  failed and Firestore rejected the write for every pre-existing profile.
+  This had actually been failing silently since `03df99b` — an unrelated
+  later fix (`70431f9`, wiring up the "Backup Failed" alert itself, done to
+  close a different Tier 2 finding) just made the pre-existing failure
+  visible for the first time. Fixed by changing the `allow update` rule to
+  use `resource.data.get('ownerUid', request.auth.uid)` — the same
+  fallback-to-self pattern already used by the sibling `allow get` rule and
+  by `householdKeys`'s own rules — so a legacy document with no `ownerUid`
+  yet is treated as already belonging to whoever's currently signed in and
+  saving it. Also added a `console.error(...)` logging the real underlying
+  error in `DataContext.tsx`'s catch block, so a future recurrence would be
+  diagnosable from device logs instead of only showing the generic
+  user-facing alert. `npx tsc --noEmit` clean, `firebase deploy --only
+  firestore:rules` run and confirmed live via real deploy output, verified
+  on-device — the "Backup Failed" alert no longer appears on save.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -578,17 +613,13 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **B.4b-1 (Bills), B.4b-2 (Loans), and B.4b-3 (Transactions, Income, Savings
-  Goals) not yet manually verified on-device.** `npx tsc --noEmit` is clean
-  for all five and diffs were reviewed line-by-line, but nobody has tapped
-  through the actual expand/collapse behavior, the Edit button routing, the
-  priority badge colors (Bills), or the disabled-edit behavior on non-manual
-  Transaction rows on a real device/simulator yet. Debts (the other half of
-  B.4b-2) was confirmed already built and working from an earlier, untracked
-  point — no verification gap there since it predates this checkpoint being
-  tracked. **All six essential list screens should get one combined on-device
-  pass together**, rather than testing each individually, since they all
-  share the exact same `<CollapsibleRow />` component and interaction pattern.
+- **`profileBackups` Firestore rule fix has only been deployed and
+  spot-checked once, on one profile/account.** Confirmed working for the
+  account tested during this session, but hasn't been separately confirmed
+  on a second, linked/household profile (versus a solo profile) yet. Low
+  risk — the fix uses the exact same fallback pattern already proven working
+  elsewhere in the rules file — but worth keeping in mind if a similar
+  "Backup Failed" alert ever resurfaces specifically for a linked profile.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -644,12 +675,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.4a is fully complete.** Every essential-screen Add/Edit flow now uses
   `<BottomSheet />` — Accounts, Bills, Debts, Loans, Transactions, Income, Savings, and
   the 3 Settings modals (Category, Payee, Categorization Rule). All verified on-device.
-- **B.4b is fully code-complete.** All six essential list screens (Bills,
-  Debts, Loans, Transactions, Income, Savings Goals) now use
-  `<CollapsibleRow />`. On-device verification is still outstanding for five
-  of the six (Debts was already working before this checkpoint was tracked).
-  **Next up: one combined on-device verification pass across all six
-  screens**, then B.5 (UI/UX psychology pass).
+- **B.4b is fully complete and verified on-device**, including a real
+  Firestore rule bug found and fixed along the way (see ✅ Done above).
+  **Next up: B.5 (UI/UX psychology pass).**
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -664,9 +692,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
   | ✅ B.4a | Convert essential-screen add/edit flows to bottom sheets (Accounts, Bills, Debts, Loans, Transactions, Income, Savings, 3 Settings modals) | Cards + bottom sheets pattern |
-  | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — pending on-device verification | Cards + bottom sheets pattern |
-  | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — Debts confirmed already built, Loans done this pass — both pending on-device verification | Cards + bottom sheets pattern |
-  | ✅ B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals — pending on-device verification | Cards + bottom sheets pattern |
+  | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — verified on-device | Cards + bottom sheets pattern |
+  | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — verified on-device | Cards + bottom sheets pattern |
+  | ✅ B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals — verified on-device | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
   | B.6b | Date picker, part 2 — roll out to every remaining screen | Requested |
@@ -786,6 +814,17 @@ Files in the repo (relevant to Phase B/C)
   now renders inside `<BottomSheet />` instead of a centered `<Modal>`; form logic/
   state unchanged (including contribution row add/remove). Removed unused
   `modalOverlay`/`modalKeyboardWrap`/`modalCard`/`modalTitle` styles.
+- `mobile-app/firestore.rules` — modified. `profileBackups`'s `allow update`
+  rule changed from a direct `resource.data.ownerUid == request.auth.uid`
+  check to `resource.data.get('ownerUid', request.auth.uid) ==
+  request.auth.uid`, matching the fallback pattern already used by the
+  sibling `allow get` rule and by `householdKeys` — fixes legacy backup
+  documents (created before the Tier 1 ownerUid rule) being unable to save
+  at all. Deployed live via `firebase deploy --only firestore:rules`.
+- `mobile-app/src/DataContext.tsx` — modified. Added `console.error('Cloud
+  backup failed:', err)` inside `saveModel`'s cloud-backup catch block, so
+  the real underlying error is now visible in device/Metro logs instead of
+  only the generic user-facing "Backup Failed" alert.
 - `mobile-app/src/screens/SettingsScreen.tsx` — modified (B.4a). 3 modals converted to
   `<BottomSheet />`: Add/Edit Category, Add/Edit Payee/Merchant, Add/Edit
   Categorization Rule — form logic/state unchanged for all 3. `Modal`, `Pressable`,
@@ -830,6 +869,56 @@ Files in the repo (relevant to Phase B/C)
   `expandedGoalId` state and `goalCollapsedWrap`/`detailContainer`/`detailRow`/
   `detailLabel`/`detailValue` styles. Expanded drawer shows remaining amount,
   contributions-logged count, and the most recent contribution's date/amount.
+
+### Session entry — B.4b verified on-device across all six screens; a real Firestore rule bug found and fixed along the way
+**What happened:** Before manual on-device testing, ran a dedicated Antigravity
+investigation-only pass across all six converted screens (Bills, Debts, Loans,
+Transactions, Income, Savings Goals) plus `CollapsibleRow.tsx` itself, checking
+real code for correct `expanded*Id` state, `onToggle`/`onEdit` wiring, correct
+style definitions, correct `LayoutAnimation` ordering, and any leftover
+hand-paste artifacts. Everything checked out functionally; a handful of
+harmless leftovers were flagged (unused `Platform` imports in four files, an
+unused `loanProgressPct()` helper and two unused progress-bar styles in
+`LoansScreen.tsx`, and one line with two `useState` declarations merged
+together) and cleaned up via hand-pasted fixes, `npx tsc --noEmit` clean,
+committed as `3a48191`.
+
+Manual on-device testing then went through all six screens' expand/collapse,
+single-row-open, and Edit-button behavior — all confirmed working. During
+testing, every single account save triggered a "Backup Failed" alert
+(confirmed via screenshot: `Alert.alert` firing on the Accounts tab). Since
+it happened on every save rather than once, sent a dedicated investigation
+prompt to Antigravity rather than assuming a flaky connection.
+
+Investigation found the real cause: the Tier 1 security fix from an earlier
+session (`03df99b`) had added a strict `resource.data.ownerUid ==
+request.auth.uid` check to `profileBackups`'s `allow update` rule. Any
+backup document that existed before that fix has no `ownerUid` field stored
+on it, so the direct-equality check always failed, and every save on every
+pre-existing profile has been silently rejected by Firestore since that rule
+went live — a later, unrelated fix (`70431f9`, wiring up the user-facing
+alert to close a different Tier 2 finding) simply made this pre-existing
+failure visible for the first time. Confirmed via real `git show`/`git diff`
+output across both commits, not assumption.
+
+**Result:** Fixed the rule to use `resource.data.get('ownerUid',
+request.auth.uid)` — the same fallback-to-self pattern already used by the
+sibling `allow get` rule and by `householdKeys`'s own rules — so a legacy
+document with no `ownerUid` is treated as already belonging to whoever's
+currently signed in. Also added a `console.error` in `DataContext.tsx`'s
+catch block so the real underlying error is logged going forward, not just
+the generic alert. `npx tsc --noEmit` clean, `firebase deploy --only
+firestore:rules` run and confirmed via real "Deploy complete!" output,
+verified on-device — the "Backup Failed" alert no longer appears on save.
+This closes out B.4b entirely.
+
+**Design decision made this session:** No new decision — this is a direct,
+successful application of two already-standing rules: (1) investigate a
+recurring-not-random symptom with real code/git evidence rather than
+guessing, and (2) a security-rule tightening needs to account for documents
+that predate the tightening, using the same fallback-to-self pattern already
+established elsewhere in the rules file, rather than a bare direct-equality
+check.
 
 ### Session entry — B.4b-3 built: Transactions, Income, and Savings Goals converted to `<CollapsibleRow />`, completing B.4b
 **What happened:** Investigated all three remaining screens via a dedicated
