@@ -432,6 +432,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try {
         await saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted });
       } catch (err) {
+        console.error('Cloud backup failed:', err);
         Alert.alert(
           'Backup Failed',
           'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'

@@ -214,7 +214,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number;
 
       allow update: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid
+        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['ownerUid', 'recoverySalt', 'wrappedKey', 'isHouseholdKey', 'updatedAt'])
         && request.resource.data.ownerUid is string
