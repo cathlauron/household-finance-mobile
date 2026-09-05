@@ -29,6 +29,7 @@ import CsvImportModal from './CsvImportModal';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
+import { CollapsibleRow } from '../components/CollapsibleRow';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -93,6 +94,7 @@ export default function TransactionsScreen() {
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
 
   const transactions = useMemo(() => {
     if (!model) return [];
@@ -331,25 +333,56 @@ export default function TransactionsScreen() {
 
         {transactions.map((t: TransactionEntry) => {
           const isManual = t.source === 'manual';
+          const isExpanded = expandedTxnId === t.id;
           return (
-            <TouchableOpacity
+            <CollapsibleRow
               key={t.id}
-              style={styles.txnRow}
-              activeOpacity={isManual ? 0.7 : 1}
-              onPress={() => openEditModal(t)}
-              disabled={!isManual}
-            >
-              <View style={styles.txnMain}>
-                <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
-                <Text style={styles.txnSub} numberOfLines={1}>
-                  {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
-                  {!isManual ? ' (edit on its own tab)' : ''}
-                </Text>
-              </View>
-              <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
-                {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
-              </Text>
-            </TouchableOpacity>
+              testID={`txn-row-${t.id}`}
+              isExpanded={isExpanded}
+              onToggle={() => setExpandedTxnId((prev) => (prev === t.id ? null : t.id))}
+              onEdit={isManual ? () => openEditModal(t) : undefined}
+              collapsedContent={
+                <View style={styles.txnCollapsedRow}>
+                  <View style={styles.txnMain}>
+                    <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
+                    <Text style={styles.txnSub} numberOfLines={1}>
+                      {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
+                      {!isManual ? ' (edit on its own tab)' : ''}
+                    </Text>
+                  </View>
+                  <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
+                    {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
+                  </Text>
+                </View>
+              }
+              expandedContent={
+                <View style={styles.detailContainer}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Full Date</Text>
+                    <Text style={styles.detailValue}>{formatDateLabel(t.date)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Type</Text>
+                    <Text style={styles.detailValue}>{SOURCE_LABELS[t.source]}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Direction</Text>
+                    <Text style={styles.detailValue}>{DIRECTION_LABELS[t.direction]}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Belongs To</Text>
+                    <Text style={styles.detailValue}>
+                      {t.owner === 'shared' ? 'Shared' : (personName(model.people, t.owner) || 'Shared')}
+                    </Text>
+                  </View>
+                  {!isManual && (
+                    <Text style={styles.detailNotesText}>
+                      This entry comes from another tab — edit it there.
+                    </Text>
+                  )}
+                </View>
+              }
+            />
           );
         })}
 
@@ -525,16 +558,16 @@ function makeStyles(colors: any) {
     pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
     pillButtonTextActive: { color: colors.navy2 },
     emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6, marginBottom: 12 },
-    txnRow: {
+    txnCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
     },
+    detailContainer: { gap: 8 },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    detailLabel: { fontSize: 12, color: colors.inkDim },
+    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
     txnMain: { flex: 1, marginRight: 10 },
     txnLabel: { fontSize: 13.5, fontWeight: '600', color: colors.ink },
     txnSub: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },

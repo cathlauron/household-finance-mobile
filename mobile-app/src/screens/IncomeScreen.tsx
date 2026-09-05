@@ -23,6 +23,7 @@ import {
 } from '../income';
 import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
 import { makeId } from '../utils';
+import { CollapsibleRow } from '../components/CollapsibleRow';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -86,6 +87,7 @@ export default function IncomeScreen() {
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
+const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
 
   if (!model) {
     return (
@@ -300,25 +302,54 @@ export default function IncomeScreen() {
           const nextDate = computeNextPayDate(freq, source.payDates || []);
           const person = personName(model.people, source.personId);
           const title = source.sourceName || source.category || 'Untitled income';
+          const isExpanded = expandedIncomeId === source.id;
+          const loggedPayments = source.paymentLog || [];
+          const totalLogged = loggedPayments.reduce(
+            (sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0),
+            0
+          );
           return (
-            <TouchableOpacity
+            <CollapsibleRow
               key={source.id}
-              style={styles.row}
-              activeOpacity={0.7}
-              onPress={() => openEditModal(source)}
-            >
-              <View style={styles.rowMain}>
-                <Text style={styles.rowName} numberOfLines={1}>
-                  {title}
-                </Text>
-                <Text style={styles.rowSub} numberOfLines={1}>
-                  {(person || 'Unassigned')} · {frequencyLabel(freq)} · {formatShortDate(nextDate)}
-                </Text>
-              </View>
-              <Text style={styles.rowAmount}>
-                {typeof source.expectedAmount === 'number' ? formatPeso(source.expectedAmount) : '—'}
-              </Text>
-            </TouchableOpacity>
+              testID={`income-row-${source.id}`}
+              isExpanded={isExpanded}
+              onToggle={() => setExpandedIncomeId((prev) => (prev === source.id ? null : source.id))}
+              onEdit={() => openEditModal(source)}
+              collapsedContent={
+                <View style={styles.rowCollapsedRow}>
+                  <View style={styles.rowMain}>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {title}
+                    </Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>
+                      {(person || 'Unassigned')} · {frequencyLabel(freq)} · {formatShortDate(nextDate)}
+                    </Text>
+                  </View>
+                  <Text style={styles.rowAmount}>
+                    {typeof source.expectedAmount === 'number' ? formatPeso(source.expectedAmount) : '—'}
+                  </Text>
+                </View>
+              }
+              expandedContent={
+                <View style={styles.detailContainer}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Category</Text>
+                    <Text style={styles.detailValue}>{source.category || '—'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Belongs To</Text>
+                    <Text style={styles.detailValue}>{person || 'Unassigned'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Logged Payments</Text>
+                    <Text style={styles.detailValue}>
+                      {loggedPayments.length} logged
+                      {loggedPayments.length > 0 ? ` · ${formatPeso(totalLogged)} total` : ''}
+                    </Text>
+                  </View>
+                </View>
+              }
+            />
           );
         })}
 
@@ -553,16 +584,15 @@ function makeStyles(colors: any) {
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    row: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+    rowCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    detailContainer: { gap: 8 },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    detailLabel: { fontSize: 12, color: colors.inkDim },
+    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     rowMain: { flex: 1, marginRight: 10 },
     rowName: { fontSize: 14, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },

@@ -445,6 +445,40 @@ original 11 phases before that. Nothing from either file is repeated here.
   Loans) is now fully complete** — Loans' code is done pending on-device
   verification (see above); Debts' code and on-device behavior were already
   in place from before this checkpoint was tracked.
+- **B.4b-3 (Transactions, Income, Savings Goals) — Convert all three lists to
+  tap-to-expand via `<CollapsibleRow />` — CODE COMPLETE, PENDING ON-DEVICE
+  VERIFICATION.** Investigated first via a dedicated Antigravity report-only
+  pass confirming none of the three screens had been converted yet (all three
+  still used a plain `TouchableOpacity` row opening the edit sheet directly on
+  tap), and pulling the real current state of each file's list-rendering code,
+  state variables, helper functions, and `makeStyles(colors)` output before
+  writing anything — deliberately avoided repeating the B.4b-2 mistake of
+  guessing at prop names or reusing style names from a sibling screen. Also
+  pulled the real, complete contents of `CollapsibleRow.tsx` itself and a real
+  working usage example from `DebtsScreen.tsx` before writing any conversion
+  code, rather than relying on the general shape described in this file.
+  Converted all three: **Transactions** (expanded drawer shows full date, type,
+  direction, and "Belongs To"; non-manual/derived entries get no `onEdit` and
+  show a "edit on its own tab" note instead — confirmed the separate
+  `CsvImportModal` import wizard is untouched); **Income** (expanded drawer
+  shows category, "Belongs To", and a logged-payments summary with count and
+  total); **Savings Goals** (expanded drawer shows remaining amount, number of
+  contributions logged, and the most recent contribution's date/amount).
+  Added `expandedTxnId`/`expandedIncomeId`/`expandedGoalId` state to each
+  respective screen; added `txnCollapsedRow`/`rowCollapsedRow`/
+  `goalCollapsedWrap` plus shared `detailContainer`/`detailRow`/`detailLabel`/
+  `detailValue` styles to each file's `makeStyles(colors)`. All three hand-pasted
+  by the person per standing small-fix policy (not Antigravity-applied).
+  `npx tsc --noEmit` confirmed clean (0 errors) after all three pastes.
+  **Not yet manually verified on-device** (expand/collapse animation, Edit
+  button routing to the bottom sheet for Income/Savings, the disabled-edit
+  behavior on non-manual Transaction rows, and the logged-payments/
+  contribution summary text) — pending, same outstanding gap as B.4b-1/B.4b-2.
+- **B.4b (Bills, Debts, Loans, Transactions, Income, Savings Goals) — ALL SIX
+  essential list screens converted to `<CollapsibleRow />` — CODE COMPLETE.**
+  On-device verification remains outstanding for Bills, Loans, Transactions,
+  Income, and Savings Goals (Debts was already verified working from before
+  this checkpoint was tracked).
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -544,13 +578,17 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **B.4b-1 (Bills) and the Loans half of B.4b-2 not yet manually verified
-  on-device.** `npx tsc --noEmit` is clean for both and diffs were reviewed
-  line-by-line, but nobody has tapped through the actual expand/collapse
-  behavior, the Edit button, or (for Bills) the priority badge colors on a
-  real device/simulator yet. Debts (the other half of B.4b-2) was confirmed
-  already built and working from an earlier, untracked point — no
-  verification gap there since it predates this checkpoint being tracked.
+- **B.4b-1 (Bills), B.4b-2 (Loans), and B.4b-3 (Transactions, Income, Savings
+  Goals) not yet manually verified on-device.** `npx tsc --noEmit` is clean
+  for all five and diffs were reviewed line-by-line, but nobody has tapped
+  through the actual expand/collapse behavior, the Edit button routing, the
+  priority badge colors (Bills), or the disabled-edit behavior on non-manual
+  Transaction rows on a real device/simulator yet. Debts (the other half of
+  B.4b-2) was confirmed already built and working from an earlier, untracked
+  point — no verification gap there since it predates this checkpoint being
+  tracked. **All six essential list screens should get one combined on-device
+  pass together**, rather than testing each individually, since they all
+  share the exact same `<CollapsibleRow />` component and interaction pattern.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -606,11 +644,12 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.4a is fully complete.** Every essential-screen Add/Edit flow now uses
   `<BottomSheet />` — Accounts, Bills, Debts, Loans, Transactions, Income, Savings, and
   the 3 Settings modals (Category, Payee, Categorization Rule). All verified on-device.
-- **B.4b-1 (Bills) and B.4b-2 (Debts, Loans) are code-complete** — all three
-  essential list screens in the To-Pay tab now use `<CollapsibleRow />`.
-  On-device verification for Bills and Loans is still outstanding (Debts was
-  already working before this checkpoint was tracked, so no gap there).
-  **Next up: B.4b-3** — Transactions, Income, and Savings Goals.
+- **B.4b is fully code-complete.** All six essential list screens (Bills,
+  Debts, Loans, Transactions, Income, Savings Goals) now use
+  `<CollapsibleRow />`. On-device verification is still outstanding for five
+  of the six (Debts was already working before this checkpoint was tracked).
+  **Next up: one combined on-device verification pass across all six
+  screens**, then B.5 (UI/UX psychology pass).
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -627,7 +666,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.4a | Convert essential-screen add/edit flows to bottom sheets (Accounts, Bills, Debts, Loans, Transactions, Income, Savings, 3 Settings modals) | Cards + bottom sheets pattern |
   | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — pending on-device verification | Cards + bottom sheets pattern |
   | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — Debts confirmed already built, Loans done this pass — both pending on-device verification | Cards + bottom sheets pattern |
-  | B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals | Cards + bottom sheets pattern |
+  | ✅ B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals — pending on-device verification | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
   | B.6b | Date picker, part 2 — roll out to every remaining screen | Requested |
@@ -775,7 +814,58 @@ Files in the repo (relevant to Phase B/C)
   present in this file's `makeStyles`). Reuses the file's own existing
   `loanCollapsedWrap`/`loanRowTop`/`loanRowMain`/`loanName`/`loanSub`/
   `loanAmount` styles rather than introducing new ones.
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.4b-3). List
+  rows now render via `<CollapsibleRow />` instead of a flat `TouchableOpacity`.
+  Added `expandedTxnId` state and `txnCollapsedRow`/`detailContainer`/
+  `detailRow`/`detailLabel`/`detailValue`/`detailNotesText` styles. Non-manual
+  (derived) transactions get no `onEdit` callback and show a note instead.
+  `CsvImportModal` confirmed untouched.
+- `mobile-app/src/screens/IncomeScreen.tsx` — modified (B.4b-3). List rows now
+  render via `<CollapsibleRow />` instead of a flat `TouchableOpacity`. Added
+  `expandedIncomeId` state and `rowCollapsedRow`/`detailContainer`/`detailRow`/
+  `detailLabel`/`detailValue` styles. Expanded drawer shows category, "Belongs
+  To", and a logged-payments count/total summary.
+- `mobile-app/src/screens/SavingsScreen.tsx` — modified (B.4b-3). List rows now
+  render via `<CollapsibleRow />` instead of a flat `TouchableOpacity`. Added
+  `expandedGoalId` state and `goalCollapsedWrap`/`detailContainer`/`detailRow`/
+  `detailLabel`/`detailValue` styles. Expanded drawer shows remaining amount,
+  contributions-logged count, and the most recent contribution's date/amount.
 
+### Session entry — B.4b-3 built: Transactions, Income, and Savings Goals converted to `<CollapsibleRow />`, completing B.4b
+**What happened:** Investigated all three remaining screens via a dedicated
+Antigravity report-only pass first — confirmed none had been converted yet
+(unlike the prior B.4b-2 session, where Debts turned out to already be done),
+and pulled the real current list-rendering code, state variables, helper
+functions, real type definitions, and full `makeStyles(colors)` output for
+all three files before writing anything. Also pulled the real, complete
+`CollapsibleRow.tsx` source and a real working `DebtsScreen.tsx` usage example
+in the same investigation pass — a deliberate change from the B.4b-2 session,
+which needed three rounds of guess-then-fix specifically because the
+component's real prop contract and a sibling screen's real style names
+weren't confirmed before writing code the first time.
+
+Converted all three screens using the confirmed real `CollapsibleRow` props
+(`collapsedContent`/`expandedContent`/`isExpanded`/`onToggle`/`onEdit`/
+`testID`): Transactions (with non-manual/derived rows getting no `onEdit` and
+a "edit on its own tab" note in the drawer instead, and the separate CSV
+Import modal confirmed untouched), Income (expanded drawer surfaces category,
+person, and a logged-payments count/total), and Savings Goals (expanded
+drawer surfaces remaining amount, contributions-logged count, and the most
+recent contribution). All three hand-pasted by the person, not
+Antigravity-applied, per standing small-fix policy.
+
+**Result:** `npx tsc --noEmit` clean (0 errors) confirmed after all three
+pastes. This completes B.4b code-wise across all six essential list screens
+(Bills, Debts, Loans, Transactions, Income, Savings Goals). On-device
+verification is still outstanding for five of the six.
+
+**Design decision made this session:** No new decision — this session is a
+direct application of the lesson from B.4b-2 (verify a component's real prop
+contract and a real working example before writing conversion code, rather
+than guessing from a general description), and it worked as intended — zero
+rounds of fix-the-guess were needed this time, unlike the three rounds needed
+for Loans.
+  
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
 **What happened:** Started investigating B.2c ("standalone Profile screen, split out of
 Settings") from scratch, expecting to design and build it. First investigation prompt

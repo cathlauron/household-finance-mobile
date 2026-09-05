@@ -15,6 +15,7 @@ import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
 import { makeId } from '../utils';
+import { CollapsibleRow } from '../components/CollapsibleRow';
 
 function todayISO(): string {
   const d = new Date();
@@ -129,6 +130,7 @@ export default function SavingsScreen() {
   const [fiExpensesInput, setFiExpensesInput] = useState('');
   const [fiSavingsInput, setFiSavingsInput] = useState('');
   const [fiSaved, setFiSaved] = useState(false);
+const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
   if (!model) {
     return (
@@ -404,33 +406,65 @@ export default function SavingsScreen() {
             const saved = contributionsTotal(goal);
             const target = goalTarget(goal);
             const pct = goalProgressPct(goal);
+            const isExpanded = expandedGoalId === goal.id;
+            const sortedContribs = [...(goal.contributions || [])].sort((a, b) =>
+              a.date < b.date ? 1 : -1
+            );
+            const lastContrib = sortedContribs[0];
             return (
-              <TouchableOpacity
+              <CollapsibleRow
                 key={goal.id}
-                style={styles.goalRow}
-                activeOpacity={0.7}
-                onPress={() => openEditModal(goal)}
-              >
-                <View style={styles.goalRowTop}>
-                  <View style={styles.goalRowMain}>
-                    <Text style={styles.goalName} numberOfLines={1}>
-                      {goal.name || 'Untitled goal'}
-                    </Text>
-                    <Text style={styles.goalSub} numberOfLines={1}>
-                      {formatShortDateLabel(goal.targetDate)}
-                    </Text>
+                testID={`goal-row-${goal.id}`}
+                isExpanded={isExpanded}
+                onToggle={() => setExpandedGoalId((prev) => (prev === goal.id ? null : goal.id))}
+                onEdit={() => openEditModal(goal)}
+                collapsedContent={
+                  <View style={styles.goalCollapsedWrap}>
+                    <View style={styles.goalRowTop}>
+                      <View style={styles.goalRowMain}>
+                        <Text style={styles.goalName} numberOfLines={1}>
+                          {goal.name || 'Untitled goal'}
+                        </Text>
+                        <Text style={styles.goalSub} numberOfLines={1}>
+                          {formatShortDateLabel(goal.targetDate)}
+                        </Text>
+                      </View>
+                      <Text style={styles.goalAmount}>
+                        {formatPeso(saved)}
+                        {target > 0 ? ' / ' + formatPeso(target) : ''}
+                      </Text>
+                    </View>
+                    {target > 0 && (
+                      <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
+                      </View>
+                    )}
                   </View>
-                  <Text style={styles.goalAmount}>
-                    {formatPeso(saved)}
-                    {target > 0 ? ' / ' + formatPeso(target) : ''}
-                  </Text>
-                </View>
-                {target > 0 && (
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
+                }
+                expandedContent={
+                  <View style={styles.detailContainer}>
+                    {target > 0 && (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Remaining</Text>
+                        <Text style={styles.detailValue}>{formatPeso(Math.max(target - saved, 0))}</Text>
+                      </View>
+                    )}
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Contributions Logged</Text>
+                      <Text style={styles.detailValue}>{sortedContribs.length}</Text>
+                    </View>
+                    {lastContrib && (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Last Contribution</Text>
+                        <Text style={styles.detailValue}>
+                          {formatShortDateLabel(lastContrib.date)}
+                          {typeof lastContrib.amount === 'number' ? ` · ${formatPeso(lastContrib.amount)}` : ''}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                )}
-              </TouchableOpacity>
+                }
+              />
             );
           })}
 
@@ -682,13 +716,11 @@ function makeStyles(colors: any) {
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    goalRow: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
-    },
+    goalCollapsedWrap: {},
+    detailContainer: { gap: 8 },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    detailLabel: { fontSize: 12, color: colors.inkDim },
+    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     goalRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     goalRowMain: { flex: 1, marginRight: 10 },
     goalName: { fontSize: 14, fontWeight: '600', color: colors.ink },
