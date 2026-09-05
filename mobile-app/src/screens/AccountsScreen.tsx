@@ -12,6 +12,7 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -151,7 +152,7 @@ export default function AccountsScreen() {
     closeModal();
   }
 
-  async function handleDelete() {
+  async function performDelete() {
     if (!activeGroup || !editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -162,6 +163,17 @@ export default function AccountsScreen() {
     );
     await saveModel(updated);
     closeModal();
+  }
+
+  function handleDelete() {
+    Alert.alert(
+      'Remove this account?',
+      'This will permanently remove the account and its balance. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: performDelete },
+      ]
+    );
   }
 
   const totalBalance = totalLiquidBalance(model);

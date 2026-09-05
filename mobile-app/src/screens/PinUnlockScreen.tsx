@@ -90,9 +90,14 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordIns
         <Text style={styles.noPinHint}>No PIN configured. Unlock with {biometricLabel} or use your password.</Text>
       )}
 
-      <TouchableOpacity testID="unlock-button" style={styles.primaryBtn} onPress={handleUnlock} disabled={busy || pin.length < 4}>
-        <Text style={styles.primaryBtnText}>Unlock</Text>
-      </TouchableOpacity>
+      <TouchableOpacity
+    testID="unlock-button"
+    style={[styles.primaryBtn, (busy || pin.length < 4) && { opacity: 0.4 }]}
+    onPress={handleUnlock}
+    disabled={busy || pin.length < 4}
+  >
+    <Text style={styles.primaryBtnText}>Unlock</Text>
+  </TouchableOpacity>
 
       {biometricState === 'ENABLED' && (
         <TouchableOpacity testID="retry-biometrics-button" style={styles.retryBiometricBtn} onPress={() => runBiometricAuth(true)}>

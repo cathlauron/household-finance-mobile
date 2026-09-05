@@ -270,7 +270,7 @@ const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
     closeModal();
   }
 
-  async function handleDelete() {
+  async function performDelete() {
     if (!editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -278,6 +278,17 @@ const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
     };
     await saveModel(updated);
     closeModal();
+  }
+
+  function handleDelete() {
+    Alert.alert(
+      'Delete this transaction?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDelete },
+      ]
+    );
   }
 
   return (

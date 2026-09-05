@@ -649,7 +649,6 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>Appearance</Text>
         {/* Profile Card */}
         <TouchableOpacity
           testID="profile-card"

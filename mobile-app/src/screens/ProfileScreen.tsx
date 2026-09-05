@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -1082,14 +1083,23 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
           <Text style={styles.lockButtonText}>Lock App</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          testID="sign-out-button"
-          style={styles.signOutButton}
-          activeOpacity={0.7}
-          onPress={onSignOut}
-        >
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+    testID="sign-out-button"
+    style={styles.signOutButton}
+    activeOpacity={0.7}
+    onPress={() => {
+      Alert.alert(
+        'Sign out?',
+        'You will need to sign in again to access your data.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', style: 'destructive', onPress: onSignOut },
+        ]
+      );
+    }}
+  >
+    <Text style={styles.signOutButtonText}>Sign Out</Text>
+  </TouchableOpacity>
       </ScrollView>
 
       {/* Peer Recovery Approval Modal */}

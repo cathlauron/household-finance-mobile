@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { Alert } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -281,7 +282,7 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
     closeModal();
   }
 
-  async function handleDeleteGoal() {
+  async function performDeleteGoal() {
     if (!editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -289,6 +290,17 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
     };
     await saveModel(updated);
     closeModal();
+  }
+
+  function handleDeleteGoal() {
+    Alert.alert(
+      'Delete this savings goal?',
+      'This will permanently delete the goal and all logged contributions. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDeleteGoal },
+      ]
+    );
   }
 
   async function handleSaveEf() {

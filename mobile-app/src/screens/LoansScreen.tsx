@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 
 } from 'react-native';
+import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -350,7 +351,7 @@ export default function LoansScreen() {
     closeModal();
   }
 
-  async function handleDelete() {
+  async function performDelete() {
     if (!editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -358,6 +359,17 @@ export default function LoansScreen() {
     };
     await saveModel(updated);
     closeModal();
+  }
+
+  function handleDelete() {
+    Alert.alert(
+      'Delete this loan?',
+      'This will permanently delete the loan and all logged payment history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDelete },
+      ]
+    );
   }
 
   const loans = sortByNextDue(model.loans);

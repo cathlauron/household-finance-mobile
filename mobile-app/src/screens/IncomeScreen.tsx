@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { Alert } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -278,7 +279,7 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
     closeModal();
   }
 
-  async function handleDelete() {
+  async function performDelete() {
     if (!editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -286,6 +287,17 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
     };
     await saveModel(updated);
     closeModal();
+  }
+
+  function handleDelete() {
+    Alert.alert(
+      'Delete this income source?',
+      'This will permanently delete the source and its logged payments. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDelete },
+      ]
+    );
   }
 
   const sources = sortByNextPayDate(model.income);
