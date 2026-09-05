@@ -646,6 +646,17 @@ original 11 phases before that. Nothing from either file is repeated here.
   --noEmit` clean, committed and pushed.
 - **B.7 ("Left to Spend" hero stat) — design decisions made, build not yet started.**
   See 📌 Decisions below for the full definition and color scheme agreed on so far.
+- **B.7 prep, part 2: Settings-placement investigation prompt drafted, not yet run.**
+  Wrote a dedicated investigation-only prompt for Antigravity covering: the real,
+  current list of `SettingsScreen.tsx` section headers and the real JSX of whichever
+  section already has a tunable number/preference (to match its visual pattern); the
+  real JSX/state of `SavingsScreen.tsx`'s EF/FI calculator inputs (the closest existing
+  "financial assumption the person tunes themselves" example); how settings are
+  currently persisted (AsyncStorage vs. the household model/Firestore) so the new
+  `cautionThresholdPercent` field syncs across a linked household rather than being
+  stuck on one phone; and whether a slider component is already installed. Session
+  ended before this was run — prompt is ready to paste into Antigravity at the start
+  of next session, response not yet reviewed.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -908,14 +919,16 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   checkpoint still gets `npx tsc --noEmit` verification and diff review before
   being marked code-complete; a running, growing on-device checklist is being
   kept in ⚠️ Known issues above so nothing gets lost by the time testing happens.
-- **B.7 is next, in two parts:** (1) send an investigation prompt to confirm the
-  real current Settings screen structure, so a sensible placement can be chosen
-  for the new caution-threshold control; (2) once placement is decided, build
-  "Left to Spend" itself — the hero stat on Home, reading the next-payday
-  projection off the existing balance engine, color-coded red/amber/green using
-  the new percentage-based, Settings-editable threshold. Both the biweekly anchor
-  date fix and the expanded expense baseline this depends on are already done
-  and pushed (see ✅ Done above) — B.7 itself has not been started yet.
+- **B.7 is next, in two parts, part 1 not yet run:** (1) run the drafted Settings-
+  placement investigation prompt (see ✅ Done above) in Antigravity, paste the
+  response back, and decide exactly where the caution-threshold control lives and
+  how it's stored (household-synced model field vs. AsyncStorage) — this decision
+  is the very next thing to do at the start of the next session; (2) once placement
+  is decided, build "Left to Spend" itself — the hero stat on Home, reading the
+  next-payday projection off the existing balance engine, color-coded red/amber/
+  green using the new percentage-based, Settings-editable threshold. Both the
+  biweekly anchor date fix and the expanded expense baseline this depends on are
+  already done and pushed (see ✅ Done above) — B.7 itself has not been started yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1187,6 +1200,23 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — B.7 Settings-placement investigation prompt drafted; session wrapped without running it
+**What happened:** Before building the "Left to Spend" caution-threshold Settings
+control, drafted an investigation-only prompt for Antigravity to confirm: the real
+current `SettingsScreen.tsx` section list and an existing tunable-number section's
+real JSX (to match its visual pattern rather than inventing a new one); the real
+EF/FI calculator input JSX/state in `SavingsScreen.tsx` (the closest existing
+"user-tunable financial assumption" example); the real current settings-persistence
+mechanism (AsyncStorage vs. the household model itself) so the new field can be
+made to sync across a linked household correctly; and whether a slider dependency
+is already installed. The person asked to wrap up the session before running this
+prompt, so no response has been reviewed yet and no code was written or changed.
+
+**Result:** No files touched this session. The investigation prompt itself is the
+only output — ready to paste into Antigravity at the start of the next session.
+
+**Design decision made this session:** None — purely a hand-off point.
 
 ### Session entry — B.6 (B.6a + B.6b) built: reusable `<DateField>` component rolled out across all 9 remaining date-entry fields
 **What happened:** Investigated via a dedicated Antigravity report-only pass covering
