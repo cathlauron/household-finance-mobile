@@ -20,6 +20,7 @@ import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
+import DateField from '../components/DateField';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
@@ -410,17 +411,15 @@ export default function BillsScreen() {
                 </View>
 
                 {recurTypeInput === 'onetime' && (
-                  <>
-                    <Text style={styles.inputLabel}>Due date (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2025-03-15"
-                      placeholderTextColor={colors.inkFaint}
-                      value={onetimeDateInput}
-                      onChangeText={setOnetimeDateInput}
-                    />
-                  </>
-                )}
+                <DateField
+                  label="Due date"
+                  value={onetimeDateInput}
+                  onChange={setOnetimeDateInput}
+                  placeholder="2025-03-15"
+                  clearable
+                  testID="bill-due-date-field"
+                />
+              )}
 
                 {recurTypeInput === 'monthly' && (
                   <>

@@ -1,4 +1,4 @@
-﻿{
+{
   "expo": {
     "name": "mobile-app",
     "slug": "mobile-app",
@@ -45,7 +45,8 @@
         {
           "faceIDPermission": "Use Face ID to unlock your household finances quickly."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

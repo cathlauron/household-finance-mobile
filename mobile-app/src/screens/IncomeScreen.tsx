@@ -23,8 +23,9 @@ import {
   formatShortDate,
 } from '../income';
 import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
-import { CollapsibleRow } from '../components/CollapsibleRow';
+import DateField from '../components/DateField';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -532,16 +533,13 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
                 )}
 
                 {frequencyInput === 'onetime' && (
-                  <>
-                    <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2025-03-15"
-                      placeholderTextColor={colors.inkFaint}
-                      value={onetimeDateInput}
-                      onChangeText={setOnetimeDateInput}
-                    />
-                  </>
+                  <DateField
+                    label="Date"
+                    value={onetimeDateInput}
+                    onChange={setOnetimeDateInput}
+                    placeholder="2025-03-15"
+                    testID="income-onetime-date-field"
+                  />
                 )}
 
                 {frequencyInput === 'biweekly' && (
@@ -557,12 +555,11 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
                 </Text>
                 {paymentLogEntries.map((entry) => (
                   <View key={entry.id} style={styles.paymentLogRow}>
-                    <TextInput
-                      style={[styles.input, styles.paymentLogDateInput]}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.inkFaint}
+                    <DateField
+                      style={styles.paymentLogDateInput}
                       value={entry.date}
-                      onChangeText={(v) => updatePaymentLogDate(entry.id, v)}
+                      onChange={(v) => updatePaymentLogDate(entry.id, v)}
+                      placeholder="YYYY-MM-DD"
                     />
                     <TextInput
                       style={[styles.input, styles.paymentLogAmountInput]}

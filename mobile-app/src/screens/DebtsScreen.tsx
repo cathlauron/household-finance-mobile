@@ -20,6 +20,7 @@ import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
+import DateField from '../components/DateField';
 
 function debtAmount(debt: Debt): number {
   const first = debt.cycles[0];
@@ -439,16 +440,14 @@ export default function DebtsScreen() {
                 </View>
 
                 {recurTypeInput === 'onetime' && (
-                  <>
-                    <Text style={styles.inputLabel}>Due date (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2026-08-25"
-                      placeholderTextColor={colors.inkFaint}
-                      value={onetimeDateInput}
-                      onChangeText={setOnetimeDateInput}
-                    />
-                  </>
+                  <DateField
+                    label="Due date"
+                    value={onetimeDateInput}
+                    onChange={setOnetimeDateInput}
+                    placeholder="2026-08-25"
+                    clearable
+                    testID="debt-due-date-field"
+                  />
                 )}
 
                 {recurTypeInput === 'monthly' && (

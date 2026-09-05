@@ -30,6 +30,7 @@ import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
 import { CollapsibleRow } from '../components/CollapsibleRow';
+import DateField from '../components/DateField';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -448,14 +449,12 @@ const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
                   onChangeText={handleAmountChange}
                 />
 
-                <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2025-03-15"
-                  placeholderTextColor={colors.inkFaint}
-                  value={dateInput}
-                  onChangeText={setDateInput}
-                />
+                <DateField
+                label="Date"
+                value={dateInput}
+                onChange={setDateInput}
+                testID="txn-date-field"
+              />
 
                 <Text style={styles.inputLabel}>Belongs to</Text>
                 <TextInput

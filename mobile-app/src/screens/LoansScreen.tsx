@@ -21,6 +21,7 @@ import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
+import DateField from '../components/DateField';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {
@@ -565,16 +566,14 @@ export default function LoansScreen() {
                 </View>
 
                 {recurTypeInput === 'onetime' && (
-                  <>
-                    <Text style={styles.inputLabel}>Due date (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2026-08-25"
-                      placeholderTextColor={colors.inkFaint}
-                      value={onetimeDateInput}
-                      onChangeText={setOnetimeDateInput}
-                    />
-                  </>
+                  <DateField
+                    label="Due date"
+                    value={onetimeDateInput}
+                    onChange={setOnetimeDateInput}
+                    placeholder="2026-08-25"
+                    clearable
+                    testID="loan-due-date-field"
+                  />
                 )}
 
                 {recurTypeInput === 'monthly' && (
@@ -640,13 +639,12 @@ export default function LoansScreen() {
                       ))}
                     </View>
 
-                    <Text style={styles.inputLabel}>Starts on (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2026-08-25"
-                      placeholderTextColor={colors.inkFaint}
+                    <DateField
+                      label="Starts on"
                       value={customStartDateInput}
-                      onChangeText={setCustomStartDateInput}
+                      onChange={setCustomStartDateInput}
+                      placeholder="2026-08-25"
+                      testID="loan-start-date-field"
                     />
 
                     <Text style={styles.inputLabel}>Occurrences (optional)</Text>
@@ -700,13 +698,12 @@ export default function LoansScreen() {
 
                     <View style={styles.paymentAddBox}>
                       <Text style={styles.inputLabel}>Log a new payment</Text>
-                      <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="2026-08-25"
-                        placeholderTextColor={colors.inkFaint}
+                      <DateField
+                        label="Date"
                         value={newPaymentDate}
-                        onChangeText={setNewPaymentDate}
+                        onChange={setNewPaymentDate}
+                        placeholder="2026-08-25"
+                        testID="loan-payment-date-field"
                       />
                       <Text style={styles.inputLabel}>Amount paid</Text>
                       <TextInput

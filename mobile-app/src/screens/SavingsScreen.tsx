@@ -15,8 +15,9 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
-import { CollapsibleRow } from '../components/CollapsibleRow';
+import DateField from '../components/DateField';
 
 function todayISO(): string {
   const d = new Date();
@@ -645,13 +646,13 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
                   onChangeText={setTargetAmountInput}
                 />
 
-                <Text style={styles.inputLabel}>Target date (optional, YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2026-12-31"
-                  placeholderTextColor={colors.inkFaint}
+                <DateField
+                  label="Target date (optional)"
                   value={targetDateInput}
-                  onChangeText={setTargetDateInput}
+                  onChange={setTargetDateInput}
+                  placeholder="2026-12-31"
+                  clearable
+                  testID="savings-target-date-field"
                 />
 
                 <Text style={styles.inputLabel}>Contributions logged</Text>
@@ -660,12 +661,11 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
                 )}
                 {contribRows.map((row) => (
                   <View key={row.id} style={styles.contribRow}>
-                    <TextInput
-                      style={[styles.input, styles.contribDateInput]}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.inkFaint}
+                    <DateField
+                      style={styles.contribDateInput}
                       value={row.date}
-                      onChangeText={(v) => updateContribDate(row.id, v)}
+                      onChange={(v) => updateContribDate(row.id, v)}
+                      placeholder="YYYY-MM-DD"
                     />
                     <TextInput
                       style={[styles.input, styles.contribAmountInput]}

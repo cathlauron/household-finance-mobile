@@ -583,6 +583,45 @@ original 11 phases before that. Nothing from either file is repeated here.
   Hand-pasted per standing small-fix policy. **This closes out every finding from
   the original B.5 UI/UX psychology audit — Batch 1, Batch 2, and Calendar are all
   now code-complete.**
+- **B.6a + B.6b — Reusable `<DateField>` component built and rolled out to every
+  remaining date-entry field app-wide — CODE COMPLETE, PENDING ON-DEVICE VERIFICATION.**
+  Investigated first via a dedicated Antigravity report-only pass confirming, screen by
+  screen, that every date value in the app is stored as a plain `string` in `'YYYY-MM-DD'`
+  format (never a `Date` object), validated everywhere via the same
+  `/^\d{4}-\d{2}-\d{2}$/` regex, and that `@react-native-community/datetimepicker` was
+  not yet installed. Explicitly confirmed which fields are real calendar dates (in
+  scope) versus recurrence-pattern inputs — day-of-month (1–31), month+day (annual),
+  and day-of-week pill selectors on Bills/Debts/Loans/Events/Income — which are **not**
+  calendar dates and were correctly left untouched. Installed
+  `@react-native-community/datetimepicker` via `npx expo install`. Built new
+  `src/components/DateField.tsx`: wraps the native picker, rendering it as Android's
+  native `DatePickerDialog` (which layers over a `Modal` without conflict) versus an
+  inline iOS calendar card with its own "Done" button (avoiding the known iOS
+  nested-`Modal` conflict, since every form in this app already renders inside
+  `<BottomSheet />`'s own `Modal`); timezone-safe ISO parsing (`[y, m, d]` construction,
+  never `new Date(isoString)`, to avoid a UTC-midnight day-shift bug in western
+  timezones); a friendly formatted-date display (e.g. "Mar 15, 2025") instead of the
+  raw ISO string; optional `clearable`/`label`/`placeholder`/`testID`/`style` props;
+  styled to match the app's existing input fields via the real `theme.ts` color tokens.
+  Converted all 9 remaining date-entry fields across the app: `TransactionsScreen.tsx`
+  (transaction date), `BillsScreen.tsx` (one-time due date), `DebtsScreen.tsx`
+  (one-time due date), `LoansScreen.tsx` (one-time due date, custom-schedule start
+  date, and the payment-log date field), `IncomeScreen.tsx` (one-time income date and
+  the payment-log date field), `SavingsScreen.tsx` (target date and the contribution-row
+  date field), `GoalsScreen.tsx` (target date), `EventsScreen.tsx` (one-time event
+  date), and `TravelScreen.tsx` (trip start date and end date). The first 4 files
+  (Transactions, Bills, Debts, Loans) matched the initial investigation's proposed
+  code exactly and were pasted directly. The remaining 5 files' real code did not match
+  the initial proposal closely enough to paste blind — a second, narrower
+  investigation-only prompt pulled the real, literal, unparaphrased code for each of
+  those 9 remaining fields before any replacement snippet was written, avoiding a
+  repeat of an earlier session's guess-then-fix cycle (see 📌 Decisions below). All 9
+  files hand-pasted by the person per standing small-fix policy, not Antigravity-applied.
+  `npx tsc --noEmit` clean (0 errors) after all 9 files. **Not yet manually verified
+  on-device** (native date picker opening/closing correctly on both iOS and Android,
+  the clearable "×" button, correct date formatting, and no visual regressions on any
+  of the 9 converted screens) — added to the running on-device checklist per the
+  current batched-testing policy.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -655,6 +694,13 @@ original 11 phases before that. Nothing from either file is repeated here.
   that as still requiring the person's explicit confirmation before implementation —
   don't let "Antigravity's judgment call" quietly skip the standard confirm-before-code
   step.
+- **New this session:** When a proposed conversion is meant to be applied identically
+  across many files, don't assume a proposal written against the first file or two
+  will match the literal code in the rest — confirm the real code for every remaining
+  file (a second, narrower investigation pass if needed) before pasting, rather than
+  discovering the mismatch only when Ctrl+F comes up empty. This session, 4 of 9 files
+  matched the original proposal exactly; the other 5 needed their real code pulled
+  fresh before correct replacement snippets could be written.
 - **New this session:** When a hand-paste introduces new compile errors, don't
   guess at a fix from the error text alone — have Antigravity show the real,
   current file content around the error first (investigation-only, no
@@ -722,8 +768,14 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   header row still working) instead of the old placeholder text; **and (new)
   Calendar shows small colored dots under any day with a bill/debt/loan/income/
   manual transaction due, and tapping a day shows a real scrollable list of what's
-  due with amounts instead of the old placeholder sentence, correctly falling back
-  to "Nothing due on this day" for days with nothing on them.**
+  due with amounts instead of the old placeholder sentence,   correctly falling back
+  to "Nothing due on this day" for days with nothing on them; **and (new) every
+  converted date field — Transactions, Bills, Debts, Loans (due date, custom-schedule
+  start date, payment log), Income (one-time date, payment log), Savings (target date,
+  contribution row), Goals (target date), Events (one-time date), and Travel (start/end
+  date) — opens the native date picker correctly on tap, displays a friendly formatted
+  date once picked, the "×" clear button works on the fields that have one, and nothing
+  looks visually broken on any of the 9 converted screens.**
 - **`profileBackups` Firestore rule fix has only been deployed and
   spot-checked once, on one profile/account.** Confirmed working for the
   account tested during this session, but hasn't been separately confirmed
@@ -795,7 +847,10 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   explicitly-deferred B.5 findings (sign-in credential simplification, 10-tab nav
   consolidation) as their own future checkpoints — revisit once B.5's checklist
   item is eventually tested, or sooner if the person wants to decide now.
-- **Continuing to build forward through the B.6+ checklist without pausing for
+- **B.6 (B.6a + B.6b) is fully code-complete.** A reusable `<DateField>` component now
+  covers every real calendar-date input in the app; on-device testing is deferred per
+  the batching decision above.
+- **Continuing to build forward through the B.7+ checklist without pausing for
   on-device testing between items, per the batching decision above.** Each new
   checkpoint still gets `npx tsc --noEmit` verification and diff review before
   being marked code-complete; a running, growing on-device checklist is being
@@ -818,8 +873,8 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — verified on-device | Cards + bottom sheets pattern |
   | ✅ B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals — verified on-device | Cards + bottom sheets pattern |
   | ✅ B.5 | UI/UX psychology pass — Batch 1 + 2 + Calendar all code-complete; on-device testing deferred per batching decision | Cross-generational research |
-  | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
-  | B.6b | Date picker, part 2 — roll out to every remaining screen | Requested |
+  | ✅ B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills — code-complete, on-device testing deferred | Requested |
+  | ✅ B.6b | Date picker, part 2 — rolled out to every remaining screen (Debts, Loans, Income, Savings, Goals, Events, Travel) — code-complete, on-device testing deferred | Requested |
   | B.7 | "Left to Spend" hero stat on Home tab | Simplifi-inspired |
   | B.8 | Category watchlists under Insights | Simplifi-inspired |
   | B.9 | Yours/Mine/Ours labels + transaction comments | Monarch-inspired |
@@ -1033,6 +1088,36 @@ Files in the repo (relevant to Phase B/C)
   `expandedGoalId` state and `goalCollapsedWrap`/`detailContainer`/`detailRow`/
   `detailLabel`/`detailValue` styles. Expanded drawer shows remaining amount,
   contributions-logged count, and the most recent contribution's date/amount.
+- `mobile-app/package.json` — modified (B.6a). Added
+  `@react-native-community/datetimepicker`.
+- `mobile-app/src/components/DateField.tsx` — new (B.6a). Reusable date-entry
+  component wrapping the native date picker (Android native dialog / iOS inline
+  calendar card, chosen specifically to avoid the iOS nested-`Modal` conflict since
+  every form already renders inside `<BottomSheet />`). Props: `value`, `onChange`,
+  `label`, `placeholder`, `clearable`, `testID`, `style`, `minimumDate`, `maximumDate`.
+  Timezone-safe ISO string parsing/formatting; friendly display format (e.g.
+  "Mar 15, 2025").
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.6a). Transaction date
+  field now uses `<DateField />` instead of a raw `<TextInput>`.
+- `mobile-app/src/screens/BillsScreen.tsx` — modified (B.6a). One-time due-date field
+  now uses `<DateField />` instead of a raw `<TextInput>`.
+- `mobile-app/src/screens/DebtsScreen.tsx` — modified (B.6b). One-time due-date field
+  now uses `<DateField />` instead of a raw `<TextInput>`.
+- `mobile-app/src/screens/LoansScreen.tsx` — modified (B.6b). One-time due-date field,
+  custom-schedule start-date field, and the payment-log date field all now use
+  `<DateField />` instead of raw `<TextInput>`s.
+- `mobile-app/src/screens/IncomeScreen.tsx` — modified (B.6b). One-time income-date
+  field and the payment-log date field now use `<DateField />` instead of raw
+  `<TextInput>`s.
+- `mobile-app/src/screens/SavingsScreen.tsx` — modified (B.6b). Target-date field and
+  the contribution-row date field now use `<DateField />` instead of raw
+  `<TextInput>`s.
+- `mobile-app/src/screens/GoalsScreen.tsx` — modified (B.6b). Target-date field now
+  uses `<DateField />` instead of a raw `<TextInput>`.
+- `mobile-app/src/screens/EventsScreen.tsx` — modified (B.6b). One-time event-date
+  field now uses `<DateField />` instead of a raw `<TextInput>`.
+- `mobile-app/src/screens/TravelScreen.tsx` — modified (B.6b). Trip start-date and
+  end-date fields now use `<DateField />` instead of raw `<TextInput>`s.
 - `mobile-app/src/screens/CalendarScreen.tsx` — modified (B.5, Calendar). Imports
   `useMemo` and `ScrollView`; added `EVENT_DOT_COLORS` map; added a `monthEvents`
   memo wired to the existing `computeMonthEvents()` resolver; day cells now render
@@ -1041,6 +1126,46 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — B.6 (B.6a + B.6b) built: reusable `<DateField>` component rolled out across all 9 remaining date-entry fields
+**What happened:** Investigated via a dedicated Antigravity report-only pass covering
+both B.6a and B.6b together in one prompt — confirmed the underlying storage type for
+every date value across the app is a plain `'YYYY-MM-DD'` string (never a `Date`
+object), confirmed `@react-native-community/datetimepicker` wasn't yet in
+`package.json`, and got real code shown for `TransactionsScreen.tsx` and
+`BillsScreen.tsx`'s existing date `TextInput`s plus every other screen's date-entry
+fields across the app. The investigation explicitly separated real calendar dates
+from recurrence-pattern inputs (day-of-month, month+day, day-of-week pills on
+Bills/Debts/Loans/Events/Income), correctly excluding the latter from the component's
+scope. Installed the picker dependency, built `DateField.tsx` (native Android dialog /
+inline iOS calendar card to sidestep the iOS nested-`Modal` conflict, since every form
+already sits inside `<BottomSheet />`'s own `Modal`; timezone-safe date parsing to avoid
+a UTC-midnight day-shift bug; friendly formatted display).
+
+Pasted the proposed diff into `TransactionsScreen.tsx`, `BillsScreen.tsx`,
+`DebtsScreen.tsx`, and `LoansScreen.tsx` — `npx tsc --noEmit` came back clean for all
+four, confirming those snippets matched the real code exactly. The remaining 5 files
+(`IncomeScreen.tsx`, `SavingsScreen.tsx`, `GoalsScreen.tsx`, `EventsScreen.tsx`,
+`TravelScreen.tsx`) could not be found via Ctrl+F using the original proposal's text —
+the investigation had clearly gone into less depth on the later files in the list.
+Rather than guess at corrected snippets, sent a second, narrower investigation-only
+prompt asking specifically for the real, literal, unparaphrased current code (with
+~10 lines of context) for each of the 9 remaining date fields across those 5 files.
+Built corrected find/replace snippets directly from that real text.
+
+**Result:** All 9 files pasted by hand, per standing small-fix policy. Final
+`npx tsc --noEmit` run came back with 0 errors, confirming all 9 conversions are
+correctly wired up. Every real calendar-date input in the app (as opposed to a
+recurrence pattern) now uses the same `<DateField />` component.
+
+**Design decision made this session:** No new decision, but a direct reinforcement of
+the same lesson from the earlier `LoansScreen.tsx` B.4b-2 hand-paste session — a
+proposal covering several files at once shouldn't be assumed to match every file's real
+code equally well, especially the ones investigated later/more briefly in the same
+pass. Confirming exact-match failures early (via a clean `npx tsc --noEmit` on the
+files that did work) and going back for real code on the files that didn't, rather than
+guessing corrections, avoided repeating the multi-round fix cycle from that earlier
+session.
 
 ### Session entry — B.5 (Calendar) built; testing policy changed to batched/deferred
 **What happened:** Investigated `CalendarScreen.tsx` via a dedicated Antigravity

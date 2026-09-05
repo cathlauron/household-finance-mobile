@@ -16,7 +16,9 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '../types';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
+import DateField from '../components/DateField';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
@@ -459,18 +461,16 @@ export default function EventsScreen() {
                       />
                     </View>
                   </View>
-                ) : (
-                  <>
-                    <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2026-06-15"
-                      placeholderTextColor={colors.inkFaint}
+                  ) : (
+                    <DateField
+                      label="Date"
                       value={onetimeDateInput}
-                      onChangeText={setOnetimeDateInput}
+                      onChange={setOnetimeDateInput}
+                      placeholder="2026-06-15"
+                      clearable
+                      testID="event-date-field"
                     />
-                  </>
-                )}
+                  )}
 
                 <Text style={styles.inputLabel}>Budget (optional)</Text>
                 <TextInput

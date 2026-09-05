@@ -15,7 +15,9 @@ import {
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import type { YearlyGoal, HouseholdModel } from '../types';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
+import DateField from '../components/DateField'
 
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
@@ -277,13 +279,13 @@ export default function GoalsScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.inputLabel}>Target date (YYYY-MM-DD, optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2026-12-31"
-                  placeholderTextColor={colors.inkFaint}
+                <DateField
+                  label="Target date (optional)"
                   value={targetDateInput}
-                  onChangeText={setTargetDateInput}
+                  onChange={setTargetDateInput}
+                  placeholder="2026-12-31"
+                  clearable
+                  testID="goal-target-date-field"
                 />
 
                 {modeInput === 'progress' ? (

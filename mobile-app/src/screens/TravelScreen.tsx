@@ -22,7 +22,9 @@ import type {
   SavingsGoal,
   ManualTransaction,
 } from '../types';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
+import DateField from '../components/DateField';
 
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -379,22 +381,22 @@ export default function TravelScreen() {
                   onChangeText={setNameInput}
                 />
 
-                <Text style={styles.inputLabel}>Start date (YYYY-MM-DD, optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2026-03-01"
-                  placeholderTextColor={colors.inkFaint}
+                <DateField
+                  label="Start date (optional)"
                   value={startDateInput}
-                  onChangeText={setStartDateInput}
+                  onChange={setStartDateInput}
+                  placeholder="2026-03-01"
+                  clearable
+                  testID="travel-start-date-field"
                 />
 
-                <Text style={styles.inputLabel}>End date (YYYY-MM-DD, optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2026-03-08"
-                  placeholderTextColor={colors.inkFaint}
+                <DateField
+                  label="End date (optional)"
                   value={endDateInput}
-                  onChangeText={setEndDateInput}
+                  onChange={setEndDateInput}
+                  placeholder="2026-03-08"
+                  clearable
+                  testID="travel-end-date-field"
                 />
 
                 <View style={styles.budgetBanner}>
