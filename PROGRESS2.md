@@ -430,8 +430,21 @@ original 11 phases before that. Nothing from either file is repeated here.
   `npx tsc --noEmit` clean (0 errors) after all three rounds, committed and
   pushed this session. **Not yet manually verified on-device** (expand/
   collapse, Edit button opening the bottom sheet, remaining-balance display)
-  — pending, same as B.4b-1. **Debts has not yet been converted** — B.4b-2 is
-  not complete until it is.
+  — pending, same as B.4b-1.
+- **B.4b-2 (Debts) — confirmed already complete, no changes needed.** Before
+  starting the Debts conversion, sent a dedicated investigation-only prompt
+  to Antigravity to check the real current state of `DebtsScreen.tsx` first,
+  since it was the original screen the `<CollapsibleRow />` pattern was
+  copied from for Bills and Loans in earlier sessions. Confirmed via real
+  file content (not assumed): `DebtsScreen.tsx` already renders its list
+  through `<CollapsibleRow />` (`expandedDebtId` state, `onEdit` opening the
+  edit bottom sheet, `paymentMethodLabel()`/`fullRecurrenceDetail()` helpers,
+  `detailContainer`/`detailRow`/`detailLabel`/`detailValue`/
+  `detailNotesText` styles) exactly matching the shape Bills and Loans were
+  converted to follow. No diff was needed or applied. **B.4b-2 (Debts and
+  Loans) is now fully complete** — Loans' code is done pending on-device
+  verification (see above); Debts' code and on-device behavior were already
+  in place from before this checkpoint was tracked.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -531,11 +544,13 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **B.4b-1 (Bills) and B.4b-2 (Loans only) not yet manually verified on-device.**
-  `npx tsc --noEmit` is clean for both and diffs were reviewed line-by-line, but
-  nobody has tapped through the actual expand/collapse behavior, the Edit
-  button, or (for Bills) the priority badge colors on a real device/simulator
-  yet. Debts has not been converted yet at all — B.4b-2 is only half done.
+- **B.4b-1 (Bills) and the Loans half of B.4b-2 not yet manually verified
+  on-device.** `npx tsc --noEmit` is clean for both and diffs were reviewed
+  line-by-line, but nobody has tapped through the actual expand/collapse
+  behavior, the Edit button, or (for Bills) the priority badge colors on a
+  real device/simulator yet. Debts (the other half of B.4b-2) was confirmed
+  already built and working from an earlier, untracked point — no
+  verification gap there since it predates this checkpoint being tracked.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -591,7 +606,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **B.4a is fully complete.** Every essential-screen Add/Edit flow now uses
   `<BottomSheet />` — Accounts, Bills, Debts, Loans, Transactions, Income, Savings, and
   the 3 Settings modals (Category, Payee, Categorization Rule). All verified on-device.
-  **Next up: B.4b** — carry the collapsed-row/tap-to-expand pattern to every list screen.
+- **B.4b-1 (Bills) and B.4b-2 (Debts, Loans) are code-complete** — all three
+  essential list screens in the To-Pay tab now use `<CollapsibleRow />`.
+  On-device verification for Bills and Loans is still outstanding (Debts was
+  already working before this checkpoint was tracked, so no gap there).
+  **Next up: B.4b-3** — Transactions, Income, and Savings Goals.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -607,7 +626,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
   | ✅ B.4a | Convert essential-screen add/edit flows to bottom sheets (Accounts, Bills, Debts, Loans, Transactions, Income, Savings, 3 Settings modals) | Cards + bottom sheets pattern |
   | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — pending on-device verification | Cards + bottom sheets pattern |
-  | 🔶 B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — **Loans done (pending on-device verification), Debts not started** | Cards + bottom sheets pattern |
+  | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — Debts confirmed already built, Loans done this pass — both pending on-device verification | Cards + bottom sheets pattern |
   | B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
