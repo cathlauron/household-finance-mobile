@@ -511,9 +511,59 @@ original 11 phases before that. Nothing from either file is repeated here.
   saving it. Also added a `console.error(...)` logging the real underlying
   error in `DataContext.tsx`'s catch block, so a future recurrence would be
   diagnosable from device logs instead of only showing the generic
-  user-facing alert. `npx tsc --noEmit` clean, `firebase deploy --only
+  user-facing alert.   `npx tsc --noEmit` clean, `firebase deploy --only
   firestore:rules` run and confirmed live via real deploy output, verified
   on-device — the "Backup Failed" alert no longer appears on save.
+- **B.5 (UI/UX psychology pass) — investigation + Batch 1 + Batch 2 fixes applied,
+  CODE COMPLETE, PENDING ON-DEVICE VERIFICATION.** Ran a report-only Antigravity
+  audit across all 9 essential screens against 10 UX/psychology principles (Hick's
+  Law, Fitts's Law, Gestalt/proximity, Miller's Law, progressive disclosure, color
+  psychology, trust markers, Picture Superiority Effect, persistent progress
+  indicators, Jakob's Law). Report came back with real code shown for every finding,
+  grouped by screen, plus a prioritized top-10 list. Two findings were explicitly
+  rejected as out of scope for a UI polish pass rather than acted on: dropping
+  username from sign-in (touches the real Firebase auth flow, not a UI tweak) and
+  collapsing the 10-tab bottom nav down to 4-5 (a real architecture change needing
+  its own dedicated checkpoint later). Everything else was split into two batches.
+  **Batch 1** (7 unconfirmed-delete findings + sign-out confirmation, a stray
+  duplicate "Appearance" header in Settings, and a missing disabled-button style on
+  PinUnlockScreen's Unlock button) was applied directly via hand-pasted snippets —
+  every delete action across Accounts, Bills, Debts, Loans, Transactions, Income, and
+  Savings Goals now goes through a native `Alert.alert` confirm/cancel dialog before
+  actually deleting, and Sign Out does the same. Hit a missing `Alert` import across
+  7 files on first `npx tsc --noEmit` run — fixed by adding it to each file's
+  `react-native` import line. **Batch 2** followed a second, more targeted
+  investigation prompt (since the report-only findings for these didn't show enough
+  surrounding code to safely diff blind) covering: the SavingsScreen EF/FI calculator
+  backspace-snap-back bug (empty string was being treated as "use the stored value"
+  instead of "the user cleared it" — fixed by switching the four input states from
+  `useState('')` to `useState<string | null>(null)` and the display-value checks from
+  `!== ''` to `!== null`); dynamic red/orange/green color-coding + a status label on
+  the EF calculator's "Months Covered" result; hiding PinUnlockScreen's PIN input
+  entirely when no PIN is configured, promoting the biometric retry button to primary
+  styling instead; a working "Copy Recovery Key" button on CreateProfileScreen (added
+  the `expo-clipboard` dependency via `npx expo install expo-clipboard`); LENT/
+  BORROWED direction badges plus color-coded amounts on Loans list rows, and a second
+  banner metric splitting "Owed (Borrowed)" from "Owed to You (Lent)"; debt amounts
+  recolored from neutral ink to `colors.orange` on both the Debts banner and list
+  rows; a green "Total Monthly Income" hero banner plus `+`-prefixed green amounts on
+  Income (computed inline in the file, deliberately not moved into a shared
+  `income.ts` export, to avoid touching a file not otherwise part of this pass); and
+  the Home tab now mounts the real `<DashboardScreen />` in place of the old
+  placeholder text, with a small custom header row (username + Set/Change PIN + Lock)
+  layered on top so those two actions aren't lost. Two small mid-batch errors were
+  caught and fixed the same session: an `IncomeScreen.tsx` reference to a nonexistent
+  `styles.balanceBanner` (fixed by using the inline style directly instead of a `??`
+  fallback to it), and a `CreateProfileScreen.tsx` reference to `copied`/`setCopied`
+  state that was never declared (fixed by adding the missing `useState(false)` line
+  once the real surrounding code — the other `useState` declarations already in the
+  component — was seen). `npx tsc --noEmit` clean (0 errors) after both batches.
+  Calendar (report finding #8 — removing the tiny 7.5px per-day balance text in favor
+  of dot indicators, and wiring the day-selection modal to real event data via
+  `computeMonthEvents`) was deliberately left for a follow-up investigation, since the
+  day-cell container layout and full modal styles weren't shown in enough detail to
+  safely restructure without guessing. **Not yet tested on-device — see ⚠️ Known
+  issues below.**
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -613,6 +663,19 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
+- **B.5 (Batch 1 + Batch 2) is code-complete and `tsc`-clean, but has NOT been
+  tested on-device yet — do this before considering B.5 closed.** Specifically
+  check: every delete action (Accounts, Bills, Debts, Loans, Transactions, Income,
+  Savings Goals) and Sign Out actually pop a confirm dialog with a working Cancel;
+  the EF/FI calculator fields can be backspaced to fully empty and retyped; the EF
+  "Months Covered" result changes color (red/orange/green) with a value change;
+  PinUnlockScreen hides the PIN box and shows a primary biometric button when no PIN
+  is set, but still shows the normal PIN flow when one is set; CreateProfileScreen's
+  "Copy Recovery Key" button copies correctly and flips to "Copied! ✓" briefly; Loans
+  shows LENT/BORROWED badges with correctly colored amounts and the split banner;
+  Debts amounts show in orange; Income shows the green hero banner and `+`-prefixed
+  green row amounts; and the Home tab shows the real Dashboard (with the small
+  username/PIN/Lock header row still working) instead of the old placeholder text.
 - **`profileBackups` Firestore rule fix has only been deployed and
   spot-checked once, on one profile/account.** Confirmed working for the
   account tested during this session, but hasn't been separately confirmed
@@ -677,7 +740,14 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   the 3 Settings modals (Category, Payee, Categorization Rule). All verified on-device.
 - **B.4b is fully complete and verified on-device**, including a real
   Firestore rule bug found and fixed along the way (see ✅ Done above).
-  **Next up: B.5 (UI/UX psychology pass).**
+- **B.5 (UI/UX psychology pass) — Batch 1 and Batch 2 are code-complete,
+  `npx tsc --noEmit` clean, NOT yet tested on-device.** Next physical step is
+  the on-device test pass listed in ⚠️ Known issues above. After that's
+  confirmed, remaining B.5 work is: the Calendar findings (day-cell dot
+  indicators + wiring the day-selection modal to real event data), and a
+  decision on whether to act on any of the two explicitly-deferred findings
+  (sign-in credential simplification, 10-tab nav consolidation) as their own
+  future checkpoints.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -695,7 +765,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — verified on-device | Cards + bottom sheets pattern |
   | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — verified on-device | Cards + bottom sheets pattern |
   | ✅ B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals — verified on-device | Cards + bottom sheets pattern |
-  | B.5 | UI/UX psychology pass | Cross-generational research |
+  | 🔧 B.5 | UI/UX psychology pass — Batch 1 + 2 code-complete, on-device testing pending | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
   | B.6b | Date picker, part 2 — roll out to every remaining screen | Requested |
   | B.7 | "Left to Spend" hero stat on Home tab | Simplifi-inspired |
@@ -832,6 +902,48 @@ Files in the repo (relevant to Phase B/C)
   this file (not removed) since the Quick PIN setup modal, the Secret Recovery Key
   modal, and the "sign out this device" confirmation modal all still use them.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+- `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.5 Batch 1). Delete now
+  requires confirming a native `Alert.alert` dialog before removing an account.
+- `mobile-app/src/screens/BillsScreen.tsx` — modified (B.5 Batch 1). Delete now
+  requires confirming a native `Alert.alert` dialog before removing a bill.
+- `mobile-app/src/screens/DebtsScreen.tsx` — modified (B.5 Batch 1 + Batch 2). Delete
+  now requires confirming a native `Alert.alert` dialog; `balanceBannerAmount` and
+  `debtAmount` styles recolored from `colors.ink` to `colors.orange`.
+- `mobile-app/src/screens/LoansScreen.tsx` — modified (B.5 Batch 1 + Batch 2). Delete
+  now requires confirming a native `Alert.alert` dialog; the balance banner now shows
+  two split metrics ("Owed (Borrowed)" / "Owed to You (Lent)"); list rows show a
+  LENT/BORROWED badge next to the loan name and color-code the amount by direction
+  with a `+`/`−` prefix.
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.5 Batch 1). Delete
+  now requires confirming a native `Alert.alert` dialog before removing a manual
+  transaction.
+- `mobile-app/src/screens/IncomeScreen.tsx` — modified (B.5 Batch 1 + Batch 2).
+  Delete now requires confirming a native `Alert.alert` dialog; added a green "Total
+  Monthly Income" hero banner (computed inline in-file) and recolored `rowAmount` to
+  `colors.ok` with a `+` prefix.
+- `mobile-app/src/screens/SavingsScreen.tsx` — modified (B.5 Batch 1 + Batch 2).
+  Goal delete now requires confirming a native `Alert.alert` dialog; the EF/FI
+  calculator's four input states changed from `useState('')` to
+  `useState<string | null>(null)` (fixes a backspace-to-empty bug); added
+  `getEfStatus()` helper dynamically coloring the "Months Covered" result
+  red/orange/green with a status label.
+- `mobile-app/src/screens/ProfileScreen.tsx` — modified (B.5 Batch 1). Sign Out now
+  requires confirming a native `Alert.alert` dialog before signing out.
+- `mobile-app/src/screens/SettingsScreen.tsx` — modified (B.5 Batch 1). Removed a
+  stray duplicate "Appearance" section-title line that sat directly above the
+  Profile Card.
+- `mobile-app/src/screens/PinUnlockScreen.tsx` — modified (B.5 Batch 1 + Batch 2).
+  Unlock button now visibly dims (`opacity: 0.4`) when disabled; the PIN input box
+  and Unlock button are now hidden entirely when no PIN is configured, with the
+  biometric retry button promoted to primary styling as the main action in that case.
+- `mobile-app/src/screens/CreateProfileScreen.tsx` — modified (B.5 Batch 2). Added a
+  "Copy Recovery Key" button (using the new `expo-clipboard` dependency) with a
+  transient "Copied! ✓" confirmation; added the missing `copied`/`setCopied` state.
+- `mobile-app/package.json` — modified (B.5 Batch 2). Added `expo-clipboard`.
+- `mobile-app/src/screens/HomeScreen.tsx` — modified (B.5 Batch 2). Placeholder
+  "You're signed in" text replaced with the real `<DashboardScreen />`, plus a small
+  custom header row (username, Set/Change PIN, Lock) layered above it so those two
+  actions remain reachable from Home.
 - `mobile-app/src/components/CollapsibleRow.tsx` — new (B.4b-1). Reusable
   collapsed-row/tap-to-expand component (`collapsedContent`/`expandedContent`
   slots, controlled `isExpanded`/`onToggle`, optional `onEdit` button in the
