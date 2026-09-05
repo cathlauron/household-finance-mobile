@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { computeRunningBalances, totalLiquidBalance, formatPeso } from '../balanceProjection';
+import { computeRunningBalances, totalLiquidBalance, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+// One color per kind of item, used for the small dots on each day and the
+// dot next to each row in the day popup.
+const EVENT_DOT_COLORS: Record<CalendarEvent['type'], string> = {
+  bill: '#e5484d',
+  debt: '#f5a524',
+  loan: '#8b5cf6',
+  income: '#22c55e',
+  saving: '#f59e0b',
+  manual: '#94a3b8',
+};
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
@@ -17,6 +28,14 @@ export default function CalendarScreen() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  // Every bill/debt/loan/income/manual-transaction/savings item due in the
+  // currently-viewed month, keyed by day number — used for both the small
+  // dot indicators on each day and the full list in the day popup.
+  const monthEvents = useMemo(() => {
+    if (!model) return {};
+    return computeMonthEvents(model, year, month);
+  }, [model, year, month]);
 
   const styles = makeStyles(colors);
 
@@ -150,6 +169,16 @@ export default function CalendarScreen() {
                     <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
                       {day}
                     </Text>
+                    {monthEvents[day] && monthEvents[day].length > 0 && (
+                      <View style={styles.dotRow}>
+                        {monthEvents[day].slice(0, 4).map((ev, i) => (
+                          <View
+                            key={i}
+                            style={[styles.dot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
+                          />
+                        ))}
+                      </View>
+                    )}
                     <Text style={styles.dayBalanceText} numberOfLines={1}>
                       {formatPeso(projectedBalances[day] ?? 0)}
                     </Text>
@@ -175,10 +204,23 @@ export default function CalendarScreen() {
                 Projected balance: {formatPeso(selectedDayBalance)}
               </Text>
             )}
-            <Text style={styles.modalSubtitle}>
-              Nothing else to show here yet — this is where bills, income, and other
-              items due this day will eventually appear.
-            </Text>
+            {selectedDay !== null && monthEvents[selectedDay] && monthEvents[selectedDay].length > 0 ? (
+              <ScrollView style={styles.modalEventList}>
+                {monthEvents[selectedDay].map((ev, i) => (
+                  <View key={i} style={styles.modalEventRow}>
+                    <View
+                      style={[styles.modalEventDot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
+                    />
+                    <Text style={styles.modalEventLabel} numberOfLines={1}>
+                      {ev.label}
+                    </Text>
+                    <Text style={styles.modalEventAmount}>{formatPeso(ev.amount)}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.modalSubtitle}>Nothing due on this day.</Text>
+            )}
             <TouchableOpacity onPress={closeDayModal} style={styles.modalCloseButton}>
               <Text style={styles.modalCloseButtonText}>Close</Text>
             </TouchableOpacity>
@@ -301,6 +343,18 @@ function makeStyles(colors: any) {
       color: colors.inkFaint,
       marginTop: 1,
     },
+        dotRow: {
+      flexDirection: 'row',
+      gap: 3,
+      marginTop: 2,
+      height: 5,
+      alignItems: 'center',
+    },
+    dot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -332,6 +386,33 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
       lineHeight: 19,
       marginBottom: 18,
+    },
+        modalEventList: {
+      maxHeight: 220,
+      marginBottom: 14,
+    },
+    modalEventRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 7,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.navy2,
+    },
+    modalEventDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      marginRight: 8,
+    },
+    modalEventLabel: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.ink,
+    },
+    modalEventAmount: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.inkDim,
     },
     modalCloseButton: {
       alignSelf: 'flex-end',

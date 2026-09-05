@@ -558,12 +558,31 @@ original 11 phases before that. Nothing from either file is repeated here.
   state that was never declared (fixed by adding the missing `useState(false)` line
   once the real surrounding code — the other `useState` declarations already in the
   component — was seen). `npx tsc --noEmit` clean (0 errors) after both batches.
-  Calendar (report finding #8 — removing the tiny 7.5px per-day balance text in favor
-  of dot indicators, and wiring the day-selection modal to real event data via
-  `computeMonthEvents`) was deliberately left for a follow-up investigation, since the
-  day-cell container layout and full modal styles weren't shown in enough detail to
-  safely restructure without guessing. **Not yet tested on-device — see ⚠️ Known
-  issues below.**
+  Calendar (report finding #8) was deliberately left for a follow-up investigation
+  during the original B.5 pass, since the day-cell container layout and full modal
+  styles weren't shown in enough detail to safely restructure without guessing —
+  since built as its own follow-up, see the new B.5 (Calendar) entry directly below.
+- **B.5 (Calendar) — dot indicators + real event list in the day popup — CODE
+  COMPLETE, TESTING DEFERRED (see 📌 Decisions above).** Investigated first via a
+  dedicated Antigravity report-only pass confirming the real, full contents of
+  `CalendarScreen.tsx` (day-cell row/column structure, full modal styles,
+  confirmation that `useMemo` was not yet imported), rather than guessing at
+  spacing the way the original B.5 report had flagged as a risk. Wired the existing
+  `computeMonthEvents(model, year, monthIndex)` resolver (already built in
+  `balanceProjection.ts`, returning a day-number-keyed map of bills/debts/loans/
+  income/manual transactions/savings due that month) into the screen via a
+  `useMemo`, recomputed only when `model`/`year`/`month` change. Each day cell now
+  shows up to 4 small colored dots (one per item due that day, capped so a busy day
+  doesn't overflow the cell) using a new `EVENT_DOT_COLORS` map keyed by
+  `CalendarEvent['type']` (bill/debt/loan/income/saving/manual). The day-tap popup's
+  old one-line placeholder sentence was replaced with a real, scrollable list of
+  every item due that day (colored dot + label + formatted amount per row), falling
+  back to "Nothing due on this day" when the map has no entry for that day. No new
+  dependencies — `ScrollView` from `react-native` covers the scrollable list.
+  `npx tsc --noEmit` clean (0 errors) confirmed by the person after pasting.
+  Hand-pasted per standing small-fix policy. **This closes out every finding from
+  the original B.5 UI/UX psychology audit — Batch 1, Batch 2, and Calendar are all
+  now code-complete.**
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -641,10 +660,28 @@ original 11 phases before that. Nothing from either file is repeated here.
   current file content around the error first (investigation-only, no
   changes applied), and only propose a correction once the actual broken
   state is confirmed. This session needed three such rounds in a row for one
-  file (`LoansScreen.tsx`) — each guess-first attempt would have introduced
+  file (`LoansScreen.tsx`) —   each guess-first attempt would have introduced
   a *different* wrong assumption (wrong props, then wrong helper function,
   then wrong style names borrowed from a sibling screen) instead of
   progressing toward a fix.
+- **New this session — testing is now batched, not per-checkpoint, until further
+  notice.** Per explicit instruction, on-device manual testing is deliberately being
+  held off across the remainder of Phase B (and any further checkpoints, until the
+  person says otherwise) so features can be built back-to-back without pausing to
+  test each one individually. `npx tsc --noEmit` after every change remains
+  mandatory and unchanged — that's a compile-time safety net, not a substitute for
+  on-device testing, and catches a different class of problem (syntax/type errors,
+  not visual or behavioral bugs). When the person is ready to test, a single
+  consolidated on-device checklist covering every untested item accumulated during
+  this stretch will be provided, rather than testing screen-by-screen as before.
+  Accepted trade-off, called out explicitly: this project's own history (Tier 1's
+  silently-reverted recovery-key badge, the doubled cloud-backup calls, the
+  Firestore ownerUid regression, several rounds of hand-paste syntax errors) shows
+  bugs that compile cleanly can still slip through and only surface on a real
+  device — batching many changes before the first real test increases how much
+  ground has to be covered, and how hard it can be to isolate which specific change
+  caused a given problem, if one turns up. Proceeding this way at the person's
+  explicit, informed request.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -663,19 +700,30 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **B.5 (Batch 1 + Batch 2) is code-complete and `tsc`-clean, but has NOT been
-  tested on-device yet — do this before considering B.5 closed.** Specifically
-  check: every delete action (Accounts, Bills, Debts, Loans, Transactions, Income,
-  Savings Goals) and Sign Out actually pop a confirm dialog with a working Cancel;
-  the EF/FI calculator fields can be backspaced to fully empty and retyped; the EF
-  "Months Covered" result changes color (red/orange/green) with a value change;
-  PinUnlockScreen hides the PIN box and shows a primary biometric button when no PIN
-  is set, but still shows the normal PIN flow when one is set; CreateProfileScreen's
-  "Copy Recovery Key" button copies correctly and flips to "Copied! ✓" briefly; Loans
-  shows LENT/BORROWED badges with correctly colored amounts and the split banner;
-  Debts amounts show in orange; Income shows the green hero banner and `+`-prefixed
-  green row amounts; and the Home tab shows the real Dashboard (with the small
-  username/PIN/Lock header row still working) instead of the old placeholder text.
+- **Testing is being held until the person is ready — see 📌 Decisions above.**
+  Everything below this line that says "not yet tested on-device" is being
+  deliberately accumulated into one master checklist rather than tested
+  screen-by-screen. Nothing in this list is stale or forgotten — it's the working
+  draft of that eventual checklist, added to as each new code-complete feature
+  ships. Do not test any of it until the person explicitly says they're ready.
+- **B.5 (Batch 1 + Batch 2 + Calendar) is code-complete and `tsc`-clean, but has
+  NOT been tested on-device yet — do this before considering B.5 closed.**
+  Specifically check: every delete action (Accounts, Bills, Debts, Loans,
+  Transactions, Income, Savings Goals) and Sign Out actually pop a confirm dialog
+  with a working Cancel; the EF/FI calculator fields can be backspaced to fully
+  empty and retyped; the EF "Months Covered" result changes color
+  (red/orange/green) with a value change; PinUnlockScreen hides the PIN box and
+  shows a primary biometric button when no PIN is set, but still shows the normal
+  PIN flow when one is set; CreateProfileScreen's "Copy Recovery Key" button
+  copies correctly and flips to "Copied! ✓" briefly; Loans shows LENT/BORROWED
+  badges with correctly colored amounts and the split banner; Debts amounts show
+  in orange; Income shows the green hero banner and `+`-prefixed green row
+  amounts; the Home tab shows the real Dashboard (with the small username/PIN/Lock
+  header row still working) instead of the old placeholder text; **and (new)
+  Calendar shows small colored dots under any day with a bill/debt/loan/income/
+  manual transaction due, and tapping a day shows a real scrollable list of what's
+  due with amounts instead of the old placeholder sentence, correctly falling back
+  to "Nothing due on this day" for days with nothing on them.**
 - **`profileBackups` Firestore rule fix has only been deployed and
   spot-checked once, on one profile/account.** Confirmed working for the
   account tested during this session, but hasn't been separately confirmed
@@ -740,14 +788,18 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   the 3 Settings modals (Category, Payee, Categorization Rule). All verified on-device.
 - **B.4b is fully complete and verified on-device**, including a real
   Firestore rule bug found and fixed along the way (see ✅ Done above).
-- **B.5 (UI/UX psychology pass) — Batch 1 and Batch 2 are code-complete,
-  `npx tsc --noEmit` clean, NOT yet tested on-device.** Next physical step is
-  the on-device test pass listed in ⚠️ Known issues above. After that's
-  confirmed, remaining B.5 work is: the Calendar findings (day-cell dot
-  indicators + wiring the day-selection modal to real event data), and a
-  decision on whether to act on any of the two explicitly-deferred findings
-  (sign-in credential simplification, 10-tab nav consolidation) as their own
-  future checkpoints.
+- **B.5 (UI/UX psychology pass) — FULLY CODE-COMPLETE (Batch 1 + Batch 2 +
+  Calendar), `npx tsc --noEmit` clean, testing deferred.** Per the new batching
+  decision above, on-device testing is being held rather than done now. Remaining
+  open question (not yet decided, no rush): whether to act on either of the two
+  explicitly-deferred B.5 findings (sign-in credential simplification, 10-tab nav
+  consolidation) as their own future checkpoints — revisit once B.5's checklist
+  item is eventually tested, or sooner if the person wants to decide now.
+- **Continuing to build forward through the B.6+ checklist without pausing for
+  on-device testing between items, per the batching decision above.** Each new
+  checkpoint still gets `npx tsc --noEmit` verification and diff review before
+  being marked code-complete; a running, growing on-device checklist is being
+  kept in ⚠️ Known issues above so nothing gets lost by the time testing happens.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -765,7 +817,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — verified on-device | Cards + bottom sheets pattern |
   | ✅ B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — verified on-device | Cards + bottom sheets pattern |
   | ✅ B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals — verified on-device | Cards + bottom sheets pattern |
-  | 🔧 B.5 | UI/UX psychology pass — Batch 1 + 2 code-complete, on-device testing pending | Cross-generational research |
+  | ✅ B.5 | UI/UX psychology pass — Batch 1 + 2 + Calendar all code-complete; on-device testing deferred per batching decision | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
   | B.6b | Date picker, part 2 — roll out to every remaining screen | Requested |
   | B.7 | "Left to Spend" hero stat on Home tab | Simplifi-inspired |
@@ -981,6 +1033,51 @@ Files in the repo (relevant to Phase B/C)
   `expandedGoalId` state and `goalCollapsedWrap`/`detailContainer`/`detailRow`/
   `detailLabel`/`detailValue` styles. Expanded drawer shows remaining amount,
   contributions-logged count, and the most recent contribution's date/amount.
+- `mobile-app/src/screens/CalendarScreen.tsx` — modified (B.5, Calendar). Imports
+  `useMemo` and `ScrollView`; added `EVENT_DOT_COLORS` map; added a `monthEvents`
+  memo wired to the existing `computeMonthEvents()` resolver; day cells now render
+  up to 4 colored dots for items due that day; the day-tap popup now shows a real
+  scrollable list of due items (dot + label + amount) instead of a placeholder
+  sentence, falling back to "Nothing due on this day" when empty. Added
+  `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
+  `modalEventAmount` styles.
+
+### Session entry — B.5 (Calendar) built; testing policy changed to batched/deferred
+**What happened:** Investigated `CalendarScreen.tsx` via a dedicated Antigravity
+report-only pass first, confirming the real day-cell container structure, full
+modal styles, and that `useMemo` was not yet imported — deliberately avoiding a
+repeat of earlier sessions' guess-then-fix cycles. Confirmed a ready-to-use
+`computeMonthEvents()` resolver already existed in `balanceProjection.ts`,
+returning a day-keyed map of bills/debts/loans/income/manual transactions/savings
+due that month, with real example shapes for each source array pulled from
+`types.ts` and each screen's own add/edit handlers. Proposed and reviewed the diff
+as 7 discrete snippets (imports, a color-map constant, a `useMemo` hook, the
+day-cell dot row, the modal's real event list, and two style additions) before the
+person hand-pasted it. `npx tsc --noEmit` confirmed clean by the person.
+
+Separately, the person requested that on-device testing be held for the rest of
+Phase B — features to keep being built back-to-back, with one consolidated
+checklist provided whenever testing actually happens, rather than testing each
+checkpoint as it ships. Flagged once, plainly, that this project's own history
+(the silently-reverted recovery-key badge, the doubled cloud-backup calls, the
+Firestore ownerUid regression) shows bugs that compile cleanly can still only
+surface on a real device, so batching increases both how much has to be tested at
+once and how hard it can be to isolate a cause if something breaks — then
+proceeded per the person's explicit, informed choice.
+
+**Result:** Calendar dot indicators + real event list are code-complete,
+`tsc`-clean, and added to the accumulating on-device checklist in ⚠️ Known issues.
+This closes out every finding from the original B.5 audit (Batch 1, Batch 2, and
+now Calendar). Going forward, checkpoints will continue to be built and marked
+code-complete on the strength of `npx tsc --noEmit` + diff review alone, with
+on-device testing deliberately deferred until the person asks for the master
+checklist.
+
+**Design decision made this session:** Testing is now batched rather than
+per-checkpoint, by explicit instruction — a real change from the standing
+"verify against real code/device before considering a checkpoint closed" practice
+used throughout Phase B so far. This is a deliberate, acknowledged trade-off of
+thoroughness for speed, not an oversight.
 
 ### Session entry — B.4b verified on-device across all six screens; a real Firestore rule bug found and fixed along the way
 **What happened:** Before manual on-device testing, ran a dedicated Antigravity
