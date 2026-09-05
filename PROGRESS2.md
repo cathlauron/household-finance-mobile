@@ -385,10 +385,53 @@ original 11 phases before that. Nothing from either file is repeated here.
   actual repo before anything was hand-applied — then fully reverted
   (`git checkout` + file deletion, confirmed clean via `git status`) before the
   person applied the same content by hand via find/replace paste. `npx tsc --noEmit`
-  confirmed clean again after the hand-paste. **Still needs a manual on-device pass**
+  confirmed clean again after the hand-paste. **  Still needs a manual on-device pass**
   (expand/collapse animation, Edit button routing to the bottom sheet, priority
   badge colors, notes/payment-method conditional rendering) before this is
   considered fully verified — not yet done as of this entry.
+- **B.4b-2 (Loans only) — Convert the Loans list to tap-to-expand via
+  `<CollapsibleRow />` — CODE COMPLETE, PENDING ON-DEVICE VERIFICATION.
+  Debts not yet converted.** Hand-pasted per standing small-fix policy rather
+  than Antigravity-applied. The paste introduced a run of `npx tsc --noEmit`
+  syntax errors, resolved across 3 rounds of Antigravity report-only
+  investigation (real file contents shown each round, no fixes applied
+  without first seeing the actual current state):
+  1. A stray leftover `v` character had overwritten the entire loans-list
+     block during the paste, deleting the opening `<TouchableOpacity
+     style={styles.addButton}>` tag that its own matching closing tag still
+     expected — cascading into "JSX expressions must have one parent
+     element" and mismatched closing-tag errors from line 392 all the way to
+     the bottom of the file. Fixed by restoring the missing
+     `{loans.length === 0 ? ... : loans.map(...)}` block and the
+     `<TouchableOpacity>`/`<Text>+ Add loan</Text>` wrapper around it.
+  2. The reconstructed block initially used `<CollapsibleRow>` props
+     (`title`/`subtitle`/`amountLabel`/`onPress`) and a helper function
+     (`loanTypeLabel`) copied from an assumption about the component's shape
+     rather than verified against it — both wrong. Confirmed the real
+     `CollapsibleRowProps` type (`collapsedContent`/`expandedContent`/
+     `isExpanded`/`onToggle`/`onEdit`/`testID`) and a real working usage
+     example already in `DebtsScreen.tsx` (its own `expandedDebtId` state
+     pattern, `styles.detailContainer`/`detailRow`/`detailLabel`/
+     `detailValue`, and its `paymentMethodLabel()`/`fullRecurrenceDetail()`
+     helpers) before rewriting the Loans block to match the real prop
+     contract, using an inline `remaining`/`isExpanded` computation and
+     `expandedLoanId` state instead of the nonexistent `loanTypeLabel()`.
+  3. That rewrite introduced two smaller issues, both confirmed against real
+     file content before fixing rather than guessed at: (a) `expandedLoanId`
+     was accidentally declared twice near the top of the component (the
+     variable already existed in the file from an earlier point in the same
+     paste), and (b) the new JSX referenced `styles.debtCollapsedRow`/
+     `debtRowMain`/`debtName`/`debtSub`/`debtAmount` — real style names, but
+     from `DebtsScreen.tsx`, not `LoansScreen.tsx`. Confirmed
+     `LoansScreen.tsx`'s own real `makeStyles(colors)` output already has
+     equivalent styles under different names (`loanCollapsedWrap`/
+     `loanRowTop`/`loanRowMain`/`loanName`/`loanSub`/`loanAmount`) and
+     swapped to those instead of adding new duplicate styles.
+  `npx tsc --noEmit` clean (0 errors) after all three rounds, committed and
+  pushed this session. **Not yet manually verified on-device** (expand/
+  collapse, Edit button opening the bottom sheet, remaining-balance display)
+  — pending, same as B.4b-1. **Debts has not yet been converted** — B.4b-2 is
+  not complete until it is.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -461,6 +504,15 @@ original 11 phases before that. Nothing from either file is repeated here.
   that as still requiring the person's explicit confirmation before implementation —
   don't let "Antigravity's judgment call" quietly skip the standard confirm-before-code
   step.
+- **New this session:** When a hand-paste introduces new compile errors, don't
+  guess at a fix from the error text alone — have Antigravity show the real,
+  current file content around the error first (investigation-only, no
+  changes applied), and only propose a correction once the actual broken
+  state is confirmed. This session needed three such rounds in a row for one
+  file (`LoansScreen.tsx`) — each guess-first attempt would have introduced
+  a *different* wrong assumption (wrong props, then wrong helper function,
+  then wrong style names borrowed from a sibling screen) instead of
+  progressing toward a fix.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -479,10 +531,11 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **B.4b-1 not yet manually verified on-device.** `npx tsc --noEmit` is clean and
-  the diff was reviewed line-by-line, but nobody has tapped through the actual
-  expand/collapse behavior, the Edit button, or the priority badge colors on a
-  real device/simulator yet.
+- **B.4b-1 (Bills) and B.4b-2 (Loans only) not yet manually verified on-device.**
+  `npx tsc --noEmit` is clean for both and diffs were reviewed line-by-line, but
+  nobody has tapped through the actual expand/collapse behavior, the Edit
+  button, or (for Bills) the priority badge colors on a real device/simulator
+  yet. Debts has not been converted yet at all — B.4b-2 is only half done.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -554,7 +607,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
   | ✅ B.4a | Convert essential-screen add/edit flows to bottom sheets (Accounts, Bills, Debts, Loans, Transactions, Income, Savings, 3 Settings modals) | Cards + bottom sheets pattern |
   | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — pending on-device verification | Cards + bottom sheets pattern |
-  | B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans | Cards + bottom sheets pattern |
+  | 🔶 B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans — **Loans done (pending on-device verification), Debts not started** | Cards + bottom sheets pattern |
   | B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
@@ -694,6 +747,15 @@ Files in the repo (relevant to Phase B/C)
   `paymentMethodLabel()` and `fullRecurrenceDetail()` helpers, and new
   `detail*`/`priority*`/`billCollapsedRow` styles. Removed the now-unused
   `billRow` style.
+- `mobile-app/src/screens/LoansScreen.tsx` — modified (B.4b-2, Loans only).
+  List rows now render via `<CollapsibleRow />` instead of the old
+  `title`/`subtitle`/`amountLabel`/`onPress` row shape. Added `expandedLoanId`
+  state; collapsed rows show name/loan type/direction/remaining balance,
+  expanded rows show total amount, paid so far, and interest rate (using
+  `styles.detailContainer`/`detailRow`/`detailLabel`/`detailValue`, already
+  present in this file's `makeStyles`). Reuses the file's own existing
+  `loanCollapsedWrap`/`loanRowTop`/`loanRowMain`/`loanName`/`loanSub`/
+  `loanAmount` styles rather than introducing new ones.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
 **What happened:** Started investigating B.2c ("standalone Profile screen, split out of
