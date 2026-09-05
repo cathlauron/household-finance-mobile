@@ -80,6 +80,67 @@ export function loanOutstandingBalance(loan: Loan): number {
   return Math.max(0, total - paid);
 }
 
+function latestCycleAmount(record: Bill | Debt): number {
+  if (!record.cycles || record.cycles.length === 0) return 0;
+  const last = record.cycles[record.cycles.length - 1];
+  return typeof last.amountDue === 'number' && !isNaN(last.amountDue) ? last.amountDue : 0;
+}
+
+// ---- Comprehensive Monthly Obligations Baseline ----
+// Combines recurring bills, debt minimum payments, and borrowed loan payments into
+// a single monthly outflow baseline.
+// - Monthly items counted fully
+// - Annual items divided by 12
+// - One-time and custom schedules excluded
+// - 'Lent' loans excluded (money owed to you, not an expense)
+export function computeMonthlyObligationsBaseline(
+  bills: Bill[] = [],
+  debts: Debt[] = [],
+  loans: Loan[] = []
+): number {
+  let total = 0;
+
+  // 1. Recurring Bills
+  for (const bill of bills) {
+    const amount = latestCycleAmount(bill);
+    if (bill.recurringType === 'monthly') {
+      total += amount;
+    } else if (bill.recurringType === 'annual') {
+      total += amount / 12;
+    }
+  }
+
+  // 2. Recurring Debts (prefer minPayment; fallback to latest cycle amountDue)
+  for (const debt of debts) {
+    const minPay = typeof debt.minPayment === 'number' && !isNaN(debt.minPayment) && debt.minPayment > 0
+      ? debt.minPayment
+      : latestCycleAmount(debt);
+
+    if (debt.recurringType === 'monthly') {
+      total += minPay;
+    } else if (debt.recurringType === 'annual') {
+      total += minPay / 12;
+    }
+  }
+
+  // 3. Recurring Borrowed Loans (expectedPayment)
+  for (const loan of loans) {
+    if (loan.direction === 'lent') continue; // Skip money owed to you
+    const payment = typeof loan.expectedPayment === 'number' && !isNaN(loan.expectedPayment) && loan.expectedPayment > 0
+      ? loan.expectedPayment
+      : 0;
+
+    const recurType = loan.recurringType || 'onetime';
+    if (recurType === 'monthly') {
+      total += payment;
+    } else if (recurType === 'annual') {
+      total += payment / 12;
+    }
+  }
+
+  return total;
+}
+
 // ---- Bill / Debt next-due-date resolver ----
 // Bills and Debts share the exact same recurrence shape, so one function handles both.
 function nextOccurrenceInMonth(record: Bill | Debt, year: number, monthIndex: number): number[] {

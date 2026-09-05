@@ -86,6 +86,7 @@ export default function IncomeScreen() {
   const [semiDay1Input, setSemiDay1Input] = useState('');
   const [semiDay2Input, setSemiDay2Input] = useState('');
   const [weeklyDowInput, setWeeklyDowInput] = useState<number | null>(null);
+  const [biweeklyAnchorInput, setBiweeklyAnchorInput] = useState('');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
@@ -109,7 +110,7 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
     setSemiDay1Input('');
     setSemiDay2Input('');
     setWeeklyDowInput(null);
-    setOnetimeDateInput('');
+    setBiweeklyAnchorInput('');
     setErrorMsg('');
     setPaymentLogEntries([]);
   }
@@ -135,6 +136,7 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
     setSemiDay1Input(freq === 'semimonthly' ? pd[0] || '' : '');
     setSemiDay2Input(freq === 'semimonthly' ? pd[1] || '' : '');
     setWeeklyDowInput(freq === 'weekly' && pd[0] !== undefined ? parseInt(pd[0], 10) : null);
+    setBiweeklyAnchorInput(freq === 'biweekly' ? pd[0] || '' : '');
     setOnetimeDateInput(freq === 'onetime' ? pd[0] || '' : '');
     setPaymentLogEntries(
       (source.paymentLog || []).map((e) => ({
@@ -206,6 +208,13 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
       payDates = [semiDay1Input.trim(), semiDay2Input.trim()];
     } else if (frequencyInput === 'weekly') {
       payDates = weeklyDowInput !== null ? [String(weeklyDowInput)] : [];
+    } else if (frequencyInput === 'biweekly') {
+      const trimmedDate = biweeklyAnchorInput.trim();
+      if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+        setErrorMsg('Enter the payday as YYYY-MM-DD, e.g. 2025-03-15.');
+        return;
+      }
+      payDates = trimmedDate ? [trimmedDate] : [];
     } else if (frequencyInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
@@ -214,7 +223,6 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
       }
       payDates = [trimmedDate];
     }
-    // biweekly: no schedule fields collected in this version — payDates stays [].
 
     const validPaymentLog: PaymentLogEntry[] = [];
     for (const entry of paymentLogEntries) {
@@ -543,10 +551,15 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
                 )}
 
                 {frequencyInput === 'biweekly' && (
-                  <Text style={styles.hintText}>
-                    No fixed schedule needed — just log each payday below as it happens.
-                  </Text>
-                )}
+  <DateField
+    label="When was your most recent payday?"
+    value={biweeklyAnchorInput}
+    onChange={setBiweeklyAnchorInput}
+    placeholder="Select recent payday"
+    clearable
+    testID="income-biweekly-anchor-field"
+  />
+)}
 
                 <Text style={styles.inputLabel}>Payment log</Text>
                 <Text style={styles.hintText}>

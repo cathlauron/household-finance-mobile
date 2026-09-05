@@ -13,7 +13,7 @@ import { Alert } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { formatPeso } from '../balanceProjection';
+import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
@@ -75,18 +75,6 @@ function billLatestCycleAmount(bill: Bill): number {
   if (!bill.cycles || bill.cycles.length === 0) return 0;
   const last = bill.cycles[bill.cycles.length - 1];
   return typeof last.amountDue === 'number' ? last.amountDue : 0;
-}
-
-function computeMonthlyExpenseBaseline(bills: Bill[]): number {
-  let total = 0;
-  for (const bill of bills) {
-    if (bill.recurringType === 'monthly') {
-      total += billLatestCycleAmount(bill);
-    } else if (bill.recurringType === 'annual') {
-      total += billLatestCycleAmount(bill) / 12;
-    }
-  }
-  return total;
 }
 
 function incomeSourceMonthlyAmount(source: IncomeSource): number {
@@ -354,9 +342,13 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const goals = sortGoals(model.savingsGoals);
   const totalSaved = goals.reduce((sum, g) => sum + contributionsTotal(g), 0);
 
-  const suggestedMonthlyExpenses = computeMonthlyExpenseBaseline(model.bills);
-  const suggestedAnnualExpenses = suggestedMonthlyExpenses * 12;
-  const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
+  const suggestedMonthlyExpenses = computeMonthlyObligationsBaseline(
+  model.bills,
+  model.debts || [],
+  model.loans || []
+);
+const suggestedAnnualExpenses = suggestedMonthlyExpenses * 12;
+const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
   const storedCalc = calcInputsFromModel();
   const efExpensesDisplay =

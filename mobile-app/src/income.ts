@@ -92,11 +92,25 @@ export function computeNextPayDate(
     return null;
   }
 
+  if (frequency === 'biweekly' && payDates[0]) {
+    const anchor = new Date(payDates[0] + 'T00:00:00');
+    if (isNaN(anchor.getTime())) return null;
+    const start = stripTime(anchor);
+    const target = stripTime(today);
+    if (start >= target) return start;
+
+    // Advance in 14-day increments until reaching or passing today
+    const diffDays = Math.round((target.getTime() - start.getTime()) / 86400000);
+    const cycles = Math.ceil(diffDays / 14);
+    const next = new Date(start);
+    next.setDate(start.getDate() + cycles * 14);
+    return next;
+  }
+
   if (frequency === 'onetime' && payDates[0]) {
     const d = new Date(payDates[0] + 'T00:00:00');
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // Biweekly (no anchor date collected in this version) falls through here.
   return null;
 }
