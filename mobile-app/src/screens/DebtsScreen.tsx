@@ -8,7 +8,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Platform,
+
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';

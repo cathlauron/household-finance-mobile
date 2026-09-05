@@ -8,7 +8,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Platform,
+
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -31,12 +31,6 @@ function loanTotal(loan: Loan): number {
   return typeof loan.totalAmount === 'number' ? loan.totalAmount : 0;
 }
 
-function loanProgressPct(loan: Loan): number {
-  const total = loanTotal(loan);
-  if (total <= 0) return 0;
-  const pct = (loanPaidTotal(loan) / total) * 100;
-  return Math.min(100, Math.max(0, pct));
-}
 
 function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel): string {
   if (!pm) return 'Not set';
@@ -125,7 +119,8 @@ export default function LoansScreen() {
   const [customFreqInput, setCustomFreqInput] = useState('monthly');
   const [customStartDateInput, setCustomStartDateInput] = useState('');
   const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [paymentsInput, setPaymentsInput] = useState<LoanPayment[]>([]);
   const [newPaymentDate, setNewPaymentDate] = useState('');
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
@@ -773,18 +768,7 @@ function makeStyles(colors: any) {
     loanName: { fontSize: 14, fontWeight: '600', color: colors.ink },
     loanSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
     loanAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    progressTrack: {
-      height: 6,
-      borderRadius: 999,
-      backgroundColor: colors.navy2,
-      overflow: 'hidden',
-      marginTop: 10,
-    },
-    progressFill: {
-      height: 6,
-      borderRadius: 999,
-      backgroundColor: colors.gold,
-    },
+
     detailContainer: {
       gap: 6,
     },
