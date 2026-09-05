@@ -18,6 +18,7 @@ import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types'
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
 
 function loanPaidTotal(loan: Loan): number {
@@ -44,6 +45,34 @@ function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel
   const acct = list.find((a) => a.id === pm.accountId);
   const label = pm.type === 'debit' ? 'Debit' : 'Credit';
   return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
+}
+
+function fullRecurrenceDetail(loan: Loan): string {
+  const rt = (loan.recurringType as RecurringType) || 'onetime';
+  const d = loan.dueDate || {};
+  if (rt === 'monthly') {
+    return d.day ? `Every month on day ${d.day}` : 'Monthly';
+  }
+  if (rt === 'annual') {
+    if (d.month && d.day) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const mName = monthNames[(d.month as number) - 1] || `Month ${d.month}`;
+      return `Every year on ${mName} ${d.day}`;
+    }
+    return d.day ? `Every year on day ${d.day}` : 'Annual';
+  }
+  if (rt === 'onetime') {
+    return d.date ? `One-time: due ${d.date}` : 'One-time loan';
+  }
+  if (rt === 'custom') {
+    const freq = loan.customFreq ? loan.customFreq.charAt(0).toUpperCase() + loan.customFreq.slice(1) : 'Custom schedule';
+    const start = loan.customStartDate ? `, starting ${loan.customStartDate}` : '';
+    const count = typeof loan.customOccurrenceCount === 'number' && loan.customOccurrenceCount > 0
+      ? ` (${loan.customOccurrenceCount} payments)`
+      : '';
+    return `${freq}${start}${count}`;
+  }
+  return recurringTypeLabel(rt);
 }
 
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
@@ -80,6 +109,7 @@ export default function LoansScreen() {
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
+  const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
@@ -372,54 +402,56 @@ export default function LoansScreen() {
           </TouchableOpacity>
         )}
 
-        {loans.length === 0 && (
+        {loans.length === 0 ? (
           <Text style={styles.emptyText}>No loans yet. Add your first one below.</Text>
+        ) : (
+          loans.map((loan) => {
+            const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
+            const isExpanded = expandedLoanId === loan.id;
+            return (
+              <CollapsibleRow
+                key={loan.id}
+                testID={`loan-row-${loan.id}`}
+                isExpanded={isExpanded}
+                onToggle={() => setExpandedLoanId((prev) => (prev === loan.id ? null : loan.id))}
+                onEdit={() => openEditModal(loan)}
+                collapsedContent={
+                  <View style={styles.loanCollapsedWrap}>
+                    <View style={styles.loanRowTop}>
+                      <View style={styles.loanRowMain}>
+                        <Text style={styles.loanName} numberOfLines={1}>
+                          {loan.name || 'Untitled loan'}
+                        </Text>
+                        <Text style={styles.loanSub} numberOfLines={1}>
+                          {(loan.loanType || 'Other')} · {loan.direction === 'lent' ? 'Lent' : 'Borrowed'}
+                        </Text>
+                      </View>
+                      <Text style={styles.loanAmount}>{formatPeso(remaining)}</Text>
+                    </View>
+                  </View>
+                }
+                expandedContent={
+                  <View style={styles.detailContainer}>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Total Amount</Text>
+                      <Text style={styles.detailValue}>{formatPeso(loanTotal(loan))}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Paid So Far</Text>
+                      <Text style={styles.detailValue}>{formatPeso(loanPaidTotal(loan))}</Text>
+                    </View>
+                    {typeof loan.interestRate === 'number' && loan.interestRate > 0 && (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Interest Rate</Text>
+                        <Text style={styles.detailValue}>{loan.interestRate}% APR</Text>
+                      </View>
+                    )}
+                  </View>
+                }
+              />
+            );
+          })
         )}
-
-        {loans.map((loan) => {
-          const paid = loanPaidTotal(loan);
-          const total = loanTotal(loan);
-          const pct = loanProgressPct(loan);
-          const isLent = loan.direction === 'lent';
-          const nextDue = getNextDueDate(
-            (loan.recurringType as RecurringType) || 'onetime',
-            loan.dueDate || {},
-            new Date(),
-            loan.customStartDate,
-            loan.customFreq,
-            loan.customOccurrenceCount
-          );
-          return (
-            <TouchableOpacity
-              key={loan.id}
-              style={styles.loanRow}
-              activeOpacity={0.7}
-              onPress={() => openEditModal(loan)}
-            >
-              <View style={styles.loanRowTop}>
-                <View style={styles.loanRowMain}>
-                  <Text style={styles.loanName} numberOfLines={1}>
-                    {loan.name || 'Untitled loan'}
-                  </Text>
-                  <Text style={styles.loanSub} numberOfLines={1}>
-                    {(loan.loanType || 'Loan')}
-                    {isLent ? ' · Lent (owed to you)' : ' · Borrowed'}
-                    {' · ' + recurringTypeLabel((loan.recurringType as RecurringType) || 'onetime') + ' · ' + formatShortDate(nextDue)}
-                    {!isLent && typeof loan.interestRate === 'number' && loan.interestRate > 0
-                      ? ' · ' + loan.interestRate + '% APR'
-                      : ''}
-                  </Text>
-                </View>
-                <Text style={styles.loanAmount}>{formatPeso(paid)}{total > 0 ? ' / ' + formatPeso(total) : ''}</Text>
-              </View>
-              {total > 0 && (
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add loan</Text>
@@ -729,12 +761,8 @@ function makeStyles(colors: any) {
     },
     simulatorButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    loanRow: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+    loanCollapsedWrap: {
+      flex: 1,
     },
     loanRowTop: {
       flexDirection: 'row',
@@ -756,6 +784,27 @@ function makeStyles(colors: any) {
       height: 6,
       borderRadius: 999,
       backgroundColor: colors.gold,
+    },
+    detailContainer: {
+      gap: 6,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 2,
+    },
+    detailLabel: {
+      fontSize: 11,
+      color: colors.inkDim,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      fontWeight: '600',
+    },
+    detailValue: {
+      fontSize: 12.5,
+      color: colors.ink,
+      fontWeight: '500',
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },

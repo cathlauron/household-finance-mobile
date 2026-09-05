@@ -17,6 +17,7 @@ import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } fr
 import type { Debt, HouseholdModel, PaymentMethod } from '../types';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
 
 function debtAmount(debt: Debt): number {
@@ -37,6 +38,37 @@ function sortByNextDue(debts: Debt[]): Debt[] {
   });
 }
 
+function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel): string {
+  if (!pm) return 'Not set';
+  if (pm.type === 'cash') return 'Cash';
+  const list = pm.type === 'debit' ? model.balanceAccounts.debit : model.balanceAccounts.credit;
+  const acct = list.find((a) => a.id === pm.accountId);
+  const label = pm.type === 'debit' ? 'Debit' : 'Credit';
+  return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
+}
+
+function fullRecurrenceDetail(debt: Debt): string {
+  const d = debt.dueDate || {};
+  if (debt.recurringType === 'monthly') {
+    return d.day ? `Every month on day ${d.day}` : 'Monthly';
+  }
+  if (debt.recurringType === 'annual') {
+    if (d.month && d.day) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const mName = monthNames[(d.month as number) - 1] || `Month ${d.month}`;
+      return `Every year on ${mName} ${d.day}`;
+    }
+    return d.day ? `Every year on day ${d.day}` : 'Annual';
+  }
+  if (debt.recurringType === 'onetime') {
+    return d.date ? `One-time: due ${d.date}` : 'One-time debt';
+  }
+  if (debt.recurringType === 'custom') {
+    return debt.customFreq ? `Custom: every ${debt.customFreq}` : 'Custom schedule';
+  }
+  return recurringTypeLabel(debt.recurringType);
+}
+
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
 export default function DebtsScreen() {
@@ -44,6 +76,7 @@ export default function DebtsScreen() {
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
+  const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creditorInput, setCreditorInput] = useState('');
@@ -267,24 +300,76 @@ export default function DebtsScreen() {
 
         {debts.map((debt) => {
           const nextDue = getNextDueDate(debt.recurringType, debt.dueDate);
+          const firstCycle = debt.cycles && debt.cycles[0];
+          const pm = firstCycle ? firstCycle.paymentMethod : undefined;
+          const fees = firstCycle ? firstCycle.feesPortion : undefined;
+          const isExpanded = expandedDebtId === debt.id;
+
           return (
-            <TouchableOpacity
+            <CollapsibleRow
               key={debt.id}
-              style={styles.debtRow}
-              activeOpacity={0.7}
-              onPress={() => openEditModal(debt)}
-            >
-              <View style={styles.debtRowMain}>
-                <Text style={styles.debtName} numberOfLines={1}>
-                  {debt.creditorOrPerson || 'Untitled debt'}
-                </Text>
-                <Text style={styles.debtSub} numberOfLines={1}>
-                  {(debt.category || 'Uncategorized')} · {recurringTypeLabel(debt.recurringType)} · {formatShortDate(nextDue)}
-                  {typeof debt.interestRate === 'number' ? ' · ' + debt.interestRate + '% APR' : ''}
-                </Text>
-              </View>
-              <Text style={styles.debtAmount}>{formatPeso(debtAmount(debt))}</Text>
-            </TouchableOpacity>
+              testID={`debt-row-${debt.id}`}
+              isExpanded={isExpanded}
+              onToggle={() => setExpandedDebtId((prev) => (prev === debt.id ? null : debt.id))}
+              onEdit={() => openEditModal(debt)}
+              collapsedContent={
+                <View style={styles.debtCollapsedRow}>
+                  <View style={styles.debtRowMain}>
+                    <Text style={styles.debtName} numberOfLines={1}>
+                      {debt.creditorOrPerson || 'Untitled debt'}
+                    </Text>
+                    <Text style={styles.debtSub} numberOfLines={1}>
+                      {(debt.category || 'Uncategorized')} · {recurringTypeLabel(debt.recurringType)} · {formatShortDate(nextDue)}
+                      {typeof debt.interestRate === 'number' ? ' · ' + debt.interestRate + '% APR' : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.debtAmount}>{formatPeso(debtAmount(debt))}</Text>
+                </View>
+              }
+              expandedContent={
+                <View style={styles.detailContainer}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Schedule</Text>
+                    <Text style={styles.detailValue}>{fullRecurrenceDetail(debt)}</Text>
+                  </View>
+
+                  {typeof debt.minPayment === 'number' && debt.minPayment > 0 && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Min Payment</Text>
+                      <Text style={styles.detailValue}>{formatPeso(debt.minPayment)}</Text>
+                    </View>
+                  )}
+
+                  {typeof debt.interestRate === 'number' && debt.interestRate > 0 && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Interest Rate</Text>
+                      <Text style={styles.detailValue}>{debt.interestRate}% APR</Text>
+                    </View>
+                  )}
+
+                  {typeof fees === 'number' && fees > 0 && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Fees Portion</Text>
+                      <Text style={styles.detailValue}>{formatPeso(fees)}</Text>
+                    </View>
+                  )}
+
+                  {pm && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Payment Method</Text>
+                      <Text style={styles.detailValue}>{paymentMethodLabel(pm, model)}</Text>
+                    </View>
+                  )}
+
+                  {!!debt.notes?.trim() && (
+                    <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
+                      <Text style={styles.detailLabel}>Notes</Text>
+                      <Text style={styles.detailNotesText}>{debt.notes.trim()}</Text>
+                    </View>
+                  )}
+                </View>
+              }
+            />
           );
         })}
 
@@ -477,20 +562,45 @@ function makeStyles(colors: any) {
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    debtRow: {
+    debtCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+      flex: 1,
     },
     debtRowMain: { flex: 1, marginRight: 10 },
     debtName: { fontSize: 14, fontWeight: '600', color: colors.ink },
     debtSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
     debtAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    detailContainer: {
+      gap: 6,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 2,
+    },
+    detailLabel: {
+      fontSize: 11,
+      color: colors.inkDim,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      fontWeight: '600',
+    },
+    detailValue: {
+      fontSize: 12.5,
+      color: colors.ink,
+      fontWeight: '500',
+    },
+    detailNotesText: {
+      fontSize: 12.5,
+      color: colors.inkDim,
+      lineHeight: 17,
+      flex: 1,
+      textAlign: 'right',
+      marginLeft: 12,
+    },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     inputLabel: {
