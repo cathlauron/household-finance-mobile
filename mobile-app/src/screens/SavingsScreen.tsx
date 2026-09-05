@@ -122,14 +122,21 @@ export default function SavingsScreen() {
   const [contribRows, setContribRows] = useState<ContribRow[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
 
+  function getEfStatus(months: number | null, colors: { error: string; orange: string; ok: string; inkDim: string }) {
+  if (months === null) return { color: colors.inkDim, label: null as string | null };
+  if (months < 1.5) return { color: colors.error, label: 'Needs attention' };
+  if (months < 3.0) return { color: colors.orange, label: 'Growing' };
+  return { color: colors.ok, label: 'Fully funded' };
+}
+
   // ---- Emergency Fund calculator local state ----
-  const [efExpensesInput, setEfExpensesInput] = useState('');
-  const [efSavingsInput, setEfSavingsInput] = useState('');
+  const [efExpensesInput, setEfExpensesInput] = useState<string | null>(null);
+  const [efSavingsInput, setEfSavingsInput] = useState<string | null>(null);
   const [efSaved, setEfSaved] = useState(false);
 
   // ---- FI calculator local state ----
-  const [fiExpensesInput, setFiExpensesInput] = useState('');
-  const [fiSavingsInput, setFiSavingsInput] = useState('');
+  const [fiExpensesInput, setFiExpensesInput] = useState<string | null>(null);
+  const [fiSavingsInput, setFiSavingsInput] = useState<string | null>(null);
   const [fiSaved, setFiSaved] = useState(false);
 const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
@@ -352,13 +359,13 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
   const storedCalc = calcInputsFromModel();
   const efExpensesDisplay =
-    efExpensesInput !== '' ? efExpensesInput : storedCalc.efMonthlyExpenses === '' ? '' : String(storedCalc.efMonthlyExpenses);
+    efExpensesInput !== null ? efExpensesInput : storedCalc.efMonthlyExpenses === '' ? '' : String(storedCalc.efMonthlyExpenses);
   const efSavingsDisplay =
-    efSavingsInput !== '' ? efSavingsInput : storedCalc.efCurrentSavings === '' ? '' : String(storedCalc.efCurrentSavings);
+    efSavingsInput !== null ? efSavingsInput : storedCalc.efCurrentSavings === '' ? '' : String(storedCalc.efCurrentSavings);
   const fiExpensesDisplay =
-    fiExpensesInput !== '' ? fiExpensesInput : storedCalc.fiAnnualExpenses === '' ? '' : String(storedCalc.fiAnnualExpenses);
+    fiExpensesInput !== null ? fiExpensesInput : storedCalc.fiAnnualExpenses === '' ? '' : String(storedCalc.fiAnnualExpenses);
   const fiSavingsDisplay =
-    fiSavingsInput !== '' ? fiSavingsInput : storedCalc.fiCurrentSavings === '' ? '' : String(storedCalc.fiCurrentSavings);
+    fiSavingsInput !== null ? fiSavingsInput : storedCalc.fiCurrentSavings === '' ? '' : String(storedCalc.fiCurrentSavings);
 
   const efIncomeDisplay =
     suggestedMonthlyIncome > 0 ? `Your income sources add up to ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
@@ -532,11 +539,16 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
           />
 
           <View style={styles.resultCard}>
-            <Text style={styles.resultLabel}>MONTHS COVERED</Text>
-            <Text style={styles.resultAmount}>
-              {efMonthsCovered !== null ? efMonthsCovered.toFixed(1) + ' months' : '—'}
-            </Text>
-          </View>
+    <Text style={styles.resultLabel}>MONTHS COVERED</Text>
+    <Text style={[styles.resultAmount, { color: getEfStatus(efMonthsCovered, colors).color }]}>
+      {efMonthsCovered !== null ? efMonthsCovered.toFixed(1) + ' months' : '—'}
+    </Text>
+    {getEfStatus(efMonthsCovered, colors).label && (
+      <Text style={{ color: getEfStatus(efMonthsCovered, colors).color, fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+        {getEfStatus(efMonthsCovered, colors).label}
+      </Text>
+    )}
+  </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSaveEf}>
             <Text style={styles.saveButtonText}>{efSaved ? 'Saved ✓' : 'Save'}</Text>

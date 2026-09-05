@@ -72,34 +72,46 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordIns
     <View style={styles.container}>
       <Text style={styles.eyebrow}>LOCKED</Text>
       <Text style={styles.title}>Welcome back, {username}</Text>
-      <Text style={styles.sub}>Enter your PIN to keep going, right where you left off.</Text>
+      <Text style={styles.sub}>
+        {hasPin === false
+          ? `Unlock with ${biometricLabel} or enter your password.`
+          : 'Enter your PIN to keep going, right where you left off.'}
+      </Text>
 
-      <Text style={styles.label}>PIN</Text>
-      <PinField
-        testID="unlock-pin-input"
-        style={styles.input}
-        value={pin}
-        onChangeText={setPin}
-        centered
-        autoFocus
-      />
+      {hasPin !== false && (
+        <>
+          <Text style={styles.label}>PIN</Text>
+          <PinField
+            testID="unlock-pin-input"
+            style={styles.input}
+            value={pin}
+            onChangeText={setPin}
+            centered
+            autoFocus
+          />
+        </>
+      )}
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
-      {hasPin === false && (
-        <Text style={styles.noPinHint}>No PIN configured. Unlock with {biometricLabel} or use your password.</Text>
+      {hasPin !== false && (
+        <TouchableOpacity
+          testID="unlock-button"
+          style={[styles.primaryBtn, (busy || pin.length < 4) && { opacity: 0.4 }]}
+          onPress={handleUnlock}
+          disabled={busy || pin.length < 4}
+        >
+          <Text style={styles.primaryBtnText}>Unlock</Text>
+        </TouchableOpacity>
       )}
 
-      <TouchableOpacity
-    testID="unlock-button"
-    style={[styles.primaryBtn, (busy || pin.length < 4) && { opacity: 0.4 }]}
-    onPress={handleUnlock}
-    disabled={busy || pin.length < 4}
-  >
-    <Text style={styles.primaryBtnText}>Unlock</Text>
-  </TouchableOpacity>
+      {biometricState === 'ENABLED' && hasPin === false && (
+        <TouchableOpacity testID="retry-biometrics-button" style={styles.primaryBtn} onPress={() => runBiometricAuth(true)}>
+          <Text style={styles.primaryBtnText}>Unlock with {biometricLabel}</Text>
+        </TouchableOpacity>
+      )}
 
-      {biometricState === 'ENABLED' && (
+      {biometricState === 'ENABLED' && hasPin !== false && (
         <TouchableOpacity testID="retry-biometrics-button" style={styles.retryBiometricBtn} onPress={() => runBiometricAuth(true)}>
           <Text style={styles.retryBiometricText}>🔄 Try {biometricLabel} again</Text>
         </TouchableOpacity>

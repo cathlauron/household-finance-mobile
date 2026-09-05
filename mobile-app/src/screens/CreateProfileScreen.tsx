@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { generateSalt, deriveKey, encryptJSON } from '../encryption';
@@ -25,6 +26,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
   const [createdInfo, setCreatedInfo] = useState<{ username: string; key: CryptoJS.lib.WordArray } | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
   const [savedAcknowledged, setSavedAcknowledged] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Turns a raw Firebase error into a plain-English message. Firebase errors
   // come with a `code` like "auth/email-already-in-use" - we check for the
@@ -215,6 +217,18 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
               </Text>
             </View>
 
+            <TouchableOpacity
+              style={styles.copyButton}
+              onPress={async () => {
+                if (!recoveryCode) return;
+                await Clipboard.setStringAsync(recoveryCode);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+            >
+              <Text style={styles.copyButtonText}>{copied ? 'Copied! ✓' : '📋 Copy Recovery Key'}</Text>
+            </TouchableOpacity>
+
             <Pressable
               style={styles.checkRow}
               onPress={() => setSavedAcknowledged((prev) => !prev)}
@@ -272,6 +286,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   codeText: { fontSize: 17, fontWeight: '700', letterSpacing: 2, color: '#0F172A', fontFamily: 'monospace' },
+  copyButton: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginBottom: 16 },
+  copyButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   checkbox: {
     width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, borderColor: '#78716C',

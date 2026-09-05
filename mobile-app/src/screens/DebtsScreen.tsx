@@ -572,7 +572,7 @@ function makeStyles(colors: any) {
       marginBottom: 18,
     },
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
+    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.orange },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
     debtCollapsedRow: {
       flexDirection: 'row',
@@ -583,7 +583,7 @@ function makeStyles(colors: any) {
     debtRowMain: { flex: 1, marginRight: 10 },
     debtName: { fontSize: 14, fontWeight: '600', color: colors.ink },
     debtSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    debtAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    debtAmount: { fontSize: 14, fontWeight: '600', color: colors.orange },
     detailContainer: {
       gap: 6,
     },

@@ -398,9 +398,17 @@ export default function LoansScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.balanceBanner}>
-          <Text style={styles.balanceBannerLabel}>REMAINING ON LOANS (BORROWED)</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
+        <View style={[styles.balanceBanner, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+          <View>
+            <Text style={styles.balanceBannerLabel}>OWED (BORROWED)</Text>
+            <Text style={[styles.balanceBannerAmount, { color: colors.orange }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
+          </View>
+          <View>
+            <Text style={styles.balanceBannerLabel}>OWED TO YOU (LENT)</Text>
+            <Text style={[styles.balanceBannerAmount, { color: colors.ok }]}>
+              {formatPeso(Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0)))}
+            </Text>
+          </View>
         </View>
 
         {simLoans.length > 0 && (
@@ -425,15 +433,24 @@ export default function LoansScreen() {
                 collapsedContent={
                   <View style={styles.loanCollapsedWrap}>
                     <View style={styles.loanRowTop}>
-                      <View style={styles.loanRowMain}>
+                    <View style={styles.loanRowMain}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.loanName} numberOfLines={1}>
                           {loan.name || 'Untitled loan'}
                         </Text>
-                        <Text style={styles.loanSub} numberOfLines={1}>
-                          {(loan.loanType || 'Other')} · {loan.direction === 'lent' ? 'Lent' : 'Borrowed'}
-                        </Text>
+                        <View style={{ backgroundColor: (loan.direction === 'lent' ? colors.ok : colors.orange) + '20', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: loan.direction === 'lent' ? colors.ok : colors.orange }}>
+                            {loan.direction === 'lent' ? 'LENT' : 'BORROWED'}
+                          </Text>
+                        </View>
                       </View>
-                      <Text style={styles.loanAmount}>{formatPeso(remaining)}</Text>
+                      <Text style={styles.loanSub} numberOfLines={1}>
+                        {(loan.loanType || 'Other')}
+                      </Text>
+                    </View>
+                    <Text style={[styles.loanAmount, { color: loan.direction === 'lent' ? colors.ok : colors.orange }]}>
+                      {loan.direction === 'lent' ? '+' : '−'}{formatPeso(remaining)}
+                    </Text>
                     </View>
                   </View>
                 }

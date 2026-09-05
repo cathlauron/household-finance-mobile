@@ -302,9 +302,23 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
 
   const sources = sortByNextPayDate(model.income);
 
+  const totalMonthlyIncome = sources.reduce((sum, source) => {
+    const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
+    if (amount <= 0) return sum;
+    if (source.frequency === 'monthly') return sum + amount;
+    if (source.frequency === 'weekly') return sum + (amount * 52) / 12;
+    if (source.frequency === 'biweekly') return sum + (amount * 26) / 12;
+    if (source.frequency === 'semimonthly') return sum + (amount * 24) / 12;
+    return sum + amount;
+  }, 0);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={{ backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <Text style={{ fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
+        </View>
         {sources.length === 0 && (
           <Text style={styles.emptyText}>No income sources yet. Add your first one below.</Text>
         )}
@@ -338,8 +352,8 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
                     </Text>
                   </View>
                   <Text style={styles.rowAmount}>
-                    {typeof source.expectedAmount === 'number' ? formatPeso(source.expectedAmount) : '—'}
-                  </Text>
+    {typeof source.expectedAmount === 'number' ? `+${formatPeso(source.expectedAmount)}` : '—'}
+  </Text>
                 </View>
               }
               expandedContent={
@@ -608,7 +622,7 @@ function makeStyles(colors: any) {
     rowMain: { flex: 1, marginRight: 10 },
     rowName: { fontSize: 14, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    rowAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    rowAmount: { fontSize: 14, fontWeight: '600', color: colors.ok },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     inputLabel: {

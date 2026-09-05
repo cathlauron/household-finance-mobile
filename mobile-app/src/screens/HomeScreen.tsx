@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import SetPinScreen from './SetPinScreen';
+import DashboardScreen from './DashboardScreen';
 import { hasPinSetUp } from '../pin';
 import { useTheme } from '../ThemeContext';
 
@@ -34,28 +35,19 @@ export default function HomeScreen({ username, onLock }: Props) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.navy2 }]}>
-      <Text style={[styles.title, { color: colors.ink }]}>You're signed in, {username}!</Text>
-      <Text style={[styles.sub, { color: colors.inkDim }]}>
-        This is a placeholder home screen. The real tabs (Calendar, Bills, etc.) get built in
-        later checkpoints.
-      </Text>
-
-      <TouchableOpacity
-        testID="set-pin-button"
-        style={[styles.pinBtn, { backgroundColor: colors.gold }]}
-        onPress={() => setShowSetPin(true)}
-      >
-        <Text style={styles.pinBtnText}>{pinIsSet ? 'Change my PIN' : 'Set a Quick PIN'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        testID="lock-button"
-        style={[styles.lockBtn, { backgroundColor: colors.navy1 }]}
-        onPress={onLock}
-      >
-        <Text style={[styles.lockBtnText, { color: colors.ink }]}>Lock</Text>
-      </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 }}>
+        <Text style={{ color: colors.inkDim, fontSize: 13 }}>Hi, {username}</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity testID="set-pin-button" onPress={() => setShowSetPin(true)}>
+            <Text style={{ color: colors.gold, fontSize: 12, fontWeight: '600' }}>{pinIsSet ? 'Change PIN' : 'Set PIN'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="lock-button" onPress={onLock}>
+            <Text style={{ color: colors.ink, fontSize: 12, fontWeight: '600' }}>Lock</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <DashboardScreen />
     </View>
   );
 }
