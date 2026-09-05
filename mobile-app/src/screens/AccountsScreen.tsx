@@ -60,6 +60,7 @@ export default function AccountsScreen() {
   const [amountInput, setAmountInput] = useState('');
   const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
   const [errorMsg, setErrorMsg] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!model) {
     return (
@@ -148,8 +149,15 @@ export default function AccountsScreen() {
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDelete() {
@@ -354,9 +362,17 @@ export default function AccountsScreen() {
 
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
+                        <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
 
         {editingId && (
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>

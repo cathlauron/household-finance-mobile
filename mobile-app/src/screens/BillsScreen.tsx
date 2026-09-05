@@ -93,6 +93,7 @@ export default function BillsScreen() {
   const [dayInput, setDayInput] = useState('');
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!model) {
     return (
@@ -236,8 +237,15 @@ export default function BillsScreen() {
       updated.bills = [...updated.bills, newBill];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDelete() {
@@ -295,8 +303,7 @@ export default function BillsScreen() {
                       {bill.name || 'Untitled bill'}
                     </Text>
                     <Text style={styles.billSub} numberOfLines={1}>
-                      {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
-                      {bill.category ? ' · ' + bill.category : ''}
+                      {(bill.category || 'Uncategorized')} · {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
                     </Text>
                   </View>
                   <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
@@ -496,8 +503,16 @@ export default function BillsScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save</Text>
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
                 </TouchableOpacity>
 
                 {editingId && (

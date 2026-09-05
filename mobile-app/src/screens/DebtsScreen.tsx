@@ -94,6 +94,7 @@ export default function DebtsScreen() {
   const [dayInput, setDayInput] = useState('');
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!model) {
     return (
@@ -271,8 +272,15 @@ export default function DebtsScreen() {
       updated.debts = [...updated.debts, newDebt];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDelete() {
@@ -540,8 +548,16 @@ export default function DebtsScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save</Text>
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
                 </TouchableOpacity>
 
                 {editingId && (

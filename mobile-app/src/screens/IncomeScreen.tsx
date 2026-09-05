@@ -90,7 +90,8 @@ export default function IncomeScreen() {
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
-const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
+  const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   if (!model) {
     return (
@@ -284,8 +285,15 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
       updated.income = [...updated.income, newSource];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDelete() {
@@ -294,8 +302,15 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
       ...model,
       income: model.income.filter((s) => s.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {
@@ -596,8 +611,16 @@ const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save</Text>
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
                 </TouchableOpacity>
 
                 {editingId && (

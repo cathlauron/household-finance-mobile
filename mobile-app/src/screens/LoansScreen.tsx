@@ -128,6 +128,7 @@ export default function LoansScreen() {
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethod | undefined>(undefined);
   const [paymentError, setPaymentError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!model) {
     return (
@@ -348,8 +349,15 @@ export default function LoansScreen() {
       updated.loans = [...updated.loans, newLoan];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDelete() {
@@ -358,8 +366,15 @@ export default function LoansScreen() {
       ...model,
       loans: model.loans.filter((l) => l.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {
@@ -424,6 +439,15 @@ export default function LoansScreen() {
           loans.map((loan) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
             const isExpanded = expandedLoanId === loan.id;
+            const loanRecurType = (loan.recurringType as RecurringType) || 'onetime';
+            const loanNextDue = getNextDueDate(
+              loanRecurType,
+              loan.dueDate || {},
+              new Date(),
+              loan.customStartDate,
+              loan.customFreq,
+              loan.customOccurrenceCount
+            );
             return (
               <CollapsibleRow
                 key={loan.id}
@@ -446,7 +470,8 @@ export default function LoansScreen() {
                         </View>
                       </View>
                       <Text style={styles.loanSub} numberOfLines={1}>
-                        {(loan.loanType || 'Other')}
+                        {(loan.loanType || 'Other')} · {recurringTypeLabel(loanRecurType)}{loanNextDue ? ` · ${formatShortDate(loanNextDue)}` : ''}
+                        {typeof loan.interestRate === 'number' && loan.interestRate > 0 ? ` · ${loan.interestRate}% APR` : ''}
                       </Text>
                     </View>
                     <Text style={[styles.loanAmount, { color: loan.direction === 'lent' ? colors.ok : colors.orange }]}>
@@ -734,8 +759,16 @@ export default function LoansScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save</Text>
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
                 </TouchableOpacity>
 
                 {editingId && (

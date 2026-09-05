@@ -201,8 +201,15 @@ function AppContent() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <PinUnlockScreen
           username={currentUsername}
-          onUnlocked={() => setScreen('home')}
-          onUsePasswordInstead={handleFullSignOut}
+          onUnlocked={(newUsername, newKey) => {
+            if (newUsername && newKey) {
+              setCurrentUsername(newUsername);
+              setDerivedKey(newKey);
+              loadModel(newUsername, newKey);
+            }
+            setScreen('home');
+          }}
+          onSignOut={handleFullSignOut}
         />
       </SafeAreaView>
     );

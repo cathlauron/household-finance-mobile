@@ -657,6 +657,74 @@ original 11 phases before that. Nothing from either file is repeated here.
   stuck on one phone; and whether a slider component is already installed. Session
   ended before this was run —   prompt is ready to paste into Antigravity at the start of next session, response not
   yet reviewed.
+- **7 bugs from the full on-device testing pass — ALL CODE-COMPLETE, PENDING ON-DEVICE
+  VERIFICATION.** Investigated via Antigravity (report-only, real code shown for every
+  claim) across two rounds — an initial investigation, then a targeted follow-up
+  verifying 6 function/component signatures (`deriveKey`, `decryptJSON`,
+  `loadWrappedHouseholdKey`, `unwrapHouseholdKey`, `loadEncryptedProfileData`,
+  `PasswordField`'s real props, `getNextDueDate`) before approving the two fixes that
+  depended on them, per standing policy of never approving a fix referencing unverified
+  code. One design question (a manual biometric-priority toggle) was raised, investigated,
+  and explicitly rejected in favor of just fixing the underlying detection bug — see
+  📌 Decisions below. All fixes hand-pasted by the person; `npx tsc --noEmit` confirmed
+  clean (0 errors) after several rounds of fixing paste-introduced errors (a stray
+  overwritten JSX block in `LoansScreen.tsx`-adjacent files, misplaced `await` inside a
+  `useEffect`, a wrong function name reference, and an undefined theme color) — resolved
+  each time by requesting real current file content before proposing a correction, not
+  guessing from the error text alone.
+  - **Fixed:** Biometric label always said "Face ID," even on fingerprint-only Android
+    devices. Root cause: Android's OS reports facial-recognition hardware capability at
+    the system level even when the phone's actual biometric setup is fingerprint-only,
+    and the old code checked for facial recognition first. `getBiometricLabel()` in
+    `biometrics.ts` now branches on `Platform.OS`: iOS keeps Face ID/Touch ID detection
+    unchanged; Android now checks fingerprint first and only falls back to "Face Unlock"
+    wording if fingerprint genuinely isn't available. A manual preference toggle (letting
+    the person pick which biometric to prioritize) was considered and explicitly rejected
+    — Android's OS decides which sensor prompt actually appears regardless of app-level
+    preference, so a toggle would only let the person override an already-correct label,
+    not control real sensor behavior.
+  - **Fixed:** No way to turn PIN unlock back off. Settings > Security's Quick Unlock
+    section now shows a "Turn Off" button alongside "Change PIN" whenever a PIN is
+    configured, with a native `Alert.alert` confirmation before removing it via the
+    already-existing `removePin()` function in `pin.ts`.
+  - **Fixed:** "Copy Recovery Key" button was missing from Settings — it only existed on
+    the one-time account-creation screen. Added the same copy-to-clipboard (via the
+    already-installed `expo-clipboard` dependency) + transient "Copied! ✓" confirmation
+    pattern to Settings > Security's Secret Recovery Key section.
+  - **Fixed:** Save button felt slow/unresponsive on Bills (pattern established; the
+    other 6 essential screens still need the same treatment — see ⚠️ Known issues below).
+    `handleSave` now sets a `saving` state before awaiting the cloud write, disables the
+    Save button and shows an `ActivityIndicator` in its place while in flight, and clears
+    the state in a `finally` block regardless of success/failure — prevents duplicate
+    taps queuing up concurrent saves.
+  - **Fixed:** Bills' and Loans' collapsed list-row summary lines now match Debts' order
+    (category → repeat/one-time → date). Loans' row previously showed only the loan type
+    with no recurrence or date info at all — now computes its own `nextDue` via the
+    already-existing `getNextDueDate()` helper (confirmed reusable as-is; Loans already
+    imported `RecurringType` and had no conflicting local computation) and shows
+    type → recurrence → next due date → interest rate (if set).
+  - **Fixed:** Lock screen's "Use password instead" previously signed the person all the
+    way out and re-showed the full email+username+password Create/Sign-In screen.
+    `PinUnlockScreen.tsx` now supports an in-place "password mode": toggling it reveals a
+    password-only field (using the existing `PasswordField` component, confirmed via its
+    real props interface — no `autoFocus` prop exists on it, so that was dropped from the
+    proposal rather than added to the component), plus an account chooser chip row shown
+    only when more than one profile has signed in on this device (`loadProfilesIndex()`).
+    Submitting derives the key from the typed password (`deriveKey`) and confirms it by
+    attempting to unwrap the household key or decrypt the stored profile data — success
+    unlocks in place without touching the Firebase session or device-session record; failure
+    shows "Incorrect password — try again." A "Sign in to a different account" ghost button
+    still routes to the real full sign-out for the one case that genuinely needs it. Session/
+    device revocation is untouched — a remotely-revoked session still forces the full
+    sign-in screen via the existing `handleRemoteRevoked()` path in `App.tsx`, unrelated to
+    this change.
+  - **Documented as an accepted platform limitation, no code change:** Calendar's native
+    date-picker popup looking visually inconsistent on Android. Investigated feasibility of
+    a themed custom calendar UI on Android and concluded it's technically possible but not
+    worth the risk — it would require an inline (non-modal) calendar component crammed into
+    forms already constrained to `<BottomSheet />`'s 85%-height cap, creating real layout/
+    keyboard-collision problems, for a cosmetic mismatch most Android users won't find
+    unusual (native `DatePickerDialog` is what Android apps normally look like).
 - **Full on-device testing pass — COMPLETE across B.4b, B.5 (Batch 1 + Batch 2 +
   Calendar), B.6 (all 9 date fields), and the older loose ends (IntroScreen timing,
   the `profileBackups` rule fix on a linked profile).** The master checklist that had
@@ -830,6 +898,18 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   `profileBackups` Firestore rule fix on a second, linked/household profile. The
   bullets below are the real bugs and open questions this testing pass actually
   surfaced — these are the new priority.
+- **6 of the 7 testing-pass bugs are now CODE-COMPLETE (`npx tsc --noEmit` clean),
+  PENDING ON-DEVICE VERIFICATION** — see the new ✅ Done entry above for full detail
+  on each. The 7th (Calendar's Android date-picker styling) was investigated and
+  documented as an accepted platform limitation rather than fixed. Still genuinely
+  open:
+- **Save-button spinner/disabled-state fix (Issue 7) has only been applied to
+  Bills so far — the other 6 essential screens still need the same pattern.**
+  `BillsScreen.tsx` now has the `saving` state + disabled/spinner Save button;
+  `DebtsScreen.tsx`, `LoansScreen.tsx`, `TransactionsScreen.tsx`, `IncomeScreen.tsx`,
+  `SavingsScreen.tsx`, and `AccountsScreen.tsx` still use the old plain Save button
+  with no loading feedback. Rolling this out is a repeat of the same small pattern,
+  not a new investigation.
 - **EF/FI calculator backspace-to-empty — reported as still possibly not working,
   but needs more detail before it can be investigated.** Doesn't say which of the
   four inputs, or what happens after backspacing to empty (snaps to the old value?
@@ -840,50 +920,6 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   a goal.** Flagged as confusing during testing; not yet investigated. Needs a look
   at `SavingsScreen.tsx`'s save handler to see what happens after a successful save
   (closes the sheet? scrolls to the row? nothing visible?) and whether that's right.
-- **No way to turn PIN unlock back OFF once it's set up — Settings > Security's
-  Quick Unlock section only offers "Change PIN."** Needs a "Turn off PIN" (or
-  similar) action added alongside it. Not yet built.
-- **Lock screen's "Use password instead" flow is wrong — it currently re-shows the
-  entire Create/Sign-In screen (email + username + password) instead of a
-  lightweight password-only re-entry.** Desired behavior: once a device has
-  successfully signed in to an account before, choosing "Use password instead" from
-  the lock screen should only ask for that account's password going forward. If more
-  than one account has signed in on that device, show a chooser for which account's
-  email/username to unlock, then ask only for that one's password. Exception: if the
-  account/session has been remotely revoked, it should require the full email +
-  username + password once, and only remember the device again after that complete
-  sign-in succeeds. Not yet investigated or built — this touches the real Firebase
-  Auth / session-persistence flow, not a UI-only tweak, and needs its own dedicated
-  investigation session.
-- **"Copy Recovery Key" should also appear in Settings' Secret Recovery Key section,
-  not just on CreateProfileScreen.** The copy-to-clipboard + "Copied! ✓" button built
-  in B.5 Batch 2 currently only exists on the one-time account-creation screen —
-  Settings > Security's existing Secret Recovery Key area needs the same treatment.
-  Not yet built.
-- **Calendar's native date-picker popup looks visually inconsistent with the rest of
-  the app on Android** — reported as "looks off" when tested on an Android device.
-  `<DateField />` (B.6a) deliberately uses the OS's native `DatePickerDialog` on
-  Android specifically to avoid the iOS nested-`Modal` conflict every form already
-  has via `<BottomSheet />` — worth investigating whether a themed custom calendar
-  UI is feasible without reintroducing that conflict, or whether this should just be
-  documented as an accepted platform limitation. Not yet investigated.
-- **List-row summary line ordering is inconsistent across Bills/Debts/Loans (and
-  possibly other screens) — needs a consistency pass.** Bills' collapsed row shows
-  repeats → date → category; Debts shows category → repeat → date; Loans shows only
-  category, with no repeat/date info at all. Desired: every list screen's collapsed
-  row should follow Debts' order — **category, then repeat/one-time, then date** —
-  applied consistently to Bills, Loans, and any other screen using
-  `<CollapsibleRow />` (or similar) that would benefit from matching. Not yet
-  investigated — needs a dedicated pass across `BillsScreen.tsx`/`LoansScreen.tsx`
-  (plus a check of Transactions/Income/Savings Goals to see which others need it)
-  before writing any fix.
-- **Save button feels unresponsive on at least some forms — needs an instant save,
-  or a visible loading state if it can't be instant.** Reported as sometimes needing
-  multiple taps, or just feeling slow, before the save actually registers. Not yet
-  investigated — needs a look at the relevant `handleSave` functions (likely awaiting
-  a Firestore/cloud write before dismissing the sheet) to either make the local/
-  optimistic part feel instant, or add a spinner/disabled state on the button while
-  the real save is in flight.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -1256,6 +1292,50 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — 7 bugs from the on-device testing pass investigated and fixed (6 code-complete, 1 documented as a platform limitation)
+**What happened:** Worked through the priority list from the prior session's full
+testing pass, one issue at a time, in a single Antigravity investigation-then-fix
+pass covering all 7. Got real code and root-cause explanations for all 7 before any
+fix was proposed. Two proposed fixes (Issue 3, password-instead flow; Issue 6, Loans
+row ordering) referenced functions/components (`deriveKey`, `decryptJSON`,
+`loadWrappedHouseholdKey`, `unwrapHouseholdKey`, `loadEncryptedProfileData`,
+`PasswordField`, `getNextDueDate`) without their real signatures having been shown —
+per standing policy, withheld approval and sent a second, narrower investigation-only
+prompt to verify all 6 before finalizing those two fixes. That verification pass
+confirmed Issue 6 checked out exactly as proposed, and caught one real mismatch in
+Issue 3 (the proposal used a nonexistent `autoFocus` prop on `PasswordField`) — dropped
+rather than added to the component, since it wasn't essential.
+
+Also raised and resolved a design question along the way: whether biometric unlock
+should let the person manually choose/prioritize which biometric type to use, given
+the device being tested on has both Face ID and fingerprint. Explained the real
+constraint — Android's OS, not the app, decides which sensor prompt actually appears
+— and got confirmation to skip a manual toggle in favor of just fixing the underlying
+mislabeling bug.
+
+Applied all fixes by hand-pasting (not Antigravity-applied), following the standing
+small-fix policy. This surfaced several real paste/hand-off errors, each resolved by
+requesting real current file content rather than guessing from the compiler error
+text alone: a stray leftover character had deleted a chunk of JSX during one paste; a
+line was pasted outside its `async` wrapper, causing an "await only allowed in async
+functions" error; one button referenced a save handler under the wrong name
+(`handleSave` vs. the real `handleSaveEf`); and one style referenced a `colors.danger`
+token that doesn't exist in the theme (swapped for a literal hex value matching the
+app's existing error-red, `#E11D48`).
+
+**Result:** `npx tsc --noEmit` confirmed clean (0 errors) after all fixes. 6 of the 7
+issues are code-complete pending on-device verification (biometric label, turn-off-PIN,
+copy-recovery-key-in-Settings, save-button spinner on Bills only so far, Bills/Loans row
+ordering, and the password-instead re-entry flow). The 7th (Calendar's Android date
+picker) was investigated and documented as an accepted platform limitation rather than
+fixed. Save-button spinner still needs rolling out to the other 6 essential screens —
+noted in ⚠️ Known issues above.
+
+**Design decision made this session:** No manual biometric-priority toggle — Android's
+OS controls which sensor prompt appears regardless of app-level preference, so fixing
+the underlying detection bug is the complete, correct fix; a toggle would only add
+complexity without adding real control.
 
 ### Session entry — B.7 Settings-placement investigation prompt drafted; session wrapped without running it
 **What happened:** Before building the "Left to Spend" caution-threshold Settings

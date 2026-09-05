@@ -127,7 +127,8 @@ export default function SavingsScreen() {
   const [fiExpensesInput, setFiExpensesInput] = useState<string | null>(null);
   const [fiSavingsInput, setFiSavingsInput] = useState<string | null>(null);
   const [fiSaved, setFiSaved] = useState(false);
-const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   if (!model) {
     return (
@@ -274,8 +275,15 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
       updated.savingsGoals = [...updated.savingsGoals, newGoal];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDeleteGoal() {
@@ -284,8 +292,15 @@ const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
       ...model,
       savingsGoals: model.savingsGoals.filter((g) => g.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDeleteGoal() {
@@ -543,9 +558,17 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     )}
   </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveEf}>
-            <Text style={styles.saveButtonText}>{efSaved ? 'Saved ✓' : 'Save'}</Text>
-          </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSaveEf}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
         </ScrollView>
       )}
 

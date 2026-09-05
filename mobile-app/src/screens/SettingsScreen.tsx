@@ -10,6 +10,7 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -34,7 +35,7 @@ import { getInitials } from './ProfileScreen';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
-import { hasPinSetUp } from '../pin';
+import { hasPinSetUp, removePin } from '../pin';
 import { getBiometricState, getBiometricLabel, setBiometricsDisabled, attemptBiometricAuth, BiometricState } from '../biometrics';
 import SetPinScreen from './SetPinScreen';
 import {
@@ -48,6 +49,7 @@ import {
 } from '../sessions';
 import PasswordField from '../components/PasswordField';
 import { makeId } from '../utils';
+import * as Clipboard from 'expo-clipboard';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -94,6 +96,7 @@ export default function SettingsScreen() {
   const [retroactiveModalOpen, setRetroactiveModalOpen] = useState(false);
   const [retroactiveVerifyPass, setRetroactiveVerifyPass] = useState('');
   const [retroactiveSuccessCode, setRetroactiveSuccessCode] = useState<string | null>(null);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
   const [retroactiveBusy, setRetroactiveBusy] = useState(false);
   const [retroactiveError, setRetroactiveError] = useState('');
   const [hasRecoveryKey, setHasRecoveryKey] = useState<boolean | null>(null);
@@ -952,12 +955,47 @@ export default function SettingsScreen() {
             <Text style={styles.rowName}>Quick PIN</Text>
             <Text style={styles.hintText}>{pinIsSet ? 'Active as fallback' : 'Not configured'}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.dataButton, { alignSelf: 'center' }]}
-            onPress={() => setShowSetPinModal(true)}
-          >
-            <Text style={styles.dataButtonText}>{pinIsSet ? 'Change PIN' : 'Set a Quick PIN'}</Text>
-          </TouchableOpacity>
+          {pinIsSet ? (
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <TouchableOpacity
+                style={[styles.dataButton, { alignSelf: 'center', backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E11D48' }]}
+                onPress={() => {
+                  Alert.alert(
+                    'Turn Off Quick PIN',
+                    'Are you sure you want to remove your Quick PIN? You will need to use your password or biometric unlock to access the app.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Turn Off',
+                        style: 'destructive',
+                        onPress: async () => {
+                          if (username) {
+                            await removePin(username);
+                            setPinIsSet(false);
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.dataButtonText, { color: '#E11D48' }]}>Turn Off</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dataButton, { alignSelf: 'center' }]}
+                onPress={() => setShowSetPinModal(true)}
+              >
+                <Text style={styles.dataButtonText}>Change PIN</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.dataButton, { alignSelf: 'center' }]}
+              onPress={() => setShowSetPinModal(true)}
+            >
+              <Text style={styles.dataButtonText}>Set a Quick PIN</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {showSetPinModal && username && (
@@ -1330,6 +1368,19 @@ export default function SettingsScreen() {
                 <Text style={[styles.hintText, { marginBottom: 12 }]}>
                   Keep this written down somewhere private (e.g. in your password manager notes).
                 </Text>
+                                <TouchableOpacity
+                  style={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12 }]}
+                  onPress={async () => {
+                    if (!retroactiveSuccessCode) return;
+                    await Clipboard.setStringAsync(retroactiveSuccessCode);
+                    setRecoveryCopied(true);
+                    setTimeout(() => setRecoveryCopied(false), 2000);
+                  }}
+                >
+                  <Text style={styles.dataButtonText}>
+                    {recoveryCopied ? 'Copied! ✓' : '📋 Copy Recovery Key'}
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
 

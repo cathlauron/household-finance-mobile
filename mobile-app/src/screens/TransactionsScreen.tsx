@@ -95,8 +95,8 @@ export default function TransactionsScreen() {
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
-
+  const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const transactions = useMemo(() => {
     if (!model) return [];
     return sortTransactions(buildTransactionsList(model), sortOrder);
@@ -267,8 +267,15 @@ const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
     }
 
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function performDelete() {
@@ -277,8 +284,15 @@ const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
       ...model,
       manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {
@@ -510,8 +524,16 @@ const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>{editingId ? 'Save changes' : 'Add transaction'}</Text>
+                                <TouchableOpacity
+                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
                 </TouchableOpacity>
 
                 {editingId && (

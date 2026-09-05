@@ -1,25 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { verifyPin, hasPinSetUp } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, BiometricState } from '../biometrics';
 import PinField from '../components/PinField';
+import PasswordField from '../components/PasswordField';
+import { loadProfilesIndex, ProfileIndexEntry, loadEncryptedProfileData } from '../storage';
+import { deriveKey, decryptJSON } from '../encryption';
+import { loadWrappedHouseholdKey, unwrapHouseholdKey } from '../household';
 
 type Props = {
   username: string;
-  onUnlocked: () => void;
-  onUsePasswordInstead: () => void;
+  onUnlocked: (newUsername?: string, newKey?: any) => void;
+  onSignOut: () => void;
 };
 
 // Shared timestamp across mounts to prevent auto-prompt loops on rapid foregrounding
 let lastBiometricAttemptTime = 0;
 
-export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordInstead }: Props) {
+export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Props) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [biometricState, setBiometricState] = useState<BiometricState>('UNAVAILABLE');
   const [biometricLabel, setBiometricLabel] = useState('Biometric Unlock');
   const [hasPin, setHasPin] = useState<boolean | null>(null);
+  const [usePasswordMode, setUsePasswordMode] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [profiles, setProfiles] = useState<ProfileIndexEntry[]>([]);
+  const [selectedUsername, setSelectedUsername] = useState(username);
 
   const inFlightRef = useRef(false);
 
@@ -52,8 +60,40 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordIns
       if (state === 'ENABLED') {
         runBiometricAuth(false);
       }
+      const savedProfiles = await loadProfilesIndex();
+      setProfiles(savedProfiles);
     })();
   }, [username]);
+
+    async function handlePasswordUnlock() {
+    setError('');
+    if (!passwordInput) {
+      setError('Enter your password.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const profile = profiles.find((p) => p.username === selectedUsername);
+      if (!profile) throw new Error('Account not found on this device.');
+      const key = deriveKey(passwordInput, profile.salt);
+      if (profile.householdId) {
+        const wrapped = await loadWrappedHouseholdKey(selectedUsername);
+        if (!wrapped) throw new Error('Incorrect password.');
+        unwrapHouseholdKey(wrapped.wrappedKey, key);
+      } else {
+        const encrypted = await loadEncryptedProfileData(selectedUsername);
+        if (encrypted) {
+          decryptJSON(key, encrypted);
+        }
+      }
+      setBusy(false);
+      onUnlocked(selectedUsername, key);
+    } catch (e) {
+      setBusy(false);
+      setError('Incorrect password — try again.');
+      setPasswordInput('');
+    }
+  }
 
   async function handleUnlock() {
     setError('');
@@ -71,55 +111,104 @@ export default function PinUnlockScreen({ username, onUnlocked, onUsePasswordIns
   return (
     <View style={styles.container}>
       <Text style={styles.eyebrow}>LOCKED</Text>
-      <Text style={styles.title}>Welcome back, {username}</Text>
-      <Text style={styles.sub}>
-        {hasPin === false
-          ? `Unlock with ${biometricLabel} or enter your password.`
-          : 'Enter your PIN to keep going, right where you left off.'}
-      </Text>
+      <Text style={styles.title}>Welcome back, {selectedUsername}</Text>
 
-      {hasPin !== false && (
+      {usePasswordMode && profiles.length > 1 && (
+        <View style={styles.accountChooserRow}>
+          {profiles.map((p) => (
+            <TouchableOpacity
+              key={p.username}
+              style={[styles.accountChip, p.username === selectedUsername && styles.accountChipActive]}
+              onPress={() => { setSelectedUsername(p.username); setError(''); }}
+            >
+              <Text style={[styles.accountChipText, p.username === selectedUsername && styles.accountChipTextActive]}>
+                {p.username}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {usePasswordMode && (
         <>
-          <Text style={styles.label}>PIN</Text>
-          <PinField
-            testID="unlock-pin-input"
+          <Text style={styles.sub}>Enter your account password to unlock.</Text>
+          <Text style={styles.label}>PASSWORD</Text>
+          <PasswordField
+            testID="unlock-password-input"
             style={styles.input}
-            value={pin}
-            onChangeText={setPin}
-            centered
-            autoFocus
+            value={passwordInput}
+            onChangeText={setPasswordInput}
+            placeholder="••••••••"
           />
+          {!!error && <Text style={styles.error}>{error}</Text>}
+          <TouchableOpacity
+            style={[styles.primaryBtn, (busy || !passwordInput) && { opacity: 0.4 }]}
+            onPress={handlePasswordUnlock}
+            disabled={busy || !passwordInput}
+          >
+            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(false); setError(''); }}>
+            <Text style={styles.ghostBtnText}>Use Quick PIN / Biometrics instead</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.ghostBtn, { marginTop: 4 }]} onPress={onSignOut}>
+            <Text style={[styles.ghostBtnText, { color: '#78716C' }]}>Sign in to a different account</Text>
+          </TouchableOpacity>
         </>
       )}
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!usePasswordMode && (
+        <>
+          <Text style={styles.sub}>
+            {hasPin === false
+              ? `Unlock with ${biometricLabel} or enter your password.`
+              : 'Enter your PIN to keep going, right where you left off.'}
+          </Text>
 
-      {hasPin !== false && (
-        <TouchableOpacity
-          testID="unlock-button"
-          style={[styles.primaryBtn, (busy || pin.length < 4) && { opacity: 0.4 }]}
-          onPress={handleUnlock}
-          disabled={busy || pin.length < 4}
-        >
-          <Text style={styles.primaryBtnText}>Unlock</Text>
-        </TouchableOpacity>
+          {hasPin !== false && (
+            <>
+              <Text style={styles.label}>PIN</Text>
+              <PinField
+                testID="unlock-pin-input"
+                style={styles.input}
+                value={pin}
+                onChangeText={setPin}
+                centered
+                autoFocus
+              />
+            </>
+          )}
+
+          {!!error && <Text style={styles.error}>{error}</Text>}
+
+          {hasPin !== false && (
+            <TouchableOpacity
+              testID="unlock-button"
+              style={[styles.primaryBtn, (busy || pin.length < 4) && { opacity: 0.4 }]}
+              onPress={handleUnlock}
+              disabled={busy || pin.length < 4}
+            >
+              <Text style={styles.primaryBtnText}>Unlock</Text>
+            </TouchableOpacity>
+          )}
+
+          {biometricState === 'ENABLED' && hasPin === false && (
+            <TouchableOpacity testID="retry-biometrics-button" style={styles.primaryBtn} onPress={() => runBiometricAuth(true)}>
+              <Text style={styles.primaryBtnText}>Unlock with {biometricLabel}</Text>
+            </TouchableOpacity>
+          )}
+
+          {biometricState === 'ENABLED' && hasPin !== false && (
+            <TouchableOpacity testID="retry-biometrics-button" style={styles.retryBiometricBtn} onPress={() => runBiometricAuth(true)}>
+              <Text style={styles.retryBiometricText}>🔄 Try {biometricLabel} again</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(true); setError(''); }}>
+            <Text style={styles.ghostBtnText}>Use password instead</Text>
+          </TouchableOpacity>
+        </>
       )}
-
-      {biometricState === 'ENABLED' && hasPin === false && (
-        <TouchableOpacity testID="retry-biometrics-button" style={styles.primaryBtn} onPress={() => runBiometricAuth(true)}>
-          <Text style={styles.primaryBtnText}>Unlock with {biometricLabel}</Text>
-        </TouchableOpacity>
-      )}
-
-      {biometricState === 'ENABLED' && hasPin !== false && (
-        <TouchableOpacity testID="retry-biometrics-button" style={styles.retryBiometricBtn} onPress={() => runBiometricAuth(true)}>
-          <Text style={styles.retryBiometricText}>🔄 Try {biometricLabel} again</Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity style={styles.ghostBtn} onPress={onUsePasswordInstead}>
-        <Text style={styles.ghostBtnText}>Use password instead</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -142,4 +231,9 @@ const styles = StyleSheet.create({
   retryBiometricText: { color: '#1C1917', fontWeight: '600', fontSize: 14 },
   ghostBtn: { paddingVertical: 14, marginTop: 4 },
   ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
+    accountChooserRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  accountChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#2A2A2A' },
+  accountChipActive: { backgroundColor: '#D4AF37' },
+  accountChipText: { color: '#A8A29E', fontSize: 13 },
+  accountChipTextActive: { color: '#1C1917', fontWeight: '700' },
 });

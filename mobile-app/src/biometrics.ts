@@ -49,11 +49,20 @@ export async function setBiometricsDisabled(username: string, disabled: boolean)
 export async function getBiometricLabel(): Promise<string> {
   try {
     const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-    if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-      return 'Face ID';
-    }
-    if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-      return Platform.OS === 'ios' ? 'Touch ID' : 'Fingerprint';
+    if (Platform.OS === 'ios') {
+      if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        return 'Face ID';
+      }
+      if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+        return 'Touch ID';
+      }
+    } else {
+      if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+        return 'Fingerprint';
+      }
+      if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        return 'Face Unlock';
+      }
     }
     return 'Biometric Unlock';
   } catch {
