@@ -349,6 +349,46 @@ original 11 phases before that. Nothing from either file is repeated here.
   Categorization Rule) are all done. Calendar (read-only day-details modal) and
   Home/Dashboard (no modals) needed no conversion, confirmed during initial B.4a
   investigation.
+- **B.4b-1 (Bills, pilot) — Build reusable `<CollapsibleRow />` and convert the
+  Bills list to tap-to-expand — COMPLETE, PENDING ON-DEVICE VERIFICATION.**
+  Investigated first via a dedicated Antigravity report-only pass across every
+  essential list screen (Bills, Debts, Loans, Transactions, Income, Savings, plus
+  the 3 Settings sub-lists) before writing any code: confirmed Accounts already has
+  its own B.3b fanned-card expand pattern and should stay untouched; confirmed the
+  3 Settings sub-lists (Categories, Merchants & Payees, Categorization Rules) are
+  too thin on secondary detail to benefit, and Rules' reorder arrows would conflict
+  with a tap-to-expand gesture on the same row — all 3 explicitly excluded from
+  B.4b. Confirmed Calendar's day-tap dialog is a read-only projection view, not an
+  editable record list, and is out of scope. Built new
+  `src/components/CollapsibleRow.tsx`: a reusable component (`collapsedContent`/
+  `expandedContent` slots, `isExpanded`/`onToggle` controlled by the parent so only
+  one row is expanded at a time, an optional `onEdit` callback rendering a
+  dedicated "Edit" button inside the expanded drawer, a chevron icon that flips
+  based on state, `LayoutAnimation.easeInEaseOut` for the expand/collapse
+  animation — no new dependencies, confirmed `react-native-reanimated` is not in
+  `package.json`) themed via the app's existing `useTheme()`/`colors` pattern.
+  Converted `BillsScreen.tsx` as the pilot screen (chosen first, mirroring how
+  B.4a also converted Bills before Debts/Loans/etc.): collapsed rows show exactly
+  what they showed before (name, recurrence + due date + category, amount);
+  expanded rows add full recurrence detail, payment method (read from the bill's
+  most recent cycle — `bill.cycles[0].paymentMethod`, confirmed against the real
+  `BillCycle` type rather than assumed), a priority badge (high/medium/low, styled
+  per severity using real theme colors — `colors.errorBg`/`colors.error` for high,
+  `colors.orange` for medium), and notes, each only rendered if actually set on
+  that bill. Tapping a bill row now expands/collapses it in place; the dedicated
+  "Edit" button inside the expanded drawer is what opens the existing Add/Edit
+  bottom sheet (a plain tap on the row body no longer jumps straight to editing).
+  The proposed diff was applied directly to the working tree once by Antigravity
+  for verification purposes only — real `npx tsc --noEmit` output (0 errors), the
+  real `theme.ts` color list, the real `Bill.priority` and `BillCycle.paymentMethod`
+  type definitions, and a real `git diff --stat` were all checked against the
+  actual repo before anything was hand-applied — then fully reverted
+  (`git checkout` + file deletion, confirmed clean via `git status`) before the
+  person applied the same content by hand via find/replace paste. `npx tsc --noEmit`
+  confirmed clean again after the hand-paste. **Still needs a manual on-device pass**
+  (expand/collapse animation, Edit button routing to the bottom sheet, priority
+  badge colors, notes/payment-method conditional rendering) before this is
+  considered fully verified — not yet done as of this entry.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -439,6 +479,11 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
+- **B.4b-1 not yet manually verified on-device.** `npx tsc --noEmit` is clean and
+  the diff was reviewed line-by-line, but nobody has tapped through the actual
+  expand/collapse behavior, the Edit button, or the priority badge colors on a
+  real device/simulator yet.
+
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
   Full finding-by-finding detail preserved in this file's session-entry history below.
@@ -449,11 +494,13 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   visually confirm there's no leftover blank gap where the Household section used to
   sit in Settings, and that the Profile Card/chevron/nav still behaves correctly.
   Low risk given the clean compile and reviewed diff, but not yet eyeballed.
+
 - **IntroScreen animation timing not verified on slow/low-end devices.** The 1.6s
   minimum display floor was tuned against the animation's timing on a normal device —
   on a much slower device the animation itself could conceivably still be running past
   1.6s, cutting the text fade short. Not yet reported as an issue; low priority, revisit
   if it comes up.
+  
 - **Biometric unlock has not yet been tested on a real device.** All verification so
   far has been `npx tsc --noEmit` (type-checks clean) plus line-by-line diff review —
   nobody has yet triggered the actual Face ID/Fingerprint prompt on a physical phone to
@@ -506,7 +553,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.3b | Accounts tab redesign: stacked/fanned card view | Apple Wallet-inspired |
   | ✅ B.3c | Accounts tab redesign: "Add account" as a bottom sheet | Apple Wallet-inspired |
   | ✅ B.4a | Convert essential-screen add/edit flows to bottom sheets (Accounts, Bills, Debts, Loans, Transactions, Income, Savings, 3 Settings modals) | Cards + bottom sheets pattern |
-  | B.4b | Carry collapsed-row/tap-to-expand pattern to every list screen | Cards + bottom sheets pattern |
+  | ✅ B.4b-1 | Build `<CollapsibleRow />`, convert Bills list to tap-to-expand (pilot) — pending on-device verification | Cards + bottom sheets pattern |
+  | B.4b-2 | Roll `<CollapsibleRow />` out to Debts and Loans | Cards + bottom sheets pattern |
+  | B.4b-3 | Roll `<CollapsibleRow />` out to Transactions, Income, and Savings Goals | Cards + bottom sheets pattern |
   | B.5 | UI/UX psychology pass | Cross-generational research |
   | B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills | Requested |
   | B.6b | Date picker, part 2 — roll out to every remaining screen | Requested |
@@ -633,6 +682,18 @@ Files in the repo (relevant to Phase B/C)
   this file (not removed) since the Quick PIN setup modal, the Secret Recovery Key
   modal, and the "sign out this device" confirmation modal all still use them.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
+- `mobile-app/src/components/CollapsibleRow.tsx` — new (B.4b-1). Reusable
+  collapsed-row/tap-to-expand component (`collapsedContent`/`expandedContent`
+  slots, controlled `isExpanded`/`onToggle`, optional `onEdit` button in the
+  expanded drawer, chevron indicator, `LayoutAnimation`-based expand/collapse, no
+  new dependencies). Intended for reuse across Debts, Loans, Transactions, Income,
+  and Savings Goals in B.4b-2/B.4b-3.
+- `mobile-app/src/screens/BillsScreen.tsx` — modified (B.4b-1). List rows now
+  render via `<CollapsibleRow />` instead of a flat `TouchableOpacity` that opened
+  the edit bottom sheet directly on tap. Added `expandedBillId` state,
+  `paymentMethodLabel()` and `fullRecurrenceDetail()` helpers, and new
+  `detail*`/`priority*`/`billCollapsedRow` styles. Removed the now-unused
+  `billRow` style.
 
 ### Session entry — B.2c discovered already substantially built; duplicated Household section removed from SettingsScreen.tsx
 **What happened:** Started investigating B.2c ("standalone Profile screen, split out of

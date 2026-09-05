@@ -17,11 +17,43 @@ import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } fr
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
+import CollapsibleRow from '../components/CollapsibleRow';
 import { makeId } from '../utils';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
   return c && typeof c.amountDue === 'number' ? c.amountDue : 0;
+}
+
+function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel): string {
+  if (!pm) return 'Not set';
+  if (pm.type === 'cash') return 'Cash';
+  const list = pm.type === 'debit' ? model.balanceAccounts.debit : model.balanceAccounts.credit;
+  const acct = list.find((a) => a.id === pm.accountId);
+  const label = pm.type === 'debit' ? 'Debit' : 'Credit';
+  return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
+}
+
+function fullRecurrenceDetail(bill: Bill): string {
+  const d = bill.dueDate || {};
+  if (bill.recurringType === 'monthly') {
+    return d.day ? `Every month on day ${d.day}` : 'Monthly';
+  }
+  if (bill.recurringType === 'annual') {
+    if (d.month && d.day) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const mName = monthNames[(d.month as number) - 1] || `Month ${d.month}`;
+      return `Every year on ${mName} ${d.day}`;
+    }
+    return d.day ? `Every year on day ${d.day}` : 'Annual';
+  }
+  if (bill.recurringType === 'onetime') {
+    return d.date ? `One-time: due ${d.date}` : 'One-time bill';
+  }
+  if (bill.recurringType === 'custom') {
+    return bill.customFreq ? `Custom: every ${bill.customFreq}` : 'Custom schedule';
+  }
+  return recurringTypeLabel(bill.recurringType);
 }
 
 // Sorts bills by next due date (soonest first); bills with no computable
@@ -45,6 +77,7 @@ export default function BillsScreen() {
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
+  const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
@@ -232,24 +265,82 @@ export default function BillsScreen() {
 
         {bills.map((bill) => {
           const nextDue = getNextDueDate(bill.recurringType, bill.dueDate);
+          const pm = bill.cycles && bill.cycles[0] ? bill.cycles[0].paymentMethod : undefined;
+          const isExpanded = expandedBillId === bill.id;
+
           return (
-            <TouchableOpacity
+            <CollapsibleRow
               key={bill.id}
-              style={styles.billRow}
-              activeOpacity={0.7}
-              onPress={() => openEditModal(bill)}
-            >
-              <View style={styles.billRowMain}>
-                <Text style={styles.billName} numberOfLines={1}>
-                  {bill.name || 'Untitled bill'}
-                </Text>
-                <Text style={styles.billSub} numberOfLines={1}>
-                  {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
-                  {bill.category ? ' · ' + bill.category : ''}
-                </Text>
-              </View>
-              <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
-            </TouchableOpacity>
+              testID={`bill-row-${bill.id}`}
+              isExpanded={isExpanded}
+              onToggle={() => setExpandedBillId((prev) => (prev === bill.id ? null : bill.id))}
+              onEdit={() => openEditModal(bill)}
+              collapsedContent={
+                <View style={styles.billCollapsedRow}>
+                  <View style={styles.billRowMain}>
+                    <Text style={styles.billName} numberOfLines={1}>
+                      {bill.name || 'Untitled bill'}
+                    </Text>
+                    <Text style={styles.billSub} numberOfLines={1}>
+                      {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
+                      {bill.category ? ' · ' + bill.category : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
+                </View>
+              }
+              expandedContent={
+                <View style={styles.detailContainer}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Schedule</Text>
+                    <Text style={styles.detailValue}>{fullRecurrenceDetail(bill)}</Text>
+                  </View>
+
+                  {pm && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Payment Method</Text>
+                      <Text style={styles.detailValue}>{paymentMethodLabel(pm, model)}</Text>
+                    </View>
+                  )}
+
+                  {!!bill.priority && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Priority</Text>
+                      <View
+                        style={[
+                          styles.priorityBadge,
+                          bill.priority === 'high'
+                            ? styles.priorityHigh
+                            : bill.priority === 'medium'
+                            ? styles.priorityMedium
+                            : styles.priorityLow,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.priorityBadgeText,
+                            bill.priority === 'high'
+                              ? styles.priorityHighText
+                              : bill.priority === 'medium'
+                              ? styles.priorityMediumText
+                              : styles.priorityLowText,
+                          ]}
+                        >
+                          {bill.priority.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {!!bill.notes?.trim() && (
+                    <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
+                      <Text style={styles.detailLabel}>Notes</Text>
+                      <Text style={styles.detailNotesText}>{bill.notes.trim()}</Text>
+                    </View>
+                  )}
+                </View>
+              }
+            />
           );
         })}
 
@@ -427,20 +518,73 @@ function makeStyles(colors: any) {
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    billRow: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+    billCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      flex: 1,
     },
     billRowMain: { flex: 1, marginRight: 10 },
     billName: { fontSize: 14, fontWeight: '600', color: colors.ink },
     billSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
     billAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    detailContainer: {
+      gap: 6,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 2,
+    },
+    detailLabel: {
+      fontSize: 11,
+      color: colors.inkDim,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      fontWeight: '600',
+    },
+    detailValue: {
+      fontSize: 12.5,
+      color: colors.ink,
+      fontWeight: '500',
+    },
+    detailNotesText: {
+      fontSize: 12.5,
+      color: colors.inkDim,
+      lineHeight: 17,
+      flex: 1,
+      textAlign: 'right',
+      marginLeft: 12,
+    },
+    priorityBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+      borderRadius: 4,
+    },
+    priorityBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    priorityHigh: {
+      backgroundColor: colors.errorBg,
+    },
+    priorityHighText: {
+      color: colors.error,
+    },
+    priorityMedium: {
+      backgroundColor: colors.navy2,
+    },
+    priorityMediumText: {
+      color: colors.orange,
+    },
+    priorityLow: {
+      backgroundColor: colors.navy2,
+    },
+    priorityLowText: {
+      color: colors.inkDim,
+    },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     inputLabel: {
