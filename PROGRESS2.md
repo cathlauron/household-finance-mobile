@@ -619,9 +619,33 @@ original 11 phases before that. Nothing from either file is repeated here.
   files hand-pasted by the person per standing small-fix policy, not Antigravity-applied.
   `npx tsc --noEmit` clean (0 errors) after all 9 files. **Not yet manually verified
   on-device** (native date picker opening/closing correctly on both iOS and Android,
-  the clearable "×" button, correct date formatting, and no visual regressions on any
-  of the 9 converted screens) — added to the running on-device checklist per the
-  current batched-testing policy.
+  the clearable "×" button, correct date formatting  files, and no visual regressions on any of the 9 converted screens) — added to
+  the running on-device checklist per the current batched-testing policy.
+- **B.7 prep work: biweekly income anchor date + expanded monthly obligations
+  baseline — CODE COMPLETE, PUSHED.** Before building "Left to Spend" itself, fixed
+  two real gaps it depends on. Fix 1: biweekly income sources previously had no way
+  to store an anchor payday date, so `computeNextPayDate()` could never resolve a
+  next payday for them. Added a "When was your most recent payday?" date field to
+  the biweekly branch of `IncomeScreen.tsx` (using the existing `DateField`
+  component), and added a real 14-day-increment biweekly branch to
+  `computeNextPayDate()` in `income.ts`. Fix 2: the "monthly expense baseline" figure
+  (used by the Emergency Fund/FI calculators, and about to be reused as the basis
+  for Left to Spend's caution threshold) previously only counted recurring bills —
+  it ignored debts and loan payments entirely. Added a new exported
+  `computeMonthlyObligationsBaseline(bills, debts, loans)` function in
+  `balanceProjection.ts` that combines bills + debt minimum payments (falling back
+  to the latest cycle's amount due if no minimum payment is set) + borrowed-loan
+  expected payments (loans marked "lent" are excluded, matching how the rest of the
+  app already treats lent loans). Deleted the old, now-unused
+  `computeMonthlyExpenseBaseline()` from `SavingsScreen.tsx` and updated its one
+  call site to use the new combined function instead. Both fixes were reviewed as
+  real diffs before approval, hand-pasted via find/replace snippets (with one
+  missing-import round-trip needed — `computeMonthlyObligationsBaseline` wasn't
+  actually imported into `SavingsScreen.tsx` on the first pass; found the real
+  import line via `Select-String` rather than guessing, then fixed). `npx tsc
+  --noEmit` clean, committed and pushed.
+- **B.7 ("Left to Spend" hero stat) — design decisions made, build not yet started.**
+  See 📌 Decisions below for the full definition and color scheme agreed on so far.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -726,8 +750,37 @@ original 11 phases before that. Nothing from either file is repeated here.
   bugs that compile cleanly can still slip through and only surface on a real
   device — batching many changes before the first real test increases how much
   ground has to be covered, and how hard it can be to isolate which specific change
-  caused a given problem, if one turns up. Proceeding this way at the person's
+    causing this problem, if one turns up. Proceeding this way at the person's
   explicit, informed request.
+- **New this session — B.7 "Left to Spend" definition finalized.** "Left to Spend"
+  = the existing day-by-day balance projection engine's projected balance on the
+  household's next payday (the earliest upcoming payday across every income
+  source, if there's more than one person/source), rather than a new, separate
+  calculation. If no payday can be resolved (no income sources yet, or a household
+  whose only income is biweekly with no anchor date set — now fixed, see above),
+  falls back to "balance projected to the end of the current month" instead, with
+  a small label under the number clarifying which one is being shown (e.g.
+  "through end of month" vs. "until payday").
+- **New this session — Left to Spend color coding: three tiers, not two.** Red =
+  projected number is negative. Green = healthy. Amber/orange = positive but
+  "cutting it close" — a mid-tier caution color, added after the person asked for
+  one rather than just red/green.
+- **New this session — the caution threshold is percentage-based, not a fixed
+  peso amount, AND it will be a real, user-editable Settings control — not
+  hardcoded.** The percentage is checked against the monthly expense baseline
+  (now `computeMonthlyObligationsBaseline()`, including debts and loans per the
+  fix above — confirmed by the person that debts/loans should count toward this
+  baseline). Rather than picking one fixed percentage in code, the person asked
+  for a real Settings screen control (slider or number field) so the threshold
+  can be adjusted from the phone at any time, with no coding session needed —
+  this means storing a new field (e.g. `cautionThresholdPercent`) in the app's
+  settings data, alongside the existing settings, with a sensible default (not
+  yet chosen) used until the person changes it. This is planned to be built
+  alongside B.7 itself, not as a separate later checkpoint, since the threshold
+  has no purpose without "Left to Spend" existing first. Placement on the
+  Settings screen (its own small "Left to Spend" section vs. folded into the
+  existing Savings-screen EF/FI settings) has not yet been decided — pending the
+  next investigation pass into the real current Settings screen structure.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -855,6 +908,14 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   checkpoint still gets `npx tsc --noEmit` verification and diff review before
   being marked code-complete; a running, growing on-device checklist is being
   kept in ⚠️ Known issues above so nothing gets lost by the time testing happens.
+- **B.7 is next, in two parts:** (1) send an investigation prompt to confirm the
+  real current Settings screen structure, so a sensible placement can be chosen
+  for the new caution-threshold control; (2) once placement is decided, build
+  "Left to Spend" itself — the hero stat on Home, reading the next-payday
+  projection off the existing balance engine, color-coded red/amber/green using
+  the new percentage-based, Settings-editable threshold. Both the biweekly anchor
+  date fix and the expanded expense baseline this depends on are already done
+  and pushed (see ✅ Done above) — B.7 itself has not been started yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
