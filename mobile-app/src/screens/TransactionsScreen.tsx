@@ -96,6 +96,8 @@ export default function TransactionsScreen() {
   const [amountInput, setAmountInput] = useState('');
   const [dateInput, setDateInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
+  const [refundTrackingEnabled, setRefundTrackingEnabled] = useState(false);
+  const [refundAmountInput, setRefundAmountInput] = useState('');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [personInput, setPersonInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
@@ -116,6 +118,8 @@ export default function TransactionsScreen() {
   }, [model, sortOrder]);
 
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
+  const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
+  const alreadyRefunded = !!editingRawTxn?.refundTransactionId;
 
   if (!model) {
     return (
@@ -131,6 +135,8 @@ export default function TransactionsScreen() {
     setAmountInput('');
     setDateInput(todayISO());
     setDirectionInput('out');
+    setRefundTrackingEnabled(false);
+    setRefundAmountInput('');
     setReceiptPhoto(null);
     setPersonInput('');
     setNotesInput('');
@@ -156,6 +162,8 @@ export default function TransactionsScreen() {
     setAmountInput(typeof raw.amount === 'number' ? String(raw.amount) : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
+    setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
+    setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? String(raw.refundExpectedAmount) : '');
     setReceiptPhoto(raw.receiptPhoto || null);
     setPaymentMethodInput(raw.paymentMethod);
     setErrorMsg('');
@@ -239,6 +247,12 @@ export default function TransactionsScreen() {
       return;
     }
 
+    const parsedRefundAmount = parseFloat(refundAmountInput);
+    const refundAmountToSave =
+      directionInput === 'out' && refundTrackingEnabled && !isNaN(parsedRefundAmount) && parsedRefundAmount > 0
+        ? parsedRefundAmount
+        : undefined;
+
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
 
     const updated: HouseholdModel = {
@@ -266,6 +280,13 @@ export default function TransactionsScreen() {
         } else {
           delete next.receiptPhoto;
         }
+        if (directionInput === 'out' && !t.refundTransactionId) {
+          if (refundAmountToSave !== undefined) {
+            next.refundExpectedAmount = refundAmountToSave;
+          } else {
+            delete next.refundExpectedAmount;
+          }
+        }
         return next;
       });
     } else {
@@ -280,6 +301,7 @@ export default function TransactionsScreen() {
           notes: notesInput.trim(),
           paymentMethod: paymentMethodInput,
           ...(receiptPhoto ? { receiptPhoto } : {}),
+          ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
         };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
     }
@@ -297,9 +319,12 @@ export default function TransactionsScreen() {
 
   async function performDelete() {
     if (!editingId || !model) return;
+    const deletedTxn = (model.manualTransactions || []).find((t) => t.id === editingId);
     const updated: HouseholdModel = {
       ...model,
-      manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== editingId),
+      manualTransactions: (model.manualTransactions || [])
+        .filter((t) => t.id !== editingId)
+        .filter((t) => !(deletedTxn?.refundTransactionId && t.id === deletedTxn.refundTransactionId)),
     };
     setSaving(true);
     try {
@@ -321,6 +346,63 @@ export default function TransactionsScreen() {
         { text: 'Delete', style: 'destructive', onPress: performDelete },
       ]
     );
+  }
+
+  // Marks a pending refund as received: creates a real, linked "money in" transaction for the
+  // amount expected back, and stamps refundTransactionId on the original expense so we know
+  // it's been resolved. Mirrors reconcileTravelChecklistTransactions / reconcileEventTransaction.
+  async function handleMarkRefundReceived(txnId: string) {
+    if (!model) return;
+    const raw = (model.manualTransactions || []).find((m) => m.id === txnId);
+    if (!raw || typeof raw.refundExpectedAmount !== 'number' || raw.refundTransactionId) return;
+
+    const newTxn: ManualTransaction = {
+      id: makeId('txn'),
+      date: new Date().toISOString().slice(0, 10),
+      label: 'Refund: ' + (raw.label || 'Transaction'),
+      amount: raw.refundExpectedAmount,
+      direction: 'in',
+      owner: raw.owner || 'shared',
+      category: raw.category || 'Refund',
+    };
+
+    const updated: HouseholdModel = {
+      ...model,
+      manualTransactions: [
+        ...(model.manualTransactions || []).map((t) =>
+          t.id === txnId ? { ...t, refundTransactionId: newTxn.id } : t
+        ),
+        newTxn,
+      ],
+    };
+
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to save', 'Please try again.');
+    }
+  }
+
+  // Undoes a "marked received" refund: removes the linked income transaction it created, and
+  // clears refundTransactionId so it goes back to showing as Pending.
+  async function handleUndoRefund(txnId: string) {
+    if (!model) return;
+    const raw = (model.manualTransactions || []).find((m) => m.id === txnId);
+    if (!raw || !raw.refundTransactionId) return;
+    const linkedId = raw.refundTransactionId;
+
+    const updated: HouseholdModel = {
+      ...model,
+      manualTransactions: (model.manualTransactions || [])
+        .filter((t) => t.id !== linkedId)
+        .map((t) => (t.id === txnId ? { ...t, refundTransactionId: undefined } : t)),
+    };
+
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to save', 'Please try again.');
+    }
   }
 
   return (
@@ -377,6 +459,10 @@ export default function TransactionsScreen() {
         {transactions.map((t: TransactionEntry) => {
           const isManual = t.source === 'manual';
           const isExpanded = expandedTxnId === t.id;
+          const rawManual = isManual ? (model.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
+          const refundExpected = rawManual?.refundExpectedAmount;
+          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
+          const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
           return (
             <CollapsibleRow
               key={t.id}
@@ -391,6 +477,8 @@ export default function TransactionsScreen() {
                     <Text style={styles.txnSub} numberOfLines={1}>
                       {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
                       {!isManual ? ' (edit on its own tab)' : ''}
+                      {isRefundPending ? ' · Refund pending' : ''}
+                      {isRefundReceived ? ' · Refunded' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
@@ -424,6 +512,36 @@ export default function TransactionsScreen() {
                       <Text style={styles.detailValue}>
                         {(model.manualTransactions || []).find((m) => m.id === t.rawId)?.notes || '—'}
                       </Text>
+                    </View>
+                  )}
+                  {isRefundPending && (
+                    <View style={{ marginTop: 4 }}>
+                      <View style={styles.refundBadge}>
+                        <Text style={styles.refundBadgeText}>
+                          REFUND PENDING · {formatPeso(refundExpected as number)} expected
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.refundActionButton}
+                        onPress={() => handleMarkRefundReceived(t.rawId as string)}
+                      >
+                        <Text style={styles.refundActionButtonText}>Mark as Received</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {isRefundReceived && (
+                    <View style={{ marginTop: 4 }}>
+                      <View style={[styles.refundBadge, styles.refundBadgeReceived]}>
+                        <Text style={styles.refundBadgeText}>
+                          REFUNDED · {formatPeso(refundExpected as number)}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.refundActionButton}
+                        onPress={() => handleUndoRefund(t.rawId as string)}
+                      >
+                        <Text style={styles.refundActionButtonText}>Undo</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
                   {!isManual && (
@@ -478,22 +596,54 @@ export default function TransactionsScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.inputLabel}>Amount</Text>
+        <Text style={styles.inputLabel}>Amount</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="0.00"
+          placeholderTextColor={colors.inkFaint}
+          keyboardType="decimal-pad"
+          value={amountInput}
+          onChangeText={handleAmountChange}
+        />
+
+        {directionInput === 'out' && !alreadyRefunded && (
+          <>
+            <TouchableOpacity
+              style={[styles.refundToggle, refundTrackingEnabled && styles.refundToggleActive]}
+              onPress={() => setRefundTrackingEnabled((prev) => !prev)}
+            >
+              <Text style={[styles.refundToggleText, refundTrackingEnabled && styles.refundToggleTextActive]}>
+                {refundTrackingEnabled ? '✓ Expecting a refund for this' : 'Expecting a refund for this?'}
+              </Text>
+            </TouchableOpacity>
+            {refundTrackingEnabled && (
+              <>
+                <Text style={styles.inputLabel}>Amount you expect back</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { marginBottom: 16 }]}
                   placeholder="0.00"
                   placeholderTextColor={colors.inkFaint}
                   keyboardType="decimal-pad"
-                  value={amountInput}
-                  onChangeText={handleAmountChange}
+                  value={refundAmountInput}
+                  onChangeText={setRefundAmountInput}
                 />
+              </>
+            )}
+          </>
+        )}
+        {directionInput === 'out' && alreadyRefunded && (
+          <Text style={[styles.detailNotesText, { marginBottom: 16 }]}>
+            This has already been marked as refunded. Undo it from the transaction list first if
+            you need to change the refund amount.
+          </Text>
+        )}
 
-                <DateField
-                label="Date"
-                value={dateInput}
-                onChange={setDateInput}
-                testID="txn-date-field"
-              />
+        <DateField
+          label="Date"
+          value={dateInput}
+          onChange={setDateInput}
+          testID="txn-date-field"
+        />
 
                 <Text style={styles.inputLabel}>Belongs to</Text>
                 <TextInput
@@ -698,5 +848,36 @@ function makeStyles(colors: any) {
     deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
+
+    refundToggle: {
+      backgroundColor: colors.navy3,
+      borderRadius: 999,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    refundToggleActive: { backgroundColor: colors.orange },
+    refundToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    refundToggleTextActive: { color: '#fff' },
+    refundBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.orange,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      marginTop: 6,
+    },
+    refundBadgeReceived: { backgroundColor: colors.ok },
+    refundBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+    refundActionButton: {
+      marginTop: 10,
+      alignSelf: 'flex-start',
+      backgroundColor: colors.navy2,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    refundActionButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.ink },
   });
 }

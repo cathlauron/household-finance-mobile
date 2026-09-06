@@ -266,6 +266,14 @@ export type ManualTransaction = {
   notes?: string;
   receiptPhoto?: string;
   paymentMethod?: PaymentMethod;
+  // Set when this (expense) transaction is expected to be refunded — the amount currently
+  // expected back (supports partial refunds). Only meaningful for direction: 'out'.
+  refundExpectedAmount?: number;
+  // Set once the refund is actually received — points at the real, linked ManualTransaction
+  // (direction: 'in') created for it. Presence of this (not refundExpectedAmount) means
+  // "Refunded" rather than "Pending" — mirrors the expenseTransactionId pattern already used
+  // by Travel checklist items and Events.
+  refundTransactionId?: string;
 };
 
 export type Category = {

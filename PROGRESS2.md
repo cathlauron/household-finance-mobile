@@ -1095,6 +1095,72 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   picker only appears inside the "Linked" section of `ProfileScreen.tsx` right
   now, so a solo/unlinked profile tracking more than one person's entries has
   no way to set "which person is me" yet.
+- **B.10 Refund Tracker — not yet verified on-device.** Needs checking: the
+  "Expecting a refund for this?" toggle only appears on money-out transactions,
+  and disappears (replaced by an explanatory note) once a refund has already
+  been marked received; typing a smaller "amount you expect back" than the
+  original expense (a partial refund) saves and displays correctly; tapping
+  "Mark as Received" creates a real linked income transaction that shows up in
+  the Transactions total and Dashboard figures, and switches the badge from
+  orange "REFUND PENDING" to green "REFUNDED"; tapping "Undo" removes that
+  linked transaction, updates totals back down, and reverts the badge to
+  Pending; and deleting an original expense that had already been marked
+  received also removes its linked refund transaction, with no orphaned entry
+  left behind in the list.
+- **B.10 (Refund tracker) — CODE COMPLETE, `npx tsc --noEmit` CLEAN, PENDING
+  ON-DEVICE VERIFICATION.** Investigated in two rounds via Antigravity report-only
+  prompts before writing anything. Round 1 confirmed there was no existing
+  "refund" concept anywhere in the codebase, pulled the real `ManualTransaction`/
+  `TransactionEntry` shapes, found the app's existing "expected vs. actual"
+  pattern (Bills' due/paid split, Income's expected/logged split, and — most
+  relevantly — Travel checklist items' `expenseTransactionId` link, which creates
+  a real linked transaction when checked and removes it when unchecked), and
+  confirmed Dashboard's "Watched Categories" card (from B.8) as the right shape
+  to model a new "Pending Refunds" summary against, plus confirmed no color token
+  in `theme.ts` is unclaimed — every semantic color is already green/orange/red.
+  Presented 3 design questions; decided: marking a refund "received" logs a real
+  linked income transaction (not just a status label); partial refunds are
+  supported (the expected-back amount can be typed separately from what was
+  spent); and the "pending" badge reuses the existing orange "owed" color rather
+  than adding a new token. Round 2 pulled the real, current Add/Edit transaction
+  modal JSX, the full `useState` block, `openEditModal`/`resetForm`/`closeModal`,
+  the real delete handler, the real `reconcileTravelChecklistTransactions`-style
+  linked-transaction pattern (copied exactly rather than reinvented), the real
+  `buildTransactionsList()` manual-transaction loop, and the real style block —
+  confirming everything needed to write safe, non-guessed replacement snippets.
+
+  Added two new optional fields to `ManualTransaction` in `types.ts`:
+  `refundExpectedAmount?: number` (set while a refund is pending; supports
+  partial refunds) and `refundTransactionId?: string` (set once received,
+  pointing at the real linked income transaction — same pattern as Travel/Events'
+  `expenseTransactionId`). In `TransactionsScreen.tsx`: added
+  `refundTrackingEnabled`/`refundAmountInput` state; a new "Expecting a refund
+  for this?" toggle shown only when `directionInput === 'out'` and the
+  transaction isn't already refunded, revealing an "Amount you expect back"
+  field pre-fillable to any amount (partial refunds); `resetForm`/`openEditModal`
+  updated to reset/populate the new fields; `handleSave` now computes and saves
+  `refundExpectedAmount` on both the new-transaction and editing branches;
+  `performDelete` now also removes the linked income transaction if the deleted
+  expense had already been refunded, so nothing orphaned is left behind; two new
+  handlers, `handleMarkRefundReceived()` (creates the real linked "money in"
+  transaction and stamps `refundTransactionId` on the original) and
+  `handleUndoRefund()` (removes that linked transaction and clears the stamp,
+  reverting to Pending); the expanded row now shows an orange "REFUND PENDING ·
+  ₱X expected" badge with a "Mark as Received" button, or a green "REFUNDED ·
+  ₱X" badge with an "Undo" button, plus a small note in the collapsed row's
+  subtitle line ("· Refund pending" / "· Refunded"); 8 new styles added
+  (`refundToggle`/`refundToggleActive`/`refundToggleText`/
+  `refundToggleTextActive`/`refundBadge`/`refundBadgeReceived`/
+  `refundBadgeText`/`refundActionButton`/`refundActionButtonText`).
+
+  Both files hand-pasted by the person per standing small-fix policy (not
+  Antigravity-applied). `npx tsc --noEmit` confirmed clean (empty output, 0
+  errors) on the first paste, no error/fix rounds needed this time. On-device
+  verification (toggle appears only on expenses, partial-refund amount entry,
+  the orange Pending badge → Mark as Received → green Refunded badge → Undo
+  round-trip, the linked transaction actually appearing in totals, and deleting
+  an already-refunded expense correctly cleaning up its linked transaction) is
+  deferred per the current batched-testing
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -1203,9 +1269,17 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   is you?" picker on `ProfileScreen.tsx`, "Mine"/"Ours"/real-name owner labels in
   Transactions and Person Spending, and a new Notes field on manual transactions.
   `npx tsc --noEmit` confirmed clean. On-device verification is pending per the
-  current batched-testing policy (see the new checklist item in ⚠️ Known issues
-  above). **B.10 (Refund tracker) is the next unbuilt checkpoint**, whenever the
-  person is ready to keep building forward. No investigation has been done on it yet.
+  current batched-testing policy (see the checklist item in ⚠️ Known issues
+  above). **B.10 (Refund tracker) is also code-complete** (see ✅ Done above) —
+  a new `refundExpectedAmount`/`refundTransactionId` pair on `ManualTransaction`,
+  an "Expecting a refund for this?" toggle with partial-refund support in the
+  Add/Edit form, and Mark as Received/Undo actions that create and remove a real
+  linked income transaction, mirroring the existing Travel-checklist linked-
+  transaction pattern. `npx tsc --noEmit` confirmed clean. On-device verification
+  is pending per the current batched-testing policy (see the new checklist item
+  in ⚠️ Known issues above). **B.11 (Weekly spending recap push notification) is
+  the next unbuilt checkpoint**, whenever the person is ready to keep building
+  forward. No investigation has been done on it yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1229,7 +1303,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.7 | "Left to Spend" hero stat on Home tab — code-complete, on-device testing deferred | Simplifi-inspired |
   | ✅ B.8 | Category watchlists under Insights — code-complete, on-device testing deferred | Simplifi-inspired |
   | ✅ B.9 | Yours/Mine/Ours labels + transaction comments — code-complete, on-device testing deferred | Monarch-inspired |
-  | B.10 | Refund tracker | Simplifi-inspired |
+  | ✅ B.10 | Refund tracker — code-complete, on-device testing deferred | Simplifi-inspired |
   | B.11 | Weekly spending recap push notification | Monarch-inspired |
   | B.12 | Expanded FI/retirement calculator | Simplifi-inspired |
   | B.13 | Report filtering by tag | Simplifi-inspired |
@@ -1421,6 +1495,18 @@ Files in the repo (relevant to Phase B/C)
   each person's report card is now labeled "Mine" instead of their real name
   when `p.id === myPersonId`, and the shared card is now labeled "Ours" instead
   of "Shared".
+- `mobile-app/src/types.ts` — modified (B.10). Added `refundExpectedAmount?:
+  number` and `refundTransactionId?: string` to `ManualTransaction`.
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.10). Added
+  `refundTrackingEnabled`/`refundAmountInput` state; a conditional "Expecting a
+  refund for this?" toggle + expected-amount field in the Add/Edit form;
+  `resetForm`/`openEditModal`/`handleSave` updated to reset/populate/save the
+  new refund fields; `performDelete` now also removes a linked refund
+  transaction if present; new `handleMarkRefundReceived()`/`handleUndoRefund()`
+  handlers creating/removing a real linked income transaction (mirrors the
+  Travel-checklist `expenseTransactionId` pattern); the list rows now show an
+  orange "Refund Pending" or green "Refunded" badge with a Mark as
+  Received/Undo action; 8 new `refund*` styles added.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 - `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.5 Batch 1). Delete now
   requires confirming a native `Alert.alert` dialog before removing an account.
@@ -1539,6 +1625,42 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — B.10 built: Refund tracker, reusing the existing Travel-checklist linked-transaction pattern
+**What happened:** Investigated via two rounds of Antigravity report-only prompts.
+Round 1 confirmed no "refund" concept existed anywhere, pulled the real
+`ManualTransaction`/`TransactionEntry` shapes, and — most importantly — surfaced
+that the app already has a proven "check something, get a real linked
+transaction created; uncheck it, get that transaction removed" pattern on
+Travel checklist items via `expenseTransactionId`, which was the exact
+mechanism needed for "mark a refund received." Also confirmed no unclaimed
+color token exists in `theme.ts`. Presented 3 design questions (does "received"
+touch real totals or just a label; are partial refunds supported; what color
+for the badge) and got clear answers for all three before writing anything.
+Round 2 pulled the real Add/Edit modal JSX, the full `useState` block, the real
+`openEditModal`/reset/close functions, the real delete handler, the real
+Travel-checklist linked-transaction handler to copy exactly, the real
+`buildTransactionsList()` manual-transaction loop, and the real style block —
+closing every gap before writing replacement snippets, rather than guessing at
+code that hadn't actually been seen.
+
+Built and hand-pasted across `types.ts` (2 new optional fields on
+`ManualTransaction`) and `TransactionsScreen.tsx` (toggle + amount field in the
+form, save/reset/edit/delete wiring, two new handlers mirroring the Travel
+pattern, badge + action button in the row, 8 new styles).
+
+**Result:** `npx tsc --noEmit` confirmed clean (empty output, 0 errors) on the
+first paste — no error/fix rounds needed. B.10 is code-complete; on-device
+verification (toggle visibility, partial refunds, the Pending→Received→Undo
+round-trip and its effect on totals, and delete-cleanup of an already-refunded
+expense) is deferred per the current batched-testing policy and added to the
+running checklist.
+
+**Design decision made this session:** No new standing rule — another
+successful application of the existing "reuse a proven in-app pattern instead
+of inventing a new one" approach, this time reusing Travel/Events'
+`expenseTransactionId` linked-transaction mechanism for refunds rather than
+building a second, parallel system.
 
 ### Session entry — B.8 built: Category Watchlist, reusing the existing (previously unused) `categoryBudgets` model field
 **What happened:** Investigated via two rounds of Antigravity report-only prompts
