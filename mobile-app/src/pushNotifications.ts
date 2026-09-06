@@ -21,6 +21,8 @@ import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { HouseholdModel, Bill } from './types';
 import { getNextDueDate } from './recurrence';
+import { buildTransactionsList, transactionTotals } from './transactions';
+import { formatPeso } from './balanceProjection';
 
 // Makes a notification actually pop up (with sound) while the app is open,
 // not just when it's in the background — matches how the web app's alerts behaved.
@@ -52,6 +54,20 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (existing.status === 'granted') return true;
   const requested = await Notifications.requestPermissionsAsync();
   return requested.status === 'granted';
+}
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Finds the next date/time this weekday+hour combo occurs, at or after "now".
+// weekday: 0 = Sunday ... 6 = Saturday (matches Date.prototype.getDay()).
+function nextWeeklyOccurrence(weekday: number, hour: number, now: Date): Date {
+  const result = new Date(now);
+  result.setHours(hour, 0, 0, 0);
+  let daysAhead = (weekday - now.getDay() + 7) % 7;
+  if (daysAhead === 0 && result.getTime() <= now.getTime()) daysAhead = 7;
+  result.setDate(result.getDate() + daysAhead);
+  return result;
 }
 
 function billOutstanding(bill: Bill): number {
@@ -98,6 +114,44 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: alertDate,
+      },
+    });
+  }
+
+  // ============================================================
+  // Weekly spending recap (Checkpoint B.11)
+  // ============================================================
+  // Reuses the exact same "last 7 days through today" window the Weekly
+  // Digest report uses, so the number here always matches that report.
+  // Content is baked in at schedule time (same limitation as bill alerts
+  // above) — it'll be as fresh as whenever the app was last saved to
+  // before this recap fires.
+  if (model.settings.weeklyRecapEnabled) {
+    const sixDaysAgo = new Date(now);
+    sixDaysAgo.setDate(now.getDate() - 6);
+    const rangeStartKey = toDateKey(sixDaysAgo);
+    const rangeEndKey = toDateKey(now);
+
+    const allTransactions = buildTransactionsList(model);
+    const weekTransactions = allTransactions.filter(
+      (t) => t.date >= rangeStartKey && t.date <= rangeEndKey
+    );
+    const weekTotals = transactionTotals(weekTransactions);
+
+    const recapDate = nextWeeklyOccurrence(
+      model.settings.weeklyRecapDay ?? 0,
+      model.settings.weeklyRecapHour ?? 18,
+      now
+    );
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Your weekly spending recap',
+        body: `You spent ${formatPeso(weekTotals.totalOut)} this week — tap to see the breakdown.`,
+      },
+      trigger: {
+        type: SchedulableTriggerInputTypes.DATE,
+        date: recapDate,
       },
     });
   }

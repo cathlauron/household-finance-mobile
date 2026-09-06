@@ -50,6 +50,7 @@ import {
 import PasswordField from '../components/PasswordField';
 import { makeId } from '../utils';
 import * as Clipboard from 'expo-clipboard';
+import { DOW_LABELS } from '../income';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -201,6 +202,9 @@ export default function SettingsScreen() {
     String(model?.settings?.cautionThresholdPercent ?? 20)
   );
   const [notifStatusMsg, setNotifStatusMsg] = useState('');
+  const [recapHourInput, setRecapHourInput] = useState(
+    String(model?.settings?.weeklyRecapHour ?? 18)
+  );
 
   // ---- Merchants & Payees ----
   const [payeeModalOpen, setPayeeModalOpen] = useState(false);
@@ -323,6 +327,48 @@ export default function SettingsScreen() {
     };
     await saveModel(updated);
     setNotifStatusMsg(turningOn ? "You'll get a reminder when a bill is due soon." : 'Turned off.');
+  }
+
+  async function toggleWeeklyRecap() {
+    if (!model) return;
+    const turningOn = !model.settings.weeklyRecapEnabled;
+
+    if (turningOn && !model.settings.pushNotificationsEnabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        setNotifStatusMsg(
+          "Notifications need permission from your phone's settings first — check your phone's notification settings for this app and try again."
+        );
+        return;
+      }
+    }
+
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, weeklyRecapEnabled: turningOn },
+    };
+    await saveModel(updated);
+  }
+
+  async function setWeeklyRecapDay(day: number) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, weeklyRecapDay: day },
+    };
+    await saveModel(updated);
+  }
+
+  async function saveWeeklyRecapHour() {
+    if (!model) return;
+    const n = parseInt(recapHourInput, 10);
+    const value = isNaN(n) || n < 0 ? 0 : n > 23 ? 23 : n;
+    setRecapHourInput(String(value));
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, weeklyRecapHour: value },
+    };
+    await saveModel(updated);
   }
 
   function closeModal() {
@@ -806,6 +852,62 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
         {!!notifStatusMsg && <Text style={styles.notifStatusText}>{notifStatusMsg}</Text>}
+
+        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={toggleWeeklyRecap}>
+          <Text style={styles.rowName}>Weekly spending recap</Text>
+          <View
+            style={[
+              styles.toggleTrack,
+              model.settings.weeklyRecapEnabled && styles.toggleTrackActive,
+            ]}
+          >
+            <View
+              style={[
+                styles.toggleThumb,
+                model.settings.weeklyRecapEnabled && styles.toggleThumbActive,
+              ]}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {model.settings.weeklyRecapEnabled && (
+          <>
+            <View style={styles.pillRow}>
+              {DOW_LABELS.map((label, idx) => (
+                <TouchableOpacity
+                  key={label}
+                  style={[
+                    styles.pillButtonSmall,
+                    model.settings.weeklyRecapDay === idx && styles.pillButtonActive,
+                  ]}
+                  onPress={() => setWeeklyRecapDay(idx)}
+                >
+                  <Text
+                    style={
+                      model.settings.weeklyRecapDay === idx
+                        ? styles.pillButtonTextActive
+                        : styles.pillButtonText
+                    }
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowName}>At</Text>
+              <TextInput
+                style={styles.notifyInput}
+                value={recapHourInput}
+                onChangeText={setRecapHourInput}
+                onBlur={saveWeeklyRecapHour}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              <Text style={styles.rowName}>:00 (24-hour, e.g. 18 = 6 PM)</Text>
+            </View>
+          </>
+        )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
         <Text style={styles.sectionSub}>
@@ -1626,6 +1728,18 @@ function makeStyles(colors: any) {
     modeButtonActive: { backgroundColor: colors.gold },
     modeButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     modeButtonTextActive: { color: colors.navy2 },
+    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+    pillButtonSmall: {
+      minWidth: 42,
+      backgroundColor: colors.navy2,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+    },
+    pillButtonActive: { backgroundColor: colors.gold },
+    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
+    pillButtonTextActive: { color: colors.navy2 },
     row: {
       backgroundColor: colors.navy3,
       borderRadius: 10,

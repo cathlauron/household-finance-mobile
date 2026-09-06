@@ -18,6 +18,9 @@ export type Settings = {
   layoutMode: string;
   incomeToleranceDays: number;
   pushNotificationsEnabled: boolean;
+  weeklyRecapEnabled: boolean;
+  weeklyRecapDay: number;
+  weeklyRecapHour: number;
 };
 
 export type Person = {

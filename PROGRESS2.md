@@ -878,9 +878,52 @@ original 11 phases before that. Nothing from either file is repeated here.
   picker saves and persists correctly on `ProfileScreen.tsx`; a transaction's owner
   correctly shows as "Mine"/"Ours"/a real name in both Transactions and Person
   Spending; the new Notes field saves, edits, and displays correctly; and — a known,
-  accepted gap, not yet fixed — the picker currently only renders inside
+  accepted gap, not yet fixed — the   picker currently only renders inside
   `ProfileScreen.tsx`'s "Linked" section, so a solo (unlinked) profile tracking more
   than one person has no way to set "which one is me" yet.
+- **B.11 (Weekly spending recap push notification) — CODE COMPLETE, `npx tsc
+  --noEmit` CLEAN, PENDING ON-DEVICE VERIFICATION.** Investigated via two rounds of
+  Antigravity report-only prompts before writing anything. Round 1 confirmed the
+  existing bill-alert notification system only ever uses a fixed one-time
+  `SchedulableTriggerInputTypes.DATE` trigger (no recurring/weekly trigger type is
+  used anywhere), that `rescheduleBillNotifications()` wipes and rebuilds *every*
+  scheduled notification on every save/login/sync (9 real call sites across
+  `App.tsx`/`DataContext.tsx`), and that a ready-made "last 7 days through today"
+  spending calculation already exists in `WeeklyDigestReport.tsx`
+  (`buildTransactionsList` + `transactionTotals`, both exported from
+  `transactions.ts`). Round 2 confirmed the exact real import lines and export
+  location for those two functions before writing any code. Decided: the recap
+  shows a real peso amount (not a generic message); day/time are both
+  person-configurable from Settings (defaulting to Sunday at 6 PM); and the
+  "week" is the same rolling 7-day window the Weekly Digest report already uses,
+  not a strict calendar Sunday–Saturday week.
+
+  Added `weeklyRecapEnabled`/`weeklyRecapDay`/`weeklyRecapHour` to the `Settings`
+  type and `defaultModel.ts` (default: off, Sunday, 18:00). Added
+  `toDateKey()`/`nextWeeklyOccurrence()` helpers and a new weekly-recap
+  scheduling block directly inside `rescheduleBillNotifications()` in
+  `pushNotifications.ts` — placed there specifically so it survives every one of
+  that function's 9 existing call sites automatically, rather than as a separate
+  call that the wipe-and-rebuild cycle would silently delete. Added a "Weekly
+  spending recap" toggle, a Sun–Sat day-pill picker, and an hour input to
+  Settings > Notifications, reusing the existing `requestNotificationPermission()`
+  flow and Android notification-channel setup — no separate permission prompt.
+
+  One `npx tsc --noEmit` regression was hit and fixed after the initial paste: the
+  new day-pill picker referenced 5 style names (`pillRow`/`pillButtonSmall`/
+  `pillButtonActive`/`pillButtonText`/`pillButtonTextActive`) that don't exist in
+  `SettingsScreen.tsx`'s own stylesheet — each screen has its own separate
+  `makeStyles(colors)` block with no sharing between files. Investigated via a
+  dedicated Antigravity report-only prompt confirming `IncomeScreen.tsx`'s real,
+  already-working day-of-week picker uses those exact 5 names with real, working
+  style definitions; copied those definitions into `SettingsScreen.tsx`'s own
+  stylesheet rather than guessing at replacement names. `npx tsc --noEmit`
+  confirmed clean (empty output, 0 errors) after the fix. All edits hand-pasted
+  by the person per standing small-fix policy. **Not yet manually verified
+  on-device** (toggle on/off, day-pill selection, hour input saving/persisting,
+  and — hardest to verify without waiting a full week — the recap notification
+  actually firing with a correct, current spending total) — added to the running
+  on-device checklist per the current batched-testing policy.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -1161,6 +1204,13 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   round-trip, the linked transaction actually appearing in totals, and deleting
   an already-refunded expense correctly cleaning up its linked transaction) is
   deferred per the current batched-testing
+- **B.11 Weekly spending recap — not yet verified on-device.** Needs checking:
+  toggling it on/off in Settings saves and persists; the Sun–Sat day pills render
+  with correct themed (gold-when-selected) styling now that the missing styles
+  were added; the hour input saves on blur; and — since this can only really be
+  confirmed by waiting for the scheduled time to arrive — that the notification
+  actually fires at the chosen day/hour with a spending total that matches what
+  the Weekly Digest report shows for the same 7-day window.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -1278,8 +1328,15 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   transaction pattern. `npx tsc --noEmit` confirmed clean. On-device verification
   is pending per the current batched-testing policy (see the new checklist item
   in ⚠️ Known issues above). **B.11 (Weekly spending recap push notification) is
-  the next unbuilt checkpoint**, whenever the person is ready to keep building
-  forward. No investigation has been done on it yet.
+  also code-complete** (see ✅ Done above) — a new `weeklyRecapEnabled`/
+  `weeklyRecapDay`/`weeklyRecapHour` settings trio, scheduling folded directly
+  into `rescheduleBillNotifications()` so it survives the existing
+  wipe-and-rebuild cycle, and a Settings toggle + day-pill + hour picker reusing
+  `IncomeScreen.tsx`'s existing pill styles. `npx tsc --noEmit` confirmed clean.
+  On-device verification is pending per the current batched-testing policy (see
+  the new checklist item in ⚠️ Known issues above). **B.12 (Expanded FI/
+  retirement calculator) is the next unbuilt checkpoint**, whenever the person is
+  ready to keep building forward. No investigation has been done on it yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1304,7 +1361,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.8 | Category watchlists under Insights — code-complete, on-device testing deferred | Simplifi-inspired |
   | ✅ B.9 | Yours/Mine/Ours labels + transaction comments — code-complete, on-device testing deferred | Monarch-inspired |
   | ✅ B.10 | Refund tracker — code-complete, on-device testing deferred | Simplifi-inspired |
-  | B.11 | Weekly spending recap push notification | Monarch-inspired |
+  | ✅ B.11 | Weekly spending recap push notification — code-complete, on-device testing deferred | Monarch-inspired |
   | B.12 | Expanded FI/retirement calculator | Simplifi-inspired |
   | B.13 | Report filtering by tag | Simplifi-inspired |
   | B.14 | Subscription cancel-reminder | Lightweight Rocket Money substitute |
@@ -1506,7 +1563,23 @@ Files in the repo (relevant to Phase B/C)
   handlers creating/removing a real linked income transaction (mirrors the
   Travel-checklist `expenseTransactionId` pattern); the list rows now show an
   orange "Refund Pending" or green "Refunded" badge with a Mark as
-  Received/Undo action; 8 new `refund*` styles added.
+  Received/Undo action; - 8 new `refund*` styles added.
+- `mobile-app/src/types.ts` — modified (B.11). Added `weeklyRecapEnabled: boolean`,
+  `weeklyRecapDay: number`, and `weeklyRecapHour: number` to the `Settings` type.
+- `mobile-app/src/defaultModel.ts` — modified (B.11). Added defaults for the 3 new
+  weekly-recap settings fields (off, Sunday, 18:00).
+- `mobile-app/src/pushNotifications.ts` — modified (B.11). Added `toDateKey()` and
+  `nextWeeklyOccurrence()` helpers; added a weekly spending recap scheduling block
+  directly inside `rescheduleBillNotifications()`, reusing `buildTransactionsList`/
+  `transactionTotals` from `transactions.ts` and `formatPeso` from
+  `balanceProjection.ts`.
+- `mobile-app/src/screens/SettingsScreen.tsx` — modified (B.11). Added a
+  "Weekly spending recap" toggle, a Sun–Sat day-pill picker, and an hour input
+  under Notifications; added `recapHourInput` state and
+  `toggleWeeklyRecap()`/`setWeeklyRecapDay()`/`saveWeeklyRecapHour()` handlers;
+  added `pillRow`/`pillButtonSmall`/`pillButtonActive`/`pillButtonText`/
+  `pillButtonTextActive` styles to this file's own stylesheet (previously only
+  defined in `IncomeScreen.tsx`).
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 - `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.5 Batch 1). Delete now
   requires confirming a native `Alert.alert` dialog before removing an account.
@@ -1625,6 +1698,43 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — B.11 built: Weekly spending recap notification, plus a styling gap found and fixed
+**What happened:** Investigated via two rounds of Antigravity report-only prompts.
+Round 1 confirmed the existing bill-alert system uses only a fixed one-time
+trigger (no recurring trigger type in use anywhere), that
+`rescheduleBillNotifications()` wipes and rebuilds every scheduled notification
+on every save/login/sync (9 real call sites), and that a ready-made "last 7 days
+through today" spending calculation already exists via
+`buildTransactionsList`/`transactionTotals`. Round 2 closed one small but real
+gap before any code was written: confirmed the exact real import lines and
+export location for those two functions, rather than assuming a file path.
+Built the feature across `types.ts`, `defaultModel.ts`, `pushNotifications.ts`,
+and `SettingsScreen.tsx`. Deliberately scheduled the recap notification *inside*
+`rescheduleBillNotifications()` itself, rather than as a separate call
+elsewhere, specifically because anything scheduled outside that function would
+be silently wiped the next time anything in the app got saved.
+
+After the first paste, `npx tsc --noEmit` surfaced 5 errors — a new day-pill
+picker referenced 5 style names that don't exist in `SettingsScreen.tsx`'s own
+stylesheet. Investigated via a dedicated Antigravity report-only prompt
+confirming `IncomeScreen.tsx` already has a real, working day-of-week picker
+using those exact names, with real style definitions to copy from — rather than
+guessing at new values. Copied those 5 style definitions into
+`SettingsScreen.tsx`'s own stylesheet. `npx tsc --noEmit` confirmed clean
+(empty output, 0 errors) afterward.
+
+**Result:** B.11 is code-complete. On-device verification (toggle, day-pill
+selection, hour input, and the notification actually firing with a correct
+amount) is deferred per the current batched-testing policy and added to the
+running checklist.
+
+**Design decision made this session:** No new standing rule — another direct
+application of two already-standing practices: (1) get real, current file
+content before proposing any fix rather than guessing from an error message,
+and (2) when adding to a function that already has a "wipe everything and
+rebuild" responsibility, fold new scheduling logic into that same function
+rather than adding a separate call site that the wipe would silently undo.
 
 ### Session entry — B.10 built: Refund tracker, reusing the existing Travel-checklist linked-transaction pattern
 **What happened:** Investigated via two rounds of Antigravity report-only prompts.
