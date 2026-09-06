@@ -1155,6 +1155,45 @@ original 11 phases before that. Nothing from either file is repeated here.
   find/replace against elided code risked silently corrupting the bill
   save/edit flow). `npx tsc --noEmit` confirmed clean (empty output, 0
   errors) after every round, including the final one.
+- **Post-B.14 code audit + 4 must-fix bugs found and fixed — COMPLETE,
+  `npx tsc --noEmit` CLEAN, PENDING ON-DEVICE VERIFICATION.** Before starting
+  any on-device testing, ran a dedicated 4-part Antigravity audit (investigation
+  only, no code touched) covering: (1) verifying every B.1–B.14 checkpoint
+  against real code rather than commit messages, (2) hunting for bugs, dead
+  code, and silent failure modes, (3) a cross-app consistency check, and
+  (4) improvement suggestions. Found one genuinely load-bearing bug: the
+  entire B.14 subscription toggle had never actually been wired to save —
+  `BillsScreen.tsx`'s `handleSave()` tracked `subscriptionInput` in local
+  state but never wrote `isSubscription`/`subscriptionStatus` onto the saved
+  bill on either the edit or create branch, meaning no bill created or
+  edited through the app could ever become a tracked subscription. Also
+  found: tapping a subscription reminder could strand the person on the
+  Home tab, since nothing told the bottom tab bar to switch to To-Pay;
+  turning off "Bill reminders" in Settings silently also disabled "Weekly
+  recap," even though they're shown as two separate toggles; and two crash
+  risks for anyone on an older/legacy saved profile missing `income` or
+  `categoryBudgets` fields. Triaged into "must-fix before testing" (all 4
+  above), "worth doing, lower priority" (missing try/catch on 3 screens'
+  delete handlers, a repeat-notification edge case, no delete-confirmation
+  on 3 Settings mini-forms — deferred to a short follow-up session), and
+  "cosmetic cleanup" (unused imports, one redundant variable, a few
+  duplicated date-math helpers, `colors: any` typing — explicitly skipped
+  for now). Fixed all 4 must-fix items via two rounds of Antigravity
+  investigation (pulling real, complete, unelided code before writing any
+  fix) plus hand-pasted snippets: `BillsScreen.tsx`'s `handleSave()` now
+  writes `isSubscription`/`subscriptionStatus` on both branches, with logic
+  that never silently resets an already-cancelled bill back to active on
+  resave; `MainTabs.tsx`'s `<Tab.Navigator>` now takes a `key` derived from
+  `initialOpenBillId` plus `initialRouteName`, forcing the tab bar to
+  remount onto To-Pay whenever a reminder hands it a bill to open;
+  `rescheduleBillNotifications()` in `pushNotifications.ts` now tracks
+  `billRemindersOn`/`weeklyRecapOn` independently, so turning one off no
+  longer touches the other; and `balanceProjection.ts`/
+  `DashboardScreen.tsx` now guard `model.income`/`model.categoryBudgets`
+  with `|| []` so a legacy profile missing either field no longer crashes
+  Home or Dashboard on load. `npx tsc --noEmit` confirmed clean (empty
+  output, 0 errors) after each round of fixes. All 4 hand-pasted by the
+  person per standing small-fix policy.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -1310,6 +1349,15 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
+- **Post-B.14 audit: 4 must-fix bugs closed this session, still pending
+  on-device verification (see ✅ Done above for full detail).** The Bill
+  "This is a subscription" toggle now actually persists on save; tapping a
+  subscription reminder should now correctly switch the bottom tab bar to
+  To-Pay before opening the bill; turning off "Bill reminders" in Settings
+  should no longer also silently turn off "Weekly recap"; and an
+  older/legacy saved profile missing `income` or `categoryBudgets` should
+  no longer crash Home or Dashboard on load (hardest of the four to verify
+  without an actual legacy profile on hand to test with).
 - **B.12a Expanded FI calculator — `npx tsc --noEmit` confirmed clean, still
   needs on-device verification.** Needs: the SWR pill row (presets + Custom
   reveal), the net worth and monthly-savings suggestion rows, the Years Until
@@ -1534,6 +1582,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
     step — editing firestore.rules alone does nothing until deployed.
 
 ▶️ Next step
+- **Post-B.14 audit's 4 must-fix bugs are code-complete and `npx tsc --noEmit`
+  clean (see ✅ Done above)** — pending on-device verification alongside
+  everything else on the batched testing checklist.
 - **New priority, ahead of B.7: fix the real bugs and open questions surfaced by this
   session's full on-device testing pass (see ⚠️ Known issues above for the full
   list)** — the biometric label bug, the missing "turn off PIN" option, the
@@ -2071,6 +2122,30 @@ Files in the repo (relevant to Phase B/C)
   accepted zero props; now accepts `initialOpenBillId`, forces
   `activeSubTab` to `'bills'` via a `useEffect` whenever it's set, and
   passes it to `<BillsScreen openBillId={...} />`.
+- `mobile-app/src/screens/BillsScreen.tsx` — modified (post-B.14 audit fix).
+  `handleSave()`'s edit branch and new-bill branch now actually write
+  `isSubscription`/`subscriptionStatus` onto the saved bill (previously the
+  toggle was tracked in local state but silently dropped on save).
+- `mobile-app/src/navigation/MainTabs.tsx` — modified (post-B.14 audit fix).
+  `<Tab.Navigator>` now takes a `key` derived from `initialOpenBillId` plus
+  `initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}`, forcing the
+  whole tab bar to remount and land on To-Pay whenever a subscription
+  reminder hands it a bill to open.
+- `mobile-app/src/pushNotifications.ts` — modified (post-B.14 audit fix).
+  `rescheduleBillNotifications()` now tracks `billRemindersOn`/`weeklyRecapOn`
+  separately; the bill-due and subscription-reminder loops are gated on
+  `billRemindersOn`, the weekly recap block is gated on `weeklyRecapOn`, and
+  the function only bails out early if both are off — turning one off no
+  longer silently disables the other.
+- `mobile-app/src/balanceProjection.ts` — modified (post-B.14 audit fix).
+  `nextHouseholdPayDate()` now reads `(model.income || []).forEach(...)`
+  instead of `model.income.forEach(...)`, so an older profile with no
+  `income` field no longer crashes Home on load.
+- `mobile-app/src/screens/DashboardScreen.tsx` — modified (post-B.14 audit
+  fix). The "Watched Categories" card's guard and `.map()` now both read
+  `(model.categoryBudgets || [])` instead of `model.categoryBudgets`
+  directly, so an older profile with no `categoryBudgets` field no longer
+  crashes Dashboard on load.
 
 ### Session entry — B.13b built: tag-filter toolbar wired into Reports, completing B.13
 **What happened:** Investigated via a dedicated Antigravity report-only pass
@@ -2454,6 +2529,41 @@ clean.
 **Result:** `npx tsc --noEmit` clean. This was the last open item from
 B.14 and from the entire original B.1–B.14 Phase B roadmap table — nothing
 outstanding remains except the batched on-device verification pass.
+
+### Session entry — Pre-testing Phase B audit: 4 must-fix bugs found and fixed
+**What happened:** Before moving to on-device testing or Phase C, ran a
+dedicated 4-part investigation-only Antigravity audit of the real, current
+code across all of Phase B — checkpoint-by-checkpoint verification, a bug/
+dead-code/silent-failure hunt, a consistency check, and improvement
+suggestions — rather than trusting this progress log's own "done" claims.
+The audit surfaced one genuinely load-bearing bug (B.14's subscription
+toggle never actually saved, meaning the entire feature it unlocks could
+never trigger for any bill created or edited through the app), plus three
+smaller-but-real issues (a deep-link that could strand the person on Home,
+Bill reminders and Weekly recap being incorrectly coupled, and two
+legacy-data crash risks). Triaged findings into must-fix-now, worth-doing-
+later, and cosmetic-only buckets rather than acting on everything at once.
+Fixed all 4 must-fix items across two further rounds of Antigravity
+investigation (insisting on real, complete, unelided code before writing
+any fix — one round was needed specifically because the first pass didn't
+have `rescheduleBillNotifications()`'s full body or the exact
+`categoryBudgets` usage line in hand). All fixes hand-pasted by the person;
+`npx tsc --noEmit` confirmed clean after each round.
+
+**Result:** The 6 lower-priority findings (missing try/catch on Bills/
+Debts/Accounts delete, a repeat-notification edge case on the same
+subscription bill, and no delete-confirmation on 3 Settings mini-forms) are
+deliberately deferred to a short follow-up session — none of them block
+testing. Cosmetic findings (unused imports, a redundant variable, a couple
+of duplicated date-math helpers, `colors: any` typing) are explicitly
+parked, not scheduled. Phase B is now considered genuinely ready for the
+batched on-device testing pass.
+
+**Design decision made this session:** No new standing rule — a clean
+application of the existing "independently re-verify against real code
+before trusting anything as done" practice, applied this time to the
+progress log's own accumulated "code complete" claims across an entire
+phase, not just to a single just-completed fix.
 
 📚 Older detailed session logs archived in PROGRESS2-ARCHIVE-1.md (14 sessions,
 covering Tier 1/2/3 audit fixes through B.6). Everything from them that still

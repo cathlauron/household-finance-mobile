@@ -435,7 +435,7 @@ export type LeftToSpendResult = {
 
 function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): Date | null {
   let earliest: Date | null = null;
-  model.income.forEach((source) => {
+  (model.income || []).forEach((source) => {
     const next = computeNextPayDate(source.frequency as any, source.payDates || [], today);
     if (next && (!earliest || next < earliest)) earliest = next;
   });

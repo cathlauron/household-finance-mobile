@@ -23,6 +23,13 @@ export default function MainTabs({ username, onLock, onSignOut, initialOpenBillI
   return (
     <Tab.Navigator
       id={undefined}
+      // B.14 fix: force the whole tab navigator to remount — and therefore
+      // pick up initialRouteName fresh — every time a subscription reminder
+      // hands us a new openBillId. Without this, tapping a reminder while
+      // sitting on a different tab left the bottom tab bar stuck on
+      // whatever tab was already showing.
+      key={initialOpenBillId ? `open-bill-${initialOpenBillId}` : 'default'}
+      initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: colors.navy3 },

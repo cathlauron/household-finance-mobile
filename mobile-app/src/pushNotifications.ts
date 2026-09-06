@@ -85,7 +85,9 @@ function billOutstanding(bill: Bill): number {
 export async function rescheduleBillNotifications(model: HouseholdModel): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 
-  if (!model.settings.pushNotificationsEnabled) return;
+  const billRemindersOn = model.settings.pushNotificationsEnabled;
+  const weeklyRecapOn = model.settings.weeklyRecapEnabled;
+  if (!billRemindersOn && !weeklyRecapOn) return;
 
   const permission = await Notifications.getPermissionsAsync();
   if (permission.status !== 'granted') return;
@@ -95,7 +97,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   const days = model.settings.notifyDaysBefore ?? 3;
   const now = new Date();
 
-  for (const bill of model.bills) {
+  if (billRemindersOn) for (const bill of model.bills) {
     if (billOutstanding(bill) <= 0) continue; // already paid — nothing to alert about
     const nextDue = getNextDueDate(bill.recurringType, bill.dueDate, now);
     if (!nextDue) continue;
@@ -125,7 +127,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   // bills explicitly flagged isSubscription, and only while still active
   // (not already marked cancelled). Attaches a data payload so tapping the
   // notification can deep-link straight to this bill.
-  for (const bill of model.bills) {
+  if (billRemindersOn) for (const bill of model.bills) {
     if (!bill.isSubscription || bill.subscriptionStatus === 'cancelled') continue;
     if (billOutstanding(bill) <= 0) continue;
     const nextRenewal = getNextDueDate(bill.recurringType, bill.dueDate, now);
@@ -159,7 +161,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   // Content is baked in at schedule time (same limitation as bill alerts
   // above) — it'll be as fresh as whenever the app was last saved to
   // before this recap fires.
-  if (model.settings.weeklyRecapEnabled) {
+  if (weeklyRecapOn) {
     const sixDaysAgo = new Date(now);
     sixDaysAgo.setDate(now.getDate() - 6);
     const rangeStartKey = toDateKey(sixDaysAgo);

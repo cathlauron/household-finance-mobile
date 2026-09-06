@@ -209,10 +209,10 @@ export default function DashboardScreen() {
       </View>
 
       {/* Category watchlist */}
-      {model.categoryBudgets.length > 0 && (
+      {(model.categoryBudgets || []).length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Watched Categories</Text>
-          {model.categoryBudgets.map((cb) => {
+          {(model.categoryBudgets || []).map((cb) => {
             const budget = typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0;
             const spent = computeCategorySpend(model, cb.category, monthPrefix);
             const status = getCategoryBudgetStatus(spent, budget, colors);

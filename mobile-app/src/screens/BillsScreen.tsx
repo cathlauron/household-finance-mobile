@@ -253,6 +253,12 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
           recurringType: recurTypeInput,
           dueDate,
           cycles: [cycle],
+          isSubscription: subscriptionInput,
+          // Only stamp a default status when the toggle is turned ON and it
+          // never had one before. Keep/Cancel/Reactivate are the only thing
+          // that should change subscriptionStatus after that — resaving the
+          // form should never silently reset an already-cancelled bill.
+          subscriptionStatus: subscriptionInput ? (b.subscriptionStatus || 'active') : b.subscriptionStatus,
         };
       });
     } else {
@@ -269,6 +275,8 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
           { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '', paymentMethod: paymentMethodInput },
         ],
         createdAt: Date.now(),
+        isSubscription: subscriptionInput,
+        subscriptionStatus: subscriptionInput ? 'active' : undefined,
       };
       updated.bills = [...updated.bills, newBill];
     }
