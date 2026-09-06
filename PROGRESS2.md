@@ -1,4 +1,14 @@
-﻿Household Finance Mobile App — Progress Log (Phase B: UI/UX Polish → Phase C: Publishing)
+﻿> ⚠️ **THIS FILE IS NOW CLOSED / HISTORICAL.** PROGRESS2.md covered Phase B
+> (UI/UX Polish) checkpoints B.1 through B.14, all now code-complete, plus
+> the pre-Phase-B audit (Tiers 1–3). **All future updates — including the
+> results of the full on-device testing pass, any remaining Phase B
+> follow-ups, and Phase C (Publishing) — go in PROGRESS3.md instead.**
+> Nothing here is repeated there; PROGRESS3.md starts by carrying forward
+> only the still-open items (Tier 1 sections: Done summary, Decisions,
+> Known issues, Files, Next step) needed to pick up where this file left
+> off. This file is kept only for historical reference, same as
+> PROGRESS1.md before it.
+Household Finance Mobile App — Progress Log (Phase B: UI/UX Polish → Phase C: Publishing)
 
 This file tracks Phase B and Phase C only. Phase A (Firebase Auth, household linking,
 account recovery, multi-device active sessions) is fully complete — see PROGRESS1.md,
@@ -2625,6 +2635,7 @@ phase, not just to a single just-completed fix.
 covering Tier 1/2/3 audit fixes through B.6). Everything from them that still
 matters is already folded into the ✅ Done / 📌 Decisions / ⚠️ Known issues sections
 above.
+
 
 
 
