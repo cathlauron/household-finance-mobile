@@ -270,6 +270,9 @@ export type ManualTransaction = {
   owner: string;
   category?: string;
   notes?: string;
+  // Freeform labels the person can attach to a transaction, e.g. "vacation",
+  // "tax-deductible" — used to filter reports by tag (B.13).
+  tags?: string[];
   receiptPhoto?: string;
   paymentMethod?: PaymentMethod;
   // Set when this (expense) transaction is expected to be refunded — the amount currently

@@ -30,6 +30,9 @@ export type TransactionEntry = {
   rawId?: string;
   // Only set for source === 'manual' — a free-text note the person typed.
   notes?: string;
+  // Only set for source === 'manual' — freeform tags the person attached,
+  // carried through from ManualTransaction.tags.
+  tags?: string[];
 };
 
 export function buildTransactionsList(model: HouseholdModel): TransactionEntry[] {
@@ -139,6 +142,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
       owner: t.owner || 'shared',
       rawId: t.id,
       notes: t.notes,
+      tags: t.tags,
     });
   });
 

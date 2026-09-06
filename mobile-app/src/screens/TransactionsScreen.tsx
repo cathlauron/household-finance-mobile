@@ -101,6 +101,7 @@ export default function TransactionsScreen() {
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [personInput, setPersonInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
   const [myPersonId, setMyPersonId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -140,6 +141,7 @@ export default function TransactionsScreen() {
     setReceiptPhoto(null);
     setPersonInput('');
     setNotesInput('');
+    setTagsInput('');
     setPaymentMethodInput(undefined);
     setErrorMsg('');
   }
@@ -159,6 +161,7 @@ export default function TransactionsScreen() {
     setCategoryInput(raw.category || '');
     setPersonInput(personName(model?.people || [], raw.owner || ''));
     setNotesInput(raw.notes || '');
+    setTagsInput((raw.tags || []).join(', '));
     setAmountInput(typeof raw.amount === 'number' ? String(raw.amount) : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
@@ -254,6 +257,10 @@ export default function TransactionsScreen() {
         : undefined;
 
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
+    const parsedTags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
 
     const updated: HouseholdModel = {
       ...model,
@@ -273,6 +280,7 @@ export default function TransactionsScreen() {
             owner: personId || 'shared',
             category: categoryInput.trim(),
             notes: notesInput.trim(),
+            tags: parsedTags.length > 0 ? parsedTags : undefined,
             paymentMethod: paymentMethodInput,
           };
         if (receiptPhoto) {
@@ -299,6 +307,7 @@ export default function TransactionsScreen() {
           owner: personId || 'shared',
           category: categoryInput.trim(),
           notes: notesInput.trim(),
+          ...(parsedTags.length > 0 ? { tags: parsedTags } : {}),
           paymentMethod: paymentMethodInput,
           ...(receiptPhoto ? { receiptPhoto } : {}),
           ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
@@ -684,6 +693,18 @@ export default function TransactionsScreen() {
           value={notesInput}
           onChangeText={setNotesInput}
         />
+
+        <Text style={styles.inputLabel}>Tags (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. vacation, tax-deductible"
+          placeholderTextColor={colors.inkFaint}
+          value={tagsInput}
+          onChangeText={setTagsInput}
+        />
+        <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: -6, marginBottom: 8 }}>
+          Separate multiple tags with commas.
+        </Text>
 
                 <PaymentMethodPicker
                   value={paymentMethodInput}

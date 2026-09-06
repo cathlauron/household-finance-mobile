@@ -957,9 +957,53 @@ original 11 phases before that. Nothing from either file is repeated here.
   A real latent bug was found and fixed while rewriting `handleSaveFi()`: it
   called `.trim()` directly on `fiExpensesInput`/`fiSavingsInput` (typed
   `string | null`), which would throw if the person touched only one of the two
-  fields before tapping Save. Fixed by falling back to the already-computed
-  display values instead. All snippets to be hand-pasted by the person per
-  standing small-fix policy; `npx tsc --noEmit` not yet run.
+  fields before tapping Save.   Fixed by falling back to the already-computed
+  display values instead. All snippets hand-pasted by the person per
+  standing small-fix policy. `npx tsc --noEmit` confirmed clean (empty
+  output, 0 errors) this session — B.12a is CODE COMPLETE AND COMPILE-VERIFIED,
+  pending on-device verification only.
+- **B.13a (Report filtering by tag, part 1 of 2) — CODE COMPLETE, `npx tsc
+  --noEmit` CLEAN, PENDING ON-DEVICE VERIFICATION.** Investigated first via a
+  dedicated Antigravity report-only pass confirming B.13 is a build-from-scratch
+  feature — no `tags` field exists anywhere on `ManualTransaction`, no tag input
+  exists in the Transactions Add/Edit form, and none of the 9 report screens
+  under `src/screens/reports/` (8 of which pull from `buildTransactionsList()`/
+  `TransactionEntry` in `transactions.ts`) carry or filter on tags. Confirmed
+  `ReportsScreen.tsx` is a plain pill-tab switcher with no toolbar/filter UI and
+  passes no props to any report. Split into two checkpoints: B.13a (this round)
+  adds the `tags` field to the data model, carries it through
+  `buildTransactionsList()`, and adds a Tags input to the Transactions Add/Edit
+  form; B.13b (next round) adds the actual tag-filter toolbar to Reports and
+  wires it into the 6 report screens that build from a transaction list.
+
+  Two follow-up investigation-only prompts were needed to get real code before
+  writing the Transactions form wiring, rather than guessing: one to see the
+  real `handleSave()` new-transaction branch and the real Notes `<TextInput>`
+  JSX (the first response Antigravity gave back was a stray repeat of an
+  earlier prompt's answer, not the new questions asked — caught and re-sent
+  before proceeding), and a second to see the real `resetForm()`/
+  `openEditModal()` functions so `tagsInput` could be cleared/populated at the
+  correct spots rather than assumed. Along the way, a hand-paste referenced a
+  `styles.inputHint` style that doesn't exist in `TransactionsScreen.tsx`'s own
+  stylesheet — caught by `npx tsc --noEmit`, fixed by using an inline style
+  instead of guessing at a new stylesheet entry.
+
+  Added `tags?: string[]` to `ManualTransaction` (`types.ts`) and to
+  `TransactionEntry` (`transactions.ts`), with the manual-transaction mapping
+  in the unified list builder now carrying `t.tags` through. Added a
+  `tagsInput` state to `TransactionsScreen.tsx`'s Add/Edit form (comma-separated
+  free text, parsed/trimmed/filtered into a `string[]` in `handleSave()`, saved
+  on both the new-transaction and editing branches only when non-empty), a new
+  "Tags (optional)" input field placed directly under Notes, and wiring so
+  `tagsInput` is cleared in `resetForm()` and populated from
+  `raw.tags.join(', ')` in `openEditModal()`.
+
+  All snippets hand-pasted by the person per standing small-fix policy.
+  `npx tsc --noEmit` confirmed clean (empty output, 0 errors) this session.
+  **Not yet manually verified on-device** (tags save on a new transaction,
+  persist and re-populate correctly on edit, and survive a comma-separated
+  round-trip with extra spaces/empty entries trimmed out) — added to the
+  running on-device checklist per the current batched-testing policy.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -1115,13 +1159,18 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
-- **B.12a Expanded FI calculator — not yet compiled or verified on-device.** Needs:
-  `npx tsc --noEmit` run after pasting; then on-device checks — the SWR pill
-  row (presets + Custom reveal), the net worth and monthly-savings suggestion
-  rows, the Years Until FI result appearing/disappearing correctly based on
-  whether return rate + monthly savings are filled in, the show/hide-date
-  toggle, and that Save persists all 3 new fields (and syncs to a second linked
-  device, if available).
+- **B.12a Expanded FI calculator — `npx tsc --noEmit` confirmed clean, still
+  needs on-device verification.** Needs: the SWR pill row (presets + Custom
+  reveal), the net worth and monthly-savings suggestion rows, the Years Until
+  FI result appearing/disappearing correctly based on whether return rate +
+  monthly savings are filled in, the show/hide-date toggle, and that Save
+  persists all 3 new fields (and syncs to a second linked device, if available).
+- **B.13a Tags (data model + Transactions form) — `npx tsc --noEmit` confirmed
+  clean, needs on-device verification.** Needs checking: a new tag typed in as
+  comma-separated text saves correctly on a brand-new transaction; editing an
+  existing transaction correctly re-populates the Tags field from its saved
+  `tags` array; and extra spaces/empty entries (e.g. "vacation,  , tax") are
+  trimmed/filtered out correctly rather than saved as blank tags.
 - **Every item on the deferred on-device testing checklist has now been run on a
   real device — CONFIRMED WORKING** for: all delete confirmations (Accounts, Bills,
   Debts, Loans, Transactions, Income, Savings Goals) and Sign Out; the EF "Months
@@ -1377,11 +1426,16 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   wipe-and-rebuild cycle, and a Settings toggle + day-pill + hour picker reusing
   `IncomeScreen.tsx`'s existing pill styles. `npx tsc --noEmit` confirmed clean.
   On-device verification is pending per the current batched-testing policy (see
-  the new checklist item   in ⚠️ Known issues above). **B.12a (core FI-calculator math expansion) is
-  code-complete** — see ✅ Done above — pending `npx tsc --noEmit` and on-device
-  verification. **B.12b (pension/Social Security offset, multi-account selector,
-  and a possible scenario-comparison modal) remains unbuilt**, deliberately
-  deferred to its own future session per the B.12 split decision.
+  the new checklist item   in ⚠️ Known issues above).   
+  **B.12a (core FI-calculator math expansion) is code-complete and `npx tsc
+  --noEmit` clean** — see ✅ Done above — pending on-device verification only.
+  **B.12b (pension/Social Security offset, multi-account selector, and a
+  possible scenario-comparison modal) remains unbuilt**, deliberately deferred
+  to its own future session per the B.12 split decision. **B.13a (tags data
+  model + Transactions Add/Edit Tags field) is code-complete and `npx tsc
+  --noEmit` clean** — see ✅ Done above — pending on-device verification only.
+  **B.13b (the actual tag-filter toolbar in Reports, wired into the 6 report
+  screens that build from a transaction list) is next.**
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1408,7 +1462,8 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.10 | Refund tracker — code-complete, on-device testing deferred | Simplifi-inspired |
   | ✅ B.11 | Weekly spending recap push notification — code-complete, on-device testing deferred | Monarch-inspired |
   | B.12 | Expanded FI/retirement calculator | Simplifi-inspired |
-  | B.13 | Report filtering by tag | Simplifi-inspired |
+  | B.13a ✅ | Report filtering by tag — data model + Transactions Tags field (code-complete, on-device testing deferred) | Simplifi-inspired |
+  | B.13b | Report filtering by tag — tag-filter toolbar in Reports (next) | Simplifi-inspired |
   | B.14 | Subscription cancel-reminder | Lightweight Rocket Money substitute |
 
   Full detail and reasoning for each item lives in PROGRESS1.md's Decisions section —
@@ -1743,6 +1798,50 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+- `mobile-app/src/types.ts` — modified (B.13a). Added `tags?: string[]` to
+  `ManualTransaction`.
+- `mobile-app/src/transactions.ts` — modified (B.13a). Added `tags?: string[]`
+  to `TransactionEntry`; the manual-transaction mapping in the unified list
+  builder now carries `t.tags` through onto each `TransactionEntry`.
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.13a). Added
+  `tagsInput` state; `handleSave()` parses it into a trimmed, filtered
+  `string[]` (`parsedTags`) and saves it on both the new-transaction and
+  editing branches when non-empty; `resetForm()` clears `tagsInput`;
+  `openEditModal()` populates it from `raw.tags.join(', ')`; added a new
+  "Tags (optional)" `<TextInput>` directly under the Notes field, with an
+  inline-styled hint line ("Separate multiple tags with commas.") since no
+  `inputHint` style exists in this file's stylesheet.
+
+### Session entry — B.13a built: Tags data model + Transactions form, split from the B.13 report-filter feature
+**What happened:** Investigated via a dedicated Antigravity report-only pass
+confirming B.13 is entirely build-from-scratch — no `tags` field anywhere on
+`ManualTransaction`, no tag UI in the Transactions form, and none of the 9
+report screens carry or filter on tags. Split the checkpoint in two: B.13a
+(data model + form input) now, B.13b (the actual filter toolbar in Reports)
+next. Two follow-up investigation-only prompts were needed before the
+Transactions-form wiring could be written safely: the first to see the real
+`handleSave()` new-transaction branch and the real Notes `<TextInput>` JSX
+(the first Antigravity response accidentally repeated an earlier prompt's
+answer instead of answering the new questions — caught and re-sent rather
+than assumed correct), the second to see the real `resetForm()`/
+`openEditModal()` functions so `tagsInput` could be cleared/populated
+correctly. One small `npx tsc --noEmit` error was hit and fixed along the
+way: a hint line referenced a nonexistent `styles.inputHint` — fixed with an
+inline style instead of guessing at a new stylesheet entry.
+
+**Result:** All snippets hand-pasted by the person per standing small-fix
+policy. `npx tsc --noEmit` confirmed clean (empty output, 0 errors) this
+session. B.13a is code-complete; on-device verification (saving tags on a new
+transaction, re-populating them on edit, and correct trim/filter behavior on
+comma-separated input) is deferred per the current batched-testing policy and
+added to the running checklist. B.13b (the tag-filter toolbar in Reports) is
+next.
+
+**Design decision made this session:** No new standing rule — another direct
+application of an already-standing one: when a tool's response doesn't
+actually answer the specific follow-up questions asked (even if it looks
+plausible at a glance), re-send the exact same prompt rather than proceeding
+on a mismatched answer.
 
 ### Session entry — B.11 built: Weekly spending recap notification, plus a styling gap found and fixed
 **What happened:** Investigated via two rounds of Antigravity report-only prompts.
