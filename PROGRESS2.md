@@ -1195,6 +1195,35 @@ original 11 phases before that. Nothing from either file is repeated here.
   output, 0 errors) after each round of fixes. All 4 hand-pasted by the
   person per standing small-fix policy.
 
+- **Follow-up session: 6 lower-priority findings from the post-B.14 audit —
+  ALL FIXED, `npx tsc --noEmit` CLEAN, PUSHED (`57a7212`).** Investigated via
+  a dedicated Antigravity report-only prompt covering all 6 findings at once
+  (real, unelided code shown for every claim before any fix was proposed —
+  no changes applied by Antigravity itself). Fixed: (1) `performDelete()` in
+  `AccountsScreen.tsx`, `BillsScreen.tsx`, and `DebtsScreen.tsx` now wraps
+  its `saveModel()` call in `try`/`catch`/`finally`, reusing each screen's
+  existing `saving`/`errorMsg` state rather than introducing new patterns;
+  (2) a real duplicate-notification bug was found and fixed in
+  `pushNotifications.ts` — the standard bill-due-alert loop had no exclusion
+  for subscription bills, so any active subscription bill got scheduled for
+  *both* a generic "due soon" alert and the B.14 "Still want this?" cancel
+  reminder at the exact same date/time; fixed by adding a one-line skip for
+  `isSubscription && subscriptionStatus !== 'cancelled'` bills at the top of
+  that loop, so they're now handled exclusively by the subscription-specific
+  reminder; (3) the 3 Settings mini-form deletes (Category, Payee/Merchant,
+  Categorization Rule) each had their single `handleDelete*()` function split
+  into a `performDelete*()` (the actual deletion) and a `handleDelete*()`
+  (now a native `Alert.alert` confirm/cancel dialog calling
+  `performDelete*()` on confirm) — matching the exact confirmation pattern
+  already used everywhere else in the app since B.5 Batch 1. `npx tsc
+  --noEmit` confirmed clean (empty output, 0 errors) on the first pass — no
+  error/fix rounds needed this session. All edits hand-pasted by the person
+  per standing small-fix policy. **This closes out every item from the
+  post-B.14 audit's "worth doing, lower priority" bucket** — only the
+  explicitly-parked cosmetic findings (unused imports, a redundant variable,
+  duplicated date-math helpers, `colors: any` typing) remain untouched, by
+  design.
+
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
   - Essential vs. additional feature split (Phase B priority order): Essential =
@@ -1585,6 +1614,9 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
 - **Post-B.14 audit's 4 must-fix bugs are code-complete and `npx tsc --noEmit`
   clean (see ✅ Done above)** — pending on-device verification alongside
   everything else on the batched testing checklist.
+- **6 lower-priority findings from the post-B.14 audit are now all fixed and
+  pushed** (`57a7212`) — see ✅ Done above. Nothing outstanding remains from
+  that audit except the deliberately-parked cosmetic cleanup items.
 - **New priority, ahead of B.7: fix the real bugs and open questions surfaced by this
   session's full on-device testing pass (see ⚠️ Known issues above for the full
   list)** — the biometric label bug, the missing "turn off PIN" option, the
@@ -2146,6 +2178,30 @@ Files in the repo (relevant to Phase B/C)
   `(model.categoryBudgets || [])` instead of `model.categoryBudgets`
   directly, so an older profile with no `categoryBudgets` field no longer
   crashes Dashboard on load.
+- `mobile-app/src/screens/AccountsScreen.tsx` — modified (lower-priority
+  audit follow-up). `performDelete()` now wraps `saveModel()` in
+  `try`/`catch`/`finally`, using the screen's existing `saving`/`errorMsg`
+  state.
+- `mobile-app/src/screens/BillsScreen.tsx` — modified (lower-priority audit
+  follow-up). `performDelete()` now wraps `saveModel()` in
+  `try`/`catch`/`finally`, using the screen's existing `saving`/`errorMsg`
+  state.
+- `mobile-app/src/screens/DebtsScreen.tsx` — modified (lower-priority audit
+  follow-up). `performDelete()` now wraps `saveModel()` in
+  `try`/`catch`/`finally`, using the screen's existing `saving`/`errorMsg`
+  state.
+- `mobile-app/src/pushNotifications.ts` — modified (lower-priority audit
+  follow-up). The standard bill-due-alert loop inside
+  `rescheduleBillNotifications()` now skips active subscription bills
+  (`isSubscription && subscriptionStatus !== 'cancelled'`), fixing a real
+  bug where those bills were getting two simultaneous notifications — the
+  generic "due soon" alert and the B.14 subscription cancel-reminder — for
+  the same due date.
+- `mobile-app/src/screens/SettingsScreen.tsx` — modified (lower-priority
+  audit follow-up). The Category, Payee/Merchant, and Categorization Rule
+  delete flows were each split into a `performDelete*()` (actual deletion)
+  and a `handleDelete*()` (now a native `Alert.alert` confirm/cancel dialog),
+  matching the confirmation pattern already used elsewhere since B.5.
 
 ### Session entry — B.13b built: tag-filter toolbar wired into Reports, completing B.13
 **What happened:** Investigated via a dedicated Antigravity report-only pass
