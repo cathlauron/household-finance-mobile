@@ -22,7 +22,7 @@ import {
   loanOutstandingBalance,
   formatPeso,
 } from '../balanceProjection';
-import { buildTransactionsList, transactionTotals } from '../transactions';
+import { buildTransactionsList, transactionTotals, computeCategorySpend, getCategoryBudgetStatus } from '../transactions';
 import { stripTime } from '../recurrence';
 import type { HouseholdModel } from '../types';
 
@@ -207,6 +207,29 @@ export default function DashboardScreen() {
           </>
         )}
       </View>
+
+      {/* Category watchlist */}
+      {model.categoryBudgets.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Watched Categories</Text>
+          {model.categoryBudgets.map((cb) => {
+            const budget = typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0;
+            const spent = computeCategorySpend(model, cb.category, monthPrefix);
+            const status = getCategoryBudgetStatus(spent, budget, colors);
+            return (
+              <View key={cb.id} style={styles.listRow}>
+                <View style={styles.listRowLeft}>
+                  <Text style={styles.listLabel} numberOfLines={1}>{cb.category}</Text>
+                  <Text style={{ fontSize: 12, color: status.color }}>{status.label}</Text>
+                </View>
+                <Text style={styles.listAmount}>
+                  {formatPeso(spent)} / {formatPeso(budget)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </ScrollView>
   );
 }

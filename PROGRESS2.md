@@ -777,6 +777,53 @@ original 11 phases before that. Nothing from either file is repeated here.
   confirmed working exactly as built — see the updated ⚠️ Known issues below for the
   short list of real bugs and open questions this pass surfaced, which now take
   priority over continuing further down the B.7+ checklist.
+- **B.8 (Category watchlists under Insights) — CODE COMPLETE, `npx tsc --noEmit`
+  CLEAN, PENDING ON-DEVICE VERIFICATION.** Investigated first via a dedicated
+  Antigravity report-only pass confirming: `InsightsScreen.tsx` is a pill-toggle
+  switcher between `DashboardScreen.tsx` and `ReportsScreen.tsx` (Dashboard chosen
+  as the right home for the new card); `Category` is a free-form, user-managed
+  list stored on `HouseholdModel.categories` (not a fixed enum); and — the key
+  discovery — `HouseholdModel` already has a real, unused `categoryBudgets:
+  CategoryBudget[]` field (`{ id, category, monthlyBudget }`), already wired into
+  `defaultModel.ts` and `mergeModels.ts`'s de-dupe-by-category-name merge logic,
+  but with zero UI anywhere reading or writing it. A second investigation pass
+  confirmed `categoryBudgets`/`CategoryBudget` genuinely have no UI usage
+  app-wide (types/defaultModel/mergeModels only), and pulled
+  `MonthlyCloseOutReport.tsx`'s existing inline "spend per category this month"
+  logic as the pattern to generalize into a shared function rather than writing
+  a fourth copy of it. Decided to build the watchlist directly on top of the
+  existing `categoryBudgets` field (a watched category *is* a `categoryBudgets`
+  entry, with `monthlyBudget` as its limit) rather than adding a new settings
+  field, and to fold the management UI into `SettingsScreen.tsx` right next to
+  the existing Categories section rather than a new standalone screen — decided
+  after a follow-up investigation confirmed `SettingsScreen.tsx`'s real
+  `useData()` → `saveModel()` save pattern and its real Categories
+  add/edit/delete handler shapes to match against. Added two new exports to
+  `transactions.ts`: `computeCategorySpend(model, category, monthPrefix)`
+  (pulled out of `MonthlyCloseOutReport.tsx`'s inline logic) and
+  `getCategoryBudgetStatus(spent, budget, colors)` — the same three-tier
+  red/orange/green shape as `getEfStatus()`/`getLeftToSpendStatus()` (green
+  under 80%, orange 80–99%, red at/over 100%, "No limit set" if budget is 0).
+  Added a new "Watched Categories" card to `DashboardScreen.tsx`, shown only
+  when `model.categoryBudgets.length > 0`, listing each watched category's
+  spend-vs-limit and color-coded status. Added a new "Category Watchlist"
+  section to `SettingsScreen.tsx` (new `watchCategoryInput`/`watchLimitInput`/
+  `watchErrorMsg` state, `handleAddWatchedCategory()`/
+  `handleRemoveWatchedCategory()` handlers using the real `saveModel()`
+  pattern, duplicate-category-name and invalid-limit validation) directly
+  below the existing "+ Add category" button. Hit one hand-paste error along
+  the way — the Dashboard card's JSX block got pasted twice in a row, with the
+  second copy landing outside the component's closing brace and breaking
+  `npx tsc --noEmit` with 3 syntax errors. Investigated via a dedicated
+  Antigravity report-only prompt (real file content around the error shown,
+  not guessed from the error text) confirming the exact duplicate block and
+  its boundaries; fixed by deleting the orphaned second copy. All snippets
+  hand-pasted by the person per standing small-fix policy. `npx tsc --noEmit`
+  confirmed clean (empty output, 0 errors) after the fix. **Not yet manually
+  verified on-device** (adding/removing a watched category in Settings, the
+  Dashboard card appearing/updating correctly, and the red/orange/green status
+  coloring at different spend levels) — added to the running on-device
+  checklist per the current batched-testing policy.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -969,6 +1016,12 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   to end-of-month behaves correctly for a household with zero income sources,
   and correctly picks the *earliest* payday for a household with more than one
   income source.
+- **B.8 Category Watchlist — not yet verified on-device.** Needs checking:
+  adding a watched category + limit in Settings saves and shows up correctly;
+  removing one works and the Dashboard card disappears once none are left;
+  the "Watched Categories" Dashboard card shows correct spend-vs-limit figures;
+  and the red/orange/green status coloring actually changes correctly at the
+  80%/100% thresholds as spend crosses them.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -1064,9 +1117,17 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   plus its Settings caution-threshold control, both built and `npx tsc --noEmit`
   clean. On-device verification is pending per the current batched-testing policy
   (see the new checklist item in ⚠️ Known issues above).
-- **B.8 (Category watchlists under Insights) is the next unbuilt checkpoint** per
-  the table below, whenever the person is ready to keep building forward. No
-  investigation has been done on it yet.
+- **B.8 (Category watchlists under Insights) is code-complete** (see ✅ Done
+  above) — reuses the existing `categoryBudgets`/`CategoryBudget` model field
+  (already defined but previously unused anywhere in the UI) as the watchlist
+  itself. New `computeCategorySpend()`/`getCategoryBudgetStatus()` helpers in
+  `transactions.ts`, a new "Watched Categories" card on `DashboardScreen.tsx`,
+  and a new "Category Watchlist" management section in `SettingsScreen.tsx`.
+  `npx tsc --noEmit` confirmed clean. On-device verification is pending per
+  the current batched-testing policy.
+- **B.9 (Yours/Mine/Ours labels + transaction comments) is the next unbuilt
+  checkpoint** per the table below, whenever the person is ready to keep
+  building forward. No investigation has been done on it yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1088,7 +1149,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills — code-complete, on-device testing deferred | Requested |
   | ✅ B.6b | Date picker, part 2 — rolled out to every remaining screen (Debts, Loans, Income, Savings, Goals, Events, Travel) — code-complete, on-device testing deferred | Requested |
   | ✅ B.7 | "Left to Spend" hero stat on Home tab — code-complete, on-device testing deferred | Simplifi-inspired |
-  | B.8 | Category watchlists under Insights | Simplifi-inspired |
+  | ✅ B.8 | Category watchlists under Insights — code-complete, on-device testing deferred | Simplifi-inspired |
   | B.9 | Yours/Mine/Ours labels + transaction comments | Monarch-inspired |
   | B.10 | Refund tracker | Simplifi-inspired |
   | B.11 | Weekly spending recap push notification | Monarch-inspired |
@@ -1239,6 +1300,22 @@ Files in the repo (relevant to Phase B/C)
   `leftToSpendStatus` and renders a new hero card above `<DashboardScreen />`
   showing the projected amount, its status color/label, and a payday/
   end-of-month caption.
+- `mobile-app/src/transactions.ts` — modified (B.8). Added
+  `computeCategorySpend(model, category, monthPrefix)` and
+  `getCategoryBudgetStatus(spent, budget, colors)` — pulled the category-spend
+  logic out of `MonthlyCloseOutReport.tsx`'s inline version into a shared,
+  reusable function, plus the same three-tier red/orange/green status shape
+  used elsewhere in the app.
+- `mobile-app/src/screens/DashboardScreen.tsx` — modified (B.8). Imports the
+  two new `transactions.ts` exports; added a new "Watched Categories" card
+  (shown only when `model.categoryBudgets.length > 0`) listing each watched
+  category's spend vs. limit with color-coded status.
+- `mobile-app/src/screens/SettingsScreen.tsx` — modified (B.8). Added
+  `watchCategoryInput`/`watchLimitInput`/`watchErrorMsg` state and
+  `handleAddWatchedCategory()`/`handleRemoveWatchedCategory()` handlers (using
+  the same `saveModel()` pattern as the existing Categories section); added a
+  new "Category Watchlist" section (list + add form) directly below the
+  existing "+ Add category" button.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 - `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.5 Batch 1). Delete now
   requires confirming a native `Alert.alert` dialog before removing an account.
@@ -1357,6 +1434,52 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — B.8 built: Category Watchlist, reusing the existing (previously unused) `categoryBudgets` model field
+**What happened:** Investigated via two rounds of Antigravity report-only prompts
+before writing anything. Round 1 confirmed where "Insights" actually renders
+(`InsightsScreen.tsx` → `DashboardScreen.tsx`/`ReportsScreen.tsx`), that
+`Category` is a free-form user-managed list (not a fixed enum), that no
+reusable "spend per category this month" function existed yet (only an inline
+version inside `MonthlyCloseOutReport.tsx`), and — the key finding — that
+`HouseholdModel.categoryBudgets: CategoryBudget[]` already exists as a real,
+fully-wired field (defaults, merge-by-name-dedup logic) with zero UI usage
+anywhere in the app. Round 2 confirmed that gap explicitly (searched every
+file for `categoryBudgets`/`CategoryBudget` — only `types.ts`,
+`defaultModel.ts`, `mergeModels.ts`) and pulled the real, complete
+`MonthlyCloseOutReport.tsx` category-totaling code to generalize rather than
+duplicate a third time. A third, narrower investigation (after the person
+chose to fold the management UI into Settings rather than a new screen)
+confirmed `SettingsScreen.tsx`'s real `useData()`/`saveModel()` save pattern
+and its real Categories section's add/edit/delete handler shapes, since an
+earlier guess (`updateModel`) turned out to be wrong — the real function is
+`saveModel`.
+
+Built the feature on top of the existing `categoryBudgets` field rather than
+adding a new settings field: `computeCategorySpend()`/
+`getCategoryBudgetStatus()` in `transactions.ts`, a new Dashboard card, and a
+new Settings management section, all hand-pasted by the person. One paste
+error occurred (the Dashboard card block got pasted twice, the second copy
+landing outside the component and breaking the build with 3 syntax errors) —
+investigated via a dedicated Antigravity report-only prompt showing the real
+file content around the error rather than guessing from the compiler output
+alone, confirmed the exact duplicate block, and fixed by deleting the
+orphaned copy.
+
+**Result:** `npx tsc --noEmit` confirmed clean (empty output, 0 errors).
+B.8 is code-complete; on-device verification (adding/removing a watched
+category, the Dashboard card's live spend/status display, and the
+red/orange/green thresholds) is deferred per the current batched-testing
+policy and added to the running checklist.
+
+**Design decision made this session:** No new decision — this session is
+another direct application of two already-standing rules: (1) before
+building a new feature, check whether a related field/type already exists in
+the model (`categoryBudgets` had been sitting there fully wired but unused —
+building fresh would have meant a redundant, parallel data shape), and (2)
+when a compile error appears after a hand-paste, get real current file
+content around the error before proposing a fix, rather than guessing from
+the error text alone.
 
 ### Session entry — B.7 built: "Left to Spend" hero stat + Settings caution-threshold control
 **What happened:** Ran the Settings-placement investigation prompt drafted at the end

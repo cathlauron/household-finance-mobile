@@ -189,6 +189,11 @@ export default function SettingsScreen() {
   const [nameInput, setNameInput] = useState('');
   const [colorInput, setColorInput] = useState(COLOR_PALETTE[0]);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Category Watchlist (Checkpoint B.8) state
+  const [watchCategoryInput, setWatchCategoryInput] = useState('');
+  const [watchLimitInput, setWatchLimitInput] = useState('');
+  const [watchErrorMsg, setWatchErrorMsg] = useState('');
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
@@ -369,6 +374,48 @@ export default function SettingsScreen() {
     };
     await saveModel(updated);
     closeModal();
+  }
+
+  // ---- Category Watchlist (Checkpoint B.8) ----
+  async function handleAddWatchedCategory() {
+    if (!model) return;
+    const trimmed = watchCategoryInput.trim();
+    const limitNum = parseFloat(watchLimitInput);
+    if (!trimmed) {
+      setWatchErrorMsg('Give it a category name.');
+      return;
+    }
+    if (isNaN(limitNum) || limitNum <= 0) {
+      setWatchErrorMsg('Enter a monthly limit greater than 0.');
+      return;
+    }
+    const duplicate = model.categoryBudgets.find(
+      (cb) => cb.category.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (duplicate) {
+      setWatchErrorMsg('You are already watching that category.');
+      return;
+    }
+    const updated: HouseholdModel = {
+      ...model,
+      categoryBudgets: [
+        ...model.categoryBudgets,
+        { id: makeId('budget'), category: trimmed, monthlyBudget: limitNum },
+      ],
+    };
+    await saveModel(updated);
+    setWatchCategoryInput('');
+    setWatchLimitInput('');
+    setWatchErrorMsg('');
+  }
+
+  async function handleRemoveWatchedCategory(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      categoryBudgets: model.categoryBudgets.filter((cb) => cb.id !== id),
+    };
+    await saveModel(updated);
   }
 
   // ---- Merchants & Payees handlers ----
@@ -785,6 +832,48 @@ export default function SettingsScreen() {
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add category</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
+        <Text style={styles.sectionSub}>
+          Set a monthly spending limit for a category and see it flagged on the Dashboard when you get close.
+        </Text>
+
+        {model.categoryBudgets.length === 0 && (
+          <Text style={styles.emptyText}>Not watching any categories yet. Add one below.</Text>
+        )}
+
+        {model.categoryBudgets.map((cb) => (
+          <View key={cb.id} style={styles.row}>
+            <Text style={styles.rowName} numberOfLines={1}>
+              {cb.category} — {formatPeso(typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0)}/mo
+            </Text>
+            <TouchableOpacity onPress={() => handleRemoveWatchedCategory(cb.id)}>
+              <Text style={{ color: colors.error, fontSize: 13 }}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Category name (e.g. Groceries)"
+          placeholderTextColor={colors.inkDim}
+          value={watchCategoryInput}
+          onChangeText={setWatchCategoryInput}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Monthly limit (e.g. 5000)"
+          placeholderTextColor={colors.inkDim}
+          value={watchLimitInput}
+          onChangeText={setWatchLimitInput}
+          keyboardType="numeric"
+        />
+        {watchErrorMsg !== '' && (
+          <Text style={{ color: colors.error, fontSize: 13, marginBottom: 8 }}>{watchErrorMsg}</Text>
+        )}
+        <TouchableOpacity style={styles.addButton} onPress={handleAddWatchedCategory}>
+          <Text style={styles.addButtonText}>+ Add to Watchlist</Text>
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>

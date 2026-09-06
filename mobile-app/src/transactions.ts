@@ -156,3 +156,32 @@ export function transactionTotals(list: TransactionEntry[]) {
   const totalSaving = list.filter((t) => t.direction === 'saving').reduce((s, t) => s + t.amount, 0);
   return { totalIn, totalOut, totalSaving, net: totalIn - totalOut - totalSaving };
 }
+
+// ---- Category Watchlist (Checkpoint B.8) ----
+// How much has been spent in a given category so far this month. monthPrefix
+// is a "YYYY-MM" string, same format DashboardScreen/MonthlyCloseOutReport
+// already compute it in.
+export function computeCategorySpend(
+  model: HouseholdModel,
+  category: string,
+  monthPrefix: string
+): number {
+  const list = buildTransactionsList(model);
+  return list
+    .filter((t) => t.direction === 'out' && t.category === category && t.date.startsWith(monthPrefix))
+    .reduce((sum, t) => sum + t.amount, 0);
+}
+
+// Same three-tier red/orange/green shape as getEfStatus() (SavingsScreen.tsx)
+// and getLeftToSpendStatus() (balanceProjection.ts).
+export function getCategoryBudgetStatus(
+  spent: number,
+  budget: number,
+  colors: { error: string; orange: string; ok: string }
+): { color: string; label: string } {
+  if (budget <= 0) return { color: colors.ok, label: 'No limit set' };
+  const pct = (spent / budget) * 100;
+  if (pct >= 100) return { color: colors.error, label: 'Over budget' };
+  if (pct >= 80) return { color: colors.orange, label: 'Getting close' };
+  return { color: colors.ok, label: 'On track' };
+}
