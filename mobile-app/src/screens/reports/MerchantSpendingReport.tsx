@@ -22,7 +22,9 @@ type MerchantTotal = {
   average: number;
 };
 
-export default function MerchantSpendingReport() {
+type Props = { activeTag?: string };
+
+export default function MerchantSpendingReport({ activeTag }: Props = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -35,7 +37,9 @@ export default function MerchantSpendingReport() {
     );
   }
 
-  const allTransactions = buildTransactionsList(model);
+  const allTransactions = activeTag
+    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
+    : buildTransactionsList(model);
   const outTransactions = allTransactions.filter((t) => t.direction === 'out');
 
   const merchantMap: Record<string, { total: number; count: number }> = {};

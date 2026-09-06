@@ -31,7 +31,9 @@ function formatShort(dateKey: string): string {
   return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-export default function WeeklyDigestReport() {
+type Props = { activeTag?: string };
+
+export default function WeeklyDigestReport({ activeTag }: Props = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -51,7 +53,10 @@ export default function WeeklyDigestReport() {
   const rangeEndKey = toDateKey(today);
   const rangeLabel = `${formatShort(rangeStartKey)} – ${formatShort(rangeEndKey)}`;
 
-  const allTransactions = buildTransactionsList(model);
+  const rawTransactions = activeTag
+    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
+    : buildTransactionsList(model);
+  const allTransactions = rawTransactions;
   const weekTransactions = allTransactions.filter(
     (t) => t.date >= rangeStartKey && t.date <= rangeEndKey
   );

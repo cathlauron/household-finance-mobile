@@ -42,7 +42,9 @@ function savingsContributedInYear(model: HouseholdModel, year: number): number {
   }, 0);
 }
 
-export default function YearInReviewReport() {
+type Props = { activeTag?: string };
+
+export default function YearInReviewReport({ activeTag }: Props = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -56,7 +58,9 @@ export default function YearInReviewReport() {
     );
   }
 
-  const allTransactions = buildTransactionsList(model);
+  const allTransactions = activeTag
+    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
+    : buildTransactionsList(model);
   const yearTransactions = transactionsInYear(allTransactions, year);
   const yearTotals = transactionTotals(yearTransactions);
   const totalSaved = savingsContributedInYear(model, year);

@@ -18,7 +18,9 @@ type CategoryTotal = {
   amount: number;
 };
 
-export default function MonthlyCloseOutReport() {
+type Props = { activeTag?: string };
+
+export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -35,7 +37,9 @@ export default function MonthlyCloseOutReport() {
   const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const monthLabel = today.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
 
-  const allTransactions = buildTransactionsList(model);
+  const allTransactions = activeTag
+    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
+    : buildTransactionsList(model);
   const thisMonthTransactions = allTransactions.filter((t) => t.date.startsWith(monthPrefix));
   const monthTotals = transactionTotals(thisMonthTransactions);
 

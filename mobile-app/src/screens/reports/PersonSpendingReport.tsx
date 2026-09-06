@@ -47,7 +47,9 @@ function buildPersonGroup(id: string, name: string, transactions: TransactionEnt
   return { id, name, total, categories };
 }
 
-export default function PersonSpendingReport() {
+type Props = { activeTag?: string };
+
+export default function PersonSpendingReport({ activeTag }: Props = {}) {
   const { model, loading, username } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -66,7 +68,9 @@ export default function PersonSpendingReport() {
     );
   }
 
-  const allTransactions = buildTransactionsList(model);
+  const allTransactions = activeTag
+    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
+    : buildTransactionsList(model);
   const people: Person[] = model.people || [];
 
   const groups: PersonGroup[] = [

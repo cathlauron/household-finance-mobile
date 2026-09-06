@@ -73,7 +73,9 @@ function debtFeesInYear(model: HouseholdModel, year: number): number {
   });
   return total;
 }
-export default function TaxSummaryReport() {
+type Props = { activeTag?: string };
+
+export default function TaxSummaryReport({ activeTag }: Props = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -87,7 +89,9 @@ export default function TaxSummaryReport() {
     );
   }
 
-  const allTransactions = buildTransactionsList(model);
+  const allTransactions = activeTag
+    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
+    : buildTransactionsList(model);
   const yearTransactions = transactionsInYear(allTransactions, year);
   const yearTotals = transactionTotals(yearTransactions);
   const totalSaved = savingsContributedInYear(model, year);

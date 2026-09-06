@@ -1004,6 +1004,44 @@ original 11 phases before that. Nothing from either file is repeated here.
   persist and re-populate correctly on edit, and survive a comma-separated
   round-trip with extra spaces/empty entries trimmed out) — added to the
   running on-device checklist per the current batched-testing policy.
+- **B.13b (Report filtering by tag, part 2 of 2) — CODE COMPLETE, `npx tsc
+  --noEmit` CLEAN, PENDING ON-DEVICE VERIFICATION.** Investigated first via a
+  dedicated Antigravity report-only pass pulling the real, exact `.filter(...)`
+  chain (with surrounding lines) from all 6 tag-eligible report screens
+  (Monthly Close-out, Year in Review, Person Spending, Weekly Digest, Merchant
+  Spending, Tax Summary), confirming none of the 9 report screens accept any
+  props today, confirming `ReportsScreen.tsx` hadn't changed since B.13a, and
+  confirming the real `model.manualTransactions`/`TransactionEntry.tags`
+  access pattern to write a safe "collect every distinct tag in use" helper
+  without guessing at the array shape.
+
+  Added a `distinctTags` computation to `ReportsScreen.tsx` (scans
+  `model.manualTransactions`, flattens/trims/dedupes/sorts every tag in use),
+  an `activeTag: string | undefined` state, and a horizontal "All" + one-pill-
+  per-tag toolbar (matching the existing `REPORT_TABS` pill visual style) shown
+  only when the active report is one of the 6 tag-eligible ones and at least
+  one tag exists anywhere. `activeTag` is now passed as a prop to those 6
+  report components; each accepts a new optional `{ activeTag }: Props = {}`
+  and filters `buildTransactionsList(model)` by
+  `(t.tags || []).includes(activeTag)` before its own existing filtering runs
+  unchanged. Cash-Flow Forecast, Subscription Audit, and Payment Methods
+  intentionally excluded — confirmed in B.13a's investigation that none of the
+  three use `buildTransactionsList()`. Added `tagPill`/`tagPillActive`/
+  `tagPillText`/`tagPillTextActive` styles to `ReportsScreen.tsx`, using an
+  assumed `colors.navy2` token (navy1 and navy3 both already existed) —
+  flagged as an explicit assumption rather than silently guessed at, since it
+  hadn't been directly confirmed in any investigation pass.
+
+  All 7 files hand-pasted by the person per standing small-fix policy.
+  `npx tsc --noEmit` confirmed clean (empty output, 0 errors) on the first
+  paste — the `colors.navy2` assumption held, no error/fix rounds needed.
+  **B.13 (Report filtering by tag) is now FULLY CODE COMPLETE — both B.13a and
+  B.13b.** Not yet manually verified on-device (the tag pill toolbar appears
+  only on the 6 correct report tabs and only when tags exist; selecting a tag
+  correctly narrows each of the 6 reports' figures; selecting "All" clears the
+  filter; and the toolbar stays hidden on Cash-Flow Forecast, Subscription
+  Audit, and Payment Methods) — added to the running on-device checklist per
+  the current batched-testing policy.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -1171,6 +1209,15 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   existing transaction correctly re-populates the Tags field from its saved
   `tags` array; and extra spaces/empty entries (e.g. "vacation,  , tax") are
   trimmed/filtered out correctly rather than saved as blank tags.
+- **B.13b Tag-filter toolbar in Reports — `npx tsc --noEmit` confirmed clean,
+  needs on-device verification.** Needs checking: the toolbar appears only on
+  Monthly Close-out, Year in Review, Person Spending, Weekly Digest, Merchant
+  Spending, and Tax Summary — never on Cash-Flow Forecast, Subscription Audit,
+  or Payment Methods; the toolbar stays hidden entirely when no transaction
+  has any tags yet; tapping a tag pill actually narrows that report's figures
+  to only tagged transactions; tapping "All" clears back to the full,
+  unfiltered view; and the `colors.navy2` pill styling renders correctly
+  (confirmed to exist at compile time, but not yet eyeballed).
 - **Every item on the deferred on-device testing checklist has now been run on a
   real device — CONFIRMED WORKING** for: all delete confirmations (Accounts, Bills,
   Debts, Loans, Transactions, Income, Savings Goals) and Sign Out; the EF "Months
@@ -1431,11 +1478,12 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   --noEmit` clean** — see ✅ Done above — pending on-device verification only.
   **B.12b (pension/Social Security offset, multi-account selector, and a
   possible scenario-comparison modal) remains unbuilt**, deliberately deferred
-  to its own future session per the B.12 split decision. **B.13a (tags data
-  model + Transactions Add/Edit Tags field) is code-complete and `npx tsc
-  --noEmit` clean** — see ✅ Done above — pending on-device verification only.
-  **B.13b (the actual tag-filter toolbar in Reports, wired into the 6 report
-  screens that build from a transaction list) is next.**
+  to its own future session per the B.12 split decision. 
+  **B.13 (Report filtering by tag) is FULLY code-complete — both B.13a (tags
+  data model + Transactions Add/Edit Tags field) and B.13b (the tag-filter
+  toolbar in Reports, wired into the 6 report screens that build from a
+  transaction list) — and `npx tsc --noEmit` clean.** Pending on-device
+  verification only. **B.14 (Subscription cancel-reminder) is next.**
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1462,8 +1510,8 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.10 | Refund tracker — code-complete, on-device testing deferred | Simplifi-inspired |
   | ✅ B.11 | Weekly spending recap push notification — code-complete, on-device testing deferred | Monarch-inspired |
   | B.12 | Expanded FI/retirement calculator | Simplifi-inspired |
-  | B.13a ✅ | Report filtering by tag — data model + Transactions Tags field (code-complete, on-device testing deferred) | Simplifi-inspired |
-  | B.13b | Report filtering by tag — tag-filter toolbar in Reports (next) | Simplifi-inspired |
+  | ✅ B.13a | Report filtering by tag — data model + Transactions Tags field (code-complete, on-device testing deferred) | Simplifi-inspired |
+  | ✅ B.13b | Report filtering by tag — tag-filter toolbar in Reports (code-complete, on-device testing deferred) | Simplifi-inspired |
   | B.14 | Subscription cancel-reminder | Lightweight Rocket Money substitute |
 
   Full detail and reasoning for each item lives in PROGRESS1.md's Decisions section —
@@ -1811,6 +1859,65 @@ Files in the repo (relevant to Phase B/C)
   "Tags (optional)" `<TextInput>` directly under the Notes field, with an
   inline-styled hint line ("Separate multiple tags with commas.") since no
   `inputHint` style exists in this file's stylesheet.
+- `mobile-app/src/screens/ReportsScreen.tsx` — modified (B.13b). Imports
+  `useData`; added `activeTag` state and a `distinctTags` computation scanning
+  every `ManualTransaction.tags` in the model; added a conditional tag pill
+  toolbar (shown only for the 6 tag-eligible report tabs, only when at least
+  one tag exists) passing `activeTag` down to those 6 reports; added
+  `tagPill`/`tagPillActive`/`tagPillText`/`tagPillTextActive` styles.
+- `mobile-app/src/screens/reports/MonthlyCloseOutReport.tsx` — modified
+  (B.13b). Accepts an optional `{ activeTag }: Props` prop; filters
+  `buildTransactionsList(model)` by tag before its existing month-prefix
+  filter runs.
+- `mobile-app/src/screens/reports/YearInReviewReport.tsx` — modified (B.13b).
+  Accepts an optional `{ activeTag }: Props` prop; filters
+  `buildTransactionsList(model)` by tag before its existing
+  `transactionsInYear()` call.
+- `mobile-app/src/screens/reports/PersonSpendingReport.tsx` — modified
+  (B.13b). Accepts an optional `{ activeTag }: Props` prop; filters
+  `buildTransactionsList(model)` by tag before building each person's group.
+- `mobile-app/src/screens/reports/WeeklyDigestReport.tsx` — modified (B.13b).
+  Accepts an optional `{ activeTag }: Props` prop; filters
+  `buildTransactionsList(model)` by tag before its existing 7-day range
+  filter runs.
+- `mobile-app/src/screens/reports/MerchantSpendingReport.tsx` — modified
+  (B.13b). Accepts an optional `{ activeTag }: Props` prop; filters
+  `buildTransactionsList(model)` by tag before its existing
+  `direction === 'out'` filter runs.
+- `mobile-app/src/screens/reports/TaxSummaryReport.tsx` — modified (B.13b).
+  Accepts an optional `{ activeTag }: Props` prop; filters
+  `buildTransactionsList(model)` by tag before its existing
+  `transactionsInYear()` call.
+
+### Session entry — B.13b built: tag-filter toolbar wired into Reports, completing B.13
+**What happened:** Investigated via a dedicated Antigravity report-only pass
+pulling the real `.filter(...)` chain from all 6 tag-eligible report files
+(with surrounding lines), confirming all 6 currently take zero props, and
+confirming `ReportsScreen.tsx` hadn't drifted since B.13a. Also confirmed the
+real `model.manualTransactions`/`TransactionEntry.tags` shape needed to write
+a distinct-tag-collection helper safely. Added a controlled `activeTag` state
+and pill toolbar to `ReportsScreen.tsx`, passed as a prop into the 6 eligible
+reports, each of which now filters `buildTransactionsList(model)` by tag
+membership ahead of its own existing, untouched filtering logic. One styling
+value (`colors.navy2`) was used based on the pattern of `navy1`/`navy3`
+already existing, without being directly confirmed in any investigation — a
+flagged assumption rather than a silent guess, verified by the following
+`npx tsc --noEmit` run.
+
+**Result:** All 7 files hand-pasted by the person per standing small-fix
+policy. `npx tsc --noEmit` confirmed clean (empty output, 0 errors) on the
+first paste — the `colors.navy2` assumption held, no error/fix rounds needed.
+B.13 (both halves) is now fully code-complete. On-device verification (pill
+toolbar visibility rules, tag selection narrowing each report correctly, "All"
+clearing the filter) is deferred per the current batched-testing policy and
+added to the running checklist. B.14 (Subscription cancel-reminder) is next.
+
+**Design decision made this session:** No new standing rule — a clean
+application of two already-standing practices: pulling real, exact code
+(including surrounding lines) before writing a diff meant to apply identically
+across several files, and explicitly flagging an unconfirmed styling
+assumption to the person rather than treating it as settled until the
+compiler confirmed it.
 
 ### Session entry — B.13a built: Tags data model + Transactions form, split from the B.13 report-filter feature
 **What happened:** Investigated via a dedicated Antigravity report-only pass
