@@ -91,6 +91,18 @@ function computeMonthlyIncomeBaseline(income: IncomeSource[]): number {
   return income.reduce((sum, source) => sum + incomeSourceMonthlyAmount(source), 0);
 }
 
+function sumAccountEntries(entries: { amount: number | '' }[]): number {
+  return entries.reduce((sum, e) => sum + (typeof e.amount === 'number' ? e.amount : 0), 0);
+}
+
+function formatYearsMonths(totalMonths: number): string {
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  if (years === 0) return `${months} mo${months === 1 ? '' : 's'}`;
+  if (months === 0) return `${years} yr${years === 1 ? '' : 's'}`;
+  return `${years} yr${years === 1 ? '' : 's'} ${months} mo${months === 1 ? '' : 's'}`;
+}
+
 type ContribRow = { id: string; date: string; amountInput: string };
 
 type PillTab = 'goals' | 'ef' | 'fi';
@@ -127,6 +139,11 @@ export default function SavingsScreen() {
   const [fiExpensesInput, setFiExpensesInput] = useState<string | null>(null);
   const [fiSavingsInput, setFiSavingsInput] = useState<string | null>(null);
   const [fiSaved, setFiSaved] = useState(false);
+  const [fiSwrInput, setFiSwrInput] = useState<string | null>(null);
+  const [fiSwrCustomOpen, setFiSwrCustomOpen] = useState(false);
+  const [fiReturnRateInput, setFiReturnRateInput] = useState<string | null>(null);
+  const [fiMonthlySavingsInput, setFiMonthlySavingsInput] = useState<string | null>(null);
+  const [fiShowDate, setFiShowDate] = useState(true);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -147,6 +164,9 @@ export default function SavingsScreen() {
       efCurrentSavings: '' as const,
       fiAnnualExpenses: '' as const,
       fiCurrentSavings: '' as const,
+      fiWithdrawalRatePct: '' as const,
+      fiExpectedReturnPct: '' as const,
+      fiMonthlySavings: '' as const,
     };
   }
 
@@ -337,16 +357,30 @@ export default function SavingsScreen() {
   async function handleSaveFi() {
     if (!model) return;
     const current = calcInputsFromModel();
-    const expenses = fiExpensesInput.trim() === '' ? '' : parseFloat(fiExpensesInput);
-    const savings = fiSavingsInput.trim() === '' ? '' : parseFloat(fiSavingsInput);
+    const expensesRaw = (fiExpensesInput ?? fiExpensesDisplay).trim();
+    const savingsRaw = (fiSavingsInput ?? fiSavingsDisplay).trim();
+    const swrRaw = (fiSwrInput ?? fiSwrDisplay).trim();
+    const returnRaw = (fiReturnRateInput ?? fiReturnDisplay).trim();
+    const monthlySavingsRaw = (fiMonthlySavingsInput ?? fiMonthlySavingsDisplay).trim();
+    const expenses = expensesRaw === '' ? '' : parseFloat(expensesRaw);
+    const savings = savingsRaw === '' ? '' : parseFloat(savingsRaw);
+    const swr = swrRaw === '' ? '' : parseFloat(swrRaw);
+    const returnRate = returnRaw === '' ? '' : parseFloat(returnRaw);
+    const monthlySavings = monthlySavingsRaw === '' ? '' : parseFloat(monthlySavingsRaw);
     if (expenses !== '' && isNaN(expenses as number)) return;
     if (savings !== '' && isNaN(savings as number)) return;
+    if (swr !== '' && isNaN(swr as number)) return;
+    if (returnRate !== '' && isNaN(returnRate as number)) return;
+    if (monthlySavings !== '' && isNaN(monthlySavings as number)) return;
     const updated: HouseholdModel = {
       ...model,
       calculatorInputs: {
         ...current,
         fiAnnualExpenses: expenses as number | '',
         fiCurrentSavings: savings as number | '',
+        fiWithdrawalRatePct: swr as number | '',
+        fiExpectedReturnPct: returnRate as number | '',
+        fiMonthlySavings: monthlySavings as number | '',
       },
     };
     await saveModel(updated);
@@ -387,9 +421,65 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
   const fiExpensesNum = parseFloat(fiExpensesDisplay);
   const fiSavingsNum = parseFloat(fiSavingsDisplay);
-  const fiNumber = !isNaN(fiExpensesNum) && fiExpensesNum > 0 ? fiExpensesNum * 25 : null;
+
+  const FI_SWR_PRESETS = ['3.5', '4.0', '4.5'];
+  const fiSwrDisplay =
+    fiSwrInput !== null
+      ? fiSwrInput
+      : storedCalc.fiWithdrawalRatePct === '' ? '4.0' : String(storedCalc.fiWithdrawalRatePct);
+  const fiSwrIsPreset = FI_SWR_PRESETS.includes(fiSwrDisplay);
+  const fiSwrNum = parseFloat(fiSwrDisplay);
+  const fiSwrForMath = !isNaN(fiSwrNum) && fiSwrNum > 0 ? fiSwrNum : 4.0;
+
+  const fiReturnDisplay =
+    fiReturnRateInput !== null
+      ? fiReturnRateInput
+      : storedCalc.fiExpectedReturnPct === '' ? '' : String(storedCalc.fiExpectedReturnPct);
+  const fiReturnNum = parseFloat(fiReturnDisplay);
+
+  const suggestedMonthlySavings = Math.max(0, suggestedMonthlyIncome - suggestedMonthlyExpenses);
+  const fiMonthlySavingsDisplay =
+    fiMonthlySavingsInput !== null
+      ? fiMonthlySavingsInput
+      : storedCalc.fiMonthlySavings === '' ? '' : String(storedCalc.fiMonthlySavings);
+  const fiMonthlySavingsNum = parseFloat(fiMonthlySavingsDisplay);
+
+  const suggestedNetWorth =
+    sumAccountEntries(model.balanceAccounts?.investment || []) +
+    sumAccountEntries(model.balanceAccounts?.cash || []) +
+    sumAccountEntries(model.balanceAccounts?.debit || []);
+
+  const fiNumber = !isNaN(fiExpensesNum) && fiExpensesNum > 0 ? fiExpensesNum / (fiSwrForMath / 100) : null;
   const fiProgressPct =
     fiNumber && !isNaN(fiSavingsNum) ? Math.min(100, Math.max(0, (fiSavingsNum / fiNumber) * 100)) : null;
+
+  const fiCanProjectTimeline =
+    fiNumber !== null && !isNaN(fiSavingsNum) && !isNaN(fiReturnNum) && !isNaN(fiMonthlySavingsNum) && fiMonthlySavingsNum >= 0;
+
+  let fiMonthsUntilFi: number | null = null;
+  if (fiCanProjectTimeline && fiNumber !== null) {
+    if (fiSavingsNum >= fiNumber) {
+      fiMonthsUntilFi = 0;
+    } else {
+      const monthlyRate = fiReturnNum / 100 / 12;
+      let balance = fiSavingsNum;
+      let months = 0;
+      const maxMonths = 1200;
+      while (balance < fiNumber && months < maxMonths) {
+        balance = balance * (1 + monthlyRate) + fiMonthlySavingsNum;
+        months++;
+      }
+      fiMonthsUntilFi = months < maxMonths ? months : null;
+    }
+  }
+
+  const fiTimelineLabel = fiMonthsUntilFi !== null ? formatYearsMonths(fiMonthsUntilFi) : null;
+  const fiProjectedDateLabel = (() => {
+    if (fiMonthsUntilFi === null) return '';
+    const d = new Date();
+    d.setMonth(d.getMonth() + fiMonthsUntilFi);
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  })();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -575,9 +665,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       {activeTab === 'fi' && (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.calcIntro}>
-            A rough "FI number" using the common 25× rule of thumb (annual expenses × 25) —
-            the amount some people aim to have saved/invested to no longer need a paycheck.
-            This is just a simple estimate, not financial advice.
+            Your "FI number" is how much you'd need saved/invested to no longer need a
+            paycheck, based on a safe withdrawal rate you choose below. This is just a
+            simple estimate, not financial advice.
           </Text>
 
           <Text style={styles.inputLabel}>Annual expenses</Text>
@@ -617,6 +707,102 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             value={fiSavingsDisplay}
             onChangeText={setFiSavingsInput}
           />
+          {suggestedNetWorth > 0 && (
+            <TouchableOpacity
+              style={styles.suggestionRow}
+              onPress={() =>
+                setFiSavingsInput(String(Math.round(suggestedNetWorth * 100) / 100))
+              }
+            >
+              <Text style={styles.suggestionText}>
+                Based on your Cash, Debit &amp; Investment accounts: {formatPeso(suggestedNetWorth)} — tap to use this
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={styles.inputLabel}>Safe withdrawal rate</Text>
+          <View style={styles.swrPillRow}>
+            {FI_SWR_PRESETS.map((preset) => (
+              <TouchableOpacity
+                key={preset}
+                style={[
+                  styles.swrPillButton,
+                  fiSwrDisplay === preset && !fiSwrCustomOpen ? styles.swrPillButtonActive : null,
+                ]}
+                onPress={() => {
+                  setFiSwrCustomOpen(false);
+                  setFiSwrInput(preset);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.swrPillButtonText,
+                    fiSwrDisplay === preset && !fiSwrCustomOpen ? styles.swrPillButtonTextActive : null,
+                  ]}
+                >
+                  {preset}%
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[
+                styles.swrPillButton,
+                fiSwrCustomOpen || !fiSwrIsPreset ? styles.swrPillButtonActive : null,
+              ]}
+              onPress={() => setFiSwrCustomOpen(true)}
+            >
+              <Text
+                style={[
+                  styles.swrPillButtonText,
+                  fiSwrCustomOpen || !fiSwrIsPreset ? styles.swrPillButtonTextActive : null,
+                ]}
+              >
+                Custom
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {(fiSwrCustomOpen || !fiSwrIsPreset) && (
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 3.8"
+              placeholderTextColor={colors.inkFaint}
+              keyboardType="decimal-pad"
+              value={fiSwrDisplay}
+              onChangeText={setFiSwrInput}
+            />
+          )}
+
+          <Text style={styles.inputLabel}>Expected annual return (optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 6"
+            placeholderTextColor={colors.inkFaint}
+            keyboardType="decimal-pad"
+            value={fiReturnDisplay}
+            onChangeText={setFiReturnRateInput}
+          />
+
+          <Text style={styles.inputLabel}>Monthly savings toward FI (optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0.00"
+            placeholderTextColor={colors.inkFaint}
+            keyboardType="decimal-pad"
+            value={fiMonthlySavingsDisplay}
+            onChangeText={setFiMonthlySavingsInput}
+          />
+          {suggestedMonthlySavings > 0 && (
+            <TouchableOpacity
+              style={styles.suggestionRow}
+              onPress={() =>
+                setFiMonthlySavingsInput(String(Math.round(suggestedMonthlySavings * 100) / 100))
+              }
+            >
+              <Text style={styles.suggestionText}>
+                Based on your income minus obligations: {formatPeso(suggestedMonthlySavings)}/mo — tap to use this
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.resultCard}>
             <Text style={styles.resultLabel}>YOUR FI NUMBER</Text>
@@ -628,6 +814,25 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 </View>
                 <Text style={styles.resultSub}>{fiProgressPct.toFixed(1)}% of the way there</Text>
               </>
+            )}
+
+            <Text style={styles.resultSecondaryLabel}>YEARS UNTIL FI</Text>
+            {fiTimelineLabel !== null ? (
+              <>
+                <Text style={styles.resultSecondary}>
+                  {fiTimelineLabel}
+                  {fiShowDate && fiProjectedDateLabel ? ` (${fiProjectedDateLabel})` : ''}
+                </Text>
+                <TouchableOpacity style={styles.toggleLink} onPress={() => setFiShowDate((v) => !v)}>
+                  <Text style={styles.toggleLinkText}>
+                    {fiShowDate ? 'Hide projected date' : 'Show projected date'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.resultSub}>
+                Enter an expected return rate and monthly savings above to see this
+              </Text>
             )}
           </View>
 
@@ -815,6 +1020,21 @@ function makeStyles(colors: any) {
       marginBottom: 10,
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
+swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+swrPillButton: {
+  flex: 1,
+  backgroundColor: colors.navy3,
+  borderRadius: 999,
+  paddingVertical: 8,
+  alignItems: 'center',
+},
+swrPillButtonActive: { backgroundColor: colors.gold },
+swrPillButtonText: { fontSize: 11, fontWeight: '600', color: colors.inkDim },
+swrPillButtonTextActive: { color: colors.navy2 },
+resultSecondaryLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
+resultSecondary: { fontSize: 15, fontWeight: '700', color: colors.ink },
+toggleLink: { alignSelf: 'center', marginTop: 8 },
+toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
     deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },

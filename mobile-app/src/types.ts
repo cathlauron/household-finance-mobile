@@ -149,6 +149,9 @@ export type CalculatorInputs = {
   efCurrentSavings: number | '';
   fiAnnualExpenses: number | '';
   fiCurrentSavings: number | '';
+  fiWithdrawalRatePct: number | '';
+  fiExpectedReturnPct: number | '';
+  fiMonthlySavings: number | '';
 };
 
 // ---- Checkpoint 8.1: Groceries ----

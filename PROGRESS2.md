@@ -923,7 +923,43 @@ original 11 phases before that. Nothing from either file is repeated here.
   on-device** (toggle on/off, day-pill selection, hour input saving/persisting,
   and — hardest to verify without waiting a full week — the recap notification
   actually firing with a correct, current spending total) — added to the running
-  on-device checklist per the current batched-testing policy.
+  On-device verification is pending per the current batched-testing policy (see
+  the new checklist item in ⚠️ Known issues above).
+- **B.12a (Expanded FI calculator, part 1 of 2) — CODE COMPLETE, PENDING `npx tsc
+  --noEmit` + ON-DEVICE VERIFICATION.** Investigated via a dedicated Antigravity
+  report-only pass first, confirming the exact current FI calculator code (a fixed
+  "annual expenses × 25" formula), the real `CalculatorInputs`/`Settings` types, the
+  real `computeMonthlyObligationsBaseline`/`computeNextPayDate` exports, the real
+  `HouseholdModel.balanceAccounts` shape, and that no charting library is installed
+  (confirmed unneeded — the app already draws bar charts with plain `<View>`
+  percentage-heights elsewhere). Split B.12 into two checkpoints given its roadmap
+  description bundles three distinct asks (Social Security estimate, multiple
+  accounts, scenario comparison) plus a natural fourth (configurable withdrawal
+  rate/return/timeline) — B.12a covers the core-math expansion only, kept inside
+  the existing `SavingsScreen.tsx` FI tab with no new files/dependencies; B.12b
+  (pension/Social Security offset, multi-account selector, and — if still wanted —
+  a separate scenario-comparison modal) is deferred to its own future session.
+
+  Added `fiWithdrawalRatePct`/`fiExpectedReturnPct`/`fiMonthlySavings` to
+  `CalculatorInputs` (`types.ts`). The FI tab in `SavingsScreen.tsx` now has: a
+  Safe Withdrawal Rate picker (3.5%/4.0%/4.5% preset pills, plus a Custom pill
+  revealing a free-type field — defaults to 4.0% so nothing changes for anyone who
+  hasn't touched it, matching the old hardcoded ×25 behavior exactly); an optional
+  Expected Annual Return field; an optional Monthly Savings Toward FI field with a
+  tap-to-use suggestion computed from income minus obligations (both already
+  computed values, reused rather than recalculated); a new suggestion row under
+  Current Savings pulling from `balanceAccounts.investment + cash + debit`; and a
+  new "Years Until FI" result (a plain month-by-month compound-growth loop, capped
+  at 100 years, matching this codebase's existing iterative-projection style rather
+  than a closed-form formula) with a toggle to show/hide a projected calendar date
+  alongside the duration.
+
+  A real latent bug was found and fixed while rewriting `handleSaveFi()`: it
+  called `.trim()` directly on `fiExpensesInput`/`fiSavingsInput` (typed
+  `string | null`), which would throw if the person touched only one of the two
+  fields before tapping Save. Fixed by falling back to the already-computed
+  display values instead. All snippets to be hand-pasted by the person per
+  standing small-fix policy; `npx tsc --noEmit` not yet run.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -1079,6 +1115,13 @@ When in doubt about whether a Phase B item belongs in the "essential" bucket, it
 should touch one of the 9 essential screens/flows above — if it doesn't, it's additional.
 
 ⚠️ Known issues / gotchas
+- **B.12a Expanded FI calculator — not yet compiled or verified on-device.** Needs:
+  `npx tsc --noEmit` run after pasting; then on-device checks — the SWR pill
+  row (presets + Custom reveal), the net worth and monthly-savings suggestion
+  rows, the Years Until FI result appearing/disappearing correctly based on
+  whether return rate + monthly savings are filled in, the show/hide-date
+  toggle, and that Save persists all 3 new fields (and syncs to a second linked
+  device, if available).
 - **Every item on the deferred on-device testing checklist has now been run on a
   real device — CONFIRMED WORKING** for: all delete confirmations (Accounts, Bills,
   Debts, Loans, Transactions, Income, Savings Goals) and Sign Out; the EF "Months
@@ -1334,9 +1377,11 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   wipe-and-rebuild cycle, and a Settings toggle + day-pill + hour picker reusing
   `IncomeScreen.tsx`'s existing pill styles. `npx tsc --noEmit` confirmed clean.
   On-device verification is pending per the current batched-testing policy (see
-  the new checklist item in ⚠️ Known issues above). **B.12 (Expanded FI/
-  retirement calculator) is the next unbuilt checkpoint**, whenever the person is
-  ready to keep building forward. No investigation has been done on it yet.
+  the new checklist item   in ⚠️ Known issues above). **B.12a (core FI-calculator math expansion) is
+  code-complete** — see ✅ Done above — pending `npx tsc --noEmit` and on-device
+  verification. **B.12b (pension/Social Security offset, multi-account selector,
+  and a possible scenario-comparison modal) remains unbuilt**, deliberately
+  deferred to its own future session per the B.12 split decision.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
