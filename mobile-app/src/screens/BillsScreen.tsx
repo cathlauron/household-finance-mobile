@@ -298,8 +298,15 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
       ...model,
       bills: model.bills.filter((b) => b.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {

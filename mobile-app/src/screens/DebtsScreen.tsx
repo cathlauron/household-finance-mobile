@@ -289,8 +289,15 @@ export default function DebtsScreen() {
       ...model,
       debts: model.debts.filter((d) => d.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {

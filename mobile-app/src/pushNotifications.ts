@@ -98,6 +98,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   const now = new Date();
 
   if (billRemindersOn) for (const bill of model.bills) {
+    if (bill.isSubscription && bill.subscriptionStatus !== 'cancelled') continue; // handled by subscription cancel-reminder below
     if (billOutstanding(bill) <= 0) continue; // already paid — nothing to alert about
     const nextDue = getNextDueDate(bill.recurringType, bill.dueDate, now);
     if (!nextDue) continue;

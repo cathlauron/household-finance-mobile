@@ -169,8 +169,15 @@ export default function AccountsScreen() {
     updated.balanceAccounts[activeGroup] = updated.balanceAccounts[activeGroup].filter(
       (a) => a.id !== editingId
     );
-    await saveModel(updated);
-    closeModal();
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {

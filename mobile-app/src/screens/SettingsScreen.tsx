@@ -412,7 +412,7 @@ export default function SettingsScreen() {
     closeModal();
   }
 
-  async function handleDelete() {
+  async function performDeleteCategory() {
     if (!editingId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -420,6 +420,17 @@ export default function SettingsScreen() {
     };
     await saveModel(updated);
     closeModal();
+  }
+
+  function handleDeleteCategory() {
+    Alert.alert(
+      'Delete this category?',
+      'This will permanently delete the category. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDeleteCategory },
+      ]
+    );
   }
 
   // ---- Category Watchlist (Checkpoint B.8) ----
@@ -524,7 +535,7 @@ export default function SettingsScreen() {
     closePayeeModal();
   }
 
-  async function handleDeletePayee() {
+  async function performDeletePayee() {
     if (!editingPayeeId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -532,6 +543,17 @@ export default function SettingsScreen() {
     };
     await saveModel(updated);
     closePayeeModal();
+  }
+
+  function handleDeletePayee() {
+    Alert.alert(
+      'Delete this payee?',
+      'This will permanently delete this payee. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDeletePayee },
+      ]
+    );
   }
 
   // ---- Categorization Rules handlers ----
@@ -618,7 +640,7 @@ export default function SettingsScreen() {
     closeRuleModal();
   }
 
-  async function handleDeleteRule() {
+  async function performDeleteRule() {
     if (!editingRuleId || !model) return;
     const updated: HouseholdModel = {
       ...model,
@@ -626,6 +648,17 @@ export default function SettingsScreen() {
     };
     await saveModel(updated);
     closeRuleModal();
+  }
+
+  function handleDeleteRule() {
+    Alert.alert(
+      'Delete this rule?',
+      'This will permanently delete this categorization rule. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDeleteRule },
+      ]
+    );
   }
 
   async function moveRule(id: string, direction: 'up' | 'down') {
@@ -1410,7 +1443,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         {editingId && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteCategory}>
             <Text style={styles.deleteButtonText}>Delete this category</Text>
           </TouchableOpacity>
         )}
