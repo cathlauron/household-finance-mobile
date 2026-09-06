@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -81,6 +81,22 @@ type BillsScreenProps = {
 export default function BillsScreen({ openBillId }: BillsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+
+  // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
+  // reached via the subscription-reminder deep link. Guarded with a ref
+  // (not state) so this only ever fires once per distinct openBillId value
+  // — without it, closing the sheet manually while the same openBillId is
+  // still set on the prop would cause it to immediately reopen.
+  const openedBillIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!model || !openBillId) return;
+    if (openedBillIdRef.current === openBillId) return;
+    const target = (model.bills || []).find((b) => b.id === openBillId);
+    if (target) {
+      openedBillIdRef.current = openBillId;
+      openEditModal(target);
+    }
+  }, [model, openBillId]);
   const styles = makeStyles(colors);
 
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);

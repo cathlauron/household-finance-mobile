@@ -1134,10 +1134,17 @@ original 11 phases before that. Nothing from either file is repeated here.
   `ToPayScreen.tsx`'s edit was pasted first, breaking `npx tsc --noEmit` with
   a real, expected type error — fixed by adding the `{ openBillId }:
   BillsScreenProps` signature before the actual auto-open behavior was
-  wired in (that behavior — `BillsScreen.tsx` finding the matching bill by
-  `openBillId` and calling the existing `openEditModal()` on mount — was
-  intentionally scoped for a fast-follow rather than blocking this session's
-  `npx tsc --noEmit` cleanliness on it further; see ⚠️ Known issues below).
+  wired in. That auto-open behavior was completed in a same-day fast-follow:
+  a guarded `useEffect` (with a `useRef` so it fires at most once per
+  distinct `openBillId` value, rather than re-triggering if the person
+  manually closes the sheet while the prop is still set) that finds the
+  matching bill in `model.bills` and calls the existing `openEditModal()`.
+  One placement error was hit and fixed in that follow-up: the effect was
+  first pasted directly after the function signature, before `const {
+  model, saveModel } = useData()` — TypeScript correctly flagged `model`
+  as "used before its declaration" (TS2448), fixed by moving the effect to
+  immediately after that line instead (still ahead of the `if (!model)`
+  early return, satisfying the Rules of Hooks).
 
   All files hand-pasted by the person per standing small-fix policy across
   several back-and-forth rounds (this was the longest single-checkpoint
@@ -1315,20 +1322,6 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   existing transaction correctly re-populates the Tags field from its saved
   `tags` array; and extra spaces/empty entries (e.g. "vacation,  , tax") are
   trimmed/filtered out correctly rather than saved as blank tags.
-- **B.14 follow-up gap (not a bug, a deliberately deferred fast-follow):
-  `openBillId` reaches `BillsScreen.tsx` but isn't acted on yet.** The full
-  deep-link chain (notification tap → cold/warm capture → `navigationRef` →
-  `RootStack` → `MainTabs` → `ToPayScreen` switching to the Bills sub-tab) is
-  complete and passes the target bill's id all the way to `BillsScreen.tsx`
-  as a prop — but `BillsScreen.tsx` doesn't yet have the small `useEffect`
-  that finds the matching bill and calls the existing `openEditModal(bill)`
-  on mount. Today, tapping a subscription reminder will correctly land the
-  person on the Bills tab, just not with that specific bill's edit sheet
-  already open. Needs one more small, low-risk investigation-then-fix pass
-  (get `BillsScreen.tsx`'s real top-level `useEffect`/mount structure, then
-  add a guarded one-time `useEffect` keyed on `openBillId` that calls
-  `openEditModal` — with a ref to prevent re-opening if the prop is still
-  set after the person manually closes the sheet).
 - **B.14 Subscription cancel-reminder — `npx tsc --noEmit` confirmed clean,
   needs on-device verification.** Needs checking: the "This is a
   subscription" toggle saves/persists and re-populates correctly on edit;
@@ -1615,21 +1608,22 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   possible scenario-comparison modal) remains unbuilt**, deliberately deferred
   to its own future session per the B.12 split decision. 
   **B.13 (Report filtering by tag) is FULLY code-complete — both B.13a (tags
-  data model + Transactions Add/Edit Tags field) and B.13b (the tag-filter
-  toolbar in Reports, wired into the 6 report screens that build from a
-  transaction list) — and `npx tsc --noEmit` clean.** Pending on-device
-  verification only. **B.14 (Subscription cancel-reminder) is FULLY
-  code-complete — the toggle, Keep/Cancel/Reactivate actions, the reminder
-  notification with its data payload, and the full cold+warm deep-link
-  navigation chain — and `npx tsc --noEmit` clean.** Pending on-device
-  verification only, with one known follow-up gap noted in ⚠️ Known issues
-  below (tapping a subscription reminder currently navigates to the Bills
-  sub-tab but does not yet auto-open that specific bill's edit sheet — the
-  `openBillId` prop is threaded all the way through but not yet acted on
-  inside `BillsScreen.tsx`). **This was the last item on the original B.1–B.14
-  roadmap table — Phase B's planned checklist is now fully code-complete
-  end-to-end**, pending the accumulated on-device verification pass and the
-  one B.14 follow-up gap above.
+data model + Transactions Add/Edit Tags field) and B.13b (the tag-filter
+toolbar in Reports, wired into the 6 report screens that build from a
+transaction list) — and `npx tsc --noEmit` clean.** **B.14 (Subscription
+cancel-reminder) is FULLY code-complete, including the same-day fast-follow
+that closed its one known gap** — the toggle, Keep/Cancel/Reactivate
+actions, the reminder notification with its data payload, the full
+cold+warm deep-link navigation chain, AND the `BillsScreen.tsx` auto-open
+`useEffect` that opens the specific bill's edit sheet when reached via that
+deep link — all `npx tsc --noEmit` clean. **This completes every item on
+the original B.1–B.14 Phase B roadmap table, with no known gaps
+remaining.** Both B.13 and B.14 are pending only the accumulated on-device
+verification pass (batched-testing policy) — B.14's cold-start deep-link
+path in particular is worth deliberately testing rather than assuming, since
+it's the harder case to get right. The next step is either that batched
+on-device testing pass, or moving on to Phase C (EAS Build migration) with
+testing folded in — your call at the start of next session.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -2443,6 +2437,23 @@ unusually long, high-stakes investigation chain): never proceed on elided
 ("...") code shown as if it were complete, and when a discovered scope gap
 changes the size of a checkpoint, present it and get an explicit choice
 rather than picking a direction unilaterally.
+
+### Session entry — B.14 fast-follow: openBillId auto-open gap closed
+**What happened:** One more short Antigravity report-only round (component
+signature, confirmation there were zero existing `useEffect`s in the file,
+the real `openEditModal()` body, and confirmation `model` isn't guaranteed
+loaded on first render) was enough to write the fix directly — no
+back-and-forth needed on elided code this time. A guarded `useEffect` (ref-
+based, fires once per distinct `openBillId`) was added that finds the
+matching bill in `model.bills` and calls the existing `openEditModal()`.
+First paste placed the effect before `model` was declared, which
+TypeScript correctly caught (`TS2448: used before its declaration`); moved
+one line down, immediately after the `useData()` call, and it compiled
+clean.
+
+**Result:** `npx tsc --noEmit` clean. This was the last open item from
+B.14 and from the entire original B.1–B.14 Phase B roadmap table — nothing
+outstanding remains except the batched on-device verification pass.
 
 📚 Older detailed session logs archived in PROGRESS2-ARCHIVE-1.md (14 sessions,
 covering Tier 1/2/3 audit fixes through B.6). Everything from them that still
