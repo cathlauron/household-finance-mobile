@@ -824,6 +824,63 @@ original 11 phases before that. Nothing from either file is repeated here.
   Dashboard card appearing/updating correctly, and the red/orange/green status
   coloring at different spend levels) — added to the running on-device
   checklist per the current batched-testing policy.
+- **B.9 (Yours/Mine/Ours labels + transaction comments) — CODE COMPLETE, `npx tsc
+  --noEmit` CLEAN, PENDING ON-DEVICE VERIFICATION.** Investigated in four rounds via
+  Antigravity report-only prompts before writing anything, specifically to close a
+  real fragility gap found during investigation: there was no existing link anywhere
+  in the app between a household's `Person` records (`model.people`, shape `{ id,
+  name, role? }`) and the `username` string of whichever profile is actually signed
+  in on a device — `Person.role` ('primary'/'partner') was confirmed dormant and
+  never read anywhere. Decided against name-matching (fragile, doesn't scale past
+  2 people) in favor of an explicit, per-profile stored preference — the person's own
+  proposed design: whatever a given profile enters shows as "Mine" on that profile's
+  device, shows as that person's real name on every other linked profile's device
+  (not a generic "Yours"), and anything explicitly assigned to `'shared'` shows as
+  "Ours" everywhere. This scales to any number of household members with no extra
+  logic, since there's no fixed "Yours" bucket — everyone just sees their own things
+  as "Mine" and everyone else's by name.
+
+  Built new `src/myPerson.ts` (same per-profile AsyncStorage pattern as `pin.ts`/
+  `onboarding.ts`/`biometrics.ts`): `getMyPersonId()`/`setMyPersonId()`/
+  `clearMyPersonId()`, keyed as `profile:${username}:my-person-id`. Added a "Which
+  of these is you?" picker to `ProfileScreen.tsx`, rendered directly under the
+  existing household member roster, listing `model.people` with a "This is me"
+  indicator on whichever is currently selected — tapping a person calls
+  `setMyPersonId()` and updates local state immediately. Added a `notes?: string`
+  field to `ManualTransaction` (`types.ts`) and `TransactionEntry` (`transactions.ts`,
+  confirmed via investigation to be that type's real home — an earlier message
+  mislabeled its file as `types.ts`, caught and corrected before pasting), carried
+  through in `transactions.ts`'s manual-transaction mapping. `TransactionsScreen.tsx`
+  gained: a `notesInput` field (new Notes input in the Add/Edit form, populated on
+  edit, saved on both the new-transaction and editing branches), a `myPersonId`
+  state resolved via `getMyPersonId(username)` in a `useEffect`, and a new
+  `ownerLabel()` helper resolving a transaction's owner to "Mine" / "Ours" / "
+  {Name}'s" — replacing the old "Belongs To: Shared"-only display in the expanded
+  row, which now also shows the new Notes field for manual transactions.
+  `PersonSpendingReport.tsx` was updated the same way — each person's report card
+  is now labeled "Mine" instead of their own name when `p.id === myPersonId`, and
+  the "Shared" card is now labeled "Ours".
+
+  One real gap in the earlier investigation was caught and closed mid-session before
+  any code was pasted: a prior response had asked the person to check which of two
+  possible lines already existed in `TransactionsScreen.tsx` (`const { model,
+  saveModel } = useData();` vs. one that already included `username`) and pick the
+  right fix themselves — flagged as unacceptable per the person's explicit standing
+  instruction going forward (see 📌 Decisions below) that Claude should always get
+  the real answer itself before handing over any conditional/branching instruction.
+  A follow-up investigation-only prompt confirmed the real line was
+  `const { model, saveModel } = useData();` (no `username` yet), and a single,
+  unconditional one-line fix was given instead.
+
+  All edits hand-pasted by the person per standing small-fix policy; `npx tsc
+  --noEmit` confirmed clean (empty output, 0 errors) after the full batch. **Not yet
+  manually verified on-device** — needs checking: the "Which of these is you?"
+  picker saves and persists correctly on `ProfileScreen.tsx`; a transaction's owner
+  correctly shows as "Mine"/"Ours"/a real name in both Transactions and Person
+  Spending; the new Notes field saves, edits, and displays correctly; and — a known,
+  accepted gap, not yet fixed — the picker currently only renders inside
+  `ProfileScreen.tsx`'s "Linked" section, so a solo (unlinked) profile tracking more
+  than one person has no way to set "which one is me" yet.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -866,6 +923,11 @@ original 11 phases before that. Nothing from either file is repeated here.
     dedicated independent verification pass — re-checking every claimed-done item
     against real, current code, not against this progress log or prior commit
     messages — before considering a checkpoint truly closed.
+  - **Claude must never hand the person a conditional/branching instruction that
+    requires them to read code and decide which branch applies** (e.g. "if the file
+    already says X, do Y; otherwise do Z") — that's exactly the kind of ambiguity
+    that goes wrong quietly. Get the real, current answer via a targeted
+    investigation-only prompt first, then give one single, unconditional fix.
 - **New this session:** Progress logs can silently fall behind real committed work —
   B.2c had already been substantially built in an earlier commit (`d0375c6`, made
   while fixing an unrelated batch of TypeScript syntax errors) but was never recorded
@@ -1021,7 +1083,18 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   removing one works and the Dashboard card disappears once none are left;
   the "Watched Categories" Dashboard card shows correct spend-vs-limit figures;
   and the red/orange/green status coloring actually changes correctly at the
-  80%/100% thresholds as spend crosses them.
+  the 80%/100% thresholds as spend crosses them.
+- **B.9 Yours/Mine/Ours + Notes — not yet verified on-device.** Needs checking:
+  the "Which of these is you?" picker on `ProfileScreen.tsx` saves/persists and
+  shows the right person selected on reopen; a transaction you entered shows
+  "Mine" on your own device and your real name on a second linked device; a
+  transaction explicitly set to shared shows "Ours" everywhere; the Person
+  Spending report's card labels update the same way; and the new Notes field on
+  a manual transaction saves, survives editing, and displays correctly in the
+  expanded row. Also a known, accepted gap to revisit later (not a bug): the
+  picker only appears inside the "Linked" section of `ProfileScreen.tsx` right
+  now, so a solo/unlinked profile tracking more than one person's entries has
+  no way to set "which person is me" yet.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -1125,9 +1198,14 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   and a new "Category Watchlist" management section in `SettingsScreen.tsx`.
   `npx tsc --noEmit` confirmed clean. On-device verification is pending per
   the current batched-testing policy.
-- **B.9 (Yours/Mine/Ours labels + transaction comments) is the next unbuilt
-  checkpoint** per the table below, whenever the person is ready to keep
-  building forward. No investigation has been done on it yet.
+- **B.9 (Yours/Mine/Ours labels + transaction comments) is code-complete** (see
+  ✅ Done above) — a new per-profile `myPerson.ts` preference, a "Which of these
+  is you?" picker on `ProfileScreen.tsx`, "Mine"/"Ours"/real-name owner labels in
+  Transactions and Person Spending, and a new Notes field on manual transactions.
+  `npx tsc --noEmit` confirmed clean. On-device verification is pending per the
+  current batched-testing policy (see the new checklist item in ⚠️ Known issues
+  above). **B.10 (Refund tracker) is the next unbuilt checkpoint**, whenever the
+  person is ready to keep building forward. No investigation has been done on it yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1150,7 +1228,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.6b | Date picker, part 2 — rolled out to every remaining screen (Debts, Loans, Income, Savings, Goals, Events, Travel) — code-complete, on-device testing deferred | Requested |
   | ✅ B.7 | "Left to Spend" hero stat on Home tab — code-complete, on-device testing deferred | Simplifi-inspired |
   | ✅ B.8 | Category watchlists under Insights — code-complete, on-device testing deferred | Simplifi-inspired |
-  | B.9 | Yours/Mine/Ours labels + transaction comments | Monarch-inspired |
+  | ✅ B.9 | Yours/Mine/Ours labels + transaction comments — code-complete, on-device testing deferred | Monarch-inspired |
   | B.10 | Refund tracker | Simplifi-inspired |
   | B.11 | Weekly spending recap push notification | Monarch-inspired |
   | B.12 | Expanded FI/retirement calculator | Simplifi-inspired |
@@ -1316,6 +1394,33 @@ Files in the repo (relevant to Phase B/C)
   the same `saveModel()` pattern as the existing Categories section); added a
   new "Category Watchlist" section (list + add form) directly below the
   existing "+ Add category" button.
+- `mobile-app/src/myPerson.ts` — new (B.9). Per-profile "which household Person
+  is me" preference, same AsyncStorage pattern as `pin.ts`/`onboarding.ts`/
+  `biometrics.ts`: `getMyPersonId()`, `setMyPersonId()`, `clearMyPersonId()`,
+  keyed as `profile:${username}:my-person-id`.
+- `mobile-app/src/types.ts` — modified (B.9). Added `notes?: string` to
+  `ManualTransaction`.
+- `mobile-app/src/transactions.ts` — modified (B.9). Added `notes?: string` to
+  `TransactionEntry`; the manual-transaction mapping in the unified list builder
+  now carries `t.notes` through onto each `TransactionEntry`.
+- `mobile-app/src/screens/ProfileScreen.tsx` — modified (B.9). Added
+  `myPersonId` state (loaded via `getMyPersonId(username)`), and a new "Which of
+  these is you?" picker rendered under the household member roster, listing
+  `model.people` with a "This is me" indicator and tap-to-select via
+  `setMyPersonId()`.
+- `mobile-app/src/screens/TransactionsScreen.tsx` — modified (B.9). `useData()`
+  now also destructures `username`; added `notesInput` and `myPersonId` state
+  (the latter resolved via a `useEffect` calling `getMyPersonId`); `resetForm`/
+  `openEditModal`/both `handleSave` branches now read/write `notes`; added a new
+  `ownerLabel()` helper resolving a transaction's owner to "Mine" / "Ours" / "
+  {Name}'s"; the expanded row now shows that label (replacing the old
+  "Shared"-only text) plus a new Notes line for manual transactions; the
+  Add/Edit form gained a new Notes text input.
+- `mobile-app/src/screens/reports/PersonSpendingReport.tsx` — modified (B.9).
+  Imports `getMyPersonId`; added `myPersonId` state resolved via a `useEffect`;
+  each person's report card is now labeled "Mine" instead of their real name
+  when `p.id === myPersonId`, and the shared card is now labeled "Ours" instead
+  of "Shared".
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 - `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.5 Batch 1). Delete now
   requires confirming a native `Alert.alert` dialog before removing an account.
@@ -1556,7 +1661,58 @@ noted in ⚠️ Known issues above.
 **Design decision made this session:** No manual biometric-priority toggle — Android's
 OS controls which sensor prompt appears regardless of app-level preference, so fixing
 the underlying detection bug is the complete, correct fix; a toggle would only add
-complexity without adding real control.
+issues without adding real control.
+
+### Session entry — B.9 built: Yours/Mine/Ours owner labels + transaction Notes field
+**What happened:** Investigated in four rounds via Antigravity report-only prompts
+before writing any code. Round 1 mapped the transaction data model, existing
+"Belongs To" patterns (Income's real chip-picker UI, the existing `'shared'`
+convention already used everywhere), where owner-based grouping already exists
+(`PersonSpendingReport.tsx`), and theme colors for a possible badge. It surfaced a
+real, unresolved gap: nothing in the app links a `Person` record to the
+currently-signed-in `username` — `Person.role` looked promising but was confirmed
+dormant (written once, never read). Round 2 confirmed that gap fully: no such link
+exists anywhere (`ProfileScreen.tsx`'s roster only compares Firebase UIDs, not
+`Person` ids; household merge logic matches people by name, not by any stored
+link). Presented the person with two options (fuzzy name-matching vs. an explicit
+stored preference); the person proposed a better design than either — no fixed
+"Yours" bucket at all, just "Mine" (whatever's linked to me), real names for
+everyone else, and "Ours" for anything shared — which was adopted directly. Rounds
+3 and 4 pulled the exact real code needed to build it safely: `ProfileScreen.tsx`'s
+real roster JSX and `useData()`/`username` access, the real AsyncStorage helper
+conventions from `pin.ts`/`onboarding.ts`/`biometrics.ts`, confirmation that
+`TransactionEntry` actually lives in `transactions.ts` (not `types.ts`, as an
+earlier round had implied), and `TransactionsScreen.tsx`'s/`PersonSpendingReport.tsx`'s
+real imports, state, and save-handler object literals.
+
+Built and hand-pasted: a new `myPerson.ts` preference module; a `notes` field on
+`ManualTransaction`/`TransactionEntry`; a "Which of these is you?" picker on
+`ProfileScreen.tsx`; a new `ownerLabel()` helper and Notes field in
+`TransactionsScreen.tsx`; and "Mine"/"Ours" labels in `PersonSpendingReport.tsx`.
+Mid-batch, the person flagged that an earlier message had asked them to inspect
+`TransactionsScreen.tsx` themselves and pick between two possible existing lines —
+called out as unacceptable given their explicit standing instruction that Claude
+should get real answers itself, not hand over branching decisions. A short
+follow-up investigation-only prompt confirmed the real line, and a single
+unconditional fix was given instead. This was adopted as a new permanent rule (see
+📌 Decisions above).
+
+**Result:** All edits hand-pasted by the person; `npx tsc --noEmit` confirmed
+clean (empty output, 0 errors) after the full batch, no error/fix rounds needed
+this time. B.9 is code-complete; on-device verification (the picker, the Mine/
+Ours/name labels in both Transactions and Person Spending, and the Notes field)
+is deferred per the current batched-testing policy and added to the running
+checklist. One known, accepted gap carried forward rather than fixed this
+session: the picker only renders inside `ProfileScreen.tsx`'s "Linked" section,
+so a solo/unlinked profile has no way to set "which person is me" yet.
+
+**Design decision made this session:** Owner labels resolve to "Mine" / "Ours" /
+the real person's name — never a generic "Yours" — via an explicit
+`profile:${username}:my-person-id` preference rather than name-matching, so the
+same feature scales correctly to any number of household members with no extra
+logic. New standing rule adopted: never hand the person a "check X, then do Y or
+Z depending on what you find" instruction — always resolve it via investigation
+first, then give one unconditional fix.
 
 
 📚 Older detailed session logs archived in PROGRESS2-ARCHIVE-1.md (14 sessions,

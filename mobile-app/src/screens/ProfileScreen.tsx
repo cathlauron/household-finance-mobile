@@ -15,6 +15,7 @@ import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { getMyPersonId, setMyPersonId } from '../myPerson';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import type { HouseholdModel } from '../types';
 import {
@@ -214,7 +215,12 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
   const [memberToRemove, setMemberToRemove] = useState<HouseholdMemberInfo | null>(null);
   const [removeMemberBusy, setRemoveMemberBusy] = useState(false);
   const [removeMemberMsg, setRemoveMemberMsg] = useState('');
+    const [myPersonId, setMyPersonIdState] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!username) return;
+    getMyPersonId(username).then(setMyPersonIdState);
+  }, [username]);
   const [transferOwnerModalOpen, setTransferOwnerModalOpen] = useState(false);
   const [selectedSuccessorUid, setSelectedSuccessorUid] = useState<string>('');
   const [transferBusy, setTransferBusy] = useState(false);
@@ -731,6 +737,45 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                               </TouchableOpacity>
                             )}
                           </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  {model?.people && model.people.length > 0 && (
+                    <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.navy4, alignSelf: 'stretch' }}>
+                      <Text style={[styles.hintText, { fontWeight: '700', marginBottom: 6 }]}>Which of these is you?</Text>
+                      <Text style={[styles.hintText, { marginBottom: 8 }]}>
+                        This decides what shows as "Mine" on your Transactions — everyone else sees it labeled with your name instead.
+                      </Text>
+                      {model.people.map((p) => {
+                        const selected = p.id === myPersonId;
+                        return (
+                          <TouchableOpacity
+                            key={p.id}
+                            style={{
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              paddingVertical: 8,
+                              borderBottomWidth: 1,
+                              borderBottomColor: colors.navy4,
+                            }}
+                            onPress={async () => {
+                              if (!username) return;
+                              await setMyPersonId(username, p.id);
+                              setMyPersonIdState(p.id);
+                            }}
+                          >
+                            <Text style={{ color: colors.ink, fontWeight: selected ? '700' : '400', fontSize: 14 }}>
+                              {p.name || 'Unnamed'}
+                            </Text>
+                            {selected && (
+                              <Text style={{ fontSize: 11, color: colors.gold, fontWeight: '700' }}>
+                                This is me
+                              </Text>
+                            )}
+                          </TouchableOpacity>
                         );
                       })}
                     </View>

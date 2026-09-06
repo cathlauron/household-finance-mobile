@@ -263,6 +263,7 @@ export type ManualTransaction = {
   direction: 'in' | 'out' | 'saving';
   owner: string;
   category?: string;
+  notes?: string;
   receiptPhoto?: string;
   paymentMethod?: PaymentMethod;
 };

@@ -14,9 +14,10 @@
 // here the way it does elsewhere.
 // ============================================================
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
+import { getMyPersonId } from '../../myPerson';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList } from '../../transactions';
@@ -47,9 +48,15 @@ function buildPersonGroup(id: string, name: string, transactions: TransactionEnt
 }
 
 export default function PersonSpendingReport() {
-  const { model, loading } = useData();
+  const { model, loading, username } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const [myPersonId, setMyPersonId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!username) return;
+    getMyPersonId(username).then(setMyPersonId);
+  }, [username]);
 
   if (loading || !model) {
     return (
@@ -63,8 +70,10 @@ export default function PersonSpendingReport() {
   const people: Person[] = model.people || [];
 
   const groups: PersonGroup[] = [
-    ...people.map((p) => buildPersonGroup(p.id, p.name || 'Unnamed', allTransactions)),
-    buildPersonGroup('shared', 'Shared', allTransactions),
+    ...people.map((p) =>
+      buildPersonGroup(p.id, p.id === myPersonId ? 'Mine' : (p.name || 'Unnamed'), allTransactions)
+    ),
+    buildPersonGroup('shared', 'Ours', allTransactions),
   ].filter((g) => g.total > 0 || g.id === 'shared');
 
   const grandTotal = groups.reduce((s, g) => s + g.total, 0);

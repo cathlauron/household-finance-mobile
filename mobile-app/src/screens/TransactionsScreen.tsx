@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { getMyPersonId } from '../myPerson';
 import { formatPeso } from '../balanceProjection';
 import {
   buildTransactionsList,
@@ -36,7 +37,12 @@ function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
   return p ? p.name : '';
 }
-
+function ownerLabel(people: Person[], owner: string, myPersonId: string | null): string {
+  if (owner === 'shared') return 'Ours';
+  if (myPersonId && owner === myPersonId) return 'Mine';
+  const name = personName(people, owner);
+  return name ? name + "'s" : 'Shared';
+}
 // Finds an existing person by name (case-insensitive), or creates a new one.
 // Mirrors IncomeScreen's behavior: typing a name that doesn't exist yet quietly
 // adds that person, rather than requiring a separate "add a person" step.
@@ -79,7 +85,7 @@ function amountColor(direction: string): string {
 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, username } = useData();
   const styles = makeStyles(colors);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
@@ -92,6 +98,13 @@ export default function TransactionsScreen() {
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [personInput, setPersonInput] = useState('');
+  const [notesInput, setNotesInput] = useState('');
+  const [myPersonId, setMyPersonId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!username) return;
+    getMyPersonId(username).then(setMyPersonId);
+  }, [username]);
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -120,6 +133,7 @@ export default function TransactionsScreen() {
     setDirectionInput('out');
     setReceiptPhoto(null);
     setPersonInput('');
+    setNotesInput('');
     setPaymentMethodInput(undefined);
     setErrorMsg('');
   }
@@ -138,6 +152,7 @@ export default function TransactionsScreen() {
     setLabelInput(raw.label || '');
     setCategoryInput(raw.category || '');
     setPersonInput(personName(model?.people || [], raw.owner || ''));
+    setNotesInput(raw.notes || '');
     setAmountInput(typeof raw.amount === 'number' ? String(raw.amount) : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
@@ -235,16 +250,17 @@ export default function TransactionsScreen() {
     if (editingId) {
       updated.manualTransactions = updated.manualTransactions.map((t) => {
         if (t.id !== editingId) return t;
-        const next: ManualTransaction = {
-          ...t,
-          date: trimmedDate,
-          label: trimmedLabel,
-          amount: parsedAmount,
-          direction: directionInput,
-          owner: personId || 'shared',
-          category: categoryInput.trim(),
-          paymentMethod: paymentMethodInput,
-        };
+          const next: ManualTransaction = {
+            ...t,
+            date: trimmedDate,
+            label: trimmedLabel,
+            amount: parsedAmount,
+            direction: directionInput,
+            owner: personId || 'shared',
+            category: categoryInput.trim(),
+            notes: notesInput.trim(),
+            paymentMethod: paymentMethodInput,
+          };
         if (receiptPhoto) {
           next.receiptPhoto = receiptPhoto;
         } else {
@@ -253,17 +269,18 @@ export default function TransactionsScreen() {
         return next;
       });
     } else {
-      const newTxn: ManualTransaction = {
-        id: makeId('txn'),
-        date: trimmedDate,
-        label: trimmedLabel,
-        amount: parsedAmount,
-        direction: directionInput,
-        owner: personId || 'shared',
-        category: categoryInput.trim(),
-        paymentMethod: paymentMethodInput,
-        ...(receiptPhoto ? { receiptPhoto } : {}),
-      };
+        const newTxn: ManualTransaction = {
+          id: makeId('txn'),
+          date: trimmedDate,
+          label: trimmedLabel,
+          amount: parsedAmount,
+          direction: directionInput,
+          owner: personId || 'shared',
+          category: categoryInput.trim(),
+          notes: notesInput.trim(),
+          paymentMethod: paymentMethodInput,
+          ...(receiptPhoto ? { receiptPhoto } : {}),
+        };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
     }
 
@@ -398,9 +415,17 @@ export default function TransactionsScreen() {
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Belongs To</Text>
                     <Text style={styles.detailValue}>
-                      {t.owner === 'shared' ? 'Shared' : (personName(model.people, t.owner) || 'Shared')}
+                      {ownerLabel(model.people, t.owner, myPersonId)}
                     </Text>
                   </View>
+                  {t.source === 'manual' && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Notes</Text>
+                      <Text style={styles.detailValue}>
+                        {(model.manualTransactions || []).find((m) => m.id === t.rawId)?.notes || '—'}
+                      </Text>
+                    </View>
+                  )}
                   {!isManual && (
                     <Text style={styles.detailNotesText}>
                       This entry comes from another tab — edit it there.
@@ -492,14 +517,23 @@ export default function TransactionsScreen() {
                   </View>
                 )}
 
-                <Text style={styles.inputLabel}>Category (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Groceries, Transportation"
-                  placeholderTextColor={colors.inkFaint}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                />
+        <Text style={styles.inputLabel}>Category (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Groceries, Transportation"
+          placeholderTextColor={colors.inkFaint}
+          value={categoryInput}
+          onChangeText={setCategoryInput}
+        />
+
+        <Text style={styles.inputLabel}>Notes (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Split with Ana, reimbursed later"
+          placeholderTextColor={colors.inkFaint}
+          value={notesInput}
+          onChangeText={setNotesInput}
+        />
 
                 <PaymentMethodPicker
                   value={paymentMethodInput}

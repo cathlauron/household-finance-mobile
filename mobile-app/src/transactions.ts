@@ -28,6 +28,8 @@ export type TransactionEntry = {
   // for editing/deleting. Bill/debt/loan entries are derived from their own
   // source records and aren't directly editable here.
   rawId?: string;
+  // Only set for source === 'manual' — a free-text note the person typed.
+  notes?: string;
 };
 
 export function buildTransactionsList(model: HouseholdModel): TransactionEntry[] {
@@ -136,6 +138,7 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
       direction: t.direction,
       owner: t.owner || 'shared',
       rawId: t.id,
+      notes: t.notes,
     });
   });
 
