@@ -654,9 +654,53 @@ original 11 phases before that. Nothing from either file is repeated here.
   "financial assumption the person tunes themselves" example); how settings are
   currently persisted (AsyncStorage vs. the household model/Firestore) so the new
   `cautionThresholdPercent` field syncs across a linked household rather than being
-  stuck on one phone; and whether a slider component is already installed. Session
-  ended before this was run —   prompt is ready to paste into Antigravity at the start of next session, response not
+  stuck on one phone; and whether a   slider component is already installed. Session ended before this was run —
+  prompt is ready to paste into Antigravity at the start of next session, response not
   yet reviewed.
+- **B.7 ("Left to Spend" hero stat + the Settings caution-threshold control) —
+  CODE COMPLETE, `npx tsc --noEmit` CLEAN, PENDING ON-DEVICE VERIFICATION.** Ran
+  the drafted Settings-placement investigation prompt from the prior session.
+  Confirmed: `notifyDaysBefore` is the exact right pattern to copy — a plain
+  field on `model.settings`, saved via `saveModel()`, syncing across every
+  linked household member automatically; no slider dependency is installed
+  anywhere in the app; and given `notifyDaysBefore` already proves out a plain
+  number field works fine for this kind of setting, went with a plain 0–100
+  number input instead of adding `@react-native-community/slider` as a new
+  dependency for one control. A second investigation confirmed the real
+  `useData()` hook shape, `formatPeso`'s real import path/signature, the real
+  top-of-file imports and 4 relevant style keys in `DashboardScreen.tsx`, and
+  that `balanceProjection.ts` has no existing import relationship with
+  `income.ts` (so importing `computeNextPayDate` into it introduces no
+  circular-import risk). Added `cautionThresholdPercent: number` to the
+  `Settings` type and `defaultModel.ts` (default `20`). Added two new exports
+  to `balanceProjection.ts`: `computeLeftToSpend(model, today?)` — resolves the
+  earliest upcoming payday across every income source via the existing
+  `computeNextPayDate()`, falls back to the last day of the current month if
+  none resolve, and projects the balance to that date via the existing
+  `computeRunningBalances()` — and `getLeftToSpendStatus(amount, model, colors)`
+  — the same three-tier red/orange/green shape as `SavingsScreen.tsx`'s
+  `getEfStatus()` (red if negative, green at/above `cautionThresholdPercent`%
+  of `computeMonthlyObligationsBaseline()`, orange in between). Added a new
+  "Left to Spend" section to `SettingsScreen.tsx`, placed directly after
+  Notifications, styled identically to the existing `notifyDaysBefore` row
+  (same `notifyInput` style, same on-blur save pattern) with its own
+  `cautionThresholdInput` state and `saveCautionThreshold()` handler. Added the
+  hero stat card itself directly to `HomeScreen.tsx` (not `DashboardScreen.tsx`
+  — kept in the smaller, fully-visible file per the investigation), reading
+  `model` via `useData()` and rendering the projected amount, its color-coded
+  status label, and a small "until your next payday" / "through end of month"
+  caption underneath. One assumption was explicitly flagged rather than
+  silently guessed at: `model.income` as the field name on `HouseholdModel`
+  was inferred (not directly confirmed in any investigation pass) from
+  `IncomeSource` already being imported into `balanceProjection.ts` — flagged
+  to the person as something to watch for in the `npx tsc --noEmit` output.
+  All 5 files hand-pasted by the person per standing small-fix policy.
+  `npx tsc --noEmit` confirmed clean (empty output, 0 errors) this session —
+  the `model.income` assumption held. **Not yet manually verified on-device**
+  (the Settings number field saving/persisting correctly, the hero card
+  rendering with the right color/label, and the payday-vs-end-of-month
+  fallback behaving correctly with zero or multiple income sources) — added
+  to the running on-device checklist per the current batched-testing policy.
 - **7 bugs from the full on-device testing pass — ALL CODE-COMPLETE, PENDING ON-DEVICE
   VERIFICATION.** Investigated via Antigravity (report-only, real code shown for every
   claim) across two rounds — an initial investigation, then a targeted follow-up
@@ -852,22 +896,19 @@ original 11 phases before that. Nothing from either file is repeated here.
   projected number is negative. Green = healthy. Amber/orange = positive but
   "cutting it close" — a mid-tier caution color, added after the person asked for
   one rather than just red/green.
-- **New this session — the caution threshold is percentage-based, not a fixed
-  peso amount, AND it will be a real, user-editable Settings control — not
-  hardcoded.** The percentage is checked against the monthly expense baseline
-  (now `computeMonthlyObligationsBaseline()`, including debts and loans per the
-  fix above — confirmed by the person that debts/loans should count toward this
-  baseline). Rather than picking one fixed percentage in code, the person asked
-  for a real Settings screen control (slider or number field) so the threshold
-  can be adjusted from the phone at any time, with no coding session needed —
-  this means storing a new field (e.g. `cautionThresholdPercent`) in the app's
-  settings data, alongside the existing settings, with a sensible default (not
-  yet chosen) used until the person changes it. This is planned to be built
-  alongside B.7 itself, not as a separate later checkpoint, since the threshold
-  has no purpose without "Left to Spend" existing first. Placement on the
-  Settings screen (its own small "Left to Spend" section vs. folded into the
-  existing Savings-screen EF/FI settings) has not yet been decided — pending the
-  next investigation pass into the real current Settings screen structure.
+- **B.7 finalized — caution threshold is a real Settings control, synced via
+  the household model, in its own section.** `cautionThresholdPercent` (default
+  `20`) lives on `model.settings`, right alongside `notifyDaysBefore`, so it
+  syncs across every linked household member automatically the same way every
+  other setting does — no separate AsyncStorage key. Rendered as a plain 0–100
+  number field (matching `notifyDaysBefore`'s exact existing visual pattern),
+  not a slider — no slider dependency exists in the app yet, and a plain
+  number field was confirmed to work fine for this exact kind of setting. Lives
+  in its own new "Left to Spend" section in `SettingsScreen.tsx`, placed
+  directly after Notifications rather than folded into the Savings-screen EF/FI
+  settings, since it's a Home-tab-facing setting, not a savings-calculator one.
+  The hero stat itself lives directly in `HomeScreen.tsx`, not
+  `DashboardScreen.tsx`.
 
 📋 Phase B Feature Priority (B.1 — finalized reference)
 This is the standing checklist for "is this essential or can it wait" throughout the
@@ -920,6 +961,14 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   a goal.** Flagged as confusing during testing; not yet investigated. Needs a look
   at `SavingsScreen.tsx`'s save handler to see what happens after a successful save
   (closes the sheet? scrolls to the row? nothing visible?) and whether that's right.
+- **B.7 "Left to Spend" — not yet verified on-device.** Needs checking: the new
+  "Left to Spend" number field in Settings saves and persists correctly (and
+  syncs to a second linked device, if available); the Home tab hero card renders
+  with the right amount, the right red/orange/green color, and the right
+  "until your next payday" / "through end of month" caption; and the fallback
+  to end-of-month behaves correctly for a household with zero income sources,
+  and correctly picks the *earliest* payday for a household with more than one
+  income source.
 
 - **Pre-Phase-B audit findings — TIER 1, TIER 2, AND TIER 3 FULLY VERIFIED & COMPLETE**
   (the one exception — orphaned household docs — is a deliberate, documented deferral).
@@ -1011,16 +1060,13 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   checkpoint still gets `npx tsc --noEmit` verification and diff review before
   being marked code-complete; a running, growing on-device checklist is being
   kept in ⚠️ Known issues above so nothing gets lost by the time testing happens.
-- **B.7 is next, in two parts, part 1 not yet run:** (1) run the drafted Settings-
-  placement investigation prompt (see ✅ Done above) in Antigravity, paste the
-  response back, and decide exactly where the caution-threshold control lives and
-  how it's stored (household-synced model field vs. AsyncStorage) — this decision
-  is the very next thing to do at the start of the next session; (2) once placement
-  is decided, build "Left to Spend" itself — the hero stat on Home, reading the
-  next-payday projection off the existing balance engine, color-coded red/amber/
-  green using the new percentage-based, Settings-editable threshold. Both the
-  biweekly anchor date fix and the expanded expense baseline this depends on are
-  already done and pushed (see ✅ Done above) — B.7 itself has not been started yet.
+- **B.7 is code-complete** (see ✅ Done above) — "Left to Spend" hero stat on Home,
+  plus its Settings caution-threshold control, both built and `npx tsc --noEmit`
+  clean. On-device verification is pending per the current batched-testing policy
+  (see the new checklist item in ⚠️ Known issues above).
+- **B.8 (Category watchlists under Insights) is the next unbuilt checkpoint** per
+  the table below, whenever the person is ready to keep building forward. No
+  investigation has been done on it yet.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1041,7 +1087,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | ✅ B.5 | UI/UX psychology pass — Batch 1 + 2 + Calendar all code-complete; on-device testing deferred per batching decision | Cross-generational research |
   | ✅ B.6a | Date picker, part 1 — reusable `<DateField>`, Transactions + Bills — code-complete, on-device testing deferred | Requested |
   | ✅ B.6b | Date picker, part 2 — rolled out to every remaining screen (Debts, Loans, Income, Savings, Goals, Events, Travel) — code-complete, on-device testing deferred | Requested |
-  | B.7 | "Left to Spend" hero stat on Home tab | Simplifi-inspired |
+  | ✅ B.7 | "Left to Spend" hero stat on Home tab — code-complete, on-device testing deferred | Simplifi-inspired |
   | B.8 | Category watchlists under Insights | Simplifi-inspired |
   | B.9 | Yours/Mine/Ours labels + transaction comments | Monarch-inspired |
   | B.10 | Refund tracker | Simplifi-inspired |
@@ -1174,6 +1220,25 @@ Files in the repo (relevant to Phase B/C)
   and the `modalOverlay`/`modalCard`/`modalTitle` styles were deliberately **kept** in
   this file (not removed) since the Quick PIN setup modal, the Secret Recovery Key
   modal, and the "sign out this device" confirmation modal all still use them.
+- `mobile-app/src/types.ts` — modified (B.7). Added `cautionThresholdPercent: number`
+  to the `Settings` type.
+- `mobile-app/src/defaultModel.ts` — modified (B.7). Added
+  `cautionThresholdPercent: 20` to the default settings object.
+- `mobile-app/src/balanceProjection.ts` — modified (B.7). Imports
+  `computeNextPayDate` from `income.ts`; added `LeftToSpendResult` type,
+  `computeLeftToSpend(model, today?)`, and `getLeftToSpendStatus(amount, model,
+  colors)` — the household's projected balance on its next payday (or end of
+  current month, as a fallback), plus the same red/orange/green tiering shape as
+  `SavingsScreen.tsx`'s `getEfStatus()`.
+- `mobile-app/src/screens/SettingsScreen.tsx` — modified (B.7). Added a new
+  "Left to Spend" section (placed directly after Notifications) with a
+  `cautionThresholdInput` state and `saveCautionThreshold()` handler, styled
+  identically to the existing `notifyDaysBefore` row.
+- `mobile-app/src/screens/HomeScreen.tsx` — modified (B.7). Imports `useData`
+  and the two new `balanceProjection.ts` exports; computes `leftToSpend`/
+  `leftToSpendStatus` and renders a new hero card above `<DashboardScreen />`
+  showing the projected amount, its status color/label, and a payday/
+  end-of-month caption.
 - For the full file inventory through the end of Phase A, see PROGRESS1.md.
 - `mobile-app/src/screens/AccountsScreen.tsx` — modified (B.5 Batch 1). Delete now
   requires confirming a native `Alert.alert` dialog before removing an account.
@@ -1292,6 +1357,39 @@ Files in the repo (relevant to Phase B/C)
   sentence, falling back to "Nothing due on this day" when empty. Added
   `dotRow`/`dot`/`modalEventList`/`modalEventRow`/`modalEventDot`/`modalEventLabel`/
   `modalEventAmount` styles.
+
+### Session entry — B.7 built: "Left to Spend" hero stat + Settings caution-threshold control
+**What happened:** Ran the Settings-placement investigation prompt drafted at the end
+of the prior session. Confirmed `notifyDaysBefore` is the right pattern to copy
+(a plain `model.settings` field, saved via `saveModel()`, syncing across every
+linked household member) and that no slider dependency exists anywhere in the app —
+decided a plain 0–100 number field was the right call over adding a new dependency
+for one control. A second, narrower investigation confirmed the real `useData()`
+hook shape, `formatPeso`'s real signature/import path, `DashboardScreen.tsx`'s real
+imports and 4 relevant style keys, and confirmed no circular-import risk between
+`balanceProjection.ts` and `income.ts`. Built the feature across 5 files: the new
+`cautionThresholdPercent` settings field (`types.ts`, `defaultModel.ts`), two new
+`balanceProjection.ts` exports (`computeLeftToSpend`, `getLeftToSpendStatus`) reusing
+the existing `computeNextPayDate`/`computeRunningBalances`/
+`computeMonthlyObligationsBaseline` functions rather than computing anything from
+scratch, a new "Left to Spend" Settings section matching `notifyDaysBefore`'s exact
+visual/persistence pattern, and a new hero card on `HomeScreen.tsx` (deliberately
+not `DashboardScreen.tsx`) above the existing `<DashboardScreen />` mount. One
+assumption was explicitly flagged rather than silently guessed at: `model.income`
+as the real field name was inferred, not directly confirmed, from `IncomeSource`
+already being imported elsewhere in `balanceProjection.ts`.
+
+**Result:** All 5 files hand-pasted by the person per standing small-fix policy.
+`npx tsc --noEmit` came back clean (empty output, 0 errors) — the flagged
+`model.income` assumption held up. B.7 is code-complete; on-device verification
+(the Settings field persisting, the hero card's color/label/caption rendering
+correctly, and the payday-vs-end-of-month fallback behaving correctly) is deferred
+per the current batched-testing policy, and added to the running checklist.
+
+**Design decision made this session:** No new decision — this session is a direct,
+successful application of the standing rule to flag any unverified assumption
+explicitly to the person rather than silently building on it, and to confirm it
+against real compiler output before treating it as settled.
 
 ### Session entry — 7 bugs from the on-device testing pass investigated and fixed (6 code-complete, 1 documented as a platform limitation)
 **What happened:** Worked through the priority list from the prior session's full
