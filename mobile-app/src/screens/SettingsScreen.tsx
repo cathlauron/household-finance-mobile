@@ -192,6 +192,9 @@ export default function SettingsScreen() {
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
+  const [cautionThresholdInput, setCautionThresholdInput] = useState(
+    String(model?.settings?.cautionThresholdPercent ?? 20)
+  );
   const [notifStatusMsg, setNotifStatusMsg] = useState('');
 
   // ---- Merchants & Payees ----
@@ -278,6 +281,18 @@ export default function SettingsScreen() {
     const updated: HouseholdModel = {
       ...model,
       settings: { ...model.settings, notifyDaysBefore: value },
+    };
+    await saveModel(updated);
+  }
+
+  async function saveCautionThreshold() {
+    if (!model) return;
+    const n = parseInt(cautionThresholdInput, 10);
+    const value = isNaN(n) || n < 0 ? 0 : n > 100 ? 100 : n;
+    setCautionThresholdInput(String(value));
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, cautionThresholdPercent: value },
     };
     await saveModel(updated);
   }
@@ -707,6 +722,24 @@ export default function SettingsScreen() {
             maxLength={2}
           />
           <Text style={styles.rowName}>day(s) before due</Text>
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Left to Spend</Text>
+        <Text style={styles.sectionSub}>
+          "Left to Spend" on Home turns orange when your projected balance dips below
+          this percentage of your typical monthly bills, debts &amp; loan payments.
+        </Text>
+        <View style={styles.row}>
+          <Text style={styles.rowName}>Caution below</Text>
+          <TextInput
+            style={styles.notifyInput}
+            value={cautionThresholdInput}
+            onChangeText={setCautionThresholdInput}
+            onBlur={saveCautionThreshold}
+            keyboardType="number-pad"
+            maxLength={3}
+          />
+          <Text style={styles.rowName}>% of monthly obligations</Text>
         </View>
 
         <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={togglePushNotifications}>

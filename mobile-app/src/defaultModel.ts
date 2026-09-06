@@ -10,9 +10,10 @@ import type { HouseholdModel } from './types';
 
 export function defaultModel(): HouseholdModel {
   return {
-    settings: {
-      currency: 'PHP',
-      notifyDaysBefore: 3,
+      settings: {
+        currency: 'PHP',
+        notifyDaysBefore: 3,
+        cautionThresholdPercent: 20,
       theme: 'classic',
       colorMode: 'light',
       fontSize: 'md',

@@ -10,6 +10,7 @@
 export type Settings = {
   currency: string;
   notifyDaysBefore: number;
+  cautionThresholdPercent: number;
   theme: string;
   colorMode: 'light' | 'dark' | 'device';
   fontSize: string;

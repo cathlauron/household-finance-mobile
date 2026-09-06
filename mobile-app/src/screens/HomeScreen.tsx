@@ -4,6 +4,8 @@ import SetPinScreen from './SetPinScreen';
 import DashboardScreen from './DashboardScreen';
 import { hasPinSetUp } from '../pin';
 import { useTheme } from '../ThemeContext';
+import { useData } from '../DataContext';
+import { computeLeftToSpend, getLeftToSpendStatus, formatPeso } from '../balanceProjection';
 
 type Props = {
   username: string;
@@ -12,6 +14,7 @@ type Props = {
 
 export default function HomeScreen({ username, onLock }: Props) {
   const { colors } = useTheme();
+  const { model } = useData();
   const [showSetPin, setShowSetPin] = useState(false);
   const [pinIsSet, setPinIsSet] = useState(false);
 
@@ -34,6 +37,10 @@ export default function HomeScreen({ username, onLock }: Props) {
     );
   }
 
+  const leftToSpend = model ? computeLeftToSpend(model) : null;
+  const leftToSpendStatus =
+    leftToSpend && model ? getLeftToSpendStatus(leftToSpend.amount, model, colors) : null;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 }}>
@@ -47,6 +54,19 @@ export default function HomeScreen({ username, onLock }: Props) {
           </TouchableOpacity>
         </View>
       </View>
+      {leftToSpend && leftToSpendStatus && (
+        <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: colors.navy3, borderRadius: 10, padding: 16 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.inkDim, marginBottom: 8 }}>
+            Left to Spend
+          </Text>
+          <Text style={{ fontSize: 26, fontWeight: '700', color: leftToSpendStatus.color }}>
+            {formatPeso(leftToSpend.amount)}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: 4 }}>
+            {leftToSpendStatus.label} · {leftToSpend.basis === 'payday' ? 'until your next payday' : 'through end of month'}
+          </Text>
+        </View>
+      )}
       <DashboardScreen />
     </View>
   );

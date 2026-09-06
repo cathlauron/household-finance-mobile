@@ -25,6 +25,7 @@
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
+import { computeNextPayDate } from './income';
 
 export type CalendarEvent = {
   type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
@@ -419,4 +420,49 @@ export function formatPeso(amount: number, currencySymbol: string = '₱'): stri
   const abs = Math.abs(amount);
   const formatted = abs.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return `${isNegative ? '-' : ''}${currencySymbol}${formatted}`;
+}
+
+// ---- B.7: "Left to Spend" ----
+// The household's projected balance on its next payday (the earliest upcoming
+// payday across every income source), or projected to the end of the current
+// month if no payday can be resolved. Reuses computeRunningBalances — nothing
+// here is computed from scratch.
+export type LeftToSpendResult = {
+  amount: number;
+  targetDate: Date;
+  basis: 'payday' | 'endOfMonth';
+};
+
+function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): Date | null {
+  let earliest: Date | null = null;
+  model.income.forEach((source) => {
+    const next = computeNextPayDate(source.frequency as any, source.payDates || [], today);
+    if (next && (!earliest || next < earliest)) earliest = next;
+  });
+  return earliest;
+}
+
+export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date()): LeftToSpendResult {
+  const payDate = nextHouseholdPayDate(model, today);
+  const targetDate = payDate || new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const basis: 'payday' | 'endOfMonth' = payDate ? 'payday' : 'endOfMonth';
+  const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
+  const amount = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  return { amount, targetDate, basis };
+}
+
+// Same three-tier red/orange/green shape as SavingsScreen's getEfStatus() — red when
+// negative, green at or above the household's caution threshold (a % of the monthly
+// obligations baseline, user-tunable in Settings), orange in between.
+export function getLeftToSpendStatus(
+  amount: number,
+  model: HouseholdModel,
+  colors: { error: string; orange: string; ok: string }
+): { color: string; label: string } {
+  if (amount < 0) return { color: colors.error, label: 'Over budget' };
+  const baseline = computeMonthlyObligationsBaseline(model.bills, model.debts, model.loans);
+  const thresholdPercent = model.settings.cautionThresholdPercent ?? 20;
+  const cautionAmount = baseline * (thresholdPercent / 100);
+  if (amount < cautionAmount) return { color: colors.orange, label: 'Cutting it close' };
+  return { color: colors.ok, label: 'Looking good' };
 }
