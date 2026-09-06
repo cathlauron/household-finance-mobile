@@ -84,6 +84,13 @@ export type Bill = {
   customFreq?: string;
   customStartDate?: string;
   customOccurrenceCount?: number | '';
+  // B.14: opt-in flag distinguishing a subscription (Netflix) from a plain
+  // recurring bill (Rent). Only subscriptions get cancel-reminders.
+  isSubscription?: boolean;
+  // Undefined/'active' = normal, reminders keep firing each cycle.
+  // 'cancelled' = person tapped Cancel; bill stays in the list (for
+  // history/reports) but stops generating future reminders.
+  subscriptionStatus?: 'active' | 'cancelled';
 };
 
 export type Debt = {

@@ -119,6 +119,39 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   }
 
   // ============================================================
+  // Subscription cancel-reminders (Checkpoint B.14)
+  // ============================================================
+  // Same "X days before" timing as the bill-due alerts above, but only for
+  // bills explicitly flagged isSubscription, and only while still active
+  // (not already marked cancelled). Attaches a data payload so tapping the
+  // notification can deep-link straight to this bill.
+  for (const bill of model.bills) {
+    if (!bill.isSubscription || bill.subscriptionStatus === 'cancelled') continue;
+    if (billOutstanding(bill) <= 0) continue;
+    const nextRenewal = getNextDueDate(bill.recurringType, bill.dueDate, now);
+    if (!nextRenewal) continue;
+
+    const reminderDate = new Date(nextRenewal);
+    reminderDate.setDate(reminderDate.getDate() - days);
+    reminderDate.setHours(9, 0, 0, 0);
+
+    if (reminderDate.getTime() <= now.getTime()) continue;
+
+    const amount = billOutstanding(bill);
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Still want ${bill.name || 'this subscription'}?`,
+        body: `Renews ${nextRenewal.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} for ${formatPeso(amount)}`,
+        data: { type: 'subscriptionReminder', billId: bill.id },
+      },
+      trigger: {
+        type: SchedulableTriggerInputTypes.DATE,
+        date: reminderDate,
+      },
+    });
+  }
+
+  // ============================================================
   // Weekly spending recap (Checkpoint B.11)
   // ============================================================
   // Reuses the exact same "last 7 days through today" window the Weekly

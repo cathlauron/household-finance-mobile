@@ -5,7 +5,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import { useTheme } from '../ThemeContext';
 
 export type RootStackParamList = {
-  Main: undefined;
+  Main: { openBillId?: string } | undefined;
   Profile: undefined;
 };
 
@@ -33,7 +33,14 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
         name="Main"
         options={{ headerShown: false }}
       >
-        {() => <MainTabs username={username} onLock={onLock} onSignOut={onSignOut} />}
+        {({ route }) => (
+          <MainTabs
+            username={username}
+            onLock={onLock}
+            onSignOut={onSignOut}
+            initialOpenBillId={route.params?.openBillId}
+          />
+        )}
       </Stack.Screen>
       <Stack.Screen
         name="Profile"

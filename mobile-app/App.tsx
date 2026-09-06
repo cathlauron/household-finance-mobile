@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { NavigationContainer } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
+import { navigationRef } from './src/navigation/navigationRef';
 import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
@@ -36,6 +38,49 @@ function AppContent() {
   const [remoteRevokeNotice, setRemoteRevokeNotice] = useState<string | null>(null);
 
   const screenRef = useRef<Screen>('loading');
+
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  // B.14: deep-link plumbing. `pendingDeepLinkBillId` survives across
+  // loading/signIn/onboarding without triggering re-renders; `handledNotificationIds`
+  // stops the same physical tap from being processed twice (cold-start
+  // getLastNotificationResponseAsync() and the live listener can both fire
+  // for one tap).
+  const pendingDeepLinkBillId = useRef<string | null>(null);
+  const handledNotificationIds = useRef<Set<string>>(new Set());
+
+  function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
+    if (!response) return;
+    const id = response.notification.request.identifier;
+    if (handledNotificationIds.current.has(id)) return;
+    handledNotificationIds.current.add(id);
+    const data: any = response.notification.request.content.data;
+    if (data?.type === 'subscriptionReminder' && typeof data.billId === 'string') {
+      pendingDeepLinkBillId.current = data.billId;
+      flushPendingDeepLink();
+    }
+  }
+
+  function flushPendingDeepLink() {
+    if (!pendingDeepLinkBillId.current) return;
+    if (!navigationRef.isReady()) return;
+    const billId = pendingDeepLinkBillId.current;
+    pendingDeepLinkBillId.current = null;
+    navigationRef.navigate('Main', { openBillId: billId });
+  }
+
+  // Cold start: the app may have been launched BY tapping the notification.
+  useEffect(() => {
+    Notifications.getLastNotificationResponseAsync().then(captureNotificationResponse);
+  }, []);
+
+  // Warm/background: the app was already running when the notification was tapped.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(captureNotificationResponse);
+    return () => sub.remove();
+  }, []);
   const usernameRef = useRef<string | null>(null);
   const autoLockMinutesRef = useRef<number>(DEFAULT_AUTO_LOCK_MINUTES);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -160,6 +205,7 @@ function AppContent() {
   useEffect(() => {
     if (screen === 'home') {
       resetIdleTimer();
+      flushPendingDeepLink();
     } else {
       clearIdleTimer();
     }
@@ -218,7 +264,7 @@ function AppContent() {
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.navy2 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef} onReady={flushPendingDeepLink}>
           <RootStack
             username={currentUsername}
             onSignOut={handleFullSignOut}

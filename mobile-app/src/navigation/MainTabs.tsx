@@ -16,8 +16,9 @@ type MainTabsProps = {
   username: string;
   onLock: () => void;
   onSignOut?: () => void;
+  initialOpenBillId?: string;
 };
-export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps) {
+export default function MainTabs({ username, onLock, onSignOut, initialOpenBillId }: MainTabsProps) {
   const { colors } = useTheme();
   return (
     <Tab.Navigator
@@ -37,7 +38,9 @@ export default function MainTabs({ username, onLock, onSignOut }: MainTabsProps)
       </Tab.Screen>
       <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Accounts" component={AccountsScreen} />
-      <Tab.Screen name="To-Pay" component={ToPayScreen} />
+      <Tab.Screen name="To-Pay">
+        {() => <ToPayScreen initialOpenBillId={initialOpenBillId} />}
+      </Tab.Screen>
       <Tab.Screen name="Planning" component={PlanningScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Insights" component={InsightsScreen} />

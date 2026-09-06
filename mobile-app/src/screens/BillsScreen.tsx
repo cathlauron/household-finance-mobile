@@ -74,7 +74,11 @@ function sortByNextDue(bills: Bill[]): Bill[] {
 const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
-export default function BillsScreen() {
+type BillsScreenProps = {
+  openBillId?: string;
+};
+
+export default function BillsScreen({ openBillId }: BillsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
@@ -85,7 +89,8 @@ export default function BillsScreen() {
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
-  const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
+const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
+const [subscriptionInput, setSubscriptionInput] = useState(false);
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
@@ -109,6 +114,7 @@ export default function BillsScreen() {
     setAmountInput('');
     setPriorityInput('');
     setNotesInput('');
+    setSubscriptionInput(false);
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
     setOnetimeDateInput('');
@@ -130,6 +136,7 @@ export default function BillsScreen() {
     setAmountInput(billAmount(bill) === 0 ? '' : String(billAmount(bill)));
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
+    setSubscriptionInput(!!bill.isSubscription);
     setPaymentMethodInput(bill.cycles && bill.cycles[0] ? bill.cycles[0].paymentMethod : undefined);
     const rt = (bill.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
@@ -145,6 +152,19 @@ export default function BillsScreen() {
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+  }
+
+  async function handleSetSubscriptionStatus(billId: string, status: 'active' | 'cancelled') {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      bills: model.bills.map((b) => (b.id === billId ? { ...b, subscriptionStatus: status } : b)),
+    };
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to update', 'Please try again.');
+    }
   }
 
   async function handleSave() {
@@ -299,9 +319,21 @@ export default function BillsScreen() {
               collapsedContent={
                 <View style={styles.billCollapsedRow}>
                   <View style={styles.billRowMain}>
-                    <Text style={styles.billName} numberOfLines={1}>
-                      {bill.name || 'Untitled bill'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.billName} numberOfLines={1}>
+                        {bill.name || 'Untitled bill'}
+                      </Text>
+                      {bill.isSubscription && bill.subscriptionStatus === 'cancelled' && (
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.inkFaint, marginLeft: 6 }}>
+                          CANCELLED
+                        </Text>
+                      )}
+                      {bill.isSubscription && bill.subscriptionStatus !== 'cancelled' && (
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.gold, marginLeft: 6 }}>
+                          SUB
+                        </Text>
+                      )}
+                    </View>
                     <Text style={styles.billSub} numberOfLines={1}>
                       {(bill.category || 'Uncategorized')} · {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
                     </Text>
@@ -356,6 +388,39 @@ export default function BillsScreen() {
                     <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
                       <Text style={styles.detailLabel}>Notes</Text>
                       <Text style={styles.detailNotesText}>{bill.notes.trim()}</Text>
+                    </View>
+                  )}
+
+                  {bill.isSubscription && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                      {bill.subscriptionStatus === 'cancelled' ? (
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                          onPress={() => handleSetSubscriptionStatus(bill.id, 'active')}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.gold }}>Reactivate</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <>
+                          <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                            onPress={() => handleSetSubscriptionStatus(bill.id, 'active')}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>Keep</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                            onPress={() =>
+                              Alert.alert('Cancel subscription?', `Stop future reminders for ${bill.name || 'this subscription'}. You can reactivate it anytime.`, [
+                                { text: 'Never mind', style: 'cancel' },
+                                { text: 'Cancel it', style: 'destructive', onPress: () => handleSetSubscriptionStatus(bill.id, 'cancelled') },
+                              ])
+                            }
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.orange }}>Cancel</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
                     </View>
                   )}
                 </View>
@@ -483,6 +548,28 @@ export default function BillsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}
+                  onPress={() => setSubscriptionInput((prev) => !prev)}
+                >
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      borderWidth: 2,
+                      borderColor: subscriptionInput ? colors.gold : colors.inkFaint,
+                      backgroundColor: subscriptionInput ? colors.gold : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 10,
+                    }}
+                  >
+                    {subscriptionInput && <Text style={{ color: colors.navy2, fontSize: 14, fontWeight: '700' }}>✓</Text>}
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>This is a subscription</Text>
+                </TouchableOpacity>
 
                 <PaymentMethodPicker
                   value={paymentMethodInput}

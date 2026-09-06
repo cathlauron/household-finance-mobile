@@ -1042,6 +1042,112 @@ original 11 phases before that. Nothing from either file is repeated here.
   filter; and the toolbar stays hidden on Cash-Flow Forecast, Subscription
   Audit, and Payment Methods) — added to the running on-device checklist per
   the current batched-testing policy.
+- **B.14 (Subscription cancel-reminder) — CODE COMPLETE, `npx tsc --noEmit`
+  CLEAN, PENDING ON-DEVICE VERIFICATION.** The most infrastructure-heavy
+  checkpoint of Phase B so far — required building genuinely new navigation
+  plumbing that didn't exist anywhere in the app before this. Investigated in
+  four rounds via Antigravity report-only prompts before any code was
+  written: round 1 confirmed `SubscriptionAuditReport.tsx`'s real
+  subscription-identification logic and the real `Bill`/`BillCycle` types;
+  round 2 confirmed zero existing notification-tap handling, zero
+  `navigationRef` pattern, that `content.data` is unused anywhere in
+  `pushNotifications.ts`, and — critically — that Bills isn't even a real
+  navigation route today (it's a local `useState` sub-tab inside
+  `ToPayScreen.tsx`, not a `Tab.Screen`); round 3 confirmed the real cold-start
+  `screen` state sequence in `App.tsx` (always `'loading' → 'signIn'`, even
+  on a returning user — PIN/biometric unlock only applies to an
+  already-authenticated session that was backgrounded into `'locked'`), the
+  existing `screen === 'home'` effect pattern to extend rather than
+  duplicate, and confirmed `@react-navigation/native` `^7.3.17` (supports
+  `createNavigationContainerRef`); round 4 pulled the real, complete,
+  previously-elided `handleSave()`, `resetForm()`, and expanded-row JSX
+  needed to safely finish the last two edits without guessing at branch
+  contents.
+
+  Three design decisions were made explicitly before code was written (via
+  direct confirmation, not assumed): a new opt-in `isSubscription` toggle on
+  the Bill form (rather than treating every recurring bill as a
+  "subscription," which would have wrongly flagged Rent/Electricity); the
+  reminder reuses the existing `notifyDaysBefore` timing rather than a new
+  setting; and — the biggest scope decision — tapping the reminder
+  notification deep-links straight to the bill (chosen explicitly over two
+  smaller alternatives: in-app-only management, or building the toggle/
+  reminder now and deferring deep-linking to a later checkpoint). A follow-up
+  decision, also explicitly confirmed, added full cold-start handling
+  (`getLastNotificationResponseAsync()`) in the same pass rather than
+  deferring it, after being warned that a live-listener-only implementation
+  would silently fail to deep-link when the app was fully closed (not just
+  backgrounded) at the time of the tap.
+
+  Added `isSubscription?: boolean` and `subscriptionStatus?: 'active' |
+  'cancelled'` to `Bill` (`types.ts`). Added a new "This is a subscription"
+  checkbox-style toggle to `BillsScreen.tsx`'s Add/Edit form (placed directly
+  after the Priority pill row), a `subscriptionInput` state cleared in
+  `resetForm()` and populated in `openEditModal()`, and `handleSave()` writes
+  it on both branches — with a stamped `subscriptionStatus` explicitly
+  designed to never silently reset a bill someone already marked cancelled
+  back to active just because they resaved the form. Added a small "SUB" /
+  "CANCELLED" badge next to the bill name in the collapsed row, and, for any
+  bill with `isSubscription: true`, Keep/Cancel buttons (Cancel goes through
+  a native `Alert.alert` confirmation, matching the app's existing B.5
+  delete-confirmation pattern) or a single Reactivate button if already
+  cancelled, in the expanded drawer — via a new `handleSetSubscriptionStatus()`
+  handler that saves directly, independent of the main Add/Edit form.
+
+  Added a second scheduling loop to `rescheduleBillNotifications()` in
+  `pushNotifications.ts`, parallel to (and placed directly after) the
+  existing per-bill due-date loop: fires only for `isSubscription: true`
+  bills that aren't `cancelled`, using the same `notifyDaysBefore`/9 AM
+  timing, with distinct wording ("Still want {name}? Renews {date} for
+  {amount}") and — the part that makes deep-linking possible — a
+  `content.data: { type: 'subscriptionReminder', billId }` payload, the
+  first use of `content.data` anywhere in this codebase.
+
+  Built the full deep-link chain from scratch: new
+  `src/navigation/navigationRef.ts` exporting a `createNavigationContainerRef`
+  handle; `App.tsx` gained a `pendingDeepLinkBillId` ref (survives across
+  loading/signIn/onboarding without re-render churn) and a
+  `handledNotificationIds` Set ref (dedupes a single physical tap that can
+  otherwise be captured by both `getLastNotificationResponseAsync()` on cold
+  start and the live `addNotificationResponseReceivedListener` on warm
+  resume), a `captureNotificationResponse()`/`flushPendingDeepLink()` pair,
+  two new one-time `useEffect`s (cold-start check, live listener
+  registration), a third flush point added directly into the *existing*
+  `screen === 'home'` effect (rather than a new one) so it fires the moment
+  the person is actually unlocked, and a fourth flush point via
+  `<NavigationContainer ref={navigationRef} onReady={flushPendingDeepLink}>`
+  to close the race where `screen` and `NavigationContainer`'s mount could
+  both become ready in the same tick. `RootStack.tsx`'s `Main` route gained
+  an `{ openBillId?: string }` param, read via a render-prop (`{ route } =>`)
+  rather than relying on React Navigation's automatic nested-params
+  forwarding into the Tab navigator — deliberately, since `MainTabs` is
+  mounted via a render-prop rather than `component=`, making that automatic
+  forwarding unreliable. `MainTabs.tsx` accepts and forwards
+  `initialOpenBillId` to `ToPayScreen` the same way. `ToPayScreen.tsx` (which
+  had zero props before this checkpoint) now accepts `initialOpenBillId` and
+  a `useEffect` forces `activeSubTab` to `'bills'` whenever it's set,
+  regardless of whichever sub-tab was last open, then passes it to
+  `<BillsScreen openBillId={...} />`.
+
+  One real compile gap surfaced mid-session and was fixed immediately rather
+  than deferred: `BillsScreen.tsx` didn't yet accept any props at all when
+  `ToPayScreen.tsx`'s edit was pasted first, breaking `npx tsc --noEmit` with
+  a real, expected type error — fixed by adding the `{ openBillId }:
+  BillsScreenProps` signature before the actual auto-open behavior was
+  wired in (that behavior — `BillsScreen.tsx` finding the matching bill by
+  `openBillId` and calling the existing `openEditModal()` on mount — was
+  intentionally scoped for a fast-follow rather than blocking this session's
+  `npx tsc --noEmit` cleanliness on it further; see ⚠️ Known issues below).
+
+  All files hand-pasted by the person per standing small-fix policy across
+  several back-and-forth rounds (this was the longest single-checkpoint
+  investigation chain so far — four separate Antigravity report-only passes
+  before any BillsScreen.tsx form/save code was safe to write, specifically
+  because the first two responses for `handleSave()` and the expanded-row
+  JSX came back elided with "..." rather than complete, and pasting a
+  find/replace against elided code risked silently corrupting the bill
+  save/edit flow). `npx tsc --noEmit` confirmed clean (empty output, 0
+  errors) after every round, including the final one.
 
 📌 Decisions made
 - **Carried forward from PROGRESS1.md — still active going forward:**
@@ -1209,6 +1315,35 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   existing transaction correctly re-populates the Tags field from its saved
   `tags` array; and extra spaces/empty entries (e.g. "vacation,  , tax") are
   trimmed/filtered out correctly rather than saved as blank tags.
+- **B.14 follow-up gap (not a bug, a deliberately deferred fast-follow):
+  `openBillId` reaches `BillsScreen.tsx` but isn't acted on yet.** The full
+  deep-link chain (notification tap → cold/warm capture → `navigationRef` →
+  `RootStack` → `MainTabs` → `ToPayScreen` switching to the Bills sub-tab) is
+  complete and passes the target bill's id all the way to `BillsScreen.tsx`
+  as a prop — but `BillsScreen.tsx` doesn't yet have the small `useEffect`
+  that finds the matching bill and calls the existing `openEditModal(bill)`
+  on mount. Today, tapping a subscription reminder will correctly land the
+  person on the Bills tab, just not with that specific bill's edit sheet
+  already open. Needs one more small, low-risk investigation-then-fix pass
+  (get `BillsScreen.tsx`'s real top-level `useEffect`/mount structure, then
+  add a guarded one-time `useEffect` keyed on `openBillId` that calls
+  `openEditModal` — with a ref to prevent re-opening if the prop is still
+  set after the person manually closes the sheet).
+- **B.14 Subscription cancel-reminder — `npx tsc --noEmit` confirmed clean,
+  needs on-device verification.** Needs checking: the "This is a
+  subscription" toggle saves/persists and re-populates correctly on edit;
+  the SUB/CANCELLED badge shows correctly in the collapsed row; Keep/Cancel/
+  Reactivate buttons only appear for subscription bills and correctly
+  update status (with the Cancel confirmation dialog behaving as expected);
+  the reminder notification fires at the right time with correct
+  name/date/amount wording; tapping it while the app is backgrounded
+  navigates to the Bills tab (live-listener path); tapping it while the app
+  is fully closed also navigates to the Bills tab once sign-in completes
+  (cold-start path — this is the harder case to verify and the one most
+  worth deliberately testing rather than assuming); and that a second,
+  unrelated notification tap (e.g. a regular bill-due alert) does NOT
+  trigger any navigation, since only `type: 'subscriptionReminder'` payloads
+  should.
 - **B.13b Tag-filter toolbar in Reports — `npx tsc --noEmit` confirmed clean,
   needs on-device verification.** Needs checking: the toolbar appears only on
   Monthly Close-out, Year in Review, Person Spending, Weekly Digest, Merchant
@@ -1483,7 +1618,18 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   data model + Transactions Add/Edit Tags field) and B.13b (the tag-filter
   toolbar in Reports, wired into the 6 report screens that build from a
   transaction list) — and `npx tsc --noEmit` clean.** Pending on-device
-  verification only. **B.14 (Subscription cancel-reminder) is next.**
+  verification only. **B.14 (Subscription cancel-reminder) is FULLY
+  code-complete — the toggle, Keep/Cancel/Reactivate actions, the reminder
+  notification with its data payload, and the full cold+warm deep-link
+  navigation chain — and `npx tsc --noEmit` clean.** Pending on-device
+  verification only, with one known follow-up gap noted in ⚠️ Known issues
+  below (tapping a subscription reminder currently navigates to the Bills
+  sub-tab but does not yet auto-open that specific bill's edit sheet — the
+  `openBillId` prop is threaded all the way through but not yet acted on
+  inside `BillsScreen.tsx`). **This was the last item on the original B.1–B.14
+  roadmap table — Phase B's planned checklist is now fully code-complete
+  end-to-end**, pending the accumulated on-device verification pass and the
+  one B.14 follow-up gap above.
 - Checkpoint table below (B.4a shown as in-progress, not yet checked off since Loans/
   Transactions/Income/Savings/Settings modals remain):
 
@@ -1512,7 +1658,7 @@ should touch one of the 9 essential screens/flows above — if it doesn't, it's 
   | B.12 | Expanded FI/retirement calculator | Simplifi-inspired |
   | ✅ B.13a | Report filtering by tag — data model + Transactions Tags field (code-complete, on-device testing deferred) | Simplifi-inspired |
   | ✅ B.13b | Report filtering by tag — tag-filter toolbar in Reports (code-complete, on-device testing deferred) | Simplifi-inspired |
-  | B.14 | Subscription cancel-reminder | Lightweight Rocket Money substitute |
+  | ✅ B.14 | Subscription cancel-reminder — toggle, Keep/Cancel, reminder notification, full deep-link infra (code-complete, on-device testing deferred) | Lightweight Rocket Money substitute |
 
   Full detail and reasoning for each item lives in PROGRESS1.md's Decisions section —
   this table is a working copy for convenience, not a replacement.
@@ -1888,6 +2034,49 @@ Files in the repo (relevant to Phase B/C)
   Accepts an optional `{ activeTag }: Props` prop; filters
   `buildTransactionsList(model)` by tag before its existing
   `transactionsInYear()` call.
+- `mobile-app/src/types.ts` — modified (B.14). Added `isSubscription?:
+  boolean` and `subscriptionStatus?: 'active' | 'cancelled'` to `Bill`.
+- `mobile-app/src/screens/BillsScreen.tsx` — modified (B.14). Added
+  `subscriptionInput` state (cleared in `resetForm()`, populated in
+  `openEditModal()`, saved in both `handleSave()` branches with logic that
+  never silently resets an already-cancelled bill back to active on
+  resave); a new "This is a subscription" checkbox-style toggle placed
+  directly after the Priority pill row; a SUB/CANCELLED badge in the
+  collapsed row; Keep/Cancel/Reactivate buttons (Cancel confirmed via native
+  `Alert.alert`) in the expanded drawer for any subscription bill, wired to
+  a new `handleSetSubscriptionStatus()` handler; and a new
+  `{ openBillId }: BillsScreenProps` signature (prop accepted, auto-open
+  behavior not yet wired — see ⚠️ Known issues).
+- `mobile-app/src/pushNotifications.ts` — modified (B.14). Added a second
+  scheduling loop inside `rescheduleBillNotifications()`, parallel to the
+  existing per-bill due-date loop, for `isSubscription: true` bills that
+  aren't `cancelled` — same `notifyDaysBefore` timing, distinct "Still want
+  {name}?" wording, and a `content.data: { type: 'subscriptionReminder',
+  billId }` payload (the first use of `content.data` in this codebase).
+- `mobile-app/src/navigation/navigationRef.ts` — new (B.14). Exports
+  `navigationRef`, a `createNavigationContainerRef<RootStackParamList>()`
+  handle enabling imperative navigation from outside React components (a
+  notification tap handler in `App.tsx`).
+- `mobile-app/App.tsx` — modified (B.14). Imports `expo-notifications` and
+  `navigationRef`; added `pendingDeepLinkBillId`/`handledNotificationIds`
+  refs, `captureNotificationResponse()`/`flushPendingDeepLink()` functions,
+  a cold-start `useEffect` calling `getLastNotificationResponseAsync()`, a
+  warm-resume `useEffect` registering
+  `addNotificationResponseReceivedListener`, a third flush point added into
+  the existing `screen === 'home'` effect, and `ref`/`onReady` props on
+  `<NavigationContainer>` as the fourth flush point.
+- `mobile-app/src/navigation/RootStack.tsx` — modified (B.14).
+  `RootStackParamList.Main` gained `{ openBillId?: string } | undefined`;
+  the `Main` screen's render-prop now reads `route.params?.openBillId` and
+  forwards it to `<MainTabs>` as `initialOpenBillId`.
+- `mobile-app/src/navigation/MainTabs.tsx` — modified (B.14). Accepts and
+  forwards `initialOpenBillId` to `<ToPayScreen>` via a render-prop (`{
+  () => <ToPayScreen initialOpenBillId={initialOpenBillId} /> }`) instead of
+  the previous `component={ToPayScreen}`.
+- `mobile-app/src/screens/ToPayScreen.tsx` — modified (B.14). Previously
+  accepted zero props; now accepts `initialOpenBillId`, forces
+  `activeSubTab` to `'bills'` via a `useEffect` whenever it's set, and
+  passes it to `<BillsScreen openBillId={...} />`.
 
 ### Session entry — B.13b built: tag-filter toolbar wired into Reports, completing B.13
 **What happened:** Investigated via a dedicated Antigravity report-only pass
@@ -2197,6 +2386,63 @@ logic. New standing rule adopted: never hand the person a "check X, then do Y or
 Z depending on what you find" instruction — always resolve it via investigation
 first, then give one unconditional fix.
 
+
+### Session entry — B.14 built: Subscription cancel-reminder, including new deep-link navigation infrastructure built from scratch
+**What happened:** This was the largest single-checkpoint investigation chain
+of Phase B — four separate Antigravity report-only passes were needed before
+writing the riskiest parts of the diff, because two early responses came back
+with elided ("...") `handleSave()`/expanded-row code that couldn't safely be
+used as a find/replace anchor. Round 1 established what already exists
+(Subscription Audit's identification logic, the real `Bill`/`BillCycle`
+shape). Round 2 surfaced the real scope: no notification-tap handling, no
+navigationRef pattern, and Bills isn't a real navigation route today (a local
+sub-tab inside `ToPayScreen.tsx`) — all of which turned "add a reminder" into
+"build deep-linking from scratch." Given that scope, the person was
+explicitly asked (rather than assumed) how far to take it, and chose the
+full build over the two smaller options offered. Round 3 covered the actual
+cold-start sequence in `App.tsx` — confirming a return visit always passes
+through `'signIn'` before `'home'`, so a cold-start deep-link can only ever
+be "remembered until unlocked," never immediate — and after being warned that
+skipping cold-start handling would mean a silent failure mode (deep-link
+works when backgrounded, silently doesn't when the app was fully closed),
+the person chose to build the cold-start path in this same pass rather than
+defer it. Round 4 finally got the real, complete, unelided `handleSave()`,
+`resetForm()`, and expanded-row JSX needed to finish safely.
+
+Built: the `isSubscription`/`subscriptionStatus` fields; the form toggle,
+badge, and Keep/Cancel/Reactivate actions in `BillsScreen.tsx`; a second
+reminder-scheduling loop in `pushNotifications.ts` using `content.data` for
+the first time in this codebase; and the full navigation chain — a new
+`navigationRef.ts`, dual cold-start/live-listener capture with tap
+deduplication in `App.tsx`, two flush points added to *existing* effects/
+props rather than new standalone ones, and prop-threading through
+`RootStack.tsx` → `MainTabs.tsx` → `ToPayScreen.tsx` (which had zero props
+before this checkpoint).
+
+One real, expected compile gap was hit mid-session and resolved immediately:
+pasting `ToPayScreen.tsx`'s edit before `BillsScreen.tsx` accepted any props
+correctly broke `npx tsc --noEmit`, fixed by adding the prop signature first.
+One piece was deliberately left unfinished rather than rushed: `openBillId`
+reaches `BillsScreen.tsx` but nothing inside it yet acts on it to
+auto-open the matching bill's edit sheet — flagged clearly as a fast-follow
+gap rather than silently left implicit.
+
+**Result:** All files hand-pasted by the person per standing small-fix
+policy. `npx tsc --noEmit` confirmed clean (empty output, 0 errors) after
+every round, including the final one. B.14 is code-complete apart from the
+one flagged auto-open gap; on-device verification (including the harder-to-
+verify cold-start deep-link path specifically) is deferred per the current
+batched-testing policy and added to the running checklist. **This completes
+every item on the original B.1–B.14 Phase B roadmap table** — the immediate
+next step is the small B.14 auto-open fast-follow, then eventually the
+accumulated on-device testing pass, then Phase C (EAS Build migration).
+
+**Design decision made this session:** No new standing rule — this session
+repeatedly applied two already-standing practices under real pressure (an
+unusually long, high-stakes investigation chain): never proceed on elided
+("...") code shown as if it were complete, and when a discovered scope gap
+changes the size of a checkpoint, present it and get an explicit choice
+rather than picking a direction unilaterally.
 
 📚 Older detailed session logs archived in PROGRESS2-ARCHIVE-1.md (14 sessions,
 covering Tier 1/2/3 audit fixes through B.6). Everything from them that still

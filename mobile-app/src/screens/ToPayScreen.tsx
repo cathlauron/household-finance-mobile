@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import BillsScreen from './BillsScreen';
@@ -7,11 +7,23 @@ import LoansScreen from './LoansScreen';
 
 type SubTab = 'bills' | 'debts' | 'loans';
 
+type ToPayScreenProps = {
+  initialOpenBillId?: string;
+};
+
 // A small tab switcher at the top of the To-Pay tab, matching the web app's
 // "Bills / Debts / Loans" sub-tab pattern.
-export default function ToPayScreen() {
+export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   const { colors } = useTheme();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('bills');
+
+  // B.14: a subscription-reminder deep-link always means "open the Bills
+  // sub-tab", regardless of whichever sub-tab was last active.
+  useEffect(() => {
+    if (initialOpenBillId) {
+      setActiveSubTab('bills');
+    }
+  }, [initialOpenBillId]);
   const styles = makeStyles(colors);
   return (
     <SafeAreaView style={styles.container}>
@@ -57,7 +69,7 @@ export default function ToPayScreen() {
         </TouchableOpacity>
       </View>
       <View style={styles.contentWrap}>
-        {activeSubTab === 'bills' && <BillsScreen />}
+        {activeSubTab === 'bills' && <BillsScreen openBillId={initialOpenBillId} />}
         {activeSubTab === 'debts' && <DebtsScreen />}
         {activeSubTab === 'loans' && <LoansScreen />}
       </View>
