@@ -321,7 +321,6 @@ export default function AccountsScreen() {
                     key={account.id}
                     account={account}
                     group={group}
-                    isStacked={true}
                     isExpanded={isExpanded}
                     style={{
                       marginTop,

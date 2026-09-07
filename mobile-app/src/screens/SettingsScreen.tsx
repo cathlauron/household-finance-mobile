@@ -293,7 +293,11 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, notifyDaysBefore: value },
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setNotifStatusMsg('Failed to save. Please try again.');
+    }
   }
 
   async function saveCautionThreshold() {
@@ -305,7 +309,11 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, cautionThresholdPercent: value },
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to save', 'Please try again.');
+    }
   }
 
     async function togglePushNotifications() {
@@ -327,8 +335,12 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, pushNotificationsEnabled: turningOn },
     };
-    await saveModel(updated);
-    setNotifStatusMsg(turningOn ? "You'll get a reminder when a bill is due soon." : 'Turned off.');
+    try {
+      await saveModel(updated);
+      setNotifStatusMsg(turningOn ? "You'll get a reminder when a bill is due soon." : 'Turned off.');
+    } catch (e) {
+      setNotifStatusMsg('Failed to save. Please try again.');
+    }
   }
 
   async function toggleWeeklyRecap() {
@@ -349,7 +361,11 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, weeklyRecapEnabled: turningOn },
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setNotifStatusMsg('Failed to save. Please try again.');
+    }
   }
 
   async function handleSetSwipeToDelete(enabled: boolean) {
@@ -358,7 +374,11 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, swipeToDeleteEnabled: enabled },
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to save', 'Please try again.');
+    }
   }
 
   async function setWeeklyRecapDay(day: number) {
@@ -367,7 +387,11 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, weeklyRecapDay: day },
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setNotifStatusMsg('Failed to save. Please try again.');
+    }
   }
 
   async function saveWeeklyRecapHour() {
@@ -379,7 +403,11 @@ export default function SettingsScreen() {
       ...model,
       settings: { ...model.settings, weeklyRecapHour: value },
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setNotifStatusMsg('Failed to save. Please try again.');
+    }
   }
 
   function closeModal() {
@@ -419,8 +447,12 @@ export default function SettingsScreen() {
     }
 
     const updated: HouseholdModel = { ...model, categories: updatedCategories };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function performDeleteCategory() {
@@ -429,8 +461,12 @@ export default function SettingsScreen() {
       ...model,
       categories: model.categories.filter((c) => c.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    }
   }
 
   function handleDeleteCategory() {
@@ -471,10 +507,14 @@ export default function SettingsScreen() {
         { id: makeId('budget'), category: trimmed, monthlyBudget: limitNum },
       ],
     };
-    await saveModel(updated);
-    setWatchCategoryInput('');
-    setWatchLimitInput('');
-    setWatchErrorMsg('');
+    try {
+      await saveModel(updated);
+      setWatchCategoryInput('');
+      setWatchLimitInput('');
+      setWatchErrorMsg('');
+    } catch (e) {
+      setWatchErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function handleRemoveWatchedCategory(id: string) {
@@ -483,7 +523,11 @@ export default function SettingsScreen() {
       ...model,
       categoryBudgets: model.categoryBudgets.filter((cb) => cb.id !== id),
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to remove', 'Please try again.');
+    }
   }
 
   // ---- Merchants & Payees handlers ----
@@ -542,8 +586,12 @@ export default function SettingsScreen() {
     }
 
     const updated: HouseholdModel = { ...model, payees: updatedPayees };
-    await saveModel(updated);
-    closePayeeModal();
+    try {
+      await saveModel(updated);
+      closePayeeModal();
+    } catch (e) {
+      setPayeeErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function performDeletePayee() {
@@ -552,8 +600,12 @@ export default function SettingsScreen() {
       ...model,
       payees: (model.payees ?? []).filter((p) => p.id !== editingPayeeId),
     };
-    await saveModel(updated);
-    closePayeeModal();
+    try {
+      await saveModel(updated);
+      closePayeeModal();
+    } catch (e) {
+      setPayeeErrorMsg('Failed to delete. Please try again.');
+    }
   }
 
   function handleDeletePayee() {
@@ -647,8 +699,12 @@ export default function SettingsScreen() {
     }
 
     const updated: HouseholdModel = { ...model, categorizationRules: updatedRules };
-    await saveModel(updated);
-    closeRuleModal();
+    try {
+      await saveModel(updated);
+      closeRuleModal();
+    } catch (e) {
+      setRuleErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function performDeleteRule() {
@@ -657,8 +713,12 @@ export default function SettingsScreen() {
       ...model,
       categorizationRules: (model.categorizationRules ?? []).filter((r) => r.id !== editingRuleId),
     };
-    await saveModel(updated);
-    closeRuleModal();
+    try {
+      await saveModel(updated);
+      closeRuleModal();
+    } catch (e) {
+      setRuleErrorMsg('Failed to delete. Please try again.');
+    }
   }
 
   function handleDeleteRule() {
@@ -682,7 +742,11 @@ export default function SettingsScreen() {
     list[idx] = list[swapIdx];
     list[swapIdx] = tmp;
     const updated: HouseholdModel = { ...model, categorizationRules: list };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to reorder', 'Please try again.');
+    }
   }
 
 
@@ -796,9 +860,14 @@ export default function SettingsScreen() {
 
   async function handleClearAllData() {
     setClearBusy(true);
-    await saveModel(defaultModel());
-    setClearBusy(false);
-    setClearConfirmOpen(false);
+    try {
+      await saveModel(defaultModel());
+      setClearConfirmOpen(false);
+    } catch (e) {
+      Alert.alert('Failed to clear data', 'Please try again.');
+    } finally {
+      setClearBusy(false);
+    }
   }
 
   return (

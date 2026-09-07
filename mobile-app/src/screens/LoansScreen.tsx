@@ -518,6 +518,10 @@ export default function LoansScreen() {
                 expandedContent={
                   <View style={styles.detailContainer}>
                     <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Schedule</Text>
+                      <Text style={styles.detailValue}>{fullRecurrenceDetail(loan)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Total Amount</Text>
                       <Text style={styles.detailValue}>{formatPeso(loanTotal(loan))}</Text>
                     </View>

@@ -316,8 +316,12 @@ export default function EventsScreen() {
       savingsGoals: sync.goals,
       manualTransactions: reconciledTransactions,
     };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function handleDeleteEvent() {
@@ -333,8 +337,12 @@ export default function EventsScreen() {
         ? (model.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
         : model.manualTransactions,
     };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    }
   }
 
   async function performDeleteEventById(id: string) {
@@ -350,7 +358,11 @@ export default function EventsScreen() {
         ? (model.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
         : model.manualTransactions,
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to delete', 'Please try again.');
+    }
   }
 
   function handleSwipeDeleteEvent(ev: EventItem) {

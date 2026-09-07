@@ -158,8 +158,12 @@ export default function GoalsScreen() {
     }
 
     const updated: HouseholdModel = { ...model, yearlyGoals: updatedList };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function handleDeleteGoal() {
@@ -168,8 +172,12 @@ export default function GoalsScreen() {
       ...model,
       yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    }
   }
 
   async function performDeleteGoalById(id: string) {
@@ -178,7 +186,11 @@ export default function GoalsScreen() {
       ...model,
       yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== id),
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to delete', 'Please try again.');
+    }
   }
 
   function handleSwipeDeleteGoal(goal: YearlyGoal) {

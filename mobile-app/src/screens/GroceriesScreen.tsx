@@ -141,8 +141,12 @@ export default function GroceriesScreen() {
     }
 
     const updated: HouseholdModel = { ...model, groceries: updatedList };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function handleDeleteItem() {
@@ -151,8 +155,12 @@ export default function GroceriesScreen() {
       ...model,
       groceries: (model.groceries ?? []).filter((g) => g.id !== editingId),
     };
-    await saveModel(updated);
-    closeModal();
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    }
   }
 
   async function performDeleteGroceryById(id: string) {
@@ -161,7 +169,11 @@ export default function GroceriesScreen() {
       ...model,
       groceries: (model.groceries ?? []).filter((g) => g.id !== id),
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to delete', 'Please try again.');
+    }
   }
 
   function handleSwipeDeleteGrocery(item: GroceryItem) {
@@ -197,9 +209,13 @@ export default function GroceriesScreen() {
       ...model,
       groceryCalculator: [...(model.groceryCalculator ?? []), newEntry],
     };
-    await saveModel(updated);
-    setCalcLabelInput('');
-    setCalcAmountInput('');
+    try {
+      await saveModel(updated);
+      setCalcLabelInput('');
+      setCalcAmountInput('');
+    } catch (e) {
+      setCalcErrorMsg('Failed to save. Please try again.');
+    }
   }
 
   async function handleRemoveCalcEntry(id: string) {
@@ -208,7 +224,11 @@ export default function GroceriesScreen() {
       ...model,
       groceryCalculator: (model.groceryCalculator ?? []).filter((e) => e.id !== id),
     };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to remove', 'Please try again.');
+    }
   }
 
   async function handleAddCalcToList() {
@@ -227,14 +247,22 @@ export default function GroceriesScreen() {
       groceries: [...(model.groceries ?? []), ...newItems],
       groceryCalculator: [],
     };
-    await saveModel(updated);
-    setActiveTab('list');
+    try {
+      await saveModel(updated);
+      setActiveTab('list');
+    } catch (e) {
+      setCalcErrorMsg('Failed to add to list. Please try again.');
+    }
   }
 
   async function handleClearCalc() {
     if (!model) return;
     const updated: HouseholdModel = { ...model, groceryCalculator: [] };
-    await saveModel(updated);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to clear', 'Please try again.');
+    }
   }
 
   const planned = plannedTotal(groceries);

@@ -8,6 +8,81 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Loans schedule display, isStacked cleanup, and full saveModel try/catch sweep (Events, Goals, Groceries, Settings)
+- Picked up all 3 remaining items flagged in the second-sweep bug audit
+  in one combined session: (1) LoansScreen's missing recurrence-detail
+  display, (2) AccountCard's unused `isStacked` prop, and (3) the wider
+  `saveModel()` try/catch gap across EventsScreen, GoalsScreen,
+  GroceriesScreen, and SettingsScreen — previously scoped as its own
+  dedicated session given the number of call sites involved.
+- Wrote one combined Antigravity investigation-only prompt covering all
+  3 items, structured into 3 clearly labeled sections so the (much
+  larger) saveModel sweep could still be reviewed methodically rather
+  than as one giant wall of code.
+- Investigation confirmed: `fullRecurrenceDetail(loan)` exists in
+  LoansScreen.tsx but is never called anywhere in the file — loan cards
+  never showed their own schedule, unlike Bills/Debts which already
+  call the same function inside their own expanded-card sections;
+  `AccountCard`'s `isStacked` prop is genuinely 100% unused (not read
+  in logic, styling, or passed to any child) and has exactly one real
+  call site (`AccountsScreen.tsx`'s stacked-card branch); and the full,
+  real body of all 20 `saveModel()`-calling functions across the 4
+  target files, none of which currently have a `saving` state, though
+  each file already has its own established error-display pattern
+  (`errorMsg`, `calcErrorMsg`, `watchErrorMsg`, `payeeErrorMsg`,
+  `ruleErrorMsg`, `notifStatusMsg`) or `Alert.alert` usage to reuse.
+- Fixed:
+  1. **LoansScreen missing recurrence-detail display** — added a
+     "Schedule" detail row calling `fullRecurrenceDetail(loan)` at the
+     top of the expanded loan card's detail block, matching the exact
+     pattern Bills' and Debts' own expanded cards already use.
+  2. **AccountCard's unused `isStacked` prop removed** — dropped from
+     `AccountCard.tsx`'s `Props` type and function signature, and from
+     the one place `AccountsScreen.tsx` passed `isStacked={true}`.
+  3. **saveModel try/catch sweep, all 20 call sites across 4 files:**
+     - `EventsScreen.tsx` (4 functions: `handleSaveEvent`,
+       `handleDeleteEvent`, `performDeleteEventById`) — modal-context
+       saves/deletes route failures to `setErrorMsg`; the swipe-only
+       by-id delete routes to `Alert.alert`.
+     - `GoalsScreen.tsx` (3 functions: `handleSaveGoal`,
+       `handleDeleteGoal`, `performDeleteGoalById`) — same
+       errorMsg/Alert.alert split as Events.
+     - `GroceriesScreen.tsx` (7 functions: item add/edit/delete follow
+       the same errorMsg/Alert.alert split; the 3 Calculator-tab
+       functions route to `setCalcErrorMsg` where that's the active
+       validation state (`handleAddCalcEntry`, `handleAddCalcToList`),
+       or `Alert.alert` where there's no nearby error field
+       (`handleRemoveCalcEntry`, `handleClearCalc`)).
+     - `SettingsScreen.tsx` (17 functions, done in 2 sub-batches):
+       notification-section settings route to `notifStatusMsg`
+       (`saveNotifyDays`, `togglePushNotifications`,
+       `toggleWeeklyRecap`, `setWeeklyRecapDay`,
+       `saveWeeklyRecapHour`); `saveCautionThreshold` and
+       `handleSetSwipeToDelete` (no nearby error UI) route to
+       `Alert.alert`; the Categories modal (`handleSave`,
+       `performDeleteCategory`) routes to `errorMsg`; the Category
+       Watchlist (`handleAddWatchedCategory`,
+       `handleRemoveWatchedCategory`) routes to `watchErrorMsg`/
+       `Alert.alert`; the Payees modal (`handleSavePayee`,
+       `performDeletePayee`) routes to `payeeErrorMsg`; the
+       Categorization Rules modal (`handleSaveRule`,
+       `performDeleteRule`, `moveRule`) routes to `ruleErrorMsg`/
+       `Alert.alert`; `handleClearAllData` now wraps its save in
+       try/catch/finally so a failure can no longer leave `clearBusy`
+       stuck `true`, and shows `Alert.alert` on failure.
+- No new `saving`/busy state was added to any of the 4 files as part
+  of this fix — none of the affected Save/Delete buttons currently
+  disable while saving, and adding that UI was explicitly treated as a
+  separate, bigger decision, not part of what was scoped as broken this
+  session.
+- `npx tsc --noEmit` run after each of the 4 paste batches (Loans +
+  isStacked, EventsScreen, GoalsScreen, GroceriesScreen, then
+  SettingsScreen split into 2 sub-batches) — clean, no errors, every
+  time.
+- This closes out every item from the second-sweep bug audit. On-device
+  testing explicitly deferred for all of it — see ⚠️ Known issues and
+  ▶️ Next step.
+
 ### Session — Background-save warnings (password change, account recovery, household unlink)
 - Picked up the first pending item from the second-sweep bug audit:
   the 3 background Firestore writes that could fail without telling
@@ -920,19 +995,32 @@ on a real device. This is the priority list for this file's first session.
   the 2 dead-code removals (SavingsScreen's unused helper function,
   HomeScreen's unused styles) — these have no behavior, just confirm
   both screens still look and work exactly as before.
-- **Still pending from the second-sweep audit — not yet built.**
+- **Second-sweep bug audit — fully complete, all items now built.**
   ✅ The 3 background-save warnings (password change, account
-  recovery, household unlink) are now DONE — see the "Background-save
-  warnings" session above. Still pending: LoansScreen never displays
-  its own payment-schedule detail
-  in an expanded loan card, even though the formatting function for it
-  already exists in the file — needs one more investigation prompt to
-  find the exact insertion point before a fix can be written. Also
-  identified but intentionally deferred to its own future session: a
-  much larger cleanup of `saveModel()` calls across EventsScreen,
-  GoalsScreen, GroceriesScreen, and SettingsScreen (roughly 20 call
-  sites) that currently have no try/catch at all, unlike Bills/Debts/
-  Income/Loans which already guard every save.
+  recovery, household unlink) — see the "Background-save warnings"
+  session. ✅ LoansScreen's missing recurrence-detail display, the
+  `AccountCard` `isStacked` prop removal, and the full 20-call-site
+  `saveModel()` try/catch sweep across EventsScreen, GoalsScreen,
+  GroceriesScreen, and SettingsScreen — see the "Loans schedule
+  display, isStacked cleanup, and full saveModel try/catch sweep"
+  session. This closes out every item from the second-sweep audit.
+- **Loans schedule display + saveModel sweep — on-device testing
+  deferred.** Code is complete and `npx tsc --noEmit` clean for all 3
+  parts. When ready, check: (1) opening any loan's expanded card now
+  shows a "Schedule" row above "Total Amount," with wording matching
+  what Bills/Debts already show for the same recurrence type (e.g.
+  "Every month on day 15"); (2) removing `isStacked` didn't change
+  anything visually or functionally on the Accounts screen — stacked
+  cards still overlap and expand/collapse exactly as before (this was
+  a pure dead-code removal, nothing to newly verify beyond "nothing
+  broke"); (3) on EventsScreen, GoalsScreen, GroceriesScreen, and
+  SettingsScreen, deliberately trigger a save/delete failure if
+  possible (e.g. airplane mode) on a sampling of actions from each
+  file — confirm a real, visible error message now appears instead of
+  the action failing silently. Given the number of call sites (20)
+  this doesn't need exhaustive one-by-one testing — a few per file,
+  covering both the `errorMsg`-style and `Alert.alert`-style paths, is
+  enough to confirm the pattern is wired correctly everywhere.
 - **Full-codebase bug audit — 8 bugs fixed, on-device testing
   deferred.** Code is complete and `npx tsc --noEmit` clean for all 8.
   When ready, check: (1) linking two accounts where at least one
@@ -1269,17 +1357,13 @@ on a real device. This is the priority list for this file's first session.
 
 ▶️ Next step
 - Test the 6 second-sweep bug-audit fixes on a real device — see the
-  new checklist under ⚠️ Known issues above ("Second-sweep bug
-  audit"). Can be tested independently of everything else queued up.
-- Get an investigation prompt for LoansScreen's missing recurrence-
-  detail display (the formatting function exists but is never called
-  in the expanded loan card) — flagged in the second sweep, not yet
-  investigated further.
-- Whenever there's a good block of time, run a dedicated session on
-  the wider `saveModel()` try/catch gap across EventsScreen,
-  GoalsScreen, GroceriesScreen, and SettingsScreen (~20 call sites) —
-  intentionally scoped as its own session rather than done piecemeal.
-- Test the 8 bug-audit fixes on a real device — see the new checklist
+  checklist under ⚠️ Known issues above ("Second-sweep bug audit").
+  Can be tested independently of everything else queued up.
+- Test the Loans schedule display, isStacked cleanup, and saveModel
+  sweep on a real device — see the checklist under ⚠️ Known issues
+  above ("Loans schedule display + saveModel sweep"). This closes out
+  every item from the second-sweep bug audit once tested.
+- Test the 8 bug-audit fixes on a real device — see the checklist
   under ⚠️ Known issues above ("Full-codebase bug audit"). These can
   be tested independently of the swipe-to-delete and iconization
   on-device passes already queued up.
@@ -1820,6 +1904,42 @@ here on:
   Calculator's projected date now sets the day to 1 before adding
   months, preventing an overflow skip on the 29th–31st (bug audit fix
   #7).
+
+- MODIFIED: `mobile-app/src/screens/LoansScreen.tsx` — expanded loan
+  card now shows a "Schedule" detail row calling
+  `fullRecurrenceDetail(loan)`, matching Bills'/Debts' existing pattern
+  (Loans schedule display + saveModel sweep session).
+- MODIFIED: `mobile-app/src/components/AccountCard.tsx` — removed the
+  unused `isStacked` prop from `Props` and the component's function
+  signature (Loans schedule display + saveModel sweep session).
+- MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` — removed the
+  now-nonexistent `isStacked={true}` prop from its one `AccountCard`
+  call site (Loans schedule display + saveModel sweep session).
+- MODIFIED: `mobile-app/src/screens/EventsScreen.tsx` — `handleSaveEvent`,
+  `handleDeleteEvent`, and `performDeleteEventById` now wrap their
+  `saveModel()` calls in try/catch, routing failures to `setErrorMsg`
+  (modal-context) or `Alert.alert` (swipe-only path) (Loans schedule
+  display + saveModel sweep session).
+- MODIFIED: `mobile-app/src/screens/GoalsScreen.tsx` — `handleSaveGoal`,
+  `handleDeleteGoal`, and `performDeleteGoalById` now wrap their
+  `saveModel()` calls in try/catch, same errorMsg/Alert.alert split as
+  Events (Loans schedule display + saveModel sweep session).
+- MODIFIED: `mobile-app/src/screens/GroceriesScreen.tsx` — all 7
+  `saveModel()`-calling functions (item add/edit/delete plus all 4
+  Calculator-tab functions) now wrap their calls in try/catch, routing
+  failures to `setErrorMsg`, `setCalcErrorMsg`, or `Alert.alert`
+  depending on which error UI is visible for that action (Loans
+  schedule display + saveModel sweep session).
+- MODIFIED: `mobile-app/src/screens/SettingsScreen.tsx` — all 17
+  `saveModel()`-calling functions (notification settings, caution
+  threshold, swipe-to-delete toggle, Categories modal, Category
+  Watchlist, Payees modal, Categorization Rules modal, and
+  `handleClearAllData`) now wrap their calls in try/catch, routing
+  failures to whichever error state/`Alert.alert` was already
+  established for that section of the screen; `handleClearAllData`
+  additionally moved to try/catch/finally so `clearBusy` can no longer
+  get stuck `true` on failure (Loans schedule display + saveModel sweep
+  session).
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

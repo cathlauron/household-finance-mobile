@@ -48,11 +48,10 @@ type Props = {
   onPress?: () => void;
   style?: ViewStyle;
   testID?: string;
-  isStacked?: boolean;
   isExpanded?: boolean;
 };
 
-export default function AccountCard({ account, group, onPress, style, testID, isStacked, isExpanded }: Props) {
+export default function AccountCard({ account, group, onPress, style, testID, isExpanded }: Props) {
   const cardColor = account.color || DEFAULT_GROUP_COLORS[group];
   const isLight = isLightBackground(cardColor);
 
