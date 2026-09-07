@@ -231,16 +231,18 @@ function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex
   const pd = source.payDates || [];
 
   if (source.frequency === 'monthly' && pd[0]) {
-    const day = pd[0] === 'last' ? daysInMonth : parseInt(pd[0], 10);
-    return day >= 1 && day <= daysInMonth ? [day] : [];
+    const rawDay = pd[0] === 'last' ? daysInMonth : parseInt(pd[0], 10);
+    if (isNaN(rawDay) || rawDay < 1) return [];
+    return [Math.min(rawDay, daysInMonth)];
   }
 
   if (source.frequency === 'semimonthly') {
     const results: number[] = [];
     pd.forEach((raw) => {
       if (!raw) return;
-      const day = raw === 'last' ? daysInMonth : parseInt(raw, 10);
-      if (day >= 1 && day <= daysInMonth) results.push(day);
+      const rawDay = raw === 'last' ? daysInMonth : parseInt(raw, 10);
+      if (isNaN(rawDay) || rawDay < 1) return;
+      results.push(Math.min(rawDay, daysInMonth));
     });
     return results;
   }

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -72,6 +72,14 @@ export default function IconLabelHint({
       setMeasured(false);
     });
   }, [fadeAnim]);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, []);
 
   const showLabel = useCallback(() => {
     if (hideTimerRef.current) {

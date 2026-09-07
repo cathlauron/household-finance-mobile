@@ -24,7 +24,7 @@ import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
 function debtAmount(debt: Debt): number {
-  const first = debt.cycles[0];
+  const first = debt.cycles && debt.cycles[0];
   return first && typeof first.amountDue === 'number' ? first.amountDue : 0;
 }
 
@@ -229,7 +229,7 @@ export default function DebtsScreen() {
       updated.debts = updated.debts.map((d) => {
         if (d.id !== editingId) return d;
         const parsedFeesPortion = feesPortionInput.trim() === '' ? ('' as const) : parseFloat(feesPortionInput);
-        const existingCycle = d.cycles[0];
+        const existingCycle = d.cycles && d.cycles[0];
         const cycle = existingCycle
           ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }
           : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '', paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion };

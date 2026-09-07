@@ -506,6 +506,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
   const fiProjectedDateLabel = (() => {
     if (fiMonthsUntilFi === null) return '';
     const d = new Date();
+    d.setDate(1);
     d.setMonth(d.getMonth() + fiMonthsUntilFi);
     return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   })();

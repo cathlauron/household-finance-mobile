@@ -8,6 +8,71 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Full-codebase bug audit (8 bugs found and fixed)
+- Wrote an Antigravity investigation-only bug-audit prompt covering money/
+  date logic, React state bugs, null/undefined safety, Firestore/async
+  bugs, list rendering, and the recently-added swipe-to-delete wiring —
+  with an explicit "quality over quantity" instruction to avoid
+  stylistic nitpicks.
+- Antigravity found 8 real bugs, each shown with real unelided code.
+  Reviewed and confirmed all 8 as genuine (no false positives), then
+  fixed them in priority order:
+  1. **Household linking crash** (`mergeModels.ts`) — spreading
+     `investment`/`property`/`vehicle` account arrays without a `?? []`
+     fallback crashed the merge if either profile predated those
+     account types. Fixed to match the existing fallback pattern used
+     by other account types in the same function.
+  2. **Offline sign-out lockout** (`App.tsx`) — if `signOutFirebase()`
+     threw (e.g. no network), the function returned early and never
+     cleared local session state, trapping the user signed in. Fixed to
+     always clear local state even if the network call fails.
+  3. **Travel checklist ghost expenses** (`TravelScreen.tsx`) —
+     deleting a checklist item outright (not unchecking it) left its
+     linked expense transaction behind forever.
+     `reconcileTravelChecklistTransactions` now also detects items
+     removed between the prior and new checklist and cleans up their
+     linked transaction, the same way unchecking one already does.
+  4. **Debts screen crash on legacy data** (`DebtsScreen.tsx`) —
+     `debtAmount()` and the edit-save logic accessed `debt.cycles[0]`
+     directly; added the same `debt.cycles &&` safety check Bills
+     already had, in both places.
+  5. **Bills swipe-to-delete missing** (`BillsScreen.tsx`) — Bills was
+     accidentally left out when swipe-to-delete was wired into the
+     other 5 CollapsibleRow screens. Added the `SwipeableRow` import, a
+     `performDeleteById()` + `handleSwipeDelete()` pair, and wrapped
+     the row — now matches Debts/Income/Loans/Savings/Transactions
+     exactly.
+  6. **Payday on the 31st (clamp confirmed with the person)** —
+     `income.ts`'s next-payday calculation and `balanceProjection.ts`'s
+     cash-flow projection both used raw, unclamped day numbers, so a
+     "31st" payday overflowed into the wrong month or vanished entirely
+     in February/April/June/September/November. Both files now clamp
+     to the real last day of the month, consistent with how
+     `recurrence.ts` already handles this elsewhere.
+  7. **FI Calculator date skip** (`SavingsScreen.tsx`) — `d.setMonth()`
+     on a date whose day-of-month exceeded the target month's length
+     silently rolled forward an extra month (e.g. Mar 31 + 1 month →
+     May instead of Apr). Fixed by setting the day to 1 before adding
+     months, so overflow can never happen.
+  8. **Tooltip timer leak** (`IconLabelHint.tsx`) — the ~2.4s auto-hide
+     timer had no unmount cleanup, so navigating away while a tooltip
+     was showing tried to update state after the component was gone.
+     Added a `useEffect` cleanup that clears the pending timer on
+     unmount; also had to add the missing `useEffect` import, caught by
+     a `tsc` error mid-session.
+- Two follow-up investigation prompts were needed along the way: one to
+  see Bills' vs. Debts' full swipe-to-delete wiring side-by-side
+  (imports, delete functions, JSX) before writing the Bills fix;
+  another that revealed the first attempt at the Travel fix was wrong —
+  it assumed a `transactions`/`setTransactions` local state that
+  doesn't exist in that file — corrected once Antigravity showed the
+  real state declarations and the true shape of
+  `reconcileTravelChecklistTransactions`.
+- `npx tsc --noEmit` run after all 8 fixes were pasted — clean, no
+  errors.
+- On-device testing explicitly deferred for all 8 — see ⚠️ Known
+  issues and ▶️ Next step.
+
 ### Session — B2.3 batch 4: CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only
 - Wrote an Antigravity investigation-only prompt covering the last
   ICONIZE-pattern item from the B2.2 audit: CollapsibleRow's "Edit"
@@ -708,6 +773,26 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 Everything below is CODE-COMPLETE and `npx tsc --noEmit` clean, but UNTESTED
 on a real device. This is the priority list for this file's first session.
 
+- **Full-codebase bug audit — 8 bugs fixed, on-device testing
+  deferred.** Code is complete and `npx tsc --noEmit` clean for all 8.
+  When ready, check: (1) linking two accounts where at least one
+  profile predates investment/property/vehicle accounts no longer
+  crashes; (2) tapping "Sign Out" while offline (airplane mode) still
+  returns you to the sign-in screen instead of leaving you stuck; (3)
+  on a trip with a checked, costed checklist item, deleting that item
+  (not unchecking it) removes its linked expense from the Transactions
+  tab instead of leaving it behind; (4) opening the Debts screen with
+  an older/legacy debt record (missing `cycles`) no longer crashes; (5)
+  with "Swipe to delete" on, swiping a Bills row now deletes it,
+  matching the other 5 CollapsibleRow screens; (6) a monthly or
+  semimonthly payday set to the 31st now shows on the 28th/29th/30th in
+  February/April/June/September/November (Calendar and cash-flow
+  projections) instead of vanishing or landing in the wrong month; (7)
+  the FI Calculator's projected date on the Savings screen no longer
+  skips a month when today's date is the 29th–31st; (8) triggering an
+  icon tooltip and immediately navigating away no longer produces a
+  console warning about updating an unmounted component (best checked
+  via Metro's logs, not visually).
 - **B.7 "Left to Spend" hero stat + Settings caution threshold.** Check: the
   Settings number field saves/persists (and syncs to a 2nd linked device, if
   available); the Home hero card shows the right amount, right red/orange/
@@ -1023,6 +1108,10 @@ on a real device. This is the priority list for this file's first session.
   neighboring pills when shown.
 
 ▶️ Next step
+- Test the 8 bug-audit fixes on a real device — see the new checklist
+  under ⚠️ Known issues above ("Full-codebase bug audit"). These can
+  be tested independently of the swipe-to-delete and iconization
+  on-device passes already queued up.
 - Test the full swipe-to-delete feature on a real device — checkpoints
   1, 2, and 3 (all now code-complete) can be tested together in one
   pass, since they all depend on checkpoint 1's native gesture-handler
@@ -1225,6 +1314,33 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
 through the end of Phase B. New/modified files tracked in this file from
 here on:
+- MODIFIED: `mobile-app/src/mergeModels.ts` — `investment`/`property`/
+  `vehicle` balance-account arrays now spread with `?? []` fallbacks,
+  matching the pattern already used for other account types, preventing
+  a crash when linking with a profile that predates those account
+  types (bug audit fix #1).
+- MODIFIED: `mobile-app/App.tsx` — sign-out now clears local session
+  state even if the Firebase network call fails, instead of returning
+  early and leaving the user stuck signed in (bug audit fix #2).
+- MODIFIED: `mobile-app/src/screens/DebtsScreen.tsx` — `debtAmount()`
+  and the edit-save cycle lookup now guard against a missing
+  `debt.cycles`, matching Bills' existing safety check (bug audit fix
+  #4).
+- MODIFIED: `mobile-app/src/screens/BillsScreen.tsx` — now has
+  swipe-to-delete wired in (`SwipeableRow` import, `performDeleteById()`
+  + `handleSwipeDelete()`, row wrapped in `SwipeableRow`), matching the
+  other 5 CollapsibleRow screens — this screen was accidentally skipped
+  when checkpoint 2 above was originally done (bug audit fix #5).
+- MODIFIED: `mobile-app/src/income.ts` — next-payday-on-the-31st
+  calculation now clamps to the real last day of the month instead of
+  overflowing into the next month (bug audit fix #6).
+- MODIFIED: `mobile-app/src/balanceProjection.ts` — monthly/
+  semimonthly payday-day calculation now clamps to the real last day of
+  the month instead of dropping the payday entirely on shorter months
+  (bug audit fix #6).
+- MODIFIED: `mobile-app/src/components/IconLabelHint.tsx` — added a
+  `useEffect` cleanup that clears the pending auto-hide timer on
+  unmount, and added the missing `useEffect` import (bug audit fix #8).
 - NEW: `mobile-app/src/components/IconLabelHint.tsx` — reusable icon +
   tap/long-press-to-reveal-label component (B2.1).
 - MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` — Cards/List view
@@ -1466,6 +1582,9 @@ here on:
   `Alert`/`SwipeableRow` imports; new `performDeleteTripById()` +
   `handleSwipeDeleteTrip(trip)` pair, reusing the same linked-savings-
   goal/linked-expense-transaction cascade as the existing modal delete.
+  Also, `reconcileTravelChecklistTransactions` now cleans up the linked
+  transaction for a checklist item that was deleted outright, not just
+  unchecked (bug audit fix #3).
 - MODIFIED: `mobile-app/src/screens/GroceriesScreen.tsx` — main Grocery
   List tab's row now wrapped in `SwipeableRow`; the separate Calculator
   tab's entries deliberately left unwrapped, since they already have
@@ -1481,6 +1600,10 @@ here on:
   `performDeleteAccountById(group, id)` +
   `handleSwipeDeleteAccount(group, account)` pair added alongside the
   existing modal-based `performDelete()`/`handleDelete()`.
+- MODIFIED: `mobile-app/src/screens/SavingsScreen.tsx` — FI
+  Calculator's projected date now sets the day to 1 before adding
+  months, preventing an overflow skip on the 29th–31st (bug audit fix
+  #7).
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

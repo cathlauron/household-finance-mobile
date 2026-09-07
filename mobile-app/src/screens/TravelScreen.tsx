@@ -136,6 +136,18 @@ function reconcileTravelChecklistTransactions(
     return item;
   });
 
+  // Items that existed before but are gone now were deleted outright (not just
+  // unchecked) — clean up any transaction they were linked to, the same way
+  // unchecking one does above.
+  const newIds = new Set(newChecklist.map((i) => i.id));
+  const deletedTxnIds = priorChecklist
+    .filter((i) => !newIds.has(i.id) && i.expenseTransactionId)
+    .map((i) => i.expenseTransactionId as string);
+  if (deletedTxnIds.length) {
+    const deletedSet = new Set(deletedTxnIds);
+    txns = txns.filter((t) => !deletedSet.has(t.id));
+  }
+
   return { checklist: updatedChecklist, transactions: txns };
 }
 

@@ -20,6 +20,7 @@ import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -320,7 +321,31 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
       ]
     );
   }
-
+  async function performDeleteById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      bills: model.bills.filter((b) => b.id !== id),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+  function handleSwipeDelete(bill: Bill) {
+    Alert.alert(
+      'Delete this bill?',
+      'This will permanently delete the bill and its payment history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteById(bill.id) },
+      ]
+    );
+  }
   const bills = sortByNextDue(model.bills);
   const totalDue = bills.reduce((sum, b) => sum + billAmount(b), 0);
 
@@ -342,8 +367,13 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
           const isExpanded = expandedBillId === bill.id;
 
           return (
-            <CollapsibleRow
+            <SwipeableRow
               key={bill.id}
+              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDelete(bill)}
+              testID={`bill-swipe-${bill.id}`}
+            >
+            <CollapsibleRow
               testID={`bill-row-${bill.id}`}
               isExpanded={isExpanded}
               onToggle={() => setExpandedBillId((prev) => (prev === bill.id ? null : bill.id))}
@@ -458,6 +488,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                 </View>
               }
             />
+            </SwipeableRow>
           );
         })}
 

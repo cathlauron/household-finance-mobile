@@ -231,7 +231,8 @@ function AppContent() {
     try {
       await signOutFirebase();
     } catch (e) {
-      return;
+      // Continue signing out locally even if the network call fails —
+      // being offline shouldn't trap the user inside the app.
     }
     clearModel();
     setCurrentUsername(null);

@@ -49,12 +49,12 @@ export function computeNextPayDate(
     const raw = payDates[0];
     let y = today.getFullYear();
     let m = today.getMonth();
-    let day = raw === 'last' ? lastDayOfMonth(y, m) : parseInt(raw, 10);
+    let day = raw === 'last' ? lastDayOfMonth(y, m) : Math.min(parseInt(raw, 10), lastDayOfMonth(y, m));
     if (isNaN(day)) return null;
     let candidate = new Date(y, m, day);
     if (stripTime(candidate) < stripTime(today)) {
       m += 1;
-      day = raw === 'last' ? lastDayOfMonth(y, m) : parseInt(raw, 10);
+      day = raw === 'last' ? lastDayOfMonth(y, m) : Math.min(parseInt(raw, 10), lastDayOfMonth(y, m));
       candidate = new Date(y, m, day);
     }
     return candidate;
