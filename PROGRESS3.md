@@ -8,6 +8,41 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 2 build (ToPayScreen + PlanningScreen icon sub-tabs)
+- Wrote an Antigravity investigation-only prompt for B2.3 batch 2,
+  covering all 5 remaining segmented-pill screens: ToPayScreen,
+  PlanningScreen, InsightsScreen, SavingsScreen, GroceriesScreen.
+- Antigravity's investigation flagged real trade-offs on 3 of the 5:
+  InsightsScreen's Dashboard/Reports pills would visually stack directly
+  above ReportsScreen's own row of 9 icon pills; SavingsScreen's
+  "Emergency Fund" and "FI Calculator" don't have icons that read clearly
+  without already knowing what they mean; GroceriesScreen's 2-way toggle
+  already reads fine as text with no real gain from converting.
+- Reviewed each flag and decided: ToPayScreen and PlanningScreen convert
+  to icons as planned (no real objections on either). InsightsScreen,
+  SavingsScreen, and GroceriesScreen are reclassified from ICONIZE to
+  KEEP AS TEXT in the B2.2 audit — converting them would hurt scannability
+  or lose a currently-working full-width layout for no benefit.
+- Gave the person paste/replace snippets for `ToPayScreen.tsx` (tabs array
+  with icon field: receipt-outline/card-outline/business-outline; pill
+  JSX swapped to IconLabelHint; pill styles converted to fixed 38×38
+  circles) and `PlanningScreen.tsx` (tabs array with icon field:
+  cart-outline/airplane-outline/balloon-outline/flag-outline; same JSX
+  and style swap).
+- Person applied both files' snippets, then hit 2 compile errors on
+  `npx tsc --noEmit`: PlanningScreen was missing its `IconLabelHint`/
+  `Ionicons` imports (flagged as "add if not already present" instead of
+  given as an exact snippet — gap in the original instructions), and
+  ToPayScreen's `ToPayScreenProps` type was undefined — it had been used
+  in the function signature all along but was never actually declared
+  anywhere in the file. Fixed both: added the two missing import lines to
+  PlanningScreen, and added an inline `interface ToPayScreenProps {
+  initialOpenBillId?: string; }` to ToPayScreen just above its component
+  function.
+- `npx tsc --noEmit` re-run after both fixes — clean, no errors.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step.
+
 ### Session — B2.3 batch 1 build (ReportsScreen icon sub-tabs)
 - Wrote an Antigravity investigation-only prompt for B2.3 batch 1: convert
   ReportsScreen.tsx's 9 report sub-tab pills (currently text pills in a
@@ -198,6 +233,23 @@ on a real device. This is the priority list for this file's first session.
   (also a Modal) in a later batch, watch for Android-specific flakiness
   (two native Modals open at once is a known trouble spot); no fix needed
   unless that combination is actually hit.
+- **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
+  testing deferred.** Code is complete and `npx tsc --noEmit` clean:
+  ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
+  Travel/Events/Goals pills now render as icon-only circular pills.
+  InsightsScreen, SavingsScreen, and GroceriesScreen were reclassified to
+  KEEP AS TEXT during this batch (see the B2.2 audit results section,
+  which has been updated to reflect this) and were NOT converted. NOT
+  yet tested on a real device. When ready, check: (1) all icons render
+  correctly on both screens (receipt/card/business for ToPayScreen;
+  cart/airplane/balloon/flag for PlanningScreen); (2) tapping a pill
+  switches the sub-tab AND briefly shows its floating label; (3) the
+  active pill is gold with a dark icon, inactive pills are dim; (4)
+  long-press shows the label without switching tabs; (5) since neither
+  row scrolls (3 and 4 items respectively, not 9 like ReportsScreen),
+  confirm the row doesn't look awkwardly sparse/empty now that the pills
+  are narrow icon circles instead of full-width text pills — flagged as a
+  possible visual follow-up, not a functional bug.
 - **B2.3 batch 1 — ReportsScreen icon sub-tabs — on-device testing
   deferred.** Code is complete and `npx tsc --noEmit` clean: all 9 report
   sub-tabs (Monthly Close-out, Year in Review, Cash-Flow Forecast, Person
@@ -291,11 +343,11 @@ here in full — see chat history for that pass if needed. Decisions below
 are by PATTERN (same decision applies everywhere that pattern occurs):
 
 ICONIZE (target for B2.3+):
-- Segmented sub-tab pills with 3+ options: ToPayScreen (Bills/Debts/Loans),
-  PlanningScreen (Groceries/Travel/Events/Goals), InsightsScreen
-  (Dashboard/Reports), ReportsScreen (9 report tabs — highest priority,
-  likely wrapping/scrolling as text today), SavingsScreen (Goals/
-  Emergency Fund/FI Calculator), GroceriesScreen (Grocery List/Calculator).
+- Segmented sub-tab pills with 3+ options: ToPayScreen (Bills/Debts/Loans)
+  — ✅ CODE-COMPLETE (batch 2), PlanningScreen (Groceries/Travel/Events/
+  Goals) — ✅ CODE-COMPLETE (batch 2), ReportsScreen (9 report tabs) —
+  ✅ CODE-COMPLETE (batch 1). Both batches' on-device testing still
+  pending — see ⚠️ Known issues.
 - Row-level icon+text actions: CollapsibleRow's "Edit" (pencil+text →
   icon-only), AccountsScreen's "Collapse" (chevron+text → icon-only).
 
@@ -318,6 +370,14 @@ ones like ‹ › since they're already universally understood):
   toggle (TransactionsScreen), "✓ Linked" badge (ProfileScreen).
 
 KEEP AS TEXT (no change):
+- InsightsScreen's Dashboard/Reports pills, SavingsScreen's Goals/
+  Emergency Fund/FI Calculator pills, and GroceriesScreen's Grocery
+  List/Calculator toggle — reclassified from ICONIZE during B2.3 batch
+  2's review. InsightsScreen's pills would stack visually right above
+  ReportsScreen's own row of 9 icon pills, hurting scannability;
+  "Emergency Fund"/"FI Calculator" don't have icons that read clearly on
+  their own; GroceriesScreen's 2-way toggle already works well as
+  full-width text with nothing to gain from converting.
 - All modal action buttons: Save / Cancel / "Delete this X" — appears in
   every screen's edit modal. Kept for clarity on often-irreversible
   actions; already full-width, no space to save.
@@ -352,10 +412,11 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
   icon swap.
 
 ▶️ B2.3+ batch order (once B2.1's on-device testing is confirmed):
-1. ReportsScreen's 9 report sub-tabs (highest value — likely wrapping as
-   text today).
-2. Remaining segmented pills: ToPayScreen, PlanningScreen, InsightsScreen,
-   SavingsScreen, GroceriesScreen.
+1. ReportsScreen's 9 report sub-tabs — ✅ CODE-COMPLETE (batch 1),
+   on-device testing pending.
+2. ToPayScreen + PlanningScreen segmented pills — ✅ CODE-COMPLETE
+   (batch 2), on-device testing pending. (InsightsScreen, SavingsScreen,
+   GroceriesScreen reclassified to KEEP AS TEXT — see audit results.)
 3. Character/emoji cleanup pass across all flagged screens (mechanical,
    low-risk, can be batched together).
 4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
@@ -374,6 +435,17 @@ here on:
   instead of text pills (B2.3 batch 1); `REPORT_TABS` array gained an
   `icon` field per tab; `pillText`/`pillTextActive` styles are now unused
   but left in place.
+- MODIFIED: `mobile-app/src/screens/ToPayScreen.tsx` — Bills/Debts/Loans
+  sub-tab pills now render as icon-only circles using IconLabelHint
+  (B2.3 batch 2); `TOPAY_TABS` array gained an `icon` field per tab;
+  `switcherBtnText`/`switcherBtnTextActive` styles now unused but left in
+  place; added a missing inline `ToPayScreenProps` interface declaration
+  that the file's function signature had relied on without ever defining.
+- MODIFIED: `mobile-app/src/screens/PlanningScreen.tsx` — Groceries/
+  Travel/Events/Goals sub-tab pills now render as icon-only circles using
+  IconLabelHint (B2.3 batch 2); `tabs` array gained an `icon` field per
+  tab; `pillButtonText`/`pillButtonTextActive` styles now unused but left
+  in place; added missing `IconLabelHint`/`Ionicons` imports.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

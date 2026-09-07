@@ -5,6 +5,8 @@ import GroceriesScreen from './GroceriesScreen';
 import TravelScreen from './TravelScreen';
 import EventsScreen from './EventsScreen';
 import GoalsScreen from './GoalsScreen';
+import IconLabelHint from '../components/IconLabelHint';
+import { Ionicons } from '@expo/vector-icons';
 
 // ---- Checkpoint 8.3 ----
 // Planning now hosts all four Phase 8 sub-sections behind one pill switcher, same
@@ -18,11 +20,11 @@ export default function PlanningScreen() {
   const [activeTab, setActiveTab] = useState<PlanningTab>('groceries');
   const styles = makeStyles(colors);
 
-  const tabs: { id: PlanningTab; label: string }[] = [
-    { id: 'groceries', label: 'Groceries' },
-    { id: 'travel', label: 'Travel' },
-    { id: 'events', label: 'Events' },
-    { id: 'goals', label: 'Goals' },
+  const tabs: { id: PlanningTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { id: 'groceries', label: 'Groceries', icon: 'cart-outline' },
+    { id: 'travel', label: 'Travel', icon: 'airplane-outline' },
+    { id: 'events', label: 'Events', icon: 'balloon-outline' },
+    { id: 'goals', label: 'Goals', icon: 'flag-outline' },
   ];
 
   return (
@@ -32,17 +34,21 @@ export default function PlanningScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.pillRow}
       >
-        {tabs.map((t) => (
-          <TouchableOpacity
-            key={t.id}
-            style={[styles.pillButton, activeTab === t.id && styles.pillButtonActive]}
-            onPress={() => setActiveTab(t.id)}
-          >
-            <Text style={[styles.pillButtonText, activeTab === t.id && styles.pillButtonTextActive]}>
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {tabs.map((t) => {
+          const isActive = activeTab === t.id;
+          return (
+            <View key={t.id} style={[styles.pillButton, isActive && styles.pillButtonActive]}>
+              <IconLabelHint
+                name={t.icon}
+                label={t.label}
+                size={18}
+                color={isActive ? colors.navy2 : colors.inkDim}
+                position="above"
+                onPress={() => setActiveTab(t.id)}
+              />
+            </View>
+          );
+        })}
       </ScrollView>
       <View style={styles.content}>
         {activeTab === 'groceries' && <GroceriesScreen />}
@@ -65,14 +71,14 @@ function makeStyles(colors: any) {
       paddingBottom: 4,
     },
     pillButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 9,
-      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     content: { flex: 1 },
   });
 }

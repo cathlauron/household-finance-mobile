@@ -5,14 +5,21 @@ import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
 
+import IconLabelHint from '../components/IconLabelHint';
+import { Ionicons } from '@expo/vector-icons';
+
 type SubTab = 'bills' | 'debts' | 'loans';
 
-type ToPayScreenProps = {
-  initialOpenBillId?: string;
-};
+const TOPAY_TABS: { id: SubTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'bills', label: 'Bills', icon: 'receipt-outline' },
+  { id: 'debts', label: 'Debts', icon: 'card-outline' },
+  { id: 'loans', label: 'Loans', icon: 'business-outline' },
+];
 
-// A small tab switcher at the top of the To-Pay tab, matching the web app's
-// "Bills / Debts / Loans" sub-tab pattern.
+interface ToPayScreenProps {
+  initialOpenBillId?: string;
+}
+
 export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   const { colors } = useTheme();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('bills');
@@ -28,45 +35,21 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.switcherRow}>
-        <TouchableOpacity
-          style={[styles.switcherBtn, activeSubTab === 'bills' && styles.switcherBtnActive]}
-          onPress={() => setActiveSubTab('bills')}
-        >
-          <Text
-            style={[
-              styles.switcherBtnText,
-              activeSubTab === 'bills' && styles.switcherBtnTextActive,
-            ]}
-          >
-            Bills
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.switcherBtn, activeSubTab === 'debts' && styles.switcherBtnActive]}
-          onPress={() => setActiveSubTab('debts')}
-        >
-          <Text
-            style={[
-              styles.switcherBtnText,
-              activeSubTab === 'debts' && styles.switcherBtnTextActive,
-            ]}
-          >
-            Debts
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.switcherBtn, activeSubTab === 'loans' && styles.switcherBtnActive]}
-          onPress={() => setActiveSubTab('loans')}
-        >
-          <Text
-            style={[
-              styles.switcherBtnText,
-              activeSubTab === 'loans' && styles.switcherBtnTextActive,
-            ]}
-          >
-            Loans
-          </Text>
-        </TouchableOpacity>
+        {TOPAY_TABS.map((tab) => {
+          const isActive = activeSubTab === tab.id;
+          return (
+            <View key={tab.id} style={[styles.switcherBtn, isActive && styles.switcherBtnActive]}>
+              <IconLabelHint
+                name={tab.icon}
+                label={tab.label}
+                size={18}
+                color={isActive ? colors.navy2 : colors.inkDim}
+                position="above"
+                onPress={() => setActiveSubTab(tab.id)}
+              />
+            </View>
+          );
+        })}
       </View>
       <View style={styles.contentWrap}>
         {activeSubTab === 'bills' && <BillsScreen openBillId={initialOpenBillId} />}
@@ -87,14 +70,14 @@ function makeStyles(colors: any) {
       paddingBottom: 4,
     },
     switcherBtn: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 999,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       backgroundColor: colors.navy3,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     switcherBtnActive: { backgroundColor: colors.gold },
-    switcherBtnText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    switcherBtnTextActive: { color: colors.navy2 },
     contentWrap: { flex: 1 },
   });
 }
