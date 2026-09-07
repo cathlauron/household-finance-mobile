@@ -514,7 +514,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setIsLinked(false);
 
       if (saltRef.current) {
-        saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+        saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {
+          Alert.alert(
+            'Backup Not Updated',
+            "You've unlinked from the household, but we couldn't update your personal cloud backup. Try again once you have a better connection."
+          );
+        });
       }
 
       return { ok: true };
@@ -691,6 +696,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       data: reEncrypted,
     }).catch((backupError) => {
       console.error('Failed to update cloud backup after password change:', backupError);
+      Alert.alert(
+        'Backup Not Updated',
+        'Your password was changed, but we could not update your cloud backup with it. If you sign in on another device before this succeeds, try your old password there too, or change your password again once you have a better connection.'
+      );
     });
 
     // Pre-Phase-B Tier 1 fix: for unlinked profiles, the old recovery key doc wrapped the OLD
@@ -698,6 +707,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Settings > Security can show that the recovery key needs regenerating.
     deleteRecoveryKey(username).catch((err) => {
       console.error('Failed to delete stale recovery key after password change:', err);
+      Alert.alert(
+        'Recovery Key Not Updated',
+        'Your password was changed, but we could not clear your old recovery key. It may not work until you generate a new one in Settings > Security.'
+      );
     });
 
     keyRef.current = newKey;

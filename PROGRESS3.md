@@ -8,6 +8,53 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Background-save warnings (password change, account recovery, household unlink)
+- Picked up the first pending item from the second-sweep bug audit:
+  the 3 background Firestore writes that could fail without telling
+  the user (flagged, decision confirmed, not yet coded at the time).
+- Wrote an Antigravity investigation-only prompt to see the full
+  calling code for `changePassword()`, `unlinkHousehold()`/
+  `unlinkAndTransferOwnership()`, and SignInScreen's account-recovery
+  function, plus whether the app already had a pattern for
+  "succeeded, but with a warning" messaging.
+- Investigation found the app already has an established pattern for
+  exactly this (used in `DataContext.tsx`'s `saveModel()` and
+  `CreateProfileScreen.tsx`'s recovery-key setup): an `Alert.alert(...)`
+  explaining that the main action succeeded locally but a secondary
+  cloud step failed, without blocking or reversing the part that
+  worked. Reused that same pattern for all 3 fixes rather than
+  inventing a new one.
+- Fixed:
+  1. **Password change** (`DataContext.tsx`) — both background calls
+     (updating the cloud backup with the new password, and deleting
+     the now-stale recovery key) now show an `Alert.alert(...)` if
+     they fail, instead of only logging to `console.error`.
+  2. **Household unlink** (`DataContext.tsx`) — the personal cloud
+     backup save now shows an `Alert.alert(...)` on failure. This
+     exact code shape appears twice (once in `unlinkHousehold()`, once
+     in `unlinkAndTransferOwnership()`), so the same fix was applied
+     in both places.
+  3. **Account recovery** (`SignInScreen.tsx`) — re-saving the
+     recovery key under the newly-recovered account's key now shows
+     an `Alert.alert(...)` on failure instead of silently swallowing
+     it. Required adding a new `Alert` import to this file — it hadn't
+     been used here before.
+- One compile error along the way: `SignInScreen.tsx` didn't have
+  `Alert` imported yet; the person pasted the file's real import block
+  and it was added to the existing `react-native` import line.
+- `npx tsc --noEmit` run after all 3 fixes were pasted — clean, no
+  errors.
+- This closes out the first of 2 pending items from the second-sweep
+  audit. Still pending: the Loans investigation prompt (missing
+  recurrence-detail display) and the wider `saveModel()` try/catch
+  sweep across Events/Goals/Groceries/Settings — see ▶️ Next step.
+- No on-device testing checklist needed for this session — all 3
+  changes only affect what happens during a rare network failure at
+  an already-rare moment (changing a password, recovering an account,
+  or unlinking a household); nothing to visually verify unless that
+  exact failure is deliberately reproduced (e.g. airplane mode mid-
+  action), which isn't worth staging on-device right now.
+
 ### Session — Second-sweep bug audit (6 more bugs fixed, 3 flagged for next session)
 - Wrote a second Antigravity investigation-only bug-audit prompt, this
   time targeting categories the first sweep hadn't covered: silent
@@ -874,11 +921,10 @@ on a real device. This is the priority list for this file's first session.
   HomeScreen's unused styles) — these have no behavior, just confirm
   both screens still look and work exactly as before.
 - **Still pending from the second-sweep audit — not yet built.**
-  Three background-save operations (changing your password, recovering
-  your account with a recovery key, unlinking from a household) can
-  currently fail to save to the cloud without telling you — decided to
-  add a visible warning for all three, not yet implemented. Also
-  pending: LoansScreen never displays its own payment-schedule detail
+  ✅ The 3 background-save warnings (password change, account
+  recovery, household unlink) are now DONE — see the "Background-save
+  warnings" session above. Still pending: LoansScreen never displays
+  its own payment-schedule detail
   in an expanded loan card, even though the formatting function for it
   already exists in the file — needs one more investigation prompt to
   find the exact insertion point before a fix can be written. Also
@@ -1225,10 +1271,6 @@ on a real device. This is the priority list for this file's first session.
 - Test the 6 second-sweep bug-audit fixes on a real device — see the
   new checklist under ⚠️ Known issues above ("Second-sweep bug
   audit"). Can be tested independently of everything else queued up.
-- Build the 3 background-save warnings from the second sweep (password
-  change, account recovery, household unlink) — design already
-  confirmed (show a visible warning rather than fail silently), just
-  needs the code written.
 - Get an investigation prompt for LoansScreen's missing recurrence-
   detail display (the formatting function exists but is never called
   in the expanded loan card) — flagged in the second sweep, not yet
@@ -1443,6 +1485,17 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
 through the end of Phase B. New/modified files tracked in this file from
 here on:
+- MODIFIED: `mobile-app/src/DataContext.tsx` — `changePassword()`'s
+  two background Firestore calls (cloud backup update, stale recovery
+  key deletion) now show an `Alert.alert(...)` on failure instead of
+  only logging to console; `unlinkHousehold()` and
+  `unlinkAndTransferOwnership()`'s personal cloud backup save now does
+  the same (background-save-warnings session).
+- MODIFIED: `mobile-app/src/screens/SignInScreen.tsx` — account
+  recovery's re-save of the recovery key under the new key now shows
+  an `Alert.alert(...)` on failure instead of silently swallowing it;
+  added `Alert` to the existing `react-native` import line
+  (background-save-warnings session).
 - MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` —
   `performDeleteAccountById` now falls back to `?? []` before filtering
   a balance-account group, preventing a crash on legacy profiles

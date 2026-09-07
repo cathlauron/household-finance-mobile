@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -179,7 +179,12 @@ export default function SignInScreen({
       }
 
       await saveProfileCloudBackup(recoveryContext.username, { salt: newSalt, data: reEncrypted });
-      await saveRecoveryKey(recoveryContext.username, newKey, false, recoveryKeyInput.trim()).catch(() => {});
+      await saveRecoveryKey(recoveryContext.username, newKey, false, recoveryKeyInput.trim()).catch(() => {
+        Alert.alert(
+          'Recovery Key Not Updated',
+          "Your account was recovered, but we couldn't save your recovery key for future use. Generate a new one in Settings > Security when you have a better connection."
+        );
+      });
 
       setRecoveryBusy(false);
       setRecoveryContext(null);
