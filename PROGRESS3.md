@@ -214,13 +214,90 @@ replaces prior functionality, it's a visual/interaction pass.
 | Checkpoint | What happens | Done when |
 |---|---|---|
 | B2.1 | Build one reusable "icon + label" component: icon-only by default; a quick tap OR a long-press reveals a small floating label with the word. Built once, used everywhere. | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. Wired into AccountsScreen's Cards/List toggle as a real test spot. ⏳ On-device testing (5-point checklist below) deferred — not yet run. |
-| B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | A written audit list exists in PROGRESS3.md, covering every screen. |
+| B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | ✅ DONE. Full inventory + decisions recorded below under "B2.2 Audit Results." |
 | B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Each batch's screens are iconized, tested on-device, and checked off the audit list. |
 | B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | Bottom nav shows only 4 tabs + More on a real device; every previously-reachable tab is still reachable via More. |
 | B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. |
 
 - Person may add more items to this sub-phase's list before B2.1 starts —
   section will be finalized (and re-pasted here) once they say they're done.
+
+📋 B2.2 Audit Results (finished audit — decision per pattern, applies to all 37 screens/modals)
+
+Full raw inventory (every button/label/header/icon, file-by-file with line
+numbers) was gathered via Antigravity investigation and is not reproduced
+here in full — see chat history for that pass if needed. Decisions below
+are by PATTERN (same decision applies everywhere that pattern occurs):
+
+ICONIZE (target for B2.3+):
+- Segmented sub-tab pills with 3+ options: ToPayScreen (Bills/Debts/Loans),
+  PlanningScreen (Groceries/Travel/Events/Goals), InsightsScreen
+  (Dashboard/Reports), ReportsScreen (9 report tabs — highest priority,
+  likely wrapping/scrolling as text today), SavingsScreen (Goals/
+  Emergency Fund/FI Calculator), GroceriesScreen (Grocery List/Calculator).
+- Row-level icon+text actions: CollapsibleRow's "Edit" (pencil+text →
+  icon-only), AccountsScreen's "Collapse" (chevron+text → icon-only).
+
+CONVERT/CLEANUP (replace raw characters/emoji with real Ionicons, no
+behavior change, no IconLabelHint reveal needed for the pure-navigation
+ones like ‹ › since they're already universally understood):
+- Raw single-character buttons: ‹ › (Calendar month nav, TaxSummaryReport/
+  YearInReviewReport year nav), ✕ × (delete-row buttons across Loans,
+  Groceries, Travel, Income, Savings), ▲ ▼ (SettingsScreen categorization
+  rule reordering), › (ProfileScreen/SettingsScreen nav row chevrons).
+- Emoji used as icons: 📊 (LoansScreen "View Payoff Simulator"), 📎
+  (TransactionsScreen attach receipt), 📄 (CsvImportModal choose file),
+  📋 (CreateProfileScreen/SettingsScreen copy recovery key), 🔄
+  (PinUnlockScreen retry biometric), ⚠️ (SignInScreen/ProfileScreen
+  warning banners).
+- Ad hoc ✓ character inside dynamic status toggles (keep the TEXT, just
+  swap the character for a real Ionicons checkmark): "✓ Completed"/"Not
+  yet" (EventsScreen, GoalsScreen), "✓ Auto-saving..." (TravelScreen,
+  EventsScreen), "✓ Marked as bought" (GroceriesScreen), refund tracking
+  toggle (TransactionsScreen), "✓ Linked" badge (ProfileScreen).
+
+KEEP AS TEXT (no change):
+- All modal action buttons: Save / Cancel / "Delete this X" — appears in
+  every screen's edit modal. Kept for clarity on often-irreversible
+  actions; already full-width, no space to save.
+- All "+ Add X" buttons — the word after "+" distinguishes what's being
+  added when multiple "+" buttons appear on one screen.
+- All form field labels (e.g. "Bill name", "Amount", "Interest rate") —
+  a blank input needs a visible label; iconizing these would hurt
+  usability, not help it.
+- Recurring-type / priority / frequency / direction selector pills INSIDE
+  a form (One-time/Monthly/Annual/Custom, Low/Medium/High, Borrowed/Lent,
+  day-of-week pills) — user is actively choosing a value; text wins over
+  learned icons here.
+- Metric headers (TOTAL BALANCE, TOTAL BILLS, Amount Owed, etc.) — the
+  actual numbers people check daily; flagged as a possible FUTURE
+  redesign, explicitly out of scope for this straight icon-swap pass.
+- Person/category/payee/tag chips showing real user-entered data — can't
+  iconize actual names/text the person typed.
+- All auth & security screens (SignIn, CreateProfile, Onboarding,
+  PinUnlock, SetPin, recovery key flows) — rarely-seen, trust-critical;
+  clarity matters more than icon economy here. Emoji-to-Ionicons cleanup
+  still applies to these screens per the CONVERT section above.
+
+ALREADY ICON-ONLY, NO CHANGE NEEDED:
+- CollapsibleRow's plain expand/collapse chevron, PasswordField/PinField's
+  eye-toggle icon, DateField's calendar/clear icons, AccountCard's
+  wallet/card type badges, AccountsScreen's color swatch circles.
+
+EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
+- Bottom nav tabs (MainTabs.tsx, 10 tabs, currently text-only) — tracked
+  separately as its own checkpoint (see B2.X, bottom nav redesign, below)
+  since it's a structural change (4 core tabs + "More"), not a straight
+  icon swap.
+
+▶️ B2.3+ batch order (once B2.1's on-device testing is confirmed):
+1. ReportsScreen's 9 report sub-tabs (highest value — likely wrapping as
+   text today).
+2. Remaining segmented pills: ToPayScreen, PlanningScreen, InsightsScreen,
+   SavingsScreen, GroceriesScreen.
+3. Character/emoji cleanup pass across all flagged screens (mechanical,
+   low-risk, can be batched together).
+4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
 
 📁 Files in the repo
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
