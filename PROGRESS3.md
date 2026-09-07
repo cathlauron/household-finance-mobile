@@ -8,6 +8,47 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 3, Pass 2 build (Planning & checklists: Events, Goals, Groceries, Travel)
+- Wrote an Antigravity investigation-only prompt for B2.3 batch 3, Pass 2:
+  the character/emoji cleanup pass for EventsScreen, GoalsScreen,
+  GroceriesScreen, and TravelScreen.
+- Antigravity's investigation found no emoji in any of the 4 files, and
+  turned up 2 raw `✕` delete buttons (GroceriesScreen's calculator row,
+  TravelScreen's checklist row), a raw `✓` inside TravelScreen's custom
+  checklist checkbox, and 4 ad hoc "✓ [status text]" toggles (Events'
+  "Completed" and "Auto-saving" toggles, Goals' "Completed" toggle,
+  Groceries' "Marked as bought" toggle). It also flagged that
+  TravelScreen's own "Auto-saving" toggle does NOT currently use a "✓"
+  text character at all — it already has a separate dot-indicator `View`
+  instead, confirming the swap-to-checkmark decision already recorded in
+  PROGRESS3.md rather than uncovering a new inconsistency. Confirmed
+  none of the 4 files import Ionicons yet. Card-title inline checkmarks
+  on EventsScreen/GoalsScreen were reconfirmed as deferred to batch 3b,
+  not touched this pass.
+- Reviewed and decided: use `close` (not `close-circle`) for both raw-✕
+  delete buttons, consistent with Pass 1/batch 3's reasoning (both
+  containers are already circles); use a real `Ionicons checkmark` for
+  every "✓ [status]" toggle instead of the raw character; for the 4
+  single-`<Text>` toggles (Events' 2, Goals' 1, Groceries' 1), the
+  container style needs `flexDirection: 'row'` + `justifyContent:
+  'center'` added so the new icon sits beside the text instead of
+  stacking under it (TravelScreen's own toggle already had
+  `flexDirection: 'row'`, so no style change was needed there — just the
+  dot `View` swapped for a conditional Ionicons checkmark).
+- Gave the person paste/replace snippets for all 4 files: added the
+  `Ionicons` import to each; EventsScreen's `trackSavingsToggle` and
+  `completedToggle` (JSX + container styles); GoalsScreen's
+  `completedToggle` (JSX + container style); GroceriesScreen's
+  `calcRemoveButton` (icon swap) and `purchasedToggle` (JSX + container
+  style); TravelScreen's `removeItemButton` (icon swap), checklist
+  `checkbox` mark (icon swap), and `trackToggle` (dot → checkmark swap,
+  no style change). Old `*ToggleText`-only styling and now-unused
+  `checkboxMark`/`trackToggleDot`/`trackToggleDotActive` styles left in
+  place, harmless, per the established convention.
+- `npx tsc --noEmit` [PENDING — person to run after pasting all 4 files].
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step.
+
 ### Session — B2.3 batch 3, Pass 1 build (Calendar + report year-nav chevrons)
 - Wrote an Antigravity investigation-only prompt for B2.3 batch 3: the
   character/emoji cleanup pass — swapping raw characters (‹ › ✕ × ▲ ▼ ›)
@@ -291,6 +332,28 @@ on a real device. This is the priority list for this file's first session.
   prev/next month or year correctly on all 3 screens; (3) chevron size/
   weight looks visually consistent with the rest of each screen (20pt on
   Calendar, 18pt on the two reports).
+- **B2.3 batch 3, Pass 2 — Events/Goals/Groceries/Travel character
+  cleanup — on-device testing deferred.** Code is complete
+  [`npx tsc --noEmit` status: PENDING — confirm clean after pasting].
+  EventsScreen's "Completed" and "Auto-saving" toggles, GoalsScreen's
+  "Completed" toggle, and GroceriesScreen's "Marked as bought" toggle now
+  show a real Ionicons checkmark instead of an embedded "✓" text
+  character; GroceriesScreen's calculator-row delete button and
+  TravelScreen's checklist-row delete button now use an Ionicons close
+  icon instead of a raw "✕"; TravelScreen's checklist checkbox mark and
+  its own "Auto-saving" toggle indicator (previously a plain dot `View`)
+  now both use a real Ionicons checkmark too. Pure visual swap, no
+  behavior change. NOT yet tested on a real device. When ready, check:
+  (1) all 4 toggles show the checkmark icon centered beside its text
+  when active, and no icon (just text) when inactive, with nothing
+  misaligned or wrapping oddly; (2) tapping each toggle still flips its
+  state correctly; (3) both delete buttons still delete the right
+  row and the close icon is visually centered inside its circular
+  button; (4) TravelScreen's checklist checkbox still toggles
+  checked/unchecked correctly and the checkmark is centered inside the
+  gold box; (5) TravelScreen's "Auto-saving" toggle checkmark color/
+  visibility looks right in both light and dark mode, since it uses
+  `colors.accent` rather than a fixed hex like the other 3 toggles.
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -351,9 +414,12 @@ on a real device. This is the priority list for this file's first session.
   B2.1's and B2.3 batch 1's checklists should be run together in the same
   on-device session, since B2.3 batch 1 depends on B2.1's component
   actually working correctly.
-- Once both are confirmed working, next up per the B2.3+ batch order is
-  batch 2: the remaining segmented pills (ToPayScreen, PlanningScreen,
-  InsightsScreen, SavingsScreen, GroceriesScreen).
+- B2.3 batch 3 Pass 2 (Events/Goals/Groceries/Travel character cleanup)
+  is code-complete pending the person's `npx tsc --noEmit` confirmation,
+  but not yet tested on-device — see its checklist above. Next up per
+  the batch order is Pass 3 (Transactions & money flows:
+  TransactionsScreen, CsvImportModal, LoansScreen, IncomeScreen,
+  SavingsScreen), whenever ready to continue.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -479,7 +545,8 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
    - Pass 1 (Calendar/YearInReview/TaxSummary chevrons) — ✅
      CODE-COMPLETE, on-device testing pending.
    - Pass 2 (Planning & checklists: EventsScreen, GoalsScreen,
-     GroceriesScreen, TravelScreen) — NOT yet started.
+     GroceriesScreen, TravelScreen) — ✅ CODE-COMPLETE (pending person's
+     `npx tsc --noEmit` confirmation), on-device testing pending.
    - Pass 3 (Transactions & money flows: TransactionsScreen,
      CsvImportModal, LoansScreen, IncomeScreen, SavingsScreen) — NOT yet
      started.
@@ -532,6 +599,31 @@ here on:
   year-nav buttons now render `Ionicons` chevrons (size 18) instead of
   raw `‹`/`›` text (B2.3 batch 3 Pass 1); added `Ionicons` import;
   `yearNavBtnText` style now unused but left in place.
+
+- MODIFIED: `mobile-app/src/screens/EventsScreen.tsx` — "Completed" and
+  "Auto-saving to Savings tab" toggles now show a real Ionicons checkmark
+  instead of an embedded "✓" text character (B2.3 batch 3 Pass 2); added
+  `Ionicons` import; both toggle container styles gained `flexDirection:
+  'row'` + `justifyContent: 'center'`.
+- MODIFIED: `mobile-app/src/screens/GoalsScreen.tsx` — "Completed" toggle
+  now shows a real Ionicons checkmark instead of an embedded "✓" text
+  character (B2.3 batch 3 Pass 2); added `Ionicons` import; toggle
+  container style gained `flexDirection: 'row'` + `justifyContent:
+  'center'`.
+- MODIFIED: `mobile-app/src/screens/GroceriesScreen.tsx` — calculator
+  row's delete button now renders an Ionicons close icon instead of a
+  raw "✕"; "Marked as bought" toggle now shows a real Ionicons checkmark
+  instead of an embedded "✓" text character (B2.3 batch 3 Pass 2); added
+  `Ionicons` import; toggle container style gained `flexDirection:
+  'row'` + `justifyContent: 'center'`.
+- MODIFIED: `mobile-app/src/screens/TravelScreen.tsx` — checklist row's
+  delete button now renders an Ionicons close icon instead of a raw "✕";
+  the checklist item checkbox mark now renders an Ionicons checkmark
+  instead of a raw "✓"; the "Auto-saving to Savings tab" toggle's plain
+  dot indicator `View` is replaced with a conditional Ionicons checkmark
+  (B2.3 batch 3 Pass 2); added `Ionicons` import; `checkboxMark`/
+  `trackToggleDot`/`trackToggleDotActive` styles now unused but left in
+  place.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -410,7 +411,14 @@ export default function TravelScreen() {
                   style={[styles.trackToggle, trackInSavings && styles.trackToggleActive]}
                   onPress={() => setTrackInSavings((prev) => !prev)}
                 >
-                  <View style={[styles.trackToggleDot, trackInSavings && styles.trackToggleDotActive]} />
+                  {trackInSavings && (
+                    <Ionicons
+                      name="checkmark"
+                      size={15}
+                      color={colors.accent || '#3ecf8e'}
+                      style={{ marginRight: 6 }}
+                    />
+                  )}
                   <Text style={[styles.trackToggleText, trackInSavings && styles.trackToggleTextActive]}>
                     {trackInSavings ? 'Auto-saving to Savings tab' : 'Not tracked in Savings tab'}
                   </Text>
@@ -431,7 +439,7 @@ export default function TravelScreen() {
                       style={[styles.checkbox, item.checked && styles.checkboxChecked]}
                       onPress={() => handleToggleChecklistItem(item.id)}
                     >
-                      {item.checked && <Text style={styles.checkboxMark}>✓</Text>}
+                      {item.checked && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
                     </TouchableOpacity>
                     <View style={styles.checklistRowMain}>
                       <Text
@@ -448,7 +456,7 @@ export default function TravelScreen() {
                       style={styles.removeItemButton}
                       onPress={() => handleRemoveChecklistItem(item.id)}
                     >
-                      <Text style={styles.removeItemButtonText}>✕</Text>
+                      <Ionicons name="close" size={14} color={colors.inkDim} />
                     </TouchableOpacity>
                   </View>
                 ))}

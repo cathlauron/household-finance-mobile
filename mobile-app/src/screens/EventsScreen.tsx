@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -489,15 +490,16 @@ export default function EventsScreen() {
                   ]}
                   onPress={() => setTrackInSavingsInput((v) => !v)}
                 >
+                  {trackInSavingsInput && (
+                    <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
+                  )}
                   <Text
                     style={[
                       styles.trackSavingsToggleText,
                       trackInSavingsInput && styles.trackSavingsToggleTextActive,
                     ]}
                   >
-                    {trackInSavingsInput
-                      ? '✓ Auto-saving to Savings tab'
-                      : 'Not tracked in Savings tab'}
+                    {trackInSavingsInput ? 'Auto-saving to Savings tab' : 'Not tracked in Savings tab'}
                   </Text>
                 </TouchableOpacity>
 
@@ -505,13 +507,16 @@ export default function EventsScreen() {
                   style={[styles.completedToggle, completedInput && styles.completedToggleActive]}
                   onPress={() => setCompletedInput((v) => !v)}
                 >
+                  {completedInput && (
+                    <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
+                  )}
                   <Text
                     style={[
                       styles.completedToggleText,
                       completedInput && styles.completedToggleTextActive,
                     ]}
                   >
-                    {completedInput ? '✓ Completed' : 'Not yet'}
+                    {completedInput ? 'Completed' : 'Not yet'}
                   </Text>
                 </TouchableOpacity>
 
@@ -592,20 +597,24 @@ function makeStyles(colors: any) {
     smallPillText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
     smallPillTextActive: { color: colors.navy2 },
     trackSavingsToggle: {
+      flexDirection: 'row',
       backgroundColor: colors.navy2,
       borderRadius: 999,
       paddingVertical: 10,
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 14,
     },
     trackSavingsToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
     trackSavingsToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     trackSavingsToggleTextActive: { color: '#10b981' },
     completedToggle: {
+      flexDirection: 'row',
       backgroundColor: colors.navy2,
       borderRadius: 999,
       paddingVertical: 10,
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 14,
     },
     completedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },

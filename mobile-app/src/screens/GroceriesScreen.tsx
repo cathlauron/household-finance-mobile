@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -306,7 +307,7 @@ export default function GroceriesScreen() {
               </Text>
               <Text style={styles.calcRowAmount}>{formatPeso(e.amount)}</Text>
               <TouchableOpacity style={styles.calcRemoveButton} onPress={() => handleRemoveCalcEntry(e.id)}>
-                <Text style={styles.calcRemoveButtonText}>✕</Text>
+                <Ionicons name="close" size={16} color={colors.inkDim} />
               </TouchableOpacity>
             </View>
           ))}
@@ -389,13 +390,16 @@ export default function GroceriesScreen() {
                   style={[styles.purchasedToggle, purchasedInput && styles.purchasedToggleActive]}
                   onPress={() => setPurchasedInput((v) => !v)}
                 >
+                  {purchasedInput && (
+                    <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
+                  )}
                   <Text
                     style={[
                       styles.purchasedToggleText,
                       purchasedInput && styles.purchasedToggleTextActive,
                     ]}
                   >
-                    {purchasedInput ? '✓ Marked as bought' : 'Mark as bought'}
+                    {purchasedInput ? 'Marked as bought' : 'Mark as bought'}
                   </Text>
                 </TouchableOpacity>
 
@@ -532,10 +536,12 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     purchasedToggle: {
+      flexDirection: 'row',
       backgroundColor: colors.navy2,
       borderRadius: 999,
       paddingVertical: 10,
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 14,
     },
     purchasedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
