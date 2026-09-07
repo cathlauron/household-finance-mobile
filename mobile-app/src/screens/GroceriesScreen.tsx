@@ -12,11 +12,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 
 function plannedTotal(items: GroceryItem[]): number {
@@ -153,6 +155,26 @@ export default function GroceriesScreen() {
     closeModal();
   }
 
+  async function performDeleteGroceryById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      groceries: (model.groceries ?? []).filter((g) => g.id !== id),
+    };
+    await saveModel(updated);
+  }
+
+  function handleSwipeDeleteGrocery(item: GroceryItem) {
+    Alert.alert(
+      'Delete this item?',
+      'This will permanently delete the item. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteGroceryById(item.id) },
+      ]
+    );
+  }
+
   async function handleAddCalcEntry() {
     if (!model) return;
     setCalcErrorMsg('');
@@ -255,8 +277,13 @@ export default function GroceriesScreen() {
           )}
 
           {groceries.map((g) => (
-            <TouchableOpacity
+            <SwipeableRow
               key={g.id}
+              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDeleteGrocery(g)}
+              testID={`grocery-swipe-${g.id}`}
+            >
+            <TouchableOpacity
               style={styles.groceryRow}
               activeOpacity={0.7}
               onPress={() => openEditModal(g)}
@@ -276,6 +303,7 @@ export default function GroceriesScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
+            </SwipeableRow>
           ))}
 
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>

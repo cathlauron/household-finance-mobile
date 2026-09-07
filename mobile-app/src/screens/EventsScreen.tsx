@@ -12,12 +12,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -335,6 +337,33 @@ export default function EventsScreen() {
     closeModal();
   }
 
+  async function performDeleteEventById(id: string) {
+    if (!model) return;
+    const deletedEvent = (model.events ?? []).find((ev) => ev.id === id);
+    const updated: HouseholdModel = {
+      ...model,
+      events: (model.events ?? []).filter((ev) => ev.id !== id),
+      savingsGoals: deletedEvent?.savingsGoalId
+        ? (model.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
+        : model.savingsGoals ?? [],
+      manualTransactions: deletedEvent?.expenseTransactionId
+        ? (model.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
+        : model.manualTransactions,
+    };
+    await saveModel(updated);
+  }
+
+  function handleSwipeDeleteEvent(ev: EventItem) {
+    Alert.alert(
+      'Delete this event?',
+      'This will permanently delete the event, along with any linked savings goal or logged expense. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteEventById(ev.id) },
+      ]
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -347,8 +376,13 @@ export default function EventsScreen() {
         )}
 
         {events.map((ev) => (
-          <TouchableOpacity
+          <SwipeableRow
             key={ev.id}
+            enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+            onDelete={() => handleSwipeDeleteEvent(ev)}
+            testID={`event-swipe-${ev.id}`}
+          >
+          <TouchableOpacity
             style={styles.eventRow}
             activeOpacity={0.7}
             onPress={() => openEditModal(ev)}
@@ -370,6 +404,7 @@ export default function EventsScreen() {
               <Text style={styles.eventAmount}>{formatPeso(ev.budget)}</Text>
             )}
           </TouchableOpacity>
+          </SwipeableRow>
         ))}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>

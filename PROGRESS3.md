@@ -8,6 +8,62 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Swipe-to-delete toggle, checkpoint 3 of 3, part 1 (Goals, Events, Travel, Groceries — Accounts deferred pending a decision)
+- Wrote an Antigravity investigation-only prompt for checkpoint 3,
+  covering the 5 screens that render their own row markup instead of
+  using `CollapsibleRow` — GoalsScreen, TravelScreen, EventsScreen,
+  GroceriesScreen, AccountsScreen — asking for each screen's exact
+  `useData()` scope, every distinct deletable-row `.map()` block (with
+  full current delete function bodies and whether delete is keyed off
+  `editingId` or takes an explicit id), the exact row JSX for each,
+  current imports, and an explicit flag for any nested deletable rows
+  (e.g. checklist items inside a trip or event).
+- Antigravity's investigation confirmed: GoalsScreen and EventsScreen
+  each have one flat top-level list with a straightforward `editingId`-
+  keyed delete function; TravelScreen's top-level trip list is the same
+  shape, but its checklist items nested inside the edit modal already
+  have their own inline "X" delete button right there in the form;
+  GroceriesScreen's main Grocery List tab is the same shape, but its
+  separate Calculator-tab entries also already have their own inline
+  "X" delete button in the row. AccountsScreen was flagged as needing a
+  real decision before writing any code: its "stacked" account cards
+  overlap by 80px and already implement their own tap-to-expand pan
+  gesture, so wrapping an overlapping stacked card in `SwipeableRow`
+  (which adds its own pan-gesture recognizer) risks the two gestures
+  fighting each other in a way that can't be verified from code alone —
+  it would need real on-device testing to know if it feels broken.
+- Decided: only wrap the 4 unambiguous screens (Goals, Events, Travel,
+  Groceries) this session, each following the exact same pattern as
+  checkpoint 2 — a new `performDelete*ById(id)` + `handleSwipeDelete(item)`
+  pair added alongside each screen's existing `editingId`-keyed
+  `handleDelete()`, reusing the same confirmation title/message on both
+  paths, and the existing row's `<TouchableOpacity>` wrapped in
+  `<SwipeableRow enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+  onDelete={...}>`. For Travel and Groceries specifically, deliberately
+  left the nested checklist items / Calculator-tab rows unwrapped, since
+  they already have a one-tap inline delete visible in the row itself —
+  same reasoning as not double-tooling something that's already a single
+  tap away. AccountsScreen's own decision (recommended: enable swipe only
+  on flat/list-mode rows via the existing `!isStackedSection` condition,
+  and skip stacked overlapping cards entirely for now, tapping still
+  opening the edit modal's own Delete button either way) is still
+  pending the person's confirmation — see ▶️ Next step.
+- Gave the person paste/replace snippets for all 4 files: `Alert` import
+  added to each (none had it yet), `SwipeableRow` import added to each,
+  a new `performDelete*ById()` + `handleSwipeDelete()` pair inserted
+  right after each screen's existing `handleDelete()`, and the row's
+  `<TouchableOpacity>` wrapped in `<SwipeableRow>...</SwipeableRow>` at
+  both its opening and closing tags. EventsScreen's and TravelScreen's
+  delete-by-id handlers each reuse the same cascade-cleanup logic as
+  their existing modal-based delete (removing a linked savings goal
+  and/or linked expense transaction(s) alongside the row itself).
+- `npx tsc --noEmit` run from `mobile-app\` after pasting all 4 files —
+  clean, no errors.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step. AccountsScreen (checkpoint 3, part 2) not yet started,
+  pending the person's decision on the stacked-card gesture-conflict
+  question above.
+
 ### Session — Swipe-to-delete toggle, checkpoint 2 of 3 (wire SwipeableRow into CollapsibleRow's 6 screens)
 - Wrote 2 Antigravity investigation-only prompts to map out exactly how
   each of the 6 CollapsibleRow-based screens (Bills, Debts, Income,
@@ -613,6 +669,31 @@ on a real device. This is the priority list for this file's first session.
   (also a Modal) in a later batch, watch for Android-specific flakiness
   (two native Modals open at once is a known trouble spot); no fix needed
   unless that combination is actually hit.
+- **Swipe-to-delete toggle, checkpoint 3 of 3, part 1 — wired into
+  Goals/Events/Travel/Groceries — on-device testing deferred.** Code is
+  complete and `npx tsc --noEmit` clean: GoalsScreen, EventsScreen,
+  TravelScreen (top-level trip rows only), and GroceriesScreen (main
+  Grocery List tab only) now each wrap their row in `SwipeableRow`,
+  reading the same `model.settings.swipeToDeleteEnabled` setting as
+  checkpoint 2 (still defaults to `false`). Each screen has its own new
+  by-id delete path used only by the swipe gesture; the existing modal
+  Delete button is untouched. Deliberately NOT wrapped: TravelScreen's
+  checklist items nested inside a trip's edit modal, and GroceriesScreen's
+  Calculator-tab entries — both already have their own inline "X" delete
+  button in the row, so swipe wasn't added there this pass. NOT yet
+  tested on a real device. When ready, with "Swipe to delete" turned ON
+  in Settings, check on EACH of the 4 screens: (1) swiping a row left
+  reveals the red delete action and tapping it deletes that exact row
+  after the same confirmation dialog the modal's Delete button shows;
+  (2) tapping a row (not swiping) still opens it into its normal
+  expand/edit view exactly as before; (3) with "Tap to open" selected
+  instead in Settings, swiping a row does nothing at all. Also check:
+  (4) deleting an event or trip via swipe correctly removes its linked
+  savings goal and/or linked expense transaction(s) too, same as the
+  modal's Delete button already does; (5) TravelScreen's nested
+  checklist items and GroceriesScreen's Calculator-tab rows are
+  unaffected by the swipe setting either way (their own inline "X"
+  delete still works exactly as before).
 - **Swipe-to-delete toggle, checkpoint 2 of 3 — wired into
   CollapsibleRow's 6 screens — on-device testing deferred.** Code is
   complete and `npx tsc --noEmit` clean: Bills, Debts, Income, Loans,
@@ -793,15 +874,27 @@ on a real device. This is the priority list for this file's first session.
   neighboring pills when shown.
 
 ▶️ Next step
-- Test the swipe-to-delete feature on a real device — checkpoint 1
-  (the Settings toggle + preview) AND checkpoint 2 (real swipe-to-delete
-  now wired into Bills/Debts/Income/Loans/Savings/Transactions) can be
-  tested together in the same pass, since checkpoint 2 depends on
-  checkpoint 1's native gesture-handler setup actually working. See
-  both checklists under ⚠️ Known issues above. Once confirmed, move on
-  to checkpoint 3: wiring `SwipeableRow` individually into the 5 screens
-  that implement their own row markup instead of using
-  `CollapsibleRow` (Goals, Travel, Events, Groceries, Accounts).
+- Decide how to handle AccountsScreen (checkpoint 3, part 2) — its
+  stacked account cards overlap by 80px and already have their own
+  tap-to-expand pan gesture, so wrapping them in `SwipeableRow` risks
+  the two gestures conflicting in a way that can't be confirmed without
+  on-device testing. Recommended approach (from this session's
+  Antigravity investigation): enable swipe-to-delete only on flat/
+  list-mode account rows (already distinguishable via the existing
+  `!isStackedSection` condition — this happens automatically once a
+  section has fewer than 2 accounts, or the person is in List view
+  mode), and leave stacked overlapping cards without swipe entirely for
+  now — tapping still opens the edit modal's own Delete button either
+  way, so nothing becomes undeletable. Alternative: leave Accounts out
+  of the swipe-to-delete feature entirely and revisit later once the
+  other 4 screens are confirmed working well on-device. Once decided,
+  Claude will write the matching snippet(s).
+- Test the swipe-to-delete feature on a real device — checkpoint 1 (the
+  Settings toggle + preview), checkpoint 2 (Bills/Debts/Income/Loans/
+  Savings/Transactions), and checkpoint 3 part 1 (Goals/Events/Travel/
+  Groceries) can all be tested together in the same pass, since they all
+  depend on checkpoint 1's native gesture-handler setup actually
+  working. See all 3 checklists under ⚠️ Known issues above.
 - Run the on-device testing checklist above, in whatever order is most
   convenient, and report back real bugs (with repro steps) as they're found
   — same investigate-with-real-code-first approach as always for any fix.
@@ -1192,6 +1285,31 @@ here on:
   manual transactions are deletable here (checkpoint 2); new
   `performDeleteTxnById()` (reuses the existing linked-refund-
   transaction cascade) + `handleSwipeDelete(rawId)` pair.
+- MODIFIED: `mobile-app/src/screens/GoalsScreen.tsx` — top-level goal
+  row now wrapped in `SwipeableRow`, reading
+  `model.settings.swipeToDeleteEnabled` (checkpoint 3, part 1); added
+  `Alert`/`SwipeableRow` imports; new `performDeleteGoalById()` +
+  `handleSwipeDeleteGoal(goal)` pair added alongside the existing
+  modal-based `performDeleteGoal()`/`handleDeleteGoal()`.
+- MODIFIED: `mobile-app/src/screens/EventsScreen.tsx` — top-level event
+  row now wrapped in `SwipeableRow` (checkpoint 3, part 1); added
+  `Alert`/`SwipeableRow` imports; new `performDeleteEventById()` +
+  `handleSwipeDeleteEvent(ev)` pair, reusing the same linked-savings-
+  goal/linked-expense-transaction cascade as the existing modal delete.
+- MODIFIED: `mobile-app/src/screens/TravelScreen.tsx` — top-level trip
+  row now wrapped in `SwipeableRow`; nested checklist items inside a
+  trip's edit modal deliberately left unwrapped, since they already
+  have their own inline "X" delete button (checkpoint 3, part 1); added
+  `Alert`/`SwipeableRow` imports; new `performDeleteTripById()` +
+  `handleSwipeDeleteTrip(trip)` pair, reusing the same linked-savings-
+  goal/linked-expense-transaction cascade as the existing modal delete.
+- MODIFIED: `mobile-app/src/screens/GroceriesScreen.tsx` — main Grocery
+  List tab's row now wrapped in `SwipeableRow`; the separate Calculator
+  tab's entries deliberately left unwrapped, since they already have
+  their own inline "X" delete button (checkpoint 3, part 1); added
+  `Alert`/`SwipeableRow` imports; new `performDeleteGroceryById()` +
+  `handleSwipeDeleteGrocery(item)` pair added alongside the existing
+  modal-based `performDeleteItem()`/`handleDeleteItem()`.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

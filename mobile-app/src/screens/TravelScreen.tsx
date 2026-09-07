@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -24,6 +25,7 @@ import type {
   ManualTransaction,
 } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -321,6 +323,38 @@ export default function TravelScreen() {
     closeModal();
   }
 
+  async function performDeleteTripById(id: string) {
+    if (!model) return;
+    const tripBeingDeleted = (model.travel ?? []).find((t) => t.id === id);
+    const linkedTxnIds = new Set(
+      (tripBeingDeleted?.checklist ?? [])
+        .map((i) => i.expenseTransactionId)
+        .filter((tid): tid is string => !!tid)
+    );
+    const updated: HouseholdModel = {
+      ...model,
+      travel: (model.travel ?? []).filter((t) => t.id !== id),
+      savingsGoals: tripBeingDeleted?.savingsGoalId
+        ? (model.savingsGoals ?? []).filter((g) => g.id !== tripBeingDeleted.savingsGoalId)
+        : model.savingsGoals,
+      manualTransactions: linkedTxnIds.size
+        ? (model.manualTransactions ?? []).filter((t) => !linkedTxnIds.has(t.id))
+        : model.manualTransactions,
+    };
+    await saveModel(updated);
+  }
+
+  function handleSwipeDeleteTrip(trip: TravelTrip) {
+    Alert.alert(
+      'Delete this trip?',
+      'This will permanently delete the trip, along with any linked savings goal or logged expenses. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteTripById(trip.id) },
+      ]
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -338,8 +372,13 @@ export default function TravelScreen() {
           const checklistCount = (trip.checklist ?? []).length;
           const doneCount = (trip.checklist ?? []).filter((i) => i.checked).length;
           return (
-            <TouchableOpacity
+            <SwipeableRow
               key={trip.id}
+              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDeleteTrip(trip)}
+              testID={`trip-swipe-${trip.id}`}
+            >
+            <TouchableOpacity
               style={styles.tripRow}
               activeOpacity={0.7}
               onPress={() => openEditModal(trip)}
@@ -355,6 +394,7 @@ export default function TravelScreen() {
               </View>
               <Text style={styles.tripAmount}>{formatPeso(total)}</Text>
             </TouchableOpacity>
+            </SwipeableRow>
           );
         })}
 

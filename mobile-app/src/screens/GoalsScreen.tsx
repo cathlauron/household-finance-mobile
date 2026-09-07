@@ -12,11 +12,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import type { YearlyGoal, HouseholdModel } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField'
 
@@ -170,6 +172,26 @@ export default function GoalsScreen() {
     closeModal();
   }
 
+  async function performDeleteGoalById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== id),
+    };
+    await saveModel(updated);
+  }
+
+  function handleSwipeDeleteGoal(goal: YearlyGoal) {
+    Alert.alert(
+      'Delete this goal?',
+      'This will permanently delete the goal. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteGoalById(goal.id) },
+      ]
+    );
+  }
+
   const doneCount = goals.filter((g) =>
     g.mode === 'progress' ? goalPct(g) >= 100 && typeof g.targetAmount === 'number' && g.targetAmount > 0 : g.completed
   ).length;
@@ -195,8 +217,13 @@ export default function GoalsScreen() {
             ? pct >= 100 && typeof g.targetAmount === 'number' && g.targetAmount > 0
             : g.completed;
           return (
-            <TouchableOpacity
+            <SwipeableRow
               key={g.id}
+              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDeleteGoal(g)}
+              testID={`goal-swipe-${g.id}`}
+            >
+            <TouchableOpacity
               style={styles.goalRow}
               activeOpacity={0.7}
               onPress={() => openEditModal(g)}
@@ -224,6 +251,7 @@ export default function GoalsScreen() {
                 <Text style={styles.goalAmount}>{Math.round(pct)}%</Text>
               ) : null}
             </TouchableOpacity>
+            </SwipeableRow>
           );
         })}
 
