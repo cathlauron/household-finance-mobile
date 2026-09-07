@@ -584,8 +584,8 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
 
   const unlinkConfirmText =
     householdMemberCount <= 1 || (isOwner && householdMemberCount <= 2)
-      ? 'Unlinking will dissolve this household. Your data will be converted to your personal profile.'
-      : 'This gives this profile its own separate copy of the data going forward. Anyone else still linked keeps sharing with each other, just not with this profile anymore.';
+      ? 'This will dissolve the household. Your data becomes your personal profile.'
+      : 'This gives you a separate copy going forward. Others stay linked with each other.';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -608,11 +608,10 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
 
         {/* 2. Security & Devices Shortcuts */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Account &amp; Security</Text>
-        <Text style={styles.sectionSub}>
-          Manage credentials, encryption keys, and active device sessions in Settings.
-        </Text>
-
-        <TouchableOpacity
+<Text style={styles.sectionSub}>
+  Manage credentials, encryption keys, and device sessions.
+</Text>
+<TouchableOpacity
   style={styles.shortcutRow}
   activeOpacity={0.7}
   onPress={() => navigation.navigate('Settings')}
@@ -629,10 +628,10 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
   activeOpacity={0.7}
   onPress={() => navigation.navigate('Settings')}
 >
-  <View style={{ flex: 1 }}>
-    <Text style={styles.shortcutTitle}>Active Devices</Text>
-            <Text style={styles.shortcutSub}>View and sign out other devices logged into your account</Text>
-          </View>
+  <View style={{ flex: 1, marginRight: 8 }}>
+  <Text style={styles.shortcutTitle}>Active Devices</Text>
+  <Text style={styles.shortcutSub}>View and sign out other devices.</Text>
+</View>
           <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />
         </TouchableOpacity>
 
@@ -640,8 +639,8 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Household &amp; Sharing</Text>
         <Text style={styles.sectionSub}>
           {isLinked
-            ? 'This profile shares its data with another linked profile — anything either of you enters shows up for both of you.'
-            : 'Link this profile with another phone so you both see and edit the same data.'}
+    ? 'This profile shares data with another linked profile — anything either of you enters shows up for both.'
+    : 'Link this profile with another phone so you both see and edit the same data.'}
         </Text>
 
         {!!linkNoticeMsg && (
@@ -667,8 +666,8 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
               </Text>
             </View>
             <Text style={[styles.hintText, { color: colors.ink, marginBottom: 8 }]}>
-              {pendingRecovery.requesterUsername} is requesting recovery for their account. If you are with them, you can verify their identity and send them the household key.
-            </Text>
+  {pendingRecovery.requesterUsername} is requesting recovery. If you're with them, verify their identity and send the household key.
+</Text>
             <TouchableOpacity
               style={[styles.dataButton, { alignSelf: 'flex-start' }]}
               onPress={() => {
@@ -699,10 +698,10 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                     )}
                   </View>
                   <Text style={styles.hintText}>
-                    This profile is currently sharing its data with another linked profile.
-                    Unlinking gives this phone its own separate copy of the data going forward —
-                    the shared data itself, and anyone else still linked, are left untouched.
-                  </Text>
+  This profile is currently sharing data with another linked profile. Unlinking gives this
+  phone its own separate copy going forward — the shared data, and anyone else still linked,
+  are left untouched.
+</Text>
 
                   {/* Member Roster */}
                   {householdMembers.length > 0 && (
@@ -752,9 +751,9 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                   {model?.people && model.people.length > 0 && (
                     <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.navy4, alignSelf: 'stretch' }}>
                       <Text style={[styles.hintText, { fontWeight: '700', marginBottom: 6 }]}>Which of these is you?</Text>
-                      <Text style={[styles.hintText, { marginBottom: 8 }]}>
-                        This decides what shows as "Mine" on your Transactions — everyone else sees it labeled with your name instead.
-                      </Text>
+<Text style={[styles.hintText, { marginBottom: 8 }]}>
+  Decides what shows as "Mine" on your Transactions — others see it labeled with your name.
+</Text>
                       {model.people.map((p) => {
                         const selected = p.id === myPersonId;
                         return (
@@ -790,11 +789,11 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
 
                   {/* Remove Member Confirmation Box */}
                   {memberToRemove && (
-                    <View style={[styles.dangerConfirmBox, { marginTop: 12, alignSelf: 'stretch' }]}>
-                      <Text style={styles.dangerConfirmText}>
-                        Remove {memberToRemove.username} from the household? They'll keep their own copy of everything as a separate personal profile.
-                      </Text>
-                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    <View style={styles.dangerConfirmBox}>
+  <Text style={styles.dangerConfirmText}>
+    Remove {memberToRemove.username} from the household? They'll keep a personal copy of everything.
+  </Text>
+  <View style={{ flexDirection: 'row', gap: 8 }}>
                         <TouchableOpacity
                           style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
                           onPress={handleRemoveMember}
@@ -836,10 +835,10 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                   )}
 
                   {isOwner && householdMemberCount >= 5 && (
-                    <Text style={[styles.hintText, { marginTop: 8 }]}>
-                      This household is full (5 of 5) — remove someone before inviting another person.
-                    </Text>
-                  )}
+  <Text style={[styles.hintText, { marginTop: 8 }]}>
+    Household full (5 of 5) — remove someone first.
+  </Text>
+)}
 
                   {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
@@ -866,17 +865,17 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                   {(() => {
                     const currentUid = getCurrentFirebaseUser()?.uid;
                     const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
-                    if (otherMembers.length === 1) {
+                                        if (otherMembers.length === 1) {
                       return (
                         <Text style={styles.dangerConfirmText}>
-                          Transfer ownership to {otherMembers[0].username} and leave? Since only one person will remain, the household will convert to personal data.
+                          Transfer ownership to {otherMembers[0].username} and leave? Since only one person remains, the household becomes personal data.
                         </Text>
                       );
                     }
                     return (
                       <>
                         <Text style={styles.dangerConfirmText}>
-                          Choose who takes over this household before you leave. You'll keep your own copy of all current data as a separate personal profile.
+                          Choose who takes over before you leave. You'll keep a personal copy of all current data.
                         </Text>
                         <View style={{ marginVertical: 10, gap: 6 }}>
                           {otherMembers.map((m) => {
@@ -1046,8 +1045,8 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                 <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
                 <Text style={styles.linkCodeText}>{linkCode}</Text>
                 <Text style={styles.hintText}>
-                  On the other phone, choose "Join with a code" and enter this. Once they have,
-                  come back here and check who's trying to link before you finish.
+                  On the other phone, choose "Join with a code" and enter this. Then come back and confirm
+  who's linking before you finish.
                 </Text>
 
                 <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
@@ -1089,8 +1088,8 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                   {joinResult.hostUsername}: {summarizeModel(joinResult.hostModel)}
                 </Text>
                 <Text style={[styles.hintText, { marginTop: 8, marginBottom: 8 }]}>
-                  Choose what the shared vault should start with — this can't be undone once
-                  you pick, so double check with the other phone first if you're unsure.
+                  Choose what the shared vault starts with — this can't be undone, so confirm with the
+  other phone first.
                 </Text>
                 {!joinResult.isInvite && (
                   <TouchableOpacity
@@ -1133,7 +1132,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
         {/* 4. Quick Actions (Lock & Sign Out) */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Session Actions</Text>
         <Text style={styles.sectionSub}>
-          Lock the app quickly with your PIN/biometrics or sign out of your account completely.
+          Quickly lock the app, or sign out completely.
         </Text>
 
         <TouchableOpacity style={styles.lockButton} activeOpacity={0.7} onPress={onLock}>
@@ -1170,7 +1169,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>Approve Account Recovery</Text>
             <Text style={styles.sectionSub}>
-              Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify their identity and transfer the household key.
+              Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify them and transfer the household key.
             </Text>
 
             <Text style={styles.inputLabel}>6-Digit Code</Text>

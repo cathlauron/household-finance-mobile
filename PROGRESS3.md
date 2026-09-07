@@ -8,7 +8,54 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
-### Session — Fewer-words pass: SettingsScreen.tsx
+### Session — Fewer-words pass: ProfileScreen.tsx (23 items reviewed, 15 trimmed)
+- Continued the "fewer words" pass, moving to ProfileScreen.tsx — the
+  next-wordiest screen per an earlier Antigravity wordiness-inventory
+  prompt that covered every remaining screen file (37 total, excluding
+  SettingsScreen.tsx) and returned a ranked list: ProfileScreen.tsx
+  (23 items), OnboardingScreen.tsx (8), SavingsScreen.tsx (7),
+  SignInScreen.tsx (7), MoreScreen.tsx (6), and 18 more screens with
+  progressively fewer items (full ranked list and per-screen inventory
+  captured in chat history for this session).
+- Reviewed all 23 ProfileScreen.tsx items and sorted them into 3
+  buckets: 8 kept as-is (already minimal or too context-dependent to
+  shorten further), 10 trimmed to routine, lower-consequence wording,
+  and 5 flagged for explicit confirmation before trimming, since they
+  cover real, hard-to-reverse household-data consequences (unlinking,
+  transferring ownership, dissolving a household, choosing what a
+  merged shared vault starts with) — same reasoning as SettingsScreen's
+  Clear-all-data warning in the prior session. Person reviewed and
+  confirmed the lighter-trim wording proposed for all 5 flagged items.
+- Applied 15 wording trims across: Account & Security section
+  description, Active Devices shortcut subtitle, Household & Sharing
+  section description (linked variant), pending-recovery-request hint,
+  unlink-while-linked explanatory hint, "Which of these is you?"
+  attribution hint, remove-member confirmation warning, household-full
+  warning, transfer-ownership warning (both the sole-remaining-member
+  and multiple-members variants), peer-linking instructions, data-merge
+  choice warning, Session Actions section description, the Approve
+  Account Recovery modal subtitle, and the unlink confirmation text
+  (both its dissolving-household and leaving-remaining-members
+  variants).
+- One paste introduced a real syntax break: applying the
+  transfer-ownership-warning trim (item 9's snippet) landed in the
+  wrong spot relative to the surrounding ternary/`return` structure
+  inside the transfer-ownership modal's IIFE, leaving a stray `if {`
+  and an orphaned `}` with no matching `return`. Two follow-up
+  Antigravity investigation prompts were needed to see the real,
+  unelided surrounding code (first a narrow range around the reported
+  error line, then the full IIFE block from the `transferOwnerModalOpen`
+  branch through its closing `View`) before writing a safe, exact fix —
+  rather than guessing at the reconstruction from the error message
+  alone. Root cause: the single-member case needs to `return` its own
+  `<Text>` early from the IIFE, not sit inside the same
+  ternary/ `return (<> ... </>)` block used for the multiple-members
+  case.
+- Fixed by replacing the broken lines with a proper early-return `if
+  (otherMembers.length === 1) { return (...); }` guard, leaving the
+  original multiple-members `return (<> ... </>)` block completely
+  untouched beneath it.
+- One separate, correctly-scoped fix also applied this
 - Picked up the "fewer words" pass (the one still-unstarted checkpoint
   in Phase B Part 2), starting with SettingsScreen.tsx — the wordiest
   screen per the earlier B2.2 audit (26 items), and a natural first
@@ -1523,10 +1570,13 @@ on a real device. This is the priority list for this file's first session.
   above. With all of that done, the remaining Phase B Part 2 work is:
   (a) running the full accumulated on-device testing pass across
   everything in this sub-phase, and (b) continuing the "fewer words"
-  trimming pass. SettingsScreen.tsx is now done (see its own session
-  entry above) — pick the next screen to inventory (either name one
-  directly, or ask for an Antigravity prompt to re-run the wordiness
-  audit across the remaining screens to find the next-wordiest one).
+  trimming pass. SettingsScreen.tsx and ProfileScreen.tsx are now both
+  done (see their own session entries above). The full ranked-by-
+  wordiness inventory across all remaining screens is already on hand
+  from an earlier Antigravity prompt — no need to re-run it. Next up,
+  in order: OnboardingScreen.tsx (8 items), then SavingsScreen.tsx (7),
+  then SignInScreen.tsx (7), then MoreScreen.tsx (6), and so on down
+  the ranked list captured in this session's chat history.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -1561,7 +1611,7 @@ replaces prior functionality, it's a visual/interaction pass.
 | B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | ✅ DONE. Full inventory + decisions recorded below under "B2.2 Audit Results." |
 | B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Batch 1 (ReportsScreen's 9 report sub-tabs) is ✅ CODE-COMPLETE, `npx tsc --noEmit` clean, ⏳ on-device testing deferred. Remaining batches not yet started. |
 | B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. ⏳ On-device testing deferred — not yet run. |
-| B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. ✅ SettingsScreen.tsx done (20 edits, `npx tsc --noEmit` clean). Remaining screens not yet reviewed. |
+| B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. ✅ SettingsScreen.tsx done (20 edits, `npx tsc --noEmit` clean). ✅ ProfileScreen.tsx done (15 edits, `npx tsc --noEmit` clean). Remaining screens not yet reviewed; full ranked-by-wordiness list on hand — next up is OnboardingScreen.tsx (8 items). |
 
 - Person may add more items to this sub-phase's list before B2.1 starts —
   section will be finalized (and re-pasted here) once they say they're done.
@@ -2095,6 +2145,18 @@ here on:
   Active Devices, Data, Clear-all confirmation warning, and the Sign
   Out Device modal (fewer-words pass session). Pure text change, no
   logic/structure touched.
+
+- MODIFIED: `mobile-app/src/screens/ProfileScreen.tsx` — 15
+  subtitle/hint/description/confirmation text elements trimmed to
+  shorter wording across the Account & Security, Household & Sharing,
+  and Session Actions sections, plus the unlink/transfer-ownership/
+  data-merge confirmation flows and the Approve Account Recovery modal
+  (fewer-words pass session). Also fixed a syntax break introduced
+  mid-paste in the transfer-ownership modal's IIFE (a stray `if {` /
+  orphaned `}` in the single-vs-multiple-other-members branch),
+  restructured as a proper early-return `if` guard. Pure text change
+  plus a structural bugfix restoring originally-intended behavior — no
+  new logic added.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
