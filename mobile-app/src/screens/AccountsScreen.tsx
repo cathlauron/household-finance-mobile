@@ -264,14 +264,15 @@ export default function AccountsScreen() {
                 <Text style={styles.sectionTitle}>{GROUP_LABELS[group]}</Text>
                 <View style={styles.sectionHeaderRight}>
                   {sectionHasExpanded && (
-                    <TouchableOpacity
-                      style={styles.collapseChip}
+                    <IconLabelHint
+                      name="chevron-up"
+                      label="Collapse"
+                      size={15}
+                      color={colors.gold}
                       onPress={handleCollapse}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="chevron-up" size={13} color={colors.gold} />
-                      <Text style={styles.collapseChipText}>Collapse</Text>
-                    </TouchableOpacity>
+                      style={styles.collapseChip}
+                      testID="accounts-collapse-chip"
+                    />
                   )}
                   <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
                 </View>

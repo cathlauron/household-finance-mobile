@@ -8,6 +8,48 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 4: CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only
+- Wrote an Antigravity investigation-only prompt covering the last
+  ICONIZE-pattern item from the B2.2 audit: CollapsibleRow's "Edit"
+  button (icon+text → icon-only) and AccountsScreen's "Collapse" chip
+  (icon+text → icon-only).
+- Antigravity's investigation confirmed: CollapsibleRow.tsx already
+  imports Ionicons but not IconLabelHint; its "Edit" button already has
+  a pencil icon alongside the text, wired via an optional `onEdit?: ()
+  => void` prop rendered only inside the expanded drawer (not the row's
+  own tap target, which is wired to `onToggle` instead). Confirmed 6
+  screens actually render `<CollapsibleRow>` (Bills, Debts, Income,
+  Loans, Savings, Transactions) and 3 more import it without rendering
+  it (Events, Goals, Travel) — so this is a single shared-component
+  change with a 6-screen blast radius, not something needing per-screen
+  edits. AccountsScreen's "Collapse" chip already has a chevron-up icon
+  alongside its text, wired to a plain `handleCollapse()` function that
+  clears `expandedAccountId`; confirmed AccountsScreen already imports
+  both `Ionicons` and `IconLabelHint` from the earlier B2.1 checkpoint.
+- Reviewed and decided: swap both icon+text buttons for a bare
+  `IconLabelHint` (tap or long-press reveals the word, same as every
+  other iconized pattern in this pass) rather than any custom markup.
+  Reused each button's existing container style (`editButton`/
+  `collapseChip`) directly as `IconLabelHint`'s own `style` prop, since
+  both already have the right background/border/padding/centering for
+  holding a single icon — no new styles needed. Bumped icon size
+  slightly (13px → 15px on both) to read clearly on its own now that
+  there's no adjacent text softening it.
+- Gave the person 2 paste/replace snippets for `CollapsibleRow.tsx`
+  (added `IconLabelHint` import; swapped the `TouchableOpacity` + pencil
+  icon + "Edit" text for a single `IconLabelHint`) and 1 snippet for
+  `AccountsScreen.tsx` (swapped the `TouchableOpacity` + chevron-up icon
+  + "Collapse" text for a single `IconLabelHint`, no import changes
+  needed since both were already present).
+- `npx tsc --noEmit` run from `mobile-app\` after pasting — clean, no
+  errors. Since CollapsibleRow is a shared component, this single fix
+  automatically applies to all 6 screens that render it (Bills, Debts,
+  Income, Loans, Savings, Transactions) — no per-screen changes needed.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step. This completes the full B2.2 audit's ICONIZE list —
+  every item flagged for icon-only conversion (segmented pills across
+  3 batches, plus this Edit/Collapse batch) is now code-complete.
+
 ### Session — B2.3 batch 3b follow-up: BillsScreen subscription checkbox "✓" cleanup
 - Wrote an Antigravity investigation-only prompt for the last item
   flagged during batch 3b — BillsScreen.tsx's subscription-toggle
@@ -926,9 +968,27 @@ on a real device. This is the priority list for this file's first session.
   tested on a real device. When ready, check: (1) toggling "This is a
   subscription" on a bill still checks/unchecks correctly; (2) the
   checkmark renders centered inside the checkbox box when checked, and
-  disappears cleanly when unchecked; (3) saving the bill with the toggle
-  on still shows the SUB badge elsewhere on the Bills list (per B.14's
-  existing subscription feature).
+  disappears cleanly when un  checked; (3) saving the bill with the toggle on still shows the SUB
+  badge elsewhere on the Bills list (per B.14's existing subscription
+  feature).
+- **B2.3 batch 4 — CollapsibleRow "Edit" + AccountsScreen "Collapse" →
+  icon-only — on-device testing deferred.** Code is complete and
+  `npx tsc --noEmit` clean: CollapsibleRow's "Edit" button (used by
+  Bills, Debts, Income, Loans, Savings, Transactions) and AccountsScreen's
+  "Collapse" chip now render as icon-only, with a floating "Edit"/
+  "Collapse" label on tap or long-press instead of always-visible text.
+  NOT yet tested on a real device. When ready, check on EACH of the 6
+  CollapsibleRow screens: (1) tapping the pencil icon in an expanded
+  row's drawer opens that row's edit form exactly as before, AND briefly
+  shows the "Edit" floating label; (2) long-pressing the pencil icon
+  shows the label WITHOUT opening the edit form; (3) the icon is
+  visually centered inside its existing background/border pill, not
+  looking cramped or off-center now that there's no text beside it. On
+  AccountsScreen specifically: (4) with a stacked section expanded,
+  tapping the chevron-up icon collapses the section exactly as before
+  AND briefly shows "Collapse"; (5) long-press shows the label without
+  collapsing; (6) the chip's background pill still looks proportional
+  around a single icon instead of stretched/awkward.
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -999,9 +1059,17 @@ on a real device. This is the priority list for this file's first session.
   character/emoji cleanup) are ALL code-complete and `npx tsc --noEmit`
   clean, but not yet tested on-device — see their checklists above. This
   fully completes the batch 3 arc — every raw character/emoji flagged in
-  the B2.2 audit's CONVERT/CLEANUP list is now addressed. Next up per the
-  B2.3+ batch order is CollapsibleRow "Edit" + AccountsScreen "Collapse"
-  → icon-only, whenever ready to continue.
+  the B2.2 audit's CONVERT/CLEANUP list is now addressed.
+- B2.3 batch 4 (CollapsibleRow "Edit" + AccountsScreen "Collapse" →
+  icon-only) is code-complete and `npx tsc --noEmit` clean, but not yet
+  tested on-device — see its checklist above. This completes the full
+  B2.2 audit's ICONIZE list. With batches 1–4 and the character-cleanup
+  passes all done, the remaining Phase B Part 2 work is: (a) running the
+  full accumulated on-device testing pass across everything in this
+  sub-phase, and (b) the two checkpoints not yet started — the bottom
+  nav redesign (Home/Calendar/Transactions/To-Pay as core tabs, rest
+  under "More") and the general "fewer words" trimming pass. Whenever
+  ready to continue, pick one of those, or start the on-device pass.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -1137,7 +1205,12 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
      PinUnlockScreen, ProfileScreen, SettingsScreen) — ✅ CODE-COMPLETE
      (pending person's `npx tsc --noEmit` confirmation), on-device
      testing pending.
-4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
+4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only — ✅
+   CODE-COMPLETE (batch 4), `npx tsc --noEmit` clean, on-device testing
+   pending. This is a shared-component change (CollapsibleRow.tsx) that
+   automatically covers all 6 screens that render it (Bills, Debts,
+   Income, Loans, Savings, Transactions) plus AccountsScreen's own
+   Collapse chip.
 5. Batch 3b (follow-up "✓" cleanup) — ✅ CODE-COMPLETE, `npx tsc --noEmit`
    clean, on-device testing pending. Covered EventsScreen/GoalsScreen's
    inline card-title checkmark, "Copied! ✓" (CreateProfileScreen,
@@ -1311,6 +1384,18 @@ here on:
   subscription" checkbox now shows a real Ionicons checkmark instead of
   an embedded "✓" text character (B2.3 batch 3b follow-up); added
   `Ionicons` import.
+- MODIFIED: `mobile-app/src/components/CollapsibleRow.tsx` — the "Edit"
+  button (icon+text) is now a single icon-only `IconLabelHint`, shown
+  only when `onEdit` is passed (B2.3 batch 4); added `IconLabelHint`
+  import; `editIcon`/`editButtonText` styles now unused but left in
+  place. Affects all 6 screens that render this shared component:
+  BillsScreen, DebtsScreen, IncomeScreen, LoansScreen, SavingsScreen,
+  TransactionsScreen.
+- MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` — the
+  "Collapse" chip (icon+text) is now a single icon-only `IconLabelHint`
+  (B2.3 batch 4); no new imports needed (`Ionicons`/`IconLabelHint`
+  already present from B2.1); `collapseChipText` style now unused but
+  left in place.
 
 - NEW: `mobile-app/src/components/SwipeableRow.tsx` — reusable swipe-
   left-to-delete wrapper around `react-native-gesture-handler`'s

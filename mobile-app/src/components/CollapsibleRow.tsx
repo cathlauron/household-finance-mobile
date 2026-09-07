@@ -9,6 +9,7 @@ import {
   UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import IconLabelHint from './IconLabelHint';
 import { useTheme } from '../ThemeContext';
 
 // Enable LayoutAnimation for Android devices if not already enabled
@@ -72,21 +73,15 @@ export function CollapsibleRow({
             {expandedContent}
 
             {onEdit && (
-              <TouchableOpacity
-                activeOpacity={0.7}
+              <IconLabelHint
+                name="pencil"
+                label="Edit"
+                size={15}
+                color={colors.gold}
                 onPress={onEdit}
                 style={styles.editButton}
-                accessibilityRole="button"
-                accessibilityLabel="Edit"
-              >
-                <Ionicons
-                  name="pencil"
-                  size={13}
-                  color={colors.gold}
-                  style={styles.editIcon}
-                />
-                <Text style={styles.editButtonText}>Edit</Text>
-              </TouchableOpacity>
+                testID="collapsible-row-edit"
+              />
             )}
           </View>
         </View>
