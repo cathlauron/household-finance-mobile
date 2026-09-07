@@ -20,6 +20,7 @@ import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../../transactions';
 import type { TransactionEntry } from '../../transactions';
 import type { HouseholdModel } from '../../types';
+import { Ionicons } from '@expo/vector-icons';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
@@ -99,11 +100,11 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.yearNavRow}>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year - 1)}>
-          <Text style={styles.yearNavBtnText}>‹</Text>
+          <Ionicons name="chevron-back" size={18} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.yearNavLabel}>{year}</Text>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year + 1)}>
-          <Text style={styles.yearNavBtnText}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink} />
         </TouchableOpacity>
       </View>
 

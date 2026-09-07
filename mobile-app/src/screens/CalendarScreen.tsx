@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { computeRunningBalances, totalLiquidBalance, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
 
@@ -124,7 +125,7 @@ export default function CalendarScreen() {
 
       <View style={styles.header}>
         <TouchableOpacity onPress={goPrevMonth} style={styles.navButton}>
-          <Text style={styles.navButtonText}>{'‹'}</Text>
+          <Ionicons name="chevron-back" size={20} color={colors.ink} />
         </TouchableOpacity>
 
         <Text style={styles.monthLabel}>
@@ -132,7 +133,7 @@ export default function CalendarScreen() {
         </Text>
 
         <TouchableOpacity onPress={goNextMonth} style={styles.navButton}>
-          <Text style={styles.navButtonText}>{'›'}</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.ink} />
         </TouchableOpacity>
       </View>
 

@@ -8,6 +8,50 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 3, Pass 1 build (Calendar + report year-nav chevrons)
+- Wrote an Antigravity investigation-only prompt for B2.3 batch 3: the
+  character/emoji cleanup pass — swapping raw characters (‹ › ✕ × ▲ ▼ ›)
+  and emoji (📊 📎 📄 📋 🔄 ⚠️) for real Ionicons across all flagged
+  screens, plus the ad hoc "✓" characters inside status toggle text.
+- Antigravity's investigation covered all 17 flagged files in one pass
+  and flagged real trade-offs: (1) Groceries/Travel/Savings' delete
+  buttons already render inside a circular container, so using
+  `close-circle` there would create a visible double-circle — `close`
+  (no circle) is correct everywhere instead; (2) IncomeScreen's delete
+  icon uses an intentional red accent (`#e5484d`) distinct from the
+  other 4 screens' muted ink color; (3) TravelScreen's "Auto-saving"
+  toggle uses a plain `<View>` dot indicator, not a text "✓" character,
+  unlike the otherwise-identical toggle on EventsScreen; (4) none of the
+  17 files currently import Ionicons at all; (5) several additional "✓"
+  occurrences exist beyond the original flagged list (card-title inline
+  checkmarks on EventsScreen/GoalsScreen, "Copied! ✓"/"Saved ✓" button
+  text, a "✓ New Owner" badge) that weren't part of the original scope.
+- Reviewed and decided: keep `close` (not `close-circle`) consistently
+  across all 5 delete-button screens per Antigravity's flag; keep
+  IncomeScreen's red delete icon as an intentional distinction, not an
+  inconsistency to fix; replace TravelScreen's dot indicator with the
+  same checkmark pattern as EventsScreen for consistency now that the
+  pattern is being touched everywhere else; use solid chevron glyphs
+  (not `-outline`) to match existing `fontWeight: 600/700` visual
+  weight. Explicitly deferred the newly-discovered extra "✓" occurrences
+  (card-title checkmarks, "Copied!"/"Saved ✓" button text, "New Owner"
+  badge) to a new follow-up batch (3b) rather than folding them into this
+  pass's scope.
+- Split the work into 4 domain-clustered passes to keep each review/paste
+  cycle manageable: Pass 1 (navigation & reports, 3 files), Pass 2
+  (planning & checklists, 4 files), Pass 3 (transactions & money flows,
+  5 files), Pass 4 (auth, security & profile, 5 files).
+- Gave the person paste/replace snippets for Pass 1: `CalendarScreen.tsx`
+  (month nav ‹ › → `chevron-back`/`chevron-forward`, size 20), 
+  `YearInReviewReport.tsx` and `TaxSummaryReport.tsx` (year nav ‹ › →
+  same chevrons, size 18) — each file also needed a new `Ionicons` import
+  added, since none of the 17 files had it. Old `*NavButtonText`/
+  `yearNavBtnText` styles left in place as unused.
+- Person applied all 3 files. `npx tsc --noEmit` run from `mobile-app\`
+  — clean, no errors.
+- On-device testing explicitly deferred to a later session — see
+  ⚠️ Known issues and ▶️ Next step.
+
 ### Session — B2.3 batch 2 build (ToPayScreen + PlanningScreen icon sub-tabs)
 - Wrote an Antigravity investigation-only prompt for B2.3 batch 2,
   covering all 5 remaining segmented-pill screens: ToPayScreen,
@@ -233,6 +277,20 @@ on a real device. This is the priority list for this file's first session.
   (also a Modal) in a later batch, watch for Android-specific flakiness
   (two native Modals open at once is a known trouble spot); no fix needed
   unless that combination is actually hit.
+- **B2.3 batch 3, Pass 1 — Calendar + report year-nav chevrons — on-device
+  testing deferred.** Code is complete and `npx tsc --noEmit` clean:
+  CalendarScreen's month-nav buttons and YearInReviewReport's/
+  TaxSummaryReport's year-nav buttons now render real Ionicons chevrons
+  (`chevron-back`/`chevron-forward`) instead of raw `‹`/`›` text
+  characters — pure visual swap, no behavior change. NOT yet tested on a
+  real device. When ready, check: (1) chevrons render (no missing-glyph
+  boxes) and look properly centered inside their circular buttons on
+  both iOS and Android (this swap was specifically meant to fix a known
+  Android baseline-offset quirk with text characters, so pay attention
+  to vertical centering there); (2) tapping still navigates
+  prev/next month or year correctly on all 3 screens; (3) chevron size/
+  weight looks visually consistent with the rest of each screen (20pt on
+  Calendar, 18pt on the two reports).
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -417,9 +475,24 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
 2. ToPayScreen + PlanningScreen segmented pills — ✅ CODE-COMPLETE
    (batch 2), on-device testing pending. (InsightsScreen, SavingsScreen,
    GroceriesScreen reclassified to KEEP AS TEXT — see audit results.)
-3. Character/emoji cleanup pass across all flagged screens (mechanical,
-   low-risk, can be batched together).
+3. Character/emoji cleanup pass, split into 4 sub-passes:
+   - Pass 1 (Calendar/YearInReview/TaxSummary chevrons) — ✅
+     CODE-COMPLETE, on-device testing pending.
+   - Pass 2 (Planning & checklists: EventsScreen, GoalsScreen,
+     GroceriesScreen, TravelScreen) — NOT yet started.
+   - Pass 3 (Transactions & money flows: TransactionsScreen,
+     CsvImportModal, LoansScreen, IncomeScreen, SavingsScreen) — NOT yet
+     started.
+   - Pass 4 (Auth, security & profile: SignInScreen, CreateProfileScreen,
+     PinUnlockScreen, ProfileScreen, SettingsScreen) — NOT yet started.
 4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
+5. NEW — Batch 3b (follow-up, discovered during batch 3's investigation,
+   not yet started): additional "✓" occurrences that were out of scope
+   for batch 3's original flagged list — EventsScreen/GoalsScreen's
+   inline card-title checkmark (e.g. "Untitled event  ✓"), "Copied! ✓"
+   / "Saved ✓" button text (CreateProfileScreen, SettingsScreen,
+   SavingsScreen), and ProfileScreen's "✓ New Owner" badge in the
+   transfer-owner modal.
 
 📁 Files in the repo
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
@@ -446,6 +519,19 @@ here on:
   IconLabelHint (B2.3 batch 2); `tabs` array gained an `icon` field per
   tab; `pillButtonText`/`pillButtonTextActive` styles now unused but left
   in place; added missing `IconLabelHint`/`Ionicons` imports.
+- MODIFIED: `mobile-app/src/screens/CalendarScreen.tsx` — month-nav
+  buttons now render `Ionicons` chevrons (`chevron-back`/
+  `chevron-forward`, size 20) instead of raw `‹`/`›` text (B2.3 batch 3
+  Pass 1); added `Ionicons` import; `navButtonText` style now unused but
+  left in place.
+- MODIFIED: `mobile-app/src/screens/reports/YearInReviewReport.tsx` —
+  year-nav buttons now render `Ionicons` chevrons (size 18) instead of
+  raw `‹`/`›` text (B2.3 batch 3 Pass 1); added `Ionicons` import;
+  `yearNavBtnText` style now unused but left in place.
+- MODIFIED: `mobile-app/src/screens/reports/TaxSummaryReport.tsx` —
+  year-nav buttons now render `Ionicons` chevrons (size 18) instead of
+  raw `‹`/`›` text (B2.3 batch 3 Pass 1); added `Ionicons` import;
+  `yearNavBtnText` style now unused but left in place.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
