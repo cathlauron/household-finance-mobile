@@ -21,6 +21,7 @@ import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorMod
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -389,6 +390,33 @@ export default function LoansScreen() {
     );
   }
 
+  async function performDeleteLoanById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      loans: model.loans.filter((l) => l.id !== id),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSwipeDelete(loan: Loan) {
+    Alert.alert(
+      'Delete this loan?',
+      'This will permanently delete the loan and all logged payment history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteLoanById(loan.id) },
+      ]
+    );
+  }
+
   const loans = sortByNextDue(model.loans);
   const totalBorrowed = loans
     .filter((l) => l.direction !== 'lent')
@@ -451,8 +479,13 @@ export default function LoansScreen() {
               loan.customOccurrenceCount
             );
             return (
-              <CollapsibleRow
+              <SwipeableRow
                 key={loan.id}
+                enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                onDelete={() => handleSwipeDelete(loan)}
+                testID={`loan-swipe-${loan.id}`}
+              >
+              <CollapsibleRow
                 testID={`loan-row-${loan.id}`}
                 isExpanded={isExpanded}
                 onToggle={() => setExpandedLoanId((prev) => (prev === loan.id ? null : loan.id))}
@@ -501,6 +534,7 @@ export default function LoansScreen() {
                   </View>
                 }
               />
+              </SwipeableRow>
             );
           })
         )}

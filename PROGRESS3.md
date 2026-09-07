@@ -8,6 +8,58 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Swipe-to-delete toggle, checkpoint 2 of 3 (wire SwipeableRow into CollapsibleRow's 6 screens)
+- Wrote 2 Antigravity investigation-only prompts to map out exactly how
+  each of the 6 CollapsibleRow-based screens (Bills, Debts, Income,
+  Loans, Savings, Transactions) currently deletes a row, before writing
+  any wiring code: (1) confirmed CollapsibleRow.tsx has no onDelete prop
+  at all, confirmed SwipeableRow.tsx's real prop signature was unchanged
+  from checkpoint 1, confirmed the app's standard `useData()` pattern for
+  reading `model.settings`, and confirmed all 6 screens (plus 3 more that
+  import CollapsibleRow but don't render it — Events, Goals, Travel);
+  (2) got each of the other 5 screens' (all but Bills, already known)
+  exact current delete function, exact CollapsibleRow JSX block, and
+  exact top-of-file imports.
+- Design decision: rather than adding an `onDelete` prop to the shared
+  `CollapsibleRow.tsx` (which every one of the 9 importing screens would
+  need touching), each screen instead wraps its own existing
+  `<CollapsibleRow>` call in `<SwipeableRow enabled={...}
+  onDelete={...}>` at the render site. `CollapsibleRow.tsx` itself is
+  untouched. Every screen already had `model`/`saveModel` in scope, so
+  reading `model.settings.swipeToDeleteEnabled` needed no new imports.
+  Each screen got its own new `performDelete*ById(id)` +
+  `handleSwipeDelete(item)` pair, separate from the existing modal-based
+  `performDelete()`/`handleDelete()` (which are keyed off `editingId`
+  and stay exactly as they were, since the in-modal Delete button still
+  needs them) — swiping doesn't open the edit modal first, so it needs
+  its own by-id delete path. Same confirmation wording (title/message)
+  reused for both the modal and swipe paths on every screen, so nothing
+  about the "this can't be undone" warning differs depending on how the
+  delete was triggered.
+- TransactionsScreen is the one screen where `enabled` is NOT just
+  `model.settings.swipeToDeleteEnabled` — it's
+  `isManual && Boolean(model.settings.swipeToDeleteEnabled)`, since only
+  manual transactions are deletable at all on that screen (bill/debt/
+  loan/income/savings-derived rows are read-only there and already show
+  "edit it there" instead of a Delete option). Its delete-by-id handler
+  also reuses the existing refund-transaction cascade logic (deleting a
+  transaction that has a linked refund transaction removes both).
+- Gave the person exact paste/replace snippets for all 6 files: new
+  `import SwipeableRow from '../components/SwipeableRow';` line, a new
+  `performDelete*ById()` + `handleSwipeDelete()` pair inserted right
+  after each screen's existing `handleDelete()`, and the CollapsibleRow
+  JSX wrapped in `<SwipeableRow>...</SwipeableRow>` at both its opening
+  and closing tags.
+- Applying the Transactions snippet produced a duplicate-import compile
+  error (`makeId`/`CollapsibleRow`/`DateField` each declared twice, with
+  one line accidentally merged onto another) — a paste mechanics slip,
+  not a design problem. Fixed by replacing the garbled import block with
+  4 clean lines.
+- `npx tsc --noEmit` run from `mobile-app\` after the fix — clean, no
+  errors, across all 6 files.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step.
+
 ### Session — Swipe-to-delete toggle + settings preview (new feature, checkpoint 1 of 3)
 - Wrote 2 Antigravity investigation-only prompts to map out how list rows
   currently work app-wide before designing anything: (1) shared vs.
@@ -561,6 +613,28 @@ on a real device. This is the priority list for this file's first session.
   (also a Modal) in a later batch, watch for Android-specific flakiness
   (two native Modals open at once is a known trouble spot); no fix needed
   unless that combination is actually hit.
+- **Swipe-to-delete toggle, checkpoint 2 of 3 — wired into
+  CollapsibleRow's 6 screens — on-device testing deferred.** Code is
+  complete and `npx tsc --noEmit` clean: Bills, Debts, Income, Loans,
+  Savings, and Transactions now each wrap their CollapsibleRow rows in
+  `SwipeableRow`, reading `model.settings.swipeToDeleteEnabled` (still
+  defaults to `false`, so nothing changes for anyone who hasn't opted in
+  via Settings → List Rows). Each screen has its own new by-id delete
+  path used only by the swipe gesture; the existing modal Delete button
+  is untouched and still works the old way. NOT yet tested on a real
+  device. When ready, with "Swipe to delete" turned ON in Settings,
+  check on EACH of the 6 screens: (1) swiping a row left reveals the red
+  delete action and tapping it deletes that exact row (not a
+  neighboring one) after the same confirmation dialog the modal's
+  Delete button shows; (2) tapping a row (not swiping) still opens it
+  into its normal expand/edit view exactly as before; (3) with "Tap to
+  open" selected instead in Settings, swiping a row does nothing at
+  all — it should feel like the feature isn't there. Also check on
+  TransactionsScreen specifically: (4) swiping a non-manual row (a
+  bill/debt/loan/income/savings-derived entry) does nothing, since only
+  manual transactions are deletable there; (5) deleting a manual
+  transaction that has a linked refund transaction via swipe removes
+  both, same as the modal's Delete button already does.
 - **Swipe-to-delete toggle + Settings preview (checkpoint 1 of 3) —
   on-device testing deferred, plus a new native dependency added.**
   Code is complete and `npx tsc --noEmit` clean:
@@ -719,13 +793,15 @@ on a real device. This is the priority list for this file's first session.
   neighboring pills when shown.
 
 ▶️ Next step
-- Test the new swipe-to-delete toggle/preview feature (checkpoint 1 of
-  3) on a real device — especially confirming the app still launches
-  cleanly now that a native gesture module has been added — before
-  moving on to checkpoint 2 (wiring `SwipeableRow` into `CollapsibleRow`,
-  covering Bills/Debts/Income/Loans/Transactions/Savings at once) or
-  checkpoint 3 (wiring it individually into Goals/Travel/Events/
-  Groceries/Accounts).
+- Test the swipe-to-delete feature on a real device — checkpoint 1
+  (the Settings toggle + preview) AND checkpoint 2 (real swipe-to-delete
+  now wired into Bills/Debts/Income/Loans/Savings/Transactions) can be
+  tested together in the same pass, since checkpoint 2 depends on
+  checkpoint 1's native gesture-handler setup actually working. See
+  both checklists under ⚠️ Known issues above. Once confirmed, move on
+  to checkpoint 3: wiring `SwipeableRow` individually into the 5 screens
+  that implement their own row markup instead of using
+  `CollapsibleRow` (Goals, Travel, Events, Groceries, Accounts).
 - Run the on-device testing checklist above, in whatever order is most
   convenient, and report back real bugs (with repro steps) as they're found
   — same investigate-with-real-code-first approach as always for any fix.
@@ -1092,6 +1168,30 @@ here on:
   returned tree in `<GestureHandlerRootView style={{ flex: 1 }}>`.
 - MODIFIED: `mobile-app/package.json` — added `react-native-gesture-
   handler` dependency via `npx expo install`.
+- MODIFIED: `mobile-app/src/screens/BillsScreen.tsx` — CollapsibleRow
+  rows now wrapped in `SwipeableRow`, reading
+  `model.settings.swipeToDeleteEnabled` (checkpoint 2); added
+  `SwipeableRow` import; new `performDeleteById()` +
+  `handleSwipeDelete(bill)` pair added alongside the existing modal-
+  based `performDelete()`/`handleDelete()`.
+- MODIFIED: `mobile-app/src/screens/DebtsScreen.tsx` — same pattern as
+  BillsScreen (checkpoint 2); new `performDeleteById()` +
+  `handleSwipeDelete(debt)` pair.
+- MODIFIED: `mobile-app/src/screens/IncomeScreen.tsx` — same pattern as
+  BillsScreen (checkpoint 2); new `performDeleteSourceById()` +
+  `handleSwipeDelete(source)` pair.
+- MODIFIED: `mobile-app/src/screens/LoansScreen.tsx` — same pattern as
+  BillsScreen (checkpoint 2); new `performDeleteLoanById()` +
+  `handleSwipeDelete(loan)` pair.
+- MODIFIED: `mobile-app/src/screens/SavingsScreen.tsx` — same pattern as
+  BillsScreen (checkpoint 2); new `performDeleteGoalById()` +
+  `handleSwipeDelete(goal)` pair.
+- MODIFIED: `mobile-app/src/screens/TransactionsScreen.tsx` — same
+  pattern as BillsScreen, but `enabled` is
+  `isManual && Boolean(model.settings.swipeToDeleteEnabled)` since only
+  manual transactions are deletable here (checkpoint 2); new
+  `performDeleteTxnById()` (reuses the existing linked-refund-
+  transaction cascade) + `handleSwipeDelete(rawId)` pair.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

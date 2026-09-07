@@ -25,6 +25,7 @@ import {
 } from '../income';
 import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -325,6 +326,33 @@ export default function IncomeScreen() {
     );
   }
 
+  async function performDeleteSourceById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      income: model.income.filter((s) => s.id !== id),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSwipeDelete(source: IncomeSource) {
+    Alert.alert(
+      'Delete this income source?',
+      'This will permanently delete the source and its logged payments. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteSourceById(source.id) },
+      ]
+    );
+  }
+
   const sources = sortByNextPayDate(model.income);
 
   const totalMonthlyIncome = sources.reduce((sum, source) => {
@@ -360,8 +388,13 @@ export default function IncomeScreen() {
             0
           );
           return (
-            <CollapsibleRow
+            <SwipeableRow
               key={source.id}
+              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDelete(source)}
+              testID={`income-swipe-${source.id}`}
+            >
+            <CollapsibleRow
               testID={`income-row-${source.id}`}
               isExpanded={isExpanded}
               onToggle={() => setExpandedIncomeId((prev) => (prev === source.id ? null : source.id))}
@@ -401,6 +434,7 @@ export default function IncomeScreen() {
                 </View>
               }
             />
+            </SwipeableRow>
           );
         })}
 

@@ -19,6 +19,7 @@ import type { Debt, HouseholdModel, PaymentMethod } from '../types';
 import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -311,6 +312,33 @@ export default function DebtsScreen() {
     );
   }
 
+  async function performDeleteById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      debts: model.debts.filter((d) => d.id !== id),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setErrorMsg('Failed to delete. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSwipeDelete(debt: Debt) {
+    Alert.alert(
+      'Delete this debt?',
+      'This will permanently delete the debt and its payment history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteById(debt.id) },
+      ]
+    );
+  }
+
   const debts = sortByNextDue(model.debts);
   const totalOwed = debts.reduce((sum, d) => sum + debtAmount(d), 0);
 
@@ -334,8 +362,13 @@ export default function DebtsScreen() {
           const isExpanded = expandedDebtId === debt.id;
 
           return (
-            <CollapsibleRow
+            <SwipeableRow
               key={debt.id}
+              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDelete(debt)}
+              testID={`debt-swipe-${debt.id}`}
+            >
+            <CollapsibleRow
               testID={`debt-row-${debt.id}`}
               isExpanded={isExpanded}
               onToggle={() => setExpandedDebtId((prev) => (prev === debt.id ? null : debt.id))}
@@ -398,6 +431,7 @@ export default function DebtsScreen() {
                 </View>
               }
             />
+            </SwipeableRow>
           );
         })}
 

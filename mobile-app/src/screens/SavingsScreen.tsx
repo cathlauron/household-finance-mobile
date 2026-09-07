@@ -17,6 +17,7 @@ import { useData } from '../DataContext';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 
@@ -335,6 +336,33 @@ export default function SavingsScreen() {
     );
   }
 
+  async function performDeleteGoalById(id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      savingsGoals: model.savingsGoals.filter((g) => g.id !== id),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSwipeDelete(goal: SavingsGoal) {
+    Alert.alert(
+      'Delete this savings goal?',
+      'This will permanently delete the goal and all logged contributions. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteGoalById(goal.id) },
+      ]
+    );
+  }
+
   async function handleSaveEf() {
     if (!model) return;
     const current = calcInputsFromModel();
@@ -530,8 +558,13 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             );
             const lastContrib = sortedContribs[0];
             return (
-              <CollapsibleRow
+              <SwipeableRow
                 key={goal.id}
+                enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                onDelete={() => handleSwipeDelete(goal)}
+                testID={`goal-swipe-${goal.id}`}
+              >
+              <CollapsibleRow
                 testID={`goal-row-${goal.id}`}
                 isExpanded={isExpanded}
                 onToggle={() => setExpandedGoalId((prev) => (prev === goal.id ? null : goal.id))}
@@ -583,6 +616,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                   </View>
                 }
               />
+              </SwipeableRow>
             );
           })}
 

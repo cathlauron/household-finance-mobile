@@ -32,6 +32,7 @@ import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
 import { CollapsibleRow } from '../components/CollapsibleRow';
+import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
 
 function personName(people: Person[], id: string): string {
@@ -358,6 +359,36 @@ export default function TransactionsScreen() {
     );
   }
 
+  async function performDeleteTxnById(id: string) {
+    if (!model) return;
+    const deletedTxn = (model.manualTransactions || []).find((t) => t.id === id);
+    const updated: HouseholdModel = {
+      ...model,
+      manualTransactions: (model.manualTransactions || [])
+        .filter((t) => t.id !== id)
+        .filter((t) => !(deletedTxn?.refundTransactionId && t.id === deletedTxn.refundTransactionId)),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSwipeDelete(rawId: string) {
+    Alert.alert(
+      'Delete this transaction?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteTxnById(rawId) },
+      ]
+    );
+  }
+
   // Marks a pending refund as received: creates a real, linked "money in" transaction for the
   // amount expected back, and stamps refundTransactionId on the original expense so we know
   // it's been resolved. Mirrors reconcileTravelChecklistTransactions / reconcileEventTransaction.
@@ -474,8 +505,13 @@ export default function TransactionsScreen() {
           const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
           const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
           return (
-            <CollapsibleRow
+            <SwipeableRow
               key={t.id}
+              enabled={isManual && Boolean(model.settings.swipeToDeleteEnabled)}
+              onDelete={() => handleSwipeDelete(t.rawId as string)}
+              testID={`txn-swipe-${t.id}`}
+            >
+            <CollapsibleRow
               testID={`txn-row-${t.id}`}
               isExpanded={isExpanded}
               onToggle={() => setExpandedTxnId((prev) => (prev === t.id ? null : t.id))}
@@ -562,6 +598,7 @@ export default function TransactionsScreen() {
                 </View>
               }
             />
+            </SwipeableRow>
           );
         })}
 
