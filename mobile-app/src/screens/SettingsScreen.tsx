@@ -893,9 +893,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
-        <Text style={styles.sectionSub}>
-          Choose how the app looks — Light, Dark, or match your phone's own setting.
-        </Text>
+<Text style={styles.sectionSub}>
+  Light, Dark, or match your phone's own setting.
+</Text>
         <View style={styles.modeRow}>
           {MODE_OPTIONS.map((opt) => {
             const active = mode === opt.id;
@@ -914,9 +914,9 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>List Rows</Text>
-        <Text style={styles.sectionSub}>
-          Choose how you delete things from a list — swipe left like most phone apps, or tap the row open and delete from inside.
-        </Text>
+<Text style={styles.sectionSub}>
+  Swipe left to delete, or tap the row open and delete from inside.
+</Text>
         <View style={styles.modeRow}>
           <TouchableOpacity
             style={[styles.modeButton, model.settings.swipeToDeleteEnabled && styles.modeButtonActive]}
@@ -938,10 +938,7 @@ export default function SettingsScreen() {
         <RowInteractionPreview mode={model.settings.swipeToDeleteEnabled ? 'swipe' : 'tap'} />
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
-        <Text style={styles.sectionSub}>
-          How many days before something's due should it count as "due soon"?
-        </Text>
-        <View style={styles.row}>
+<View style={styles.row}>
           <Text style={styles.rowName}>Alert me</Text>
           <TextInput
             style={styles.notifyInput}
@@ -955,10 +952,9 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Left to Spend</Text>
-        <Text style={styles.sectionSub}>
-          "Left to Spend" on Home turns orange when your projected balance dips below
-          this percentage of your typical monthly bills, debts &amp; loan payments.
-        </Text>
+<Text style={styles.sectionSub}>
+  "Left to Spend" on Home turns orange once your balance drops below this % of your typical monthly bills, debts & loans.
+</Text>
         <View style={styles.row}>
           <Text style={styles.rowName}>Caution below</Text>
           <TextInput
@@ -1047,9 +1043,9 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
-        <Text style={styles.sectionSub}>
-          Manage the category names and colors used across Bills, Debts, and Transactions.
-        </Text>
+<Text style={styles.sectionSub}>
+  Category names and colors used across Bills, Debts & Transactions.
+</Text>
 
         {categories.length === 0 && (
           <Text style={styles.emptyText}>No categories yet. Add your first one below.</Text>
@@ -1074,9 +1070,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
-        <Text style={styles.sectionSub}>
-          Set a monthly spending limit for a category and see it flagged on the Dashboard when you get close.
-        </Text>
+<Text style={styles.sectionSub}>
+  Set a monthly limit per category — flagged on the Dashboard when you get close.
+</Text>
 
         {model.categoryBudgets.length === 0 && (
           <Text style={styles.emptyText}>Not watching any categories yet. Add one below.</Text>
@@ -1116,10 +1112,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>
-        <Text style={styles.sectionSub}>
-          Save names you use often so they're quicker to enter on transactions. Set a default
-          category and it'll auto-fill whenever you type that exact name on a new transaction.
-        </Text>
+<Text style={styles.sectionSub}>
+  Save frequent names for quicker entry — set a default category to auto-fill it on matching transactions.
+</Text>
 
         {payees.length === 0 && (
           <Text style={styles.emptyText}>No payees yet. Add your first one below.</Text>
@@ -1148,11 +1143,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categorization Rules</Text>
-        <Text style={styles.sectionSub}>
-          Auto-fill a category when a transaction's label contains some text, optionally
-          within an amount range. Checked top to bottom — the first matching rule wins, and
-          a saved payee's own default category above always takes priority over these.
-        </Text>
+<Text style={styles.sectionSub}>
+  Auto-fill a category when a label matches text (and optionally an amount range). Checked top to bottom — first match wins; a payee's own default category above takes priority.
+</Text>
 
         {rules.length === 0 && (
           <Text style={styles.emptyText}>No rules yet. Add your first one below.</Text>
@@ -1203,9 +1196,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Security</Text>
-        <Text style={styles.sectionSub}>
-          Change the password used to sign in and encrypt your data on this phone.
-        </Text>
+<Text style={styles.sectionSub}>
+  Used to sign in and encrypt your data on this phone.
+</Text>
 
         <Text style={styles.inputLabel}>Current password</Text>
         <PasswordField
@@ -1265,13 +1258,13 @@ export default function SettingsScreen() {
             )}
           </View>
           {hasRecoveryKey === false && (
-            <Text style={[styles.hintText, { color: '#f59e0b', marginTop: 2, marginBottom: 4, fontWeight: '500' }]}>
-              Your password was changed. Your previous recovery key is no longer valid and needs regenerating.
-            </Text>
+                <Text style={[styles.hintText, { color: '#f59e0b', marginTop: 2, marginBottom: 4, fontWeight: '500' }]}>
+      Password changed — your old recovery key is no longer valid and needs regenerating.
+    </Text>
           )}
-          <Text style={styles.hintText}>
-            A 16-character recovery key lets you regain access to your encrypted financial data if you ever reset or forget your account password.
-          </Text>
+           <Text style={styles.hintText}>
+    A 16-character key that lets you regain access if you ever forget your password.
+  </Text>
           <TouchableOpacity
             style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
             onPress={() => {
@@ -1287,9 +1280,9 @@ export default function SettingsScreen() {
 
         {/* Quick Unlock & Biometrics */}
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Quick Unlock</Text>
-        <Text style={styles.sectionSub}>
-          Re-open the app quickly using your device's biometric security or a short PIN.
-        </Text>
+<Text style={styles.sectionSub}>
+  Unlock quickly with your device's biometrics or a short PIN.
+</Text>
 
         {biometricState === 'UNAVAILABLE' ? (
           <View style={styles.row}>
@@ -1371,9 +1364,9 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Auto-lock</Text>
-        <Text style={styles.sectionSub}>
-          How long the app can sit untouched before it locks itself (if you've set up a PIN or password).
-        </Text>
+<Text style={styles.sectionSub}>
+  How long before the app locks itself when untouched (needs a PIN or password set up).
+</Text>
         <View style={styles.modeRow}>
           {AUTO_LOCK_OPTIONS.map((opt) => {
             const active = autoLockMinutes === opt.minutes;
@@ -1392,9 +1385,9 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Active Devices</Text>
-        <Text style={styles.sectionSub}>
-          Devices that have accessed your account. You can remotely sign out other active devices.
-        </Text>
+<Text style={styles.sectionSub}>
+  Devices that have signed in. You can remotely sign any of them out.
+</Text>
 
         {deviceSessions.map((dev) => {
           const isThisDevice = dev.deviceId === myDeviceId;
@@ -1462,9 +1455,9 @@ export default function SettingsScreen() {
 
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
-        <Text style={styles.sectionSub}>
-          Save a backup you can keep somewhere safe, or clear everything out and start fresh.
-        </Text>
+<Text style={styles.sectionSub}>
+  Back up your data, or clear everything and start fresh.
+</Text>
 
         <TouchableOpacity style={styles.dataButton} onPress={handleExportBackup} disabled={exportBusy}>
           {exportBusy ? (
@@ -1482,10 +1475,8 @@ export default function SettingsScreen() {
         ) : (
           <View style={styles.dangerConfirmBox}>
             <Text style={styles.dangerConfirmText}>
-              This clears every entry in this app — bills, debts, loans, income, savings,
-              accounts, and everything else — for this profile. Your username and password
-              stay the same. This can't be undone.
-            </Text>
+      This clears every entry for this profile — bills, debts, loans, income, savings, accounts, everything. Your username and password stay the same. This can't be undone.
+    </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
@@ -1671,8 +1662,8 @@ export default function SettingsScreen() {
             {!retroactiveSuccessCode ? (
               <>
                 <Text style={styles.sectionSub}>
-                  Enter your current password to generate and encrypt a new Secret Recovery Key for this account.
-                </Text>
+      Enter your password to generate a new Secret Recovery Key.
+    </Text>
                 <Text style={styles.inputLabel}>Current Password</Text>
                 <PasswordField
                   style={styles.input}
@@ -1700,8 +1691,8 @@ export default function SettingsScreen() {
             ) : (
               <>
                 <Text style={styles.sectionSub}>
-                  Save this key in a safe place. If you ever reset or forget your password, this is the only way to recover your data:
-                </Text>
+      Save this somewhere safe — it's the only way to recover your data if you forget your password:
+    </Text>
                 <View
                   style={{
                     backgroundColor: colors.navy3,
@@ -1725,8 +1716,8 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.hintText, { marginBottom: 12 }]}>
-                  Keep this written down somewhere private (e.g. in your password manager notes).
-                </Text>
+      Keep it somewhere private, like your password manager's notes.
+    </Text>
                                 <TouchableOpacity
                   style={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
                   onPress={async () => {
@@ -1777,8 +1768,8 @@ export default function SettingsScreen() {
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>Sign Out Device</Text>
             <Text style={styles.sectionSub}>
-              Are you sure you want to sign out {deviceToRevoke?.deviceName}? This device will be disconnected immediately and required to sign in again.
-            </Text>
+    Sign out {deviceToRevoke?.deviceName}? It'll be disconnected right away and need to sign in again.
+  </Text>
             {!!revokeError && <Text style={styles.errorText}>{revokeError}</Text>}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <TouchableOpacity

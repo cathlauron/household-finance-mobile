@@ -8,6 +8,47 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Fewer-words pass: SettingsScreen.tsx
+- Picked up the "fewer words" pass (the one still-unstarted checkpoint
+  in Phase B Part 2), starting with SettingsScreen.tsx — the wordiest
+  screen per the earlier B2.2 audit (26 items), and a natural first
+  target now that it's a standalone full-screen page again after the
+  bottom nav redesign.
+- Wrote an Antigravity investigation-only prompt asking for a full
+  inventory of every subtitle/hint/description `<Text>` element in the
+  file (excluding section headers, button labels, form field labels,
+  and recurring-type/priority/frequency selector pills, which are out
+  of scope per the earlier B2.2 audit) — quoted in full, with real
+  surrounding code and which Settings section each belongs to.
+- Antigravity returned 32 items across 15 sections, each with exact
+  text and real surrounding code. Reviewed the full inventory and
+  proposed trimmed wording for 20 items, keeping 12 as-is (already
+  minimal, or too situational/important to shorten further — e.g. the
+  dynamic notification status messages, the "day(s) before due"/"% of
+  monthly obligations" inline units, all empty-state text).
+- Two items flagged for explicit confirmation before finalizing: (1)
+  the Notifications section description ("How many days before
+  something's due should it count as 'due soon'?") — confirmed to
+  remove entirely rather than trim, since the row directly beneath it
+  ("Alert me [N] day(s) before due") already carries the same meaning
+  with nothing lost; (2) the Clear-all-data confirmation warning — kept
+  nearly at full length rather than trimmed hard, given the real
+  consequences of losing clarity on an irreversible action; person
+  confirmed the lighter trim proposed.
+- Applied 19 wording trims plus 1 full removal (20 total edits) across:
+  Appearance, List Rows, Notifications (description removed), Left to
+  Spend, Categories, Category Watchlist, Merchants & Payees,
+  Categorization Rules, Security, Recovery Key regeneration warning,
+  Recovery Key explanation, Quick Unlock, Auto-lock, Active Devices,
+  Data, Clear-all confirmation warning, Recovery Key modal (start
+  screen + success screen + storage hint), and the Sign Out Device
+  modal.
+- `npx tsc --noEmit` run from `mobile-app\` after pasting all 20 edits
+  — clean, no errors.
+- No on-device testing needed for this session — pure text changes,
+  visually confirmable by opening Settings and reading the shortened
+  copy; nothing functional changed.
+
 ### Session — Bottom nav redesign (5 core tabs + "More" screen)
 - Picked up the bottom nav redesign checkpoint (B2.X) — the last
   unstarted item in Phase B Part 2 besides the "fewer words" pass.
@@ -1481,11 +1522,11 @@ on a real device. This is the priority list for this file's first session.
   code-complete and `npx tsc --noEmit` clean — see its own checklist
   above. With all of that done, the remaining Phase B Part 2 work is:
   (a) running the full accumulated on-device testing pass across
-  everything in this sub-phase, and (b) the one checkpoint not yet
-  started — the general "fewer words" trimming pass. Whenever ready to
-  continue, start the wording pass (SettingsScreen is now a standalone
-  full-screen page again, a natural first target now that the nav
-  restructure that touched it is done) or run the on-device pass.
+  everything in this sub-phase, and (b) continuing the "fewer words"
+  trimming pass. SettingsScreen.tsx is now done (see its own session
+  entry above) — pick the next screen to inventory (either name one
+  directly, or ask for an Antigravity prompt to re-run the wordiness
+  audit across the remaining screens to find the next-wordiest one).
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -1520,7 +1561,7 @@ replaces prior functionality, it's a visual/interaction pass.
 | B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | ✅ DONE. Full inventory + decisions recorded below under "B2.2 Audit Results." |
 | B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Batch 1 (ReportsScreen's 9 report sub-tabs) is ✅ CODE-COMPLETE, `npx tsc --noEmit` clean, ⏳ on-device testing deferred. Remaining batches not yet started. |
 | B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. ⏳ On-device testing deferred — not yet run. |
-| B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. |
+| B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. ✅ SettingsScreen.tsx done (20 edits, `npx tsc --noEmit` clean). Remaining screens not yet reviewed. |
 
 - Person may add more items to this sub-phase's list before B2.1 starts —
   section will be finalized (and re-pasted here) once they say they're done.
@@ -2044,6 +2085,16 @@ here on:
   `tapOn: { id: "more-tab" }` followed by
   `tapOn: { id: "more-settings-row" }`, since Settings is no longer a
   bottom-bar tab (bottom nav redesign session).
+- MODIFIED: `mobile-app/src/screens/SettingsScreen.tsx` — 20
+  subtitle/hint/description text elements trimmed to shorter wording
+  (1 removed entirely — the Notifications section description, now
+  redundant with the row beneath it) across Appearance, List Rows,
+  Left to Spend, Categories, Category Watchlist, Merchants & Payees,
+  Categorization Rules, Security, Recovery Key (warning + explanation
+  + both modal screens + storage hint), Quick Unlock, Auto-lock,
+  Active Devices, Data, Clear-all confirmation warning, and the Sign
+  Out Device modal (fewer-words pass session). Pure text change, no
+  logic/structure touched.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
