@@ -8,6 +8,57 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 3, Pass 3 build (Transactions & money flows: Transactions, CsvImportModal, Loans, Income, Savings)
+- Wrote an Antigravity investigation-only prompt for B2.3 batch 3, Pass 3:
+  the character/emoji cleanup pass for TransactionsScreen, CsvImportModal,
+  LoansScreen, IncomeScreen, SavingsScreen.
+- Antigravity's investigation confirmed CsvImportModal actually lives at
+  `mobile-app/src/screens/CsvImportModal.tsx` (not `src/components/` as
+  originally guessed). Found: 📎 (TransactionsScreen attach-receipt
+  button), 📄 (CsvImportModal choose-file button), 📊 (LoansScreen
+  Payoff Simulator button) as emoji-icons; a raw "✓" TransactionsScreen
+  refund-tracking toggle (single-`<Text>` pattern, same as batch 3 Pass
+  2's toggles); a raw "✓" checkbox mark inside CsvImportModal's
+  duplicate-row indicator (already a dedicated centered `View`, no style
+  change needed); and 3 raw delete-row characters — LoansScreen's `✕`,
+  IncomeScreen's `×` (intentionally red, `#e5484d`, distinct from the
+  other screens' muted ink color), and SavingsScreen's `✕` (already a
+  circular 36×36 button, no style change needed). Confirmed none of the
+  5 files import Ionicons yet. Also reconfirmed SavingsScreen's FI
+  Calculator "Saved ✓" button text as already-tracked batch 3b scope,
+  not touched this pass.
+- Reviewed and decided: CsvImportModal's file-picker icon shows in both
+  states (before and after a file is chosen), rather than only on the
+  initial "Choose a CSV file" text, so the button reads consistently
+  either way; use `close` (not `close-circle`) for all 3 delete-row
+  swaps, consistent with prior passes' reasoning; keep IncomeScreen's
+  red delete-icon color as an intentional distinction, matching the
+  batch 3 Pass 1 precedent for the same screen family. For
+  TransactionsScreen's refund toggle and TransactionsScreen's
+  attach-receipt button, LoansScreen's simulator button, and
+  CsvImportModal's choose-file button (all single-`<Text>`-with-embedded-
+  character patterns), the container style needs `flexDirection: 'row'`
+  + `justifyContent: 'center'` added so the icon sits beside the text.
+  CsvImportModal's duplicate-row checkbox and LoansScreen/IncomeScreen/
+  SavingsScreen's delete buttons already had dedicated centered
+  containers, so no style changes were needed for those.
+- Gave the person paste/replace snippets for all 5 files: added the
+  `Ionicons` import to each; TransactionsScreen's `receiptPickButton`
+  (📎 → `attach-outline`, JSX + container style) and `refundToggle`
+  (✓ → `checkmark`, JSX + container style); CsvImportModal's `pickButton`
+  (📄 → `document-text-outline`, JSX + container style) and duplicate-row
+  `checkbox` mark (✓ → `checkmark`, icon swap only); LoansScreen's
+  `simulatorButton` (📊 → `stats-chart-outline`, JSX + container style)
+  and `paymentRemoveBtn` (✕ → `close`, icon swap only); IncomeScreen's
+  `paymentLogRemoveBtn` (× → `close`, red color preserved, icon swap
+  only); SavingsScreen's `contribRemoveButton` (✕ → `close`, icon swap
+  only). Old `*Text`-only styles (`checkboxMark`, `paymentRemoveBtnText`,
+  `paymentLogRemoveText`, `contribRemoveButtonText`) left in place,
+  harmless, per the established convention.
+- `npx tsc --noEmit` [PENDING — person to run after pasting all 5 files].
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step.
+
 ### Session — B2.3 batch 3, Pass 2 build (Planning & checklists: Events, Goals, Groceries, Travel)
 - Wrote an Antigravity investigation-only prompt for B2.3 batch 3, Pass 2:
   the character/emoji cleanup pass for EventsScreen, GoalsScreen,
@@ -354,6 +405,26 @@ on a real device. This is the priority list for this file's first session.
   gold box; (5) TravelScreen's "Auto-saving" toggle checkmark color/
   visibility looks right in both light and dark mode, since it uses
   `colors.accent` rather than a fixed hex like the other 3 toggles.
+- **B2.3 batch 3, Pass 3 — Transactions/CsvImport/Loans/Income/Savings
+  character cleanup — on-device testing deferred.** Code is complete
+  [`npx tsc --noEmit` status: PENDING — confirm clean after pasting].
+  TransactionsScreen's attach-receipt button and refund-tracking toggle,
+  CsvImportModal's choose-file button and duplicate-row checkbox mark,
+  and LoansScreen's Payoff Simulator button now show real Ionicons
+  instead of embedded emoji/"✓" characters; LoansScreen's, IncomeScreen's,
+  and SavingsScreen's payment/contribution-row delete buttons now use an
+  Ionicons close icon instead of a raw "✕"/"×". Pure visual swap, no
+  behavior change. NOT yet tested on a real device. When ready, check:
+  (1) the attach-receipt and refund-toggle icons on TransactionsScreen
+  render correctly and the refund checkmark only shows when the toggle
+  is active; (2) CsvImportModal's file-picker icon shows in both the
+  "Choose a CSV file" and "Change file (...)" states, and the duplicate-
+  row checkmark is centered inside its checkbox; (3) LoansScreen's
+  simulator button icon renders and its payment-row delete button still
+  removes the right row; (4) IncomeScreen's payday-log delete button
+  still removes the right row and keeps its red accent color; (5)
+  SavingsScreen's contribution-row delete button still removes the right
+  row and the icon is centered inside its circular button.
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -415,11 +486,12 @@ on a real device. This is the priority list for this file's first session.
   on-device session, since B2.3 batch 1 depends on B2.1's component
   actually working correctly.
 - B2.3 batch 3 Pass 2 (Events/Goals/Groceries/Travel character cleanup)
-  is code-complete pending the person's `npx tsc --noEmit` confirmation,
-  but not yet tested on-device — see its checklist above. Next up per
-  the batch order is Pass 3 (Transactions & money flows:
-  TransactionsScreen, CsvImportModal, LoansScreen, IncomeScreen,
-  SavingsScreen), whenever ready to continue.
+  and Pass 3 (Transactions/CsvImportModal/Loans/Income/Savings character
+  cleanup) are both code-complete pending the person's `npx tsc --noEmit`
+  confirmation, but not yet tested on-device — see their checklists
+  above. Next up per the batch order is Pass 4 (Auth, security &
+  profile: SignInScreen, CreateProfileScreen, PinUnlockScreen,
+  ProfileScreen, SettingsScreen), whenever ready to continue.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -548,8 +620,9 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
      GroceriesScreen, TravelScreen) — ✅ CODE-COMPLETE (pending person's
      `npx tsc --noEmit` confirmation), on-device testing pending.
    - Pass 3 (Transactions & money flows: TransactionsScreen,
-     CsvImportModal, LoansScreen, IncomeScreen, SavingsScreen) — NOT yet
-     started.
+     CsvImportModal, LoansScreen, IncomeScreen, SavingsScreen) — ✅
+     CODE-COMPLETE (pending person's `npx tsc --noEmit` confirmation),
+     on-device testing pending.
    - Pass 4 (Auth, security & profile: SignInScreen, CreateProfileScreen,
      PinUnlockScreen, ProfileScreen, SettingsScreen) — NOT yet started.
 4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
@@ -624,6 +697,36 @@ here on:
   (B2.3 batch 3 Pass 2); added `Ionicons` import; `checkboxMark`/
   `trackToggleDot`/`trackToggleDotActive` styles now unused but left in
   place.
+
+- MODIFIED: `mobile-app/src/screens/TransactionsScreen.tsx` — attach-
+  receipt button and refund-tracking toggle now show real Ionicons
+  instead of an embedded "📎"/"✓" character (B2.3 batch 3 Pass 3); added
+  `Ionicons` import; both container styles gained `flexDirection: 'row'`
+  + `justifyContent: 'center'`; `refundToggleText`'s embedded "✓" string
+  removed from the text itself.
+- MODIFIED: `mobile-app/src/screens/CsvImportModal.tsx` — choose-file
+  button and duplicate-row checkbox mark now show real Ionicons instead
+  of an embedded "📄"/"✓" character (B2.3 batch 3 Pass 3); added
+  `Ionicons` import; `pickButton` style gained `flexDirection: 'row'` +
+  `justifyContent: 'center'`; `checkboxMark` style now unused but left
+  in place.
+- MODIFIED: `mobile-app/src/screens/LoansScreen.tsx` — Payoff Simulator
+  button now shows a real Ionicons icon instead of an embedded "📊"
+  character, and the payment-row delete button now renders an Ionicons
+  close icon instead of a raw "✕" (B2.3 batch 3 Pass 3); added
+  `Ionicons` import; `simulatorButton` style gained `flexDirection:
+  'row'` + `justifyContent: 'center'`; `paymentRemoveBtnText` style now
+  unused but left in place.
+- MODIFIED: `mobile-app/src/screens/IncomeScreen.tsx` — payday-log-row
+  delete button now renders an Ionicons close icon (red, `#e5484d`)
+  instead of a raw "×" (B2.3 batch 3 Pass 3); added `Ionicons` import;
+  `paymentLogRemoveText` style now unused but left in place.
+- MODIFIED: `mobile-app/src/screens/SavingsScreen.tsx` — contribution-
+  row delete button now renders an Ionicons close icon instead of a raw
+  "✕" (B2.3 batch 3 Pass 3); added `Ionicons` import;
+  `contribRemoveButtonText` style now unused but left in place. FI
+  Calculator's "Saved ✓" button text left untouched — still tracked as
+  batch 3b scope.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

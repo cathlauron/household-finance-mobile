@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -601,7 +602,7 @@ export default function IncomeScreen() {
                       style={styles.paymentLogRemoveBtn}
                       onPress={() => removePaymentLogEntry(entry.id)}
                     >
-                      <Text style={styles.paymentLogRemoveText}>×</Text>
+                      <Ionicons name="close" size={18} color="#e5484d" />
                     </TouchableOpacity>
                   </View>
                 ))}

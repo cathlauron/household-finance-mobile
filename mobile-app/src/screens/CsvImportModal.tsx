@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Ionicons } from '@expo/vector-icons';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -216,8 +217,9 @@ export default function CsvImportModal({ visible, onClose }: Props) {
 
             {!doneMsg && (
               <TouchableOpacity style={styles.pickButton} onPress={handlePickFile} disabled={loading}>
+                <Ionicons name="document-text-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
                 <Text style={styles.pickButtonText}>
-                  {fileName ? `Change file (${fileName})` : '📄 Choose a CSV file'}
+                  {fileName ? `Change file (${fileName})` : 'Choose a CSV file'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -291,7 +293,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
                                 }
                               >
                                 <View style={[styles.checkbox, !excluded && styles.checkboxChecked]}>
-                                  {!excluded && <Text style={styles.checkboxMark}>✓</Text>}
+                                  {!excluded && <Ionicons name="checkmark" size={12} color={colors.navy2} />}
                                 </View>
                                 <Text style={styles.checkboxText}>{excluded ? 'Include in import' : 'Exclude from import'}</Text>
                               </TouchableOpacity>
@@ -392,7 +394,9 @@ function makeStyles(colors: any) {
       backgroundColor: colors.navy2,
       borderRadius: 8,
       paddingVertical: 12,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 12,
     },
     pickButtonText: { fontSize: 13.5, fontWeight: '600', color: colors.gold },

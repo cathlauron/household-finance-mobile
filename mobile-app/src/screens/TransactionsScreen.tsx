@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -621,8 +622,11 @@ export default function TransactionsScreen() {
               style={[styles.refundToggle, refundTrackingEnabled && styles.refundToggleActive]}
               onPress={() => setRefundTrackingEnabled((prev) => !prev)}
             >
+              {refundTrackingEnabled && (
+                <Ionicons name="checkmark" size={15} color="#fff" style={{ marginRight: 6 }} />
+              )}
               <Text style={[styles.refundToggleText, refundTrackingEnabled && styles.refundToggleTextActive]}>
-                {refundTrackingEnabled ? '✓ Expecting a refund for this' : 'Expecting a refund for this?'}
+                {refundTrackingEnabled ? 'Expecting a refund for this' : 'Expecting a refund for this?'}
               </Text>
             </TouchableOpacity>
             {refundTrackingEnabled && (
@@ -723,7 +727,8 @@ export default function TransactionsScreen() {
                   </View>
                 ) : (
                   <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
-                    <Text style={styles.receiptPickButtonText}>📎 Attach a receipt photo</Text>
+                    <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
+                    <Text style={styles.receiptPickButtonText}>Attach a receipt photo</Text>
                   </TouchableOpacity>
                 )}
 
@@ -842,7 +847,9 @@ function makeStyles(colors: any) {
       backgroundColor: colors.navy2,
       borderRadius: 8,
       paddingVertical: 12,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 14,
     },
     receiptPickButtonText: { fontSize: 13.5, fontWeight: '600', color: colors.gold },
@@ -875,7 +882,9 @@ function makeStyles(colors: any) {
       borderRadius: 999,
       paddingVertical: 12,
       paddingHorizontal: 16,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 16,
     },
     refundToggleActive: { backgroundColor: colors.orange },

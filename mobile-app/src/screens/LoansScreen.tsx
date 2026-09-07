@@ -11,6 +11,7 @@ import {
 
 } from 'react-native';
 import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -429,7 +430,8 @@ export default function LoansScreen() {
 
         {simLoans.length > 0 && (
           <TouchableOpacity style={styles.simulatorButton} onPress={() => setSimulatorOpen(true)}>
-            <Text style={styles.simulatorButtonText}>📊  View Payoff Simulator</Text>
+            <Ionicons name="stats-chart-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
+            <Text style={styles.simulatorButtonText}>View Payoff Simulator</Text>
           </TouchableOpacity>
         )}
 
@@ -716,7 +718,7 @@ export default function LoansScreen() {
                           {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
                         </Text>
                         <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn}>
-                          <Text style={styles.paymentRemoveBtnText}>✕</Text>
+                          <Ionicons name="close" size={14} color={colors.inkFaint} />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -810,7 +812,9 @@ function makeStyles(colors: any) {
       backgroundColor: colors.navy3,
       borderRadius: 10,
       paddingVertical: 12,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 18,
     },
     simulatorButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -899,7 +900,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                       style={styles.contribRemoveButton}
                       onPress={() => removeContribRow(row.id)}
                     >
-                      <Text style={styles.contribRemoveButtonText}>✕</Text>
+                      <Ionicons name="close" size={16} color={colors.inkDim} />
                     </TouchableOpacity>
                   </View>
                 ))}
