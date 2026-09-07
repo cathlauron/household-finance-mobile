@@ -5,10 +5,34 @@ closed/historical (all of Phase B's checkpoints B.1–B.14 are code-complete;
 see it for full build detail on any of them). PROGRESS1.md (Phase A) and
 PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
-This file's job going forward: (1) the results of the full on-device
-testing pass across everything B.7 onward built up during the "batched
-testing" stretch, (2) any real bugs that pass surfaces and their fixes,
-(3) any remaining Phase B loose ends, and (4) Phase C (Publishing).
+
+📅 Session entries
+
+### Session — B2.1 build (IconLabelHint component)
+- Wrote an Antigravity investigation-only prompt for B2.1. Antigravity
+  confirmed the project's existing conventions: Ionicons icon library,
+  useTheme()/makeStyles(colors) for styling, no animation library beyond
+  the base React Native Animated API, no existing tooltip/popover pattern
+  to reuse.
+- Reviewed Antigravity's proposed draft and fixed two real issues before
+  finalizing: (1) it used `NodeJS.Timeout` as a type, which doesn't
+  resolve in this project (no @types/node installed) — swapped to
+  `ReturnType<typeof setTimeout>`; (2) it rendered the tooltip at a
+  guessed size before measuring the real one, which would visibly jump
+  for longer labels — restructured to measure invisibly first, then fade
+  in only once the real size/position is known.
+- Created `mobile-app/src/components/IconLabelHint.tsx` (new file) — a
+  reusable component: icon-only by default, quick tap OR long-press
+  reveals a floating label that auto-fades (~2.4s default) or dismisses
+  early on an outside tap. Uses a transparent Modal to escape parent
+  overflow clipping.
+- Wired it into `mobile-app/src/screens/AccountsScreen.tsx`'s existing
+  Cards/List view-mode toggle buttons as a real, working test spot —
+  the toggle still functions exactly as before, plus now also shows a
+  floating label on tap/long-press.
+- `npx tsc --noEmit` run — clean, no errors.
+- On-device testing (the 5-point checklist) explicitly deferred by the
+  person to a later session — see ⚠️ Known issues and ▶️ Next step above.
 
 ✅ Carried forward from PROGRESS2.md — still true, not yet re-verified this file
 - All of Phase B's checkpoints (B.1 through B.14) are CODE-COMPLETE and
@@ -121,6 +145,21 @@ on a real device. This is the priority list for this file's first session.
   Accounts/Bills/Debts, the duplicate-notification fix for subscription
   bills, and Alert-confirm on the 3 Settings mini-form deletes) — lower
   risk, but still unverified on-device.
+- **B2.1 IconLabelHint component — on-device testing deferred.** Code is
+  complete and `npx tsc --noEmit` clean, wired into AccountsScreen's
+  Cards/List view toggle as a real test spot. NOT yet tested on a real
+  device. When ready, check all five: (1) quick tap on Cards icon switches
+  view AND briefly shows "Stacked card view" label; (2) quick tap on List
+  icon switches view AND shows "List card view" label; (3) long-press on
+  either icon shows the label WITHOUT switching the view; (4) tapping
+  elsewhere while a label is showing dismisses it early instead of waiting
+  out the ~2.4s auto-fade; (5) label never gets visually clipped at the
+  screen edge. Also flagged during review: this component uses a
+  transparent Modal to escape card overflow clipping — if an icon using
+  this component ever ends up living inside an already-open BottomSheet
+  (also a Modal) in a later batch, watch for Android-specific flakiness
+  (two native Modals open at once is a known trouble spot); no fix needed
+  unless that combination is actually hit.
 
 ▶️ Next step
 - Run the on-device testing checklist above, in whatever order is most
@@ -138,6 +177,12 @@ on a real device. This is the priority list for this file's first session.
 - Phase B Part 2 (Iconization & Minimalism Pass) is now planned — see its
   own section below. It starts once the on-device testing pass above is
   wrapped up, or whenever the person is ready to switch focus.
+- B2.1 (IconLabelHint component) is code-complete and compiles clean, but
+  its 5-point on-device test checklist (see ⚠️ Known issues above) has
+  been explicitly deferred — run it whenever ready, alongside (or before)
+  the larger B.7–B.14 on-device pass. Nothing else in Phase B Part 2
+  (B2.2 onward) should start until B2.1 is confirmed working on-device,
+  since B2.2+ depends on reusing this exact component.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -165,10 +210,10 @@ replaces prior functionality, it's a visual/interaction pass.
   own dedicated session — not pre-drafted solo. Starting screen/order to
   be picked when that session happens.
 
-▶️ Checkpoints (not yet started)
+▶️ Checkpoints
 | Checkpoint | What happens | Done when |
 |---|---|---|
-| B2.1 | Build one reusable "icon + label" component: icon-only by default; a quick tap OR a long-press reveals a small floating label with the word. Built once, used everywhere. | Component exists, confirmed working on a real device (both tap and long-press trigger it) on 2–3 different icons in different spots. |
+| B2.1 | Build one reusable "icon + label" component: icon-only by default; a quick tap OR a long-press reveals a small floating label with the word. Built once, used everywhere. | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. Wired into AccountsScreen's Cards/List toggle as a real test spot. ⏳ On-device testing (5-point checklist below) deferred — not yet run. |
 | B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | A written audit list exists in PROGRESS3.md, covering every screen. |
 | B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Each batch's screens are iconized, tested on-device, and checked off the audit list. |
 | B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | Bottom nav shows only 4 tabs + More on a real device; every previously-reachable tab is still reachable via More. |
@@ -178,10 +223,14 @@ replaces prior functionality, it's a visual/interaction pass.
   section will be finalized (and re-pasted here) once they say they're done.
 
 📁 Files in the repo
-No new files this session — see PROGRESS2.md's own "Files in the repo"
-section for the full, current inventory of every file touched through the
-end of Phase B. This section will start tracking new/modified files once
-on-device testing surfaces real fixes to make.
+See PROGRESS2.md's own "Files in the repo" section for the full inventory
+through the end of Phase B. New/modified files tracked in this file from
+here on:
+- NEW: `mobile-app/src/components/IconLabelHint.tsx` — reusable icon +
+  tap/long-press-to-reveal-label component (B2.1).
+- MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` — Cards/List view
+  toggle buttons now use IconLabelHint as a real test spot for B2.1;
+  behavior unchanged, plus tap/long-press now also shows a floating label.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

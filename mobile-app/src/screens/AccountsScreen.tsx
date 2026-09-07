@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
@@ -205,34 +206,24 @@ export default function AccountsScreen() {
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
           </View>
           <View style={styles.viewToggleWrap}>
-            <TouchableOpacity
-              style={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]}
-              onPress={() => handleToggleViewMode('stacked')}
-              accessibilityLabel="Stacked card view"
-            >
-              <Ionicons
-                name="albums"
-                size={13}
-                color={viewMode === 'stacked' ? colors.navy2 : colors.inkDim}
-              />
-              <Text style={[styles.toggleBtnText, viewMode === 'stacked' && styles.toggleBtnTextActive]}>
-                Cards
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-              onPress={() => handleToggleViewMode('list')}
-              accessibilityLabel="List card view"
-            >
-              <Ionicons
-                name="reorder-three"
-                size={15}
-                color={viewMode === 'list' ? colors.navy2 : colors.inkDim}
-              />
-              <Text style={[styles.toggleBtnText, viewMode === 'list' && styles.toggleBtnTextActive]}>
-                List
-              </Text>
-            </TouchableOpacity>
+  <View style={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]}>
+    <IconLabelHint
+      name="albums"
+      label="Stacked card view"
+      size={13}
+      color={viewMode === 'stacked' ? colors.navy2 : colors.inkDim}
+      onPress={() => handleToggleViewMode('stacked')}
+    />
+  </View>
+  <View style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}>
+    <IconLabelHint
+      name="reorder-three"
+      label="List card view"
+      size={15}
+      color={viewMode === 'list' ? colors.navy2 : colors.inkDim}
+      onPress={() => handleToggleViewMode('list')}
+    />
+  </View>
           </View>
         </View>
 
