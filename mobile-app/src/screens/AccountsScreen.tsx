@@ -20,6 +20,7 @@ import { useData } from '../DataContext';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -192,6 +193,31 @@ export default function AccountsScreen() {
     );
   }
 
+  async function performDeleteAccountById(group: AccountGroup, id: string) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      balanceAccounts: { ...model.balanceAccounts },
+    };
+    updated.balanceAccounts[group] = updated.balanceAccounts[group].filter((a) => a.id !== id);
+    await saveModel(updated);
+  }
+
+  function handleSwipeDeleteAccount(group: AccountGroup, account: BalanceAccountEntry) {
+    Alert.alert(
+      'Remove this account?',
+      'This will permanently remove the account and its balance. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => performDeleteAccountById(group, account.id),
+        },
+      ]
+    );
+  }
+
   const totalBalance = totalLiquidBalance(model);
 
   return (
@@ -260,12 +286,18 @@ export default function AccountsScreen() {
               {accounts.map((account, index) => {
                 if (!isStackedSection) {
                   return (
-                    <AccountCard
+                    <SwipeableRow
                       key={account.id}
-                      account={account}
-                      group={group}
-                      onPress={() => openEditModal(group, account)}
-                    />
+                      enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                      onDelete={() => handleSwipeDeleteAccount(group, account)}
+                      testID={`account-swipe-${account.id}`}
+                    >
+                      <AccountCard
+                        account={account}
+                        group={group}
+                        onPress={() => openEditModal(group, account)}
+                      />
+                    </SwipeableRow>
                   );
                 }
 
