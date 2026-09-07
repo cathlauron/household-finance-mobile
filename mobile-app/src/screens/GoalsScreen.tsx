@@ -202,10 +202,14 @@ export default function GoalsScreen() {
               onPress={() => openEditModal(g)}
             >
               <View style={styles.goalRowMain}>
-                <Text style={[styles.goalTitle, reached && styles.goalTitleDone]} numberOfLines={1}>
-                  {g.title || 'Untitled goal'}
-                  {reached ? '  ✓' : ''}
-                </Text>
+                <View style={styles.goalTitleRow}>
+                  <Text style={[styles.goalTitle, reached && styles.goalTitleDone]} numberOfLines={1}>
+                    {g.title || 'Untitled goal'}
+                  </Text>
+                  {reached && (
+                    <Ionicons name="checkmark-circle" size={15} color="#10b981" style={{ marginLeft: 6 }} />
+                  )}
+                </View>
                 <Text style={styles.goalSub}>
                   {isProgress ? 'Track progress' : 'Simple checklist'}
                   {g.targetDate ? ' · ' + g.targetDate : ''}
@@ -378,7 +382,8 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     goalRowMain: { flex: 1, marginRight: 10 },
-    goalTitle: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    goalTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    goalTitle: { fontSize: 14, fontWeight: '600', color: colors.ink, flexShrink: 1 },
     goalTitleDone: { color: '#10b981' },
     goalSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
     goalAmount: { fontSize: 13.5, fontWeight: '700', color: colors.gold },

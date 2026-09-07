@@ -354,10 +354,14 @@ export default function EventsScreen() {
             onPress={() => openEditModal(ev)}
           >
             <View style={styles.eventRowMain}>
-              <Text style={styles.eventName} numberOfLines={1}>
-                {ev.name || 'Untitled event'}
-                {ev.completed ? '  ✓' : ''}
-              </Text>
+              <View style={styles.eventTitleRow}>
+                <Text style={styles.eventName} numberOfLines={1}>
+                  {ev.name || 'Untitled event'}
+                </Text>
+                {ev.completed && (
+                  <Ionicons name="checkmark-circle" size={15} color="#10b981" style={{ marginLeft: 6 }} />
+                )}
+              </View>
               <Text style={styles.eventSub}>
                 {typeLabel(ev.type)} · {eventDateLabel(ev)}
               </Text>
@@ -561,7 +565,8 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     eventRowMain: { flex: 1, marginRight: 10 },
-    eventName: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    eventTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    eventName: { fontSize: 14, fontWeight: '600', color: colors.ink, flexShrink: 1 },
     eventSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
     eventAmount: { fontSize: 13.5, fontWeight: '700', color: colors.ink },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },

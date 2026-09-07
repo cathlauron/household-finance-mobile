@@ -837,8 +837,12 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             )}
           </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveFi}>
-            <Text style={styles.saveButtonText}>{fiSaved ? 'Saved ✓' : 'Save'}</Text>
+          <TouchableOpacity
+            style={[styles.saveButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
+            onPress={handleSaveFi}
+          >
+            {fiSaved && <Ionicons name="checkmark" size={16} color={colors.navy2} style={{ marginRight: 6 }} />}
+            <Text style={styles.saveButtonText}>{fiSaved ? 'Saved' : 'Save'}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}

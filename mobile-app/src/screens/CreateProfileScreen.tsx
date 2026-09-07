@@ -227,8 +227,13 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 setTimeout(() => setCopied(false), 2000);
               }}
             >
-              {!copied && <Ionicons name="copy-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />}
-              <Text style={styles.copyButtonText}>{copied ? 'Copied! ✓' : 'Copy Recovery Key'}</Text>
+              <Ionicons
+                name={copied ? 'checkmark' : 'copy-outline'}
+                size={16}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.copyButtonText}>{copied ? 'Copied!' : 'Copy Recovery Key'}</Text>
             </TouchableOpacity>
 
             <Pressable

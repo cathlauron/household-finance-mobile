@@ -8,6 +8,68 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 3b build (follow-up "✓" cleanup: Events, Goals, CreateProfile, Settings, Savings, Profile)
+- Wrote an Antigravity investigation-only prompt for batch 3b — the 6
+  follow-up "✓" occurrences flagged during batch 3's earlier passes but
+  explicitly left untouched: EventsScreen's/GoalsScreen's inline
+  card-title checkmark, CreateProfileScreen's/SettingsScreen's "Copied! ✓"
+  copy-recovery-key button state, SavingsScreen's FI Calculator "Saved ✓"
+  button, and ProfileScreen's "✓ New Owner" transfer-owner badge.
+- Antigravity's investigation confirmed all 6 files already import
+  Ionicons, so no new imports were needed anywhere. Found: EventsScreen's
+  and GoalsScreen's title checkmarks are embedded directly inside a
+  single `<Text>` node's string, inside a column-flex parent container
+  (no `flexDirection: 'row'` yet); CreateProfileScreen's and
+  SettingsScreen's copy buttons already have a row-flex container and
+  already conditionally render an icon in the un-copied state, so
+  extending that same conditional to the copied state was a small,
+  low-risk change; SavingsScreen's "Saved" button has no row-flex on its
+  shared `saveButton` style (column by default); ProfileScreen's "New
+  Owner" badge is already its own sibling `<Text>` element with a
+  row-flex parent, just needing the checkmark split out of the string.
+  Antigravity also flagged a 7th, out-of-scope "✓" occurrence inside
+  BillsScreen's subscription checkbox, surfaced with only one line and no
+  surrounding context — deferred to a follow-up investigation rather than
+  guessed at.
+- Reviewed and decided: use `checkmark-circle` (green, `#10b981`) for the
+  2 persistent row-status indicators (EventsScreen/GoalsScreen title
+  checkmarks), matching the existing "done" color already used elsewhere
+  on those same screens, rather than a plain checkmark — these are
+  ongoing status markers on a list row, not one-off confirmations. Use a
+  plain `checkmark` (no circle) for the 3 transient-confirmation cases
+  (CreateProfileScreen/SettingsScreen "Copied!", SavingsScreen "Saved",
+  ProfileScreen "New Owner" selection) since those already read clearly
+  as a brief state change rather than a lasting status. For
+  EventsScreen/GoalsScreen, wrapped the title `<Text>` in a new row
+  container (`eventTitleRow`/`goalTitleRow`) so the icon sits beside
+  (not stacked under) the text, and added `flexShrink: 1` to the title
+  style so a long title still truncates correctly with the icon in view.
+  For SavingsScreen's save button, applied `flexDirection: 'row'` +
+  `alignItems`/`justifyContent: 'center'` inline on that one button
+  rather than editing the shared `saveButton` style, in case other
+  buttons elsewhere reuse that same style. For ProfileScreen's badge,
+  wrapped the icon+text pair in a small inline row `View` rather than
+  adding a new named style, since it's a one-off badge used in a single
+  spot.
+- Gave the person paste/replace snippets for all 6 files: EventsScreen's
+  and GoalsScreen's title rows (new `eventTitleRow`/`goalTitleRow` row
+  styles, checkmark-circle icon, `flexShrink: 1` added to the title
+  style); CreateProfileScreen's and SettingsScreen's copy buttons (single
+  Ionicons element now switches between `copy-outline` and `checkmark`
+  based on copied state, replacing the separate conditional-icon +
+  embedded-"✓"-string pattern); SavingsScreen's save button (inline
+  row-flex style merge, conditional checkmark icon added, "✓" removed
+  from the button text string); ProfileScreen's "New Owner" badge (split
+  into an icon+text row instead of one string with an embedded "✓").
+- `npx tsc --noEmit` run from `mobile-app\` — clean, no errors.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step.
+- Identified, not yet investigated: a 7th "✓" occurrence inside
+  BillsScreen's subscription checkbox (a custom checkbox mark, not part
+  of any originally-flagged pattern) — needs its own investigation prompt
+  before any fix is written, since only one out-of-context line was
+  surfaced this pass.
+
 ### Session — B2.3 batch 3, Pass 4 build (Auth, security & profile: SignIn, CreateProfile, PinUnlock, Profile, Settings)
 - Wrote an Antigravity investigation-only prompt for B2.3 batch 3, Pass 4:
   the character/emoji cleanup pass for SignInScreen, CreateProfileScreen,
@@ -509,6 +571,22 @@ on a real device. This is the priority list for this file's first session.
   reorder buttons still move categorization rules up/down (with the
   disabled end correctly dimmed), and the copy button behaves the same
   as CreateProfileScreen's.
+- **B2.3 batch 3b — follow-up "✓" cleanup (Events/Goals title checkmarks,
+  CreateProfile/Settings copy-button "Copied!" state, Savings "Saved"
+  button, Profile "New Owner" badge) — on-device testing deferred.** Code
+  is complete and `npx tsc --noEmit` clean. Pure visual swap, no behavior
+  change. NOT yet tested on a real device. When ready, check: (1)
+  EventsScreen's and GoalsScreen's completed-item rows show a green
+  checkmark-circle beside the title (not overlapping or wrapping oddly),
+  and a long title still truncates with the icon visible; (2)
+  CreateProfileScreen's and SettingsScreen's copy-recovery-key buttons
+  still copy correctly, and the icon switches from copy-outline to a
+  checkmark once copied, reverting back after the 2-second timeout; (3)
+  SavingsScreen's FI Calculator save button still saves correctly and
+  shows a checkmark beside "Saved" instead of "Save" once done; (4)
+  ProfileScreen's transfer-ownership modal still lets you pick a new
+  owner, and the selected row shows a checkmark + "New Owner" text
+  instead of a stacked/overlapping badge.
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -569,18 +647,14 @@ on a real device. This is the priority list for this file's first session.
   B2.1's and B2.3 batch 1's checklists should be run together in the same
   on-device session, since B2.3 batch 1 depends on B2.1's component
   actually working correctly.
-- B2.3 batch 3 Pass 2 (Events/Goals/Groceries/Travel character cleanup),
-  Pass 3 (Transactions/CsvImportModal/Loans/Income/Savings character
-  cleanup), and Pass 4 (Auth/security/profile character cleanup) are all
-  code-complete pending the person's `npx tsc --noEmit` confirmation, but
-  not yet tested on-device — see their checklists above. This completes
-  batch 3's original 4-pass split. Next up per the batch order is batch
-  3b (the follow-up items discovered during batch 3's investigation:
-  EventsScreen/GoalsScreen's inline card-title checkmarks, "Copied! ✓"/
-  "Saved ✓" button text on CreateProfileScreen/SettingsScreen/
-  SavingsScreen, and ProfileScreen's "✓ New Owner" transfer-owner badge),
-  or CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only,
-  whenever ready to continue.
+- B2.3 batch 3 Passes 1–4 (all character/emoji cleanup) and batch 3b (the
+  follow-up "✓" cleanup) are all code-complete and `npx tsc --noEmit`
+  clean, but not yet tested on-device — see their checklists above. This
+  completes the full batch 3 arc. Next up per the batch order is
+  investigating BillsScreen's 7th "✓" occurrence (the subscription
+  checkbox, spotted but not yet fully investigated during batch 3b), then
+  CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only, whenever
+  ready to continue.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -717,13 +791,14 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
      (pending person's `npx tsc --noEmit` confirmation), on-device
      testing pending.
 4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
-5. NEW — Batch 3b (follow-up, discovered during batch 3's investigation,
-   not yet started): additional "✓" occurrences that were out of scope
-   for batch 3's original flagged list — EventsScreen/GoalsScreen's
-   inline card-title checkmark (e.g. "Untitled event  ✓"), "Copied! ✓"
-   / "Saved ✓" button text (CreateProfileScreen, SettingsScreen,
-   SavingsScreen), and ProfileScreen's "✓ New Owner" badge in the
-   transfer-owner modal.
+5. Batch 3b (follow-up "✓" cleanup) — ✅ CODE-COMPLETE, `npx tsc --noEmit`
+   clean, on-device testing pending. Covered EventsScreen/GoalsScreen's
+   inline card-title checkmark, "Copied! ✓" (CreateProfileScreen,
+   SettingsScreen) / "Saved ✓" (SavingsScreen) button text, and
+   ProfileScreen's "✓ New Owner" badge in the transfer-owner modal. A 7th,
+   out-of-scope "✓" was spotted inside BillsScreen's subscription
+   checkbox during this pass's investigation — not yet investigated in
+   full, needs its own follow-up prompt before a fix is written.
 
 📁 Files in the repo
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
@@ -857,6 +932,33 @@ here on:
   `dataButtonText` styles now unused for the swapped characters but left
   in place. "Copied! ✓" text left untouched — still tracked as batch 3b
   scope.
+
+- MODIFIED: `mobile-app/src/screens/EventsScreen.tsx` — completed-event
+  card titles now show a green Ionicons checkmark-circle beside the title
+  text instead of an embedded "✓" character (B2.3 batch 3b); added a new
+  `eventTitleRow` row-container style; `eventName` style gained
+  `flexShrink: 1`.
+- MODIFIED: `mobile-app/src/screens/GoalsScreen.tsx` — completed-goal
+  card titles now show a green Ionicons checkmark-circle beside the title
+  text instead of an embedded "✓" character (B2.3 batch 3b); added a new
+  `goalTitleRow` row-container style; `goalTitle` style gained
+  `flexShrink: 1`.
+- MODIFIED: `mobile-app/src/screens/CreateProfileScreen.tsx` — the
+  copy-recovery-key button's "Copied!" confirmation state now shows a
+  real Ionicons checkmark instead of an embedded "✓" character, replacing
+  the previous separate not-yet-copied-only icon with a single icon that
+  switches between `copy-outline` and `checkmark` (B2.3 batch 3b).
+- MODIFIED: `mobile-app/src/screens/SettingsScreen.tsx` — the same
+  copy-recovery-key "Copied!" state fix as CreateProfileScreen (B2.3
+  batch 3b).
+- MODIFIED: `mobile-app/src/screens/SavingsScreen.tsx` — the FI
+  Calculator's "Saved" button now shows a real Ionicons checkmark instead
+  of an embedded "✓" character, with `flexDirection: 'row'` +
+  centering applied inline on that one button (B2.3 batch 3b).
+- MODIFIED: `mobile-app/src/screens/ProfileScreen.tsx` — the
+  transfer-ownership modal's "New Owner" badge now shows a real Ionicons
+  checkmark beside plain "New Owner" text instead of an embedded "✓"
+  character, wrapped in a small inline row `View` (B2.3 batch 3b).
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

@@ -894,7 +894,12 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                                 <Text style={[styles.modeButtonText, isSelected && styles.modeButtonTextActive]}>
                                   {m.username}
                                 </Text>
-                                {isSelected && <Text style={{ color: colors.gold, fontWeight: '700' }}>✓ New Owner</Text>}
+                                {isSelected && (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons name="checkmark" size={14} color={colors.gold} style={{ marginRight: 4 }} />
+                                    <Text style={{ color: colors.gold, fontWeight: '700' }}>New Owner</Text>
+                                  </View>
+                                )}
                               </TouchableOpacity>
                             );
                           })}

@@ -1633,9 +1633,14 @@ export default function SettingsScreen() {
                     setTimeout(() => setRecoveryCopied(false), 2000);
                   }}
                 >
-                  {!recoveryCopied && <Ionicons name="copy-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />}
+                  <Ionicons
+                    name={recoveryCopied ? 'checkmark' : 'copy-outline'}
+                    size={16}
+                    color={colors.gold}
+                    style={{ marginRight: 6 }}
+                  />
                   <Text style={styles.dataButtonText}>
-                    {recoveryCopied ? 'Copied! ✓' : 'Copy Recovery Key'}
+                    {recoveryCopied ? 'Copied!' : 'Copy Recovery Key'}
                   </Text>
                 </TouchableOpacity>
               </>
