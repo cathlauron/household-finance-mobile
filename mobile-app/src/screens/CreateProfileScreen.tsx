@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -218,7 +219,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
             </View>
 
             <TouchableOpacity
-              style={styles.copyButton}
+              style={[styles.copyButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
               onPress={async () => {
                 if (!recoveryCode) return;
                 await Clipboard.setStringAsync(recoveryCode);
@@ -226,7 +227,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 setTimeout(() => setCopied(false), 2000);
               }}
             >
-              <Text style={styles.copyButtonText}>{copied ? 'Copied! ✓' : '📋 Copy Recovery Key'}</Text>
+              {!copied && <Ionicons name="copy-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />}
+              <Text style={styles.copyButtonText}>{copied ? 'Copied! ✓' : 'Copy Recovery Key'}</Text>
             </TouchableOpacity>
 
             <Pressable
@@ -234,7 +236,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
               onPress={() => setSavedAcknowledged((prev) => !prev)}
             >
               <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
-                {savedAcknowledged && <Text style={styles.checkmark}>✓</Text>}
+                {savedAcknowledged && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
               </View>
               <Text style={styles.checkLabel}>
                 I have written down or saved this recovery key in a safe place.

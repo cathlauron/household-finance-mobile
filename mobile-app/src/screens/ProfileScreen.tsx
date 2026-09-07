@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { getMyPersonId, setMyPersonId } from '../myPerson';
@@ -620,7 +621,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
             <Text style={styles.shortcutTitle}>Password &amp; Encryption Key</Text>
             <Text style={styles.shortcutSub}>Change password and access your Secret Recovery Key</Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -632,7 +633,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
             <Text style={styles.shortcutTitle}>Active Devices</Text>
             <Text style={styles.shortcutSub}>View and sign out other devices logged into your account</Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />
         </TouchableOpacity>
 
         {/* 3. Household & Sharing Section */}
@@ -659,9 +660,12 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
 
         {!!pendingRecovery && (
           <View style={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy3, marginBottom: 14 }]}>
-            <Text style={[styles.hintText, { color: colors.gold, fontWeight: '700', marginBottom: 4 }]}>
-              ⚠️ Account Recovery Request
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Ionicons name="warning-outline" size={15} color={colors.gold} style={{ marginRight: 6 }} />
+              <Text style={[styles.hintText, { color: colors.gold, fontWeight: '700', marginBottom: 0 }]}>
+                Account Recovery Request
+              </Text>
+            </View>
             <Text style={[styles.hintText, { color: colors.ink, marginBottom: 8 }]}>
               {pendingRecovery.requesterUsername} is requesting recovery for their account. If you are with them, you can verify their identity and send them the household key.
             </Text>
@@ -684,7 +688,10 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
               !unlinkConfirmOpen && !transferOwnerModalOpen ? (
                 <View style={styles.linkCodeBox}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <Text style={styles.linkCodeLabel}>✓ Linked</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="checkmark" size={13} color={colors.inkDim} style={{ marginRight: 4 }} />
+                      <Text style={[styles.linkCodeLabel, { marginBottom: 0 }]}>Linked</Text>
+                    </View>
                     {householdMemberCount > 0 && (
                       <Text style={[styles.hintText, { color: colors.gold, fontWeight: '600' }]}>
                         {householdMemberCount} of 5 linked

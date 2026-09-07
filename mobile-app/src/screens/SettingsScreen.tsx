@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
@@ -809,7 +810,7 @@ export default function SettingsScreen() {
               {isLinked ? 'Shared Household Vault' : 'Solo Vault (Personal)'}
             </Text>
           </View>
-          <Text style={styles.profileChevron}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
@@ -1062,21 +1063,19 @@ export default function SettingsScreen() {
                 disabled={idx === 0}
                 style={styles.reorderBtn}
               >
-                <Text style={[styles.reorderBtnText, idx === 0 && styles.reorderBtnDisabled]}>▲</Text>
+                <Ionicons name="chevron-up" size={13} color={colors.inkDim} style={idx === 0 ? { opacity: 0.3 } : undefined} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => moveRule(rule.id, 'down')}
                 disabled={idx === rules.length - 1}
                 style={styles.reorderBtn}
               >
-                <Text
-                  style={[
-                    styles.reorderBtnText,
-                    idx === rules.length - 1 && styles.reorderBtnDisabled,
-                  ]}
-                >
-                  ▼
-                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={13}
+                  color={colors.inkDim}
+                  style={idx === rules.length - 1 ? { opacity: 0.3 } : undefined}
+                />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -1626,7 +1625,7 @@ export default function SettingsScreen() {
                   Keep this written down somewhere private (e.g. in your password manager notes).
                 </Text>
                                 <TouchableOpacity
-                  style={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12 }]}
+                  style={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
                   onPress={async () => {
                     if (!retroactiveSuccessCode) return;
                     await Clipboard.setStringAsync(retroactiveSuccessCode);
@@ -1634,8 +1633,9 @@ export default function SettingsScreen() {
                     setTimeout(() => setRecoveryCopied(false), 2000);
                   }}
                 >
+                  {!recoveryCopied && <Ionicons name="copy-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />}
                   <Text style={styles.dataButtonText}>
-                    {recoveryCopied ? 'Copied! ✓' : '📋 Copy Recovery Key'}
+                    {recoveryCopied ? 'Copied! ✓' : 'Copy Recovery Key'}
                   </Text>
                 </TouchableOpacity>
               </>

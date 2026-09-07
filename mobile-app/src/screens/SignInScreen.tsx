@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON, generateSalt, encryptJSON } from '../encryption';
@@ -688,10 +689,11 @@ export default function SignInScreen({
       <Text style={styles.sub}>Enter your email, username, and password.</Text>
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-          <Text style={[styles.revokedBannerText, { flex: 1 }]}>⚠️ {remoteRevokeNotice}</Text>
+          <Ionicons name="warning-outline" size={16} color="#991B1B" style={{ marginRight: 6 }} />
+          <Text style={[styles.revokedBannerText, { flex: 1 }]}>{remoteRevokeNotice}</Text>
           {!!onClearRemoteRevokeNotice && (
             <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={[styles.revokedBannerText, { fontWeight: '700', paddingLeft: 8 }]}>✕</Text>
+              <Ionicons name="close" size={16} color="#991B1B" style={{ paddingLeft: 8 }} />
             </TouchableOpacity>
           )}
         </View>

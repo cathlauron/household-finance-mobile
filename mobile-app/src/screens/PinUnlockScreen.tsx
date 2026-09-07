@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { verifyPin, hasPinSetUp } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, BiometricState } from '../biometrics';
 import PinField from '../components/PinField';
@@ -199,8 +200,9 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
           )}
 
           {biometricState === 'ENABLED' && hasPin !== false && (
-            <TouchableOpacity testID="retry-biometrics-button" style={styles.retryBiometricBtn} onPress={() => runBiometricAuth(true)}>
-              <Text style={styles.retryBiometricText}>🔄 Try {biometricLabel} again</Text>
+            <TouchableOpacity testID="retry-biometrics-button" style={[styles.retryBiometricBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} onPress={() => runBiometricAuth(true)}>
+              <Ionicons name="refresh-outline" size={16} color="#1C1917" style={{ marginRight: 6 }} />
+              <Text style={styles.retryBiometricText}>Try {biometricLabel} again</Text>
             </TouchableOpacity>
           )}
 

@@ -8,6 +8,62 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 3, Pass 4 build (Auth, security & profile: SignIn, CreateProfile, PinUnlock, Profile, Settings)
+- Wrote an Antigravity investigation-only prompt for B2.3 batch 3, Pass 4:
+  the character/emoji cleanup pass for SignInScreen, CreateProfileScreen,
+  PinUnlockScreen, ProfileScreen, SettingsScreen.
+- Antigravity's investigation found: a raw "✕" close button on
+  SignInScreen's revoked-session banner (not in the original flagged
+  list); ⚠️ warning-banner emoji on both SignInScreen and ProfileScreen;
+  📋 copy-recovery-key emoji on both CreateProfileScreen and
+  SettingsScreen; 🔄 retry-biometric emoji on PinUnlockScreen; a raw "✓"
+  checkbox mark on CreateProfileScreen's recovery-key-saved
+  acknowledgment; raw "›" chevrons on ProfileScreen's 2 shortcut rows and
+  SettingsScreen's profile card row; raw "▲"/"▼" reorder buttons on
+  SettingsScreen's categorization rules; and ProfileScreen's "✓ Linked"
+  household-status badge (single-`<Text>` pattern). Confirmed the
+  "Copied! ✓" button text (CreateProfileScreen + SettingsScreen) and
+  ProfileScreen's "✓ New Owner" transfer-owner badge exist exactly where
+  already tracked, unchanged — still batch 3b scope, not touched this
+  pass. Confirmed none of the 5 files import Ionicons yet.
+- Reviewed and decided: recovery-key copy buttons use `copy-outline`
+  (not `clipboard-outline`) — a clipboard icon reads as "paste" or "to-do
+  list" on mobile, while copy-outline unambiguously signals "copy to
+  clipboard," matching conventions in password managers (1Password,
+  Bitwarden); use `close` (not `close-circle`) for SignInScreen's banner
+  dismiss button, consistent with prior passes; use `chevron-forward` for
+  both `›` nav-chevron locations and `chevron-up`/`chevron-down` for the
+  `▲`/`▼` reorder buttons, consistent with earlier batches' reasoning.
+  For the single-`<Text>`-with-embedded-character patterns (SignInScreen's
+  banner, CreateProfileScreen's copy button, PinUnlockScreen's retry
+  button, ProfileScreen's peer-recovery banner and "✓ Linked" badge), the
+  container needed `flexDirection: 'row'` + `alignItems`/`justifyContent`
+  added so the icon sits beside the text instead of stacking under it.
+  CreateProfileScreen's checkbox mark and both `›` chevrons already had
+  dedicated containers, so no style changes were needed for those.
+- Gave the person paste/replace snippets for all 5 files: added the
+  `Ionicons` import to each; SignInScreen's revoked-session banner
+  (⚠️ → `warning-outline`, ✕ → `close`, both JSX + container style);
+  CreateProfileScreen's copy-recovery-key button (📋 → `copy-outline`,
+  shown only in the un-copied state, JSX + container style) and
+  recovery-key-saved checkbox (✓ → `checkmark`, icon swap only);
+  PinUnlockScreen's retry-biometric button (🔄 → `refresh-outline`, JSX
+  + container style); ProfileScreen's 2 shortcut-row chevrons
+  (› → `chevron-forward`, icon swap only), peer-recovery banner
+  (⚠️ → `warning-outline`, JSX + container style), and "✓ Linked" badge
+  (✓ Linked text → Ionicons checkmark + "Linked" text in a row);
+  SettingsScreen's profile-card chevron (› → `chevron-forward`, icon swap
+  only), categorization-rule reorder buttons (▲/▼ → `chevron-up`/
+  `chevron-down` with opacity 0.3 when disabled, icon swap only), and
+  copy-recovery-key button (📋 → `copy-outline`, shown only in the
+  un-copied state, JSX + container style). Old `*Text`-only styles
+  (`revokedBannerText`'s embedded characters, `checkmark`, `chevron`,
+  `profileChevron`, `reorderBtnText`) left in place, harmless, per the
+  established convention.
+- `npx tsc --noEmit` [PENDING — person to run after pasting all 5 files].
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step.
+
 ### Session — B2.3 batch 3, Pass 3 build (Transactions & money flows: Transactions, CsvImportModal, Loans, Income, Savings)
 - Wrote an Antigravity investigation-only prompt for B2.3 batch 3, Pass 3:
   the character/emoji cleanup pass for TransactionsScreen, CsvImportModal,
@@ -422,9 +478,37 @@ on a real device. This is the priority list for this file's first session.
   row checkmark is centered inside its checkbox; (3) LoansScreen's
   simulator button icon renders and its payment-row delete button still
   removes the right row; (4) IncomeScreen's payday-log delete button
-  still removes the right row and keeps its red accent color; (5)
-  SavingsScreen's contribution-row delete button still removes the right
+  still removes the right row and keeps its red accent color;  (5) SavingsScreen's contribution-row delete button still removes the right
   row and the icon is centered inside its circular button.
+- **B2.3 batch 3, Pass 4 — Auth/security/profile character cleanup —
+  on-device testing deferred.** Code is complete
+  [`npx tsc --noEmit` status: PENDING — confirm clean after pasting].
+  SignInScreen's revoked-session banner now shows real Ionicons
+  (`warning-outline`, `close`) instead of embedded "⚠️"/"✕" characters;
+  CreateProfileScreen's copy-recovery-key button and recovery-key-saved
+  checkbox now use `copy-outline`/`checkmark` instead of "📋"/"✓";
+  PinUnlockScreen's retry-biometric button now uses `refresh-outline`
+  instead of "🔄"; ProfileScreen's 2 shortcut-row chevrons, peer-recovery
+  banner, and "✓ Linked" badge now use `chevron-forward`, `warning-
+  outline`, and a real checkmark instead of "›", "⚠️", and embedded "✓";
+  SettingsScreen's profile-card chevron, categorization-rule reorder
+  buttons, and copy-recovery-key button now use `chevron-forward`,
+  `chevron-up`/`chevron-down`, and `copy-outline` instead of "›", "▲"/
+  "▼", and "📋". Pure visual swap, no behavior change. NOT yet tested on
+  a real device. When ready, check: (1) SignInScreen's revoked-session
+  banner still dismisses correctly and both icons render with the right
+  red tone; (2) CreateProfileScreen's copy button still copies the
+  recovery key to clipboard and the icon disappears once "Copied!"
+  shows; the checkbox toggle still saves/unsaves correctly with the
+  checkmark centered; (3) PinUnlockScreen's retry button still triggers
+  biometric auth again; (4) ProfileScreen's 2 shortcut rows still
+  navigate to Settings, the peer-recovery banner icon/text align
+  correctly when a recovery request is pending, and the "Linked" badge
+  reads correctly with the checkmark beside it (not above/below); (5)
+  SettingsScreen's profile card still navigates to ProfileScreen, the
+  reorder buttons still move categorization rules up/down (with the
+  disabled end correctly dimmed), and the copy button behaves the same
+  as CreateProfileScreen's.
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -485,13 +569,18 @@ on a real device. This is the priority list for this file's first session.
   B2.1's and B2.3 batch 1's checklists should be run together in the same
   on-device session, since B2.3 batch 1 depends on B2.1's component
   actually working correctly.
-- B2.3 batch 3 Pass 2 (Events/Goals/Groceries/Travel character cleanup)
-  and Pass 3 (Transactions/CsvImportModal/Loans/Income/Savings character
-  cleanup) are both code-complete pending the person's `npx tsc --noEmit`
-  confirmation, but not yet tested on-device — see their checklists
-  above. Next up per the batch order is Pass 4 (Auth, security &
-  profile: SignInScreen, CreateProfileScreen, PinUnlockScreen,
-  ProfileScreen, SettingsScreen), whenever ready to continue.
+- B2.3 batch 3 Pass 2 (Events/Goals/Groceries/Travel character cleanup),
+  Pass 3 (Transactions/CsvImportModal/Loans/Income/Savings character
+  cleanup), and Pass 4 (Auth/security/profile character cleanup) are all
+  code-complete pending the person's `npx tsc --noEmit` confirmation, but
+  not yet tested on-device — see their checklists above. This completes
+  batch 3's original 4-pass split. Next up per the batch order is batch
+  3b (the follow-up items discovered during batch 3's investigation:
+  EventsScreen/GoalsScreen's inline card-title checkmarks, "Copied! ✓"/
+  "Saved ✓" button text on CreateProfileScreen/SettingsScreen/
+  SavingsScreen, and ProfileScreen's "✓ New Owner" transfer-owner badge),
+  or CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only,
+  whenever ready to continue.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -624,7 +713,9 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
      CODE-COMPLETE (pending person's `npx tsc --noEmit` confirmation),
      on-device testing pending.
    - Pass 4 (Auth, security & profile: SignInScreen, CreateProfileScreen,
-     PinUnlockScreen, ProfileScreen, SettingsScreen) — NOT yet started.
+     PinUnlockScreen, ProfileScreen, SettingsScreen) — ✅ CODE-COMPLETE
+     (pending person's `npx tsc --noEmit` confirmation), on-device
+     testing pending.
 4. CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only.
 5. NEW — Batch 3b (follow-up, discovered during batch 3's investigation,
    not yet started): additional "✓" occurrences that were out of scope
@@ -727,6 +818,45 @@ here on:
   `contribRemoveButtonText` style now unused but left in place. FI
   Calculator's "Saved ✓" button text left untouched — still tracked as
   batch 3b scope.
+
+- MODIFIED: `mobile-app/src/screens/SignInScreen.tsx` — revoked-session
+  banner now shows a real Ionicons warning icon and a real Ionicons close
+  icon instead of embedded "⚠️"/"✕" characters (B2.3 batch 3 Pass 4);
+  added `Ionicons` import; `revokedBannerText` style's embedded
+  characters removed from the text itself.
+- MODIFIED: `mobile-app/src/screens/CreateProfileScreen.tsx` —
+  copy-recovery-key button now shows a real Ionicons copy icon (only in
+  the un-copied state) instead of an embedded "📋" character, and the
+  recovery-key-saved checkbox now renders an Ionicons checkmark instead
+  of a raw "✓" (B2.3 batch 3 Pass 4); added `Ionicons` import;
+  `copyButtonText`/`checkmark` styles now unused for the swapped
+  characters but left in place. "Copied! ✓" text left untouched — still
+  tracked as batch 3b scope.
+- MODIFIED: `mobile-app/src/screens/PinUnlockScreen.tsx` —
+  retry-biometric button now shows a real Ionicons refresh icon instead
+  of an embedded "🔄" character (B2.3 batch 3 Pass 4); added `Ionicons`
+  import; `retryBiometricText` style's embedded character removed from
+  the text itself.
+- MODIFIED: `mobile-app/src/screens/ProfileScreen.tsx` — both shortcut-
+  row chevrons (Password & Encryption Key, Active Devices) now render an
+  Ionicons chevron-forward instead of a raw "›"; the peer-recovery-
+  request banner now shows a real Ionicons warning icon instead of an
+  embedded "⚠️" character; the "✓ Linked" household-status badge now
+  renders an Ionicons checkmark beside plain "Linked" text instead of an
+  embedded "✓" character (B2.3 batch 3 Pass 4); added `Ionicons` import;
+  `chevron`/`hintText`/`linkCodeLabel` styles now unused for the swapped
+  characters but left in place. "✓ New Owner" transfer-owner badge left
+  untouched — still tracked as batch 3b scope.
+- MODIFIED: `mobile-app/src/screens/SettingsScreen.tsx` — profile-card
+  row chevron now renders an Ionicons chevron-forward instead of a raw
+  "›"; categorization-rule reorder buttons now render Ionicons
+  chevron-up/chevron-down (dimmed when disabled) instead of raw "▲"/"▼";
+  copy-recovery-key button now shows a real Ionicons copy icon (only in
+  the un-copied state) instead of an embedded "📋" character (B2.3 batch
+  3 Pass 4); added `Ionicons` import; `profileChevron`/`reorderBtnText`/
+  `dataButtonText` styles now unused for the swapped characters but left
+  in place. "Copied! ✓" text left untouched — still tracked as batch 3b
+  scope.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
