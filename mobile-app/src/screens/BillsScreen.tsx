@@ -11,6 +11,7 @@ import {
 
 } from 'react-native';
 import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -597,8 +598,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                       marginRight: 10,
                     }}
                   >
-                    {subscriptionInput && <Text style={{ color: colors.navy2, fontSize: 14, fontWeight: '700' }}>✓</Text>}
-                  </View>
+                    {subscriptionInput && <Text style={{ color: colors.navy2, fontSize: 14, fontWeight: '700' }}>✓</Text>}                    {subscriptionInput && <Ionicons name="checkmark" size={14} color={colors.navy2} />}                  </View>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>This is a subscription</Text>
                 </TouchableOpacity>
 

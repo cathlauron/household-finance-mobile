@@ -8,6 +8,36 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 3b follow-up: BillsScreen subscription checkbox "✓" cleanup
+- Wrote an Antigravity investigation-only prompt for the last item
+  flagged during batch 3b — BillsScreen.tsx's subscription-toggle
+  checkbox, which had only been spotted (one line, no context) during
+  the earlier batch 3b pass, not fully investigated.
+- Antigravity's investigation confirmed: BillsScreen.tsx does not yet
+  import Ionicons; there is exactly one "✓" occurrence in the file,
+  inside a "This is a subscription" checkbox toggle (state variable
+  `subscriptionInput`); the checkbox's enclosing box already has
+  `alignItems: 'center'` and `justifyContent: 'center'` set inline, so
+  no container style change was needed; the checkbox style/pattern is
+  not reused anywhere else in the file for anything else, so there was
+  no risk of a side effect elsewhere on the same screen.
+- Reviewed and decided: swap the embedded "✓" text character for a real
+  Ionicons `checkmark` (size 14, matching the existing text's
+  `fontSize: 14`), same pattern as every other checkbox-mark swap done
+  in batch 3 Pass 2/3. Pure icon swap, no layout change needed since the
+  centering was already in place.
+- Gave the person 2 paste/replace snippets for `BillsScreen.tsx`: added
+  the `Ionicons` import line, and swapped the conditional `<Text>✓</Text>`
+  for a conditional `<Ionicons name="checkmark" size={14}
+  color={colors.navy2} />`.
+- `npx tsc --noEmit` run from `mobile-app\` after pasting — clean, no
+  errors.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step. This closes out the full batch 3 arc (Passes 1–4 plus
+  batch 3b and this follow-up) — every previously-flagged raw character/
+  emoji occurrence from the B2.2 audit's CONVERT/CLEANUP list has now
+  been addressed.
+
 ### Session — Swipe-to-delete toggle, checkpoint 3 of 3, part 2 (AccountsScreen — flat/list rows only)
 - Wrote a follow-up Antigravity investigation-only prompt to get the
   real current code needed to wire AccountsScreen specifically: its
@@ -888,6 +918,17 @@ on a real device. This is the priority list for this file's first session.
   ProfileScreen's transfer-ownership modal still lets you pick a new
   owner, and the selected row shows a checkmark + "New Owner" text
   instead of a stacked/overlapping badge.
+- **B2.3 batch 3b follow-up — BillsScreen subscription checkbox "✓"
+  cleanup — on-device testing deferred.** Code is complete and
+  `npx tsc --noEmit` clean: BillsScreen's "This is a subscription"
+  checkbox now shows a real Ionicons checkmark instead of an embedded
+  "✓" text character. Pure visual swap, no behavior change. NOT yet
+  tested on a real device. When ready, check: (1) toggling "This is a
+  subscription" on a bill still checks/unchecks correctly; (2) the
+  checkmark renders centered inside the checkbox box when checked, and
+  disappears cleanly when unchecked; (3) saving the bill with the toggle
+  on still shows the SUB badge elsewhere on the Bills list (per B.14's
+  existing subscription feature).
 - **B2.3 batch 2 — ToPayScreen + PlanningScreen icon sub-tabs — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   ToPayScreen's Bills/Debts/Loans pills and PlanningScreen's Groceries/
@@ -954,14 +995,13 @@ on a real device. This is the priority list for this file's first session.
   B2.1's and B2.3 batch 1's checklists should be run together in the same
   on-device session, since B2.3 batch 1 depends on B2.1's component
   actually working correctly.
-- B2.3 batch 3 Passes 1–4 (all character/emoji cleanup) and batch 3b (the
-  follow-up "✓" cleanup) are all code-complete and `npx tsc --noEmit`
+- B2.3 batch 3 Pass 1–4, batch 3b, and the BillsScreen follow-up (all
+  character/emoji cleanup) are ALL code-complete and `npx tsc --noEmit`
   clean, but not yet tested on-device — see their checklists above. This
-  completes the full batch 3 arc. Next up per the batch order is
-  investigating BillsScreen's 7th "✓" occurrence (the subscription
-  checkbox, spotted but not yet fully investigated during batch 3b), then
-  CollapsibleRow "Edit" + AccountsScreen "Collapse" → icon-only, whenever
-  ready to continue.
+  fully completes the batch 3 arc — every raw character/emoji flagged in
+  the B2.2 audit's CONVERT/CLEANUP list is now addressed. Next up per the
+  B2.3+ batch order is CollapsibleRow "Edit" + AccountsScreen "Collapse"
+  → icon-only, whenever ready to continue.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -1103,9 +1143,10 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
    inline card-title checkmark, "Copied! ✓" (CreateProfileScreen,
    SettingsScreen) / "Saved ✓" (SavingsScreen) button text, and
    ProfileScreen's "✓ New Owner" badge in the transfer-owner modal. A 7th,
-   out-of-scope "✓" was spotted inside BillsScreen's subscription
-   checkbox during this pass's investigation — not yet investigated in
-   full, needs its own follow-up prompt before a fix is written.
+   out-of-scope "✓" spotted inside BillsScreen's subscription checkbox
+   during this pass's investigation was fixed in a dedicated follow-up
+   session — ✅ CODE-COMPLETE, `npx tsc --noEmit` clean, on-device testing
+   pending. This closes out the full batch 3 arc.
 
 📁 Files in the repo
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
@@ -1266,6 +1307,10 @@ here on:
   transfer-ownership modal's "New Owner" badge now shows a real Ionicons
   checkmark beside plain "New Owner" text instead of an embedded "✓"
   character, wrapped in a small inline row `View` (B2.3 batch 3b).
+- MODIFIED: `mobile-app/src/screens/BillsScreen.tsx` — the "This is a
+  subscription" checkbox now shows a real Ionicons checkmark instead of
+  an embedded "✓" text character (B2.3 batch 3b follow-up); added
+  `Ionicons` import.
 
 - NEW: `mobile-app/src/components/SwipeableRow.tsx` — reusable swipe-
   left-to-delete wrapper around `react-native-gesture-handler`'s
