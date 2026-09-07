@@ -8,6 +8,80 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Swipe-to-delete toggle + settings preview (new feature, checkpoint 1 of 3)
+- Wrote 2 Antigravity investigation-only prompts to map out how list rows
+  currently work app-wide before designing anything: (1) shared vs.
+  per-screen row components, current delete flow, installed gesture/
+  animation libraries, `App.tsx`'s root wrapping, `IconLabelHint`'s
+  animation approach, an existing Settings toggle end-to-end, and
+  `SettingsScreen.tsx`'s section layout; (2) exact current contents of
+  `index.js`, the `Settings` type, the default settings object, and the
+  exact `SettingsScreen.tsx` text around the intended insertion point,
+  plus confirming the correct `npx expo install` command and that no
+  swipe-related file already exists.
+- Investigation confirmed: 6 screens (Bills, Debts, Income, Loans,
+  Transactions, Savings) share `CollapsibleRow.tsx`; 5 screens (Goals,
+  Travel, Events, Groceries, Accounts) implement their own row markup
+  and import `CollapsibleRow` without using it. Every screen's delete
+  flow is currently "tap row/Edit → modal → Delete button inside modal";
+  no swipe, long-press, or context-menu delete exists anywhere yet.
+  Neither `react-native-gesture-handler` nor `react-native-reanimated`
+  was installed; `App.tsx`'s root was not wrapped in
+  `GestureHandlerRootView`. `IconLabelHint` uses the base `Animated` API
+  (`useNativeDriver: true`), confirming no new animation library was
+  needed for the preview. The existing `weeklyRecapEnabled` toggle
+  pattern (custom track/thumb `TouchableOpacity`, not a native
+  `<Switch>`) and its exact save-through-`saveModel()`-to-
+  AsyncStorage/Firestore path were confirmed and reused as-is for the
+  new setting.
+- Scoped this as the first of 3 checkpoints: (1) this session — install
+  the dependency, build the reusable `SwipeableRow` component and a
+  standalone `RowInteractionPreview` component, add a new Settings
+  section with the toggle + live preview, wire up `App.tsx`'s
+  `GestureHandlerRootView` — nothing rolled out to any real list yet,
+  matching the same "build it standalone, verify it, then roll out"
+  approach used for `IconLabelHint`/B2.1; (2) next — wire `SwipeableRow`
+  into `CollapsibleRow`, covering all 6 screens that already use it at
+  once; (3) final — wire it individually into the 5 screens that don't
+  use `CollapsibleRow` (Goals, Travel, Events, Groceries, Accounts).
+- Added a new `swipeToDeleteEnabled: boolean` field to the `Settings`
+  type and to `defaultModel.ts`, defaulting to `false` so tap-to-open
+  stays the behavior for every existing profile until they explicitly
+  opt in.
+- Built `mobile-app/src/components/SwipeableRow.tsx` (new file) — a
+  reusable wrapper around `react-native-gesture-handler`'s `Swipeable`,
+  gated by an `enabled` prop (renders children unwrapped when disabled,
+  so it's a true no-op until checkpoint 2/3 actually pass `enabled`
+  from the new setting); swipe-left reveals a red delete action with a
+  scaling trash icon.
+- Built `mobile-app/src/components/RowInteractionPreview.tsx` (new
+  file) — a self-contained, looping demo row for the Settings screen:
+  in "swipe" mode it animates a fake row sliding left to reveal a
+  delete icon behind it and back; in "tap" mode it animates a fake row
+  expanding open to reveal a "Delete this bill" demo button and
+  collapsing again. Neither mode depends on `SwipeableRow` or real
+  gesture-handler interaction — it's a pure `Animated`-driven loop, so
+  it works even before any screen is actually wired up.
+- Added a new "List Rows" section to `SettingsScreen.tsx`, positioned
+  between "Appearance" and "Notifications," with a 2-option pill row
+  ("Swipe to delete" / "Tap to open") following the same active/
+  inactive pill styling as the existing `MODE_OPTIONS` row, a new
+  `handleSetSwipeToDelete()` save handler modeled directly on
+  `toggleWeeklyRecap()`, and the new `RowInteractionPreview` rendered
+  live below the pills, switching mode based on the current setting.
+- Updated `mobile-app/index.js` to import `react-native-gesture-handler`
+  as the very first line (a hard requirement of the library, confirmed
+  via investigation before writing the change) and wrapped `App.tsx`'s
+  top-level `export default function App()` in
+  `<GestureHandlerRootView style={{ flex: 1 }}>`.
+- `npx tsc --noEmit` run from `mobile-app\` after all files pasted —
+  clean, no errors.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step. Priority checks: does the app launch without a red
+  screen now that a new native module (`react-native-gesture-handler`)
+  is linked; does the new Settings section render; does switching
+  between the two options correctly swap which preview animation plays.
+
 ### Session — B2.3 batch 3b build (follow-up "✓" cleanup: Events, Goals, CreateProfile, Settings, Savings, Profile)
 - Wrote an Antigravity investigation-only prompt for batch 3b — the 6
   follow-up "✓" occurrences flagged during batch 3's earlier passes but
@@ -487,6 +561,30 @@ on a real device. This is the priority list for this file's first session.
   (also a Modal) in a later batch, watch for Android-specific flakiness
   (two native Modals open at once is a known trouble spot); no fix needed
   unless that combination is actually hit.
+- **Swipe-to-delete toggle + Settings preview (checkpoint 1 of 3) —
+  on-device testing deferred, plus a new native dependency added.**
+  Code is complete and `npx tsc --noEmit` clean:
+  `react-native-gesture-handler` was installed and `App.tsx`'s root is
+  now wrapped in `GestureHandlerRootView`; a new "List Rows" section in
+  Settings lets the person choose "Swipe to delete" vs. "Tap to open"
+  (defaults to Tap, so no existing behavior changes until someone opts
+  in), with a live looping preview animation for whichever option is
+  selected. NOTHING is wired into any real list yet — `SwipeableRow`
+  exists as a standalone component but isn't used by `CollapsibleRow`
+  or any screen. NOT yet tested on a real device. Since this is the
+  first time a native gesture module has been added to the project,
+  test on BOTH platforms if possible, and check: (1) the app actually
+  launches without a red error screen or crash on startup (this is the
+  main risk — a missing/misordered gesture-handler import at the top of
+  `index.js` is a known cause of silent native crashes); (2) Settings →
+  "List Rows" section renders with both pill options and the preview
+  box; (3) tapping "Swipe to delete" switches the preview to the
+  slide-left-reveal-delete animation, and tapping "Tap to open" switches
+  it to the expand-open-reveal-delete-button animation, looping
+  correctly either way; (4) the choice persists after closing and
+  reopening Settings (and syncs to a linked device, if available); (5)
+  every existing screen's real delete flow (tap → modal → Delete) still
+  works completely unchanged, since nothing was wired up this checkpoint.
 - **B2.3 batch 3, Pass 1 — Calendar + report year-nav chevrons — on-device
   testing deferred.** Code is complete and `npx tsc --noEmit` clean:
   CalendarScreen's month-nav buttons and YearInReviewReport's/
@@ -621,6 +719,13 @@ on a real device. This is the priority list for this file's first session.
   neighboring pills when shown.
 
 ▶️ Next step
+- Test the new swipe-to-delete toggle/preview feature (checkpoint 1 of
+  3) on a real device — especially confirming the app still launches
+  cleanly now that a native gesture module has been added — before
+  moving on to checkpoint 2 (wiring `SwipeableRow` into `CollapsibleRow`,
+  covering Bills/Debts/Income/Loans/Transactions/Savings at once) or
+  checkpoint 3 (wiring it individually into Goals/Travel/Events/
+  Groceries/Accounts).
 - Run the on-device testing checklist above, in whatever order is most
   convenient, and report back real bugs (with repro steps) as they're found
   — same investigate-with-real-code-first approach as always for any fix.
@@ -959,6 +1064,34 @@ here on:
   transfer-ownership modal's "New Owner" badge now shows a real Ionicons
   checkmark beside plain "New Owner" text instead of an embedded "✓"
   character, wrapped in a small inline row `View` (B2.3 batch 3b).
+
+- NEW: `mobile-app/src/components/SwipeableRow.tsx` — reusable swipe-
+  left-to-delete wrapper around `react-native-gesture-handler`'s
+  `Swipeable`, gated by an `enabled` prop (renders children unwrapped
+  when disabled). Not yet used by any screen — built standalone for the
+  swipe-to-delete feature's checkpoint 1.
+- NEW: `mobile-app/src/components/RowInteractionPreview.tsx` — a
+  self-contained, looping `Animated`-driven demo row shown in Settings,
+  simulating either the swipe-to-delete or tap-to-open interaction
+  depending on the `mode` prop passed in.
+- MODIFIED: `mobile-app/src/types.ts` — `Settings` type gained a new
+  `swipeToDeleteEnabled: boolean` field.
+- MODIFIED: `mobile-app/src/defaultModel.ts` — default settings object
+  gained `swipeToDeleteEnabled: false`.
+- MODIFIED: `mobile-app/src/screens/SettingsScreen.tsx` — new "List
+  Rows" section added between "Appearance" and "Notifications": a
+  2-option pill row (Swipe to delete / Tap to open) plus a live
+  `RowInteractionPreview`; new `handleSetSwipeToDelete()` save handler
+  added alongside `toggleWeeklyRecap()`; added `RowInteractionPreview`
+  import.
+- MODIFIED: `mobile-app/index.js` — added `import
+  'react-native-gesture-handler';` as the very first line (required by
+  the library).
+- MODIFIED: `mobile-app/App.tsx` — added `GestureHandlerRootView`
+  import; wrapped the top-level `export default function App()`'s
+  returned tree in `<GestureHandlerRootView style={{ flex: 1 }}>`.
+- MODIFIED: `mobile-app/package.json` — added `react-native-gesture-
+  handler` dependency via `npx expo install`.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

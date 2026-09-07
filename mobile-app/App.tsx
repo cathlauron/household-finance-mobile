@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -346,10 +347,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <DataProvider>
-        <AppContent />
-      </DataProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <DataProvider>
+          <AppContent />
+        </DataProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

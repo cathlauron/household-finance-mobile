@@ -24,6 +24,7 @@ export function defaultModel(): HouseholdModel {
       weeklyRecapEnabled: false,
       weeklyRecapDay: 0,
       weeklyRecapHour: 18,
+      swipeToDeleteEnabled: false,
     },
     people: [],
     income: [],

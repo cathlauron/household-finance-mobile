@@ -21,6 +21,7 @@ export type Settings = {
   weeklyRecapEnabled: boolean;
   weeklyRecapDay: number;
   weeklyRecapHour: number;
+  swipeToDeleteEnabled: boolean;
 };
 
 export type Person = {

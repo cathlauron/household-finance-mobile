@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
 import { Ionicons } from '@expo/vector-icons';
+import { RowInteractionPreview } from '../components/RowInteractionPreview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
@@ -347,6 +348,15 @@ export default function SettingsScreen() {
     const updated: HouseholdModel = {
       ...model,
       settings: { ...model.settings, weeklyRecapEnabled: turningOn },
+    };
+    await saveModel(updated);
+  }
+
+  async function handleSetSwipeToDelete(enabled: boolean) {
+    if (!model) return;
+    const updated: HouseholdModel = {
+      ...model,
+      settings: { ...model.settings, swipeToDeleteEnabled: enabled },
     };
     await saveModel(updated);
   }
@@ -833,6 +843,30 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>List Rows</Text>
+        <Text style={styles.sectionSub}>
+          Choose how you delete things from a list — swipe left like most phone apps, or tap the row open and delete from inside.
+        </Text>
+        <View style={styles.modeRow}>
+          <TouchableOpacity
+            style={[styles.modeButton, model.settings.swipeToDeleteEnabled && styles.modeButtonActive]}
+            onPress={() => handleSetSwipeToDelete(true)}
+          >
+            <Text style={[styles.modeButtonText, model.settings.swipeToDeleteEnabled && styles.modeButtonTextActive]}>
+              Swipe to delete
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeButton, !model.settings.swipeToDeleteEnabled && styles.modeButtonActive]}
+            onPress={() => handleSetSwipeToDelete(false)}
+          >
+            <Text style={[styles.modeButtonText, !model.settings.swipeToDeleteEnabled && styles.modeButtonTextActive]}>
+              Tap to open
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <RowInteractionPreview mode={model.settings.swipeToDeleteEnabled ? 'swipe' : 'tap'} />
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
         <Text style={styles.sectionSub}>
