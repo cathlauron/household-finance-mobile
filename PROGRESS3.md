@@ -8,6 +8,44 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — B2.3 batch 1 build (ReportsScreen icon sub-tabs)
+- Wrote an Antigravity investigation-only prompt for B2.3 batch 1: convert
+  ReportsScreen.tsx's 9 report sub-tab pills (currently text pills in a
+  horizontal ScrollView) to icon-only pills using IconLabelHint.
+- Antigravity's investigation confirmed the real current code: tabs are
+  defined as a `{ id, label }[]` array (`REPORT_TABS`), selection tracked
+  via `activeReport` state, active pill marked via `pillActive`/
+  `pillTextActive` style swaps (gold background, dark text). Confirmed
+  IconLabelHint's props signature is unchanged since B2.1.
+- Reviewed Antigravity's proposal: all 9 icon picks were reasonable;
+  swapped "Year in Review" from the proposed `sparkles-outline` to the
+  offered alternative `trophy-outline` (reads more clearly as an annual
+  recap/achievement rather than a generic "new/AI" icon). Confirmed
+  IconLabelHint does NOT need a "selected" prop added — wrapping it in a
+  `View` carrying the active pill background and passing a different
+  `color` down is the right approach, consistent with how B2.1 wired it
+  into AccountsScreen. Kept the label reveal position as `"above"`
+  (Antigravity had proposed `"below"`) since these pills sit above the
+  report content with nothing below them to collide with, and `"above"`
+  matches the existing AccountsScreen precedent.
+- Confirmed via screen-width math that the horizontal ScrollView must
+  stay — 9 icon pills at an accessible tap size (~38pt circles) total
+  ~434pt of content width, which exceeds a 360–393pt phone screen even
+  before padding/gaps.
+- Gave the person 3 paste/replace snippets for `ReportsScreen.tsx`: (1)
+  add `IconLabelHint`/`Ionicons` imports and convert `REPORT_TABS` to
+  include an `icon: keyof typeof Ionicons.glyphMap` field per tab, using
+  the 9 confirmed icon names; (2) replace the `.map()` pill JSX to render
+  each pill as a `View` + `IconLabelHint` instead of `TouchableOpacity` +
+  `Text`; (3) replace the `pill`/`pillActive` styles with fixed-size
+  circle styles (38×38, `borderRadius: 19`) and flagged `pillText`/
+  `pillTextActive` as now-unused (left in place, harmless, cleanup
+  optional).
+- Person applied all 3 snippets by hand. `npx tsc --noEmit` run from
+  `mobile-app\` — clean, no errors.
+- On-device testing explicitly deferred by the person to a later session
+  — see ⚠️ Known issues and ▶️ Next step.
+
 ### Session — B2.1 build (IconLabelHint component)
 - Wrote an Antigravity investigation-only prompt for B2.1. Antigravity
   confirmed the project's existing conventions: Ionicons icon library,
@@ -160,6 +198,21 @@ on a real device. This is the priority list for this file's first session.
   (also a Modal) in a later batch, watch for Android-specific flakiness
   (two native Modals open at once is a known trouble spot); no fix needed
   unless that combination is actually hit.
+- **B2.3 batch 1 — ReportsScreen icon sub-tabs — on-device testing
+  deferred.** Code is complete and `npx tsc --noEmit` clean: all 9 report
+  sub-tabs (Monthly Close-out, Year in Review, Cash-Flow Forecast, Person
+  Spending, Weekly Digest, Merchant Spending, Subscription Audit, Tax
+  Summary, Payment Methods) now render as icon-only circular pills instead
+  of text pills. NOT yet tested on a real device. When ready, check: (1)
+  all 9 icons render (no missing-glyph boxes) and are visually distinct
+  from each other; (2) tapping a pill switches to that report AND briefly
+  shows its floating label (e.g. tapping the trophy icon opens Year in
+  Review and shows "Year in Review"); (3) the active/selected pill is
+  clearly gold with a dark icon, inactive pills are the dim navy/gray
+  circle; (4) long-pressing a pill shows its label WITHOUT switching the
+  active report; (5) the row still scrolls horizontally and no pill gets
+  clipped at either screen edge; (6) labels don't get cut off or overlap
+  neighboring pills when shown.
 
 ▶️ Next step
 - Run the on-device testing checklist above, in whatever order is most
@@ -180,9 +233,17 @@ on a real device. This is the priority list for this file's first session.
 - B2.1 (IconLabelHint component) is code-complete and compiles clean, but
   its 5-point on-device test checklist (see ⚠️ Known issues above) has
   been explicitly deferred — run it whenever ready, alongside (or before)
-  the larger B.7–B.14 on-device pass. Nothing else in Phase B Part 2
-  (B2.2 onward) should start until B2.1 is confirmed working on-device,
-  since B2.2+ depends on reusing this exact component.
+  the larger B.7–B.14 on-device pass.
+- B2.3 batch 1 (ReportsScreen's 9 report sub-tabs, iconized) is
+  code-complete and compiles clean, but ALSO not yet tested on-device
+  (see its 6-point checklist above) — it was built ahead of B2.1's own
+  on-device confirmation since the person wanted to keep moving; both
+  B2.1's and B2.3 batch 1's checklists should be run together in the same
+  on-device session, since B2.3 batch 1 depends on B2.1's component
+  actually working correctly.
+- Once both are confirmed working, next up per the B2.3+ batch order is
+  batch 2: the remaining segmented pills (ToPayScreen, PlanningScreen,
+  InsightsScreen, SavingsScreen, GroceriesScreen).
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -215,7 +276,7 @@ replaces prior functionality, it's a visual/interaction pass.
 |---|---|---|
 | B2.1 | Build one reusable "icon + label" component: icon-only by default; a quick tap OR a long-press reveals a small floating label with the word. Built once, used everywhere. | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. Wired into AccountsScreen's Cards/List toggle as a real test spot. ⏳ On-device testing (5-point checklist below) deferred — not yet run. |
 | B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | ✅ DONE. Full inventory + decisions recorded below under "B2.2 Audit Results." |
-| B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Each batch's screens are iconized, tested on-device, and checked off the audit list. |
+| B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Batch 1 (ReportsScreen's 9 report sub-tabs) is ✅ CODE-COMPLETE, `npx tsc --noEmit` clean, ⏳ on-device testing deferred. Remaining batches not yet started. |
 | B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | Bottom nav shows only 4 tabs + More on a real device; every previously-reachable tab is still reachable via More. |
 | B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. |
 
@@ -308,6 +369,11 @@ here on:
 - MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` — Cards/List view
   toggle buttons now use IconLabelHint as a real test spot for B2.1;
   behavior unchanged, plus tap/long-press now also shows a floating label.
+- MODIFIED: `mobile-app/src/screens/ReportsScreen.tsx` — the 9 report
+  sub-tab pills now render as icon-only circles using IconLabelHint
+  instead of text pills (B2.3 batch 1); `REPORT_TABS` array gained an
+  `icon` field per tab; `pillText`/`pillTextActive` styles are now unused
+  but left in place.
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
