@@ -613,24 +613,24 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
         </Text>
 
         <TouchableOpacity
-          style={styles.shortcutRow}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('Main', { screen: 'Settings' })}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.shortcutTitle}>Password &amp; Encryption Key</Text>
+  style={styles.shortcutRow}
+  activeOpacity={0.7}
+  onPress={() => navigation.navigate('Settings')}
+>
+  <View style={{ flex: 1 }}>
+    <Text style={styles.shortcutTitle}>Password & Encryption Key</Text>
             <Text style={styles.shortcutSub}>Change password and access your Secret Recovery Key</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.shortcutRow}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('Main', { screen: 'Settings' })}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.shortcutTitle}>Active Devices</Text>
+  style={styles.shortcutRow}
+  activeOpacity={0.7}
+  onPress={() => navigation.navigate('Settings')}
+>
+  <View style={{ flex: 1 }}>
+    <Text style={styles.shortcutTitle}>Active Devices</Text>
             <Text style={styles.shortcutSub}>View and sign out other devices logged into your account</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />

@@ -1,15 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
-import AccountsScreen from '../screens/AccountsScreen';
 import ToPayScreen from '../screens/ToPayScreen';
-import IncomeScreen from '../screens/IncomeScreen';
-import SavingsScreen from '../screens/SavingsScreen';
-import PlanningScreen from '../screens/PlanningScreen';
-import InsightsScreen from '../screens/InsightsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import MoreScreen from '../screens/MoreScreen';
 import { useTheme } from '../ThemeContext';
 const Tab = createBottomTabNavigator();
 type MainTabsProps = {
@@ -40,20 +36,45 @@ export default function MainTabs({ username, onLock, onSignOut, initialOpenBillI
         tabBarInactiveTintColor: colors.inkFaint,
       }}
     >
-      <Tab.Screen name="Home" options={{ tabBarButtonTestID: 'home-tab' }}>
+      <Tab.Screen
+        name="Home"
+        options={{
+          tabBarButtonTestID: 'home-tab',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+        }}
+      >
         {() => <HomeScreen username={username} onLock={onLock} />}
       </Tab.Screen>
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Accounts" component={AccountsScreen} />
-      <Tab.Screen name="To-Pay">
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="To-Pay"
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
+        }}
+      >
         {() => <ToPayScreen initialOpenBillId={initialOpenBillId} />}
       </Tab.Screen>
-      <Tab.Screen name="Planning" component={PlanningScreen} />
-      <Tab.Screen name="Transactions" component={TransactionsScreen} />
-      <Tab.Screen name="Insights" component={InsightsScreen} />
-      <Tab.Screen name="Income" component={IncomeScreen} />
-      <Tab.Screen name="Savings" component={SavingsScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarButtonTestID: 'settings-tab' }} />
+      <Tab.Screen
+        name="Transactions"
+        component={TransactionsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="swap-horizontal-outline" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="More"
+        component={MoreScreen}
+        options={{
+          tabBarButtonTestID: 'more-tab',
+          tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal" size={size} color={color} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }

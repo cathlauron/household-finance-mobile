@@ -8,6 +8,54 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Bottom nav redesign (5 core tabs + "More" screen)
+- Picked up the bottom nav redesign checkpoint (B2.X) — the last
+  unstarted item in Phase B Part 2 besides the "fewer words" pass.
+- Wrote 2 Antigravity investigation-only prompts before writing any
+  code: (1) confirmed the current 10-tab `MainTabs.tsx` structure, the
+  navigation library in use, whether any existing "list of sections,
+  tap to navigate" pattern already existed in the codebase to reuse
+  (none did, beyond ProfileScreen's own registration pattern), which
+  tabs are referenced elsewhere by route name (only Settings — 2 spots
+  in `ProfileScreen.tsx`, plus a Maestro test tapping `settings-tab`),
+  and whether the bottom tab bar had any icons at all yet (it didn't —
+  9pt text labels only); (2) a follow-up prompt to see `RootStack.tsx`'s
+  full content, confirm no `RootStackParamList`-equivalent type existed
+  yet, confirm `ProfileScreen`'s existing screen-registration pattern to
+  copy for the 6 new screens, get the real `change-password.yaml`
+  content, and confirm React Navigation's nested-tab-to-parent-stack
+  `navigate()` pattern is already proven working in this exact codebase
+  (Settings → Profile already does this today).
+- Design: moved Accounts, Income, Savings, Planning, Insights, and
+  Settings out of the bottom tab bar and registered them as regular
+  stack screens (same pattern ProfileScreen already used) reachable via
+  a new "More" tab. Home, Calendar, To-Pay, and Transactions stay as
+  the 4 always-visible core tabs, matching the original web app's own
+  `BOTTOM_NAV_CORE_TABS` decision (see `household-finance-app.html`).
+  Added real Ionicons icons to all 5 remaining tabs (Home, Calendar,
+  To-Pay, Transactions, More) for the first time — the bar had no icons
+  at all before this. `MoreScreen.tsx` (new file) is a simple tappable
+  list, matching the same row style already used elsewhere in the app.
+- Fixed the 2 outside references to the old Settings tab in
+  `ProfileScreen.tsx` (both swapped from
+  `navigation.navigate('Main', { screen: 'Settings' })` to
+  `navigation.navigate('Settings')`, now that Settings is a
+  parent-stack screen, not a nested tab) and updated
+  `change-password.yaml`'s 2 `tapOn: { id: "settings-tab" }` steps to
+  `tapOn: { id: "more-tab" }` followed by
+  `tapOn: { id: "more-settings-row" }`.
+- Gave the person 8 paste/replace edits across `RootStack.tsx` (new
+  imports, expanded `RootStackParamList` type, 6 new `<Stack.Screen>`
+  registrations), `MainTabs.tsx` (trimmed imports, 5 tabs with icons
+  replacing the old 10 plain-text tabs), a new `MoreScreen.tsx` file,
+  `ProfileScreen.tsx` (2 `onPress` fixes), and `change-password.yaml`
+  (2 step fixes).
+- `npx tsc --noEmit` run from `mobile-app\` after all 8 edits pasted —
+  clean, no errors.
+- On-device testing explicitly deferred — see ⚠️ Known issues and
+  ▶️ Next step. This is the second-to-last item in Phase B Part 2 —
+  only the general "fewer words" pass remains unstarted.
+
 ### Session — Loans schedule display, isStacked cleanup, and full saveModel try/catch sweep (Events, Goals, Groceries, Settings)
 - Picked up all 3 remaining items flagged in the second-sweep bug audit
   in one combined session: (1) LoansScreen's missing recurrence-detail
@@ -979,6 +1027,24 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 Everything below is CODE-COMPLETE and `npx tsc --noEmit` clean, but UNTESTED
 on a real device. This is the priority list for this file's first session.
 
+- **Bottom nav redesign — on-device testing deferred.** Code is
+  complete and `npx tsc --noEmit` clean: the bottom tab bar now shows
+  only 5 icons (Home, Calendar, To-Pay, Transactions, More) instead of
+  10 text tabs; Accounts, Income, Savings, Planning, Insights, and
+  Settings are reachable by tapping "More" then the relevant row. NOT
+  yet tested on a real device. When ready, check: (1) all 5 bottom-bar
+  icons render correctly and the active tab is visually distinct from
+  the inactive ones; (2) tapping "More" opens the new list screen with
+  all 6 rows (Accounts, Income, Savings, Planning, Insights, Settings),
+  each with its own icon, title, and subtitle; (3) tapping each of the
+  6 rows opens the correct screen, and that screen's back button
+  returns to the More list (not to a blank/wrong screen); (4) inside
+  Settings, tapping through to "Profile" still works exactly as before;
+  (5) from Profile, both "Password & Encryption Key" and "Active
+  Devices" still navigate to Settings correctly, landing there directly
+  (not stuck on the old tab-bar Settings that no longer exists); (6) the
+  change-password Maestro flow still passes end-to-end now that its two
+  `settings-tab` taps were replaced with `more-tab` → `more-settings-row`.
 - **Second-sweep bug audit — 6 bugs fixed, on-device testing
   deferred.** Code is complete and `npx tsc --noEmit` clean for all 6.
   When ready, check: (1) deleting an account from a legacy profile
@@ -1356,6 +1422,9 @@ on a real device. This is the priority list for this file's first session.
   neighboring pills when shown.
 
 ▶️ Next step
+- Test the bottom nav redesign on a real device — see the checklist
+  under ⚠️ Known issues above ("Bottom nav redesign"). Can be tested
+  independently of everything else queued up.
 - Test the 6 second-sweep bug-audit fixes on a real device — see the
   checklist under ⚠️ Known issues above ("Second-sweep bug audit").
   Can be tested independently of everything else queued up.
@@ -1407,13 +1476,16 @@ on a real device. This is the priority list for this file's first session.
 - B2.3 batch 4 (CollapsibleRow "Edit" + AccountsScreen "Collapse" →
   icon-only) is code-complete and `npx tsc --noEmit` clean, but not yet
   tested on-device — see its checklist above. This completes the full
-  B2.2 audit's ICONIZE list. With batches 1–4 and the character-cleanup
-  passes all done, the remaining Phase B Part 2 work is: (a) running the
-  full accumulated on-device testing pass across everything in this
-  sub-phase, and (b) the two checkpoints not yet started — the bottom
-  nav redesign (Home/Calendar/Transactions/To-Pay as core tabs, rest
-  under "More") and the general "fewer words" trimming pass. Whenever
-  ready to continue, pick one of those, or start the on-device pass.
+  B2.2 audit's ICONIZE list. The bottom nav redesign (Home/Calendar/
+  Transactions/To-Pay as core tabs, rest under "More") is now also
+  code-complete and `npx tsc --noEmit` clean — see its own checklist
+  above. With all of that done, the remaining Phase B Part 2 work is:
+  (a) running the full accumulated on-device testing pass across
+  everything in this sub-phase, and (b) the one checkpoint not yet
+  started — the general "fewer words" trimming pass. Whenever ready to
+  continue, start the wording pass (SettingsScreen is now a standalone
+  full-screen page again, a natural first target now that the nav
+  restructure that touched it is done) or run the on-device pass.
 
 🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
 Goal: reduce the app's reliance on text labels in favor of icons with a
@@ -1447,7 +1519,7 @@ replaces prior functionality, it's a visual/interaction pass.
 | B2.1 | Build one reusable "icon + label" component: icon-only by default; a quick tap OR a long-press reveals a small floating label with the word. Built once, used everywhere. | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. Wired into AccountsScreen's Cards/List toggle as a real test spot. ⏳ On-device testing (5-point checklist below) deferred — not yet run. |
 | B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | ✅ DONE. Full inventory + decisions recorded below under "B2.2 Audit Results." |
 | B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Batch 1 (ReportsScreen's 9 report sub-tabs) is ✅ CODE-COMPLETE, `npx tsc --noEmit` clean, ⏳ on-device testing deferred. Remaining batches not yet started. |
-| B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | Bottom nav shows only 4 tabs + More on a real device; every previously-reachable tab is still reachable via More. |
+| B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | ✅ CODE-COMPLETE, `npx tsc --noEmit` clean. ⏳ On-device testing deferred — not yet run. |
 | B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. |
 
 - Person may add more items to this sub-phase's list before B2.1 starts —
@@ -1940,6 +2012,38 @@ here on:
   additionally moved to try/catch/finally so `clearBusy` can no longer
   get stuck `true` on failure (Loans schedule display + saveModel sweep
   session).
+
+- MODIFIED: `mobile-app/src/navigation/RootStack.tsx` — added imports
+  for `AccountsScreen`, `IncomeScreen`, `SavingsScreen`,
+  `PlanningScreen`, `InsightsScreen`, `SettingsScreen`; expanded
+  `RootStackParamList` with 6 new route entries; added 6 new
+  `<Stack.Screen>` registrations (each with a `headerBackTitle` of
+  "More"), following the same pattern `Profile` already used (bottom
+  nav redesign session).
+- MODIFIED: `mobile-app/src/navigation/MainTabs.tsx` — trimmed imports
+  down to only the 4 core screens plus the new `MoreScreen`; removed
+  `AccountsScreen`/`IncomeScreen`/`SavingsScreen`/`PlanningScreen`/
+  `InsightsScreen`/`SettingsScreen` imports (now registered in
+  `RootStack.tsx` instead); the tab bar now registers only 5 tabs
+  (Home, Calendar, To-Pay, Transactions, More), each with a
+  `tabBarIcon` — the bar had no icons at all before this (bottom nav
+  redesign session).
+- NEW: `mobile-app/src/screens/MoreScreen.tsx` — a simple tappable
+  list of the 6 relocated sections (Accounts, Income, Savings,
+  Planning, Insights, Settings), each row showing an icon, title, and
+  one-line subtitle, navigating to the matching `RootStack.tsx` screen
+  on tap (bottom nav redesign session).
+- MODIFIED: `mobile-app/src/screens/ProfileScreen.tsx` — both
+  "Password & Encryption Key" and "Active Devices" shortcut rows now
+  call `navigation.navigate('Settings')` instead of
+  `navigation.navigate('Main', { screen: 'Settings' })`, since Settings
+  moved from a nested tab to a parent-stack screen (bottom nav redesign
+  session).
+- MODIFIED: `mobile-app/flows/change-password.yaml` — both
+  `tapOn: { id: "settings-tab" }` steps replaced with
+  `tapOn: { id: "more-tab" }` followed by
+  `tapOn: { id: "more-settings-row" }`, since Settings is no longer a
+  bottom-bar tab (bottom nav redesign session).
 
 📚 Older progress: PROGRESS2.md (Phase B build, B.1–B.14, now closed),
 PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).

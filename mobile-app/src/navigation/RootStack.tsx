@@ -2,11 +2,23 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabs from './MainTabs';
 import ProfileScreen from '../screens/ProfileScreen';
+import AccountsScreen from '../screens/AccountsScreen';
+import IncomeScreen from '../screens/IncomeScreen';
+import SavingsScreen from '../screens/SavingsScreen';
+import PlanningScreen from '../screens/PlanningScreen';
+import InsightsScreen from '../screens/InsightsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import { useTheme } from '../ThemeContext';
 
 export type RootStackParamList = {
   Main: { openBillId?: string } | undefined;
   Profile: undefined;
+  Accounts: undefined;
+  Income: undefined;
+  Savings: undefined;
+  Planning: undefined;
+  Insights: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -52,6 +64,36 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
       >
         {() => <ProfileScreen onLock={onLock} onSignOut={onSignOut} />}
       </Stack.Screen>
+      <Stack.Screen
+        name="Accounts"
+        component={AccountsScreen}
+        options={{ title: 'Accounts', headerBackTitle: 'More' }}
+      />
+      <Stack.Screen
+        name="Income"
+        component={IncomeScreen}
+        options={{ title: 'Income', headerBackTitle: 'More' }}
+      />
+      <Stack.Screen
+        name="Savings"
+        component={SavingsScreen}
+        options={{ title: 'Savings', headerBackTitle: 'More' }}
+      />
+      <Stack.Screen
+        name="Planning"
+        component={PlanningScreen}
+        options={{ title: 'Planning', headerBackTitle: 'More' }}
+      />
+      <Stack.Screen
+        name="Insights"
+        component={InsightsScreen}
+        options={{ title: 'Insights', headerBackTitle: 'More' }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: 'Settings', headerBackTitle: 'More' }}
+      />
     </Stack.Navigator>
   );
 }
