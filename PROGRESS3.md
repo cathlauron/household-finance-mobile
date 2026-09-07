@@ -135,6 +135,47 @@ on a real device. This is the priority list for this file's first session.
 - B.12b (pension/Social Security offset, multi-account selector, possible
   scenario-comparison modal) remains an open, unscheduled item whenever the
   person wants to revisit it.
+- Phase B Part 2 (Iconization & Minimalism Pass) is now planned — see its
+  own section below. It starts once the on-device testing pass above is
+  wrapped up, or whenever the person is ready to switch focus.
+
+🎨 Phase B Part 2 — Iconization & Minimalism Pass (planned, not started)
+Goal: reduce the app's reliance on text labels in favor of icons with a
+tap/long-press-to-reveal label, and slim the bottom nav down to a small
+set of core tabs. This is a new sub-phase of Phase B, layered on top of
+the already-code-complete B.1–B.14 work above — nothing here removes or
+replaces prior functionality, it's a visual/interaction pass.
+
+📌 Decisions locked in for this sub-phase
+- Label reveal mechanic: BOTH a quick tap and a long-press on an icon
+  reveal its floating text label (fades/dismisses on its own or on next
+  tap elsewhere). One reusable component, built once, used everywhere.
+- Bottom nav core tabs (always visible): Home, Calendar, Transactions,
+  To-Pay. Everything else (Accounts, Savings, Income, Insights, Planning,
+  Settings) moves under "More." This mirrors a decision already made once
+  in the original web app's own code (search "MF7" in
+  household-finance-app.html for the original reasoning) and follows
+  standard UI/UX principles for bottom-nav design: Fitts's Law/thumb-zone
+  (put daily-use actions in the always-reachable row), Jakob's Law (match
+  the pattern users already know from Mint/YNAB/GCash/banking apps), and
+  Hick's Law (fewer always-visible choices = faster scanning). Open to
+  revisiting if on-device use shows a different tab deserves the core row
+  more than one of these four.
+- B2.2 (the icon audit) will be done together, screen by screen, in its
+  own dedicated session — not pre-drafted solo. Starting screen/order to
+  be picked when that session happens.
+
+▶️ Checkpoints (not yet started)
+| Checkpoint | What happens | Done when |
+|---|---|---|
+| B2.1 | Build one reusable "icon + label" component: icon-only by default; a quick tap OR a long-press reveals a small floating label with the word. Built once, used everywhere. | Component exists, confirmed working on a real device (both tap and long-press trigger it) on 2–3 different icons in different spots. |
+| B2.2 | Icon audit, done together in session — screen by screen, list every text label/button/section header that could become icon-only with the new component. Nothing changed yet, just a documented decision per item (iconize / keep as text / needs a new icon). | A written audit list exists in PROGRESS3.md, covering every screen. |
+| B2.3+ | Apply the iconization from the B2.2 list, in small batches (1–2 screens per checkpoint) — swap text labels for the new component, add any new icons needed (matching the existing app's icon style). | Each batch's screens are iconized, tested on-device, and checked off the audit list. |
+| B2.X | Bottom nav redesign — down to Home/Calendar/Transactions/To-Pay always visible, everything else under "More." | Bottom nav shows only 4 tabs + More on a real device; every previously-reachable tab is still reachable via More. |
+| B2.X | General "fewer words" pass — trim subtitles, hint text, and section descriptions wherever a shorter phrase or icon can say the same thing. | Each screen reviewed once; wordier bits trimmed/replaced without losing anything a first-time user needs to understand a field/button. |
+
+- Person may add more items to this sub-phase's list before B2.1 starts —
+  section will be finalized (and re-pasted here) once they say they're done.
 
 📁 Files in the repo
 No new files this session — see PROGRESS2.md's own "Files in the repo"
