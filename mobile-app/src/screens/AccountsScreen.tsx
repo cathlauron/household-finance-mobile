@@ -199,7 +199,7 @@ export default function AccountsScreen() {
       ...model,
       balanceAccounts: { ...model.balanceAccounts },
     };
-    updated.balanceAccounts[group] = updated.balanceAccounts[group].filter((a) => a.id !== id);
+    updated.balanceAccounts[group] = (updated.balanceAccounts[group] ?? []).filter((a) => a.id !== id);
     await saveModel(updated);
   }
 

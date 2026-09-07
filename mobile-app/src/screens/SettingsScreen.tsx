@@ -946,13 +946,13 @@ export default function SettingsScreen() {
                   key={label}
                   style={[
                     styles.pillButtonSmall,
-                    model.settings.weeklyRecapDay === idx && styles.pillButtonActive,
+                    (model.settings.weeklyRecapDay ?? 0) === idx && styles.pillButtonActive,
                   ]}
                   onPress={() => setWeeklyRecapDay(idx)}
                 >
                   <Text
                     style={
-                      model.settings.weeklyRecapDay === idx
+                      (model.settings.weeklyRecapDay ?? 0) === idx
                         ? styles.pillButtonTextActive
                         : styles.pillButtonText
                     }

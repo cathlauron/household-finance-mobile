@@ -97,7 +97,7 @@ export default function DashboardScreen() {
 
   const billsOwed = model.bills.reduce((sum, b) => sum + Math.max(0, outstandingBalance(b)), 0);
   const debtsOwed = model.debts.reduce((sum, d) => sum + Math.max(0, outstandingBalance(d)), 0);
-  const loansOwed = model.loans
+  const loansOwed = (model.loans || [])
     .filter((l) => l.direction !== 'lent')
     .reduce((sum, l) => sum + loanOutstandingBalance(l), 0);
   const totalOwed = billsOwed + debtsOwed + loansOwed;

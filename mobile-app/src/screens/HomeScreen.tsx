@@ -72,12 +72,4 @@ export default function HomeScreen({ username, onLock }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 100, alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: '600', marginBottom: 12, textAlign: 'center' },
-  sub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 30 },
-  pinBtn: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 14 },
-  pinBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  lockBtn: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 6 },
-  lockBtnText: { fontWeight: '600', fontSize: 14 },
-});
+

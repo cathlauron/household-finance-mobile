@@ -73,11 +73,7 @@ function sortGoals(goals: SavingsGoal[]): SavingsGoal[] {
 // by 12. One-time/custom bills aren't counted — there's no reliable "typical month" figure
 // for those. This never overwrites a saved value; it's only ever shown as a tappable
 // suggestion the person can choose to accept.
-function billLatestCycleAmount(bill: Bill): number {
-  if (!bill.cycles || bill.cycles.length === 0) return 0;
-  const last = bill.cycles[bill.cycles.length - 1];
-  return typeof last.amountDue === 'number' ? last.amountDue : 0;
-}
+
 
 function incomeSourceMonthlyAmount(source: IncomeSource): number {
   const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
@@ -341,12 +337,18 @@ export default function SavingsScreen() {
     const updated: HouseholdModel = {
       ...model,
       savingsGoals: model.savingsGoals.filter((g) => g.id !== id),
+      events: (model.events || []).map((ev) =>
+        ev.savingsGoalId === id ? { ...ev, savingsGoalId: undefined, trackInSavings: false } : ev
+      ),
+      travel: (model.travel || []).map((trip) =>
+        trip.savingsGoalId === id ? { ...trip, savingsGoalId: undefined, trackInSavings: false } : trip
+      ),
     };
     setSaving(true);
     try {
       await saveModel(updated);
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      Alert.alert('Failed to delete', 'Please try again.');
     } finally {
       setSaving(false);
     }
@@ -685,14 +687,23 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
   </View>
 
                 <TouchableOpacity
-                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
+                  style={[
+                    styles.saveButton,
+                    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+                    saving && { opacity: 0.6 },
+                  ]}
                   onPress={handleSaveEf}
                   disabled={saving}
                 >
                   {saving ? (
                     <ActivityIndicator color={colors.gold} size="small" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
+                    <>
+                      {efSaved && (
+                        <Ionicons name="checkmark" size={16} color={colors.navy2} style={{ marginRight: 6 }} />
+                      )}
+                      <Text style={styles.saveButtonText}>{efSaved ? 'Saved' : 'Save'}</Text>
+                    </>
                   )}
                 </TouchableOpacity>
         </ScrollView>

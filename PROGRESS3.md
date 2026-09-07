@@ -8,6 +8,90 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 
 📅 Session entries
 
+### Session — Second-sweep bug audit (6 more bugs fixed, 3 flagged for next session)
+- Wrote a second Antigravity investigation-only bug-audit prompt, this
+  time targeting categories the first sweep hadn't covered: silent
+  failures (empty/no-op catch blocks), dead/stale code, copy-paste
+  inconsistencies across similar screens, type-safety holes (`as any`,
+  non-null assertions, `@ts-ignore`), Firestore writes with no error
+  handling at all, and optional-model-field defaults missing on
+  legacy profiles.
+- Antigravity found 14 items. Reviewed each and sorted them: 6 were
+  fixed this session, 2 needed the person's input on the right
+  behavior before fixing (both resolved — see decisions below), 1
+  needs a further investigation prompt before it can be safely fixed
+  (deferred to next session), 1 is real but low-impact enough to skip
+  (an unused `isStacked` prop on `AccountCard` — harmless, not worth a
+  fix-and-verify cycle), and 1 (widespread missing try/catch on
+  `saveModel` across Events/Goals/Groceries/Settings, ~20 call sites)
+  was scoped as its own dedicated follow-up session rather than folded
+  into today's list, since it needs care across many call sites rather
+  than a quick patch.
+- Fixed this session:
+  1. **AccountsScreen crash on delete** (`AccountsScreen.tsx`) —
+     `performDeleteAccountById` filtered a balance-account group array
+     directly without a `?? []` fallback; an older/legacy profile
+     missing that group (e.g. investment/property/vehicle) would crash
+     on delete. Same root cause as the household-linking crash from
+     the first bug-audit pass, applied to a different spot.
+  2. **Dashboard crash on older profiles missing `loans`**
+     (`DashboardScreen.tsx`) — `model.loans.filter(...)` was called
+     directly with no fallback, unlike the very next line
+     (`model.savingsGoals || []`) which already defends against this.
+     Added the matching `(model.loans || [])` fallback.
+  3. **Swipe-to-delete errors invisible on Income/Savings/Transactions**
+     (`IncomeScreen.tsx`, `SavingsScreen.tsx`, `TransactionsScreen.tsx`)
+     — same pattern as the Debts fix below: `setErrorMsg` was writing to
+     a state variable only rendered inside the (already-closed) edit
+     modal, so a failed swipe-delete showed nothing to the user. All 3
+     now use `Alert.alert(...)` instead, matching what
+     `TransactionsScreen` already did correctly elsewhere in the same
+     file.
+  3b. **Same fix applied to Debts** (`DebtsScreen.tsx`) —
+     `performDeleteById`'s catch block also swapped from `setErrorMsg`
+     to `Alert.alert(...)`.
+  4. **Savings goal deletion could resurrect itself**
+     (`SavingsScreen.tsx`) — deleting a goal linked to an event or trip
+     left `event.savingsGoalId`/`trip.savingsGoalId` pointing at a goal
+     that no longer existed; the next edit to that event/trip would
+     silently re-create the deleted goal. `performDeleteGoalById` now
+     also clears `savingsGoalId` and turns off `trackInSavings` on any
+     event or trip that referenced the deleted goal (person confirmed:
+     turn tracking off entirely, rather than letting it silently
+     regenerate a new goal).
+  5. **Emergency Fund save button never showed "Saved"**
+     (`SavingsScreen.tsx`) — the `efSaved` state was declared and
+     correctly updated on save, but never actually read by the button's
+     JSX. Now shows a checkmark + "Saved" the same way the neighboring
+     FI Calculator button already does, copying its exact pattern.
+  6. **Two dead code blocks removed** — `billLatestCycleAmount()` in
+     `SavingsScreen.tsx` (leftover from before this calculation was
+     centralized into `balanceProjection.ts`) and an entire unused
+     `StyleSheet` block in `HomeScreen.tsx` (leftover from before that
+     screen was rewritten to use inline styles).
+- Design decisions made this session: (a) the 3 silent
+  background-save failures found in this sweep (password-change cloud
+  backup, account-recovery key re-wrap, household-unlink personal
+  backup) will get a visible warning added rather than being left to
+  fail silently — person confirmed silent data risk is worse than an
+  occasional extra message; not yet implemented, see ▶️ Next step; (b)
+  savings-goal deletion turns off `trackInSavings` on linked
+  events/trips rather than letting them silently regenerate the goal.
+- One item required a full function body before a safe fix could be
+  written (Income/Savings/Transactions' exact by-id delete functions,
+  plus the EF/FI save button JSX) — a follow-up investigation prompt
+  was used to get real, complete code before writing any of items 3–5
+  above, avoiding a repeat of the earlier session's mistaken
+  Travel-screen fix that assumed state that didn't exist.
+- `npx tsc --noEmit` run after all 6 fixes were pasted — clean, no
+  errors.
+- On-device testing explicitly deferred for all 6 — see ⚠️ Known
+  issues and ▶️ Next step. Still pending from this sweep: the 3
+  silent-failure warnings (design confirmed, not yet coded), one more
+  investigation prompt for Loans' missing recurrence-detail display,
+  and the wider Events/Goals/Groceries/Settings `saveModel` try/catch
+  sweep (scoped as its own future session).
+
 ### Session — Full-codebase bug audit (8 bugs found and fixed)
 - Wrote an Antigravity investigation-only bug-audit prompt covering money/
   date logic, React state bugs, null/undefined safety, Firestore/async
@@ -773,6 +857,36 @@ PROGRESS.md (original Phases 0–11) are closed/historical before that.
 Everything below is CODE-COMPLETE and `npx tsc --noEmit` clean, but UNTESTED
 on a real device. This is the priority list for this file's first session.
 
+- **Second-sweep bug audit — 6 bugs fixed, on-device testing
+  deferred.** Code is complete and `npx tsc --noEmit` clean for all 6.
+  When ready, check: (1) deleting an account from a legacy profile
+  missing an investment/property/vehicle group no longer crashes; (2)
+  opening Home/Dashboard on an older profile missing `loans` no longer
+  crashes; (3) swiping to delete an income source, savings goal, or
+  manual transaction that fails to save now shows a real popup instead
+  of failing silently; (4) deleting a savings goal that's linked to an
+  event or trip no longer causes that goal to reappear the next time
+  the linked event/trip is edited, and that event/trip's "auto-saving"
+  toggle is now off; (5) saving the Emergency Fund section on the
+  Savings screen shows a checkmark + "Saved" on the button, matching
+  the FI Calculator button beside it; (6) nothing to visually test for
+  the 2 dead-code removals (SavingsScreen's unused helper function,
+  HomeScreen's unused styles) — these have no behavior, just confirm
+  both screens still look and work exactly as before.
+- **Still pending from the second-sweep audit — not yet built.**
+  Three background-save operations (changing your password, recovering
+  your account with a recovery key, unlinking from a household) can
+  currently fail to save to the cloud without telling you — decided to
+  add a visible warning for all three, not yet implemented. Also
+  pending: LoansScreen never displays its own payment-schedule detail
+  in an expanded loan card, even though the formatting function for it
+  already exists in the file — needs one more investigation prompt to
+  find the exact insertion point before a fix can be written. Also
+  identified but intentionally deferred to its own future session: a
+  much larger cleanup of `saveModel()` calls across EventsScreen,
+  GoalsScreen, GroceriesScreen, and SettingsScreen (roughly 20 call
+  sites) that currently have no try/catch at all, unlike Bills/Debts/
+  Income/Loans which already guard every save.
 - **Full-codebase bug audit — 8 bugs fixed, on-device testing
   deferred.** Code is complete and `npx tsc --noEmit` clean for all 8.
   When ready, check: (1) linking two accounts where at least one
@@ -1108,6 +1222,21 @@ on a real device. This is the priority list for this file's first session.
   neighboring pills when shown.
 
 ▶️ Next step
+- Test the 6 second-sweep bug-audit fixes on a real device — see the
+  new checklist under ⚠️ Known issues above ("Second-sweep bug
+  audit"). Can be tested independently of everything else queued up.
+- Build the 3 background-save warnings from the second sweep (password
+  change, account recovery, household unlink) — design already
+  confirmed (show a visible warning rather than fail silently), just
+  needs the code written.
+- Get an investigation prompt for LoansScreen's missing recurrence-
+  detail display (the formatting function exists but is never called
+  in the expanded loan card) — flagged in the second sweep, not yet
+  investigated further.
+- Whenever there's a good block of time, run a dedicated session on
+  the wider `saveModel()` try/catch gap across EventsScreen,
+  GoalsScreen, GroceriesScreen, and SettingsScreen (~20 call sites) —
+  intentionally scoped as its own session rather than done piecemeal.
 - Test the 8 bug-audit fixes on a real device — see the new checklist
   under ⚠️ Known issues above ("Full-codebase bug audit"). These can
   be tested independently of the swipe-to-delete and iconization
@@ -1314,6 +1443,40 @@ EXPLICITLY OUT OF SCOPE FOR B2.2/B2.3:
 See PROGRESS2.md's own "Files in the repo" section for the full inventory
 through the end of Phase B. New/modified files tracked in this file from
 here on:
+- MODIFIED: `mobile-app/src/screens/AccountsScreen.tsx` —
+  `performDeleteAccountById` now falls back to `?? []` before filtering
+  a balance-account group, preventing a crash on legacy profiles
+  missing that group (second-sweep fix #1).
+- MODIFIED: `mobile-app/src/screens/DashboardScreen.tsx` —
+  `model.loans` now falls back to `|| []` before filtering, matching
+  the existing fallback already used one line below for
+  `savingsGoals`, preventing a crash on legacy profiles missing
+  `loans` (second-sweep fix #2).
+- MODIFIED: `mobile-app/src/screens/DebtsScreen.tsx` —
+  `performDeleteById`'s catch block now shows `Alert.alert(...)`
+  instead of writing to `errorMsg` (which was only ever rendered
+  inside the already-closed edit modal), so a failed swipe-delete is
+  now actually visible (second-sweep fix #3).
+- MODIFIED: `mobile-app/src/screens/IncomeScreen.tsx` — same
+  `Alert.alert(...)` fix as Debts, applied to
+  `performDeleteSourceById` (second-sweep fix #3).
+- MODIFIED: `mobile-app/src/screens/TransactionsScreen.tsx` — same
+  `Alert.alert(...)` fix as Debts, applied to `performDeleteTxnById`
+  (second-sweep fix #3).
+- MODIFIED: `mobile-app/src/screens/SavingsScreen.tsx` —
+  `performDeleteGoalById` now also clears `savingsGoalId` and sets
+  `trackInSavings: false` on any event or trip that referenced the
+  deleted goal, preventing the goal from silently reappearing on next
+  edit (second-sweep fix #4); catch block also swapped to
+  `Alert.alert(...)` (second-sweep fix #3); Emergency Fund save button
+  now reads `efSaved` and shows a checkmark + "Saved," matching the FI
+  Calculator button's existing pattern (second-sweep fix #5); removed
+  the unused `billLatestCycleAmount()` helper function, dead since the
+  baseline calculation was centralized into `balanceProjection.ts`
+  (second-sweep fix #6).
+- MODIFIED: `mobile-app/src/screens/HomeScreen.tsx` — removed an
+  entire unused `StyleSheet` block, dead since this screen was
+  rewritten to use inline styles (second-sweep fix #6).
 - MODIFIED: `mobile-app/src/mergeModels.ts` — `investment`/`property`/
   `vehicle` balance-account arrays now spread with `?? []` fallbacks,
   matching the pattern already used for other account types, preventing

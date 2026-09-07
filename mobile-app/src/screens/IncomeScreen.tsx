@@ -336,7 +336,7 @@ export default function IncomeScreen() {
     try {
       await saveModel(updated);
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      Alert.alert('Failed to delete', 'Please try again.');
     } finally {
       setSaving(false);
     }
