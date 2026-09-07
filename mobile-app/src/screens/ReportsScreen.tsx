@@ -12,18 +12,27 @@ import SubscriptionAuditReport from './reports/SubscriptionAuditReport';
 import TaxSummaryReport from './reports/TaxSummaryReport';
 import PaymentMethodsReport from './reports/PaymentMethodsReport';
 
+import IconLabelHint from '../components/IconLabelHint';
+import { Ionicons } from '@expo/vector-icons';
+
 type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person' | 'weekly' | 'merchant' | 'subscription' | 'tax' | 'paymentMethod';
 
-const REPORT_TABS: { id: ReportTab; label: string }[] = [
-  { id: 'monthly', label: 'Monthly Close-out' },
-  { id: 'yearly', label: 'Year in Review' },
-  { id: 'forecast', label: 'Cash-Flow Forecast' },
-  { id: 'person', label: 'Person Spending' },
-  { id: 'weekly', label: 'Weekly Digest' },
-  { id: 'merchant', label: 'Merchant Spending' },
-  { id: 'subscription', label: 'Subscription Audit' },
-  { id: 'tax', label: 'Tax Summary' },
-  { id: 'paymentMethod', label: 'Payment Methods' },
+type ReportTabItem = {
+  id: ReportTab;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
+const REPORT_TABS: ReportTabItem[] = [
+  { id: 'monthly', label: 'Monthly Close-out', icon: 'calendar-outline' },
+  { id: 'yearly', label: 'Year in Review', icon: 'trophy-outline' },
+  { id: 'forecast', label: 'Cash-Flow Forecast', icon: 'trending-up-outline' },
+  { id: 'person', label: 'Person Spending', icon: 'people-outline' },
+  { id: 'weekly', label: 'Weekly Digest', icon: 'newspaper-outline' },
+  { id: 'merchant', label: 'Merchant Spending', icon: 'storefront-outline' },
+  { id: 'subscription', label: 'Subscription Audit', icon: 'repeat-outline' },
+  { id: 'tax', label: 'Tax Summary', icon: 'receipt-outline' },
+  { id: 'paymentMethod', label: 'Payment Methods', icon: 'card-outline' },
 ];
 
 export default function ReportsScreen() {
@@ -53,15 +62,21 @@ export default function ReportsScreen() {
         style={styles.pillScroll}
         contentContainerStyle={styles.pillRow}
       >
-        {REPORT_TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[styles.pill, activeReport === tab.id && styles.pillActive]}
-            onPress={() => setActiveReport(tab.id)}
-          >
-            <Text style={[styles.pillText, activeReport === tab.id && styles.pillTextActive]}>{tab.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {REPORT_TABS.map((tab) => {
+          const isActive = activeReport === tab.id;
+          return (
+            <View key={tab.id} style={[styles.pill, isActive && styles.pillActive]}>
+              <IconLabelHint
+                name={tab.icon}
+                label={tab.label}
+                size={18}
+                color={isActive ? colors.navy1 : colors.inkDim}
+                position="above"
+                onPress={() => setActiveReport(tab.id)}
+              />
+            </View>
+          );
+        })}
       </ScrollView>
       {showTagToolbar && (
         <ScrollView
@@ -105,10 +120,8 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     container: { flex: 1, backgroundColor: colors.navy1 },
     pillScroll: { flexGrow: 0 },
     pillRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
-    pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.navy3 },
+    pill: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.navy3, alignItems: 'center', justifyContent: 'center' },
     pillActive: { backgroundColor: colors.gold },
-    pillText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    pillTextActive: { color: colors.navy1 },
     tagPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.navy2, borderWidth: 1, borderColor: colors.navy3 },
     tagPillActive: { backgroundColor: colors.gold, borderColor: colors.gold },
     tagPillText: { fontSize: 12, fontWeight: '600', color: colors.inkFaint },
