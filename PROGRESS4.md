@@ -13,6 +13,65 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Swipe-to-navigate on Bills-derived Transactions rows: implemented
+
+Implemented via Antigravity (three rounds of investigation-only prompts,
+no commits from the tool) the Bills half of the swipe-to-source-record
+design decided in the prior scoping session. Two extra investigation
+rounds were needed beyond the original scoping pass: one to confirm the
+real current contents of myPerson.ts (as the pattern to mirror),
+ToPayScreen.tsx, BillsScreen.tsx's guard/effect, the registered tab name
+('To-Pay'), and every existing `<SwipeableRow>` call site (11 total,
+confirmed none would break from an added optional prop); a second,
+narrower one to see SwipeableRow.tsx's full real render body (Reanimated/
+gesture-handler `Swipeable` + `renderRightActions`), which the first
+round hadn't captured, before writing any change to it.
+
+Confirmed reusing the existing notification-only `openBillId` deep-link
+chain (`navigate('Main', { openBillId })` + MainTabs' remount-by-key)
+would be unsafe from inside an already-open app: the key-based remount
+tears down and resets state on every bottom tab, not just To-Pay, and a
+second swipe on the same bill would silently no-op against
+`BillsScreen`'s existing `openedBillIdRef` guard, since the id wouldn't
+have changed. Built a separate, transient in-memory mechanism instead.
+
+Implemented (hand-pasted by the person after review):
+- New file, openBillRequest.ts — a small pub-sub module mirroring
+  myPerson.ts's `subscribeToX`/notify pattern, but not persisted to
+  AsyncStorage (it's a one-time "open this now" signal, not a saved
+  preference). Each `requestOpenBill(billId)` call carries an
+  incrementing `nonce`, specifically so a repeat swipe of the SAME bill
+  still fires a fresh, distinguishable request.
+- SwipeableRow.tsx — added an optional `viewAction` prop
+  (`{ label, icon, onPress }`). When set, `renderRightActions` renders a
+  gold non-destructive action button instead of the existing red delete
+  button. All 11 existing callers omit this prop and are unaffected.
+- BillsScreen.tsx — added an optional `openBillNonce` prop alongside the
+  existing `openBillId`. The auto-open guard (previously a plain
+  `openedBillIdRef.current === openBillId` ref check) now compares both
+  `{ id, nonce }` together, so it still skips a genuine duplicate
+  (notification deep-link path, `nonce` always `undefined`) but always
+  reopens on a fresh swipe request (`nonce` always incrementing).
+- ToPayScreen.tsx — subscribes to `openBillRequest` on mount; a fired
+  request switches `activeSubTab` to 'bills' (same as the existing
+  notification-deep-link effect) and forwards `{ billId, nonce }` down
+  to `BillsScreen` in place of `initialOpenBillId` when present.
+- TransactionsScreen.tsx — added `useNavigation()` (untyped — 'To-Pay'
+  is a sibling Tab.Screen name with no dedicated typed param list found,
+  so this deliberately isn't forced into `RootStackParamList`'s type) and
+  a `findBillIdForTransaction` helper that walks a bill-sourced row's
+  composite id (`'bill-' + cycle.id`) back to its real Bill by scanning
+  `model.bills` for a matching cycle id. Each transaction row's
+  `SwipeableRow` now gets `enabled` extended to also cover bill-sourced
+  rows (`isManual && swipeToDeleteEnabled) || Boolean(billId)`) and a
+  `viewAction` that calls `requestOpenBill(billId)` then
+  `navigation.navigate('To-Pay')` when the row is bill-sourced.
+
+`npx tsc --noEmit` clean (0 errors). Per the person's direction,
+on-device testing of this is being deferred, along with every other
+pending design-change item, until right before moving to Phase C rather
+than tested in isolation now.
+
 ### Session — Swipe-to-delete on derived Transactions rows: scoping only, phased decision made
 
 Decided approach for this design-change request: Option B — swiping a
@@ -1334,12 +1393,19 @@ pushed. Still needs a real on-device re-test to fully close out.
 - Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
   tappable date element at the top-center of Home that navigates to
   Calendar.
-- Enable swipe on Transactions' bill-derived rows: DECIDED (Option B —
-  navigate to the source Bill instead of allowing delete). Scoped, not
-  yet implemented — see session log above for the full investigation.
-  Next step: add `useNavigation()` to TransactionsScreen.tsx, resolve
-  the source Bill from a bill-sourced row's composite id, wire a swipe
-  action reusing the existing `openBillId` deep-link chain.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Enable swipe on
+  Transactions' bill-derived rows (Option B — navigate to the source
+  Bill instead of allowing delete). Reuses a new transient pub-sub
+  module (openBillRequest.ts) rather than the notification-only
+  `openBillId` deep-link chain, specifically so it works safely from
+  inside an already-open app and so a repeat swipe of the same bill
+  still works. See session log above for full detail. Needs a real
+  on-device test: swipe a bill-sourced transaction row, confirm a gold
+  "View Bill" action appears (not the red delete button), confirm
+  tapping it switches to the To-Pay tab with that bill's edit sheet
+  already open, and confirm swiping the SAME bill's row a second time
+  still opens it (not just the first time). Also confirm manual
+  transaction rows still swipe-to-delete exactly as before.
 - Enable the same swipe-to-source-record behavior on debt/loan/income/
   savings-derived rows: DECIDED same approach as Bills, but deferred as
   a separate later checkpoint, since none of those four screens have
@@ -1378,6 +1444,18 @@ See PROGRESS3.md's own "Files in the repo" section for the full inventory
 through the end of Phase B Part 2 (B2.1–B2.3 batch 4, bottom nav redesign,
 SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass). New/modified files
 from here on will be tracked fresh in this file.
+
+- src/openBillRequest.ts — NEW. Transient (non-persisted) pub-sub module
+  signaling "open this bill now" from TransactionsScreen to ToPayScreen/
+  BillsScreen, with a nonce so repeat requests for the same bill still fire.
+- src/components/SwipeableRow.tsx — MODIFIED. Added an optional
+  `viewAction` prop (non-destructive alternative to the delete button).
+- src/screens/BillsScreen.tsx — MODIFIED. Added an optional
+  `openBillNonce` prop; auto-open guard now compares `{ id, nonce }`.
+- src/screens/ToPayScreen.tsx — MODIFIED. Subscribes to openBillRequest.ts,
+  forwards `{ billId, nonce }` to BillsScreen.
+- src/screens/TransactionsScreen.tsx — MODIFIED. Added `useNavigation()`,
+  a bill-lookup helper, and a swipe `viewAction` on bill-sourced rows.
 
 ▶️ Next step
 - Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) both now have
@@ -1427,17 +1505,16 @@ from here on will be tracked fresh in this file.
   implemented and `npx tsc --noEmit` clean — fold into the same
   combined on-device pass: confirm both screens' pills render and
   switch sub-tabs correctly.
-- Swipe-to-navigate on Bills-derived Transactions rows is DECIDED and
-  SCOPED (see session log above) but not yet implemented — this is the
-  next design-change item to actually build: add `useNavigation()` to
-  TransactionsScreen.tsx, resolve the source Bill from a bill-sourced
-  row's composite id, and wire a swipe action reusing the existing
-  `openBillId` deep-link chain (RootStack → MainTabs → ToPayScreen →
-  BillsScreen) to jump straight to it.
+- Swipe-to-navigate on Bills-derived Transactions rows is IMPLEMENTED
+  and `npx tsc --noEmit` clean — fold into the same combined on-device
+  pass: swipe a bill-sourced row (confirm the gold "View Bill" action,
+  not delete), confirm it opens the right bill on the To-Pay tab, and
+  confirm a second swipe of the same bill still works.
 - The same swipe-to-navigate behavior for debt/loan/income/savings-
   derived rows is DECIDED (same approach) but deferred as its own
   separate, later checkpoint — none of those four screens have any
   deep-link wiring today, unlike Bills, so each needs that built first.
+  This is the next design-change item to scope/build once ready.
 - This closes out the rest of the design-change request list surfaced
   during the first on-device testing pass.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs

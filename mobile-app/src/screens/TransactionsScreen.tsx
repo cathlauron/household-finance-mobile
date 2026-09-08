@@ -14,10 +14,12 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
+import { requestOpenBill } from '../openBillRequest';
 import { formatPeso } from '../balanceProjection';
 import {
   buildTransactionsList,
@@ -85,9 +87,19 @@ function amountColor(direction: string): string {
   return '#e5484d';
 }
 
+// Bill-sourced TransactionEntry ids are built as 'bill-' + cycle.id
+// (see transactions.ts). This walks that back to the real Bill it came
+// from, so a swipe on the row can jump straight to it.
+function findBillIdForTransaction(model: HouseholdModel, txnId: string): string | null {
+  const cycleId = txnId.slice(5);
+  const bill = (model.bills || []).find((b) => (b.cycles || []).some((c) => c.id === cycleId));
+  return bill ? bill.id : null;
+}
+
 export default function TransactionsScreen() {
   const { colors } = useTheme();
   const { model, saveModel, username } = useData();
+  const navigation = useNavigation();
   const styles = makeStyles(colors);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
@@ -506,11 +518,24 @@ export default function TransactionsScreen() {
           const refundExpected = rawManual?.refundExpectedAmount;
           const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
           const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
+          const billId = t.source === 'bill' ? findBillIdForTransaction(model, t.id) : null;
           return (
             <SwipeableRow
               key={t.id}
-              enabled={isManual && Boolean(model.settings.swipeToDeleteEnabled)}
+              enabled={(isManual && Boolean(model.settings.swipeToDeleteEnabled)) || Boolean(billId)}
               onDelete={() => handleSwipeDelete(t.rawId as string)}
+              viewAction={
+                billId
+                  ? {
+                      label: 'View Bill',
+                      icon: 'receipt-outline',
+                      onPress: () => {
+                        requestOpenBill(billId);
+                        navigation.navigate('To-Pay' as never);
+                      },
+                    }
+                  : undefined
+              }
               testID={`txn-swipe-${t.id}`}
             >
             <CollapsibleRow

@@ -4,6 +4,7 @@ import { useTheme } from '../ThemeContext';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
+import { subscribeToOpenBillRequest, OpenBillRequest } from '../openBillRequest';
 
 import { Ionicons } from '@expo/vector-icons';
 
@@ -22,6 +23,7 @@ interface ToPayScreenProps {
 export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   const { colors } = useTheme();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('bills');
+  const [swipeOpenRequest, setSwipeOpenRequest] = useState<OpenBillRequest | null>(null);
 
   // B.14: a subscription-reminder deep-link always means "open the Bills
   // sub-tab", regardless of whichever sub-tab was last active.
@@ -30,6 +32,17 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
       setActiveSubTab('bills');
     }
   }, [initialOpenBillId]);
+
+  // Swiping a Bill-sourced transaction on TransactionsScreen fires this —
+  // same "always land on Bills" behavior as the notification deep-link,
+  // but via a fresh in-memory request instead of a navigation param, so it
+  // works without remounting the tab bar and works on repeat swipes too.
+  useEffect(() => {
+    return subscribeToOpenBillRequest((request) => {
+      setSwipeOpenRequest(request);
+      setActiveSubTab('bills');
+    });
+  }, []);
   const styles = makeStyles(colors);
   return (
     <SafeAreaView style={styles.container}>
@@ -49,7 +62,12 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
         })}
       </View>
       <View style={styles.contentWrap}>
-        {activeSubTab === 'bills' && <BillsScreen openBillId={initialOpenBillId} />}
+        {activeSubTab === 'bills' && (
+          <BillsScreen
+            openBillId={swipeOpenRequest ? swipeOpenRequest.billId : initialOpenBillId}
+            openBillNonce={swipeOpenRequest ? swipeOpenRequest.nonce : undefined}
+          />
+        )}
         {activeSubTab === 'debts' && <DebtsScreen />}
         {activeSubTab === 'loans' && <LoansScreen />}
       </View>

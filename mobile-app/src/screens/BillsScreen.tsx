@@ -78,27 +78,37 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
 type BillsScreenProps = {
   openBillId?: string;
+  // Set only when this bill was requested via a swipe on TransactionsScreen
+  // (openBillRequest.ts) — increments every request, even for the same
+  // bill id, so the guard below can tell "same request, don't reopen" apart
+  // from "a fresh request for the same bill, please open it again."
+  openBillNonce?: number;
 };
 
-export default function BillsScreen({ openBillId }: BillsScreenProps = {}) {
+export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
-  // reached via the subscription-reminder deep link. Guarded with a ref
-  // (not state) so this only ever fires once per distinct openBillId value
-  // — without it, closing the sheet manually while the same openBillId is
-  // still set on the prop would cause it to immediately reopen.
-  const openedBillIdRef = useRef<string | undefined>(undefined);
+  // reached via the subscription-reminder deep link, or via a swipe-to-
+  // view request from Transactions. Guarded with a ref (not state) so
+  // this only fires once per distinct (id, nonce) pair — without it,
+  // closing the sheet manually while the same openBillId is still set on
+  // the prop would cause it to immediately reopen. openBillNonce is
+  // undefined for the notification deep-link path, so that path keeps its
+  // original "skip if same id" behavior; a swipe request always carries a
+  // fresh nonce, so it always reopens even for a repeat swipe of the same bill.
+  const openedBillRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
     if (!model || !openBillId) return;
-    if (openedBillIdRef.current === openBillId) return;
+    const prev = openedBillRef.current;
+    if (prev && prev.id === openBillId && prev.nonce === openBillNonce) return;
     const target = (model.bills || []).find((b) => b.id === openBillId);
     if (target) {
-      openedBillIdRef.current = openBillId;
+      openedBillRef.current = { id: openBillId, nonce: openBillNonce };
       openEditModal(target);
     }
-  }, [model, openBillId]);
+  }, [model, openBillId, openBillNonce]);
   const styles = makeStyles(colors);
 
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);

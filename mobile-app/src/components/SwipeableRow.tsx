@@ -9,9 +9,18 @@ export type SwipeableRowProps = {
   enabled: boolean;
   onDelete: () => void;
   testID?: string;
+  // Optional non-destructive action. When set, this renders INSTEAD of the
+  // delete button (e.g. jumping to a bill's own record can't happen through
+  // this same swipe as deleting it) — every existing caller that doesn't
+  // pass this keeps getting the plain delete button exactly as before.
+  viewAction?: {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    onPress: () => void;
+  };
 };
 
-export function SwipeableRow({ children, enabled, onDelete, testID }: SwipeableRowProps) {
+export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }: SwipeableRowProps) {
   const { colors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -25,6 +34,24 @@ export function SwipeableRow({ children, enabled, onDelete, testID }: SwipeableR
       outputRange: [0.6, 1],
       extrapolate: 'clamp',
     });
+    if (viewAction) {
+      return (
+        <TouchableOpacity
+          style={[styles.deleteAction, { backgroundColor: colors.gold }]}
+          activeOpacity={0.8}
+          onPress={() => {
+            swipeableRef.current?.close();
+            viewAction.onPress();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={viewAction.label}
+        >
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <Ionicons name={viewAction.icon} size={20} color="#fff" />
+          </Animated.View>
+        </TouchableOpacity>
+      );
+    }
     return (
       <TouchableOpacity
         style={[styles.deleteAction, { backgroundColor: colors.error }]}
