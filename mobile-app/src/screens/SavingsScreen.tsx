@@ -368,8 +368,10 @@ export default function SavingsScreen() {
   async function handleSaveEf() {
     if (!model) return;
     const current = calcInputsFromModel();
-    const expenses = efExpensesInput.trim() === '' ? '' : parseFloat(efExpensesInput);
-    const savings = efSavingsInput.trim() === '' ? '' : parseFloat(efSavingsInput);
+    const expensesRaw = (efExpensesInput ?? efExpensesDisplay).trim();
+    const savingsRaw = (efSavingsInput ?? efSavingsDisplay).trim();
+    const expenses = expensesRaw === '' ? '' : parseFloat(expensesRaw);
+    const savings = savingsRaw === '' ? '' : parseFloat(savingsRaw);
     if (expenses !== '' && isNaN(expenses as number)) return;
     if (savings !== '' && isNaN(savings as number)) return;
     const updated: HouseholdModel = {

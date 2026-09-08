@@ -13,6 +13,44 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Emergency Fund "Saved" checkmark never appears (bug #5)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed a different root cause than bugs #3/#4's "no auto-save
+path" pattern — this one is an outright crash, not a persistence gap.
+`handleSaveEf` (SavingsScreen.tsx) calls `.trim()` directly on
+`efExpensesInput`/`efSavingsInput`, both of which are initialized to
+`null` and stay `null` unless the user has actively typed into that
+specific field during the current screen visit. Calling `.trim()` on
+`null` throws an uncaught `TypeError`, which aborts the function before
+`saveModel()` or `setEfSaved(true)` ever run — so tapping "Save" silently
+does nothing whenever either field hasn't been freshly typed into (e.g.
+using only the suggested-expenses button, or only editing one of the two
+fields). Confirmed the working FI Calculator equivalent
+(`handleSaveFi`) avoids this exact crash via a nullish-coalescing
+fallback to its own "display" variable (`fiExpensesInput ?? 
+fiExpensesDisplay`), and confirmed via `Select-String` that the matching
+`efExpensesDisplay`/`efSavingsDisplay` fallback variables already exist
+in this file (used to render the TextInputs' current values), just
+weren't being used inside `handleSaveEf`.
+
+Applied fix (hand-pasted by the person after review, as a find/replace
+snippet): rewrote the first two lines of `handleSaveEf` to read from
+`(efExpensesInput ?? efExpensesDisplay).trim()` /
+`(efSavingsInput ?? efSavingsDisplay).trim()` first, then parse those
+safe strings — mirroring `handleSaveFi`'s exact pattern. `npx tsc
+--noEmit` clean. Committed and pushed. Still needs a real on-device
+re-test — deliberately deferred (see bug #4's entry) until the rest of
+this bug-fixing pass is done, to test everything together in one pass.
+
+Flagged but NOT fixed this session (separate, lower-priority issue found
+along the way): the two Emergency Fund TextInputs have no
+`onBlur={handleSaveEf}` the way bug #4 added to all four FI fields — so
+this section likely has the same "only saves if you scroll down and tap
+Save" persistence gap bugs #3/#4 both had, independent of the crash just
+fixed. Not folded into this fix since it wasn't the reported symptom;
+tracked as a follow-up below.
+
 ### Session — FI Calculator non-functional on-device (bug #4)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -290,7 +328,25 @@ pushed. Still needs a real on-device re-test to fully close out.
    is deliberately deferring this until the rest of the current bug-
    fixing pass is done, to test everything together in one on-device
    pass.
-5. Emergency Fund "Saved" checkmark still doesn't appear after saving.
+5. ✅ FIXED (pending on-device re-test) — Emergency Fund "Saved"
+   checkmark never appears after saving. Root cause: `handleSaveEf`
+   called `.trim()` directly on `efExpensesInput`/`efSavingsInput`, which
+   are `null` unless the user typed into that specific field this visit
+   — throwing an uncaught crash that silently aborted the function before
+   `saveModel()` or `setEfSaved(true)` ever ran. Fixed by reading through
+   the existing `efExpensesDisplay`/`efSavingsDisplay` fallback strings
+   first (`efExpensesInput ?? efExpensesDisplay`), the same safe pattern
+   `handleSaveFi` already used. `npx tsc --noEmit` clean. STILL NEEDS: a
+   real on-device re-test (edit only one of the two EF fields, or use the
+   suggested-expenses button without typing anything, then tap Save and
+   confirm the checkmark appears instead of nothing happening) — deferred
+   along with bugs #1–4 until the rest of this pass is done.
+5b. NEW, found while fixing #5, not yet fixed — the two Emergency Fund
+    TextInputs have no `onBlur={handleSaveEf}` the way bug #4 added to
+    all four FI fields, so this section likely doesn't auto-save either
+    (same class of bug as #3/#4) independent of the crash just fixed in
+    #5. Needs its own quick investigation-confirm-then-fix pass, same
+    pattern as #4.
 6. None of the 3 promised background-save warnings (failed password-change
    cloud backup, failed account-recovery re-save, failed household-unlink
    personal backup) ever show on-device.
@@ -371,10 +427,11 @@ from here on will be tracked fresh in this file.
 - Work through the remaining real bugs found in the first on-device testing
   pass, one at a time, via the standard Antigravity/Copilot-investigates-
   first workflow — see the numbered list under ⚠️ Known issues above.
-  Bugs #1–4 are now code-complete pending on-device re-test (deliberately
+  Bugs #1–5 are now code-complete pending on-device re-test (deliberately
   batched — the person is testing all fixes together in one on-device pass
   once the remaining bugs below are also fixed, rather than one at a time).
-  Suggested order for what's left: (5) Emergency Fund "Saved" checkmark,
+  Suggested order for what's left: (5b) Emergency Fund fields likely
+  missing onBlur auto-save (same pattern as #4, found while fixing #5),
   (6) background-save warnings, (7) Events/Goals/Groceries/Settings silent
   save failures, (8) Travel checklist-delete expense cleanup, (9) the
   remaining smaller bugs (biometric capture, PIN-off loading indicator,
