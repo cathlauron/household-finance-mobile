@@ -101,7 +101,7 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
                 <Text style={styles.personTotal}>{formatPeso(g.total)}</Text>
               </View>
               <Text style={styles.personShareNote}>
-                {pct}% of total spending{g.total === 0 ? ' — nothing logged yet' : ''}
+                {pct}% of total spending
               </Text>
               {g.categories.length > 0 && (
                 <View style={styles.categoryList}>
@@ -135,9 +135,7 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
       )}
 
       <Text style={styles.footerNote}>
-        "Shared" covers bills, debts, loans, and manual transactions not assigned to one person —
-        which right now is most manual entries, since there's no per-transaction "who's this for"
-        picker yet.
+        "Shared" covers bills, debts, loans, and unassigned transactions.
       </Text>
     </ScrollView>
   );

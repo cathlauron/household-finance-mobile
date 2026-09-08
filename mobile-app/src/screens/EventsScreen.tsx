@@ -217,7 +217,7 @@ export default function EventsScreen() {
       if (monthInput.trim() !== '') {
         const m = parseInt(monthInput, 10);
         if (isNaN(m) || m < 1 || m > 12) {
-          setErrorMsg('Month must be a number from 1 to 12.');
+          setErrorMsg('Enter a month between 1 and 12.');
           return;
         }
         month = m;
@@ -225,14 +225,14 @@ export default function EventsScreen() {
       if (dayInput.trim() !== '') {
         const d = parseInt(dayInput, 10);
         if (isNaN(d) || d < 1 || d > 31) {
-          setErrorMsg('Day must be a number from 1 to 31.');
+          setErrorMsg('Enter a day between 1 and 31.');
           return;
         }
         day = d;
       }
     } else {
       if (!isValidDateOrEmpty(onetimeDateInput)) {
-        setErrorMsg('Date must be in YYYY-MM-DD format, or left blank.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       onetimeDate = onetimeDateInput.trim();
@@ -242,7 +242,7 @@ export default function EventsScreen() {
     if (budgetInput.trim() !== '') {
       const n = parseFloat(budgetInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid budget, or leave it blank.');
+        setErrorMsg('Enter a valid budget.');
         return;
       }
       budget = n;
@@ -368,7 +368,7 @@ export default function EventsScreen() {
   function handleSwipeDeleteEvent(ev: EventItem) {
     Alert.alert(
       'Delete this event?',
-      'This will permanently delete the event, along with any linked savings goal or logged expense. This cannot be undone.',
+      'Deletes the event and any linked savings goal or expense. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteEventById(ev.id) },
@@ -380,11 +380,11 @@ export default function EventsScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionIntro}>
-          Birthdays, anniversaries, whatever's worth planning for — each year, or a one-time date.
+          Track recurring annual dates or one-time events.
         </Text>
 
         {events.length === 0 && (
-          <Text style={styles.emptyText}>No events yet. Add your first one below.</Text>
+          <Text style={styles.emptyText}>No events yet.</Text>
         )}
 
         {events.map((ev) => (
@@ -550,7 +550,7 @@ export default function EventsScreen() {
                       trackInSavingsInput && styles.trackSavingsToggleTextActive,
                     ]}
                   >
-                    {trackInSavingsInput ? 'Auto-saving to Savings tab' : 'Not tracked in Savings tab'}
+                    {trackInSavingsInput ? 'Auto-save to Savings' : "Don't track in Savings"}
                   </Text>
                 </TouchableOpacity>
 
@@ -579,7 +579,7 @@ export default function EventsScreen() {
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteEvent}>
-                    <Text style={styles.deleteButtonText}>Delete this event</Text>
+                    <Text style={styles.deleteButtonText}>Delete event</Text>
                   </TouchableOpacity>
                 )}
 

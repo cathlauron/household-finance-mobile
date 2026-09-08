@@ -55,7 +55,7 @@ function monthlyEquivalent(bill: Bill): number {
 
 function recurLabel(bill: Bill): string {
   if (bill.recurringType === 'annual') return 'Annual';
-  if (bill.recurringType === 'custom') return 'Custom (treated as monthly)';
+  if (bill.recurringType === 'custom') return 'Custom (monthly est.)';
   return 'Monthly';
 }
 
@@ -91,8 +91,7 @@ export default function SubscriptionAuditReport() {
       <View style={styles.card}>
         <Text style={styles.cardLabel}>Subscription Audit</Text>
         <Text style={styles.subLabel}>
-          Every recurring bill — monthly, annual, or custom — ranked by monthly-equivalent cost.
-          One-time bills aren't included, since they're not ongoing charges.
+          Recurring bills ranked by monthly-equivalent cost.
         </Text>
         <View style={styles.statRow}>
           <View style={styles.statBox}>
@@ -110,8 +109,7 @@ export default function SubscriptionAuditReport() {
         <Text style={styles.cardLabel}>Recurring bills ({rows.length})</Text>
         {rows.length === 0 ? (
           <Text style={styles.emptyText}>
-            No recurring bills with a logged amount yet — log a payment cycle on a monthly or
-            annual bill to see it here.
+            No recurring bills with a logged amount yet.
           </Text>
         ) : (
           rows.map((r) => {

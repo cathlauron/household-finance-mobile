@@ -77,7 +77,7 @@ export default function PaymentMethodPicker({ value, onChange, debitAccounts, cr
           </View>
         ) : (
           <Text style={styles.emptyHint}>
-            No {value.type} accounts added yet — add one under Accounts first.
+            No {value.type} accounts added yet.
           </Text>
         )
       )}

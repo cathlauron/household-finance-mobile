@@ -32,7 +32,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
       onDone();
     } catch (e) {
       setBusy(false);
-      setError('Something went wrong saving your PIN. Please try again.');
+      setError('Could not save PIN. Please try again.');
     }
   }
 
@@ -41,8 +41,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
       <Text style={styles.eyebrow}>QUICK UNLOCK</Text>
       <Text style={styles.title}>Set a PIN</Text>
       <Text style={styles.sub}>
-        A short PIN just for re-opening the app quickly — your real password is always the
-        backup if you ever need it.
+        A short PIN for quick unlock. Your password remains your backup.
       </Text>
 
       <Text style={styles.label}>Choose a PIN (4–6 digits)</Text>

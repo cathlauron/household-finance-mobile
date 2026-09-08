@@ -157,17 +157,15 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
 
             {loans.length === 0 ? (
               <Text style={styles.emptyText}>
-                No outstanding borrowed loans to simulate — add a loan or check back once one has a
-                balance remaining.
+                No outstanding borrowed loans to simulate.
               </Text>
             ) : (
               <>
                 <Text style={styles.sub}>
-                  Compares paying smallest-balance-first (Snowball) against highest-interest-first
-                  (Avalanche), with any extra you can put toward it each month.
+                  Compare paying smallest balance first (Snowball) vs highest interest first (Avalanche).
                 </Text>
 
-                <Text style={styles.inputLabel}>Extra payment per month (optional)</Text>
+                <Text style={styles.inputLabel}>Extra monthly payment (optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
@@ -179,9 +177,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
 
                 {usedFallback && (
                   <Text style={styles.hintText}>
-                    Some loans are missing an interest rate or expected payment — this estimate
-                    assumes 0% and a small default payment for those, so treat it as rough. Add the
-                    missing details on those loans for a more accurate result.
+                    Some loans are missing interest rates or payments. Defaults of 0% and 2% of balance are assumed.
                   </Text>
                 )}
 
@@ -219,7 +215,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
                 {snowball && avalanche && Math.abs(snowball.totalInterest - avalanche.totalInterest) > 1 && (
                   <Text style={styles.hintText}>
                     Avalanche saves {formatPeso(Math.abs(snowball.totalInterest - avalanche.totalInterest))}{' '}
-                    in interest compared to Snowball here.
+                    in interest compared to Snowball.
                   </Text>
                 )}
 

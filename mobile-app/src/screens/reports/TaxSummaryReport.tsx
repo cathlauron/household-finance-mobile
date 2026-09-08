@@ -123,9 +123,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
       </View>
 
       <Text style={styles.introNote}>
-        A plain summary of income, spending by category, interest &amp; fees, and savings for {year} —
-        handy to have on hand at tax time. This isn't tax advice or a finished tax form, just your own
-        numbers organized in one place.
+        Summary of income, category spending, interest &amp; fees, and savings for {year}. Not tax advice.
       </Text>
 
       <View style={styles.statGrid}>
@@ -148,14 +146,12 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
         <View style={styles.feesBanner}>
           <View>
             <Text style={styles.feesBannerLabel}>{year}</Text>
-            <Text style={styles.feesBannerNote}>Loan late fees + debt fees you've logged</Text>
+            <Text style={styles.feesBannerNote}>Loan late fees and logged debt fees</Text>
           </View>
           <Text style={[styles.feesBannerAmount, { color: colors.orange }]}>{formatPeso(interestFees)}</Text>
         </View>
         <Text style={styles.footerNote}>
-          Includes loan payments logged higher than their expected amount, plus any "Fees included in this
-          payment" amount logged on a paid debt cycle. If you didn't log fees on a debt payment, they won't
-          show up here — this isn't automatic.
+          Includes loan late fees and fees logged on debt payments. Unlogged fees are not included.
         </Text>
       </View>
 

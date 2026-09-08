@@ -153,10 +153,10 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(false); setError(''); }}>
-            <Text style={styles.ghostBtnText}>Use Quick PIN / Biometrics instead</Text>
+            <Text style={styles.ghostBtnText}>Use PIN or biometrics</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.ghostBtn, { marginTop: 4 }]} onPress={onSignOut}>
-            <Text style={[styles.ghostBtnText, { color: '#78716C' }]}>Sign in to a different account</Text>
+            <Text style={[styles.ghostBtnText, { color: '#78716C' }]}>Sign in to another account</Text>
           </TouchableOpacity>
         </>
       )}
@@ -165,8 +165,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
         <>
           <Text style={styles.sub}>
             {hasPin === false
-              ? `Unlock with ${biometricLabel} or enter your password.`
-              : 'Enter your PIN to keep going, right where you left off.'}
+              ? `Unlock with ${biometricLabel} or enter password.`
+              : 'Enter your PIN to unlock.'}
           </Text>
 
           {hasPin !== false && (

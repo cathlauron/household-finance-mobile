@@ -117,7 +117,7 @@ export default function DashboardScreen() {
       <View style={styles.card}>
         <Text style={styles.cardLabel}>Total Balance</Text>
         <Text style={styles.bigAmount}>{formatPeso(totalBalance)}</Text>
-        <Text style={styles.cardNote}>Across Cash, Debit &amp; Credit accounts</Text>
+        <Text style={styles.cardNote}>Cash, Debit &amp; Credit accounts</Text>
       </View>
 
       {/* This month */}
@@ -156,7 +156,7 @@ export default function DashboardScreen() {
 
       {/* Due soon */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Due in the Next 14 Days</Text>
+        <Text style={styles.cardLabel}>Due Next 14 Days</Text>
         {dueSoon.length === 0 ? (
           <Text style={styles.emptyText}>Nothing due soon.</Text>
         ) : (
@@ -182,7 +182,7 @@ export default function DashboardScreen() {
         ) : (
           <>
             <Text style={styles.cardNote}>
-              {formatPeso(totalSaved)} saved of {formatPeso(totalTarget)} total
+              {formatPeso(totalSaved)} of {formatPeso(totalTarget)} saved
             </Text>
             {goals.map((g) => {
               const target = typeof g.targetAmount === 'number' ? g.targetAmount : 0;

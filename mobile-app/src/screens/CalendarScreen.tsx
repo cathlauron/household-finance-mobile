@@ -220,7 +220,7 @@ export default function CalendarScreen() {
                 ))}
               </ScrollView>
             ) : (
-              <Text style={styles.modalSubtitle}>Nothing due on this day.</Text>
+              <Text style={styles.modalSubtitle}>Nothing due on this date.</Text>
             )}
             <TouchableOpacity onPress={closeDayModal} style={styles.modalCloseButton}>
               <Text style={styles.modalCloseButtonText}>Close</Text>

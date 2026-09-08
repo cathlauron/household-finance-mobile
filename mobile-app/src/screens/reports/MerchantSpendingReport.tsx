@@ -77,7 +77,7 @@ export default function MerchantSpendingReport({ activeTag }: Props = {}) {
 
       {merchants.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.emptyText}>Nothing to show yet — log a bill payment or manual transaction to see it here.</Text>
+          <Text style={styles.emptyText}>No merchant spending logged yet.</Text>
         </View>
       ) : (
         merchants.map((m) => {

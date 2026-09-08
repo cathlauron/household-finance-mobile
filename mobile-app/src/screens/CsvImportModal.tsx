@@ -143,7 +143,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       const asset = picked.assets[0];
       const nameLower = (asset.name || '').toLowerCase();
       if (!nameLower.endsWith('.csv') && !nameLower.endsWith('.txt')) {
-        setErrorMsg("That doesn't look like a CSV file (it should end in .csv). If you exported from a spreadsheet app, make sure you chose \"CSV\" as the export format, not Excel (.xlsx).");
+        setErrorMsg('Select a CSV file ending in .csv.');
         return;
       }
       setLoading(true);
@@ -157,7 +157,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
         setColumnAssignments(defaultAssignments(parsed.headers, parsed.detectedMapping));
       }
     } catch (e) {
-      setErrorMsg("Couldn't read that file. Make sure it's a plain CSV file, then try again.");
+      setErrorMsg("Couldn't read file. Make sure it's a valid CSV.");
     } finally {
       setLoading(false);
       setAutoLockSuppressed(false);
@@ -171,7 +171,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
 
   async function handleConfirmImport() {
     if (!model || !previewRows || importableRows.length === 0) {
-      setErrorMsg('There are no rows ready to import after your review.');
+      setErrorMsg('No rows ready to import.');
       return;
     }
     setImporting(true);
@@ -196,7 +196,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       setColumnAssignments({});
       setExcludedDuplicateRows(new Set());
     } catch (e) {
-      setErrorMsg("Something went wrong saving these — please try again.");
+      setErrorMsg('Failed to save. Please try again.');
     } finally {
       setImporting(false);
     }
@@ -209,17 +209,14 @@ export default function CsvImportModal({ visible, onClose }: Props) {
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Import from CSV</Text>
             <Text style={styles.helpText}>
-              Pick a CSV file with a header row containing date, label, amount, and
-              (optionally) direction columns. Dates can be YYYY-MM-DD or MM/DD/YYYY.
-              Direction can be in, out, or saving — left blank, a row is treated as
-              money out.
+              Select a CSV with date, label, amount, and optional direction columns. Dates can be YYYY-MM-DD or MM/DD/YYYY; direction is in, out, or saving (blank defaults to out).
             </Text>
 
             {!doneMsg && (
               <TouchableOpacity style={styles.pickButton} onPress={handlePickFile} disabled={loading}>
                 <Ionicons name="document-text-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
                 <Text style={styles.pickButtonText}>
-                  {fileName ? `Change file (${fileName})` : 'Choose a CSV file'}
+                  {fileName ? `Change file (${fileName})` : 'Choose CSV file'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -295,7 +292,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
                                 <View style={[styles.checkbox, !excluded && styles.checkboxChecked]}>
                                   {!excluded && <Ionicons name="checkmark" size={12} color={colors.navy2} />}
                                 </View>
-                                <Text style={styles.checkboxText}>{excluded ? 'Include in import' : 'Exclude from import'}</Text>
+                                <Text style={styles.checkboxText}>{excluded ? 'Include' : 'Exclude'}</Text>
                               </TouchableOpacity>
                             )}
                           </View>

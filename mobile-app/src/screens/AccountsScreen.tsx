@@ -121,7 +121,7 @@ export default function AccountsScreen() {
     if (!activeGroup || !model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Give this account a name.');
+      setErrorMsg('Enter an account name.');
       return;
     }
     const parsedAmount = amountInput.trim() === '' ? 0 : parseFloat(amountInput);
@@ -184,7 +184,7 @@ export default function AccountsScreen() {
   function handleDelete() {
     Alert.alert(
       'Remove this account?',
-      'This will permanently remove the account and its balance. This cannot be undone.',
+      'Removes the account and its balance. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove', style: 'destructive', onPress: performDelete },
@@ -205,7 +205,7 @@ export default function AccountsScreen() {
   function handleSwipeDeleteAccount(group: AccountGroup, account: BalanceAccountEntry) {
     Alert.alert(
       'Remove this account?',
-      'This will permanently remove the account and its balance. This cannot be undone.',
+      'Removes the account and its balance. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -407,7 +407,7 @@ export default function AccountsScreen() {
 
         {editingId && (
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Remove this account</Text>
+            <Text style={styles.deleteButtonText}>Remove account</Text>
           </TouchableOpacity>
         )}
 

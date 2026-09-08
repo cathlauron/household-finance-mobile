@@ -130,7 +130,7 @@ export default function PaymentMethodsReport() {
       {methods.length === 0 ? (
         <View style={styles.card}>
           <Text style={styles.emptyText}>
-            Nothing to show yet — pay a bill, debt, or loan (or log a manual transaction) with a payment method set.
+            No payments with a payment method set yet.
           </Text>
         </View>
       ) : (
@@ -166,7 +166,7 @@ export default function PaymentMethodsReport() {
 
       {methods.some((m) => m.key === 'unset') && (
         <Text style={styles.footnote}>
-          "Not set" covers payments logged before payment methods existed, or where none was picked.
+          "Not set" covers payments without a chosen payment method.
         </Text>
       )}
     </ScrollView>

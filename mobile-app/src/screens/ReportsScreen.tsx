@@ -126,7 +126,7 @@ export default function ReportsScreen() {
       {visibleTabs.length === 0 && (
         <View style={styles.emptyStateWrap}>
           <Text style={styles.emptyStateText}>
-            No reports are currently shown. Tap the icon above to turn some back on.
+            No reports shown. Tap options above to enable reports.
           </Text>
         </View>
       )}

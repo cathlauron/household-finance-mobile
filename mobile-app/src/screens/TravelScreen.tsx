@@ -224,14 +224,14 @@ export default function TravelScreen() {
   function handleAddChecklistItem() {
     const title = itemTitleInput.trim();
     if (!title) {
-      setErrorMsg('Enter a checklist item title.');
+      setErrorMsg('Enter an item title.');
       return;
     }
     let cost: number | '' = '';
     if (itemCostInput.trim() !== '') {
       const n = parseFloat(itemCostInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid cost, or leave it blank.');
+        setErrorMsg('Enter a valid cost.');
         return;
       }
       cost = n;
@@ -297,7 +297,7 @@ export default function TravelScreen() {
       return;
     }
     if (!isValidDateOrEmpty(startDateInput) || !isValidDateOrEmpty(endDateInput)) {
-      setErrorMsg('Dates must be in YYYY-MM-DD format, or left blank.');
+      setErrorMsg('Enter dates as YYYY-MM-DD.');
       return;
     }
 
@@ -386,7 +386,7 @@ export default function TravelScreen() {
   function handleSwipeDeleteTrip(trip: TravelTrip) {
     Alert.alert(
       'Delete this trip?',
-      'This will permanently delete the trip, along with any linked savings goal or logged expenses. This cannot be undone.',
+      'Deletes the trip and any linked savings goal or expenses. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteTripById(trip.id) },
@@ -398,12 +398,11 @@ export default function TravelScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionIntro}>
-          Plan the trip, break it into checklist items with a rough cost each, and see the
-          committed budget build itself as you check things off.
+          Add checklist items with estimated costs to track your trip budget.
         </Text>
 
         {trips.length === 0 && (
-          <Text style={styles.emptyText}>No trips yet. Add your first one below.</Text>
+          <Text style={styles.emptyText}>No trips yet.</Text>
         )}
 
         {trips.map((trip) => {
@@ -504,8 +503,8 @@ export default function TravelScreen() {
                 </TouchableOpacity>
                 <Text style={styles.trackHint}>
                   {trackInSavings
-                    ? "Budget is the sum of every checklist item, and stays synced to a matching savings goal."
-                    : "Turn this on to automatically create and keep a savings goal in sync with this trip's full checklist total."}
+                    ? 'Synced to a matching savings goal.'
+                    : 'Automatically syncs a savings goal with this trip budget.'}
                 </Text>
 
                 <Text style={styles.checklistHeading}>Checklist</Text>
@@ -558,18 +557,18 @@ export default function TravelScreen() {
                   onChangeText={setItemCostInput}
                 />
                 <TouchableOpacity style={styles.addItemButton} onPress={handleAddChecklistItem}>
-                  <Text style={styles.addItemButtonText}>+ Add checklist item</Text>
+                  <Text style={styles.addItemButtonText}>+ Add item</Text>
                 </TouchableOpacity>
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
                 <TouchableOpacity style={styles.saveButton} onPress={handleSaveTrip}>
-                  <Text style={styles.saveButtonText}>Save trip</Text>
+                  <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteTrip}>
-                    <Text style={styles.deleteButtonText}>Delete this trip</Text>
+                    <Text style={styles.deleteButtonText}>Delete trip</Text>
                   </TouchableOpacity>
                 )}
 

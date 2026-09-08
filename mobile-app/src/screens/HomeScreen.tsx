@@ -78,7 +78,7 @@ export default function HomeScreen({ username, onLock }: Props) {
             {formatPeso(leftToSpend.amount)}
           </Text>
           <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: 4 }}>
-            {leftToSpendStatus.label} · {leftToSpend.basis === 'payday' ? 'until your next payday' : 'through end of month'}
+            {leftToSpendStatus.label} · {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
           </Text>
         </View>
       )}

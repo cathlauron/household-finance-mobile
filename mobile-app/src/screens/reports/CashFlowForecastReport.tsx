@@ -119,15 +119,14 @@ export default function CashFlowForecastReport() {
       {lowestPoint.balance < 0 && (
         <View style={styles.warningCard}>
           <Text style={styles.warningText}>
-            Balance dips to {formatPeso(lowestPoint.balance)} around {shortDate(lowestPoint.date)} — plan
-            around this if you can.
+            Balance dips to {formatPeso(lowestPoint.balance)} around {shortDate(lowestPoint.date)}.
           </Text>
         </View>
       )}
 
       <View style={styles.card}>
         <Text style={styles.cardLabel}>Projected Balance</Text>
-        <Text style={styles.cardSub}>Day by day, over the next {days} days</Text>
+        <Text style={styles.cardSub}>Next {days} days</Text>
         <View style={styles.chartRow}>
           {sampled.map((p, idx) => (
             <View key={idx} style={styles.chartCol}>
@@ -149,8 +148,7 @@ export default function CashFlowForecastReport() {
       </View>
 
       <Text style={styles.footerNote}>
-        This is a projection based on expected income, bills, debts, and savings contributions — not a
-        live bank feed. Keep your "as of" balance on the Calendar tab current for accuracy.
+        Projection based on expected income, bills, debts, and savings. Keep your Calendar balance current.
       </Text>
     </ScrollView>
   );

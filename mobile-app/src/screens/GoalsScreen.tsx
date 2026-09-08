@@ -100,7 +100,7 @@ export default function GoalsScreen() {
       return;
     }
     if (!isValidDateOrEmpty(targetDateInput)) {
-      setErrorMsg('Target date must be in YYYY-MM-DD format, or left blank.');
+      setErrorMsg('Enter date as YYYY-MM-DD.');
       return;
     }
 
@@ -110,7 +110,7 @@ export default function GoalsScreen() {
       if (targetAmountInput.trim() !== '') {
         const n = parseFloat(targetAmountInput);
         if (isNaN(n)) {
-          setErrorMsg('Enter a valid target amount, or leave it blank.');
+          setErrorMsg('Enter a valid target amount.');
           return;
         }
         targetAmount = n;
@@ -118,7 +118,7 @@ export default function GoalsScreen() {
       if (currentAmountInput.trim() !== '') {
         const n = parseFloat(currentAmountInput);
         if (isNaN(n)) {
-          setErrorMsg('Enter a valid current amount, or leave it blank.');
+          setErrorMsg('Enter a valid current amount.');
           return;
         }
         currentAmount = n;
@@ -196,7 +196,7 @@ export default function GoalsScreen() {
   function handleSwipeDeleteGoal(goal: YearlyGoal) {
     Alert.alert(
       'Delete this goal?',
-      'This will permanently delete the goal. This cannot be undone.',
+      'Deletes the goal. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteGoalById(goal.id) },
@@ -214,12 +214,12 @@ export default function GoalsScreen() {
         <View style={styles.yearBanner}>
           <Text style={styles.yearBannerLabel}>THIS YEAR'S PROGRESS</Text>
           <Text style={styles.yearBannerAmount}>
-            {goals.length > 0 ? `${doneCount} of ${goals.length} reached` : 'No goals set yet'}
+            {goals.length > 0 ? `${doneCount} of ${goals.length} reached` : 'No goals set'}
           </Text>
         </View>
 
         {goals.length === 0 && (
-          <Text style={styles.emptyText}>No goals yet. Add your first one below.</Text>
+          <Text style={styles.emptyText}>No goals yet.</Text>
         )}
 
         {goals.map((g) => {
@@ -268,7 +268,7 @@ export default function GoalsScreen() {
         })}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add year-end goal</Text>
+          <Text style={styles.addButtonText}>+ Add goal</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -381,7 +381,7 @@ export default function GoalsScreen() {
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteGoal}>
-                    <Text style={styles.deleteButtonText}>Delete this goal</Text>
+                    <Text style={styles.deleteButtonText}>Delete goal</Text>
                   </TouchableOpacity>
                 )}
 
