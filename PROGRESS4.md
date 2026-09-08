@@ -13,6 +13,72 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Bottom nav: drop Calendar tab, add Home date shortcut (design-change request)
+
+Scoped and implemented via Antigravity (investigation + real code review
+only, no commits from the tool). Scoping pass confirmed: Calendar was
+registered only as the 2nd bottom tab in MainTabs.tsx, with no route
+params; a full codebase search turned up zero existing calls to
+`navigation.navigate('Calendar', ...)` anywhere, meaning removing it as
+a tab could not break any existing navigation; CalendarScreen.tsx takes
+no props/params, so it could move into RootStack.tsx as a plain stack
+screen with no other type ripple; and HomeScreen.tsx's top row already
+had free horizontal space (`justifyContent: 'space-between'` between the
+greeting and the Set PIN/Lock buttons) to add a third element without
+restructuring the layout.
+
+Implemented (hand-pasted by the person after review, as 8 find/replace
+snippets across 3 files): removed the `Calendar` `<Tab.Screen>` and its
+now-unused `CalendarScreen` import from MainTabs.tsx, leaving 4 bottom
+tabs (Home, To-Pay, Transactions, More); added `Calendar: undefined` to
+`RootStackParamList` and registered `CalendarScreen` as a stack screen
+in RootStack.tsx (`title: 'Calendar'`, `headerBackTitle: 'Home'`),
+matching the existing pattern used for Accounts/Income/Savings/Planning/
+Insights/Settings; and added a small tappable date pill
+(`testID="home-calendar-shortcut"`, calendar icon + today's date in
+`"Mon D"` format) to HomeScreen.tsx's top row, wired to
+`navigation.navigate('Calendar')` via a newly-added typed
+`useNavigation<NativeStackNavigationProp<RootStackParamList>>()` hook.
+`npx tsc --noEmit` clean (0 errors). Committed and pushed. Still needs a
+real on-device re-test — deferred, to be batched with the other pending
+on-device items (bugs #4/#5-5b, the Android date-picker calendar) rather
+than tested alone.
+
+### Session — "Fewer words" pass: SavingsScreen.tsx
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Antigravity supplied the real, full, unelided contents of
+SavingsScreen.tsx plus 15 proposed wordy-text trims (EF calculator
+intro, EF "based on Bills" suggestion, both efIncomeDisplay/
+fiIncomeDisplay income-summary lines, EF "Current savings" label, FI
+calculator intro, all three FI suggestion lines, FI "missing inputs"
+placeholder, Goals balance banner label, Goals empty state, the
+collapsible-row "Contributions Logged" detail label, both
+handleDeleteGoal/handleSwipeDelete confirmation alerts, the modal's
+"Contributions logged" label, the modal's "Delete this goal" button,
+five separate validation error messages, and the FI progress-percent
+subtitle), each shown with real surrounding code. All 15 reviewed
+against the real code and confirmed text-only — none touch the
+handleSaveEf/handleSaveFi logic, state, or the bug #4/#5 auto-save
+wiring, even the several items sitting close to that code (items 1, 4,
+7, and 15 border the FI/EF sections directly and were checked
+individually). Two adjustments made during review: kept `&amp;` instead
+of a bare `&` in the Cash/Debit/Investment suggestion line to match this
+file's existing JSX convention, and left the modal's "No contributions
+logged yet." hint text untouched (only its "Contributions logged"
+section label above it was trimmed) since it's a distinct sentence, not
+clearly redundant with the label.
+
+Applied (hand-pasted by the person after review, as 23 find/replace
+snippets — two items had two near-identical occurrences each, given as
+separate snippets: efIncomeDisplay/fiIncomeDisplay, and the
+handleDeleteGoal/handleSwipeDelete alert pair): trimmed all 15 items as
+described above. `npx tsc --noEmit` clean (0 errors) — text-only change,
+no type impact. Committed and pushed.
+
+This completes SavingsScreen.tsx on the "fewer words" ranked list. Next
+up per that list: SignInScreen.tsx (7 items).
+
 ### Session — "Fewer words" pass: OnboardingScreen.tsx
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -696,11 +762,11 @@ pushed. Still needs a real on-device re-test to fully close out.
   explicitly deferred to Phase C (see below) rather than chased through
   Expo Go.
 - The "fewer words" trimming pass is PARTIALLY done: SettingsScreen.tsx,
-  ProfileScreen.tsx, and OnboardingScreen.tsx are complete. A full
-  ranked-by-wordiness inventory of every remaining screen already exists
-  (captured in PROGRESS3.md's session history) — next up per that list:
-  SavingsScreen.tsx (7 items), SignInScreen.tsx (7), MoreScreen.tsx (6),
-  and 17 more screens after that in descending order.
+  ProfileScreen.tsx, OnboardingScreen.tsx, and SavingsScreen.tsx are
+  complete. A full ranked-by-wordiness inventory of every remaining
+  screen already exists (captured in PROGRESS3.md's session history) —
+  next up per that list: SignInScreen.tsx (7 items), MoreScreen.tsx (6),
+  and 16 more screens after that in descending order.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -974,6 +1040,15 @@ pushed. Still needs a real on-device re-test to fully close out.
   renders a fully custom in-app calendar on Android (zero new
   dependencies, all 15 call sites unaffected, iOS untouched). Needs a
   real Android device test before this can be marked done.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Bottom nav:
+  Calendar dropped as a bottom tab (now 4 tabs: Home, To-Pay,
+  Transactions, More); CalendarScreen moved into RootStack.tsx as a
+  plain stack screen (`title: 'Calendar'`, back button reads "Home");
+  a small tappable date pill (icon + today's date) was added to
+  HomeScreen.tsx's top row, navigating to Calendar on tap. See session
+  log above for full detail. Needs a real on-device test to confirm the
+  new stack screen's back-navigation and the Home date pill both behave
+  correctly.
 - Replace the PIN "Turn Off" text button with a toggle switch.
 - Redesign the SUB/CANCELLED badge as a real hollow-box badge (matching
   Accounts' Cash/Debit/Credit badges) instead of blending in as plain text.
@@ -1037,6 +1112,13 @@ from here on will be tracked fresh in this file.
   bugs #4/#5-5b, checking a few different screens (e.g. Bills' due
   date, Savings' target date) since it's a shared component used
   everywhere a date is picked.
+- The bottom-nav Calendar-tab removal + Home date shortcut is also
+  implemented and `npx tsc --noEmit` clean, not yet tested on-device —
+  fold into the same combined on-device pass: confirm the 4-tab bar
+  looks right, confirm tapping the new date pill on Home opens
+  Calendar with a working back button to Home, and confirm nothing
+  else (e.g. muscle memory reaching for the old tab position) feels
+  broken.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
@@ -1047,9 +1129,9 @@ from here on will be tracked fresh in this file.
   confirm-step for "which of these is you?", bottom-nav Calendar removal,
   Transactions swipe-to-delete on derived rows, Reports checkbox redesign,
   ToPay/Planning icon+title reversal) — these are new work, not bug fixes.
-- Continue the "fewer words" pass: SavingsScreen.tsx next (7 items), then
-  SignInScreen.tsx (7), MoreScreen.tsx (6), and onward down the ranked
-  list already captured in PROGRESS3.md's session history.
+- Continue the "fewer words" pass: SignInScreen.tsx next (7 items), then
+  MoreScreen.tsx (6), and onward down the ranked list already captured
+  in PROGRESS3.md's session history.
 - Once the bug-fixing pass is far enough along (or the person decides to
   move on regardless), proceed to Phase C (Publishing) — see
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable

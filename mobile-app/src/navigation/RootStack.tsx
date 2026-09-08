@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabs from './MainTabs';
 import ProfileScreen from '../screens/ProfileScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 import AccountsScreen from '../screens/AccountsScreen';
 import IncomeScreen from '../screens/IncomeScreen';
 import SavingsScreen from '../screens/SavingsScreen';
@@ -13,6 +14,7 @@ import { useTheme } from '../ThemeContext';
 export type RootStackParamList = {
   Main: { openBillId?: string } | undefined;
   Profile: undefined;
+  Calendar: undefined;
   Accounts: undefined;
   Income: undefined;
   Savings: undefined;
@@ -64,6 +66,11 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
       >
         {() => <ProfileScreen onLock={onLock} onSignOut={onSignOut} />}
       </Stack.Screen>
+      <Stack.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ title: 'Calendar', headerBackTitle: 'Home' }}
+      />
       <Stack.Screen
         name="Accounts"
         component={AccountsScreen}

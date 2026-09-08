@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import SetPinScreen from './SetPinScreen';
 import DashboardScreen from './DashboardScreen';
 import { hasPinSetUp } from '../pin';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, formatPeso } from '../balanceProjection';
+import type { RootStackParamList } from '../navigation/RootStack';
 
 type Props = {
   username: string;
@@ -15,6 +19,7 @@ type Props = {
 export default function HomeScreen({ username, onLock }: Props) {
   const { colors } = useTheme();
   const { model } = useData();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [showSetPin, setShowSetPin] = useState(false);
   const [pinIsSet, setPinIsSet] = useState(false);
 
@@ -45,6 +50,16 @@ export default function HomeScreen({ username, onLock }: Props) {
     <View style={{ flex: 1, backgroundColor: colors.navy2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 }}>
         <Text style={{ color: colors.inkDim, fontSize: 13 }}>Hi, {username}</Text>
+        <TouchableOpacity
+          testID="home-calendar-shortcut"
+          onPress={() => navigation.navigate('Calendar')}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.navy3 }}
+        >
+          <Ionicons name="calendar-outline" size={13} color={colors.gold} />
+          <Text style={{ color: colors.ink, fontSize: 12, fontWeight: '600' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </Text>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity testID="set-pin-button" onPress={() => setShowSetPin(true)}>
             <Text style={{ color: colors.gold, fontSize: 12, fontWeight: '600' }}>{pinIsSet ? 'Change PIN' : 'Set PIN'}</Text>

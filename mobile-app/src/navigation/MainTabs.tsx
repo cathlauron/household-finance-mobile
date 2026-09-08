@@ -3,7 +3,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
-import CalendarScreen from '../screens/CalendarScreen';
 import ToPayScreen from '../screens/ToPayScreen';
 import MoreScreen from '../screens/MoreScreen';
 import { useTheme } from '../ThemeContext';
@@ -45,13 +44,6 @@ export default function MainTabs({ username, onLock, onSignOut, initialOpenBillI
       >
         {() => <HomeScreen username={username} onLock={onLock} />}
       </Tab.Screen>
-      <Tab.Screen
-        name="Calendar"
-        component={CalendarScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
-        }}
-      />
       <Tab.Screen
         name="To-Pay"
         options={{

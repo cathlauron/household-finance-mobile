@@ -221,21 +221,21 @@ export default function SavingsScreen() {
     if (!model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter a name for this goal.');
+      setErrorMsg('Enter a goal name.');
       return;
     }
     let parsedTarget: number | '' = '';
     if (targetAmountInput.trim() !== '') {
       const n = parseFloat(targetAmountInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid target amount, or leave it blank.');
+        setErrorMsg('Enter a valid target amount.');
         return;
       }
       parsedTarget = n;
     }
     const trimmedDate = targetDateInput.trim();
     if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Enter the target date as YYYY-MM-DD, e.g. 2026-12-31, or leave it blank.');
+      setErrorMsg('Target date must be YYYY-MM-DD, e.g. 2026-12-31.');
       return;
     }
 
@@ -248,14 +248,14 @@ export default function SavingsScreen() {
       const amountTrimmed = row.amountInput.trim();
       if (!dateTrimmed && !amountTrimmed) continue;
       if (dateTrimmed && !/^\d{4}-\d{2}-\d{2}$/.test(dateTrimmed)) {
-        setErrorMsg('Each contribution date must be YYYY-MM-DD, e.g. 2026-08-20.');
+        setErrorMsg('Contribution date must be YYYY-MM-DD, e.g. 2026-08-20.');
         return;
       }
       let amount: number | '' = '';
       if (amountTrimmed !== '') {
         const n = parseFloat(amountTrimmed);
         if (isNaN(n)) {
-          setErrorMsg('Enter a valid contribution amount, or remove that row.');
+          setErrorMsg('Enter a valid contribution amount.');
           return;
         }
         amount = n;
@@ -324,8 +324,8 @@ export default function SavingsScreen() {
 
   function handleDeleteGoal() {
     Alert.alert(
-      'Delete this savings goal?',
-      'This will permanently delete the goal and all logged contributions. This cannot be undone.',
+      'Delete savings goal?',
+      'Permanently delete this goal and all logged contributions? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: performDeleteGoal },
@@ -357,8 +357,8 @@ export default function SavingsScreen() {
 
   function handleSwipeDelete(goal: SavingsGoal) {
     Alert.alert(
-      'Delete this savings goal?',
-      'This will permanently delete the goal and all logged contributions. This cannot be undone.',
+      'Delete savings goal?',
+      'Permanently delete this goal and all logged contributions? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteGoalById(goal.id) },
@@ -450,9 +450,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     fiSavingsInput !== null ? fiSavingsInput : storedCalc.fiCurrentSavings === '' ? '' : String(storedCalc.fiCurrentSavings);
 
   const efIncomeDisplay =
-    suggestedMonthlyIncome > 0 ? `Your income sources add up to ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
+    suggestedMonthlyIncome > 0 ? `Total income: ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
   const fiIncomeDisplay =
-    suggestedMonthlyIncome > 0 ? `Your income sources add up to ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
+    suggestedMonthlyIncome > 0 ? `Total income: ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
 
   const efExpensesNum = parseFloat(efExpensesDisplay);
   const efSavingsNum = parseFloat(efSavingsDisplay);
@@ -552,12 +552,12 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       {activeTab === 'goals' && (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.balanceBanner}>
-            <Text style={styles.balanceBannerLabel}>TOTAL SAVED ACROSS GOALS</Text>
+            <Text style={styles.balanceBannerLabel}>TOTAL SAVED</Text>
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalSaved)}</Text>
           </View>
 
           {goals.length === 0 && (
-            <Text style={styles.emptyText}>No savings goals yet. Add your first one below.</Text>
+            <Text style={styles.emptyText}>No savings goals yet.</Text>
           )}
 
           {goals.map((goal) => {
@@ -613,7 +613,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                       </View>
                     )}
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Contributions Logged</Text>
+                      <Text style={styles.detailLabel}>Contributions</Text>
                       <Text style={styles.detailValue}>{sortedContribs.length}</Text>
                     </View>
                     {lastContrib && (
@@ -641,8 +641,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       {activeTab === 'ef' && (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.calcIntro}>
-            A rough guide for how many months your current savings would cover, based on your
-            typical monthly essential spending. 3–6 months is a commonly used target.
+            Estimates how many months of essential expenses your savings cover. 3–6 months is standard.
           </Text>
 
           <Text style={styles.inputLabel}>Monthly essential expenses</Text>
@@ -665,7 +664,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               }}
             >
               <Text style={styles.suggestionText}>
-                Based on your recurring Bills: {formatPeso(suggestedMonthlyExpenses)}/mo — tap to use this
+                From recurring bills: {formatPeso(suggestedMonthlyExpenses)}/mo — tap to use
               </Text>
             </TouchableOpacity>
           )}
@@ -676,7 +675,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             </View>
           )}
 
-          <Text style={styles.inputLabel}>Current savings set aside for this</Text>
+          <Text style={styles.inputLabel}>Current savings</Text>
           <TextInput
             style={styles.input}
             placeholder="0.00"
@@ -725,9 +724,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       {activeTab === 'fi' && (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.calcIntro}>
-            Your "FI number" is how much you'd need saved/invested to no longer need a
-            paycheck, based on a safe withdrawal rate you choose below. This is just a
-            simple estimate, not financial advice.
+            Estimated invested savings needed to cover expenses without a paycheck. Not financial advice.
           </Text>
 
           <Text style={styles.inputLabel}>Annual expenses</Text>
@@ -748,7 +745,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               }
             >
               <Text style={styles.suggestionText}>
-                Based on your recurring Bills: {formatPeso(suggestedAnnualExpenses)}/yr — tap to use this
+                From recurring bills: {formatPeso(suggestedAnnualExpenses)}/yr — tap to use
               </Text>
             </TouchableOpacity>
           )}
@@ -779,7 +776,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               }}
             >
               <Text style={styles.suggestionText}>
-                Based on your Cash, Debit &amp; Investment accounts: {formatPeso(suggestedNetWorth)} — tap to use this
+                From Cash, Debit &amp; Investment accounts: {formatPeso(suggestedNetWorth)} — tap to use
               </Text>
             </TouchableOpacity>
           )}
@@ -869,7 +866,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               }}
             >
               <Text style={styles.suggestionText}>
-                Based on your income minus obligations: {formatPeso(suggestedMonthlySavings)}/mo — tap to use this
+                From income minus obligations: {formatPeso(suggestedMonthlySavings)}/mo — tap to use
               </Text>
             </TouchableOpacity>
           )}
@@ -882,7 +879,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 <View style={styles.progressTrack}>
                   <View style={[styles.progressFill, { width: `${fiProgressPct}%` as const }]} />
                 </View>
-                <Text style={styles.resultSub}>{fiProgressPct.toFixed(1)}% of the way there</Text>
+                <Text style={styles.resultSub}>{fiProgressPct.toFixed(1)}% funded</Text>
               </>
             )}
 
@@ -901,7 +898,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               </>
             ) : (
               <Text style={styles.resultSub}>
-                Enter your annual expenses, expected return rate, and monthly savings above to see this
+                Enter annual expenses, expected return, and monthly savings above
               </Text>
             )}
           </View>
@@ -949,7 +946,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                   testID="savings-target-date-field"
                 />
 
-                <Text style={styles.inputLabel}>Contributions logged</Text>
+                <Text style={styles.inputLabel}>Contributions</Text>
                 {contribRows.length === 0 && (
                   <Text style={styles.fieldHint}>No contributions logged yet.</Text>
                 )}
@@ -989,7 +986,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteGoal}>
-                    <Text style={styles.deleteButtonText}>Delete this goal</Text>
+                    <Text style={styles.deleteButtonText}>Delete goal</Text>
                   </TouchableOpacity>
                 )}
 
