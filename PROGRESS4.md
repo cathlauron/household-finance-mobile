@@ -13,6 +13,39 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Events/Goals/Groceries/Settings save errors (bug #7)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool) across all 30 `saveModel()` call sites in EventsScreen.tsx (3),
+GoalsScreen.tsx (3), GroceriesScreen.tsx (7), and SettingsScreen.tsx (17).
+Confirmed every single one directly awaits `saveModel()` inside its own
+`try/catch`, intending to show a screen-specific message
+(`setErrorMsg(...)`/`Alert.alert(...)`) on failure.
+
+Confirmed this is already effectively fixed as a side effect of bug #2's
+`withTimeout()` wrapping inside `saveModel()` itself: `saveModel()` already
+had its own internal `Alert.alert('Sync Failed', ...)` /
+`Alert.alert('Backup Failed', ...)` around its network calls, but before
+bug #2's fix those calls just hung forever offline instead of ever
+rejecting — so that internal alert never fired either. Now that
+`saveModel()`'s network calls are timeout-wrapped, its own alert
+correctly fires within 8 seconds on any of these 30 call sites when
+offline. The screen-level `try/catch` blocks are confirmed genuinely
+unreachable for network failures (`saveModel()` catches and swallows
+those internally, never rethrowing) — but this is harmless dead code, not
+a functional bug: the app still closes the modal / clears the form
+afterward, which is correct, since the change did save locally first
+either way. No code changes made — bug #7 as originally reported (no
+error ever surfaces) is resolved by bug #2's fix, just via a generic
+"Sync Failed"/"Backup Failed" message rather than each screen's own more
+specific wording.
+
+Separately flagged (not fixed, low priority, no reported symptom): in the
+linked-household branch of `saveModel()`, the personal local-snapshot
+backup call (`saveEncryptedProfileData(...).catch(() => {})`) fails
+completely silently with no alert at all, unlike every other write path
+in the function. Tracked below as a new, lower-priority known issue.
+
 ### Session — Background-save warnings never appear (bug #6)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -442,10 +475,30 @@ pushed. Still needs a real on-device re-test to fully close out.
    three flows — change password, recover via recovery key, unlink from
    household — and confirm each shows its warning alert within ~8 seconds
    instead of hanging) before marking fully verified.
-7. Events/Goals/Groceries/Settings saveModel try/catch sweep doesn't
-   surface errors in practice on-device — likely same root cause as #2.
+7. ✅ RESOLVED (as a side effect of bug #2, pending on-device re-test) —
+   Events/Goals/Groceries/Settings' 30 `saveModel()` call sites all have
+   their own screen-level try/catch intending a specific error message,
+   but `saveModel()` catches and swallows all network errors internally
+   and never rethrows, so those 30 catch blocks are confirmed unreachable
+   dead code. This is no longer a functional bug, though: `saveModel()`
+   already has its own internal "Sync Failed"/"Backup Failed" alert
+   around its network calls, and bug #2's `withTimeout()` fix means that
+   alert now correctly fires (instead of hanging forever) on every one of
+   these 30 call sites too, since they all route through the same shared
+   `saveModel()`. No code changes made. STILL NEEDS: a real on-device
+   re-test (airplane mode on, try saving/deleting on any of the four
+   screens, confirm the generic "Sync Failed"/"Backup Failed" alert
+   appears within ~8 seconds) to fully close this out — can be folded
+   into the same on-device pass as bugs #1–6.
 8. Travel checklist-item delete still leaves its linked expense behind in
    Transactions.
+8b. NEW, low priority, not yet fixed — in `saveModel()`'s linked-household
+    branch (DataContext.tsx), the personal local-snapshot backup call
+    (`saveEncryptedProfileData(...).catch(() => {})`) fails completely
+    silently with no alert at all, unlike every other write path in that
+    same function. Found incidentally while investigating bug #7. No
+    reported on-device symptom yet — deferred until higher-priority items
+    are done.
 9. Biometric unlock failed outright on a Face ID device with fingerprint
    off (not just a wrong label — a functional failure).
 10. Turning PIN off shows no loading indicator, reads as frozen.
@@ -522,12 +575,14 @@ from here on will be tracked fresh in this file.
   Bugs #1–6 are now code-complete pending on-device re-test (deliberately
   batched — the person is testing all fixes together in one on-device pass
   once the remaining bugs below are also fixed, rather than one at a time).
-  Suggested order for what's left: (7) Events/Goals/Groceries/Settings
-  silent save failures (likely the same `withTimeout()`-shaped root cause
-  as bugs #2 and #6 — worth checking first), (8) Travel checklist-delete
-  expense cleanup, (9) the remaining smaller bugs (biometric capture,
-  PIN-off loading indicator, Category Watchlist wording, "which of these
-  is you?" live update, AccountsScreen's missing label).
+  Bug #7 turned out to already be resolved as a side effect of bug #2 —
+  no code change was needed, just confirmed via investigation. Suggested
+  order for what's left: (8) Travel checklist-delete expense cleanup, (9)
+  the remaining smaller bugs (biometric capture, PIN-off loading
+  indicator, Category Watchlist wording, "which of these is you?" live
+  update, AccountsScreen's missing label), (8b) the newly-found silent
+  personal-snapshot-backup failure in `saveModel()`'s linked-household
+  branch, low priority.
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests
