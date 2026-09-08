@@ -385,6 +385,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Firestore's setDoc() does not reject or time out on its own when the
+  // device is offline - it just stays pending forever, which is what was
+  // causing Accounts/Bills/Debts delete (and every other save) to hang
+  // indefinitely offline with the loading spinner stuck on screen and no
+  // error ever shown. Racing the write against a plain timeout guarantees
+  // saveModel() always settles within a few seconds either way.
+  function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  }
+
   async function saveModel(updatedModel: HouseholdModel) {
     const sanitizedModel = sanitizeModelIds(updatedModel);
     setModel(sanitizedModel);
@@ -402,7 +417,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        await saveHouseholdData(householdIdRef.current, encrypted);
+        await withTimeout(
+          saveHouseholdData(householdIdRef.current, encrypted),
+          8000,
+          'Timed out waiting for the shared household to sync.'
+        );
         lastEncryptedDataRef.current = encrypted;
       } catch (err) {
         Alert.alert(
@@ -430,7 +449,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     if (saltRef.current) {
       try {
-        await saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted });
+        await withTimeout(
+          saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }),
+          8000,
+          'Timed out waiting for the cloud backup to sync.'
+        );
       } catch (err) {
         console.error('Cloud backup failed:', err);
         Alert.alert(

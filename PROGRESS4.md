@@ -13,6 +13,37 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Offline delete hang on Accounts/Bills/Debts (bug #2)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed the exact same root cause across all three screens:
+- Accounts/Bills/Debts each have an identical `performDelete()` that sets
+  `saving = true`, awaits the shared `saveModel()` in DataContext.tsx, and
+  sets `saving = false` in a `finally` block.
+- `saveModel()` awaits Firestore's `setDoc()` (via `saveHouseholdData` for
+  linked households, or `saveProfileCloudBackup` for unlinked profiles) to
+  sync the change to the cloud. `setDoc()` never rejects or times out on
+  its own while offline — it just stays pending indefinitely.
+- Because that `await` never resolves, `saveModel()` never finishes, the
+  screen's `finally` block never runs, and the loading spinner stays stuck
+  until the device reconnects.
+- Also confirmed (via `git show` on the earlier commit) why a prior fix —
+  "add try/catch to Accounts/Bills/Debts delete" — never actually worked:
+  it added a `catch` block that could never be reached, both because the
+  hang means nothing ever throws, and separately because `saveModel()`
+  already catches its own internal write errors and doesn't re-throw them
+  to its caller.
+
+Applied fix (hand-pasted by the person after review): added a
+`withTimeout()` helper in DataContext.tsx and wrapped both cloud-write
+calls inside `saveModel()` (the linked-household path and the unlinked
+personal-backup path) in it, each with an 8-second timeout. `saveModel()`
+now always resolves either way, so the calling screen's `finally` block
+correctly fires and the spinner clears — on a timeout, the existing "Sync
+Failed"/"Backup Failed" alert shows instead (data is already safe locally,
+since the local save always happens first). `npx tsc --noEmit` clean.
+Committed and pushed. Still needs a real on-device re-test.
+
 ### Session — Offline sign-out → sign-in lockout (bug #1)
 
 Investigated via Antigravity (investigation-only prompt, no commits from
@@ -128,11 +159,32 @@ pushed. Still needs a real on-device re-test to fully close out.
    NEEDS: a real on-device re-test (airplane mode off/on, then sign in)
    before this can be marked fully verified — flip to a plain ✅ once
    confirmed.
-2. Offline delete hangs instead of showing an error (Accounts/Bills/Debts)
-   — stuck loading spinner with airplane mode on, no error shown, only
-   resolves once connectivity returns. Contradicts an earlier "shows a
-   visible error on failed offline delete" fix — that fix needs
-   re-investigation, likely a busy/loading flag not resolving on failure.
+2. ✅ FIXED (pending on-device re-test) — Offline delete hangs instead of
+   showing an error (Accounts/Bills/Debts). Root cause: all three screens'
+   delete handlers route through the shared `saveModel()` in
+   DataContext.tsx, which awaits Firestore's `setDoc()` to sync the change
+   to the cloud — but `setDoc()` never rejects or times out on its own when
+   offline, it just stays pending forever. So `saveModel()` never finished,
+   the calling screen's `finally { setSaving(false) }` never ran, and the
+   loading spinner stayed stuck until connectivity returned. This also
+   explains why the earlier "add try/catch to Accounts/Bills/Debts delete"
+   fix (referenced below) never worked: the `await` it wrapped never threw
+   in the first place (it just hung), and separately `saveModel()` already
+   catches its own internal write errors and never re-throws them to the
+   caller, so that screen-level `catch` block was unreachable dead code
+   even in a world where the hang wasn't the issue. Fixed by adding a
+   `withTimeout()` helper in DataContext.tsx and racing both cloud-write
+   paths (linked household `saveHouseholdData`, and unlinked personal
+   `saveProfileCloudBackup`) against an 8-second timeout, so `saveModel()`
+   now always resolves either way — on timeout it shows the existing
+   "Sync Failed"/"Backup Failed" alert (data was already saved locally
+   first, so nothing is lost), and the calling screen's `setSaving(false)`
+   / `closeModal()` correctly fires. The screen-level dead `catch` blocks
+   were left as-is (harmless, just unreachable). `npx tsc --noEmit` clean.
+   STILL NEEDS: a real on-device re-test (airplane mode on, delete an
+   account/bill/debt, confirm the spinner clears and the Sync Failed alert
+   shows within ~8 seconds instead of hanging) before marking fully
+   verified.
 3. Left to Spend caution threshold doesn't persist — reverts to its old
    value after a full app close/reopen.
 4. FI Calculator (Savings tab) largely non-functional on-device — "Years
@@ -211,14 +263,16 @@ SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass). New/modified files
 from here on will be tracked fresh in this file.
 
 ▶️ Next step
-- On-device: re-test the offline sign-out → sign-in lockout fix (airplane
-  mode off, sign out, airplane mode on, restart or background/foreground
-  the app, airplane mode off, sign in) before marking bug #1 fully
-  verified.
+- On-device: re-test both fixed bugs before marking them fully verified —
+  (1) offline sign-out → sign-in lockout (airplane mode off, sign out,
+  airplane mode on, restart or background/foreground the app, airplane
+  mode off, sign in), and (2) offline delete hang on Accounts/Bills/Debts
+  (airplane mode on, delete an item, confirm the spinner clears and a
+  "Sync Failed" alert appears within ~8 seconds instead of hanging).
 - Work through the remaining real bugs found in the first on-device testing
   pass, one at a time, via the standard Antigravity/Copilot-investigates-
   first workflow — see the numbered list under ⚠️ Known issues above.
-  Suggested order: (2) offline delete hanging,
+  Suggested order: (3) Left to Spend threshold not persisting,
   (3) Left to Spend threshold not persisting, (4) FI Calculator's
   non-functional fields, (5) Emergency Fund "Saved" checkmark, (6)
   background-save warnings, (7) Events/Goals/Groceries/Settings silent
