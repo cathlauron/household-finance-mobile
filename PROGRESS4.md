@@ -1788,3 +1788,15 @@ Remaining, ranked most-items-first:
   captured in PROGRESS4.md. Going forward, any generated list like this
   must be pasted into PROGRESS4.md the same session it's produced.
 
+
+
+## ✅ LoansScreen.tsx — "fewer words" pass complete (18 items trimmed)
+
+Trimmed all 18 flagged items: 7 validation/error messages, 2 delete-confirmation
+alert bodies (identical text, both call sites), 1 empty-state message, 2 direction
+pill labels (Borrowed/Lent — dropped parenthetical explanations), 1 input label,
+1 placeholder, 1 more input label, 1 field hint, 1 unsaved-state hint, 1 delete
+button label. Verified via `npx tsc --noEmit` from mobile-app\ — clean.
+
+▶️ Next step: IncomeScreen.tsx (14 items) — next on the ranked inventory list above.
+

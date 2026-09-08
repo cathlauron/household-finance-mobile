@@ -220,7 +220,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   function handleAddPayment() {
     const trimmedDate = newPaymentDate.trim();
     if (!trimmedDate || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setPaymentError('Enter the payment date as YYYY-MM-DD, e.g. 2026-08-25.');
+      setPaymentError('Enter date as YYYY-MM-DD.');
       return;
     }
     const parsedAmount = parseFloat(newPaymentAmount);
@@ -256,7 +256,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (totalAmountInput.trim() !== '') {
       const n = parseFloat(totalAmountInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid total amount, or leave it blank.');
+        setErrorMsg('Enter a valid total amount.');
         return;
       }
       parsedTotal = n;
@@ -265,7 +265,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (expectedPaymentInput.trim() !== '') {
       const n = parseFloat(expectedPaymentInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid expected payment, or leave it blank.');
+        setErrorMsg('Enter a valid expected payment.');
         return;
       }
       parsedExpected = n;
@@ -274,7 +274,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (interestRateInput.trim() !== '') {
       const n = parseFloat(interestRateInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid interest rate (e.g. 12), or leave it blank.');
+        setErrorMsg('Enter a valid interest rate.');
         return;
       }
       parsedRate = n;
@@ -284,7 +284,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (recurTypeInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2026-08-25.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       dueDate = { date: trimmedDate };
@@ -313,13 +313,13 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (recurTypeInput === 'custom') {
       const trimmedStart = customStartDateInput.trim();
       if (!trimmedStart || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedStart)) {
-        setErrorMsg('Enter a start date as YYYY-MM-DD, e.g. 2026-08-25.');
+        setErrorMsg('Enter start date as YYYY-MM-DD.');
         return;
       }
       if (customOccurrenceInput.trim()) {
         const n = parseInt(customOccurrenceInput, 10);
         if (isNaN(n) || n <= 0) {
-          setErrorMsg('Occurrences should be a positive number, or left blank to repeat forever.');
+          setErrorMsg('Occurrences must be a positive number.');
           return;
         }
         parsedOccurrenceCount = n;
@@ -399,7 +399,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   function handleDelete() {
     Alert.alert(
       'Delete this loan?',
-      'This will permanently delete the loan and all logged payment history. This cannot be undone.',
+      'Deletes the loan and all payment history. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
@@ -426,7 +426,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   function handleSwipeDelete(loan: Loan) {
     Alert.alert(
       'Delete this loan?',
-      'This will permanently delete the loan and all logged payment history. This cannot be undone.',
+      'Deletes the loan and all payment history. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteLoanById(loan.id) },
@@ -481,7 +481,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         )}
 
         {loans.length === 0 ? (
-          <Text style={styles.emptyText}>No loans yet. Add your first one below.</Text>
+          <Text style={styles.emptyText}>No loans yet.</Text>
         ) : (
           loans.map((loan) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
@@ -597,7 +597,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                     <Text
                       style={[styles.pillButtonText, directionInput === 'borrowed' && styles.pillButtonTextActive]}
                     >
-                      Borrowed (I owe this)
+                      Borrowed
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -607,7 +607,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                     <Text
                       style={[styles.pillButtonText, directionInput === 'lent' && styles.pillButtonTextActive]}
                     >
-                      Lent (owed to me)
+                      Lent
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -622,7 +622,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                   onChangeText={setTotalAmountInput}
                 />
 
-                <Text style={styles.inputLabel}>Expected payment per cycle (optional)</Text>
+                <Text style={styles.inputLabel}>Expected payment (optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
@@ -732,7 +732,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                     <Text style={styles.inputLabel}>Occurrences (optional)</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Leave blank to repeat forever"
+                      placeholder="e.g. 12"
                       placeholderTextColor={colors.inkFaint}
                       keyboardType="number-pad"
                       value={customOccurrenceInput}
@@ -741,7 +741,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                   </>
                 )}
 
-                <Text style={styles.inputLabel}>Interest rate, annual % (optional)</Text>
+                <Text style={styles.inputLabel}>Annual interest rate (optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. 12"
@@ -751,8 +751,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                   onChangeText={setInterestRateInput}
                 />
                 <Text style={styles.fieldHint}>
-                  Used by the Payoff Simulator to estimate interest — leave blank if you're not sure,
-                  and it'll assume 0%.
+                  Used by Payoff Simulator. Defaults to 0% if blank.
                 </Text>
 
                 {editingId ? (
@@ -810,7 +809,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                   </View>
                 ) : (
                   <Text style={styles.fieldHint}>
-                    Save this loan first, then reopen it to log payments against it.
+                    Save loan first to log payments.
                   </Text>
                 )}
 
@@ -830,7 +829,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                    <Text style={styles.deleteButtonText}>Delete this loan</Text>
+                    <Text style={styles.deleteButtonText}>Delete loan</Text>
                   </TouchableOpacity>
                 )}
 
