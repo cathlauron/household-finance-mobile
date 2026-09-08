@@ -152,6 +152,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   // ---- FI calculator local state ----
   const [fiExpensesInput, setFiExpensesInput] = useState<string | null>(null);
+  const [fiGuaranteedIncomeInput, setFiGuaranteedIncomeInput] = useState<string | null>(null);
   const [fiSavingsInput, setFiSavingsInput] = useState<string | null>(null);
   const [fiSaved, setFiSaved] = useState(false);
   const [fiSwrInput, setFiSwrInput] = useState<string | null>(null);
@@ -178,6 +179,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
       efMonthlyExpenses: '' as const,
       efCurrentSavings: '' as const,
       fiAnnualExpenses: '' as const,
+      fiGuaranteedAnnualIncome: '' as const,
       fiCurrentSavings: '' as const,
       fiWithdrawalRatePct: '' as const,
       fiExpectedReturnPct: '' as const,
@@ -407,6 +409,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   async function handleSaveFi(overrides?: {
     expenses?: string;
+    guaranteedIncome?: string;
     savings?: string;
     swr?: string;
     returnRate?: string;
@@ -415,16 +418,21 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     if (!model) return;
     const current = calcInputsFromModel();
     const expensesRaw = (overrides?.expenses ?? fiExpensesInput ?? fiExpensesDisplay).trim();
+    const guaranteedIncomeRaw = (
+      overrides?.guaranteedIncome ?? fiGuaranteedIncomeInput ?? fiGuaranteedIncomeDisplay
+    ).trim();
     const savingsRaw = (overrides?.savings ?? fiSavingsInput ?? fiSavingsDisplay).trim();
     const swrRaw = (overrides?.swr ?? fiSwrInput ?? fiSwrDisplay).trim();
     const returnRaw = (overrides?.returnRate ?? fiReturnRateInput ?? fiReturnDisplay).trim();
     const monthlySavingsRaw = (overrides?.monthlySavings ?? fiMonthlySavingsInput ?? fiMonthlySavingsDisplay).trim();
     const expenses = expensesRaw === '' ? '' : parseFloat(expensesRaw);
+    const guaranteedIncome = guaranteedIncomeRaw === '' ? '' : parseFloat(guaranteedIncomeRaw);
     const savings = savingsRaw === '' ? '' : parseFloat(savingsRaw);
     const swr = swrRaw === '' ? '' : parseFloat(swrRaw);
     const returnRate = returnRaw === '' ? '' : parseFloat(returnRaw);
     const monthlySavings = monthlySavingsRaw === '' ? '' : parseFloat(monthlySavingsRaw);
     if (expenses !== '' && isNaN(expenses as number)) return;
+    if (guaranteedIncome !== '' && isNaN(guaranteedIncome as number)) return;
     if (savings !== '' && isNaN(savings as number)) return;
     if (swr !== '' && isNaN(swr as number)) return;
     if (returnRate !== '' && isNaN(returnRate as number)) return;
@@ -434,6 +442,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
       calculatorInputs: {
         ...current,
         fiAnnualExpenses: expenses as number | '',
+        fiGuaranteedAnnualIncome: guaranteedIncome as number | '',
         fiCurrentSavings: savings as number | '',
         fiWithdrawalRatePct: swr as number | '',
         fiExpectedReturnPct: returnRate as number | '',
@@ -477,6 +486,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     !isNaN(efExpensesNum) && efExpensesNum > 0 && !isNaN(efSavingsNum) ? efSavingsNum / efExpensesNum : null;
 
   const fiExpensesNum = parseFloat(fiExpensesDisplay);
+  const fiGuaranteedIncomeDisplay =
+    fiGuaranteedIncomeInput !== null
+      ? fiGuaranteedIncomeInput
+      : storedCalc.fiGuaranteedAnnualIncome === '' ? '' : String(storedCalc.fiGuaranteedAnnualIncome);
+  const fiGuaranteedIncomeNum = parseFloat(fiGuaranteedIncomeDisplay);
   const fiSavingsNum = fiSavingsDisplay.trim() === '' ? 0 : parseFloat(fiSavingsDisplay);
 
   const FI_SWR_PRESETS = ['3.5', '4.0', '4.5'];
@@ -506,7 +520,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     sumAccountEntries(model.balanceAccounts?.cash || []) +
     sumAccountEntries(model.balanceAccounts?.debit || []);
 
-  const fiNumber = !isNaN(fiExpensesNum) && fiExpensesNum > 0 ? fiExpensesNum / (fiSwrForMath / 100) : null;
+  const fiNetAnnualExpenses = !isNaN(fiExpensesNum)
+    ? Math.max(0, fiExpensesNum - (isNaN(fiGuaranteedIncomeNum) ? 0 : fiGuaranteedIncomeNum))
+    : NaN;
+  const fiNumber =
+    !isNaN(fiNetAnnualExpenses) && fiNetAnnualExpenses > 0 ? fiNetAnnualExpenses / (fiSwrForMath / 100) : null;
   const fiProgressPct =
     fiNumber && !isNaN(fiSavingsNum) ? Math.min(100, Math.max(0, (fiSavingsNum / fiNumber) * 100)) : null;
 
@@ -772,6 +790,23 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               <Text style={styles.suggestionText}>{fiIncomeDisplay}</Text>
             </View>
           )}
+
+          <Text style={styles.inputLabel}>Pension / Social Security (optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 120000"
+            placeholderTextColor={colors.inkFaint}
+            keyboardType="decimal-pad"
+            value={fiGuaranteedIncomeDisplay}
+            onChangeText={setFiGuaranteedIncomeInput}
+            onBlur={() => handleSaveFi()}
+          />
+          <View style={styles.suggestionRow}>
+            <Text style={styles.suggestionText}>
+              Guaranteed yearly income already covering part of your expenses — subtracted before the FI target is
+              calculated.
+            </Text>
+          </View>
 
           <Text style={styles.inputLabel}>Current savings / investments</Text>
           <TextInput

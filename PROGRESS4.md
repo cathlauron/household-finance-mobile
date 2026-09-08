@@ -1774,19 +1774,13 @@ from here on will be tracked fresh in this file.
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
   .apk/TestFlight link) and, optionally, C.2 (App Store / Play Store
   publishing).
-- B.12b is now SCOPED (see the "B.12b scoped via Antigravity investigation"
-  session entry above) and split into three checkpoints, none started:
-  - B.12b-1 — Pension/Social Security offset (smallest; subtract a new
-    guaranteed-income field from Annual Expenses before dividing by SWR
-    in SavingsScreen.tsx's FI math).
-  - B.12b-2 — Multi-account selector (let the person pick which
-    investment/cash/debit accounts count toward `suggestedNetWorth`,
-    instead of auto-summing all of them).
-  - B.12b-3 — Scenario-comparison modal for FI (side-by-side comparison,
-    modeled on LoanPayoffSimulatorModal.tsx's existing Snowball vs.
-    Avalanche pattern). Best tackled after B.12b-1/2 so there's something
-    meaningful to compare.
-  Person has not yet chosen which of the three to start with.
+- B.12b-1 (Pension/Social Security offset) is now IMPLEMENTED and `npx tsc
+  --noEmit` clean — see the "B.12b-1: Pension/Social Security offset
+  (implemented)" session entry above for full detail. On-device testing is
+  deliberately deferred by the person until right before moving to Phase C.
+  B.12b-2 (multi-account selector) and B.12b-3 (scenario-comparison modal)
+  remain unstarted — see the "B.12b scoped via Antigravity investigation"
+  session entry for their original scoping detail.
 
 📚 Older progress: PROGRESS3.md (Phase B Part 2 + first on-device testing
 pass, now closed), PROGRESS2.md (Phase B build, B.1–B.14, closed),
@@ -1865,5 +1859,50 @@ message, 1 input label ("Source name"), 1 DateField label (biweekly anchor,
 converted from a question to a plain label), 1 section hint, 1 delete button
 label. Verified via `npx tsc --noEmit` from mobile-app\ — clean.
 
-▶️ Next step: CreateProfileScreen.tsx (13 items) — next on the ranked inventory list above.
+### Session — B.12b-1: Pension/Social Security offset (implemented)
+
+Investigated via Antigravity (investigation-only, no commits from the tool)
+per the round-2-style scoping already done for B.12b in a prior session.
+Antigravity supplied the full real contents of `CalculatorInputs`
+(types.ts), every real occurrence of `fiAnnualExpenses`/`fiExpensesNum`/
+`fiExpensesDisplay` in SavingsScreen.tsx, the full real `fiNumber`
+calculation block, the full real `handleSaveFi` function, and confirmed
+the existing "optional numeric input with onBlur auto-save" pattern
+already used by the Expected Annual Return / Monthly Savings fields on
+this same screen (nullable local state → `xDisplay` fallback to stored
+value → parsed number → included in `handleSaveFi`'s overrides object →
+`onBlur={() => handleSaveFi()}`).
+
+Implemented (hand-pasted by the person after review, as 6 snippets across
+types.ts and SavingsScreen.tsx), matching that exact existing pattern
+rather than inventing a new one:
+- Added a new `fiGuaranteedAnnualIncome: number | ''` field to
+  `CalculatorInputs` (types.ts).
+- Added the matching default fallback in `calcInputsFromModel()`.
+- Added a new `fiGuaranteedIncomeInput` local state variable, plus its
+  `fiGuaranteedIncomeDisplay`/`fiGuaranteedIncomeNum` display/parse
+  mirror pair, following the exact same shape as the other FI fields.
+- Changed the FI-number calculation to first compute
+  `fiNetAnnualExpenses = max(0, fiExpensesNum - fiGuaranteedIncomeNum)`
+  (treating a blank/invalid offset as 0, and never letting the net go
+  negative), then divide THAT by the withdrawal rate instead of dividing
+  raw `fiExpensesNum` directly.
+- Extended `handleSaveFi`'s overrides parameter, parsing/validation, and
+  the object passed to `saveModel()` to include the new field, following
+  the exact same per-field pattern as every other FI input in this
+  function.
+- Added a new "Pension / Social Security (optional)" TextInput between
+  the Annual Expenses suggestion row and the "Current savings /
+  investments" label, with a one-line hint explaining it's subtracted
+  before the FI target is calculated, and `onBlur={() => handleSaveFi()}`
+  matching every other FI field's auto-save convention.
+
+Leaving the field blank behaves exactly as before this change (subtracts
+0, no change to the existing FI number for anyone who doesn't use it).
+`npx tsc --noEmit` clean (confirmed by the person from mobile-app\ — 0
+errors). Per the person's direction, on-device testing of this is being
+held until right before moving to Phase C, batched together with the
+other pending on-device items rather than tested in isolation now.
+
+▶️ Next step: CreateProfileScreen.tsx (13 items) — next on the ranked inventory list above. B.12b-2 (multi-account selector) and B.12b-3 (scenario-comparison modal) remain unstarted.
 

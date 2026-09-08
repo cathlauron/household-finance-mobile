@@ -156,6 +156,7 @@ export type CalculatorInputs = {
   efMonthlyExpenses: number | '';
   efCurrentSavings: number | '';
   fiAnnualExpenses: number | '';
+  fiGuaranteedAnnualIncome: number | '';
   fiCurrentSavings: number | '';
   fiWithdrawalRatePct: number | '';
   fiExpectedReturnPct: number | '';
