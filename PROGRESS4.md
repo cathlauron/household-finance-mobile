@@ -13,6 +13,38 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — PIN "Turn Off" replaced with a toggle switch (design-change request)
+
+Scoped and implemented via Antigravity (investigation only, no commits
+from the tool). Scoping pass confirmed no shared toggle-switch component
+exists anywhere in the codebase — every toggle in SettingsScreen.tsx
+(biometrics, notifications, etc.) is authored inline with plain
+`TouchableOpacity` + `styles.toggleTrack`/`styles.toggleThumb`, and
+React Native's built-in `Switch` isn't imported anywhere in the app. The
+biometrics toggle directly above the PIN row was confirmed to be the
+closest existing pattern to reuse. Also confirmed the exact current
+layout of the PIN row (the `pinBusy`/`removePin`/`Alert.alert` logic
+added in bug #10, and the separate "Change PIN" button) so the redesign
+could be scoped to not disturb any of that.
+
+Implemented (hand-pasted by the person after review, as one block
+replacement in SettingsScreen.tsx): replaced the "Turn Off" text button
+with a toggle switch using the existing `toggleTrack`/`toggleThumb`
+styles — toggling off (when a PIN is set) triggers the exact same
+"Turn Off Quick PIN" confirmation alert and `removePin()`/`pinBusy`
+logic from bug #10, unchanged; toggling on (when no PIN is set) opens
+the existing `SetPinScreen` modal, same as before. While `pinBusy` is
+true, the toggle is replaced by the existing small `ActivityIndicator`
+rather than shown disabled. "Change PIN" was moved to its own small
+row directly underneath, shown only when a PIN is already set, since a
+toggle switch can only represent on/off, not a second "change" action.
+No changes to state, handlers, or the `SetPinScreen` modal itself were
+needed — `colors.gold` (used for the toggle's spinner color) was
+already in use elsewhere in the same file, so no new import was
+required. `npx tsc --noEmit` clean (0 errors). Not yet committed —
+still needs a real on-device test (tap the toggle both ways, confirm
+"Change PIN" still opens the modal) before committing/pushing.
+
 ### Session — Bottom nav: drop Calendar tab, add Home date shortcut (design-change request)
 
 Scoped and implemented via Antigravity (investigation + real code review
@@ -1049,7 +1081,15 @@ pushed. Still needs a real on-device re-test to fully close out.
   log above for full detail. Needs a real on-device test to confirm the
   new stack screen's back-navigation and the Home date pill both behave
   correctly.
-- Replace the PIN "Turn Off" text button with a toggle switch.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — PIN "Turn Off"
+  text button replaced with a toggle switch, matching the biometrics
+  toggle pattern already used elsewhere in Settings. "Change PIN" moved
+  to its own row underneath, shown only when a PIN is set. The existing
+  `pinBusy`/`removePin`/confirmation-alert logic from bug #10 is
+  untouched — only the on/off control changed from a button to a
+  toggle. See session log above for full detail. Needs a real on-device
+  test (both toggle directions, plus "Change PIN" still opening the
+  modal) before this can be marked done.
 - Redesign the SUB/CANCELLED badge as a real hollow-box badge (matching
   Accounts' Cash/Debit/Credit badges) instead of blending in as plain text.
 - Add an explicit confirm/save step to "Which of these is you?" instead of
@@ -1119,6 +1159,12 @@ from here on will be tracked fresh in this file.
   Calendar with a working back button to Home, and confirm nothing
   else (e.g. muscle memory reaching for the old tab position) feels
   broken.
+- The PIN "Turn Off" → toggle switch redesign is also implemented and
+  `npx tsc --noEmit` clean, not yet tested on-device — fold into the
+  same combined on-device pass: toggle the PIN off (confirm the
+  existing confirmation alert + spinner still work exactly as before),
+  toggle it back on (confirm SetPinScreen opens), and confirm "Change
+  PIN" still opens the modal correctly when a PIN is set.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.

@@ -1326,12 +1326,13 @@ export default function SettingsScreen() {
             <Text style={styles.rowName}>Quick PIN</Text>
             <Text style={styles.hintText}>{pinIsSet ? 'Active as fallback' : 'Not configured'}</Text>
           </View>
-          {pinIsSet ? (
-            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-              <TouchableOpacity
-                style={[styles.dataButton, { alignSelf: 'center', backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E11D48' }]}
-                disabled={pinBusy}
-                onPress={() => {
+          {pinBusy ? (
+            <ActivityIndicator size="small" color={colors.gold} />
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                if (pinIsSet) {
                   Alert.alert(
                     'Turn Off Quick PIN',
                     'Are you sure you want to remove your Quick PIN? You will need to use your password or biometric unlock to access the app.',
@@ -1355,31 +1356,30 @@ export default function SettingsScreen() {
                       },
                     ]
                   );
-                }}
-              >
-                {pinBusy ? (
-                  <ActivityIndicator size="small" color="#E11D48" />
-                ) : (
-                  <Text style={[styles.dataButtonText, { color: '#E11D48' }]}>Turn Off</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dataButton, { alignSelf: 'center' }]}
-                disabled={pinBusy}
-                onPress={() => setShowSetPinModal(true)}
-              >
-                <Text style={styles.dataButtonText}>Change PIN</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.dataButton, { alignSelf: 'center' }]}
-              onPress={() => setShowSetPinModal(true)}
+                } else {
+                  setShowSetPinModal(true);
+                }
+              }}
             >
-              <Text style={styles.dataButtonText}>Set a Quick PIN</Text>
+              <View style={[styles.toggleTrack, pinIsSet && styles.toggleTrackActive]}>
+                <View style={[styles.toggleThumb, pinIsSet && styles.toggleThumbActive]} />
+              </View>
             </TouchableOpacity>
           )}
         </View>
+
+        {pinIsSet && (
+          <View style={[styles.row, { marginTop: 4 }]}>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity
+              style={[styles.dataButton, { alignSelf: 'center' }]}
+              disabled={pinBusy}
+              onPress={() => setShowSetPinModal(true)}
+            >
+              <Text style={styles.dataButtonText}>Change PIN</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {showSetPinModal && username && (
           <Modal visible={showSetPinModal} animationType="slide">
