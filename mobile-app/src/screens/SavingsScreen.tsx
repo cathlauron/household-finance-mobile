@@ -20,6 +20,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 
 function todayISO(): string {
   const d = new Date();
@@ -161,6 +162,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [fiMonthlySavingsInput, setFiMonthlySavingsInput] = useState<string | null>(null);
   const [fiShowDate, setFiShowDate] = useState(true);
   const [fiAccountPickerOpen, setFiAccountPickerOpen] = useState(false);
+  const [fiCompareOpen, setFiCompareOpen] = useState(false);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -984,6 +986,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             )}
           </View>
 
+          <TouchableOpacity style={styles.compareButton} onPress={() => setFiCompareOpen(true)}>
+            <Ionicons name="stats-chart-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
+            <Text style={styles.compareButtonText}>Compare Scenarios</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.saveButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
             onPress={() => handleSaveFi()}
@@ -1107,6 +1114,20 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           <Text style={styles.cancelButtonText}>Done</Text>
         </TouchableOpacity>
       </BottomSheet>
+
+      <SavingsFiComparisonModal
+        visible={fiCompareOpen}
+        onClose={() => setFiCompareOpen(false)}
+        colors={colors}
+        baseInputs={{
+          annualExpenses: fiExpensesNum,
+          guaranteedAnnualIncome: fiGuaranteedIncomeNum,
+          currentSavings: fiSavingsNum,
+          swrPct: fiSwrForMath,
+          expectedReturnPct: fiReturnNum,
+          monthlySavings: fiMonthlySavingsNum,
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1262,5 +1283,15 @@ toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
       justifyContent: 'center',
     },
     checkboxChecked: { backgroundColor: colors.gold, borderColor: colors.gold },
+    compareButton: {
+      backgroundColor: colors.navy3,
+      borderRadius: 10,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 14,
+    },
+    compareButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
   });
 }

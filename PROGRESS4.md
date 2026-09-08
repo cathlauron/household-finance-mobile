@@ -13,6 +13,74 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — B.12b-3: scenario-comparison modal (implemented) — completes B.12b
+
+Investigated via Antigravity across two rounds of investigation-only
+prompts (no commits from the tool). First round confirmed the full real
+contents of LoanPayoffSimulatorModal.tsx (Snowball vs. Avalanche side-
+by-side stat cards) as the structural pattern to mirror, plus the full
+real, post-B.12b-1/B.12b-2 state of every piece of FI math in
+SavingsScreen.tsx: the `fiNumber` calculation (including the
+`fiNetAnnualExpenses` guaranteed-income offset from B.12b-1), the
+`fiSelectedAccountIds`/`fiAllAccounts`/`suggestedNetWorth` block from
+B.12b-2, the "Years Until FI" projection math
+(`fiProgressPct`/`fiCanProjectTimeline`/`fiMonthsUntilFi`/
+`fiTimelineLabel`/`fiProjectedDateLabel`, plus its `formatYearsMonths`
+helper), the full real `handleSaveFi` function, and the current
+`CalculatorInputs` type. Confirmed no existing "scenario"/"compare"/
+"what if" state, function, or comment exists anywhere in the file.
+Confirmed every FI output depends on exactly 6 numbers (annual
+expenses, guaranteed income, current savings, withdrawal rate, expected
+return, monthly savings) and that no new math was needed — only
+extracting the existing inline calculation into a pure, reusable
+function. A second round confirmed the exact real parsing/fallback
+logic for each of the six `*Num` variables (so the extracted function's
+inputs would match exactly), the real trigger-button/state/import
+pattern from LoansScreen.tsx (`simulatorOpen` state,
+`LoanPayoffSimulatorModal` import path, the `simulatorButton` style,
+and the real `<LoanPayoffSimulatorModal ... colors={colors} />` render
+call), and the real JSX immediately surrounding the "YEARS UNTIL FI"
+result block to confirm exactly where a new trigger button should sit.
+
+Implemented (hand-pasted by the person after review):
+- New file, src/fiScenario.ts — a pure `computeFiScenario(inputs)`
+  function plus `FiScenarioInputs`/`FiScenarioResult` types, extracted
+  1:1 from SavingsScreen.tsx's own inline FI math (net annual expenses,
+  FI number, progress %, timeline projection, projected date), so the
+  comparison modal and the live FI Calculator can never disagree with
+  each other — both read from the same function.
+- New file, src/screens/SavingsFiComparisonModal.tsx — mirrors
+  LoanPayoffSimulatorModal.tsx's structure (Modal/Pressable overlay,
+  scrollable card, side-by-side stat cards) rather than inventing a new
+  modal pattern. Shows "Base Plan" (whatever's currently saved) next to
+  a live "What-If Plan" built from six optional TextInputs — any field
+  left blank falls back to the Base Plan's own saved value, so the
+  person only has to type into whichever fields they actually want to
+  change. A hint line reports the FI-number and timeline difference
+  between the two. A "Reset What-If to Base Plan" link clears all six
+  inputs back to blank. Nothing in this modal is ever saved — closing it
+  discards the what-if state entirely.
+- SavingsScreen.tsx — added the `SavingsFiComparisonModal` import, a new
+  `fiCompareOpen` boolean state variable alongside the other FI-section
+  local state, a "Compare Scenarios" trigger button (mirroring
+  LoansScreen.tsx's `simulatorButton` style/pattern) placed between the
+  FI result card and the existing "Save" button, the modal's render call
+  (placed after the account-picker BottomSheet, passing the real current
+  `fiExpensesNum`/`fiGuaranteedIncomeNum`/`fiSavingsNum`/`fiSwrForMath`/
+  `fiReturnNum`/`fiMonthlySavingsNum` as `baseInputs`), and matching new
+  `compareButton`/`compareButtonText` styles.
+
+`npx tsc --noEmit` clean (0 errors), confirmed by the person from
+mobile-app\. Per the person's standing direction, on-device testing of
+this is being held until right before moving to Phase C, batched
+together with every other pending on-device item rather than tested in
+isolation now.
+
+This completes B.12b in full (B.12b-1 pension/SS offset, B.12b-2
+multi-account selector, B.12b-3 scenario-comparison modal — all three
+implemented, all `tsc`-clean, all deferred together for one combined
+on-device pass).
+
 ### Session — B.12b-2: multi-account selector (implemented)
 
 Investigated via Antigravity across four rounds of investigation-only
@@ -1766,11 +1834,18 @@ from here on will be tracked fresh in this file.
 - src/types.ts — MODIFIED. `CalculatorInputs` gained
   `fiGuaranteedAnnualIncome: number | ''` (B.12b-1) and
   `fiSelectedAccountIds: string[]` (B.12b-2).
-- src/screens/SavingsScreen.tsx — MODIFIED (B.12b-1, B.12b-2). Added the
-  Pension/Social Security offset field feeding into the FI-number
-  calculation; added the "Choose which accounts count" link + BottomSheet
-  account picker controlling which Cash/Debit/Investment accounts feed
-  the "current savings" suggestion.
+- src/screens/SavingsScreen.tsx — MODIFIED (B.12b-1, B.12b-2, B.12b-3).
+  Added the Pension/Social Security offset field feeding into the
+  FI-number calculation; added the "Choose which accounts count" link +
+  BottomSheet account picker controlling which Cash/Debit/Investment
+  accounts feed the "current savings" suggestion; added the "Compare
+  Scenarios" trigger button + SavingsFiComparisonModal render call.
+- src/fiScenario.ts — NEW (B.12b-3). Pure `computeFiScenario(inputs)`
+  function extracted from SavingsScreen.tsx's own inline FI math, shared
+  by both the live FI Calculator and the new comparison modal.
+- src/screens/SavingsFiComparisonModal.tsx — NEW (B.12b-3). Base Plan vs.
+  What-If Plan side-by-side comparison modal, mirroring
+  LoanPayoffSimulatorModal.tsx's structure.
 
 ▶️ Next step
 - Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions
@@ -1861,15 +1936,17 @@ from here on will be tracked fresh in this file.
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
   .apk/TestFlight link) and, optionally, C.2 (App Store / Play Store
   publishing).
-- B.12b-1 (Pension/Social Security offset) and B.12b-2 (multi-account
-  selector) are now both IMPLEMENTED and `npx tsc --noEmit` clean — see
-  their respective session entries above for full detail. On-device
-  testing of both is deliberately deferred by the person until right
-  before moving to Phase C, batched with the other pending on-device
-  items. B.12b-3 (scenario-comparison modal) remains unstarted — see
-  the "B.12b scoped via Antigravity investigation" session entry for
-  its original scoping detail (LoanPayoffSimulatorModal.tsx confirmed
-  as the closest existing structural reference to build it from).
+- B.12b is now fully IMPLEMENTED (B.12b-1 Pension/Social Security
+  offset, B.12b-2 multi-account selector, B.12b-3 scenario-comparison
+  modal — all three done) and `npx tsc --noEmit` clean across all of
+  it. On-device testing of all three is deliberately deferred by the
+  person until right before moving to Phase C, batched with the other
+  pending on-device items. Fold into the same combined on-device pass:
+  open "Compare Scenarios" on the FI Calculator, confirm Base Plan
+  matches what's currently saved, type into a few What-If fields and
+  confirm the numbers/timeline update live without touching the saved
+  plan, confirm leaving a field blank falls back to the Base Plan's own
+  value, and confirm "Reset What-If to Base Plan" clears everything.
 
 📚 Older progress: PROGRESS3.md (Phase B Part 2 + first on-device testing
 pass, now closed), PROGRESS2.md (Phase B build, B.1–B.14, closed),
@@ -2006,5 +2083,5 @@ subtitle, 1 confirm-password placeholder, 1 encryption hint below the form,
 confirmation label. Verified via `npx tsc --noEmit` from mobile-app\ —
 clean.
 
-▶️ Next step: GroceriesScreen.tsx (13 items) — next on the ranked inventory list above. B.12b-3 (scenario-comparison modal) remains unstarted.
+▶️ Next step: GroceriesScreen.tsx (13 items) — next on the ranked inventory list above. B.12b (all three parts: pension/SS offset, multi-account selector, scenario-comparison modal) is now fully implemented and tsc-clean; on-device testing deferred with the rest of the batch.
 
