@@ -217,6 +217,9 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
   const [removeMemberBusy, setRemoveMemberBusy] = useState(false);
   const [removeMemberMsg, setRemoveMemberMsg] = useState('');
     const [myPersonId, setMyPersonIdState] = useState<string | null>(null);
+  const [pendingPersonId, setPendingPersonId] = useState<string | null>(null);
+  const [myPersonBusy, setMyPersonBusy] = useState(false);
+  const [myPersonMsg, setMyPersonMsg] = useState('');
 
   useEffect(() => {
     if (!username) return;
@@ -755,7 +758,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
   Decides what shows as "Mine" on your Transactions — others see it labeled with your name.
 </Text>
                       {model.people.map((p) => {
-                        const selected = p.id === myPersonId;
+                        const selected = p.id === (pendingPersonId ?? myPersonId);
                         return (
                           <TouchableOpacity
                             key={p.id}
@@ -767,10 +770,9 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                               borderBottomWidth: 1,
                               borderBottomColor: colors.navy4,
                             }}
-                            onPress={async () => {
-                              if (!username) return;
-                              await setMyPersonId(username, p.id);
-                              setMyPersonIdState(p.id);
+                            onPress={() => {
+                              setMyPersonMsg('');
+                              setPendingPersonId(p.id);
                             }}
                           >
                             <Text style={{ color: colors.ink, fontWeight: selected ? '700' : '400', fontSize: 14 }}>
@@ -784,6 +786,47 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                           </TouchableOpacity>
                         );
                       })}
+                      {pendingPersonId !== null && pendingPersonId !== myPersonId && (
+                        <View style={{ marginTop: 10 }}>
+                          {!!myPersonMsg && <Text style={[styles.errorText, { marginBottom: 6 }]}>{myPersonMsg}</Text>}
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TouchableOpacity
+                              style={[styles.dataButton, { flex: 1, marginBottom: 0 }]}
+                              disabled={myPersonBusy}
+                              onPress={async () => {
+                                if (!username || !pendingPersonId) return;
+                                setMyPersonBusy(true);
+                                setMyPersonMsg('');
+                                try {
+                                  await setMyPersonId(username, pendingPersonId);
+                                  setMyPersonIdState(pendingPersonId);
+                                  setPendingPersonId(null);
+                                } catch (e) {
+                                  setMyPersonMsg('Failed to save. Please try again.');
+                                } finally {
+                                  setMyPersonBusy(false);
+                                }
+                              }}
+                            >
+                              {myPersonBusy ? (
+                                <ActivityIndicator color={colors.gold} />
+                              ) : (
+                                <Text style={styles.dataButtonText}>Confirm</Text>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.cancelInlineButton, { flex: 1 }]}
+                              disabled={myPersonBusy}
+                              onPress={() => {
+                                setPendingPersonId(null);
+                                setMyPersonMsg('');
+                              }}
+                            >
+                              <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
                     </View>
                   )}
 

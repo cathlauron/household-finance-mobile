@@ -13,6 +13,39 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — "Which of these is you?" given an explicit confirm/save step (design-change request)
+
+Scoped and implemented via Antigravity (investigation only, no commits
+from the tool). Scoping pass confirmed the picker in ProfileScreen.tsx
+had no local "pending selection" state at all — tapping a name called
+`setMyPersonId(username, p.id)` (myPerson.ts) directly and instantly,
+which both persists to AsyncStorage AND notifies subscribers in the
+same call. Confirmed that notification logic (added for bug #12, used
+by TransactionsScreen.tsx and PersonSpendingReport.tsx to update live
+without a restart) lives entirely inside `setMyPersonId` itself, so as
+long as the eventual confirm step still calls that same function,
+bug #12's live-update behavior is unaffected — the only change needed
+was delaying WHEN it's called, not how notification works. Found an
+existing "pick, then confirm/cancel row" pattern already used lower on
+this exact same screen (Transfer Ownership), including its button
+styles (`dataButton`/`dataButtonText`, `cancelInlineButton`/
+`cancelButtonText`), which this change reuses for visual consistency
+rather than inventing a new button style.
+
+Implemented (hand-pasted by the person after review, as two snippets in
+ProfileScreen.tsx): added `pendingPersonId`, `myPersonBusy`, and
+`myPersonMsg` state alongside the existing `myPersonId` state. Tapping
+a name now only updates `pendingPersonId` (highlighting reads
+`pendingPersonId ?? myPersonId`, so the currently-saved person still
+shows as selected before any tap). A Confirm/Cancel row appears only
+when the pending selection differs from what's actually saved — Confirm
+calls the real `setMyPersonId` (so subscribers still get notified
+normally) with its own busy spinner and an inline error message on
+failure, matching this screen's existing convention for inline confirms
+(no `Alert.alert`); Cancel just discards the pending state with no
+save. No changes made to myPerson.ts itself. `npx tsc --noEmit` clean
+(0 errors). Not yet on-device tested.
+
 ### Session — SUB/CANCELLED badge redesigned as a hollow-box badge (design-change request)
 
 Scoped and implemented via Antigravity (investigation only, no commits
@@ -1126,8 +1159,16 @@ pushed. Still needs a real on-device re-test to fully close out.
   visual risk (pure style change), but still worth a quick look
   on-device to confirm spacing/alignment looks right next to the bill
   name.
-- Add an explicit confirm/save step to "Which of these is you?" instead of
-  a single instant tap.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — "Which of
+  these is you?" now requires an explicit Confirm/Cancel step instead
+  of saving instantly on tap. Tapping a name only updates local pending
+  state; Confirm calls the same real `setMyPersonId` used before (so
+  bug #12's live-update-without-restart behavior is unchanged), Cancel
+  discards the pending pick. See session log above for full detail.
+  Needs a real on-device test: tap a different person, confirm
+  Transactions/Person Spending still update live without a restart
+  after tapping Confirm, and confirm Cancel correctly reverts the
+  highlight to the previously-saved person.
 - Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
   tappable date element at the top-center of Home that navigates to
   Calendar.
@@ -1203,6 +1244,12 @@ from here on will be tracked fresh in this file.
   `npx tsc --noEmit` clean — fold a quick visual check into the same
   on-device pass (badge spacing/alignment next to the bill name, both
   SUB and CANCELLED states).
+- The "Which of these is you?" confirm/save step is also implemented
+  and `npx tsc --noEmit` clean — fold into the same on-device pass: tap
+  a different person, confirm the Confirm/Cancel row appears, confirm
+  Cancel reverts the highlight without saving, and confirm tapping
+  Confirm still updates Transactions/Person Spending live (bug #12
+  behavior) without needing an app restart.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
