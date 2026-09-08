@@ -224,7 +224,16 @@ function AppContent() {
     const user = getCurrentFirebaseUser();
     const deviceId = currentDeviceIdRef.current;
     if (user && deviceId) {
-      await deleteDeviceSession(user.uid, deviceId).catch(() => {});
+      // If the device is offline, this Firestore write can hang
+      // indefinitely waiting for a connection instead of failing, which
+      // freezes the whole sign-out flow. Give it at most 1 second, then
+      // move on - the write will still complete later if Firestore's own
+      // offline queue is enabled, and either way sign-out itself must not
+      // get stuck on it.
+      await Promise.race([
+        deleteDeviceSession(user.uid, deviceId),
+        new Promise((resolve) => setTimeout(resolve, 1000)),
+      ]).catch(() => {});
     }
     currentDeviceIdRef.current = null;
 

@@ -9,6 +9,8 @@ import type { HouseholdModel } from '../types';
 import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
 import { loadProfileCloudBackup, saveProfileCloudBackup, ProfileCloudBackup } from '../cloudBackup';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData, wrapHouseholdKey, saveWrappedHouseholdKey } from '../household';
+import { enableNetwork } from 'firebase/firestore';
+import { db } from '../firebase';
 import {
   recoverKeyWithCode,
   saveRecoveryKey,
@@ -315,6 +317,13 @@ export default function SignInScreen({
     if (code === 'auth/too-many-requests') {
       return 'Too many attempts - please wait a bit and try again.';
     }
+    if (
+      code === 'permission-denied' ||
+      code === 'unavailable' ||
+      code === 'deadline-exceeded'
+    ) {
+      return "Signed in, but couldn't reach your household data. Check your internet connection and try again.";
+    }
     return 'Something went wrong signing in. Check your internet connection and try again.';
   }
 
@@ -323,7 +332,7 @@ export default function SignInScreen({
     const username = sanitizeUsername(usernameInput);
     const email = emailInput.trim();
     if (!username || !email || !password) {
-      setError('Enter your email, username, and password.');
+      setError('Please fill in all fields (email, username, and password).');
       return;
     }
     setBusy(true);
@@ -334,6 +343,20 @@ export default function SignInScreen({
       // actually confirms who you are, before we touch any local data.
       try {
         await signInWithFirebase(email, password);
+        // Coming back from being fully offline (e.g. airplane mode) can
+        // leave Firestore's own connection stuck in a dead/backoff state
+        // even after the network itself is back and Firebase Auth has
+        // already succeeded above - this forces Firestore to reconnect
+        // right now, using the freshly-restored network and the new
+        // Auth session, instead of silently failing the very next read
+        // (loadWrappedHouseholdKey, below) and making it look like the
+        // password was wrong.
+        try {
+          await enableNetwork(db);
+        } catch (e) {
+          // Non-fatal - if this fails, the reads below will surface their
+          // own accurate error instead.
+        }
       } catch (firebaseError: any) {
         // A failed sign-in must not leave a previously persisted Firebase user
         // active while the local-profile migration or restore path runs.
@@ -691,7 +714,7 @@ export default function SignInScreen({
     <View style={styles.container}>
       <Text style={styles.eyebrow}>SIGN IN</Text>
       <Text style={styles.title}>Welcome back</Text>
-      <Text style={styles.sub}>Enter your email, username, and password.</Text>
+      <Text style={styles.sub}>Sign in to your household account.</Text>
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <Ionicons name="warning-outline" size={16} color="#991B1B" style={{ marginRight: 6 }} />

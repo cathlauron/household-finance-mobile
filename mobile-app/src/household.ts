@@ -160,11 +160,13 @@ export async function loadHouseholdData(householdId: string): Promise<string | n
     const data = snap.data();
     return typeof data.data === 'string' ? data.data : null;
   } catch (e: any) {
-    const code = e?.code;
-    const msg = e?.message || '';
-    if (code === 'permission-denied' || /permission|denied/i.test(msg)) {
-      return null;
-    }
+    // A permission-denied or connection error here does NOT mean the
+    // username/password was wrong - Firebase Auth already verified that
+    // before this function was ever called. Swallowing it to null caused
+    // the sign-in screen to falsely claim "Incorrect username or password"
+    // right after the device came back online from being offline. Let it
+    // propagate so the caller can show an accurate connection-related
+    // message instead.
     throw e;
   }
 }

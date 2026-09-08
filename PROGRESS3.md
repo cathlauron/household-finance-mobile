@@ -1,5 +1,11 @@
 ﻿Household Finance Mobile App — Progress Log (Phase B on-device testing → Phase C: Publishing)
 
+⚠️ THIS FILE IS NOW CLOSED / HISTORICAL. Current progress is tracked in
+PROGRESS4.md — see that file for anything happening from here on.
+PROGRESS3.md is kept for reference (full on-device testing pass detail,
+the B2.x iconization/minimalism build history, etc.) but is no longer
+updated.
+
 This file picks up exactly where PROGRESS2.md left off. PROGRESS2.md is now
 closed/historical (all of Phase B's checkpoints B.1–B.14 are code-complete;
 see it for full build detail on any of them). PROGRESS1.md (Phase A) and

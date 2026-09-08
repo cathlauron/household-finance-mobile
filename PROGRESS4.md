@@ -13,6 +13,37 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Offline sign-out → sign-in lockout (bug #1)
+
+Investigated via Antigravity (investigation-only prompt, no commits from
+the tool). Found and confirmed against real code:
+- SignInScreen.tsx's `handleSignIn` calls `signInWithFirebase` (Firebase
+  Auth, works fine over restored network), then reads Firestore
+  (`loadWrappedHouseholdKey`) to fetch the household key. Auth and
+  Firestore recover from an offline period independently in this SDK
+  setup — Firestore can stay stuck in backoff after Auth already succeeds.
+- `household.ts`'s `loadWrappedHouseholdKey` was silently catching any
+  `permission-denied` Firestore error and returning `null`, with no way
+  for the caller to tell "this genuinely doesn't exist" apart from "the
+  read itself failed."
+- SignInScreen.tsx then treated that `null` as proof the username/password
+  was wrong, even though Firebase Auth had already verified it correctly.
+- Separately, the screen's static subtitle ("Enter your email, username,
+  and password.") was nearly identical to the actual missing-fields
+  validation error text, making unrelated errors look like two conflicting
+  messages at once.
+- App.tsx's offline sign-out could also hang indefinitely on a Firestore
+  write (`deleteDeviceSession`) with no timeout, when offline.
+
+Applied fix (hand-pasted by the person after review, not applied by the
+tool): stopped swallowing the Firestore error in household.ts; added an
+accurate "couldn't reach your household data" message; call
+`enableNetwork(db)` right after a successful Firebase Auth sign-in to force
+Firestore to reconnect; reworded the subtitle/validation-error text so they
+can't look like duplicate errors; added a 1-second timeout race around the
+offline sign-out's Firestore write. `npx tsc --noEmit` clean. Committed and
+pushed. Still needs a real on-device re-test to fully close out.
+
 ✅ Carried forward from PROGRESS3.md — still true, not yet re-verified this file
 - All of Phase B's checkpoints (B.1 through B.14) are CODE-COMPLETE. Full
   build detail lives in PROGRESS2.md.
@@ -75,9 +106,28 @@ format as PROGRESS3.md's own session entries.)
 ⚠️ Known issues / gotchas — carried forward, still open
 
 🐞 Real bugs confirmed on-device, needing investigation + fix (priority order suggested in PROGRESS3.md)
-1. Offline sign-out → sign-in lockout — after airplane mode off/on, sign-in
-   fails showing both "Incorrect password" and "missing information" at
-   once; only a full app + Expo Go restart + QR rescan recovers it.
+1. ✅ FIXED (pending on-device re-test) — Offline sign-out → sign-in
+   lockout. Root cause: Firestore's own connection (separate from Firebase
+   Auth) can get stuck in a dead/backoff state after a period offline, even
+   once the network and Auth both recover — so the very next Firestore read
+   (loadWrappedHouseholdKey) failed with permission-denied, which the code
+   was silently swallowing to `null` and then wrongly reporting as
+   "Incorrect username or password." At the same time, the screen's static
+   subtitle text was nearly identical to the "missing fields" validation
+   error, so the two looked like conflicting messages stacked together.
+   Fixed by: (a) no longer treating a Firestore permission/connection error
+   as a wrong password — it now propagates and shows an accurate
+   connection-related message instead; (b) calling `enableNetwork(db)`
+   right after a successful Firebase Auth sign-in, to force Firestore to
+   reconnect using the freshly-restored network instead of staying stuck;
+   (c) reworded the subtitle and the "missing fields" error so they can
+   never look like two conflicting errors again; (d) the offline
+   sign-out's `deleteDeviceSession` write now times out after 1 second
+   instead of hanging indefinitely when offline, which was a related cause
+   of the app getting stuck mid-sign-out. `npx tsc --noEmit` clean. STILL
+   NEEDS: a real on-device re-test (airplane mode off/on, then sign in)
+   before this can be marked fully verified — flip to a plain ✅ once
+   confirmed.
 2. Offline delete hangs instead of showing an error (Accounts/Bills/Debts)
    — stuck loading spinner with airplane mode on, no error shown, only
    resolves once connectivity returns. Contradicts an earlier "shows a
@@ -161,10 +211,14 @@ SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass). New/modified files
 from here on will be tracked fresh in this file.
 
 ▶️ Next step
-- Work through the real bugs found in the first on-device testing pass, one
-  at a time, via the standard Antigravity/Copilot-investigates-first
-  workflow — see the numbered list under ⚠️ Known issues above. Suggested
-  order: (1) offline sign-out→sign-in lockout, (2) offline delete hanging,
+- On-device: re-test the offline sign-out → sign-in lockout fix (airplane
+  mode off, sign out, airplane mode on, restart or background/foreground
+  the app, airplane mode off, sign in) before marking bug #1 fully
+  verified.
+- Work through the remaining real bugs found in the first on-device testing
+  pass, one at a time, via the standard Antigravity/Copilot-investigates-
+  first workflow — see the numbered list under ⚠️ Known issues above.
+  Suggested order: (2) offline delete hanging,
   (3) Left to Spend threshold not persisting, (4) FI Calculator's
   non-functional fields, (5) Emergency Fund "Saved" checkmark, (6)
   background-save warnings, (7) Events/Goals/Groceries/Settings silent
