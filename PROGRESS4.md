@@ -13,6 +13,54 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Biometric unlock failed outright on Face ID (bug #9)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), across two rounds — the second round pulled full real code from
+PinUnlockScreen.tsx and SettingsScreen.tsx to confirm exact variable
+names and existing error-display patterns before writing any fix.
+Confirmed two separate, tangled issues:
+- `attemptBiometricAuth` (biometrics.ts) only ever returned a plain
+  `true`/`false`, discarding the real `result.error` from
+  `LocalAuthentication.authenticateAsync`. Every failure — locked out,
+  not enrolled, missing permission, genuine error — looked identical to
+  the user: nothing happened, no message shown. This is a real bug
+  regardless of device/biometric type.
+- The specific "Face ID fails, fingerprint works" symptom traced to
+  iOS's own rule: with `disableDeviceFallback: true` set (as this app
+  does), iOS refuses to even show the Face ID prompt unless the app's
+  bundle has `NSFaceIDUsageDescription` wired up — confirmed present and
+  correct in this project's `app.json`. However, that config only takes
+  effect in a real installed build; testing through Expo Go uses Expo
+  Go's own pre-built permissions, not this project's `app.json`, so
+  Face ID can fail there for reasons unrelated to anything in this
+  codebase. Concluded this specific device-level symptom needs to be
+  re-verified once a real installed build exists (Phase C, EAS Build) —
+  not something fixable from inside Expo Go.
+
+Applied fix (hand-pasted by the person after review, in three parts):
+changed `attemptBiometricAuth`'s return type from `boolean` to a real
+`{ success: boolean; error?: string }` result, and added a new
+`biometricErrorMessage()` helper that translates a raw error code into a
+plain-English message — returning an empty string for a plain user/system
+cancel, since backing out on purpose isn't a real error worth showing.
+Updated both call sites (`PinUnlockScreen.tsx`'s `runBiometricAuth`,
+`SettingsScreen.tsx`'s `handleToggleBiometrics`) to read the new result
+shape and show the translated message using each screen's own existing
+error-display pattern (`setError`/`setBiometricError`), rather than
+silently doing nothing. Caught and fixed a missing import
+(`biometricErrorMessage` needed adding to SettingsScreen.tsx's existing
+`from '../biometrics'` import line — PinUnlockScreen.tsx's import already
+had it) via the resulting `tsc` error. `npx tsc --noEmit` clean.
+Committed and pushed. STILL NEEDS: (a) a real on-device re-test of the
+now-visible error messages generally (e.g. trigger a lockout or a plain
+cancel and confirm the right message — or no message — shows), deferred
+along with bugs #1–8 until the rest of this pass is done; and (b) the
+original Face-ID-specific failure needs separate re-verification on a
+real installed build in Phase C, since Expo Go's own permissions
+(not this project's `app.json`) are the suspected cause and can't be
+fixed from inside Expo Go.
+
 ### Session — Travel checklist-item delete leaves expense behind (bug #8)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -553,8 +601,33 @@ pushed. Still needs a real on-device re-test to fully close out.
     same function. Found incidentally while investigating bug #7. No
     reported on-device symptom yet — deferred until higher-priority items
     are done.
-9. Biometric unlock failed outright on a Face ID device with fingerprint
-   off (not just a wrong label — a functional failure).
+9. ✅ FIXED (pending on-device re-test; Face-ID-specific symptom also
+   pending a real installed build) — Biometric unlock failed outright on
+   a Face ID device with fingerprint off. Root cause was two tangled
+   issues: `attemptBiometricAuth` discarded the real error from
+   `LocalAuthentication.authenticateAsync`, collapsing every kind of
+   failure (locked out, not enrolled, missing permission, genuine error)
+   into a silent `false` with no message shown — a real bug independent
+   of device type. Separately, the specific "Face ID fails, fingerprint
+   works" symptom is believed caused by testing through Expo Go: iOS
+   requires `NSFaceIDUsageDescription` to be wired into the app's actual
+   bundle before it will even show the Face ID prompt when
+   `disableDeviceFallback: true` is set (as this app does) — this
+   project's `app.json` already has that configured correctly, but Expo
+   Go uses its own separate pre-built permissions, not this project's
+   config, so Face ID can fail there for reasons outside this codebase.
+   Fixed the general error-swallowing bug by changing
+   `attemptBiometricAuth`'s return type to include the real error code,
+   adding a `biometricErrorMessage()` translator (blank for a plain
+   user/system cancel, since that's not a real error), and wiring both
+   call sites (PinUnlockScreen.tsx, SettingsScreen.tsx) to show the
+   translated message using each screen's existing error-display
+   pattern instead of doing nothing. `npx tsc --noEmit` clean. STILL
+   NEEDS: (a) an on-device re-test of the now-visible error messages in
+   general, deferred along with bugs #1–8 until the rest of this pass is
+   done; (b) the original Face-ID-specific failure needs separate
+   re-verification on a real installed build once Phase C (EAS Build) is
+   reached, since it can't be confirmed fixed from inside Expo Go.
 10. Turning PIN off shows no loading indicator, reads as frozen.
 11. Category Watchlist "over budget" wording fires at exactly 100% instead
     of only once genuinely over 100%.
@@ -632,10 +705,14 @@ from here on will be tracked fresh in this file.
   Bug #7 turned out to already be resolved as a side effect of bug #2 —
   no code change was needed, just confirmed via investigation. Bug #8
   (Travel checklist-delete expense cleanup) is now also code-complete
-  pending on-device re-test, same batch. Suggested order for what's left:
-  (9) the remaining smaller bugs (biometric capture, PIN-off loading
-  indicator, Category Watchlist wording, "which of these is you?" live
-  update, AccountsScreen's missing label), (8b) the newly-found silent
+  pending on-device re-test, same batch. Bug #9 (biometric unlock
+  swallowing errors) is now also code-complete pending on-device
+  re-test — note its Face-ID-specific symptom additionally needs
+  re-verification on a real installed build in Phase C, since it may be
+  an Expo Go artifact rather than an app bug. Suggested order for what's
+  left: (10) the remaining smaller bugs (PIN-off loading indicator,
+  Category Watchlist wording, "which of these is you?" live update,
+  AccountsScreen's missing label), (8b) the newly-found silent
   personal-snapshot-backup failure in `saveModel()`'s linked-household
   branch, low priority.
 - Leave all reminder/notification testing and bugs alone until Phase C

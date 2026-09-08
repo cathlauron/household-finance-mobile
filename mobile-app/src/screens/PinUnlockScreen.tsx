@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { verifyPin, hasPinSetUp } from '../pin';
-import { getBiometricState, getBiometricLabel, attemptBiometricAuth, BiometricState } from '../biometrics';
+import { getBiometricState, getBiometricLabel, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
 import PinField from '../components/PinField';
 import PasswordField from '../components/PasswordField';
 import { loadProfilesIndex, ProfileIndexEntry, loadEncryptedProfileData } from '../storage';
@@ -39,9 +39,12 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     inFlightRef.current = true;
     lastBiometricAttemptTime = Date.now();
     try {
-      const success = await attemptBiometricAuth('Unlock Household Finance');
-      if (success) {
+      const result = await attemptBiometricAuth('Unlock Household Finance');
+      if (result.success) {
         onUnlocked();
+      } else {
+        const msg = biometricErrorMessage(result.error, biometricLabel);
+        if (msg) setError(msg);
       }
     } finally {
       inFlightRef.current = false;

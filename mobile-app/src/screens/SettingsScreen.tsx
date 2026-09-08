@@ -38,7 +38,7 @@ import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
-import { getBiometricState, getBiometricLabel, setBiometricsDisabled, attemptBiometricAuth, BiometricState } from '../biometrics';
+import { getBiometricState, getBiometricLabel, setBiometricsDisabled, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
 import SetPinScreen from './SetPinScreen';
 import {
   subscribeToUserDevices,
@@ -171,12 +171,12 @@ export default function SettingsScreen() {
       await setBiometricsDisabled(username, true);
       setBiometricState('DISABLED');
     } else {
-      const verified = await attemptBiometricAuth(`Verify ${biometricLabel} to enable`);
-      if (verified) {
+      const result = await attemptBiometricAuth(`Verify ${biometricLabel} to enable`);
+      if (result.success) {
         await setBiometricsDisabled(username, false);
         setBiometricState('ENABLED');
       } else {
-        setBiometricError("Couldn't verify — try again");
+        setBiometricError(biometricErrorMessage(result.error, biometricLabel) || "Couldn't verify — try again");
       }
     }
   }

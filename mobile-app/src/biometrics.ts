@@ -74,16 +74,49 @@ export async function getBiometricLabel(): Promise<string> {
  * Executes native biometric authentication with device PIN fallback disabled.
  * Returns true on success, false on failure or cancellation.
  */
-export async function attemptBiometricAuth(promptMessage: string): Promise<boolean> {
+export type BiometricAuthResult = { success: boolean; error?: string };
+
+/**
+ * Executes native biometric authentication with device PIN fallback disabled.
+ * Returns the real success/error result rather than collapsing it to a plain
+ * boolean, so callers can tell a genuine failure (locked out, not enrolled,
+ * missing Face ID permission, etc.) apart from the user simply cancelling.
+ */
+export async function attemptBiometricAuth(promptMessage: string): Promise<BiometricAuthResult> {
   try {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage,
       cancelLabel: 'Cancel',
       disableDeviceFallback: true,
     });
-    return result.success === true;
+    if (result.success) return { success: true };
+    return { success: false, error: (result as { error?: string }).error };
   } catch {
-    return false;
+    return { success: false, error: 'unknown' };
+  }
+}
+
+/**
+ * Translates a raw biometric error code into a plain-English message. Returns
+ * an empty string for a plain user/system cancel, since that isn't a real
+ * error worth surfacing — the person just backed out on purpose.
+ */
+export function biometricErrorMessage(error: string | undefined, label: string): string {
+  switch (error) {
+    case 'user_cancel':
+    case 'system_cancel':
+    case 'app_cancel':
+      return '';
+    case 'lockout':
+      return `${label} is temporarily locked — unlock your device with your passcode, then try again.`;
+    case 'not_enrolled':
+      return `No ${label} is set up on this device.`;
+    case 'not_available':
+      return `${label} isn't available right now.`;
+    case 'missing_usage_description':
+      return `${label} isn't available in this preview build — try again once the app is installed normally.`;
+    default:
+      return `Couldn't verify ${label} — try again.`;
   }
 }
 
