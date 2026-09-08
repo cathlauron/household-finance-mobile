@@ -1766,9 +1766,11 @@ from here on will be tracked fresh in this file.
   confirm-step for "which of these is you?", bottom-nav Calendar removal,
   Transactions swipe-to-delete on derived rows, Reports checkbox redesign,
   ToPay/Planning icon+title reversal) — these are new work, not bug fixes.
-- Continue the "fewer words" pass: consult PROGRESS3.md's ranked
-  inventory for the next screen after MoreScreen.tsx, and proceed
-  onward down that list.
+- Continue the "fewer words" pass: SettingsScreen.tsx, ProfileScreen.tsx,
+  OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx,
+  MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx, and
+  CreateProfileScreen.tsx are now all complete. Next up per the ranked
+  inventory list further down this file: GroceriesScreen.tsx (13 items).
 - Once the bug-fixing pass is far enough along (or the person decides to
   move on regardless), proceed to Phase C (Publishing) — see
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
@@ -1789,36 +1791,33 @@ PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
 
 ## 📋 Full "fewer words" ranked inventory (regenerated — original list was lost, see known issues)
 
-Completed already: SettingsScreen.tsx, ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx, MoreScreen.tsx
+Completed already: SettingsScreen.tsx, ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx, MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx, CreateProfileScreen.tsx
 
 Remaining, ranked most-items-first:
 
-1. LoansScreen.tsx (18 items)
-2. IncomeScreen.tsx (14 items)
-3. CreateProfileScreen.tsx (13 items)
-4. GroceriesScreen.tsx (13 items)
-5. DebtsScreen.tsx (11 items)
-6. TransactionsScreen.tsx (11 items)
-7. BillsScreen.tsx (9 items)
-8. EventsScreen.tsx (8 items)
-9. GoalsScreen.tsx (8 items)
-10. CsvImportModal.tsx (7 items)
-11. TravelScreen.tsx (7 items)
-12. LoanPayoffSimulatorModal.tsx (5 items)
-13. AccountsScreen.tsx (3 items)
-14. DashboardScreen.tsx (3 items)
-15. PinUnlockScreen.tsx (3 items)
-16. CashFlowForecastReport.tsx (3 items)
-17. TaxSummaryReport.tsx (3 items)
-18. SetPinScreen.tsx (2 items)
-19. PaymentMethodsReport.tsx (2 items)
-20. PersonSpendingReport.tsx (2 items)
-21. SubscriptionAuditReport.tsx (2 items)
-22. CalendarScreen.tsx (1 item)
-23. HomeScreen.tsx (1 item)
-24. ReportsScreen.tsx (1 item)
-25. MerchantSpendingReport.tsx (1 item)
-26. PaymentMethodPicker.tsx (1 item)
+1. GroceriesScreen.tsx (13 items)
+2. DebtsScreen.tsx (11 items)
+3. TransactionsScreen.tsx (11 items)
+4. BillsScreen.tsx (9 items)
+5. EventsScreen.tsx (8 items)
+6. GoalsScreen.tsx (8 items)
+7. CsvImportModal.tsx (7 items)
+8. TravelScreen.tsx (7 items)
+9. LoanPayoffSimulatorModal.tsx (5 items)
+10. AccountsScreen.tsx (3 items)
+11. DashboardScreen.tsx (3 items)
+12. PinUnlockScreen.tsx (3 items)
+13. CashFlowForecastReport.tsx (3 items)
+14. TaxSummaryReport.tsx (3 items)
+15. SetPinScreen.tsx (2 items)
+16. PaymentMethodsReport.tsx (2 items)
+17. PersonSpendingReport.tsx (2 items)
+18. SubscriptionAuditReport.tsx (2 items)
+19. CalendarScreen.tsx (1 item)
+20. HomeScreen.tsx (1 item)
+21. ReportsScreen.tsx (1 item)
+22. MerchantSpendingReport.tsx (1 item)
+23. PaymentMethodPicker.tsx (1 item)
 27. InsightsScreen.tsx (0 items) — skip, nothing to trim
 28. IntroScreen.tsx (0 items) — skip
 29. PlanningScreen.tsx (0 items) — skip
@@ -1827,7 +1826,7 @@ Remaining, ranked most-items-first:
 32. WeeklyDigestReport.tsx (0 items) — skip
 33. YearInReviewReport.tsx (0 items) — skip
 
-▶️ Next step: LoansScreen.tsx (18 items) — the current top of the list.
+▶️ Next step: GroceriesScreen.tsx (13 items) — the current top of the list.
 
 
 - Fixed 2026: the full ranked "fewer words" screen inventory had only ever
@@ -1904,5 +1903,21 @@ errors). Per the person's direction, on-device testing of this is being
 held until right before moving to Phase C, batched together with the
 other pending on-device items rather than tested in isolation now.
 
-▶️ Next step: CreateProfileScreen.tsx (13 items) — next on the ranked inventory list above. B.12b-2 (multi-account selector) and B.12b-3 (scenario-comparison modal) remain unstarted.
+▶️ Next step: CreateProfileScreen.tsx (13 items) — next on the ranked inventory list above.
+
+## ✅ CreateProfileScreen.tsx — "fewer words" pass complete (19 items trimmed)
+
+Trimmed all 19 flagged items: 4 Firebase error-translation messages (email
+already in use, invalid email, weak password, generic fallback), 3 local
+validation errors (invalid email, password length, username taken), 3
+recovery-key alert bodies (cloud-save failure, save success, still-offline
+retry), 2 occurrences of a "Continue to App" button (the alert action and
+the modal's primary button — same text, two distinct real spots, trimmed to
+"Continue" in both), 1 generic profile-save failure error, 1 screen
+subtitle, 1 confirm-password placeholder, 1 encryption hint below the form,
+1 modal title, 1 modal subtitle, 1 copy-key button label, 1 checkbox
+confirmation label. Verified via `npx tsc --noEmit` from mobile-app\ —
+clean.
+
+▶️ Next step: GroceriesScreen.tsx (13 items) — next on the ranked inventory list above. B.12b-2 (multi-account selector) and B.12b-3 (scenario-comparison modal) remain unstarted.
 

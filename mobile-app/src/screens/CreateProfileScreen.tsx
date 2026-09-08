@@ -35,15 +35,15 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
   function friendlyFirebaseError(e: any): string {
     const code = e?.code || '';
     if (code === 'auth/email-already-in-use') {
-      return 'That email is already registered - try signing in instead, or use a different email.';
+      return 'Email is already registered. Sign in instead or use another email.';
     }
     if (code === 'auth/invalid-email') {
-      return "That doesn't look like a valid email address.";
+      return 'Enter a valid email address.';
     }
     if (code === 'auth/weak-password') {
-      return 'Firebase requires at least 6 characters for the account password.';
+      return 'Password must be at least 6 characters.';
     }
-    return 'Something went wrong creating your account. Check your internet connection and try again.';
+    return 'Could not create account. Check your connection and try again.';
   }
 
   async function handleCreate() {
@@ -55,11 +55,11 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       return;
     }
     if (!email || !email.includes('@')) {
-      setError('Enter a valid email address.');
+      setError('Enter a valid email.');
       return;
     }
     if (password1.length < 6) {
-      setError('Use at least 6 characters for your password.');
+      setError('Password must be at least 6 characters.');
       return;
     }
     if (password1 !== password2) {
@@ -70,7 +70,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
     try {
       const profiles = await loadProfilesIndex();
       if (profiles.some((p) => p.username === username)) {
-        setError('That username is taken - choose another, or sign in instead.');
+        setError('Username is taken. Choose another or sign in.');
         setBusy(false);
         return;
       }
@@ -107,7 +107,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         setBusy(false);
         Alert.alert(
           'Recovery Key Setup Incomplete',
-          'Your profile was created, but we could not save your Secret Recovery Key to the cloud due to a connection issue. You can retry now, or generate one later in Settings > Security.',
+          'Profile created, but your Secret Recovery Key could not be saved to the cloud. You can retry now or generate one later in Settings > Security.',
           [
             {
               text: 'Retry',
@@ -115,15 +115,15 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 setBusy(true);
                 try {
                   await saveRecoveryKey(username, key, false, code);
-                  Alert.alert('Saved', 'Secret Recovery Key saved successfully.');
+                  Alert.alert('Saved', 'Secret Recovery Key saved.');
                 } catch {
-                  Alert.alert('Still Offline', 'Could not save to the cloud. You can generate a new key anytime in Settings > Security.');
+                  Alert.alert('Still Offline', 'Could not save to the cloud. You can generate a key later in Settings > Security.');
                 } finally {
                   setBusy(false);
                 }
               },
             },
-            { text: 'Continue to App', style: 'cancel' },
+            { text: 'Continue', style: 'cancel' },
           ]
         );
         return;
@@ -134,7 +134,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       setBusy(false);
     } catch (e) {
       setBusy(false);
-      setError('Something went wrong saving your profile. Please try again.');
+      setError('Could not save profile. Please try again.');
     }
   }
 
@@ -143,8 +143,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       <Text style={styles.eyebrow}>FIRST-TIME SETUP</Text>
       <Text style={styles.title}>Create your profile</Text>
       <Text style={styles.sub}>
-        Choose a username and a password, and enter your email - you'll use your username and
-        password to sign in every time.
+        Enter an email, username, and password to create your account.
       </Text>
 
       <Text style={styles.label}>Email</Text>
@@ -184,7 +183,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         style={styles.input}
         value={password2}
         onChangeText={setPassword2}
-        placeholder="Type it again"
+        placeholder="Re-enter password"
       />
 
       {!!error && <Text style={styles.error}>{error}</Text>}
@@ -198,18 +197,18 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        Your data is genuinely encrypted with this password. You will receive a Secret
-        Recovery Key next to protect your account against forgotten passwords.
+        Your data is encrypted with this password. You will receive a Secret Recovery Key
+        next to protect against forgotten passwords.
       </Text>
 
       <Modal visible={!!recoveryCode} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.eyebrow}>CRITICAL SECURITY STEP</Text>
-            <Text style={styles.modalTitle}>Your Secret Recovery Key</Text>
+            <Text style={styles.modalTitle}>Secret Recovery Key</Text>
             <Text style={styles.modalSub}>
-              Save this key in a safe place. If you ever reset or forget your account password,
-              this is the only way to restore your encrypted financial data.
+              Save this key in a safe place. If you forget or reset your password, this is the
+              only way to restore your data.
             </Text>
 
             <View style={styles.codeBox}>
@@ -233,7 +232,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 color="#FFFFFF"
                 style={{ marginRight: 6 }}
               />
-              <Text style={styles.copyButtonText}>{copied ? 'Copied!' : 'Copy Recovery Key'}</Text>
+              <Text style={styles.copyButtonText}>{copied ? 'Copied!' : 'Copy Key'}</Text>
             </TouchableOpacity>
 
             <Pressable
@@ -257,7 +256,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 }
               }}
             >
-              <Text style={styles.primaryBtnText}>Continue to App</Text>
+              <Text style={styles.primaryBtnText}>Continue</Text>
             </TouchableOpacity>
           </View>
         </View>
