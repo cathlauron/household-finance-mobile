@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -105,9 +105,26 @@ type ContribRow = { id: string; date: string; amountInput: string };
 
 type PillTab = 'goals' | 'ef' | 'fi';
 
-export default function SavingsScreen() {
+type SavingsScreenProps = {
+  openSavingsId?: string;
+  openSavingsNonce?: number;
+};
+
+export default function SavingsScreen({ openSavingsId, openSavingsNonce }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+
+  const openedSavingsRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
+  useEffect(() => {
+    if (!model || !openSavingsId) return;
+    const prev = openedSavingsRef.current;
+    if (prev && prev.id === openSavingsId && prev.nonce === openSavingsNonce) return;
+    const target = (model.savingsGoals || []).find((g) => g.id === openSavingsId);
+    if (target) {
+      openedSavingsRef.current = { id: openSavingsId, nonce: openSavingsNonce };
+      openEditModal(target);
+    }
+  }, [model, openSavingsId, openSavingsNonce]);
   const styles = makeStyles(colors);
 
   const [activeTab, setActiveTab] = useState<PillTab>('goals');

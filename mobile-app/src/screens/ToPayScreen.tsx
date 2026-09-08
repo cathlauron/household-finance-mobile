@@ -5,6 +5,8 @@ import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
 import { subscribeToOpenBillRequest, OpenBillRequest } from '../openBillRequest';
+import { subscribeToOpenDebtRequest, OpenDebtRequest } from '../openDebtRequest';
+import { subscribeToOpenLoanRequest, OpenLoanRequest } from '../openLoanRequest';
 
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,6 +26,8 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   const { colors } = useTheme();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('bills');
   const [swipeOpenRequest, setSwipeOpenRequest] = useState<OpenBillRequest | null>(null);
+  const [swipeOpenDebtRequest, setSwipeOpenDebtRequest] = useState<OpenDebtRequest | null>(null);
+  const [swipeOpenLoanRequest, setSwipeOpenLoanRequest] = useState<OpenLoanRequest | null>(null);
 
   // B.14: a subscription-reminder deep-link always means "open the Bills
   // sub-tab", regardless of whichever sub-tab was last active.
@@ -41,6 +45,18 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
     return subscribeToOpenBillRequest((request) => {
       setSwipeOpenRequest(request);
       setActiveSubTab('bills');
+    });
+  }, []);
+  useEffect(() => {
+    return subscribeToOpenDebtRequest((request) => {
+      setSwipeOpenDebtRequest(request);
+      setActiveSubTab('debts');
+    });
+  }, []);
+  useEffect(() => {
+    return subscribeToOpenLoanRequest((request) => {
+      setSwipeOpenLoanRequest(request);
+      setActiveSubTab('loans');
     });
   }, []);
   const styles = makeStyles(colors);
@@ -68,8 +84,18 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
             openBillNonce={swipeOpenRequest ? swipeOpenRequest.nonce : undefined}
           />
         )}
-        {activeSubTab === 'debts' && <DebtsScreen />}
-        {activeSubTab === 'loans' && <LoansScreen />}
+        {activeSubTab === 'debts' && (
+          <DebtsScreen
+            openDebtId={swipeOpenDebtRequest ? swipeOpenDebtRequest.debtId : undefined}
+            openDebtNonce={swipeOpenDebtRequest ? swipeOpenDebtRequest.nonce : undefined}
+          />
+        )}
+        {activeSubTab === 'loans' && (
+          <LoansScreen
+            openLoanId={swipeOpenLoanRequest ? swipeOpenLoanRequest.loanId : undefined}
+            openLoanNonce={swipeOpenLoanRequest ? swipeOpenLoanRequest.nonce : undefined}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -102,7 +102,12 @@ function sortByNextDue(loans: Loan[]): Loan[] {
   });
 }
 
-export default function LoansScreen() {
+type LoansScreenProps = {
+  openLoanId?: string;
+  openLoanNonce?: number;
+};
+
+export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
@@ -110,6 +115,18 @@ export default function LoansScreen() {
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const openedLoanRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
+  useEffect(() => {
+    if (!model || !openLoanId) return;
+    const prev = openedLoanRef.current;
+    if (prev && prev.id === openLoanId && prev.nonce === openLoanNonce) return;
+    const target = (model.loans || []).find((l) => l.id === openLoanId);
+    if (target) {
+      openedLoanRef.current = { id: openLoanId, nonce: openLoanNonce };
+      openEditModal(target);
+    }
+  }, [model, openLoanId, openLoanNonce]);
   const [nameInput, setNameInput] = useState('');
   const [loanTypeInput, setLoanTypeInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'borrowed' | 'lent'>('borrowed');

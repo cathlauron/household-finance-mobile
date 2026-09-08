@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -74,7 +74,12 @@ function fullRecurrenceDetail(debt: Debt): string {
 
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
-export default function DebtsScreen() {
+type DebtsScreenProps = {
+  openDebtId?: string;
+  openDebtNonce?: number;
+};
+
+export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
@@ -82,6 +87,18 @@ export default function DebtsScreen() {
   const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const openedDebtRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
+  useEffect(() => {
+    if (!model || !openDebtId) return;
+    const prev = openedDebtRef.current;
+    if (prev && prev.id === openDebtId && prev.nonce === openDebtNonce) return;
+    const target = (model.debts || []).find((d) => d.id === openDebtId);
+    if (target) {
+      openedDebtRef.current = { id: openDebtId, nonce: openDebtNonce };
+      openEditModal(target);
+    }
+  }, [model, openDebtId, openDebtNonce]);
   const [creditorInput, setCreditorInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState('');

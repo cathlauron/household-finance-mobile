@@ -13,6 +13,87 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions rows: implemented
+
+Implemented via Antigravity (five rounds of investigation-only prompts,
+no commits from the tool), completing the design-change item deferred
+in the prior Bills-only swipe-to-navigate session. Investigation
+confirmed Debts and Loans are tabs inside ToPayScreen.tsx (same
+situation as Bills), while Income and Savings are standalone RootStack
+screens reached via `navigation.navigate('Income'/'Savings')` — not
+tabs inside MainTabs — so they don't need the pub-sub/nonce mechanism
+at all; a plain navigation param is enough since pushing them doesn't
+remount any tab bar. Confirmed exact field names before writing
+anything: `Loan.actualPayments`, `IncomeSource.paymentLog`,
+`SavingsGoal.contributions`, and confirmed `TransactionEntry.source`'s
+real allowed values (`'bill' | 'debt' | 'loan' | 'income' | 'saving' |
+'manual'` — singular `'saving'`, not `'saving**s**'`) and the exact
+`source:` string used on income-sourced (`'income'`) and
+savings-sourced (`'saving'`) entries in `buildTransactionsList()`,
+rather than guessing — an earlier version of this plan would have
+silently never matched those two conditions if guessed wrong, with no
+error or crash to signal it. Also confirmed `navigation.push(...)` is
+unused anywhere in the codebase and unsafe to introduce here, since
+TransactionsScreen sits inside a bottom tab navigator, which has no
+`push()` — confirmed `navigation.navigate(...)`, same as Bills already
+uses, is the correct approach throughout.
+
+Implemented (hand-pasted by the person after review):
+- New files, openDebtRequest.ts and openLoanRequest.ts — exact mirrors
+  of openBillRequest.ts's pub-sub-with-nonce pattern, kept as separate
+  modules rather than generalized into one shared module, so Bills'
+  already-implemented and tested code stays completely untouched.
+- DebtsScreen.tsx / LoansScreen.tsx — added optional
+  `openDebtId`/`openDebtNonce` and `openLoanId`/`openLoanNonce` props,
+  each with the same `{ id, nonce }`-comparing guard-ref effect pattern
+  BillsScreen.tsx already uses.
+- ToPayScreen.tsx — subscribes to both new pub-sub modules alongside
+  the existing Bills one; a fired request switches `activeSubTab` to
+  'debts'/'loans' and forwards `{ id, nonce }` down to the matching
+  screen.
+- RootStack.tsx — added optional `openIncomeId`/`openIncomeNonce` and
+  `openSavingsId`/`openSavingsNonce` params to `Income`/`Savings` in
+  `RootStackParamList` (previously both `undefined`); both
+  `Stack.Screen` entries switched from a plain `component={...}` to a
+  render-callback form that pulls `route.params` and passes them down
+  as plain props — mirroring the exact pattern already used for
+  `Main: { openBillId?: string }`, the only precedent for this in the
+  codebase (no `useRoute()`/`RouteProp` usage exists anywhere, so this
+  sets the first instance of the pattern for a directly-registered
+  stack screen).
+- IncomeScreen.tsx / SavingsScreen.tsx — added the matching optional
+  props and the same guard-ref effect. One real bug caught by `tsc`
+  during this step: the effect was initially placed above the
+  `const { model } = useData()` line it depends on, which fails at
+  compile time ("used before its declaration") since `const` isn't
+  hoisted — fixed by moving the ref/effect block to right after the
+  existing `useData()` call in both files.
+- TransactionsScreen.tsx — added `findDebtIdForTransaction`,
+  `findLoanIdForTransaction`, `findIncomeSourceIdForTransaction`, and
+  `findSavingsGoalIdForTransaction`, each mirroring
+  `findBillIdForTransaction`'s exact shape (walking a row's composite
+  id back to its real source record by scanning the matching array —
+  `cycles`, `actualPayments`, `paymentLog`, `contributions`
+  respectively). The row's `viewAction` is now a single
+  if/else-if chain checking all five source types (Bill/Debt/Loan
+  reuse `requestOpenX` + `navigation.navigate('To-Pay')`; Income/
+  Savings call `navigation.navigate('Income'/'Savings', { ...params })`
+  directly). One extra compiler round needed: casting the screen name
+  and the params object separately as `as never` on the same call
+  produced a `[never, never]` tuple TypeScript couldn't match against
+  any `navigate` overload — fixed by casting `navigation` itself to
+  `any` for just those two calls instead of casting each argument.
+
+`npx tsc --noEmit` clean (0 errors) after two small follow-up fixes
+(the `model`-before-declaration ordering issue, and the `[never,
+never]` navigate-argument issue), both caught by the compiler and
+fixed in the same session. Per the person's standing direction,
+on-device testing of this is deferred and will be batched together
+with every other pending on-device item, rather than tested in
+isolation now. This completes item #1 from the "what's still open"
+list — the only other genuinely open new-work item remaining is the
+"fewer words" pass.
+
 ### Session — Swipe-to-navigate on Bills-derived Transactions rows: implemented
 
 Implemented via Antigravity (three rounds of investigation-only prompts,
@@ -1406,12 +1487,20 @@ pushed. Still needs a real on-device re-test to fully close out.
   already open, and confirm swiping the SAME bill's row a second time
   still opens it (not just the first time). Also confirm manual
   transaction rows still swipe-to-delete exactly as before.
-- Enable the same swipe-to-source-record behavior on debt/loan/income/
-  savings-derived rows: DECIDED same approach as Bills, but deferred as
-  a separate later checkpoint, since none of those four screens have
-  any deep-link ("open this specific record") wiring today the way
-  Bills does — that has to be built from scratch per screen before
-  swipe can be wired to it.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Swipe-to-
+  navigate on Debt/Loan/Income/Savings-derived Transactions rows.
+  Debts/Loans reuse the same pub-sub mechanism as Bills (new
+  openDebtRequest.ts/openLoanRequest.ts, mirrored 1:1, Bills left
+  untouched); Income/Savings use a simpler plain-navigation-param
+  approach instead, since they're standalone RootStack screens rather
+  than ToPayScreen tabs and don't need the pub-sub/nonce mechanism at
+  all. See session log above for full detail. Needs a real on-device
+  test: swipe a debt-sourced row (gold "View Debt" action → opens on
+  the Debts sub-tab), a loan-sourced row (→ Loans sub-tab), an
+  income-sourced row (→ Income screen with that source's edit sheet
+  open), and a savings-sourced row (→ Savings screen with that goal's
+  edit sheet open) — confirm each opens the right record, and confirm
+  a second swipe of the same record still works for all four.
 
 🔔 Deferred to Phase C — do not chase now
 - Subscription reminder tap → deep-link to To-Pay → Bills → specific bill
@@ -1448,16 +1537,47 @@ from here on will be tracked fresh in this file.
 - src/openBillRequest.ts — NEW. Transient (non-persisted) pub-sub module
   signaling "open this bill now" from TransactionsScreen to ToPayScreen/
   BillsScreen, with a nonce so repeat requests for the same bill still fire.
+- src/openDebtRequest.ts — NEW. Exact mirror of openBillRequest.ts for
+  Debts.
+- src/openLoanRequest.ts — NEW. Exact mirror of openBillRequest.ts for
+  Loans.
 - src/components/SwipeableRow.tsx — MODIFIED. Added an optional
   `viewAction` prop (non-destructive alternative to the delete button).
 - src/screens/BillsScreen.tsx — MODIFIED. Added an optional
   `openBillNonce` prop; auto-open guard now compares `{ id, nonce }`.
+- src/screens/DebtsScreen.tsx — MODIFIED. Added optional
+  `openDebtId`/`openDebtNonce` props with the same guard-ref effect
+  pattern as BillsScreen.
+- src/screens/LoansScreen.tsx — MODIFIED. Added optional
+  `openLoanId`/`openLoanNonce` props with the same guard-ref effect
+  pattern as BillsScreen.
+- src/screens/IncomeScreen.tsx — MODIFIED. Added optional
+  `openIncomeId`/`openIncomeNonce` props with the same guard-ref effect
+  pattern, read via RootStack.tsx's route params rather than ToPayScreen.
+- src/screens/SavingsScreen.tsx — MODIFIED. Added optional
+  `openSavingsId`/`openSavingsNonce` props with the same guard-ref
+  effect pattern, read via RootStack.tsx's route params.
 - src/screens/ToPayScreen.tsx — MODIFIED. Subscribes to openBillRequest.ts,
-  forwards `{ billId, nonce }` to BillsScreen.
+  openDebtRequest.ts, and openLoanRequest.ts; forwards `{ id, nonce }` to
+  BillsScreen/DebtsScreen/LoansScreen respectively.
+- src/navigation/RootStack.tsx — MODIFIED. Added optional
+  `openIncomeId`/`openIncomeNonce` and `openSavingsId`/`openSavingsNonce`
+  params to `Income`/`Savings` in `RootStackParamList`; both screens now
+  registered via a render-callback that extracts `route.params` and
+  passes them down as plain props.
 - src/screens/TransactionsScreen.tsx — MODIFIED. Added `useNavigation()`,
-  a bill-lookup helper, and a swipe `viewAction` on bill-sourced rows.
+  five source-lookup helpers (bill/debt/loan/income/saving), and a swipe
+  `viewAction` covering all five derived source types.
 
 ▶️ Next step
+- Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions
+  rows is now IMPLEMENTED and `npx tsc --noEmit` clean — fold into the
+  same combined on-device pass described below: swipe each of the four
+  new row types and confirm they open the right record on the right
+  screen/tab, and that a repeat swipe of the same record still works.
+- With this, the "fewer words" pass (SignInScreen.tsx next, per the
+  ranked list) is the only remaining genuinely open new-work item
+  besides the on-device re-test pass and the unscheduled B.12b item.
 - Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) both now have
   round-2 fixes applied and `npx tsc --noEmit` clean — neither has been
   re-tested on a real device yet. Next step: do ONE combined on-device

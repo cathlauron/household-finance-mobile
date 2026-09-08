@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -71,9 +71,26 @@ function sortByNextPayDate(sources: IncomeSource[]): IncomeSource[] {
   });
 }
 
-export default function IncomeScreen() {
+type IncomeScreenProps = {
+  openIncomeId?: string;
+  openIncomeNonce?: number;
+};
+
+export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+
+  const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
+  useEffect(() => {
+    if (!model || !openIncomeId) return;
+    const prev = openedIncomeRef.current;
+    if (prev && prev.id === openIncomeId && prev.nonce === openIncomeNonce) return;
+    const target = (model.income || []).find((s) => s.id === openIncomeId);
+    if (target) {
+      openedIncomeRef.current = { id: openIncomeId, nonce: openIncomeNonce };
+      openEditModal(target);
+    }
+  }, [model, openIncomeId, openIncomeNonce]);
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);

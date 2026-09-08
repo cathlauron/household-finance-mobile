@@ -20,6 +20,8 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
+import { requestOpenDebt } from '../openDebtRequest';
+import { requestOpenLoan } from '../openLoanRequest';
 import { formatPeso } from '../balanceProjection';
 import {
   buildTransactionsList,
@@ -94,6 +96,38 @@ function findBillIdForTransaction(model: HouseholdModel, txnId: string): string 
   const cycleId = txnId.slice(5);
   const bill = (model.bills || []).find((b) => (b.cycles || []).some((c) => c.id === cycleId));
   return bill ? bill.id : null;
+}
+
+// Debt-sourced TransactionEntry ids are built as 'debt-' + cycle.id
+// (see transactions.ts) — same shape as bills.
+function findDebtIdForTransaction(model: HouseholdModel, txnId: string): string | null {
+  const cycleId = txnId.slice(5);
+  const debt = (model.debts || []).find((d) => (d.cycles || []).some((c) => c.id === cycleId));
+  return debt ? debt.id : null;
+}
+
+// Loan-sourced TransactionEntry ids are built as 'loan-' + p.id, where p is
+// a LoanPayment inside loan.actualPayments (see transactions.ts).
+function findLoanIdForTransaction(model: HouseholdModel, txnId: string): string | null {
+  const paymentId = txnId.slice(5);
+  const loan = (model.loans || []).find((l) => (l.actualPayments || []).some((p) => p.id === paymentId));
+  return loan ? loan.id : null;
+}
+
+// Income-sourced TransactionEntry ids are built as 'income-' + entry.id,
+// where entry is a PaymentLogEntry inside source.paymentLog (see transactions.ts).
+function findIncomeSourceIdForTransaction(model: HouseholdModel, txnId: string): string | null {
+  const entryId = txnId.slice(7);
+  const source = (model.income || []).find((s) => (s.paymentLog || []).some((e) => e.id === entryId));
+  return source ? source.id : null;
+}
+
+// Savings-sourced TransactionEntry ids are built as 'saving-' + c.id, where c
+// is a SavingsContribution inside goal.contributions (see transactions.ts).
+function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): string | null {
+  const contribId = txnId.slice(7);
+  const goal = (model.savingsGoals || []).find((g) => (g.contributions || []).some((c) => c.id === contribId));
+  return goal ? goal.id : null;
 }
 
 export default function TransactionsScreen() {
@@ -519,23 +553,66 @@ export default function TransactionsScreen() {
           const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
           const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
           const billId = t.source === 'bill' ? findBillIdForTransaction(model, t.id) : null;
+          const debtId = t.source === 'debt' ? findDebtIdForTransaction(model, t.id) : null;
+          const loanId = t.source === 'loan' ? findLoanIdForTransaction(model, t.id) : null;
+          const incomeSourceId = t.source === 'income' ? findIncomeSourceIdForTransaction(model, t.id) : null;
+          const savingsGoalId = t.source === 'saving' ? findSavingsGoalIdForTransaction(model, t.id) : null;
+          const viewAction = billId
+            ? {
+                label: 'View Bill',
+                icon: 'receipt-outline' as const,
+                onPress: () => {
+                  requestOpenBill(billId);
+                  navigation.navigate('To-Pay' as never);
+                },
+              }
+            : debtId
+            ? {
+                label: 'View Debt',
+                icon: 'card-outline' as const,
+                onPress: () => {
+                  requestOpenDebt(debtId);
+                  navigation.navigate('To-Pay' as never);
+                },
+              }
+            : loanId
+            ? {
+                label: 'View Loan',
+                icon: 'business-outline' as const,
+                onPress: () => {
+                  requestOpenLoan(loanId);
+                  navigation.navigate('To-Pay' as never);
+                },
+              }
+            : incomeSourceId
+            ? {
+                label: 'View Income',
+                icon: 'cash-outline' as const,
+                onPress: () => {
+                  (navigation as any).navigate('Income', {
+                    openIncomeId: incomeSourceId,
+                    openIncomeNonce: Date.now(),
+                  });
+                },
+              }
+            : savingsGoalId
+            ? {
+                label: 'View Goal',
+                icon: 'trending-up-outline' as const,
+                onPress: () => {
+                  (navigation as any).navigate('Savings', {
+                    openSavingsId: savingsGoalId,
+                    openSavingsNonce: Date.now(),
+                  });
+                },
+              }
+            : undefined;
           return (
             <SwipeableRow
               key={t.id}
-              enabled={(isManual && Boolean(model.settings.swipeToDeleteEnabled)) || Boolean(billId)}
+              enabled={(isManual && Boolean(model.settings.swipeToDeleteEnabled)) || Boolean(viewAction)}
               onDelete={() => handleSwipeDelete(t.rawId as string)}
-              viewAction={
-                billId
-                  ? {
-                      label: 'View Bill',
-                      icon: 'receipt-outline',
-                      onPress: () => {
-                        requestOpenBill(billId);
-                        navigation.navigate('To-Pay' as never);
-                      },
-                    }
-                  : undefined
-              }
+              viewAction={viewAction}
               testID={`txn-swipe-${t.id}`}
             >
             <CollapsibleRow

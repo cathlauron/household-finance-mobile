@@ -16,8 +16,8 @@ export type RootStackParamList = {
   Profile: undefined;
   Calendar: undefined;
   Accounts: undefined;
-  Income: undefined;
-  Savings: undefined;
+  Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
+  Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
   Planning: undefined;
   Insights: undefined;
   Settings: undefined;
@@ -78,14 +78,26 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
       />
       <Stack.Screen
         name="Income"
-        component={IncomeScreen}
         options={{ title: 'Income', headerBackTitle: 'More' }}
-      />
+      >
+        {({ route }) => (
+          <IncomeScreen
+            openIncomeId={route.params?.openIncomeId}
+            openIncomeNonce={route.params?.openIncomeNonce}
+          />
+        )}
+      </Stack.Screen>
       <Stack.Screen
         name="Savings"
-        component={SavingsScreen}
         options={{ title: 'Savings', headerBackTitle: 'More' }}
-      />
+      >
+        {({ route }) => (
+          <SavingsScreen
+            openSavingsId={route.params?.openSavingsId}
+            openSavingsNonce={route.params?.openSavingsNonce}
+          />
+        )}
+      </Stack.Screen>
       <Stack.Screen
         name="Planning"
         component={PlanningScreen}
