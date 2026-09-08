@@ -1781,3 +1781,10 @@ Remaining, ranked most-items-first:
 
 ▶️ Next step: LoansScreen.tsx (18 items) — the current top of the list.
 
+
+- Fixed 2026: the full ranked "fewer words" screen inventory had only ever
+  existed in a since-closed chat session, never saved to a file. Regenerated
+  via Antigravity re-scan (see inventory section above) and now permanently
+  captured in PROGRESS4.md. Going forward, any generated list like this
+  must be pasted into PROGRESS4.md the same session it's produced.
+
