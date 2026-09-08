@@ -13,6 +13,35 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Emergency Fund fields missing auto-save (bug #5b)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), confirming the suspicion flagged while fixing bug #5. Confirmed:
+neither Emergency Fund TextInput (`efExpensesInput`/`efSavingsInput`) had
+an `onBlur` handler at all — only `onChangeText`, which just updates local
+state. `handleSaveEf` was only ever called from the main "Save" button's
+`onPress`, with no `onBlur`, `useEffect`, or debounce path anywhere in the
+file (confirmed `useEffect` isn't even imported in SavingsScreen.tsx).
+Same root cause as bugs #3 and #4. Also confirmed the "use suggested
+expenses" button only called `setEfExpensesInput(...)` and never saved.
+
+Applied fix (hand-pasted by the person after review): gave `handleSaveEf`
+an optional `expensesOverride` parameter (falls back to the existing
+`efExpensesInput ?? efExpensesDisplay` chain when not passed) so the
+suggestion button can save the freshly-tapped value immediately without
+waiting on a state update that hasn't landed yet; added
+`onBlur={() => handleSaveEf()}` to both Emergency Fund TextInputs; updated
+the suggestion button's `onPress` to save with the override value right
+after setting state; and changed the main Save button's `onPress` from
+`handleSaveEf` directly to `() => handleSaveEf()`, since passing the
+function directly made TypeScript infer the tap's GestureResponderEvent as
+the (now-optional) string parameter — this surfaced as a `tsc` error
+(`GestureResponderEvent` not assignable to `string`) and was fixed the
+same session. `npx tsc --noEmit` clean. Committed and pushed. Still needs
+a real on-device re-test — deferred, along with bugs #1–5, until the rest
+of this bug-fixing pass is done and everything can be tested together in
+one on-device pass.
+
 ### Session — Emergency Fund "Saved" checkmark never appears (bug #5)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -341,12 +370,16 @@ pushed. Still needs a real on-device re-test to fully close out.
    suggested-expenses button without typing anything, then tap Save and
    confirm the checkmark appears instead of nothing happening) — deferred
    along with bugs #1–4 until the rest of this pass is done.
-5b. NEW, found while fixing #5, not yet fixed — the two Emergency Fund
-    TextInputs have no `onBlur={handleSaveEf}` the way bug #4 added to
-    all four FI fields, so this section likely doesn't auto-save either
-    (same class of bug as #3/#4) independent of the crash just fixed in
-    #5. Needs its own quick investigation-confirm-then-fix pass, same
-    pattern as #4.
+5b. ✅ FIXED (pending on-device re-test) — Emergency Fund TextInputs had
+    no `onBlur` auto-save, same root cause as bugs #3/#4. Fixed by adding
+    `onBlur={() => handleSaveEf()}` to both fields, giving `handleSaveEf`
+    an optional override parameter so the "use suggested expenses" button
+    can save the tapped value immediately instead of a stale one, and
+    fixing the main Save button's onPress signature mismatch this caused.
+    `npx tsc --noEmit` clean. STILL NEEDS: a real on-device re-test (edit
+    either field and leave the screen without tapping Save, then tap "use
+    suggested expenses" and confirm it's saved without tapping Save) —
+    deferred along with bugs #1–5 until the rest of this pass is done.
 6. None of the 3 promised background-save warnings (failed password-change
    cloud backup, failed account-recovery re-save, failed household-unlink
    personal backup) ever show on-device.
@@ -430,13 +463,12 @@ from here on will be tracked fresh in this file.
   Bugs #1–5 are now code-complete pending on-device re-test (deliberately
   batched — the person is testing all fixes together in one on-device pass
   once the remaining bugs below are also fixed, rather than one at a time).
-  Suggested order for what's left: (5b) Emergency Fund fields likely
-  missing onBlur auto-save (same pattern as #4, found while fixing #5),
-  (6) background-save warnings, (7) Events/Goals/Groceries/Settings silent
-  save failures, (8) Travel checklist-delete expense cleanup, (9) the
-  remaining smaller bugs (biometric capture, PIN-off loading indicator,
-  Category Watchlist wording, "which of these is you?" live update,
-  AccountsScreen's missing label).
+  Suggested order for what's left: (6) background-save warnings, (7)
+  Events/Goals/Groceries/Settings silent save failures, (8) Travel
+  checklist-delete expense cleanup, (9) the remaining smaller bugs
+  (biometric capture, PIN-off loading indicator, Category Watchlist
+  wording, "which of these is you?" live update, AccountsScreen's missing
+  label).
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests

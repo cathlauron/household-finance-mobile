@@ -365,10 +365,10 @@ export default function SavingsScreen() {
     );
   }
 
-  async function handleSaveEf() {
+  async function handleSaveEf(expensesOverride?: string) {
     if (!model) return;
     const current = calcInputsFromModel();
-    const expensesRaw = (efExpensesInput ?? efExpensesDisplay).trim();
+    const expensesRaw = (expensesOverride ?? efExpensesInput ?? efExpensesDisplay).trim();
     const savingsRaw = (efSavingsInput ?? efSavingsDisplay).trim();
     const expenses = expensesRaw === '' ? '' : parseFloat(expensesRaw);
     const savings = savingsRaw === '' ? '' : parseFloat(savingsRaw);
@@ -646,13 +646,16 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={efExpensesDisplay}
             onChangeText={setEfExpensesInput}
+            onBlur={() => handleSaveEf()}
           />
           {suggestedMonthlyExpenses > 0 && (
             <TouchableOpacity
               style={styles.suggestionRow}
-              onPress={() =>
-                setEfExpensesInput(String(Math.round(suggestedMonthlyExpenses * 100) / 100))
-              }
+              onPress={() => {
+                const rounded = String(Math.round(suggestedMonthlyExpenses * 100) / 100);
+                setEfExpensesInput(rounded);
+                handleSaveEf(rounded);
+              }}
             >
               <Text style={styles.suggestionText}>
                 Based on your recurring Bills: {formatPeso(suggestedMonthlyExpenses)}/mo — tap to use this
@@ -674,6 +677,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={efSavingsDisplay}
             onChangeText={setEfSavingsInput}
+            onBlur={() => handleSaveEf()}
           />
 
           <View style={styles.resultCard}>
@@ -694,7 +698,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
                     saving && { opacity: 0.6 },
                   ]}
-                  onPress={handleSaveEf}
+                  onPress={() => handleSaveEf()}
                   disabled={saving}
                 >
                   {saving ? (
