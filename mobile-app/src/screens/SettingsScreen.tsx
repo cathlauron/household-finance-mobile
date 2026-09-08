@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -316,6 +316,24 @@ export default function SettingsScreen() {
     }
   }
 
+  // Left to Spend caution threshold: relying on onBlur alone isn't reliable in React
+  // Native — a TextInput doesn't always emit a blur event before the screen is torn
+  // down (tapping Back, the swipe-back gesture, switching tabs, or fully closing the
+  // app can all skip it), so a typed value could be silently lost instead of saved.
+  // This auto-saves ~600ms after the user stops typing, as a safety net alongside the
+  // existing onBlur save. The mountedRef skips the very first render so opening this
+  // screen doesn't trigger a pointless save before anything's actually been changed.
+  const cautionThresholdMountedRef = useRef(false);
+  useEffect(() => {
+    if (!cautionThresholdMountedRef.current) {
+      cautionThresholdMountedRef.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      saveCautionThreshold();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [cautionThresholdInput]);
     async function togglePushNotifications() {
     if (!model) return;
     setNotifStatusMsg('');

@@ -13,6 +13,31 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Left to Spend caution threshold not persisting (bug #3)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed root cause: the caution-threshold TextInput on
+SettingsScreen.tsx only persisted its value on the TextInput's `onBlur`
+event (`saveCautionThreshold()`), with no other save path — `onChangeText`
+only ever updated local React state. In React Native, `onBlur` doesn't
+reliably fire when a screen is torn down via the Back button, the
+swipe-back gesture, switching tabs, or fully closing the app, so a typed
+value could be silently discarded instead of saved whenever the user left
+the screen any way other than tapping elsewhere on the same screen first.
+Confirmed by comparing against a setting that DOES persist correctly
+(`swipeToDeleteEnabled`, a toggle that saves instantly on tap with no
+blur dependency) and against `autoLockMinutes`, which also saves
+immediately on tap.
+
+Applied fix (hand-pasted by the person after review): added `useRef` to
+SettingsScreen.tsx's React import, and added a `useEffect` that auto-saves
+the caution threshold ~600ms after the user stops typing, alongside
+(not replacing) the existing onBlur save — so the value is written almost
+immediately regardless of how the user later leaves the screen. A mounted-
+ref guard skips the very first render so opening Settings doesn't trigger
+a pointless save before anything's been touched. `npx tsc --noEmit` clean.
+Committed and pushed. Still needs a real on-device re-test.
+
 ### Session — Offline delete hang on Accounts/Bills/Debts (bug #2)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -185,8 +210,18 @@ pushed. Still needs a real on-device re-test to fully close out.
    account/bill/debt, confirm the spinner clears and the Sync Failed alert
    shows within ~8 seconds instead of hanging) before marking fully
    verified.
-3. Left to Spend caution threshold doesn't persist — reverts to its old
-   value after a full app close/reopen.
+3. ✅ FIXED (pending on-device re-test) — Left to Spend caution threshold
+   doesn't persist. Root cause: the threshold's TextInput only saved on
+   `onBlur`, which React Native doesn't reliably fire when the screen is
+   torn down (Back button, swipe-back gesture, tab switch, or app close) —
+   so a typed value could be silently lost instead of saved. Fixed by
+   adding a ~600ms auto-save-after-typing-stops effect alongside the
+   existing onBlur save, so the value is written almost immediately no
+   matter how the screen is later left. `npx tsc --noEmit` clean. STILL
+   NEEDS: a real on-device re-test (type a new threshold value, close the
+   app fully — swipe it away, not just background it — reopen, and confirm
+   Settings still shows the new value and Home's Left to Spend widget uses
+   it) before marking fully verified.
 4. FI Calculator (Savings tab) largely non-functional on-device — "Years
    Until FI" shows literal placeholder text, the show/hide projected-date
    toggle doesn't appear, and none of the new fields (SWR, expected return,
@@ -272,14 +307,13 @@ from here on will be tracked fresh in this file.
 - Work through the remaining real bugs found in the first on-device testing
   pass, one at a time, via the standard Antigravity/Copilot-investigates-
   first workflow — see the numbered list under ⚠️ Known issues above.
-  Suggested order: (3) Left to Spend threshold not persisting,
-  (3) Left to Spend threshold not persisting, (4) FI Calculator's
-  non-functional fields, (5) Emergency Fund "Saved" checkmark, (6)
-  background-save warnings, (7) Events/Goals/Groceries/Settings silent
-  save failures, (8) Travel checklist-delete expense cleanup, (9) the
-  remaining smaller bugs (biometric capture, PIN-off loading indicator,
-  Category Watchlist wording, "which of these is you?" live update,
-  AccountsScreen's missing label).
+  Suggested order: (4) FI Calculator's non-functional fields, (5)
+  Emergency Fund "Saved" checkmark, (6) background-save warnings, (7)
+  Events/Goals/Groceries/Settings silent save failures, (8) Travel
+  checklist-delete expense cleanup, (9) the remaining smaller bugs
+  (biometric capture, PIN-off loading indicator, Category Watchlist
+  wording, "which of these is you?" live update, AccountsScreen's missing
+  label).
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests
