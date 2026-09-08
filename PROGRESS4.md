@@ -13,7 +13,59 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
-### Session — "Which of these is you?" given an explicit confirm/save step (design-change request)
+### Session — Reports screen: checkbox-driven show/hide list for the 9 report tabs (design-change request)
+
+Scoped and implemented via Antigravity across two investigation rounds
+(investigation only, no commits from the tool). First round confirmed
+ReportsScreen.tsx's 9 sub-tabs are defined in one `REPORT_TABS` array,
+switched via a single `activeReport` state with plain inline
+conditional rendering (no nested navigator), and that B.13a/b's
+tag-filter toolbar visibility (`showTagToolbar`) already keys off
+`activeReport`, so hiding/showing tabs wouldn't conflict with it as
+long as `activeReport` keeps pointing at whatever's actually visible.
+Confirmed no existing show/hide preference exists anywhere in the app,
+but `myPerson.ts`/`autoLock.ts` (per-profile AsyncStorage, own listener
+pattern) and `model.settings.swipeToDeleteEnabled` (synced household
+setting) were the two candidate patterns; per the person's decision,
+went with the per-profile AsyncStorage pattern (a personal display
+preference, not household data). Confirmed existing checkbox visual
+patterns (TravelScreen.tsx's checklist, BillsScreen.tsx's subscription
+checkbox) and confirmed the person's decisions on the two other open
+questions: a trailing icon on the tab row opens the checkbox list
+(rather than an always-visible section), and unchecking every report
+is allowed — shows an empty-state message rather than forcing a
+minimum of one checked.
+
+Second round confirmed `ReportsScreen.tsx` had never pulled `username`
+from `useData()` (only `model`) and found the exact line used by
+sibling screens (PersonSpendingReport.tsx, TransactionsScreen.tsx,
+ProfileScreen.tsx) for the same need. Also confirmed BottomSheet.tsx
+(not a plain Modal) is the established container for this kind of
+toggleable settings list — already used this way in 8 other screens,
+has a built-in ScrollView and title header, so no new modal styling
+had to be invented from scratch.
+
+Implemented (hand-pasted by the person after review): created a new
+file, reportVisibility.ts, matching myPerson.ts's exact shape
+(`getHiddenReportIds`/`setHiddenReportIds`, storing HIDDEN ids so
+someone who's never touched the setting still sees every report by
+default). In ReportsScreen.tsx: added `hiddenReportIds` state loaded
+from the new file on mount, a `visibleTabs` derived list, an effect
+that auto-switches `activeReport` to the first remaining visible tab
+whenever the hidden set changes (so the tag toolbar and the 9
+report-content lines never point at a hidden tab), and a
+`toggleReportVisibility` handler that updates state immediately and
+persists in the background (silently no-ops on a write failure, since
+worst case it just reloads as "all visible" next time — no financial
+data at risk). Added a trailing "Customize" icon button next to the
+tab row (reusing the tab row's own 38×38 pill style) that opens a new
+BottomSheet listing all 9 reports with a checkbox each (icon + label +
+checkbox, matching TravelScreen.tsx's checkbox visual). Added an empty
+state ("No reports are currently shown...") that replaces the tag
+toolbar and all 9 report components whenever `visibleTabs` is empty,
+rather than forcing at least one report to stay checked. `npx tsc
+--noEmit` clean (0 errors). Not yet on-device tested — the person is
+deferring testing until the
 
 Scoped and implemented via Antigravity (investigation only, no commits
 from the tool). Scoping pass confirmed the picker in ProfileScreen.tsx
@@ -1169,16 +1221,26 @@ pushed. Still needs a real on-device re-test to fully close out.
   Transactions/Person Spending still update live without a restart
   after tapping Confirm, and confirm Cancel correctly reverts the
   highlight to the previously-saved person.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Reports
+  screen redesigned with a checkbox-driven show/hide list for its 9
+  report tabs. A new trailing "Customize" icon opens a BottomSheet
+  checkbox list (per-profile AsyncStorage preference, new
+  reportVisibility.ts file); unchecking a report removes its tab from
+  the row, unchecking the active tab auto-switches to the next visible
+  one, and unchecking everything shows an empty-state message instead
+  of a blank screen. See session log above for full detail. Needs a
+  real on-device test: open Customize, uncheck a few reports (including
+  the currently active one) and confirm the tab row/active report
+  update correctly, uncheck all 9 and confirm the empty-state message
+  appears, re-check some and confirm they reappear, and confirm the
+  tag-filter toolbar (on the 6 tag-filtered reports) still works
+  normally throughout.
 - Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
   tappable date element at the top-center of Home that navigates to
   Calendar.
 - Enable swipe-to-delete on Transactions' derived (non-manual) rows, paired
   with either a source-deletion warning or a redirect to the source screen
   to confirm — exact approach still undecided.
-- Redesign Reports screen: replace the 9 icon sub-tabs with a checkbox-
-  driven list (icon + title + checkbox) that shows/hides that report from
-  the normal tab row — supersedes the B2.3 batch-1 iconization for this
-  screen specifically.
 - Reverse the icon-only decision for ToPayScreen/PlanningScreen's segmented
   pills — show icon + title together instead of icon-only.
 
@@ -1250,6 +1312,14 @@ from here on will be tracked fresh in this file.
   Cancel reverts the highlight without saving, and confirm tapping
   Confirm still updates Transactions/Person Spending live (bug #12
   behavior) without needing an app restart.
+- The Reports screen checkbox show/hide redesign is also implemented
+  and `npx tsc --noEmit` clean — the person is deferring on-device
+  testing of this and every other pending design-change item until
+  the whole current batch is done. Fold into the same combined
+  on-device pass: Customize BottomSheet open/close, checking/
+  unchecking individual reports, the active-tab auto-switch, the
+  empty-state message when everything's unchecked, and the tag-filter
+  toolbar still working correctly on the 6 tag-filtered reports.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
