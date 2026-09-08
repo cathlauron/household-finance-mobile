@@ -113,7 +113,6 @@ export default function AccountsScreen() {
   }
 
   function handleToggleViewMode(mode: 'stacked' | 'list') {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setViewMode(mode);
     setExpandedAccountId(null);
   }
@@ -236,8 +235,9 @@ export default function AccountsScreen() {
     <IconLabelHint
       name="albums"
       label="Stacked card view"
-      size={13}
+      size={15}
       color={viewMode === 'stacked' ? colors.navy2 : colors.inkDim}
+      position="below"
       onPress={() => handleToggleViewMode('stacked')}
     />
   </View>
@@ -247,6 +247,7 @@ export default function AccountsScreen() {
       label="List card view"
       size={15}
       color={viewMode === 'list' ? colors.navy2 : colors.inkDim}
+      position="below"
       onPress={() => handleToggleViewMode('list')}
     />
   </View>

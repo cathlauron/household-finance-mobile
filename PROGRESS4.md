@@ -763,8 +763,32 @@ pushed. Still needs a real on-device re-test to fully close out.
     restarting the app, confirm "Mine" labeling updates immediately;
     repeat for the Person Spending report) before marking fully
     verified.
-13. AccountsScreen Cards/List toggle — "Stacked card view" floating label
-    (IconLabelHint) didn't appear on tap.
+13. ✅ FIXED (pending on-device re-test) — AccountsScreen Cards/List toggle
+    "Stacked card view" floating label (IconLabelHint) didn't appear on tap.
+    Root cause: a combination of three things — (a) `handleToggleViewMode`
+    called `LayoutAnimation.configureNext` in the same tick as
+    `IconLabelHint`'s own `measureInWindow` call, which on Android can
+    disrupt or drop that measurement; (b) the tooltip defaulted to
+    `position="above"`, and since this toggle sits at the very top of the
+    screen there wasn't enough room above it, pushing the tooltip up
+    against (or under) the status bar; (c) `IconLabelHint` renders its
+    tooltip off-screen at `top: -1000` while waiting to measure its real
+    size, and Android's native layout engine can skip firing `onLayout`
+    for a view positioned that far outside the viewport, so it never
+    finished measuring and never faded in. No other screen using
+    `IconLabelHint` (Planning/ToPay/Reports tabs) has any of these three
+    conditions, which is why only this one label was affected. Fixed by
+    removing the `LayoutAnimation.configureNext` call from
+    `handleToggleViewMode` (a view-mode switch doesn't need it),
+    setting `position="below"` on both toggle labels so they open into
+    the open banner area below them, and changing `IconLabelHint`'s
+    off-screen placeholder position from a hardcoded `-1000` to the
+    icon's own already-known y-coordinate (still invisible, since
+    opacity is 0 during that pass, but no longer far enough outside the
+    viewport to risk being skipped). `npx tsc --noEmit` clean. STILL
+    NEEDS: a real on-device re-test (tap the Cards/List toggle on
+    Accounts, confirm the floating label briefly appears for each) before
+    marking fully verified.
 
 🎨 Design-change requests surfaced during testing (need scoping, not quick fixes)
 - Replace Android's native date picker with the app's own themed calendar
@@ -842,10 +866,9 @@ from here on will be tracked fresh in this file.
   an Expo Go artifact rather than an app bug. Bugs #10 (PIN-off loading
   indicator), #11 (Category Watchlist "over budget" at exactly 100%), and
   #12 ("which of these is you?" not updating Transactions live) are now
-  also code-complete pending on-device re-test, same batch. Suggested
-  order for what's left: (13) AccountsScreen's missing "Stacked card
-  view" label, (8b) the newly-found silent personal-snapshot-backup
-  failure in `saveModel()`'s linked-household branch, low priority.
+  also code-complete pending on-device  re-test, same batch. Bug #13 (AccountsScreen's missing "Stacked card view" floating label) is now also code-complete pending on-device re-test, same batch. What's left: (8b) the newly-found silent
+  personal-snapshot-backup failure in `saveModel()`'s linked-household
+  branch, low priority.
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests

@@ -155,7 +155,7 @@ export default function IconLabelHint({
               style={[
                 styles.tooltip,
                 {
-                  top: measured ? tooltipTop : -1000,
+                  top: measured ? tooltipTop : (coords ? coords.y : 0),
                   left: measured ? tooltipLeft : 0,
                   opacity: fadeAnim,
                 },
