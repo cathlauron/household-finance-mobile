@@ -258,8 +258,35 @@ export default function TravelScreen() {
     );
   }
 
-  function handleRemoveChecklistItem(id: string) {
-    setChecklist((prev) => prev.filter((i) => i.id !== id));
+  async function handleRemoveChecklistItem(id: string) {
+    const removedItem = checklist.find((i) => i.id === id);
+    const newChecklist = checklist.filter((i) => i.id !== id);
+    setChecklist(newChecklist);
+
+    // Deleting a checklist item is a one-way, destructive action (unlike editing the
+    // trip's name/dates, which only takes effect once "Save trip" is tapped) — so for an
+    // existing, already-saved trip, persist the removal (and clean up any linked expense)
+    // right away instead of waiting for Save. This matches how every other delete button
+    // in the app behaves, and avoids leaving a dangling expenseTransactionId behind if the
+    // person cancels out of the modal afterward instead of saving.
+    if (!model || !editingId) return;
+    const currentList = model.travel ?? [];
+    const priorTrip = currentList.find((t) => t.id === editingId);
+    if (!priorTrip) return;
+
+    const updatedTrip: TravelTrip = { ...priorTrip, checklist: newChecklist };
+    const updated: HouseholdModel = {
+      ...model,
+      travel: currentList.map((t) => (t.id === editingId ? updatedTrip : t)),
+      manualTransactions: removedItem?.expenseTransactionId
+        ? (model.manualTransactions ?? []).filter((t) => t.id !== removedItem.expenseTransactionId)
+        : model.manualTransactions,
+    };
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert('Failed to remove item', 'Please try again.');
+    }
   }
 
   async function handleSaveTrip() {

@@ -13,6 +13,43 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Travel checklist-item delete leaves expense behind (bug #8)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), across two rounds. First round confirmed
+`reconcileTravelChecklistTransactions` already exists in
+TravelScreen.tsx and correctly cleans up a removed checklist item's
+`expenseTransactionId` from `model.manualTransactions` — but only when
+it's actually called, and only using whatever `priorChecklist` it's
+given. Second round traced the real save-trip flow end to end and found
+the actual gap: `handleRemoveChecklistItem` only ever updated local
+component state (`setChecklist`) — it never touched `model.travel` and
+never called `reconcileTravelChecklistTransactions` itself. That
+reconciliation only ran later, when "Save trip" was tapped. So: (a) if
+the person tapped the "X" to remove a checked-off, cost-bearing item and
+then backed out of the modal instead of tapping Save, nothing was ever
+persisted and the linked transaction stayed behind untouched; and (b)
+even a subsequent Save could reconcile against a checklist state whose
+`expenseTransactionId` bookkeeping had drifted from a prior cancelled
+attempt. This made checklist-item delete behave differently from every
+other delete button in the app, which persist immediately. Whole-trip
+delete was confirmed unaffected — that path already cleans up every
+checklist item's linked expense correctly.
+
+Applied fix (hand-pasted by the person after review): made
+`handleRemoveChecklistItem` async — it still updates local state
+immediately for responsiveness, but for an already-saved trip
+(`editingId` set) it now also writes straight to `model.travel` (removing
+the item from that trip's saved checklist) and, in the same
+`saveModel()` call, filters out the item's `expenseTransactionId` from
+`model.manualTransactions` if it had one. A brand-new, not-yet-saved trip
+has no `editingId` yet, so it's untouched and behaves exactly as before
+(a plain local-state edit until "Save trip" is tapped). `npx tsc --noEmit`
+clean (confirmed after paste — no errors). Committed and pushed. Still
+needs a real on-device re-test — deferred, along with bugs #1–7, until
+the rest of this bug-fixing pass is done and everything can be verified
+together in one on-device pass.
+
 ### Session — Events/Goals/Groceries/Settings save errors (bug #7)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -490,8 +527,25 @@ pushed. Still needs a real on-device re-test to fully close out.
    screens, confirm the generic "Sync Failed"/"Backup Failed" alert
    appears within ~8 seconds) to fully close this out — can be folded
    into the same on-device pass as bugs #1–6.
-8. Travel checklist-item delete still leaves its linked expense behind in
-   Transactions.
+8. ✅ FIXED (pending on-device re-test) — Travel checklist-item delete
+   left its linked expense behind in Transactions. Root cause:
+   `handleRemoveChecklistItem` only ever updated local component state —
+   it never touched `model.travel` and never called the existing (and
+   already-correct) `reconcileTravelChecklistTransactions`, which only
+   ran later on "Save trip." So removing an item and then backing out of
+   the modal without saving left everything, including its linked
+   transaction, untouched; unlike every other delete button in the app,
+   which persist right away. Whole-trip delete was confirmed unaffected.
+   Fixed by making `handleRemoveChecklistItem` async: for an already-
+   saved trip it now writes the removal straight to `model.travel` and
+   strips the item's `expenseTransactionId` from `model.manualTransactions`
+   in the same `saveModel()` call; a brand-new unsaved trip is untouched
+   and still behaves as a local-state edit until "Save trip" is tapped.
+   `npx tsc --noEmit` clean. STILL NEEDS: a real on-device re-test (check
+   off a cost-bearing checklist item on an existing trip, confirm its
+   transaction appears in Transactions, remove the checklist item, and
+   confirm the transaction disappears immediately without needing to tap
+   "Save trip") before marking fully verified.
 8b. NEW, low priority, not yet fixed — in `saveModel()`'s linked-household
     branch (DataContext.tsx), the personal local-snapshot backup call
     (`saveEncryptedProfileData(...).catch(() => {})`) fails completely
@@ -576,9 +630,10 @@ from here on will be tracked fresh in this file.
   batched — the person is testing all fixes together in one on-device pass
   once the remaining bugs below are also fixed, rather than one at a time).
   Bug #7 turned out to already be resolved as a side effect of bug #2 —
-  no code change was needed, just confirmed via investigation. Suggested
-  order for what's left: (8) Travel checklist-delete expense cleanup, (9)
-  the remaining smaller bugs (biometric capture, PIN-off loading
+  no code change was needed, just confirmed via investigation. Bug #8
+  (Travel checklist-delete expense cleanup) is now also code-complete
+  pending on-device re-test, same batch. Suggested order for what's left:
+  (9) the remaining smaller bugs (biometric capture, PIN-off loading
   indicator, Category Watchlist wording, "which of these is you?" live
   update, AccountsScreen's missing label), (8b) the newly-found silent
   personal-snapshot-backup failure in `saveModel()`'s linked-household
