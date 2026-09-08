@@ -13,12 +13,12 @@ type MoreDestination = {
 };
 
 const DESTINATIONS: MoreDestination[] = [
-  { key: 'Accounts', title: 'Accounts', subtitle: 'Cash, debit, credit & other balances', icon: 'wallet-outline', testID: 'more-accounts-row' },
-  { key: 'Income', title: 'Income', subtitle: 'Paychecks and other money coming in', icon: 'trending-up-outline', testID: 'more-income-row' },
+  { key: 'Accounts', title: 'Accounts', subtitle: 'Cash, debit & credit balances', icon: 'wallet-outline', testID: 'more-accounts-row' },
+  { key: 'Income', title: 'Income', subtitle: 'Paychecks & other sources', icon: 'trending-up-outline', testID: 'more-income-row' },
   { key: 'Savings', title: 'Savings', subtitle: 'Goals, Emergency Fund & FI Calculator', icon: 'cash-outline', testID: 'more-savings-row' },
   { key: 'Planning', title: 'Planning', subtitle: 'Groceries, Travel, Events & Goals', icon: 'clipboard-outline', testID: 'more-planning-row' },
   { key: 'Insights', title: 'Insights', subtitle: 'Dashboard & Reports', icon: 'bar-chart-outline', testID: 'more-insights-row' },
-  { key: 'Settings', title: 'Settings', subtitle: 'Appearance, categories, notifications & data', icon: 'settings-outline', testID: 'more-settings-row' },
+  { key: 'Settings', title: 'Settings', subtitle: 'Preferences, categories & data', icon: 'settings-outline', testID: 'more-settings-row' },
 ];
 
 export default function MoreScreen() {

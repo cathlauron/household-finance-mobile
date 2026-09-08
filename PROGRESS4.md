@@ -13,6 +13,48 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — "Fewer words" pass: MoreScreen.tsx
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Antigravity supplied the full, real, unelided contents of
+MoreScreen.tsx — a short file whose only user-visible text is the 6
+destination-row subtitles in a `DESTINATIONS` array (Accounts, Income,
+Savings, Planning, Insights, Settings) — and proposed 3 trims plus 3
+borderline items to leave alone.
+
+One item needed verification before accepting it: the proposed Accounts
+subtitle trim ("Cash, debit, credit & other balances" → "Cash, debit &
+credit balances") depended on a factual claim — that AccountsScreen.tsx
+only handles cash/debit/credit — which Antigravity had only partially
+confirmed (had viewed lines 1-40 of a 606-line file). Since the app's
+underlying data model (`BalanceAccounts` in types.ts) also includes
+`investment`, `property`, and `vehicle` fields, dropping "& other" could
+have silently mis-stated real screen coverage rather than just trimming
+wording, if those categories were in fact rendered anywhere on the
+screen. Ran a second, targeted investigation prompt asking Antigravity
+to report AccountsScreen.tsx's real, full account-group handling with no
+proposed changes. Confirmed: `AccountsScreen.tsx` defines
+`type AccountGroup = 'cash' | 'debit' | 'credit'` and a matching
+`GROUPS` constant, and renders/allows-adding-to only those three groups
+end to end (section loop, add-account buttons, add/edit modal) —
+`investment`/`property`/`vehicle` exist only in the underlying data
+model (preserved by mergeModels.ts) and are not surfaced anywhere on
+this screen. This confirmed the original trim was accurate, not
+overreaching — investment/property/vehicle are a real, separate,
+not-yet-built gap in the mobile app, not something this screen's
+subtitle was ever claiming to cover.
+
+Applied (hand-pasted by the person after review, as 3 find/replace
+snippets): trimmed the Accounts, Income, and Settings subtitles as
+described above. The 3 borderline items Antigravity flagged (Savings,
+Planning, Insights subtitles — each already a near-exact 1:1 word-per-
+child-tab listing) were left untouched, matching Antigravity's own
+recommendation. `npx tsc --noEmit` clean (0 errors) — text-only change
+inside a typed array of string literals, no type impact. Committed and
+pushed.
+
+This completes MoreScreen.tsx on the "fewer words" ranked list.
+
 ### Session — "Fewer words" pass: SignInScreen.tsx
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -1163,11 +1205,13 @@ pushed. Still needs a real on-device re-test to fully close out.
   explicitly deferred to Phase C (see below) rather than chased through
   Expo Go.
 - The "fewer words" trimming pass is PARTIALLY done: SettingsScreen.tsx,
-  ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx, and
-  SignInScreen.tsx are complete. A full ranked-by-wordiness inventory of
-  every remaining screen already exists (captured in PROGRESS3.md's
-  session history) — next up per that list: MoreScreen.tsx (6 items),
-  and 15 more screens after that in descending order.
+  ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx,
+  SignInScreen.tsx, and MoreScreen.tsx are complete. A full
+  ranked-by-wordiness inventory of every remaining screen already exists
+  (captured in PROGRESS3.md's session history) — next up per that list
+  is whichever screen ranks after MoreScreen.tsx; that specific screen
+  name isn't in this file's own carried-forward notes, so pull it from
+  PROGRESS3.md's ranked inventory at the start of the next session.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -1606,9 +1650,10 @@ from here on will be tracked fresh in this file.
   same combined on-device pass described below: swipe each of the four
   new row types and confirm they open the right record on the right
   screen/tab, and that a repeat swipe of the same record still works.
-- With this, the "fewer words" pass (MoreScreen.tsx next, per the
-  ranked list) is the only remaining genuinely open new-work item
-  besides the on-device re-test pass and the unscheduled B.12b item.
+- With this, the "fewer words" pass (next screen per PROGRESS3.md's
+  ranked list, after MoreScreen.tsx) is the only remaining genuinely
+  open new-work item besides the on-device re-test pass and the
+  unscheduled B.12b item.
 - Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) both now have
   round-2 fixes applied and `npx tsc --noEmit` clean — neither has been
   re-tested on a real device yet. Next step: do ONE combined on-device
@@ -1678,9 +1723,9 @@ from here on will be tracked fresh in this file.
   confirm-step for "which of these is you?", bottom-nav Calendar removal,
   Transactions swipe-to-delete on derived rows, Reports checkbox redesign,
   ToPay/Planning icon+title reversal) — these are new work, not bug fixes.
-- Continue the "fewer words" pass: MoreScreen.tsx next (6 items), and
-  onward down the ranked list already captured in PROGRESS3.md's
-  session history.
+- Continue the "fewer words" pass: consult PROGRESS3.md's ranked
+  inventory for the next screen after MoreScreen.tsx, and proceed
+  onward down that list.
 - Once the bug-fixing pass is far enough along (or the person decides to
   move on regardless), proceed to Phase C (Publishing) — see
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
