@@ -71,7 +71,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
       setStep(3);
     } catch (e) {
       setBusy(false);
-      setPinError('Something went wrong saving your PIN. Please try again.');
+      setPinError('Failed to save PIN. Please try again.');
     }
   }
 
@@ -108,7 +108,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
             </View>
 
             <Text style={styles.title}>Welcome to Household Finance, {username}</Text>
-            <Text style={styles.sub}>Your private, encrypted hub for household finances.</Text>
+            <Text style={styles.sub}>Your private, encrypted financial vault.</Text>
 
             <View style={styles.featureCards}>
               <View style={styles.featureCard}>
@@ -118,7 +118,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
                 <View style={styles.featureTextWrap}>
                   <Text style={styles.featureTitle}>End-to-End Encrypted</Text>
                   <Text style={styles.featureDesc}>
-                    Your financial data is genuinely encrypted locally on your device with your password — only you hold the keys.
+                    Your data is encrypted locally with your password — only you hold the keys.
                   </Text>
                 </View>
               </View>
@@ -130,7 +130,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
                 <View style={styles.featureTextWrap}>
                   <Text style={styles.featureTitle}>Private Solo or Shared</Text>
                   <Text style={styles.featureDesc}>
-                    Track your personal expenses completely solo, or securely link with a partner or family member in Settings anytime.
+                    Track expenses solo, or link with family or a partner anytime in Settings.
                   </Text>
                 </View>
               </View>
@@ -151,7 +151,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
           <View style={styles.stepContainer}>
             <Text style={styles.title}>Set up Quick Unlock</Text>
             <Text style={styles.sub}>
-              Protect your app with a fast, everyday unlock method so you don't have to enter your full password every time.
+              Unlock quickly without entering your full password every time.
             </Text>
 
             {biometricsAvailable ? (
@@ -160,7 +160,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.biometricActiveTitle}>{biometricLabel} Enabled</Text>
                   <Text style={styles.biometricActiveSub}>
-                    {biometricLabel} unlock is enabled automatically on this device. You can turn this off anytime in Settings.
+                    Enabled automatically for this device. Turn off anytime in Settings.
                   </Text>
                 </View>
               </View>
@@ -168,13 +168,13 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
               <View style={styles.comingSoonBanner}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.inkDim} style={{ marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.comingSoonSub}>Biometric unlock isn't available on this device. Set a PIN below for quick access.</Text>
+                  <Text style={styles.comingSoonSub}>Biometrics aren't available on this device. Set a PIN below for quick access.</Text>
                 </View>
               </View>
             )}
 
             <View style={styles.formSection}>
-              <Text style={styles.inputLabel}>Choose a 4–6 digit Quick PIN</Text>
+              <Text style={styles.inputLabel}>Quick PIN (4–6 digits)</Text>
               <PinField
                 testID="onboarding-pin-input"
                 style={styles.input}
@@ -209,7 +209,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
                   setStep(3);
                 }}
               >
-                <Text style={styles.ghostBtnText}>Skip for now (use password only)</Text>
+                <Text style={styles.ghostBtnText}>Skip for now (password only)</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -235,7 +235,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
               {biometricsAvailable && (
                 <View style={styles.pinConfirmedBadge}>
                   <Ionicons name="scan-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.pinConfirmedText}>{biometricLabel} enabled automatically</Text>
+                  <Text style={styles.pinConfirmedText}>{biometricLabel} enabled</Text>
                 </View>
               )}
               {pinSaved && (
@@ -249,7 +249,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
             <View style={styles.tipCard}>
               <Ionicons name="information-circle-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
               <Text style={styles.tipText}>
-                Tip: Start by setting up your primary balance accounts, logging recurring bills, or exploring Settings to customize your preferences.
+                Tip: Add your accounts, log recurring bills, or explore Settings to customize preferences.
               </Text>
             </View>
 

@@ -13,6 +13,34 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — "Fewer words" pass: OnboardingScreen.tsx
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed OnboardingScreen.tsx has no data-array step structure
+(no `const STEPS = [...]`) — all step 1/2/3 text lives inline in
+conditional JSX branches gated on a `useState<1 | 2 | 3>` step value.
+Antigravity supplied the real, full, unelided file contents plus 11
+proposed wordy-text trims (error message, step 1 subtitle, both feature
+card descriptions, step 2 subtitle, biometric-active subtitle, biometrics-
+unavailable banner, the PIN input label, the skip-PIN ghost button, the
+step 3 biometric status badge, and the step 3 tip card), each shown with
+real surrounding code and a one-sentence justification. All 11 reviewed
+against the real code and confirmed to be text-only (no logic, state, or
+layout touched) and to preserve all meaning a first-time user would need.
+
+Applied (hand-pasted by the person after review, as 11 find/replace
+snippets): trimmed the save-PIN catch-error message; the step 1 subtitle;
+both step 1 feature card descriptions (End-to-End Encrypted, Private Solo
+or Shared); the step 2 (Quick Unlock) subtitle; the biometric-active-card
+subtitle; the biometrics-unavailable banner text; the PIN input label
+(sentence → concise label, matching its "Confirm Quick PIN" sibling); the
+"Skip for now" ghost button; the step 3 biometric-enabled status badge
+text; and the step 3 tip card. `npx tsc --noEmit` clean (0 errors) —
+text-only change, no type impact. Committed and pushed.
+
+This completes OnboardingScreen.tsx on the "fewer words" ranked list.
+Next up per that list: SavingsScreen.tsx (7 items).
+
 ### Session — Android date picker replaced with in-app themed calendar (design-change request)
 
 Scoped and implemented via Antigravity (investigation + drafted
@@ -667,12 +695,12 @@ pushed. Still needs a real on-device re-test to fully close out.
   below under ⚠️ Known issues. Reminder/notification-specific testing was
   explicitly deferred to Phase C (see below) rather than chased through
   Expo Go.
-- The "fewer words" trimming pass is PARTIALLY done: SettingsScreen.tsx and
-  ProfileScreen.tsx are complete. A full ranked-by-wordiness inventory of
-  every remaining screen already exists (captured in PROGRESS3.md's session
-  history) — next up per that list: OnboardingScreen.tsx (8 items),
-  SavingsScreen.tsx (7), SignInScreen.tsx (7), MoreScreen.tsx (6), and 18
-  more screens after that in descending order.
+- The "fewer words" trimming pass is PARTIALLY done: SettingsScreen.tsx,
+  ProfileScreen.tsx, and OnboardingScreen.tsx are complete. A full
+  ranked-by-wordiness inventory of every remaining screen already exists
+  (captured in PROGRESS3.md's session history) — next up per that list:
+  SavingsScreen.tsx (7 items), SignInScreen.tsx (7), MoreScreen.tsx (6),
+  and 17 more screens after that in descending order.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -1019,10 +1047,9 @@ from here on will be tracked fresh in this file.
   confirm-step for "which of these is you?", bottom-nav Calendar removal,
   Transactions swipe-to-delete on derived rows, Reports checkbox redesign,
   ToPay/Planning icon+title reversal) — these are new work, not bug fixes.
-- Continue the "fewer words" pass: OnboardingScreen.tsx next (8 items),
-  then SavingsScreen.tsx (7), SignInScreen.tsx (7), MoreScreen.tsx (6), and
-  onward down the ranked list already captured in PROGRESS3.md's session
-  history.
+- Continue the "fewer words" pass: SavingsScreen.tsx next (7 items), then
+  SignInScreen.tsx (7), MoreScreen.tsx (6), and onward down the ranked
+  list already captured in PROGRESS3.md's session history.
 - Once the bug-fixing pass is far enough along (or the person decides to
   move on regardless), proceed to Phase C (Publishing) — see
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
