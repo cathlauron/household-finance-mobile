@@ -22,6 +22,7 @@ import {
   decryptTransferredHouseholdKey,
 } from '../recovery';
 import PasswordField from '../components/PasswordField';
+import { withTimeout } from '../DataContext';
 
 type Props = {
   onSignedIn: (
@@ -144,10 +145,14 @@ export default function SignInScreen({
           const updated = [...profiles.filter((p) => p.username !== recoveryContext.username), profileEntry];
           await saveProfilesIndex(updated);
         }
-        await saveProfileCloudBackup(recoveryContext.username, {
-          salt: recoveryContext.effectiveSalt,
-          householdId,
-        });
+        await withTimeout(
+          saveProfileCloudBackup(recoveryContext.username, {
+            salt: recoveryContext.effectiveSalt,
+            householdId,
+          }),
+          8000,
+          'Timed out updating your cloud backup.'
+        );
 
         setRecoveryBusy(false);
         setRecoveryContext(null);
@@ -180,8 +185,16 @@ export default function SignInScreen({
         profileEntry.salt = newSalt;
       }
 
-      await saveProfileCloudBackup(recoveryContext.username, { salt: newSalt, data: reEncrypted });
-      await saveRecoveryKey(recoveryContext.username, newKey, false, recoveryKeyInput.trim()).catch(() => {
+      await withTimeout(
+        saveProfileCloudBackup(recoveryContext.username, { salt: newSalt, data: reEncrypted }),
+        8000,
+        'Timed out updating your cloud backup.'
+      );
+      await withTimeout(
+        saveRecoveryKey(recoveryContext.username, newKey, false, recoveryKeyInput.trim()),
+        8000,
+        'Timed out saving your recovery key.'
+      ).catch(() => {
         Alert.alert(
           'Recovery Key Not Updated',
           "Your account was recovered, but we couldn't save your recovery key for future use. Generate a new one in Settings > Security when you have a better connection."

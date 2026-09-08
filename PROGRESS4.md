@@ -13,6 +13,49 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Background-save warnings never appear (bug #6)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), across three flows: password change, account recovery via
+recovery key, and household unlink. Confirmed the exact same root disease
+as bug #2 (Firestore's `setDoc()`-backed writes never reject or time out
+on their own while offline — they just hang forever), spread across five
+un-timed-out call sites in two files:
+- `changePassword()` in DataContext.tsx — both the linked-profile branch
+  (`saveProfileCloudBackup`) and the unlinked-profile branch
+  (`saveProfileCloudBackup` + `deleteRecoveryKey`).
+- `unlinkHousehold()` in DataContext.tsx — `saveProfileCloudBackup`.
+- `unlinkAndTransferOwnership()` in DataContext.tsx — `saveProfileCloudBackup`.
+- `handleRecoverWithKey()` in SignInScreen.tsx — `saveProfileCloudBackup`
+  (both branches) and `saveRecoveryKey`.
+
+Two extra gaps were found and folded into the same fix while in there:
+`changePassword()`'s linked-profile branch had no `Alert.alert()` at all
+(just a silent `console.error`), and `unlinkAndTransferOwnership()`'s
+backup call had an empty `.catch(() => {})` with no warning either — both
+missing the "show a warning" half of the pattern entirely, rather than
+having an unreachable one like bug #2's three original spots.
+
+Applied fix (hand-pasted by the person after review): moved the existing
+`withTimeout()` helper out of `DataProvider` and made it an exported,
+module-level function in DataContext.tsx, so SignInScreen.tsx's direct
+Firestore calls can reuse the exact same timeout guard. Wrapped all five
+call sites above in `withTimeout()` (8-second timeout each), added the
+missing `Alert.alert()` to `changePassword()`'s linked-profile branch, and
+replaced `unlinkAndTransferOwnership()`'s empty catch with a real warning
+alert matching its sibling `unlinkHousehold()`. In SignInScreen.tsx, the
+two `saveProfileCloudBackup` calls inside `handleRecoverWithKey()` are
+awaited with no `.catch()` of their own (unlike the DataContext.tsx call
+sites) — deliberately, since they're on account recovery's critical path
+rather than a fire-and-forget background save: a timeout now propagates
+up to the function's existing outer try/catch, which already sets
+`recoveryError` and shows it inline, so recovery now fails cleanly within
+8 seconds instead of leaving `recoveryBusy` spinning forever offline.
+`npx tsc --noEmit` clean. Committed and pushed. Still needs a real
+on-device re-test — deferred along with bugs #1–5 until the rest of this
+bug-fixing pass is done, to test everything together in one on-device
+pass.
+
 ### Session — Emergency Fund fields missing auto-save (bug #5b)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -380,9 +423,25 @@ pushed. Still needs a real on-device re-test to fully close out.
     either field and leave the screen without tapping Save, then tap "use
     suggested expenses" and confirm it's saved without tapping Save) —
     deferred along with bugs #1–5 until the rest of this pass is done.
-6. None of the 3 promised background-save warnings (failed password-change
-   cloud backup, failed account-recovery re-save, failed household-unlink
-   personal backup) ever show on-device.
+6. ✅ FIXED (pending on-device re-test) — None of the 3 promised
+   background-save warnings ever showed on-device. Root cause: same
+   disease as bug #2 — five separate `saveProfileCloudBackup`/
+   `saveRecoveryKey`/`deleteRecoveryKey` calls across `changePassword()`,
+   `unlinkHousehold()`, `unlinkAndTransferOwnership()` (all in
+   DataContext.tsx), and `handleRecoverWithKey()` (SignInScreen.tsx) had
+   no timeout, so on a dead connection they just hung instead of
+   rejecting into their `.catch()` warning. Two of the five also had no
+   warning at all wired up (`changePassword()`'s linked-profile branch
+   had no `Alert.alert()`; `unlinkAndTransferOwnership()`'s catch was
+   empty) — both fixed to match their working siblings. Fixed by
+   exporting `withTimeout()` as a module-level function from
+   DataContext.tsx (previously private to `DataProvider`) and wrapping
+   all five call sites in it (8-second timeout each), plus adding/fixing
+   the two missing warning alerts. `npx tsc --noEmit` clean. STILL NEEDS:
+   a real on-device re-test (airplane mode on, then trigger each of the
+   three flows — change password, recover via recovery key, unlink from
+   household — and confirm each shows its warning alert within ~8 seconds
+   instead of hanging) before marking fully verified.
 7. Events/Goals/Groceries/Settings saveModel try/catch sweep doesn't
    surface errors in practice on-device — likely same root cause as #2.
 8. Travel checklist-item delete still leaves its linked expense behind in
@@ -460,15 +519,15 @@ from here on will be tracked fresh in this file.
 - Work through the remaining real bugs found in the first on-device testing
   pass, one at a time, via the standard Antigravity/Copilot-investigates-
   first workflow — see the numbered list under ⚠️ Known issues above.
-  Bugs #1–5 are now code-complete pending on-device re-test (deliberately
+  Bugs #1–6 are now code-complete pending on-device re-test (deliberately
   batched — the person is testing all fixes together in one on-device pass
   once the remaining bugs below are also fixed, rather than one at a time).
-  Suggested order for what's left: (6) background-save warnings, (7)
-  Events/Goals/Groceries/Settings silent save failures, (8) Travel
-  checklist-delete expense cleanup, (9) the remaining smaller bugs
-  (biometric capture, PIN-off loading indicator, Category Watchlist
-  wording, "which of these is you?" live update, AccountsScreen's missing
-  label).
+  Suggested order for what's left: (7) Events/Goals/Groceries/Settings
+  silent save failures (likely the same `withTimeout()`-shaped root cause
+  as bugs #2 and #6 — worth checking first), (8) Travel checklist-delete
+  expense cleanup, (9) the remaining smaller bugs (biometric capture,
+  PIN-off loading indicator, Category Watchlist wording, "which of these
+  is you?" live update, AccountsScreen's missing label).
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests

@@ -99,6 +99,24 @@ type DataContextValue = {
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
 
+// Firestore's setDoc() does not reject or time out on its own when the
+// device is offline - it just stays pending forever, which is what was
+// causing Accounts/Bills/Debts delete (and every other save) to hang
+// indefinitely offline with the loading spinner stuck on screen and no
+// error ever shown. Racing any Firestore write against a plain timeout
+// guarantees the calling code always settles within a few seconds either
+// way. Exported (moved out of DataProvider) so screens outside this
+// context - like SignInScreen's account-recovery flow - can use the same
+// timeout guard on their own direct Firestore calls.
+export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_resolve, reject) => {
+      setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    }),
+  ]);
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<HouseholdModel | null>(null);
   const [loading, setLoading] = useState(false);
@@ -385,20 +403,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Firestore's setDoc() does not reject or time out on its own when the
-  // device is offline - it just stays pending forever, which is what was
-  // causing Accounts/Bills/Debts delete (and every other save) to hang
-  // indefinitely offline with the loading spinner stuck on screen and no
-  // error ever shown. Racing the write against a plain timeout guarantees
-  // saveModel() always settles within a few seconds either way.
-  function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_resolve, reject) => {
-        setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-      }),
-    ]);
-  }
 
   async function saveModel(updatedModel: HouseholdModel) {
     const sanitizedModel = sanitizeModelIds(updatedModel);
@@ -537,7 +541,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setIsLinked(false);
 
       if (saltRef.current) {
-        saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {
+        withTimeout(
+          saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }),
+          8000,
+          'Timed out waiting for the personal backup to sync.'
+        ).catch(() => {
           Alert.alert(
             'Backup Not Updated',
             "You've unlinked from the household, but we couldn't update your personal cloud backup. Try again once you have a better connection."
@@ -579,7 +587,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setIsLinked(false);
 
       if (saltRef.current) {
-        saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }).catch(() => {});
+        withTimeout(
+          saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }),
+          8000,
+          'Timed out waiting for the personal backup to sync.'
+        ).catch(() => {
+          Alert.alert(
+            'Backup Not Updated',
+            "You've transferred ownership and unlinked, but we couldn't update your personal cloud backup. Try again once you have a better connection."
+          );
+        });
       }
 
       return { ok: true };
@@ -661,11 +678,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await updateProfileSalt(username, newSalt);
 
       saltRef.current = newSalt;
-      saveProfileCloudBackup(username, {
-        salt: newSalt,
-        householdId: householdIdRef.current,
-      }).catch((backupError) => {
+      withTimeout(
+        saveProfileCloudBackup(username, {
+          salt: newSalt,
+          householdId: householdIdRef.current,
+        }),
+        8000,
+        'Timed out waiting for the cloud backup to sync.'
+      ).catch((backupError) => {
         console.error('Failed to update cloud backup after password change:', backupError);
+        Alert.alert(
+          'Backup Not Updated',
+          'Your password was changed, but we could not update your cloud backup with it. If you sign in on another device before this succeeds, try your old password there too, or change your password again once you have a better connection.'
+        );
       });
 
       keyRef.current = newKey;
@@ -713,11 +738,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // tied to the OLD password, so both need refreshing here — otherwise a future
     // new-device sign-in (Checkpoint A.5) would derive the wrong key from the stale salt.
     saltRef.current = newSalt;
-    saveProfileCloudBackup(username, {
-      salt: newSalt,
-      householdId: householdIdRef.current,
-      data: reEncrypted,
-    }).catch((backupError) => {
+    withTimeout(
+      saveProfileCloudBackup(username, {
+        salt: newSalt,
+        householdId: householdIdRef.current,
+        data: reEncrypted,
+      }),
+      8000,
+      'Timed out waiting for the cloud backup to sync.'
+    ).catch((backupError) => {
       console.error('Failed to update cloud backup after password change:', backupError);
       Alert.alert(
         'Backup Not Updated',
@@ -728,7 +757,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Pre-Phase-B Tier 1 fix: for unlinked profiles, the old recovery key doc wrapped the OLD
     // password-derived key and is now invalid. Delete it so the user isn't misled, and so
     // Settings > Security can show that the recovery key needs regenerating.
-    deleteRecoveryKey(username).catch((err) => {
+    withTimeout(deleteRecoveryKey(username), 8000, 'Timed out clearing the old recovery key.').catch((err) => {
       console.error('Failed to delete stale recovery key after password change:', err);
       Alert.alert(
         'Recovery Key Not Updated',
