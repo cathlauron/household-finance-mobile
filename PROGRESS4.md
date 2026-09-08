@@ -13,6 +13,52 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — On-device re-test pass across bugs #1–13
+
+Ran the on-device re-test checklist across all 13 previously-fixed bugs.
+
+CONFIRMED FIXED, no further action needed (11 of 13): Bug #1 (offline
+sign-out → sign-in lockout), #2 (offline delete hangs on
+Accounts/Bills/Debts), #3 (Left to Spend caution threshold persisting
+through a full app close/reopen), #6 (background-save warnings on
+password change / recovery-key recovery / household unlink), #7
+(Events/Goals/Groceries/Settings generic save-error alerts), #8 (Travel
+checklist-item delete removing its linked transaction immediately), #9
+(biometric unlock showing a real error message on a genuine failure), #10
+(PIN turn-off spinner/disabled state), #11 (Category Watchlist showing
+"At budget" in orange at exactly 100%, "Over budget" in red one peso
+over), #12 ("which of these is you?" updating Transactions and the Person
+Spending report live, no restart needed), and #13 (AccountsScreen
+Cards/List toggle floating label appearing on tap). All behaved exactly
+as expected. Flipped to fully ✅ verified below.
+
+STILL BROKEN — needs a fresh investigation round (2 of 13):
+- Bug #4 (FI Calculator): the onBlur auto-save on the four individual
+  text fields IS confirmed working (a typed value now survives leaving
+  and returning to the screen). But two parts of the original fix did
+  NOT work on-device: (a) leaving "Current savings" blank while filling
+  in the other three fields still does not make "Years Until FI"
+  calculate — it still shows placeholder text; (b) tapping an SWR preset
+  button or a "tap to use this" suggestion button still does not save
+  immediately. The original diagnosis (blank-current-savings parsed as
+  NaN; taps need their own handleSaveFi() call) does not fully explain
+  what's still happening — needs a fresh Antigravity investigation
+  against the real current code rather than assuming the prior fix was
+  complete.
+- Bug #5/5b (Emergency Fund): the onBlur auto-save IS confirmed working
+  (editing either field and leaving the screen without tapping Save now
+  sticks). But the original crash fix (reading through
+  efExpensesDisplay/efSavingsDisplay before .trim()) did NOT resolve the
+  reported symptom — editing only one of the two fields (or using "use
+  suggested expenses" without typing anything) and tapping Save still
+  does not show the "Saved" checkmark. Needs a fresh Antigravity
+  investigation pass to find what's actually still failing inside
+  handleSaveEf; the null-crash fix alone wasn't sufficient.
+
+Neither fix is being reverted — the onBlur/auto-save portions of both are
+confirmed genuinely working and stay in place. Only the specific
+still-broken behaviors above need new investigation prompts.
+
 ### Session — "Which of these is you?" picker doesn't update Transactions live (bug #12)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -519,11 +565,11 @@ pushed. Still needs a real on-device re-test to fully close out.
 
 ⚠️ Known issues / gotchas — carried forward, still open
 
-🐞 Real bugs confirmed on-device, needing investigation + fix (priority order suggested in PROGRESS3.md)
-1. ✅ FIXED (pending on-device re-test) — Offline sign-out → sign-in
-   lockout. Root cause: Firestore's own connection (separate from Firebase
-   Auth) can get stuck in a dead/backoff state after a period offline, even
-   once the network and Auth both recover — so the very next Firestore read
+🐞 Real bugs confirmed on-device (11 of 13 now verified fixed; #4 and #5/5b need a fresh investigation round)
+1. ✅ VERIFIED ON-DEVICE — Offline sign-out → sign-in lockout. Root cause:
+   Firestore's own connection (separate from Firebase Auth) can get stuck
+   in a dead/backoff state after a period offline, even once the network
+   and Auth both recover — so the very next Firestore read
    (loadWrappedHouseholdKey) failed with permission-denied, which the code
    was silently swallowing to `null` and then wrongly reporting as
    "Incorrect username or password." At the same time, the screen's static
@@ -538,100 +584,80 @@ pushed. Still needs a real on-device re-test to fully close out.
    never look like two conflicting errors again; (d) the offline
    sign-out's `deleteDeviceSession` write now times out after 1 second
    instead of hanging indefinitely when offline, which was a related cause
-   of the app getting stuck mid-sign-out. `npx tsc --noEmit` clean. STILL
-   NEEDS: a real on-device re-test (airplane mode off/on, then sign in)
-   before this can be marked fully verified — flip to a plain ✅ once
-   confirmed.
-2. ✅ FIXED (pending on-device re-test) — Offline delete hangs instead of
-   showing an error (Accounts/Bills/Debts). Root cause: all three screens'
-   delete handlers route through the shared `saveModel()` in
-   DataContext.tsx, which awaits Firestore's `setDoc()` to sync the change
-   to the cloud — but `setDoc()` never rejects or times out on its own when
-   offline, it just stays pending forever. So `saveModel()` never finished,
-   the calling screen's `finally { setSaving(false) }` never ran, and the
+   of the app getting stuck mid-sign-out. `npx tsc --noEmit` clean.
+   CONFIRMED on-device: airplane mode off/on, then signing in with the
+   real username/password succeeded normally. No further action needed.
+2. ✅ VERIFIED ON-DEVICE — Offline delete hangs instead of showing an
+   error (Accounts/Bills/Debts). Root cause: all three screens' delete
+   handlers route through the shared `saveModel()` in DataContext.tsx,
+   which awaits Firestore's `setDoc()` to sync the change to the cloud —
+   but `setDoc()` never rejects or times out on its own when offline, it
+   just stays pending forever. So `saveModel()` never finished, the
+   calling screen's `finally { setSaving(false) }` never ran, and the
    loading spinner stayed stuck until connectivity returned. This also
    explains why the earlier "add try/catch to Accounts/Bills/Debts delete"
-   fix (referenced below) never worked: the `await` it wrapped never threw
-   in the first place (it just hung), and separately `saveModel()` already
-   catches its own internal write errors and never re-throws them to the
-   caller, so that screen-level `catch` block was unreachable dead code
-   even in a world where the hang wasn't the issue. Fixed by adding a
-   `withTimeout()` helper in DataContext.tsx and racing both cloud-write
-   paths (linked household `saveHouseholdData`, and unlinked personal
+   fix never worked: the `await` it wrapped never threw in the first place
+   (it just hung), and separately `saveModel()` already catches its own
+   internal write errors and never re-throws them to the caller, so that
+   screen-level `catch` block was unreachable dead code even in a world
+   where the hang wasn't the issue. Fixed by adding a `withTimeout()`
+   helper in DataContext.tsx and racing both cloud-write paths (linked
+   household `saveHouseholdData`, and unlinked personal
    `saveProfileCloudBackup`) against an 8-second timeout, so `saveModel()`
    now always resolves either way — on timeout it shows the existing
    "Sync Failed"/"Backup Failed" alert (data was already saved locally
    first, so nothing is lost), and the calling screen's `setSaving(false)`
-   / `closeModal()` correctly fires. The screen-level dead `catch` blocks
-   were left as-is (harmless, just unreachable). `npx tsc --noEmit` clean.
-   STILL NEEDS: a real on-device re-test (airplane mode on, delete an
-   account/bill/debt, confirm the spinner clears and the Sync Failed alert
-   shows within ~8 seconds instead of hanging) before marking fully
-   verified.
-3. ✅ FIXED (pending on-device re-test) — Left to Spend caution threshold
-   doesn't persist. Root cause: the threshold's TextInput only saved on
-   `onBlur`, which React Native doesn't reliably fire when the screen is
-   torn down (Back button, swipe-back gesture, tab switch, or app close) —
-   so a typed value could be silently lost instead of saved. Fixed by
-   adding a ~600ms auto-save-after-typing-stops effect alongside the
-   existing onBlur save, so the value is written almost immediately no
-   matter how the screen is later left. `npx tsc --noEmit` clean. STILL
-   NEEDS: a real on-device re-test (type a new threshold value, close the
-   app fully — swipe it away, not just background it — reopen, and confirm
-   Settings still shows the new value and Home's Left to Spend widget uses
-   it) before marking fully verified.
-4. ✅ FIXED (pending on-device re-test) — FI Calculator (Savings tab)
-   largely non-functional on-device. Root cause: none of the four FI
-   fields (SWR, expected return, monthly savings, current savings) had
-   any auto-save path — only a manual "Save" button at the bottom of the
-   screen, easy to miss. The "Years Until FI" placeholder text and the
-   missing show/hide projected-date toggle were both downstream effects
-   of that (the calculation and the toggle both require all four fields
-   to hold a real value, which they never did after leaving and returning
-   to the screen) — not two separate bugs. A secondary bug was also found
-   and fixed: a blank "Current savings" field was being treated as
-   invalid (`NaN`) instead of a normal ₱0 starting point, which alone
-   would block the calculation even with everything else filled in.
-   Fixed by adding `onBlur={handleSaveFi}` to all four fields (reusing
-   the existing, already-correct `handleSaveFi` save function rather than
-   writing a new one), adding the same save call to the SWR preset
-   buttons and both "tap to use this" suggestion buttons (since taps have
-   no blur event), and changing the current-savings parsing so an empty
-   field means ₱0 instead of invalid. `npx tsc --noEmit` clean. STILL
-   NEEDS: a real on-device re-test (type into any of the four fields,
-   leave the screen without tapping Save, come back and confirm it
-   stuck; leave Current Savings blank and confirm Years Until FI now
-   calculates; confirm the show/hide date toggle appears) — the person
-   is deliberately deferring this until the rest of the current bug-
-   fixing pass is done, to test everything together in one on-device
-   pass.
-5. ✅ FIXED (pending on-device re-test) — Emergency Fund "Saved"
-   checkmark never appears after saving. Root cause: `handleSaveEf`
-   called `.trim()` directly on `efExpensesInput`/`efSavingsInput`, which
-   are `null` unless the user typed into that specific field this visit
-   — throwing an uncaught crash that silently aborted the function before
-   `saveModel()` or `setEfSaved(true)` ever ran. Fixed by reading through
-   the existing `efExpensesDisplay`/`efSavingsDisplay` fallback strings
-   first (`efExpensesInput ?? efExpensesDisplay`), the same safe pattern
-   `handleSaveFi` already used. `npx tsc --noEmit` clean. STILL NEEDS: a
-   real on-device re-test (edit only one of the two EF fields, or use the
-   suggested-expenses button without typing anything, then tap Save and
-   confirm the checkmark appears instead of nothing happening) — deferred
-   along with bugs #1–4 until the rest of this pass is done.
-5b. ✅ FIXED (pending on-device re-test) — Emergency Fund TextInputs had
-    no `onBlur` auto-save, same root cause as bugs #3/#4. Fixed by adding
-    `onBlur={() => handleSaveEf()}` to both fields, giving `handleSaveEf`
-    an optional override parameter so the "use suggested expenses" button
-    can save the tapped value immediately instead of a stale one, and
-    fixing the main Save button's onPress signature mismatch this caused.
-    `npx tsc --noEmit` clean. STILL NEEDS: a real on-device re-test (edit
-    either field and leave the screen without tapping Save, then tap "use
-    suggested expenses" and confirm it's saved without tapping Save) —
-    deferred along with bugs #1–5 until the rest of this pass is done.
-6. ✅ FIXED (pending on-device re-test) — None of the 3 promised
-   background-save warnings ever showed on-device. Root cause: same
-   disease as bug #2 — five separate `saveProfileCloudBackup`/
-   `saveRecoveryKey`/`deleteRecoveryKey` calls across `changePassword()`,
+   / `closeModal()` correctly fires. `npx tsc --noEmit` clean. CONFIRMED
+   on-device: with airplane mode on, deleting an account, a bill, and a
+   debt each showed a "Sync Failed" alert within ~8 seconds instead of
+   hanging. No further action needed.
+3. ✅ VERIFIED ON-DEVICE — Left to Spend caution threshold doesn't
+   persist. Root cause: the threshold's TextInput only saved on `onBlur`,
+   which React Native doesn't reliably fire when the screen is torn down
+   (Back button, swipe-back gesture, tab switch, or app close) — so a
+   typed value could be silently lost instead of saved. Fixed by adding a
+   ~600ms auto-save-after-typing-stops effect alongside the existing
+   onBlur save, so the value is written almost immediately no matter how
+   the screen is later left. `npx tsc --noEmit` clean. CONFIRMED
+   on-device: typed a new threshold value, fully closed the app (swiped
+   away, not just backgrounded), reopened it, and both Settings and Home's
+   Left to Spend widget showed the new value. No further action needed.
+4. ⚠️ PARTIALLY FIXED — FI Calculator (Savings tab) still not fully
+   functional on-device. The onBlur auto-save added to all four fields
+   (SWR, expected return, monthly savings, current savings) IS confirmed
+   working — a typed value now survives leaving and returning to the
+   screen without needing to tap the main Save button. However, on-device
+   re-test found the other two parts of the original fix did NOT work:
+   (a) leaving "Current savings" blank while filling in the other three
+   fields still does not make "Years Until FI" calculate — it still shows
+   placeholder text, even though the fix changed blank-current-savings
+   parsing from `NaN` to `0`; (b) tapping an SWR preset button (3.5%/
+   4.0%/4.5%) or either "tap to use this" suggestion button still does
+   not save immediately, even though an inline `handleSaveFi()` call was
+   added to each of those onPress handlers. Since the on-device behavior
+   doesn't match what the applied fix should have produced, the original
+   diagnosis is incomplete or something else is interfering — NEEDS A
+   FRESH ANTIGRAVITY INVESTIGATION PROMPT against the real, current code
+   (not a re-application of the same fix) before writing a new patch.
+5. / 5b. ⚠️ PARTIALLY FIXED — Emergency Fund "Saved" checkmark still
+   doesn't appear. The onBlur auto-save added to both fields (expenses,
+   savings) IS confirmed working — editing either field and leaving the
+   screen without tapping Save now sticks. However, on-device re-test
+   found the original crash fix did NOT resolve the reported symptom:
+   editing only one of the two fields (or tapping "use suggested
+   expenses" without typing anything) and then tapping Save still does
+   not show the "Saved" checkmark — the fix rewrote `handleSaveEf` to
+   read through the `efExpensesDisplay`/`efSavingsDisplay` fallbacks
+   before calling `.trim()`, on the theory that a `null`-crash was
+   silently aborting the function before `setEfSaved(true)` ran, but that
+   alone evidently isn't fixing the symptom. NEEDS A FRESH ANTIGRAVITY
+   INVESTIGATION PROMPT to find what's actually still failing inside
+   `handleSaveEf` on the real, current code, rather than re-applying the
+   same theory.
+6. ✅ VERIFIED ON-DEVICE — None of the 3 promised background-save
+   warnings ever showed on-device. Root cause: same disease as bug #2 —
+   five separate `saveProfileCloudBackup`/`saveRecoveryKey`/
+   `deleteRecoveryKey` calls across `changePassword()`,
    `unlinkHousehold()`, `unlinkAndTransferOwnership()` (all in
    DataContext.tsx), and `handleRecoverWithKey()` (SignInScreen.tsx) had
    no timeout, so on a dead connection they just hung instead of
@@ -640,170 +666,127 @@ pushed. Still needs a real on-device re-test to fully close out.
    had no `Alert.alert()`; `unlinkAndTransferOwnership()`'s catch was
    empty) — both fixed to match their working siblings. Fixed by
    exporting `withTimeout()` as a module-level function from
-   DataContext.tsx (previously private to `DataProvider`) and wrapping
-   all five call sites in it (8-second timeout each), plus adding/fixing
-   the two missing warning alerts. `npx tsc --noEmit` clean. STILL NEEDS:
-   a real on-device re-test (airplane mode on, then trigger each of the
-   three flows — change password, recover via recovery key, unlink from
-   household — and confirm each shows its warning alert within ~8 seconds
-   instead of hanging) before marking fully verified.
-7. ✅ RESOLVED (as a side effect of bug #2, pending on-device re-test) —
+   DataContext.tsx and wrapping all five call sites in it (8-second
+   timeout each), plus adding/fixing the two missing warning alerts.
+   `npx tsc --noEmit` clean. CONFIRMED on-device: with airplane mode on,
+   each of the three flows (change password, recover via recovery key,
+   unlink from household) showed its own warning alert within ~8 seconds
+   instead of hanging. No further action needed.
+7. ✅ VERIFIED ON-DEVICE (resolved as a side effect of bug #2) —
    Events/Goals/Groceries/Settings' 30 `saveModel()` call sites all have
    their own screen-level try/catch intending a specific error message,
    but `saveModel()` catches and swallows all network errors internally
    and never rethrows, so those 30 catch blocks are confirmed unreachable
-   dead code. This is no longer a functional bug, though: `saveModel()`
-   already has its own internal "Sync Failed"/"Backup Failed" alert
-   around its network calls, and bug #2's `withTimeout()` fix means that
-   alert now correctly fires (instead of hanging forever) on every one of
-   these 30 call sites too, since they all route through the same shared
-   `saveModel()`. No code changes made. STILL NEEDS: a real on-device
-   re-test (airplane mode on, try saving/deleting on any of the four
-   screens, confirm the generic "Sync Failed"/"Backup Failed" alert
-   appears within ~8 seconds) to fully close this out — can be folded
-   into the same on-device pass as bugs #1–6.
-8. ✅ FIXED (pending on-device re-test) — Travel checklist-item delete
-   left its linked expense behind in Transactions. Root cause:
-   `handleRemoveChecklistItem` only ever updated local component state —
-   it never touched `model.travel` and never called the existing (and
-   already-correct) `reconcileTravelChecklistTransactions`, which only
-   ran later on "Save trip." So removing an item and then backing out of
-   the modal without saving left everything, including its linked
-   transaction, untouched; unlike every other delete button in the app,
-   which persist right away. Whole-trip delete was confirmed unaffected.
-   Fixed by making `handleRemoveChecklistItem` async: for an already-
-   saved trip it now writes the removal straight to `model.travel` and
-   strips the item's `expenseTransactionId` from `model.manualTransactions`
-   in the same `saveModel()` call; a brand-new unsaved trip is untouched
-   and still behaves as a local-state edit until "Save trip" is tapped.
-   `npx tsc --noEmit` clean. STILL NEEDS: a real on-device re-test (check
-   off a cost-bearing checklist item on an existing trip, confirm its
-   transaction appears in Transactions, remove the checklist item, and
-   confirm the transaction disappears immediately without needing to tap
-   "Save trip") before marking fully verified.
-8b. ✅ FIXED (pending on-device re-test) — in `saveModel()`'s linked-
-    household branch (DataContext.tsx), the personal local-snapshot backup
-    call (`saveEncryptedProfileData(...).catch(() => {})`) failed
-    completely silently with no alert at all, unlike every other write
-    path in that same function. This snapshot matters more than it looks:
-    it's what offline app launch falls back to reading, what household
-    dissolution reads to preserve a removed member's personal copy, what
-    account recovery via recovery key reads, and what personal data export
-    reads — so a silent failure here meant any of those could later use
-    stale or missing data with no warning it had ever gone wrong. Also
-    confirmed the call had no timeout guard, unlike its sibling cloud
-    writes in the same function. Fixed by giving it a real `.catch()` that
-    logs and shows a warning (matching the wording style of the function's
-    other alerts) and wrapping it in the existing `withTimeout()` helper —
-    but, unlike its siblings, deliberately left NOT awaited/blocking,
-    since AsyncStorage doesn't have Firestore's "hangs forever offline"
-    problem, and making it blocking would have added up to 8 extra seconds
-    to every single save before the household sync even started. `npx tsc
-    --noEmit` clean. STILL NEEDS: a real on-device re-test — hard to
-    trigger a genuine AsyncStorage failure on demand, so this may just need
-    a code-level re-check that the warning path is reachable rather than a
-    forced on-device repro.
-9. ✅ FIXED (pending on-device re-test; Face-ID-specific symptom also
-   pending a real installed build) — Biometric unlock failed outright on
-   a Face ID device with fingerprint off. Root cause was two tangled
+   dead code. No code change was needed here — `saveModel()`'s own
+   internal "Sync Failed"/"Backup Failed" alert, combined with bug #2's
+   `withTimeout()` fix, already covers this. CONFIRMED on-device: with
+   airplane mode on, saving/deleting on each of the four screens (Events,
+   Goals, Groceries, Settings) showed the generic "Sync Failed"/"Backup
+   Failed" alert within ~8 seconds instead of nothing happening. No
+   further action needed.
+8. ✅ VERIFIED ON-DEVICE — Travel checklist-item delete left its linked
+   expense behind in Transactions. Root cause: `handleRemoveChecklistItem`
+   only ever updated local component state — it never touched
+   `model.travel` and never called the existing (and already-correct)
+   `reconcileTravelChecklistTransactions`, which only ran later on "Save
+   trip." So removing an item and then backing out of the modal without
+   saving left everything, including its linked transaction, untouched;
+   unlike every other delete button in the app, which persist right away.
+   Fixed by making `handleRemoveChecklistItem` async: for an
+   already-saved trip it now writes the removal straight to
+   `model.travel` and strips the item's `expenseTransactionId` from
+   `model.manualTransactions` in the same `saveModel()` call. `npx tsc
+   --noEmit` clean. CONFIRMED on-device: checked off a cost-bearing
+   checklist item on an existing trip, confirmed its transaction appeared
+   in Transactions, removed the checklist item, and the transaction
+   disappeared immediately without needing to tap "Save trip." No further
+   action needed.
+8b. ✅ Fixed, on-device re-test not really applicable — in
+    `saveModel()`'s linked-household branch (DataContext.tsx), the
+    personal local-snapshot backup call
+    (`saveEncryptedProfileData(...).catch(() => {})`) failed completely
+    silently with no alert at all. Fixed by giving it a real `.catch()`
+    that logs and shows a warning, wrapped in the existing `withTimeout()`
+    helper, deliberately left NOT awaited/blocking (AsyncStorage doesn't
+    hang offline the way Firestore does, so no need to add up to 8 extra
+    seconds to every save). `npx tsc --noEmit` clean. Hard to force a
+    genuine AsyncStorage failure on demand to trigger this on a real
+    device, so this stays a code-level confirmation rather than a forced
+    on-device repro — no report of it firing incorrectly either.
+9. ✅ VERIFIED ON-DEVICE (general fix); Face-ID-specific symptom still
+   pending a real installed build — Biometric unlock failed outright on a
+   Face ID device with fingerprint off. Root cause was two tangled
    issues: `attemptBiometricAuth` discarded the real error from
    `LocalAuthentication.authenticateAsync`, collapsing every kind of
    failure (locked out, not enrolled, missing permission, genuine error)
-   into a silent `false` with no message shown — a real bug independent
-   of device type. Separately, the specific "Face ID fails, fingerprint
-   works" symptom is believed caused by testing through Expo Go: iOS
-   requires `NSFaceIDUsageDescription` to be wired into the app's actual
-   bundle before it will even show the Face ID prompt when
-   `disableDeviceFallback: true` is set (as this app does) — this
-   project's `app.json` already has that configured correctly, but Expo
-   Go uses its own separate pre-built permissions, not this project's
-   config, so Face ID can fail there for reasons outside this codebase.
-   Fixed the general error-swallowing bug by changing
-   `attemptBiometricAuth`'s return type to include the real error code,
-   adding a `biometricErrorMessage()` translator (blank for a plain
-   user/system cancel, since that's not a real error), and wiring both
-   call sites (PinUnlockScreen.tsx, SettingsScreen.tsx) to show the
-   translated message using each screen's existing error-display
-   pattern instead of doing nothing. `npx tsc --noEmit` clean. STILL
-   NEEDS: (a) an on-device re-test of the now-visible error messages in
-   general, deferred along with bugs #1–8 until the rest of this pass is
-   done; (b) the original Face-ID-specific failure needs separate
+   into a silent `false` with no message shown. Separately, the specific
+   "Face ID fails, fingerprint works" symptom is believed caused by
+   testing through Expo Go, since it uses its own separate pre-built
+   permissions rather than this project's `app.json`. Fixed the
+   general error-swallowing bug by changing `attemptBiometricAuth`'s
+   return type to include the real error code, adding a
+   `biometricErrorMessage()` translator, and wiring both call sites
+   (PinUnlockScreen.tsx, SettingsScreen.tsx) to show the translated
+   message instead of doing nothing. `npx tsc --noEmit` clean. CONFIRMED
+   on-device: triggering a biometric failure on purpose showed a real
+   error message instead of nothing happening. STILL NEEDS: the original
+   Face-ID-specific "fails to even prompt" symptom needs separate
    re-verification on a real installed build once Phase C (EAS Build) is
-   reached, since it can't be confirmed fixed from inside Expo Go.
-10. ✅ FIXED (pending on-device re-test) — Turning PIN off showed no
-    loading indicator, read as frozen. Root cause: the "Turn Off" action
-    was an inline anonymous async callback with no busy-state tracking at
-    all, unlike every other async action on this screen. Fixed by adding
-    a `pinBusy` state variable, wrapping the existing `removePin(username)`
-    call in `setPinBusy(true)`/`try...finally` (also adding a real error
-    alert on failure, which didn't exist before), disabling both the
-    "Turn Off" and "Change PIN" buttons while busy, and swapping the
-    "Turn Off" label for an ActivityIndicator during the action — matching
-    the same pattern already used by clearBusy/exportBusy elsewhere in
-    this file. `npx tsc --noEmit` clean. STILL NEEDS: a real on-device
-    re-test (tap Turn Off, confirm the button shows a spinner and disables
-    itself instead of appearing to do nothing until it completes) before
-    marking fully verified.
-11. ✅ FIXED (pending on-device re-test) — Category Watchlist "over
-    budget" wording fired at exactly 100% instead of only once genuinely
-    over 100%. Root cause: `getCategoryBudgetStatus` (transactions.ts)
-    checked `pct >= 100` for the "Over budget" state, so hitting the
-    budget exactly was misclassified as over it. Confirmed this
-    comparison exists in only one place, with DashboardScreen.tsx's
-    "Watched Categories" card as its sole consumer. Fixed by changing the
-    check to `pct > 100` (strictly exceeding) and adding a distinct
-    "At budget" tier for exactly `pct >= 100` in the existing orange
-    caution color, rather than either wrongly flagging it as over budget
-    or letting it fall through to the calmer "Getting close" state.
-    `npx tsc --noEmit` clean. STILL NEEDS: a real on-device re-test (set
-    a category budget, log spending that exactly equals it, confirm it
-    shows "At budget" in orange rather than "Over budget" in red; log
-    spending one peso over and confirm it correctly shows "Over budget")
-    before marking fully verified.
-12. ✅ FIXED (pending on-device re-test) — "Which of these is you?"
-    picker didn't update Transactions live, needed a full app restart to
-    take effect. Root cause: the selected person id is stored in
-    AsyncStorage outside DataContext/HouseholdModel, and both consuming
-    screens (TransactionsScreen.tsx, reports/PersonSpendingReport.tsx)
-    only ever read it once on mount — since React Navigation's bottom
-    tabs keep screens mounted rather than remounting on tab switch, a
-    change made on ProfileScreen never reached either already-mounted
-    screen. Fixed by reusing the same pub-sub listener pattern this
-    codebase already uses for the identical problem in autoLock.ts —
-    added `subscribeToMyPersonId` to myPerson.ts, notified on
-    set/clear, and subscribed to it in both affected screens'
-    existing useEffect blocks. `npx tsc --noEmit` clean. STILL NEEDS: a
-    real on-device re-test (open Transactions, switch to Profile, change
-    "Which of these is you?", switch back to Transactions without
-    restarting the app, confirm "Mine" labeling updates immediately;
-    repeat for the Person Spending report) before marking fully
-    verified.
-13. ✅ FIXED (pending on-device re-test) — AccountsScreen Cards/List toggle
-    "Stacked card view" floating label (IconLabelHint) didn't appear on tap.
-    Root cause: a combination of three things — (a) `handleToggleViewMode`
-    called `LayoutAnimation.configureNext` in the same tick as
-    `IconLabelHint`'s own `measureInWindow` call, which on Android can
-    disrupt or drop that measurement; (b) the tooltip defaulted to
-    `position="above"`, and since this toggle sits at the very top of the
-    screen there wasn't enough room above it, pushing the tooltip up
-    against (or under) the status bar; (c) `IconLabelHint` renders its
-    tooltip off-screen at `top: -1000` while waiting to measure its real
-    size, and Android's native layout engine can skip firing `onLayout`
-    for a view positioned that far outside the viewport, so it never
-    finished measuring and never faded in. No other screen using
-    `IconLabelHint` (Planning/ToPay/Reports tabs) has any of these three
-    conditions, which is why only this one label was affected. Fixed by
-    removing the `LayoutAnimation.configureNext` call from
-    `handleToggleViewMode` (a view-mode switch doesn't need it),
-    setting `position="below"` on both toggle labels so they open into
-    the open banner area below them, and changing `IconLabelHint`'s
-    off-screen placeholder position from a hardcoded `-1000` to the
-    icon's own already-known y-coordinate (still invisible, since
-    opacity is 0 during that pass, but no longer far enough outside the
-    viewport to risk being skipped). `npx tsc --noEmit` clean. STILL
-    NEEDS: a real on-device re-test (tap the Cards/List toggle on
-    Accounts, confirm the floating label briefly appears for each) before
-    marking fully verified.
+   reached, since it may be an Expo Go artifact rather than an app bug —
+   not re-tested this pass.
+10. ✅ VERIFIED ON-DEVICE — Turning PIN off showed no loading indicator,
+    read as frozen. Root cause: the "Turn Off" action was an inline
+    anonymous async callback with no busy-state tracking at all, unlike
+    every other async action on this screen. Fixed by adding a `pinBusy`
+    state variable, wrapping the existing `removePin(username)` call in
+    `setPinBusy(true)`/`try...finally` (also adding a real error alert on
+    failure, which didn't exist before), disabling both the "Turn Off"
+    and "Change PIN" buttons while busy, and swapping the "Turn Off"
+    label for an ActivityIndicator during the action. `npx tsc --noEmit`
+    clean. CONFIRMED on-device: tapping "Turn Off" showed a spinner and
+    disabled the button instead of appearing to do nothing until it
+    completed. No further action needed.
+11. ✅ VERIFIED ON-DEVICE — Category Watchlist "over budget" wording
+    fired at exactly 100% instead of only once genuinely over 100%. Root
+    cause: `getCategoryBudgetStatus` (transactions.ts) checked
+    `pct >= 100` for the "Over budget" state, so hitting the budget
+    exactly was misclassified as over it. Fixed by changing the check to
+    `pct > 100` (strictly exceeding) and adding a distinct "At budget"
+    tier for exactly `pct >= 100` in the existing orange caution color.
+    `npx tsc --noEmit` clean. CONFIRMED on-device: spending that exactly
+    equaled a ₱1,000 category budget showed "At budget" in orange, and
+    one peso over (₱1,001) correctly flipped to "Over budget" in red. No
+    further action needed.
+12. ✅ VERIFIED ON-DEVICE — "Which of these is you?" picker didn't update
+    Transactions live, needed a full app restart to take effect. Root
+    cause: the selected person id is stored in AsyncStorage outside
+    DataContext/HouseholdModel, and both consuming screens
+    (TransactionsScreen.tsx, reports/PersonSpendingReport.tsx) only ever
+    read it once on mount — since React Navigation's bottom tabs keep
+    screens mounted rather than remounting on tab switch, a change made
+    on ProfileScreen never reached either already-mounted screen. Fixed
+    by reusing the same pub-sub listener pattern this codebase already
+    uses for the identical problem in autoLock.ts — added
+    `subscribeToMyPersonId` to myPerson.ts, notified on set/clear, and
+    subscribed to it in both affected screens' existing useEffect blocks.
+    `npx tsc --noEmit` clean. CONFIRMED on-device: changed "Which of
+    these is you?" on Profile, switched back to Transactions without
+    restarting the app, and "Mine" labeling updated immediately; same
+    confirmed on the Person Spending report. No further action needed.
+13. ✅ VERIFIED ON-DEVICE — AccountsScreen Cards/List toggle "Stacked
+    card view" floating label didn't appear on tap. Root cause: a
+    combination of `LayoutAnimation.configureNext` disrupting
+    `IconLabelHint`'s own measurement call, the tooltip defaulting to
+    `position="above"` with no room above it at the top of the screen,
+    and `IconLabelHint`'s off-screen placeholder position (`top: -1000`)
+    being far enough outside the viewport that Android could skip firing
+    `onLayout` for it entirely. Fixed by removing the
+    `LayoutAnimation.configureNext` call from `handleToggleViewMode`,
+    setting `position="below"` on both toggle labels, and changing the
+    off-screen placeholder position to the icon's own known y-coordinate
+    instead of a hardcoded `-1000`. `npx tsc --noEmit` clean. CONFIRMED
+    on-device: tapping the Cards/List toggle showed the floating label
+    for each icon. No further action needed.
 
 🎨 Design-change requests surfaced during testing (need scoping, not quick fixes)
 - Replace Android's native date picker with the app's own themed calendar
@@ -859,33 +842,21 @@ SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass). New/modified files
 from here on will be tracked fresh in this file.
 
 ▶️ Next step
-- On-device: re-test both fixed bugs before marking them fully verified —
-  (1) offline sign-out → sign-in lockout (airplane mode off, sign out,
-  airplane mode on, restart or background/foreground the app, airplane
-  mode off, sign in), and (2) offline delete hang on Accounts/Bills/Debts
-  (airplane mode on, delete an item, confirm the spinner clears and a
-  "Sync Failed" alert appears within ~8 seconds instead of hanging).
-- Work through the remaining real bugs found in the first on-device testing
-  pass, one at a time, via the standard Antigravity/Copilot-investigates-
-  first workflow — see the numbered list under ⚠️ Known issues above.
-  Bugs #1–6 are now code-complete pending on-device re-test (deliberately
-  batched — the person is testing all fixes together in one on-device pass
-  once the remaining bugs below are also fixed, rather than one at a time).
-  Bug #7 turned out to already be resolved as a side effect of bug #2 —
-  no code change was needed, just confirmed via investigation. Bug #8
-  (Travel checklist-delete expense cleanup) is now also code-complete
-  pending on-device re-test, same batch. Bug #9 (biometric unlock
-  swallowing errors) is now also code-complete pending on-device
-  re-test — note its Face-ID-specific symptom additionally needs
-  re-verification on a real installed build in Phase C, since it may be
-  an Expo Go artifact rather than an app bug. Bugs #10 (PIN-off loading
-  indicator), #11 (Category Watchlist "over budget" at exactly 100%), and
-  #12 ("which of these is you?" not updating Transactions live) are now
-  also code-complete pending on-device  re-test, same batch. Bug #13 (AccountsScreen's missing "Stacked card
-  view" floating label) and bug #8b (silent personal-snapshot-backup
-  failure in `saveModel()`'s linked-household branch) are now also
-  code-complete pending on-device re-test, same batch. Every known bug
-  from the first on-device testing pass is now fixed pending re-test.
+- Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) are the only two
+  items left open from the original 13-bug list — the on-device re-test
+  pass confirmed 11 of 13 are genuinely fixed (see the numbered list
+  above), but both #4 and #5/5b still fail on-device in ways the original
+  fix should have resolved. Next step for each: get a fresh, investigation-
+  only Antigravity/Copilot prompt against the real, current code (not a
+  re-application of the prior diagnosis) — for #4, focus on why
+  `handleSaveFi` isn't triggering from the SWR/suggestion buttons and why
+  the FI projection still won't calculate with Current Savings left blank;
+  for #5/5b, focus on why `handleSaveEf` still isn't reaching
+  `setEfSaved(true)` after the null-crash fix. Review what each returns
+  before writing any new patch, per the standing verification rules.
+- Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
+  re-verification on a real installed build in Phase C (EAS Build) —
+  believed to be an Expo Go limitation, not re-testable until then.
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests
