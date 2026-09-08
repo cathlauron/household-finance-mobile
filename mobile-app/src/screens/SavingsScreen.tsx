@@ -160,6 +160,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [fiReturnRateInput, setFiReturnRateInput] = useState<string | null>(null);
   const [fiMonthlySavingsInput, setFiMonthlySavingsInput] = useState<string | null>(null);
   const [fiShowDate, setFiShowDate] = useState(true);
+  const [fiAccountPickerOpen, setFiAccountPickerOpen] = useState(false);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -184,6 +185,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
       fiWithdrawalRatePct: '' as const,
       fiExpectedReturnPct: '' as const,
       fiMonthlySavings: '' as const,
+      fiSelectedAccountIds: [] as string[],
       ...(model!.calculatorInputs || {}),
     };
   }
@@ -414,6 +416,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     swr?: string;
     returnRate?: string;
     monthlySavings?: string;
+    selectedAccountIds?: string[];
   }) {
     if (!model) return;
     const current = calcInputsFromModel();
@@ -447,11 +450,21 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
         fiWithdrawalRatePct: swr as number | '',
         fiExpectedReturnPct: returnRate as number | '',
         fiMonthlySavings: monthlySavings as number | '',
+        fiSelectedAccountIds: overrides?.selectedAccountIds ?? current.fiSelectedAccountIds,
       },
     };
     await saveModel(updated);
     setFiSaved(true);
     setTimeout(() => setFiSaved(false), 1800);
+  }
+
+  function toggleFiAccountSelection(accountId: string) {
+    const current = calcInputsFromModel().fiSelectedAccountIds;
+    const base = current.length > 0 ? current : fiAllAccounts.map((a) => a.id);
+    const next = base.includes(accountId)
+      ? base.filter((id) => id !== accountId)
+      : [...base, accountId];
+    handleSaveFi({ selectedAccountIds: next });
   }
 
   const goals = sortGoals(model.savingsGoals);
@@ -515,10 +528,18 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       : storedCalc.fiMonthlySavings === '' ? '' : String(storedCalc.fiMonthlySavings);
   const fiMonthlySavingsNum = parseFloat(fiMonthlySavingsDisplay);
 
-  const suggestedNetWorth =
-    sumAccountEntries(model.balanceAccounts?.investment || []) +
-    sumAccountEntries(model.balanceAccounts?.cash || []) +
-    sumAccountEntries(model.balanceAccounts?.debit || []);
+  const fiAllAccounts: { id: string; name: string; amount: number | ''; group: string }[] = [
+    ...(model.balanceAccounts?.cash || []).map((a) => ({ ...a, group: 'Cash' })),
+    ...(model.balanceAccounts?.debit || []).map((a) => ({ ...a, group: 'Debit' })),
+    ...(model.balanceAccounts?.investment || []).map((a) => ({ ...a, group: 'Investment' })),
+  ];
+  const fiSelectedAccountIds =
+    calcInputsFromModel().fiSelectedAccountIds.length > 0
+      ? calcInputsFromModel().fiSelectedAccountIds
+      : fiAllAccounts.map((a) => a.id);
+  const suggestedNetWorth = fiAllAccounts
+    .filter((a) => fiSelectedAccountIds.includes(a.id))
+    .reduce((sum, a) => sum + (typeof a.amount === 'number' ? a.amount : 0), 0);
 
   const fiNetAnnualExpenses = !isNaN(fiExpensesNum)
     ? Math.max(0, fiExpensesNum - (isNaN(fiGuaranteedIncomeNum) ? 0 : fiGuaranteedIncomeNum))
@@ -832,6 +853,14 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               </Text>
             </TouchableOpacity>
           )}
+          {fiAllAccounts.length > 0 && (
+            <TouchableOpacity
+              style={styles.chooseAccountsLink}
+              onPress={() => setFiAccountPickerOpen(true)}
+            >
+              <Text style={styles.chooseAccountsLinkText}>Choose which accounts count</Text>
+            </TouchableOpacity>
+          )}
 
           <Text style={styles.inputLabel}>Safe withdrawal rate</Text>
           <View style={styles.swrPillRow}>
@@ -1046,6 +1075,38 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </BottomSheet>
+
+      <BottomSheet
+        visible={fiAccountPickerOpen}
+        onClose={() => setFiAccountPickerOpen(false)}
+        title="Choose accounts"
+      >
+        <Text style={styles.fieldHint}>
+          Pick which accounts count toward the "current savings" suggestion above. Leave all
+          selected to include everything, same as before.
+        </Text>
+        {fiAllAccounts.map((account) => {
+          const checked = fiSelectedAccountIds.includes(account.id);
+          return (
+            <TouchableOpacity
+              key={account.id}
+              style={styles.accountPickerRow}
+              onPress={() => toggleFiAccountSelection(account.id)}
+            >
+              <View style={styles.accountPickerRowLeft}>
+                <Text style={styles.accountPickerRowName}>{account.name || 'Untitled account'}</Text>
+                <Text style={styles.accountPickerRowGroup}>{account.group}</Text>
+              </View>
+              <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                {checked && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+        <TouchableOpacity style={styles.cancelButton} onPress={() => setFiAccountPickerOpen(false)}>
+          <Text style={styles.cancelButtonText}>Done</Text>
+        </TouchableOpacity>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -1178,5 +1239,28 @@ toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
     contribRemoveButtonText: { fontSize: 14, color: colors.inkDim },
     addContribButton: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 6, marginTop: -4 },
     addContribButtonText: { fontSize: 12.5, fontWeight: '600', color: colors.gold },
+    chooseAccountsLink: { marginTop: -6, marginBottom: 14 },
+    chooseAccountsLinkText: { fontSize: 11.5, color: colors.gold, fontWeight: '600' },
+    accountPickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.navy4,
+    },
+    accountPickerRowLeft: { flex: 1, marginRight: 10 },
+    accountPickerRowName: { fontSize: 14, color: colors.ink },
+    accountPickerRowGroup: { fontSize: 11, color: colors.inkDim, marginTop: 2 },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: colors.inkFaint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxChecked: { backgroundColor: colors.gold, borderColor: colors.gold },
   });
 }

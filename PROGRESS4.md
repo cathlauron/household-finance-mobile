@@ -13,6 +13,83 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — B.12b-2: multi-account selector (implemented)
+
+Investigated via Antigravity across four rounds of investigation-only
+prompts (no commits from the tool), continuing directly from B.12b-1.
+Confirmed the full real shape of `suggestedNetWorth` (calculation +
+"tap to use" suggestion button, mirroring `suggestedAnnualExpenses`'s
+existing pattern), the real definition of `sumAccountEntries` and the
+real `BalanceAccountEntry`/`BalanceAccounts` shapes in types.ts, the
+current `CalculatorInputs` type (post B.12b-1), and confirmed Reports'
+"Customize reports" checklist (checkbox + row, persisted via a small
+per-profile helper module) as the closest existing multi-select
+pattern to reuse — TravelScreen.tsx's checklist tick was pulled as a
+secondary reference. Two follow-up rounds confirmed real, exact detail
+before writing any code: the real imports at the top of
+SavingsScreen.tsx (confirmed `Ionicons` already imported from
+`@expo/vector-icons`; confirmed there is no static `colors` import —
+color tokens come from `useTheme()`'s `colors` object, not a module
+import), the real JSX from the end of the `suggestedNetWorth` suggestion
+block through the end of the `activeTab === 'fi'` ScrollView, every real
+color-token name already in use in this file's own StyleSheet, and
+confirmed `BottomSheet` (already imported) is already used once in this
+file for the goal add/edit modal — used as the placement/pattern
+reference for the new account-picker sheet. A final round confirmed the
+real, in-order `useState` block for the whole component (needed to
+insert one new state variable in the right place without guessing) and
+confirmed `fiAccountPickerOpen`, `fiAllAccounts`, and
+`fiSelectedAccountIds` did not already exist anywhere in the file or
+the wider codebase before introducing them.
+
+Implemented (hand-pasted by the person after review, as 7 snippets
+across types.ts and SavingsScreen.tsx):
+- Added `fiSelectedAccountIds: string[]` to `CalculatorInputs` (types.ts).
+- Added a new `fiAccountPickerOpen` boolean state variable alongside the
+  other FI-section local state in SavingsScreen.tsx.
+- Added the matching `fiSelectedAccountIds: []` default fallback in
+  `calcInputsFromModel()`.
+- Rewrote `suggestedNetWorth`'s calculation: it now builds a combined
+  `fiAllAccounts` list (Cash + Debit + Investment, each tagged with a
+  `group` label), resolves `fiSelectedAccountIds` from the stored
+  calculator inputs (falling back to "every account" when nothing has
+  ever been deselected, so existing behavior is unchanged for anyone
+  who's never opened the picker), and sums only the selected accounts.
+- Extended `handleSaveFi`'s overrides parameter with an optional
+  `selectedAccountIds` array, persisted straight into
+  `calculatorInputs.fiSelectedAccountIds`; added a new
+  `toggleFiAccountSelection(accountId)` helper that reads the current
+  selection (or "everything" if never set), flips one account's
+  membership, and saves immediately via `handleSaveFi`.
+- Added a "Choose which accounts count" link directly under the existing
+  net-worth suggestion row, and a new `BottomSheet` (titled "Choose
+  accounts") listing every account grouped by type, each with a
+  checkbox reusing the same checkbox visual pattern as Reports'
+  "Customize reports" sheet — tapping a row toggles that account's
+  membership and saves immediately, with a "Done" button to close.
+- Added matching new styles (`chooseAccountsLink`/
+  `chooseAccountsLinkText`, `accountPickerRow`/`accountPickerRowLeft`/
+  `accountPickerRowName`/`accountPickerRowGroup`, `checkbox`/
+  `checkboxChecked`) using only color tokens already confirmed present
+  in this file's own StyleSheet.
+
+Default behavior is unchanged for anyone who's never opened the picker:
+`fiSelectedAccountIds` stays empty until a selection is actually
+changed, so `suggestedNetWorth` keeps summing every Cash/Debit/
+Investment account exactly as it did before this change. `npx tsc
+--noEmit` (run from mobile-app\) came back clean, 0 errors, on the
+first pass. Per the person's standing direction, on-device testing of
+this is being held until right before moving to Phase C, batched
+together with the other pending on-device items (bug #4/#5-5b re-test,
+Android date-picker calendar, and every design-change item still
+pending) rather than tested in isolation now.
+
+This completes B.12b-2. Next up per the B.12b scoping decision:
+B.12b-3 — the scenario-comparison modal, which benefits from both
+B.12b-1 and B.12b-2 being done first (there's now something meaningful
+to compare: guaranteed-income-adjusted FI number, against different
+account-selection scenarios).
+
 ### Session — B.12b scoped via Antigravity investigation
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -1686,6 +1763,14 @@ from here on will be tracked fresh in this file.
 - src/screens/TransactionsScreen.tsx — MODIFIED. Added `useNavigation()`,
   five source-lookup helpers (bill/debt/loan/income/saving), and a swipe
   `viewAction` covering all five derived source types.
+- src/types.ts — MODIFIED. `CalculatorInputs` gained
+  `fiGuaranteedAnnualIncome: number | ''` (B.12b-1) and
+  `fiSelectedAccountIds: string[]` (B.12b-2).
+- src/screens/SavingsScreen.tsx — MODIFIED (B.12b-1, B.12b-2). Added the
+  Pension/Social Security offset field feeding into the FI-number
+  calculation; added the "Choose which accounts count" link + BottomSheet
+  account picker controlling which Cash/Debit/Investment accounts feed
+  the "current savings" suggestion.
 
 ▶️ Next step
 - Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions
@@ -1776,13 +1861,15 @@ from here on will be tracked fresh in this file.
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
   .apk/TestFlight link) and, optionally, C.2 (App Store / Play Store
   publishing).
-- B.12b-1 (Pension/Social Security offset) is now IMPLEMENTED and `npx tsc
-  --noEmit` clean — see the "B.12b-1: Pension/Social Security offset
-  (implemented)" session entry above for full detail. On-device testing is
-  deliberately deferred by the person until right before moving to Phase C.
-  B.12b-2 (multi-account selector) and B.12b-3 (scenario-comparison modal)
-  remain unstarted — see the "B.12b scoped via Antigravity investigation"
-  session entry for their original scoping detail.
+- B.12b-1 (Pension/Social Security offset) and B.12b-2 (multi-account
+  selector) are now both IMPLEMENTED and `npx tsc --noEmit` clean — see
+  their respective session entries above for full detail. On-device
+  testing of both is deliberately deferred by the person until right
+  before moving to Phase C, batched with the other pending on-device
+  items. B.12b-3 (scenario-comparison modal) remains unstarted — see
+  the "B.12b scoped via Antigravity investigation" session entry for
+  its original scoping detail (LoanPayoffSimulatorModal.tsx confirmed
+  as the closest existing structural reference to build it from).
 
 📚 Older progress: PROGRESS3.md (Phase B Part 2 + first on-device testing
 pass, now closed), PROGRESS2.md (Phase B build, B.1–B.14, closed),
@@ -1919,5 +2006,5 @@ subtitle, 1 confirm-password placeholder, 1 encryption hint below the form,
 confirmation label. Verified via `npx tsc --noEmit` from mobile-app\ —
 clean.
 
-▶️ Next step: GroceriesScreen.tsx (13 items) — next on the ranked inventory list above. B.12b-2 (multi-account selector) and B.12b-3 (scenario-comparison modal) remain unstarted.
+▶️ Next step: GroceriesScreen.tsx (13 items) — next on the ranked inventory list above. B.12b-3 (scenario-comparison modal) remains unstarted.
 

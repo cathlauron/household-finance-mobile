@@ -161,6 +161,7 @@ export type CalculatorInputs = {
   fiWithdrawalRatePct: number | '';
   fiExpectedReturnPct: number | '';
   fiMonthlySavings: number | '';
+  fiSelectedAccountIds: string[];
 };
 
 // ---- Checkpoint 8.1: Groceries ----
