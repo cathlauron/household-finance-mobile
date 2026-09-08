@@ -5,7 +5,6 @@ import GroceriesScreen from './GroceriesScreen';
 import TravelScreen from './TravelScreen';
 import EventsScreen from './EventsScreen';
 import GoalsScreen from './GoalsScreen';
-import IconLabelHint from '../components/IconLabelHint';
 import { Ionicons } from '@expo/vector-icons';
 
 // ---- Checkpoint 8.3 ----
@@ -37,16 +36,14 @@ export default function PlanningScreen() {
         {tabs.map((t) => {
           const isActive = activeTab === t.id;
           return (
-            <View key={t.id} style={[styles.pillButton, isActive && styles.pillButtonActive]}>
-              <IconLabelHint
-                name={t.icon}
-                label={t.label}
-                size={18}
-                color={isActive ? colors.navy2 : colors.inkDim}
-                position="above"
-                onPress={() => setActiveTab(t.id)}
-              />
-            </View>
+            <TouchableOpacity
+              key={t.id}
+              style={[styles.pillButton, isActive && styles.pillButtonActive]}
+              onPress={() => setActiveTab(t.id)}
+            >
+              <Ionicons name={t.icon} size={16} color={isActive ? colors.navy2 : colors.inkDim} style={{ marginRight: 6 }} />
+              <Text style={[styles.pillButtonText, isActive && styles.pillButtonTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
           );
         })}
       </ScrollView>
@@ -71,14 +68,16 @@ function makeStyles(colors: any) {
       paddingBottom: 4,
     },
     pillButton: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: colors.navy3,
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: colors.navy3,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 16,
     },
     pillButtonActive: { backgroundColor: colors.gold },
+    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
+    pillButtonTextActive: { color: colors.navy2 },
     content: { flex: 1 },
   });
 }

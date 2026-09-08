@@ -5,7 +5,6 @@ import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
 
-import IconLabelHint from '../components/IconLabelHint';
 import { Ionicons } from '@expo/vector-icons';
 
 type SubTab = 'bills' | 'debts' | 'loans';
@@ -38,16 +37,14 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
         {TOPAY_TABS.map((tab) => {
           const isActive = activeSubTab === tab.id;
           return (
-            <View key={tab.id} style={[styles.switcherBtn, isActive && styles.switcherBtnActive]}>
-              <IconLabelHint
-                name={tab.icon}
-                label={tab.label}
-                size={18}
-                color={isActive ? colors.navy2 : colors.inkDim}
-                position="above"
-                onPress={() => setActiveSubTab(tab.id)}
-              />
-            </View>
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.switcherBtn, isActive && styles.switcherBtnActive]}
+              onPress={() => setActiveSubTab(tab.id)}
+            >
+              <Ionicons name={tab.icon} size={16} color={isActive ? colors.navy2 : colors.inkDim} style={{ marginRight: 6 }} />
+              <Text style={[styles.switcherBtnText, isActive && styles.switcherBtnTextActive]}>{tab.label}</Text>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -70,14 +67,16 @@ function makeStyles(colors: any) {
       paddingBottom: 4,
     },
     switcherBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: colors.navy3,
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      backgroundColor: colors.navy3,
     },
     switcherBtnActive: { backgroundColor: colors.gold },
+    switcherBtnText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    switcherBtnTextActive: { color: colors.navy2 },
     contentWrap: { flex: 1 },
   });
 }

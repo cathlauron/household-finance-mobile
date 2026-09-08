@@ -13,6 +13,39 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — ToPayScreen/PlanningScreen segmented pills reversed back to icon+title (design-change request)
+
+Scoped and implemented via Antigravity (investigation only, no commits
+from the tool). Confirmed the two screens' pill rows are separate,
+independently-styled implementations (different container elements,
+different style names, different tab-array shapes), so this needed two
+independent edits rather than one shared fix. Confirmed via git history
+that both screens had a real pre-iconization pill style (from before
+the B2.3 batch-1 icon-only conversion) — reused those exact recovered
+styles (rounded pill, `paddingVertical`/`paddingHorizontal`, no more
+fixed 38×38 circle) rather than inventing new spacing, combined with
+the icon+label row pattern already used elsewhere in the app (e.g.
+HomeScreen.tsx's calendar-shortcut pill, LoansScreen.tsx's simulator
+button). Confirmed both screens use `IconLabelHint` for their pills
+today, and that keeping it would leave a redundant floating tooltip
+once the label is shown directly on the pill — so both screens needed
+to drop `IconLabelHint` in favor of a plain icon + Text pill.
+
+Implemented (hand-pasted by the person after review, as matching pairs
+of edits across both files): on both ToPayScreen.tsx and
+PlanningScreen.tsx, changed the outer `<View>` per pill to a
+`<TouchableOpacity>` carrying the tap handler directly, rendered a
+plain `<Ionicons>` (size 16) plus a `<Text>` label side by side inside
+each pill, removed the `IconLabelHint` import from both files (no
+longer used on either screen), and restored each screen's real
+pre-iconization pill styles (rounded `borderRadius: 999`, horizontal
+padding, active/inactive background and text color) in place of the
+fixed 38×38 circle styles. `npx tsc --noEmit` clean (0 errors) on both
+files — `TouchableOpacity`/`Text` were already imported from
+'react-native' in both, so no import fix was needed. Not yet on-device
+tested — the person is deferring testing until the whole current batch
+of design-change requests is done.
+
 ### Session — Reports screen: checkbox-driven show/hide list for the 9 report tabs (design-change request)
 
 Scoped and implemented via Antigravity across two investigation rounds
@@ -1235,14 +1268,23 @@ pushed. Still needs a real on-device re-test to fully close out.
   appears, re-check some and confirm they reappear, and confirm the
   tag-filter toolbar (on the 6 tag-filtered reports) still works
   normally throughout.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING —
+  ToPayScreen.tsx and PlanningScreen.tsx's segmented pill tabs reversed
+  from icon-only circles back to icon + title pills, restoring each
+  screen's real pre-iconization pill style. `IconLabelHint` dropped
+  from both screens in favor of a plain icon + Text pill, since the
+  floating tooltip is redundant once the label is always visible. See
+  session log above for full detail. Needs a real on-device test:
+  confirm both screens' pills look right (spacing, active/inactive
+  colors) and that tapping still switches sub-tabs correctly on both
+  screens (Bills/Debts/Loans on ToPay; Groceries/Travel/Events/Goals on
+  Planning).
 - Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
   tappable date element at the top-center of Home that navigates to
   Calendar.
 - Enable swipe-to-delete on Transactions' derived (non-manual) rows, paired
   with either a source-deletion warning or a redirect to the source screen
   to confirm — exact approach still undecided.
-- Reverse the icon-only decision for ToPayScreen/PlanningScreen's segmented
-  pills — show icon + title together instead of icon-only.
 
 🔔 Deferred to Phase C — do not chase now
 - Subscription reminder tap → deep-link to To-Pay → Bills → specific bill
@@ -1320,6 +1362,15 @@ from here on will be tracked fresh in this file.
   unchecking individual reports, the active-tab auto-switch, the
   empty-state message when everything's unchecked, and the tag-filter
   toolbar still working correctly on the 6 tag-filtered reports.
+- The ToPayScreen/PlanningScreen icon+title pill reversal is also
+  implemented and `npx tsc --noEmit` clean — fold into the same
+  combined on-device pass: confirm both screens' pills render and
+  switch sub-tabs correctly.
+- This closes out the design-change request list surfaced during the
+  first on-device testing pass, EXCEPT for swipe-to-delete on
+  Transactions' derived (non-manual) rows, which still needs the
+  person to decide on an approach (source-deletion warning vs. redirect
+  to the source screen) before it can be scoped.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
