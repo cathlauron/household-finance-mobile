@@ -414,10 +414,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Linked profile: save to the shared household document
       const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
 
-      // Continuous local snapshotting: keep an up-to-date personal copy in local storage first
+      // Continuous local snapshotting: keep an up-to-date personal copy in local storage first.
+      // Deliberately not awaited — this shouldn't hold up the household sync below — but a
+      // failure here is no longer swallowed silently, since this snapshot is what offline app
+      // launch, household dissolution, and account recovery all fall back to reading.
       const key = keyRef.current;
       if (key) {
-        saveEncryptedProfileData(username, await encryptJSON(key, sanitizedModel)).catch(() => {});
+        encryptJSON(key, sanitizedModel)
+          .then((personalEncrypted) =>
+            withTimeout(
+              saveEncryptedProfileData(username, personalEncrypted),
+              8000,
+              'Timed out saving local snapshot.'
+            )
+          )
+          .catch((err) => {
+            console.error('Failed to save personal local snapshot:', err);
+            Alert.alert(
+              'Local Save Failed',
+              'Could not save an offline backup of your changes on this device. Your household sync will still be attempted.'
+            );
+          });
       }
 
       try {

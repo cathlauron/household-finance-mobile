@@ -681,13 +681,28 @@ pushed. Still needs a real on-device re-test to fully close out.
    transaction appears in Transactions, remove the checklist item, and
    confirm the transaction disappears immediately without needing to tap
    "Save trip") before marking fully verified.
-8b. NEW, low priority, not yet fixed — in `saveModel()`'s linked-household
-    branch (DataContext.tsx), the personal local-snapshot backup call
-    (`saveEncryptedProfileData(...).catch(() => {})`) fails completely
-    silently with no alert at all, unlike every other write path in that
-    same function. Found incidentally while investigating bug #7. No
-    reported on-device symptom yet — deferred until higher-priority items
-    are done.
+8b. ✅ FIXED (pending on-device re-test) — in `saveModel()`'s linked-
+    household branch (DataContext.tsx), the personal local-snapshot backup
+    call (`saveEncryptedProfileData(...).catch(() => {})`) failed
+    completely silently with no alert at all, unlike every other write
+    path in that same function. This snapshot matters more than it looks:
+    it's what offline app launch falls back to reading, what household
+    dissolution reads to preserve a removed member's personal copy, what
+    account recovery via recovery key reads, and what personal data export
+    reads — so a silent failure here meant any of those could later use
+    stale or missing data with no warning it had ever gone wrong. Also
+    confirmed the call had no timeout guard, unlike its sibling cloud
+    writes in the same function. Fixed by giving it a real `.catch()` that
+    logs and shows a warning (matching the wording style of the function's
+    other alerts) and wrapping it in the existing `withTimeout()` helper —
+    but, unlike its siblings, deliberately left NOT awaited/blocking,
+    since AsyncStorage doesn't have Firestore's "hangs forever offline"
+    problem, and making it blocking would have added up to 8 extra seconds
+    to every single save before the household sync even started. `npx tsc
+    --noEmit` clean. STILL NEEDS: a real on-device re-test — hard to
+    trigger a genuine AsyncStorage failure on demand, so this may just need
+    a code-level re-check that the warning path is reachable rather than a
+    forced on-device repro.
 9. ✅ FIXED (pending on-device re-test; Face-ID-specific symptom also
    pending a real installed build) — Biometric unlock failed outright on
    a Face ID device with fingerprint off. Root cause was two tangled
@@ -866,9 +881,11 @@ from here on will be tracked fresh in this file.
   an Expo Go artifact rather than an app bug. Bugs #10 (PIN-off loading
   indicator), #11 (Category Watchlist "over budget" at exactly 100%), and
   #12 ("which of these is you?" not updating Transactions live) are now
-  also code-complete pending on-device  re-test, same batch. Bug #13 (AccountsScreen's missing "Stacked card view" floating label) is now also code-complete pending on-device re-test, same batch. What's left: (8b) the newly-found silent
-  personal-snapshot-backup failure in `saveModel()`'s linked-household
-  branch, low priority.
+  also code-complete pending on-device  re-test, same batch. Bug #13 (AccountsScreen's missing "Stacked card
+  view" floating label) and bug #8b (silent personal-snapshot-backup
+  failure in `saveModel()`'s linked-household branch) are now also
+  code-complete pending on-device re-test, same batch. Every known bug
+  from the first on-device testing pass is now fixed pending re-test.
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests
