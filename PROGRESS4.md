@@ -13,6 +13,31 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Category Watchlist "over budget" fires at exactly 100% (bug #11)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed root cause in a single function,
+`getCategoryBudgetStatus` (transactions.ts): it computed
+`pct = (spent / budget) * 100` and checked `if (pct >= 100)` for the
+"Over budget" (red) state, so spending exactly equal to the budget was
+misclassified as over budget instead of at it. Confirmed via a codebase-
+wide search that this comparison exists in exactly one place — the only
+other `>= 100` matches found were in GoalsScreen.tsx's unrelated goal-
+completion logic — and that DashboardScreen.tsx's "Watched Categories"
+card is the sole UI consumer of this function, simply rendering whatever
+label/color it returns with no threshold logic of its own to also fix.
+
+Applied fix (hand-pasted by the person after review): changed the "Over
+budget" check to `pct > 100` (strictly exceeding), and added a new
+distinct tier for `pct >= 100` (now strictly meaning "exactly at 100%,
+since >100% is already caught above") labeled "At budget" in the existing
+orange/caution color, so hitting the limit exactly reads as a caution
+state rather than either an outright error or a misleadingly-calm
+"Getting close." `npx tsc --noEmit` clean. Committed and pushed. Still
+needs a real on-device re-test — deferred, along with bugs #1–10, until
+the rest of this bug-fixing pass is done and everything can be verified
+together in one on-device pass.
+
 ### Session — Quick PIN turn-off shows no loading indicator (bug #10)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -670,8 +695,22 @@ pushed. Still needs a real on-device re-test to fully close out.
     re-test (tap Turn Off, confirm the button shows a spinner and disables
     itself instead of appearing to do nothing until it completes) before
     marking fully verified.
-11. Category Watchlist "over budget" wording fires at exactly 100% instead
-    of only once genuinely over 100%.
+11. ✅ FIXED (pending on-device re-test) — Category Watchlist "over
+    budget" wording fired at exactly 100% instead of only once genuinely
+    over 100%. Root cause: `getCategoryBudgetStatus` (transactions.ts)
+    checked `pct >= 100` for the "Over budget" state, so hitting the
+    budget exactly was misclassified as over it. Confirmed this
+    comparison exists in only one place, with DashboardScreen.tsx's
+    "Watched Categories" card as its sole consumer. Fixed by changing the
+    check to `pct > 100` (strictly exceeding) and adding a distinct
+    "At budget" tier for exactly `pct >= 100` in the existing orange
+    caution color, rather than either wrongly flagging it as over budget
+    or letting it fall through to the calmer "Getting close" state.
+    `npx tsc --noEmit` clean. STILL NEEDS: a real on-device re-test (set
+    a category budget, log spending that exactly equals it, confirm it
+    shows "At budget" in orange rather than "Over budget" in red; log
+    spending one peso over and confirm it correctly shows "Over budget")
+    before marking fully verified.
 12. "Which of these is you?" picker doesn't update Transactions live —
     needs a full app restart to take effect.
 13. AccountsScreen Cards/List toggle — "Stacked card view" floating label
@@ -751,13 +790,12 @@ from here on will be tracked fresh in this file.
   re-test — note its Face-ID-specific symptom additionally needs
   re-verification on a real installed build in Phase C, since it may be
   an Expo Go artifact rather than an app bug. Bug #10 (PIN-off loading
-  indicator) is now also code-complete pending on-device re-test, same
-  batch. Suggested order for what's left: (11) Category Watchlist
-  "over budget" wording firing at exactly 100%, (12) "which of these is
-  you?" not updating Transactions live, (13) AccountsScreen's missing
-  "Stacked card view" label, (8b) the newly-found silent
-  personal-snapshot-backup failure in `saveModel()`'s linked-household
-  branch, low priority.
+  indicator) and bug #11 (Category Watchlist "over budget" at exactly
+  100%) are now also code-complete pending on-device re-test, same batch.
+  Suggested order for what's left: (12) "which of these is you?" not
+  updating Transactions live, (13) AccountsScreen's missing "Stacked card
+  view" label, (8b) the newly-found silent personal-snapshot-backup
+  failure in `saveModel()`'s linked-household branch, low priority.
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests

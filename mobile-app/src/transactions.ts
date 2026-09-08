@@ -188,7 +188,8 @@ export function getCategoryBudgetStatus(
 ): { color: string; label: string } {
   if (budget <= 0) return { color: colors.ok, label: 'No limit set' };
   const pct = (spent / budget) * 100;
-  if (pct >= 100) return { color: colors.error, label: 'Over budget' };
+  if (pct > 100) return { color: colors.error, label: 'Over budget' };
+  if (pct >= 100) return { color: colors.orange, label: 'At budget' };
   if (pct >= 80) return { color: colors.orange, label: 'Getting close' };
   return { color: colors.ok, label: 'On track' };
 }
