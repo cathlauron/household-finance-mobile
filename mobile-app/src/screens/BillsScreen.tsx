@@ -386,14 +386,36 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                         {bill.name || 'Untitled bill'}
                       </Text>
                       {bill.isSubscription && bill.subscriptionStatus === 'cancelled' && (
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.inkFaint, marginLeft: 6 }}>
-                          CANCELLED
-                        </Text>
+                        <View
+                          style={{
+                            marginLeft: 6,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                            borderWidth: 1,
+                            borderColor: colors.inkFaint,
+                          }}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.inkFaint }}>
+                            CANCELLED
+                          </Text>
+                        </View>
                       )}
                       {bill.isSubscription && bill.subscriptionStatus !== 'cancelled' && (
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.gold, marginLeft: 6 }}>
-                          SUB
-                        </Text>
+                        <View
+                          style={{
+                            marginLeft: 6,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                            borderWidth: 1,
+                            borderColor: colors.gold,
+                          }}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.gold }}>
+                            SUB
+                          </Text>
+                        </View>
                       )}
                     </View>
                     <Text style={styles.billSub} numberOfLines={1}>

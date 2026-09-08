@@ -13,6 +13,34 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — SUB/CANCELLED badge redesigned as a hollow-box badge (design-change request)
+
+Scoped and implemented via Antigravity (investigation only, no commits
+from the tool). Scoping pass confirmed SUB and CANCELLED are two plain,
+unstyled `<Text>` elements (no enclosing View, no border/background) in
+exactly one place in the whole codebase — BillsScreen.tsx's collapsed
+bill row header — gated by the same `bill.isSubscription` flag and
+mutually exclusive on `bill.subscriptionStatus === 'cancelled'`.
+Confirmed via codebase-wide search that no other screen (ToPayScreen,
+DashboardScreen, CalendarScreen, SubscriptionAuditReport,
+pushNotifications.ts) renders either label, so no other spot needed the
+same treatment. Also pulled the Accounts screen's Cash/Debit/Credit
+badge recipe (AccountCard.tsx) as a size/shape reference, but since the
+request was specifically for a hollow box (not a filled/tinted badge
+like Accounts uses), matched the hollow-bordered badge pattern already
+used elsewhere in the app (e.g. SettingsScreen.tsx) instead —
+`borderRadius: 6`, `borderWidth: 1`, small padding, no fill.
+
+Implemented (hand-pasted by the person after review, as one block
+replacement in BillsScreen.tsx): wrapped both the SUB and CANCELLED
+`<Text>` elements in their own bordered `<View>` badge box. SUB keeps
+its existing gold color, now as a gold border + gold text hollow badge.
+CANCELLED keeps its existing faint/muted color, now as a faint-bordered
+hollow badge. No new imports needed (`View` was already imported and
+used throughout the file). `npx tsc --noEmit` clean (0 errors). Not yet
+on-device tested, but low visual risk (pure JSX/style change, no logic
+touched) — the person confirmed it looks correct.
+
 ### Session — PIN "Turn Off" replaced with a toggle switch (design-change request)
 
 Scoped and implemented via Antigravity (investigation only, no commits
@@ -1090,8 +1118,14 @@ pushed. Still needs a real on-device re-test to fully close out.
   toggle. See session log above for full detail. Needs a real on-device
   test (both toggle directions, plus "Change PIN" still opening the
   modal) before this can be marked done.
-- Redesign the SUB/CANCELLED badge as a real hollow-box badge (matching
-  Accounts' Cash/Debit/Credit badges) instead of blending in as plain text.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — SUB/CANCELLED
+  badge on Bills redesigned from plain text into a hollow-bordered
+  badge box (gold border for SUB, faint border for CANCELLED). Only one
+  spot in the whole codebase needed the change (BillsScreen.tsx's
+  collapsed bill row). See session log above for full detail. Low
+  visual risk (pure style change), but still worth a quick look
+  on-device to confirm spacing/alignment looks right next to the bill
+  name.
 - Add an explicit confirm/save step to "Which of these is you?" instead of
   a single instant tap.
 - Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
@@ -1165,6 +1199,10 @@ from here on will be tracked fresh in this file.
   existing confirmation alert + spinner still work exactly as before),
   toggle it back on (confirm SetPinScreen opens), and confirm "Change
   PIN" still opens the modal correctly when a PIN is set.
+- The SUB/CANCELLED hollow-box badge redesign is also implemented and
+  `npx tsc --noEmit` clean — fold a quick visual check into the same
+  on-device pass (badge spacing/alignment next to the bill name, both
+  SUB and CANCELLED states).
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
