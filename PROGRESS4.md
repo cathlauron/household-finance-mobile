@@ -13,6 +13,37 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — "Fewer words" pass: SignInScreen.tsx
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Antigravity supplied the real, full, unelided contents of
+SignInScreen.tsx plus 20 proposed wordy-text trims across error
+messages, Firebase-error translations, validation messages, loading-
+state labels, a slow-hint message, the "Password Accepted, But Data
+Locked" modal, both recovery-option section descriptions, the peer-
+approval waiting instructions, the dead-end recovery guidance, and the
+final cancel button — each shown with real surrounding code. All 20
+reviewed against the real code and confirmed text-only, touching no
+logic/state/validation/handler behavior. One adjustment made during
+review: the dead-end recovery guidance (item 19/20) was trimmed more
+conservatively than proposed, keeping the exact quoted button name
+("Clear all data & start fresh") intact rather than replacing it with
+vague wording — since that's the last-resort recovery path, losing the
+precise label there makes it harder to find rather than easier. The 9
+items Antigravity flagged as borderline (already about as short as they
+can be while staying clear) were left untouched, matching Antigravity's
+own recommendation.
+
+Applied (hand-pasted by the person after review, as 21 find/replace
+snippets — one item, the duplicate "Could not find any saved data for
+that profile" message, has two real, separate occurrences in the file
+and was given as two snippets): trimmed all 20 items as described
+above, with the one adjustment noted. `npx tsc --noEmit` clean (0
+errors) — text-only change, no type impact. Committed and pushed.
+
+This completes SignInScreen.tsx on the "fewer words" ranked list. Next
+up per that list: MoreScreen.tsx (6 items).
+
 ### Session — Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions rows: implemented
 
 Implemented via Antigravity (five rounds of investigation-only prompts,
@@ -1132,11 +1163,11 @@ pushed. Still needs a real on-device re-test to fully close out.
   explicitly deferred to Phase C (see below) rather than chased through
   Expo Go.
 - The "fewer words" trimming pass is PARTIALLY done: SettingsScreen.tsx,
-  ProfileScreen.tsx, OnboardingScreen.tsx, and SavingsScreen.tsx are
-  complete. A full ranked-by-wordiness inventory of every remaining
-  screen already exists (captured in PROGRESS3.md's session history) —
-  next up per that list: SignInScreen.tsx (7 items), MoreScreen.tsx (6),
-  and 16 more screens after that in descending order.
+  ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx, and
+  SignInScreen.tsx are complete. A full ranked-by-wordiness inventory of
+  every remaining screen already exists (captured in PROGRESS3.md's
+  session history) — next up per that list: MoreScreen.tsx (6 items),
+  and 15 more screens after that in descending order.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -1575,7 +1606,7 @@ from here on will be tracked fresh in this file.
   same combined on-device pass described below: swipe each of the four
   new row types and confirm they open the right record on the right
   screen/tab, and that a repeat swipe of the same record still works.
-- With this, the "fewer words" pass (SignInScreen.tsx next, per the
+- With this, the "fewer words" pass (MoreScreen.tsx next, per the
   ranked list) is the only remaining genuinely open new-work item
   besides the on-device re-test pass and the unscheduled B.12b item.
 - Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) both now have
@@ -1647,9 +1678,9 @@ from here on will be tracked fresh in this file.
   confirm-step for "which of these is you?", bottom-nav Calendar removal,
   Transactions swipe-to-delete on derived rows, Reports checkbox redesign,
   ToPay/Planning icon+title reversal) — these are new work, not bug fixes.
-- Continue the "fewer words" pass: SignInScreen.tsx next (7 items), then
-  MoreScreen.tsx (6), and onward down the ranked list already captured
-  in PROGRESS3.md's session history.
+- Continue the "fewer words" pass: MoreScreen.tsx next (6 items), and
+  onward down the ranked list already captured in PROGRESS3.md's
+  session history.
 - Once the bug-fixing pass is far enough along (or the person decides to
   move on regardless), proceed to Phase C (Publishing) — see
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable

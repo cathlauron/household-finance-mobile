@@ -197,7 +197,7 @@ export default function SignInScreen({
       ).catch(() => {
         Alert.alert(
           'Recovery Key Not Updated',
-          "Your account was recovered, but we couldn't save your recovery key for future use. Generate a new one in Settings > Security when you have a better connection."
+          "Account recovered, but your key couldn't be saved. Generate a new one in Settings > Security when back online."
         );
       });
 
@@ -206,7 +206,7 @@ export default function SignInScreen({
       onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry);
     } catch (e: any) {
       setRecoveryBusy(false);
-      setRecoveryError(e?.message || 'Could not recover with this key. Please check it and try again.');
+      setRecoveryError(e?.message || 'Could not recover with this key. Check and try again.');
     }
   }
 
@@ -322,22 +322,22 @@ export default function SignInScreen({
       return 'Incorrect email or password.';
     }
     if (code === 'auth/requires-recent-login') {
-      return 'For security, please sign out and back in, then try again.';
+      return 'Sign out and back in, then try again.';
     }
     if (code === 'auth/invalid-email') {
-      return "That doesn't look like a valid email address.";
+      return 'Invalid email address.';
     }
     if (code === 'auth/too-many-requests') {
-      return 'Too many attempts - please wait a bit and try again.';
+      return 'Too many attempts. Please try again later.';
     }
     if (
       code === 'permission-denied' ||
       code === 'unavailable' ||
       code === 'deadline-exceeded'
     ) {
-      return "Signed in, but couldn't reach your household data. Check your internet connection and try again.";
+      return "Signed in, but couldn't reach household data. Check your connection and try again.";
     }
-    return 'Something went wrong signing in. Check your internet connection and try again.';
+    return 'Sign-in failed. Check your connection and try again.';
   }
 
   async function handleSignIn() {
@@ -345,7 +345,7 @@ export default function SignInScreen({
     const username = sanitizeUsername(usernameInput);
     const email = emailInput.trim();
     if (!username || !email || !password) {
-      setError('Please fill in all fields (email, username, and password).');
+      setError('Please fill in all fields.');
       return;
     }
     setBusy(true);
@@ -431,10 +431,10 @@ export default function SignInScreen({
                   const migCode = migrationError?.code || '';
                   if (migCode === 'auth/email-already-in-use') {
                     setError(
-                      "Your password is correct, but that email is already used by a different account. Try the email you'd expect to be linked to this profile."
+                      'Password verified, but that email is in use by another account. Try the email linked to this profile.'
                     );
                   } else {
-                    setError('Could not finish setting up secure sign-in. Check your internet connection and try again.');
+                    setError('Could not finish setup. Check your connection and try again.');
                   }
                   return;
                 }
@@ -462,7 +462,7 @@ export default function SignInScreen({
         const wrappedKeyInfo = await loadWrappedHouseholdKey(username);
         if (!cloudBackup && !wrappedKeyInfo) {
           setIsRestoring(false);
-          setError('No account found with that username. Check the spelling, or create a new profile.');
+          setError('Username not found. Check spelling or create a new profile.');
           setBusy(false);
           return;
         }
@@ -508,7 +508,7 @@ export default function SignInScreen({
           // Personal (unlinked) profile - verify against the personal backup itself.
           if (!cloudBackup?.data) {
             setIsRestoring(false);
-            setError('Could not find any saved data for that profile.');
+            setError('No saved data found for this profile.');
             setBusy(false);
             return;
           }
@@ -684,7 +684,7 @@ export default function SignInScreen({
       const key = deriveKey(password, profile.salt);
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) {
-        setError('Could not find any saved data for that profile.');
+        setError('No saved data found for this profile.');
         setBusy(false);
         return;
       }
@@ -783,9 +783,9 @@ export default function SignInScreen({
             <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
             <Text style={styles.primaryBtnText}>
               {isMigrating
-                ? 'Setting up secure sign-in...'
+                ? 'Setting up sign-in...'
                 : isRestoring
-                ? 'Restoring your data...'
+                ? 'Restoring data...'
                 : 'Signing in...'}
             </Text>
           </View>
@@ -796,8 +796,7 @@ export default function SignInScreen({
 
       {showSlowHint && (
         <Text style={styles.slowHint}>
-          This can take up to a minute - your phone is turning your password into your
-          encryption key. This is normal and only happens on sign-in.
+          Deriving your encryption key can take up to a minute. Normal on sign-in.
         </Text>
       )}
 
@@ -812,16 +811,14 @@ export default function SignInScreen({
               <Text style={styles.modalEyebrow}>ACCOUNT RECOVERY</Text>
               <Text style={styles.modalTitle}>Password Accepted, But Data Locked</Text>
               <Text style={styles.modalSub}>
-                Your sign-in password was verified, but your data could not be unlocked.
-                This happens if you reset your password, because your financial data is
-                still encrypted with your previous password.
+                Your password was verified, but your data remains encrypted with your previous password.
               </Text>
 
               {/* Option 1: Recovery Key */}
               <View style={styles.recoverySection}>
-                <Text style={styles.sectionHeading}>Option 1: Secret Recovery Key</Text>
+                <Text style={styles.sectionHeading}>Option 1: Recovery Key</Text>
                 <Text style={styles.sectionDesc}>
-                  Enter the 16-character recovery key saved when your profile was created.
+                  Enter the 16-character key saved when your profile was created.
                 </Text>
                 <TextInput
                   style={styles.recoveryInput}
@@ -851,7 +848,7 @@ export default function SignInScreen({
                 <View style={[styles.recoverySection, { marginTop: 16 }]}>
                   <Text style={styles.sectionHeading}>Option 2: Ask a Household Member</Text>
                   <Text style={styles.sectionDesc}>
-                    Another member of your household can verify your identity and hand over the household key.
+                    Another household member can approve access from their device.
                   </Text>
 
                   {!isWaitingForPeer ? (
@@ -871,7 +868,7 @@ export default function SignInScreen({
                       <ActivityIndicator color="#D97706" style={{ marginBottom: 8 }} />
                       <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
                       <Text style={styles.peerWaitingDesc}>
-                        Ask another household member to open Settings &gt; Household on their phone and enter this code:
+                        Ask another household member to open Settings &gt; Household and enter this code:
                       </Text>
                       <View style={styles.transferCodeBox}>
                         <Text style={styles.transferCodeText}>
@@ -894,8 +891,8 @@ export default function SignInScreen({
               <View style={styles.deadEndSection}>
                 <Text style={styles.deadEndTitle}>Lost both password and recovery key?</Text>
                 <Text style={styles.deadEndDesc}>
-                  Without your password or recovery key, existing data cannot be decrypted.
-                  If you are signed into another device, you can access your data there or use
+                  Without your password or recovery key, data cannot be decrypted.
+                  If signed in on another device, access it there, or use
                   "Clear all data &amp; start fresh" in Settings &gt; Data.
                 </Text>
               </View>
@@ -905,7 +902,7 @@ export default function SignInScreen({
                 onPress={handleCloseRecovery}
                 disabled={recoveryBusy || peerBusy}
               >
-                <Text style={styles.ghostBtnText}>Cancel &amp; Return to Sign In</Text>
+                <Text style={styles.ghostBtnText}>Back to Sign In</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
