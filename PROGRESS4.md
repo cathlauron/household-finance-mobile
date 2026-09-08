@@ -13,6 +13,58 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Swipe-to-delete on derived Transactions rows: scoping only, phased decision made
+
+Decided approach for this design-change request: Option B — swiping a
+derived row does NOT offer delete at all; instead it reveals a single
+action that navigates to that transaction's source screen/record, so
+the person edits/deletes/cancels at the source instead of deleting the
+derived transaction directly (which would otherwise reappear on its
+next cycle). Chosen over Option A (swipe delete + warning dialog)
+because it structurally prevents the confusing state rather than just
+warning about it, consistent with how the app already treats other
+derived data (e.g. Travel checklist item deletion already cleans up
+its linked transaction automatically rather than allowing an orphan).
+
+Investigated via Antigravity (investigation only, no commits from the
+tool) to scope what "navigate to source" actually requires. Found two
+things that reshape the size of this work:
+
+- The "derived rows" problem is narrower than it first looked. Travel
+  checklist items, Events, and Refunds all get written into
+  `model.manualTransactions` with `source: 'manual'` — they're already
+  indistinguishable from a typed-in transaction on the `TransactionEntry`
+  type, and swipe-to-delete is already enabled for them today. The real
+  gap is only the 5 true derived `source` types: `bill`, `debt`, `loan`,
+  `income`, `saving`.
+- Of those 5, only Bills has real "open this specific record" deep-link
+  navigation today — the B.14 `openBillId` chain (RootStack →
+  MainTabs → ToPayScreen → BillsScreen, with an auto-open effect).
+  Debts, Loans, Income, and Savings have none of that wiring — no route
+  params, no equivalent prop, no auto-open effect on any of those four
+  screens. Also confirmed `TransactionEntry` has no direct back-reference
+  field (`billId`/`debtId`/etc.) on any of the 5 types — the source
+  record's id is only embedded inside a composite string id (e.g.
+  `'bill-' + cycle.id`), so finding the source record means searching
+  `model.bills`/`model.debts`/etc. for whichever record contains a
+  matching cycle/payment/entry id, not a direct field read.
+  `TransactionsScreen.tsx` also currently has no access to `navigation`
+  at all (no `useNavigation()` call, not passed as a prop) — that alone
+  needs adding regardless of scope.
+
+Given that only Bills already has the deep-link plumbing built and
+tested, decided to split this into two checkpoints rather than build
+all 5 at once:
+- Next up: Bills only — add `useNavigation()` to TransactionsScreen.tsx,
+  look up the source Bill from a bill-sourced row's composite id, and
+  wire a swipe action that reuses the existing `openBillId` deep-link
+  chain to jump straight to it.
+- Separate, later checkpoint: Debts/Loans/Income/Savings, once ready to
+  build (and test) the same kind of deep-link chain for those four
+  screens, which don't have any of it today.
+
+No code written this session — scoping and decision-making only.
+
 ### Session — ToPayScreen/PlanningScreen segmented pills reversed back to icon+title (design-change request)
 
 Scoped and implemented via Antigravity (investigation only, no commits
@@ -1282,9 +1334,18 @@ pushed. Still needs a real on-device re-test to fully close out.
 - Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
   tappable date element at the top-center of Home that navigates to
   Calendar.
-- Enable swipe-to-delete on Transactions' derived (non-manual) rows, paired
-  with either a source-deletion warning or a redirect to the source screen
-  to confirm — exact approach still undecided.
+- Enable swipe on Transactions' bill-derived rows: DECIDED (Option B —
+  navigate to the source Bill instead of allowing delete). Scoped, not
+  yet implemented — see session log above for the full investigation.
+  Next step: add `useNavigation()` to TransactionsScreen.tsx, resolve
+  the source Bill from a bill-sourced row's composite id, wire a swipe
+  action reusing the existing `openBillId` deep-link chain.
+- Enable the same swipe-to-source-record behavior on debt/loan/income/
+  savings-derived rows: DECIDED same approach as Bills, but deferred as
+  a separate later checkpoint, since none of those four screens have
+  any deep-link ("open this specific record") wiring today the way
+  Bills does — that has to be built from scratch per screen before
+  swipe can be wired to it.
 
 🔔 Deferred to Phase C — do not chase now
 - Subscription reminder tap → deep-link to To-Pay → Bills → specific bill
@@ -1366,11 +1427,19 @@ from here on will be tracked fresh in this file.
   implemented and `npx tsc --noEmit` clean — fold into the same
   combined on-device pass: confirm both screens' pills render and
   switch sub-tabs correctly.
-- This closes out the design-change request list surfaced during the
-  first on-device testing pass, EXCEPT for swipe-to-delete on
-  Transactions' derived (non-manual) rows, which still needs the
-  person to decide on an approach (source-deletion warning vs. redirect
-  to the source screen) before it can be scoped.
+- Swipe-to-navigate on Bills-derived Transactions rows is DECIDED and
+  SCOPED (see session log above) but not yet implemented — this is the
+  next design-change item to actually build: add `useNavigation()` to
+  TransactionsScreen.tsx, resolve the source Bill from a bill-sourced
+  row's composite id, and wire a swipe action reusing the existing
+  `openBillId` deep-link chain (RootStack → MainTabs → ToPayScreen →
+  BillsScreen) to jump straight to it.
+- The same swipe-to-navigate behavior for debt/loan/income/savings-
+  derived rows is DECIDED (same approach) but deferred as its own
+  separate, later checkpoint — none of those four screens have any
+  deep-link wiring today, unlike Bills, so each needs that built first.
+- This closes out the rest of the design-change request list surfaced
+  during the first on-device testing pass.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
