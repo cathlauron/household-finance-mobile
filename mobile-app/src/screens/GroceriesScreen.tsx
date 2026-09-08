@@ -106,7 +106,7 @@ export default function GroceriesScreen() {
     if (plannedInput.trim() !== '') {
       const n = parseFloat(plannedInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid planned amount, or leave it blank.');
+        setErrorMsg('Enter a valid planned amount.');
         return;
       }
       planned = n;
@@ -115,7 +115,7 @@ export default function GroceriesScreen() {
     if (actualInput.trim() !== '') {
       const n = parseFloat(actualInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid actual amount, or leave it blank.');
+        setErrorMsg('Enter a valid actual amount.');
         return;
       }
       actual = n;
@@ -179,7 +179,7 @@ export default function GroceriesScreen() {
   function handleSwipeDeleteGrocery(item: GroceryItem) {
     Alert.alert(
       'Delete this item?',
-      'This will permanently delete the item. This cannot be undone.',
+      'Deletes the item. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteGroceryById(item.id) },
@@ -197,7 +197,7 @@ export default function GroceriesScreen() {
     }
     const n = parseFloat(amountTrimmed);
     if (isNaN(n) || n <= 0) {
-      setCalcErrorMsg('Enter a valid amount greater than 0.');
+      setCalcErrorMsg('Enter an amount greater than 0.');
       return;
     }
     const newEntry: GroceryCalcEntry = {
@@ -297,11 +297,11 @@ export default function GroceriesScreen() {
             <Text style={styles.balanceBannerAmount}>
               {formatPeso(actual)} <Text style={styles.balanceBannerSub}>/ {formatPeso(planned)}</Text>
             </Text>
-            <Text style={styles.balanceBannerHint}>Actual only counts items marked "Bought"</Text>
+                        <Text style={styles.balanceBannerHint}>Only counts items marked "Bought"</Text>
           </View>
 
           {groceries.length === 0 && (
-            <Text style={styles.emptyText}>No items yet. Add your first one below.</Text>
+            <Text style={styles.emptyText}>No items yet.</Text>
           )}
 
           {groceries.map((g) => (
@@ -335,7 +335,7 @@ export default function GroceriesScreen() {
           ))}
 
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Text style={styles.addButtonText}>+ Add grocery item</Text>
+            <Text style={styles.addButtonText}>+ Add item</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -343,8 +343,7 @@ export default function GroceriesScreen() {
       {activeTab === 'calculator' && (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.calcIntro}>
-            Handy for tallying while you're actually at the store — add each item as you toss
-            it in the cart, then send the whole batch to your grocery list when you're done.
+            Tally items while shopping, then add the batch to your grocery list.
           </Text>
 
           <View style={styles.resultCard}>
@@ -353,7 +352,7 @@ export default function GroceriesScreen() {
           </View>
 
           {calcEntries.length === 0 && (
-            <Text style={styles.emptyText}>Nothing added yet — tally items below as you shop.</Text>
+            <Text style={styles.emptyText}>Nothing added yet.</Text>
           )}
 
           {calcEntries.map((e) => (
@@ -393,7 +392,7 @@ export default function GroceriesScreen() {
           {calcEntries.length > 0 && (
             <>
               <TouchableOpacity style={styles.addToListButton} onPress={handleAddCalcToList}>
-                <Text style={styles.addToListButtonText}>Add all to grocery list</Text>
+                <Text style={styles.addToListButtonText}>Add all to list</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.clearButton} onPress={handleClearCalc}>
                 <Text style={styles.clearButtonText}>Clear</Text>
@@ -416,13 +415,13 @@ export default function GroceriesScreen() {
                 <Text style={styles.inputLabel}>Item name</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. Rice, eggs, dish soap"
+                  placeholder="e.g. Rice, eggs"
                   placeholderTextColor={colors.inkFaint}
                   value={itemNameInput}
                   onChangeText={setItemNameInput}
                 />
 
-                <Text style={styles.inputLabel}>Planned amount (budget)</Text>
+                <Text style={styles.inputLabel}>Planned amount</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
@@ -455,7 +454,7 @@ export default function GroceriesScreen() {
                       purchasedInput && styles.purchasedToggleTextActive,
                     ]}
                   >
-                    {purchasedInput ? 'Marked as bought' : 'Mark as bought'}
+                    {purchasedInput ? 'Bought' : 'Mark as bought'}
                   </Text>
                 </TouchableOpacity>
 
@@ -467,7 +466,7 @@ export default function GroceriesScreen() {
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteItem}>
-                    <Text style={styles.deleteButtonText}>Delete this item</Text>
+                    <Text style={styles.deleteButtonText}>Delete item</Text>
                   </TouchableOpacity>
                 )}
 

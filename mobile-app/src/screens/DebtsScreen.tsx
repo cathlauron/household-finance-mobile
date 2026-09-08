@@ -178,7 +178,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (!model) return;
     const trimmedCreditor = creditorInput.trim();
     if (!trimmedCreditor) {
-      setErrorMsg('Enter who or what this debt is owed to.');
+      setErrorMsg('Enter who this debt is owed to.');
       return;
     }
     const parsedAmount = amountInput.trim() === '' ? 0 : parseFloat(amountInput);
@@ -191,14 +191,14 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (recurTypeInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2026-08-25.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       dueDate = { date: trimmedDate };
     } else if (recurTypeInput === 'monthly') {
       const dayNum = parseInt(dayInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day of month between 1 and 31.');
+        setErrorMsg('Enter a day between 1 and 31.');
         return;
       }
       dueDate = { day: dayInput.trim() };
@@ -206,7 +206,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       const dayNum = parseInt(dayInput, 10);
       const monthNum = parseInt(monthInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day of month between 1 and 31.');
+        setErrorMsg('Enter a day between 1 and 31.');
         return;
       }
       if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
@@ -220,7 +220,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (interestRateInput.trim() !== '') {
       const n = parseFloat(interestRateInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid interest rate, or leave it blank.');
+        setErrorMsg('Enter a valid interest rate.');
         return;
       }
       parsedInterest = n;
@@ -229,7 +229,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (minPaymentInput.trim() !== '') {
       const n = parseFloat(minPaymentInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid minimum payment, or leave it blank.');
+        setErrorMsg('Enter a valid minimum payment.');
         return;
       }
       parsedMinPayment = n;
@@ -321,7 +321,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   function handleDelete() {
     Alert.alert(
       'Delete this debt?',
-      'This will permanently delete the debt and its payment history. This cannot be undone.',
+      'Deletes the debt and all payment history. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
@@ -348,7 +348,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   function handleSwipeDelete(debt: Debt) {
     Alert.alert(
       'Delete this debt?',
-      'This will permanently delete the debt and its payment history. This cannot be undone.',
+      'Deletes the debt and all payment history. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteById(debt.id) },
@@ -368,7 +368,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         </View>
 
         {debts.length === 0 && (
-          <Text style={styles.emptyText}>No debts yet. Add your first one below.</Text>
+          <Text style={styles.emptyText}>No debts yet.</Text>
         )}
 
         {debts.map((debt) => {
@@ -557,7 +557,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
                   </View>
                 )}
 
-                <Text style={styles.inputLabel}>Interest rate % (optional)</Text>
+                <Text style={styles.inputLabel}>Interest rate (optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. 24"
@@ -577,7 +577,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
                   onChangeText={setMinPaymentInput}
                 />
 
-                <Text style={styles.inputLabel}>Fees included in this payment (optional)</Text>
+                <Text style={styles.inputLabel}>Fees portion (optional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. late fee or interest charged"
@@ -597,7 +597,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
                 <Text style={styles.inputLabel}>Notes (optional)</Text>
                 <TextInput
                   style={[styles.input, styles.notesInput]}
-                  placeholder="Anything worth remembering about this debt"
+                  placeholder="Optional notes"
                   placeholderTextColor={colors.inkFaint}
                   value={notesInput}
                   onChangeText={setNotesInput}
@@ -620,7 +620,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                    <Text style={styles.deleteButtonText}>Delete this debt</Text>
+                    <Text style={styles.deleteButtonText}>Delete debt</Text>
                   </TouchableOpacity>
                 )}
 

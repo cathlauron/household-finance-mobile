@@ -1965,14 +1965,11 @@ PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
 
 ## 📋 Full "fewer words" ranked inventory (regenerated — original list was lost, see known issues)
 
-Completed already: SettingsScreen.tsx, ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx, MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx, CreateProfileScreen.tsx
+Completed already: SettingsScreen.tsx, ProfileScreen.tsx, OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx, MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx, CreateProfileScreen.tsx, GroceriesScreen.tsx, DebtsScreen.tsx, TransactionsScreen.tsx, BillsScreen.tsx
 
 Remaining, ranked most-items-first:
 
-1. GroceriesScreen.tsx (13 items)
-2. DebtsScreen.tsx (11 items)
-3. TransactionsScreen.tsx (11 items)
-4. BillsScreen.tsx (9 items)
+1. EventsScreen.tsx (8 items)
 5. EventsScreen.tsx (8 items)
 6. GoalsScreen.tsx (8 items)
 7. CsvImportModal.tsx (7 items)
@@ -2000,7 +1997,7 @@ Remaining, ranked most-items-first:
 32. WeeklyDigestReport.tsx (0 items) — skip
 33. YearInReviewReport.tsx (0 items) — skip
 
-▶️ Next step: GroceriesScreen.tsx (13 items) — the current top of the list.
+▶️ Next step: EventsScreen.tsx (8 items) — the current top of the list.
 
 
 - Fixed 2026: the full ranked "fewer words" screen inventory had only ever
@@ -2031,6 +2028,54 @@ confirmation alert bodies (identical text, both call sites), 1 empty-state
 message, 1 input label ("Source name"), 1 DateField label (biweekly anchor,
 converted from a question to a plain label), 1 section hint, 1 delete button
 label. Verified via `npx tsc --noEmit` from mobile-app\ — clean.
+
+## ✅ GroceriesScreen.tsx and DebtsScreen.tsx — "fewer words" pass complete (14 + 13 items trimmed)
+
+Trimmed all 14 flagged items in GroceriesScreen.tsx (2 amount validation
+errors, 1 delete-confirmation alert body, 1 calculator amount-validation
+error, 1 balance-banner hint, 1 empty-state message, 1 add-button label,
+1 calculator intro paragraph, 1 calculator empty-state message, 1
+"add all to list" button, 1 item-name placeholder, 1 planned-amount
+input label, 1 purchased-toggle label, 1 delete button label) and all
+13 flagged items in DebtsScreen.tsx (1 creditor-name validation error,
+1 date-format validation error, 1 day-of-month validation error —
+appears twice, both occurrences trimmed, 1 interest-rate validation
+error, 1 minimum-payment validation error, 1 delete-confirmation alert
+body — appears twice, both occurrences trimmed, 1 empty-state message,
+1 interest-rate input label, 1 fees-portion input label + placeholder,
+1 notes placeholder, 1 delete button label).
+
+One paste mishap during application: GroceriesScreen.tsx's #5
+(balanceBannerHint) landed with a duplicated `<Text` opening tag
+(`<Text            <Text style={...}>`), causing a `tsc` syntax error
+at line 300. Fixed by clearing the whole line and retyping it clean.
+Verified via `npx tsc --noEmit` from mobile-app\ — clean (0 errors)
+after the fix. Committed and pushed.
+
+This completes both GroceriesScreen.tsx and DebtsScreen.tsx on the
+"fewer words" ranked list. Next up per that list: TransactionsScreen.tsx
+(11 items).
+
+## ✅ TransactionsScreen.tsx and BillsScreen.tsx — "fewer words" pass complete (12 + 12 items trimmed)
+
+Trimmed all 12 flagged items in TransactionsScreen.tsx (1 label validation
+error, 1 date-format validation error, 1 screen empty-state message, 1
+collapsed-row source annotation for non-manual entries, 1 detail-view
+"edit elsewhere" note, 1 refund-toggle label pair, 1 expected-refund
+input label, 1 already-refunded hint, 1 "belongs to" placeholder, 1
+tags helper hint, 1 attach-receipt button label, 1 delete button label)
+and all 12 flagged items in BillsScreen.tsx (1 amount validation error,
+1 date-format validation error, 1 day-of-month validation error —
+appears twice in the monthly and annual blocks, both trimmed, 1
+delete-confirmation alert body — appears twice in handleDelete and
+handleSwipeDelete, both trimmed, 1 empty-state message, 1 cancel-
+subscription alert body, 1 subscription checkbox label, 1 notes
+placeholder, 1 delete button label). Verified via `npx tsc --noEmit`
+from mobile-app\ — clean.
+
+This completes both TransactionsScreen.tsx and BillsScreen.tsx on the
+"fewer words" ranked list. Next up per that list: EventsScreen.tsx
+(8 items).
 
 ### Session — B.12b-1: Pension/Social Security offset (implemented)
 
@@ -2093,5 +2138,5 @@ subtitle, 1 confirm-password placeholder, 1 encryption hint below the form,
 confirmation label. Verified via `npx tsc --noEmit` from mobile-app\ —
 clean.
 
-▶️ Next step: GroceriesScreen.tsx (13 items) — next on the ranked inventory list above. B.12b (all three parts: pension/SS offset, multi-account selector, scenario-comparison modal) is now fully implemented and tsc-clean; on-device testing deferred with the rest of the batch.
+▶️ Next step: EventsScreen.tsx (8 items) — next on the ranked inventory list above. B.12b (all three parts: pension/SS offset, multi-account selector, scenario-comparison modal) is now fully implemented and tsc-clean; on-device testing deferred with the rest of the batch.
 

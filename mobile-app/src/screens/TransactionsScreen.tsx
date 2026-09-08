@@ -286,12 +286,12 @@ export default function TransactionsScreen() {
     if (!model) return;
     const trimmedLabel = labelInput.trim();
     if (!trimmedLabel) {
-      setErrorMsg('Enter a label for this transaction.');
+      setErrorMsg('Enter a label.');
       return;
     }
     const trimmedDate = dateInput.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2025-03-15.');
+      setErrorMsg('Enter date as YYYY-MM-DD.');
       return;
     }
     const parsedAmount = parseFloat(amountInput);
@@ -540,9 +540,7 @@ export default function TransactionsScreen() {
         </View>
 
         {transactions.length === 0 && (
-          <Text style={styles.emptyText}>
-            Nothing recorded yet. Add one below, or mark a bill/debt/loan as paid elsewhere in the app.
-          </Text>
+          <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 
         {transactions.map((t: TransactionEntry) => {
@@ -626,7 +624,7 @@ export default function TransactionsScreen() {
                     <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
                     <Text style={styles.txnSub} numberOfLines={1}>
                       {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
-                      {!isManual ? ' (edit on its own tab)' : ''}
+                      {!isManual ? ' (linked)' : ''}
                       {isRefundPending ? ' · Refund pending' : ''}
                       {isRefundReceived ? ' · Refunded' : ''}
                     </Text>
@@ -696,7 +694,7 @@ export default function TransactionsScreen() {
                   )}
                   {!isManual && (
                     <Text style={styles.detailNotesText}>
-                      This entry comes from another tab — edit it there.
+                      From another tab — edit it there.
                     </Text>
                   )}
                 </View>
@@ -767,12 +765,12 @@ export default function TransactionsScreen() {
                 <Ionicons name="checkmark" size={15} color="#fff" style={{ marginRight: 6 }} />
               )}
               <Text style={[styles.refundToggleText, refundTrackingEnabled && styles.refundToggleTextActive]}>
-                {refundTrackingEnabled ? 'Expecting a refund for this' : 'Expecting a refund for this?'}
+                {refundTrackingEnabled ? 'Expecting a refund' : 'Expecting a refund?'}
               </Text>
             </TouchableOpacity>
             {refundTrackingEnabled && (
               <>
-                <Text style={styles.inputLabel}>Amount you expect back</Text>
+                <Text style={styles.inputLabel}>Expected refund</Text>
                 <TextInput
                   style={[styles.input, { marginBottom: 16 }]}
                   placeholder="0.00"
@@ -787,8 +785,7 @@ export default function TransactionsScreen() {
         )}
         {directionInput === 'out' && alreadyRefunded && (
           <Text style={[styles.detailNotesText, { marginBottom: 16 }]}>
-            This has already been marked as refunded. Undo it from the transaction list first if
-            you need to change the refund amount.
+            Already marked as refunded. Undo it in the transaction list to change the amount.
           </Text>
         )}
 
@@ -802,7 +799,7 @@ export default function TransactionsScreen() {
                 <Text style={styles.inputLabel}>Belongs to</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Type a name, e.g. Miguel, Ana"
+                  placeholder="e.g. Miguel, Ana"
                   placeholderTextColor={colors.inkFaint}
                   value={personInput}
                   onChangeText={setPersonInput}
@@ -848,7 +845,7 @@ export default function TransactionsScreen() {
           onChangeText={setTagsInput}
         />
         <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: -6, marginBottom: 8 }}>
-          Separate multiple tags with commas.
+          Separate tags with commas.
         </Text>
 
                 <PaymentMethodPicker
@@ -869,7 +866,7 @@ export default function TransactionsScreen() {
                 ) : (
                   <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
                     <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
-                    <Text style={styles.receiptPickButtonText}>Attach a receipt photo</Text>
+                    <Text style={styles.receiptPickButtonText}>Attach receipt</Text>
                   </TouchableOpacity>
                 )}
 
@@ -889,7 +886,7 @@ export default function TransactionsScreen() {
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                    <Text style={styles.deleteButtonText}>Delete this transaction</Text>
+                    <Text style={styles.deleteButtonText}>Delete transaction</Text>
                   </TouchableOpacity>
                 )}
 

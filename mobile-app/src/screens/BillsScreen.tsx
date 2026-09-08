@@ -207,7 +207,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
     if (amountInput.trim() !== '') {
       const n = parseFloat(amountInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid amount, or leave it blank.');
+        setErrorMsg('Enter a valid amount.');
         return;
       }
       parsedAmount = n;
@@ -217,14 +217,14 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
     if (recurTypeInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2025-03-15.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       dueDate = { date: trimmedDate };
     } else if (recurTypeInput === 'monthly') {
       const dayNum = parseInt(dayInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day of month between 1 and 31.');
+        setErrorMsg('Enter a day between 1 and 31.');
         return;
       }
       dueDate = { day: dayInput.trim() };
@@ -232,7 +232,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
       const dayNum = parseInt(dayInput, 10);
       const monthNum = parseInt(monthInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day of month between 1 and 31.');
+        setErrorMsg('Enter a day between 1 and 31.');
         return;
       }
       if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
@@ -324,7 +324,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
   function handleDelete() {
     Alert.alert(
       'Delete this bill?',
-      'This will permanently delete the bill and its payment history. This cannot be undone.',
+      'Deletes the bill and all payment history. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
@@ -349,7 +349,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
   function handleSwipeDelete(bill: Bill) {
     Alert.alert(
       'Delete this bill?',
-      'This will permanently delete the bill and its payment history. This cannot be undone.',
+      'Deletes the bill and all payment history. Cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteById(bill.id) },
@@ -368,7 +368,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
         </View>
 
         {bills.length === 0 && (
-          <Text style={styles.emptyText}>No bills yet. Add your first one below.</Text>
+          <Text style={styles.emptyText}>No bills yet.</Text>
         )}
 
         {bills.map((bill) => {
@@ -505,7 +505,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                           <TouchableOpacity
                             style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
                             onPress={() =>
-                              Alert.alert('Cancel subscription?', `Stop future reminders for ${bill.name || 'this subscription'}. You can reactivate it anytime.`, [
+                              Alert.alert('Cancel subscription?', `Stop reminders for ${bill.name || 'this subscription'}. Reactivate anytime.`, [
                                 { text: 'Never mind', style: 'cancel' },
                                 { text: 'Cancel it', style: 'destructive', onPress: () => handleSetSubscriptionStatus(bill.id, 'cancelled') },
                               ])
@@ -662,7 +662,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                     }}
                   >
                     {subscriptionInput && <Text style={{ color: colors.navy2, fontSize: 14, fontWeight: '700' }}>✓</Text>}                    {subscriptionInput && <Ionicons name="checkmark" size={14} color={colors.navy2} />}                  </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>This is a subscription</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>Subscription</Text>
                 </TouchableOpacity>
 
                 <PaymentMethodPicker
@@ -675,7 +675,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                 <Text style={styles.inputLabel}>Notes (optional)</Text>
                 <TextInput
                   style={[styles.input, styles.notesInput]}
-                  placeholder="Anything worth remembering about this bill"
+                  placeholder="Optional notes"
                   placeholderTextColor={colors.inkFaint}
                   value={notesInput}
                   onChangeText={setNotesInput}
@@ -698,7 +698,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                    <Text style={styles.deleteButtonText}>Delete this bill</Text>
+                    <Text style={styles.deleteButtonText}>Delete bill</Text>
                   </TouchableOpacity>
                 )}
 
