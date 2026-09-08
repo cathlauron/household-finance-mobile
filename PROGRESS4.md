@@ -13,6 +13,45 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Emergency Fund "Saved" checkmark, round 2 fix (bug #5/5b)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), specifically re-examining the real current code rather than
+re-applying the prior null-crash diagnosis, since that fix (reading
+through efExpensesDisplay/efSavingsDisplay before .trim()) was confirmed
+on-device to not resolve the symptom. Found a different root cause,
+one level up from handleSaveEf itself: `calcInputsFromModel()` (the
+shared helper both the FI Calculator and Emergency Fund sections read
+from, via a `storedCalc` variable) did an all-or-nothing fallback —
+`model.calculatorInputs || { ...all seven default fields... }` — instead
+of merging field-by-field. Once ANY of the seven calculator fields had
+ever been saved (e.g. from testing the FI Calculator during bug #4's
+work), `model.calculatorInputs` became a real, non-null object, so the
+`|| {defaults}` fallback never triggered again — but that real object
+only had whichever fields had actually been written to it. Any
+Emergency-Fund-specific field never separately saved came back as
+`undefined`, which got turned into the literal string `"undefined"` by
+`String(undefined)` downstream, which then failed `parseFloat`, which
+then silently aborted `handleSaveEf` before it ever reached
+`setEfSaved(true)` — explaining all three still-broken on-device
+scenarios (editing only one field, using the suggestion button without
+typing, etc.) in one shot.
+
+Applied fix (hand-pasted by the person after review): rewrote
+`calcInputsFromModel()` to always start from the full seven-field
+defaults object and spread `model.calculatorInputs` on top of it
+(`{ ...defaults, ...(model!.calculatorInputs || {}) }`), instead of
+choosing one or the other. Any field that was genuinely never saved now
+correctly falls back to `''` (a real empty string) rather than
+`undefined`. Since this is the single shared source both the FI
+Calculator and Emergency Fund sections read from, this fix also
+reinforces bug #4's fix (same underlying class of gap), though the
+originally-reported break was specifically traced to the EF checkmark.
+`npx tsc --noEmit` clean (confirmed after paste — 0 errors). Committed
+and pushed. Per the person's standing direction, on-device re-test is
+being done together with bug #4 in one combined pass rather than
+separately.
+
 ### Session — FI Calculator fresh investigation + fix, round 2 (bug #4)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -712,21 +751,24 @@ pushed. Still needs a real on-device re-test to fully close out.
    Per the person's direction, on-device re-test is DEFERRED — will be
    tested together with bug #5/5b and batched with the rest of this pass
    before/alongside moving to Phase C, rather than tested alone now.
-5. / 5b. ⚠️ PARTIALLY FIXED — Emergency Fund "Saved" checkmark still
-   doesn't appear. The onBlur auto-save added to both fields (expenses,
-   savings) IS confirmed working — editing either field and leaving the
-   screen without tapping Save now sticks. However, on-device re-test
-   found the original crash fix did NOT resolve the reported symptom:
-   editing only one of the two fields (or tapping "use suggested
-   expenses" without typing anything) and then tapping Save still does
-   not show the "Saved" checkmark — the fix rewrote `handleSaveEf` to
-   read through the `efExpensesDisplay`/`efSavingsDisplay` fallbacks
-   before calling `.trim()`, on the theory that a `null`-crash was
-   silently aborting the function before `setEfSaved(true)` ran, but that
-   alone evidently isn't fixing the symptom. NEEDS A FRESH ANTIGRAVITY
-   INVESTIGATION PROMPT to find what's actually still failing inside
-   `handleSaveEf` on the real, current code, rather than re-applying the
-   same theory.
+5. / 5b. ⏸️ FIX APPLIED (round 2), TSC CLEAN, ON-DEVICE RE-TEST
+   DEFERRED — Emergency Fund "Saved" checkmark. The onBlur auto-save
+   added to both fields (expenses, savings) IS confirmed working —
+   editing either field and leaving the screen without tapping Save now
+   sticks. Round 1's null-crash fix to `handleSaveEf` itself was
+   confirmed NOT sufficient. Round 2 investigation found the real root
+   cause one level up: `calcInputsFromModel()` used an all-or-nothing
+   fallback (`model.calculatorInputs || {defaults}`) instead of merging
+   field-by-field, so once any calculator field had ever been saved
+   (e.g. from FI Calculator testing), EF-specific fields that were never
+   separately saved came back as `undefined` — which became the literal
+   string `"undefined"`, which failed `parseFloat`, which silently
+   aborted `handleSaveEf` before `setEfSaved(true)`. Fixed by rewriting
+   `calcInputsFromModel()` to always start from the full defaults object
+   and spread the saved data on top, rather than choosing one or the
+   other. `npx tsc --noEmit` clean. Per the person's direction, on-device
+   re-test is DEFERRED — will be tested together with bug #4 in one
+   combined pass, not tested alone.
 6. ✅ VERIFIED ON-DEVICE — None of the 3 promised background-save
    warnings ever showed on-device. Root cause: same disease as bug #2 —
    five separate `saveProfileCloudBackup`/`saveRecoveryKey`/
@@ -915,20 +957,12 @@ SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass). New/modified files
 from here on will be tracked fresh in this file.
 
 ▶️ Next step
-- Bug #4 (FI Calculator) has a fresh fix applied and `npx tsc --noEmit`
-  clean (see session log above) — on-device re-test is deliberately
-  deferred, not yet confirmed working on a real device.
-- Bug #5/5b (Emergency Fund) is the one remaining item from the original
-  13-bug list with no round-2 fix yet. Next step: get a fresh,
-  investigation-only Antigravity/Copilot prompt against the real, current
-  code (not a re-application of the prior null-crash diagnosis) — focus
-  on why `handleSaveEf` still isn't reaching `setEfSaved(true)` after
-  that fix. Review what it returns before writing any new patch, per the
-  standing verification rules.
-- Once #5/5b has a fix applied and compiling clean, do ONE combined
-  on-device re-test pass covering both bug #4 and bug #5/5b together,
-  rather than testing them separately — per the person's direction this
-  session.
+- Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) both now have
+  round-2 fixes applied and `npx tsc --noEmit` clean — neither has been
+  re-tested on a real device yet. Next step: do ONE combined on-device
+  re-test pass covering both together, per the person's standing
+  direction — this closes out the entire original 13-bug list once
+  confirmed.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.

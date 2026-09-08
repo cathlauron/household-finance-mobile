@@ -157,7 +157,7 @@ export default function SavingsScreen() {
   // typing doesn't get stomped by a stale render — cheap to just do on every render
   // since these are plain string mirrors of the model's own values.
   function calcInputsFromModel() {
-    return model!.calculatorInputs || {
+    return {
       efMonthlyExpenses: '' as const,
       efCurrentSavings: '' as const,
       fiAnnualExpenses: '' as const,
@@ -165,6 +165,7 @@ export default function SavingsScreen() {
       fiWithdrawalRatePct: '' as const,
       fiExpectedReturnPct: '' as const,
       fiMonthlySavings: '' as const,
+      ...(model!.calculatorInputs || {}),
     };
   }
 
