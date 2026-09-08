@@ -198,7 +198,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     if (amountInput.trim() !== '') {
       const n = parseFloat(amountInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid amount, or leave it blank.');
+        setErrorMsg('Enter a valid amount.');
         return;
       }
       parsedAmount = n;
@@ -220,7 +220,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         if (v.trim()) {
           const d = parseInt(v, 10);
           if (isNaN(d) || d < 1 || d > 31) {
-            setErrorMsg('Enter each payday as a day of month between 1 and 31.');
+            setErrorMsg('Enter a day between 1 and 31.');
             return;
           }
         }
@@ -231,14 +231,14 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     } else if (frequencyInput === 'biweekly') {
       const trimmedDate = biweeklyAnchorInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter the payday as YYYY-MM-DD, e.g. 2025-03-15.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       payDates = trimmedDate ? [trimmedDate] : [];
     } else if (frequencyInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter the date as YYYY-MM-DD, e.g. 2025-03-15.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       payDates = [trimmedDate];
@@ -250,16 +250,16 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
       const amtTrim = entry.amountText.trim();
       if (!dateTrim && !amtTrim) continue; // fully blank row — quietly dropped
       if (!dateTrim || !amtTrim) {
-        setErrorMsg('Each payment log entry needs both a date and an amount — or leave both blank to remove it.');
+        setErrorMsg('Each entry requires both date and amount.');
         return;
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTrim)) {
-        setErrorMsg('Enter each payment log date as YYYY-MM-DD, e.g. 2025-03-24.');
+        setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
       const amtNum = parseFloat(amtTrim);
       if (isNaN(amtNum)) {
-        setErrorMsg('Enter a valid amount for each payment log entry.');
+        setErrorMsg('Enter a valid payment amount.');
         return;
       }
       validPaymentLog.push({ id: entry.id, date: dateTrim, amount: amtNum });
@@ -335,8 +335,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   function handleDelete() {
     Alert.alert(
       'Delete this income source?',
-      'This will permanently delete the source and its logged payments. This cannot be undone.',
-      [
+      'Deletes the source and its logged payments. Cannot be undone.',      [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
       ]
@@ -390,8 +389,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
         </View>
         {sources.length === 0 && (
-          <Text style={styles.emptyText}>No income sources yet. Add your first one below.</Text>
-        )}
+          <Text style={styles.emptyText}>No income sources yet.</Text>        )}
 
         {sources.map((source) => {
           const freq = (source.frequency as Frequency) || 'monthly';
@@ -503,8 +501,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                   ))}
                 </View>
 
-                <Text style={styles.inputLabel}>Source name (optional detail)</Text>
-                <TextInput
+                <Text style={styles.inputLabel}>Source name (optional)</Text>                <TextInput
                   style={styles.input}
                   placeholder="e.g. Freelance design, ABC Corp"
                   placeholderTextColor={colors.inkFaint}
@@ -619,7 +616,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
                 {frequencyInput === 'biweekly' && (
   <DateField
-    label="When was your most recent payday?"
+    label="Most recent payday"
     value={biweeklyAnchorInput}
     onChange={setBiweeklyAnchorInput}
     placeholder="Select recent payday"
@@ -630,8 +627,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
                 <Text style={styles.inputLabel}>Payment log</Text>
                 <Text style={styles.hintText}>
-                  Log each actual payday as it happens — this feeds your Transactions list and
-                  reports.
+                  Log paydays to track in Transactions and reports.
                 </Text>
                 {paymentLogEntries.map((entry) => (
                   <View key={entry.id} style={styles.paymentLogRow}>
@@ -677,7 +673,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
                 {editingId && (
                   <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                    <Text style={styles.deleteButtonText}>Delete this income source</Text>
+                    <Text style={styles.deleteButtonText}>Delete income source</Text>
                   </TouchableOpacity>
                 )}
 

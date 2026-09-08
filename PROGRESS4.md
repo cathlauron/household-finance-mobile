@@ -1800,3 +1800,16 @@ button label. Verified via `npx tsc --noEmit` from mobile-app\ — clean.
 
 ▶️ Next step: IncomeScreen.tsx (14 items) — next on the ranked inventory list above.
 
+
+
+## ✅ IncomeScreen.tsx — "fewer words" pass complete (14 items trimmed)
+
+Trimmed all 14 flagged items: 7 validation/error messages (amount, day-of-month,
+two date-format errors, payment-log entry/date/amount errors), 2 delete-
+confirmation alert bodies (identical text, both call sites), 1 empty-state
+message, 1 input label ("Source name"), 1 DateField label (biweekly anchor,
+converted from a question to a plain label), 1 section hint, 1 delete button
+label. Verified via `npx tsc --noEmit` from mobile-app\ — clean.
+
+▶️ Next step: CreateProfileScreen.tsx (13 items) — next on the ranked inventory list above.
+
