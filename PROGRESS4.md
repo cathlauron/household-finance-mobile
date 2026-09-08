@@ -272,3 +272,126 @@ TransactionsScreen.tsx, BillsScreen.tsx.
 Skipped (0 items each, confirmed nothing to trim): InsightsScreen.tsx,
 IntroScreen.tsx, PlanningScreen.tsx, ToPayScreen.tsx,
 MonthlyCloseOutReport.tsx, WeeklyDigestReport.tsx, YearInReviewReport.tsx.
+
+📁 Files in the repo
+See PROGRESS3.md's own "Files in the repo" section for the full inventory
+through the end of Phase B Part 2 (B2.1–B2.3 batch 4, bottom nav redesign,
+SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass).
+
+- src/openBillRequest.ts — Transient (non-persisted) pub-sub module
+  signaling "open this bill now" from TransactionsScreen to ToPayScreen/
+  BillsScreen, with a nonce so repeat requests for the same bill still fire.
+- src/openDebtRequest.ts — Exact mirror of openBillRequest.ts for Debts.
+- src/openLoanRequest.ts — Exact mirror of openBillRequest.ts for Loans.
+- src/components/SwipeableRow.tsx — Added an optional `viewAction` prop
+  (non-destructive alternative to the delete button).
+- src/screens/BillsScreen.tsx — Added an optional `openBillNonce` prop;
+  auto-open guard now compares `{ id, nonce }`.
+- src/screens/DebtsScreen.tsx — Added optional `openDebtId`/`openDebtNonce`
+  props with the same guard-ref effect pattern as BillsScreen.
+- src/screens/LoansScreen.tsx — Added optional `openLoanId`/`openLoanNonce`
+  props with the same guard-ref effect pattern as BillsScreen.
+- src/screens/IncomeScreen.tsx — Added optional
+  `openIncomeId`/`openIncomeNonce` props with the same guard-ref effect
+  pattern, read via RootStack.tsx's route params rather than ToPayScreen.
+- src/screens/SavingsScreen.tsx — Added optional
+  `openSavingsId`/`openSavingsNonce` props with the same guard-ref
+  effect pattern, read via RootStack.tsx's route params; also gained the
+  full B.12b calculator work (see below).
+- src/screens/ToPayScreen.tsx — Subscribes to openBillRequest.ts,
+  openDebtRequest.ts, and openLoanRequest.ts; forwards `{ id, nonce }` to
+  BillsScreen/DebtsScreen/LoansScreen respectively.
+- src/navigation/RootStack.tsx — Added optional
+  `openIncomeId`/`openIncomeNonce` and `openSavingsId`/`openSavingsNonce`
+  params to `Income`/`Savings` in `RootStackParamList`; both screens now
+  registered via a render-callback that extracts `route.params` and
+  passes them down as plain props.
+- src/screens/TransactionsScreen.tsx — Added `useNavigation()`, five
+  source-lookup helpers (bill/debt/loan/income/saving), and a swipe
+  `viewAction` covering all five derived source types.
+- src/types.ts — `CalculatorInputs` gained
+  `fiGuaranteedAnnualIncome: number | ''` (B.12b-1) and
+  `fiSelectedAccountIds: string[]` (B.12b-2).
+- src/fiScenario.ts — Pure `computeFiScenario(inputs)` function extracted
+  from SavingsScreen.tsx's own inline FI math, shared by both the live FI
+  Calculator and the comparison modal.
+- src/screens/SavingsFiComparisonModal.tsx — Base Plan vs. What-If Plan
+  side-by-side comparison modal, mirroring
+  LoanPayoffSimulatorModal.tsx's structure.
+- src/reportVisibility.ts — Per-profile AsyncStorage helper (hidden
+  report ids) backing the Reports screen's checkbox show/hide list.
+- src/components/DateField.tsx — Android branch rewritten as a fully
+  custom in-app themed calendar; iOS branch untouched.
+- 19 pre-existing files given "fewer words" text-only trims this session
+  (no logic change, not separately listed as new files): PaymentMethodPicker.tsx,
+  AccountsScreen.tsx, CalendarScreen.tsx, CsvImportModal.tsx,
+  DashboardScreen.tsx, EventsScreen.tsx, GoalsScreen.tsx, HomeScreen.tsx,
+  LoanPayoffSimulatorModal.tsx, PinUnlockScreen.tsx, ReportsScreen.tsx,
+  SetPinScreen.tsx, TravelScreen.tsx, reports/CashFlowForecastReport.tsx,
+  reports/MerchantSpendingReport.tsx, reports/PaymentMethodsReport.tsx,
+  reports/PersonSpendingReport.tsx, reports/SubscriptionAuditReport.tsx,
+  reports/TaxSummaryReport.tsx.
+
+▶️ Next step
+- IMMEDIATE, before anything else: paste the two still-pending wording
+  corrections into CsvImportModal.tsx and LoanPayoffSimulatorModal.tsx
+  (exact before/after text is in the top session entry above — this was
+  NOT done before the last commit, per that commit's own message "2 fixes
+  pending"). Re-run `npx tsc --noEmit` to confirm clean, then commit and
+  push. This is what finally closes out the ENTIRE "fewer words"
+  initiative — nothing will remain on that list after this commit.
+- After that commit, do ONE combined on-device re-test pass covering
+  everything currently sitting at "implemented, tsc-clean, not yet
+  tested on a real device": bugs #4 and #5/5b (FI Calculator + Emergency
+  Fund, test together), the Android in-app date-picker calendar (check
+  a couple of different screens, e.g. Bills' due date and Savings'
+  target date, since it's a shared component), the bottom-nav Calendar
+  removal + Home date shortcut, the PIN "Turn Off" → toggle switch, the
+  SUB/CANCELLED hollow-box badge, the "which of these is you?"
+  Confirm/Cancel step (confirm bug #12's live-update-without-restart
+  behavior still works after tapping Confirm), the Reports screen
+  checkbox show/hide redesign (including the empty-state message and
+  the tag-filter toolbar still working on the 6 tag-filtered reports),
+  the ToPayScreen/PlanningScreen icon+title pill reversal, swipe-to-
+  navigate on Bills-derived Transactions rows (confirm a second swipe
+  of the same bill still works, and manual rows still swipe-to-delete
+  normally), swipe-to-navigate on Debt/Loan/Income/Savings-derived rows,
+  and all three parts of B.12b (Pension/SS offset, multi-account
+  selector, scenario-comparison modal — open "Compare Scenarios," check
+  Base Plan matches the saved plan, confirm blank What-If fields fall
+  back correctly, confirm "Reset What-If to Base Plan" works).
+- Bug #9's Face-ID-specific symptom still needs a real installed build
+  in Phase C to re-verify — not testable in Expo Go.
+- All reminder/notification bugs and testing remain deferred to Phase C.
+- Once the combined on-device pass is done (or the person decides to
+  move on regardless), proceed to Phase C (Publishing) per
+  `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
+  .apk/TestFlight link) and, optionally, C.2 (App Store / Play Store
+  publishing).
+
+📚 Older progress: PROGRESS3.md (Phase B Part 2 + first on-device testing
+pass, now closed), PROGRESS2.md (Phase B build, B.1–B.14, closed),
+PROGRESS1.md (Phase A, closed), PROGRESS.md (original Phases 0–11, closed).
+
+## 📋 "Fewer words" ranked inventory — STATUS: ALL FILES NOW HAVE EDITS APPLIED (pending the 2 fixes + final commit noted at the top of ▶️ Next step)
+
+Every file that was previously on this list now has its trims implemented
+and verified via git diff. Once the two pending wording corrections
+(CsvImportModal.tsx, LoanPayoffSimulatorModal.tsx) are pasted in and
+committed, this entire inventory is CLOSED — there is no next screen
+after this to move to on the "fewer words" list.
+
+Completed: SettingsScreen.tsx, ProfileScreen.tsx, OnboardingScreen.tsx,
+SavingsScreen.tsx, SignInScreen.tsx, MoreScreen.tsx, LoansScreen.tsx,
+IncomeScreen.tsx, CreateProfileScreen.tsx, GroceriesScreen.tsx,
+DebtsScreen.tsx, TransactionsScreen.tsx, BillsScreen.tsx,
+EventsScreen.tsx, GoalsScreen.tsx, CsvImportModal.tsx, TravelScreen.tsx,
+LoanPayoffSimulatorModal.tsx, AccountsScreen.tsx, DashboardScreen.tsx,
+PinUnlockScreen.tsx, CashFlowForecastReport.tsx, TaxSummaryReport.tsx,
+SetPinScreen.tsx, PaymentMethodsReport.tsx, PersonSpendingReport.tsx,
+SubscriptionAuditReport.tsx, CalendarScreen.tsx, HomeScreen.tsx,
+ReportsScreen.tsx, MerchantSpendingReport.tsx, PaymentMethodPicker.tsx.
+
+Skipped (confirmed nothing to trim): InsightsScreen.tsx, IntroScreen.tsx,
+PlanningScreen.tsx, ToPayScreen.tsx, MonthlyCloseOutReport.tsx,
+WeeklyDigestReport.tsx, YearInReviewReport.tsx.
