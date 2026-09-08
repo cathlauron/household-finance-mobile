@@ -13,6 +13,40 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — "Which of these is you?" picker doesn't update Transactions live (bug #12)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed root cause: the selected person's id (`myPersonId`) is
+stored in AsyncStorage under a per-profile key (myPerson.ts), completely
+outside DataContext/HouseholdModel. Every consuming screen
+(TransactionsScreen.tsx, reports/PersonSpendingReport.tsx) read it via a
+one-time `useEffect(() => { getMyPersonId(username).then(setX) }, [username])`
+that only ever runs once on mount — and since React Navigation's bottom
+tabs keep screens mounted in memory rather than remounting them on tab
+switch, changing the selection on ProfileScreen (which only updated its
+own local state plus AsyncStorage) never reached those already-mounted
+screens until the whole app process was killed and restarted. Confirmed
+via codebase-wide search that exactly two screens read this value
+(TransactionsScreen.tsx and PersonSpendingReport.tsx) — Home, Dashboard,
+Settings, Accounts, Bills, Debts, Savings, and every other report are
+unaffected, since none of them read `myPersonId` at all.
+
+Applied fix (hand-pasted by the person after review): reused the exact
+pub-sub pattern this codebase already has for the same class of problem
+(`subscribeToAutoLockMinutes` in autoLock.ts) — added a
+`subscribeToMyPersonId` listener registry to myPerson.ts, notified on both
+`setMyPersonId` and `clearMyPersonId`, and subscribed to it inside the
+existing useEffect in both TransactionsScreen.tsx and
+PersonSpendingReport.tsx (alongside, not replacing, the initial on-mount
+read), so both screens now re-render immediately when the selection
+changes on ProfileScreen, without needing a restart. ProfileScreen.tsx
+itself was left untouched, since it already updates its own local state
+synchronously right after writing and has no stale-read problem of its
+own. `npx tsc --noEmit` clean. Committed and pushed. Still needs a real
+on-device re-test — deferred, along with bugs #1–11, until the rest of
+this bug-fixing pass is done and everything can be verified together in
+one on-device pass.
+
 ### Session — Category Watchlist "over budget" fires at exactly 100% (bug #11)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -711,8 +745,24 @@ pushed. Still needs a real on-device re-test to fully close out.
     shows "At budget" in orange rather than "Over budget" in red; log
     spending one peso over and confirm it correctly shows "Over budget")
     before marking fully verified.
-12. "Which of these is you?" picker doesn't update Transactions live —
-    needs a full app restart to take effect.
+12. ✅ FIXED (pending on-device re-test) — "Which of these is you?"
+    picker didn't update Transactions live, needed a full app restart to
+    take effect. Root cause: the selected person id is stored in
+    AsyncStorage outside DataContext/HouseholdModel, and both consuming
+    screens (TransactionsScreen.tsx, reports/PersonSpendingReport.tsx)
+    only ever read it once on mount — since React Navigation's bottom
+    tabs keep screens mounted rather than remounting on tab switch, a
+    change made on ProfileScreen never reached either already-mounted
+    screen. Fixed by reusing the same pub-sub listener pattern this
+    codebase already uses for the identical problem in autoLock.ts —
+    added `subscribeToMyPersonId` to myPerson.ts, notified on
+    set/clear, and subscribed to it in both affected screens'
+    existing useEffect blocks. `npx tsc --noEmit` clean. STILL NEEDS: a
+    real on-device re-test (open Transactions, switch to Profile, change
+    "Which of these is you?", switch back to Transactions without
+    restarting the app, confirm "Mine" labeling updates immediately;
+    repeat for the Person Spending report) before marking fully
+    verified.
 13. AccountsScreen Cards/List toggle — "Stacked card view" floating label
     (IconLabelHint) didn't appear on tap.
 
@@ -789,11 +839,11 @@ from here on will be tracked fresh in this file.
   swallowing errors) is now also code-complete pending on-device
   re-test — note its Face-ID-specific symptom additionally needs
   re-verification on a real installed build in Phase C, since it may be
-  an Expo Go artifact rather than an app bug. Bug #10 (PIN-off loading
-  indicator) and bug #11 (Category Watchlist "over budget" at exactly
-  100%) are now also code-complete pending on-device re-test, same batch.
-  Suggested order for what's left: (12) "which of these is you?" not
-  updating Transactions live, (13) AccountsScreen's missing "Stacked card
+  an Expo Go artifact rather than an app bug. Bugs #10 (PIN-off loading
+  indicator), #11 (Category Watchlist "over budget" at exactly 100%), and
+  #12 ("which of these is you?" not updating Transactions live) are now
+  also code-complete pending on-device re-test, same batch. Suggested
+  order for what's left: (13) AccountsScreen's missing "Stacked card
   view" label, (8b) the newly-found silent personal-snapshot-backup
   failure in `saveModel()`'s linked-household branch, low priority.
 - Leave all reminder/notification testing and bugs alone until Phase C

@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { getMyPersonId } from '../myPerson';
+import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { formatPeso } from '../balanceProjection';
 import {
   buildTransactionsList,
@@ -109,6 +109,8 @@ export default function TransactionsScreen() {
   useEffect(() => {
     if (!username) return;
     getMyPersonId(username).then(setMyPersonId);
+    const unsubscribe = subscribeToMyPersonId(setMyPersonId);
+    return unsubscribe;
   }, [username]);
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');

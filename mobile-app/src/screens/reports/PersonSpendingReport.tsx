@@ -17,7 +17,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
-import { getMyPersonId } from '../../myPerson';
+import { getMyPersonId, subscribeToMyPersonId } from '../../myPerson';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList } from '../../transactions';
@@ -58,6 +58,8 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
   useEffect(() => {
     if (!username) return;
     getMyPersonId(username).then(setMyPersonId);
+    const unsubscribe = subscribeToMyPersonId(setMyPersonId);
+    return unsubscribe;
   }, [username]);
 
   if (loading || !model) {

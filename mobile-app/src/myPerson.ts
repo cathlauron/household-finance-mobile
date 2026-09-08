@@ -14,14 +14,26 @@ function myPersonKey(username: string): string {
   return `profile:${username}:my-person-id`;
 }
 
+type MyPersonListener = (personId: string | null) => void;
+const listeners = new Set<MyPersonListener>();
+
+export function subscribeToMyPersonId(listener: MyPersonListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export async function getMyPersonId(username: string): Promise<string | null> {
   return AsyncStorage.getItem(myPersonKey(username));
 }
 
 export async function setMyPersonId(username: string, personId: string): Promise<void> {
   await AsyncStorage.setItem(myPersonKey(username), personId);
+  listeners.forEach((listener) => listener(personId));
 }
 
 export async function clearMyPersonId(username: string): Promise<void> {
   await AsyncStorage.removeItem(myPersonKey(username));
+  listeners.forEach((listener) => listener(null));
 }
