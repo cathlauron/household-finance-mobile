@@ -13,6 +13,34 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Quick PIN turn-off shows no loading indicator (bug #10)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool). Confirmed there was no dedicated function or busy-state boolean for
+turning PIN off at all — it was an inline anonymous async callback inside
+the "Turn Off" alert's destructive button, calling `removePin(username)`
+(an async AsyncStorage.removeItem call in pin.ts) with no
+Alert.alert(...)... [{ text: 'Turn Off', onPress: async () => { ... } }]
+loading state around it, unlike every other async action on this screen
+(clearBusy, exportBusy, passChangeBusy, etc.), which all follow the same
+`[xBusy, setXBusy] = useState(false)` pattern with an ActivityIndicator
+swapped in for the button's label while busy. Confirmed the action really
+is asynchronous (a real await on AsyncStorage I/O), so the gap between tap
+and the button/UI updating was genuine, not just a slow re-render.
+
+Applied fix (hand-pasted by the person after review): added a `pinBusy`
+state variable alongside the existing `pinIsSet`, wrapped the
+`removePin(username)` call in `setPinBusy(true)` / `try...finally` (also
+adding a real `Alert.alert('Failed to remove PIN', ...)` on failure, which
+didn't exist before), disabled both the "Turn Off" and "Change PIN"
+buttons while busy, and swapped the "Turn Off" button's label for an
+ActivityIndicator during the action — matching the exact pattern already
+used by clearBusy/exportBusy elsewhere in this same file. `npx tsc
+--noEmit` clean. Committed and pushed. Still needs a real on-device
+re-test — deferred, along with bugs #1–9, until the rest of this
+bug-fixing pass is done and everything can be verified together in one
+on-device pass.
+
 ### Session — Biometric unlock failed outright on Face ID (bug #9)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -628,7 +656,20 @@ pushed. Still needs a real on-device re-test to fully close out.
    done; (b) the original Face-ID-specific failure needs separate
    re-verification on a real installed build once Phase C (EAS Build) is
    reached, since it can't be confirmed fixed from inside Expo Go.
-10. Turning PIN off shows no loading indicator, reads as frozen.
+10. ✅ FIXED (pending on-device re-test) — Turning PIN off showed no
+    loading indicator, read as frozen. Root cause: the "Turn Off" action
+    was an inline anonymous async callback with no busy-state tracking at
+    all, unlike every other async action on this screen. Fixed by adding
+    a `pinBusy` state variable, wrapping the existing `removePin(username)`
+    call in `setPinBusy(true)`/`try...finally` (also adding a real error
+    alert on failure, which didn't exist before), disabling both the
+    "Turn Off" and "Change PIN" buttons while busy, and swapping the
+    "Turn Off" label for an ActivityIndicator during the action — matching
+    the same pattern already used by clearBusy/exportBusy elsewhere in
+    this file. `npx tsc --noEmit` clean. STILL NEEDS: a real on-device
+    re-test (tap Turn Off, confirm the button shows a spinner and disables
+    itself instead of appearing to do nothing until it completes) before
+    marking fully verified.
 11. Category Watchlist "over budget" wording fires at exactly 100% instead
     of only once genuinely over 100%.
 12. "Which of these is you?" picker doesn't update Transactions live —
@@ -709,10 +750,12 @@ from here on will be tracked fresh in this file.
   swallowing errors) is now also code-complete pending on-device
   re-test — note its Face-ID-specific symptom additionally needs
   re-verification on a real installed build in Phase C, since it may be
-  an Expo Go artifact rather than an app bug. Suggested order for what's
-  left: (10) the remaining smaller bugs (PIN-off loading indicator,
-  Category Watchlist wording, "which of these is you?" live update,
-  AccountsScreen's missing label), (8b) the newly-found silent
+  an Expo Go artifact rather than an app bug. Bug #10 (PIN-off loading
+  indicator) is now also code-complete pending on-device re-test, same
+  batch. Suggested order for what's left: (11) Category Watchlist
+  "over budget" wording firing at exactly 100%, (12) "which of these is
+  you?" not updating Transactions live, (13) AccountsScreen's missing
+  "Stacked card view" label, (8b) the newly-found silent
   personal-snapshot-backup failure in `saveModel()`'s linked-household
   branch, low priority.
 - Leave all reminder/notification testing and bugs alone until Phase C

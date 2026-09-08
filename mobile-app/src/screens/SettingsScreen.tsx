@@ -109,6 +109,7 @@ export default function SettingsScreen() {
   const [biometricLabel, setBiometricLabel] = useState('Biometric Unlock');
   const [biometricError, setBiometricError] = useState('');
   const [pinIsSet, setPinIsSet] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
   const [showSetPinModal, setShowSetPinModal] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -1329,6 +1330,7 @@ export default function SettingsScreen() {
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
               <TouchableOpacity
                 style={[styles.dataButton, { alignSelf: 'center', backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E11D48' }]}
+                disabled={pinBusy}
                 onPress={() => {
                   Alert.alert(
                     'Turn Off Quick PIN',
@@ -1339,9 +1341,15 @@ export default function SettingsScreen() {
                         text: 'Turn Off',
                         style: 'destructive',
                         onPress: async () => {
-                          if (username) {
+                          if (!username) return;
+                          setPinBusy(true);
+                          try {
                             await removePin(username);
                             setPinIsSet(false);
+                          } catch (e) {
+                            Alert.alert('Failed to remove PIN', 'Please try again.');
+                          } finally {
+                            setPinBusy(false);
                           }
                         },
                       },
@@ -1349,10 +1357,15 @@ export default function SettingsScreen() {
                   );
                 }}
               >
-                <Text style={[styles.dataButtonText, { color: '#E11D48' }]}>Turn Off</Text>
+                {pinBusy ? (
+                  <ActivityIndicator size="small" color="#E11D48" />
+                ) : (
+                  <Text style={[styles.dataButtonText, { color: '#E11D48' }]}>Turn Off</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.dataButton, { alignSelf: 'center' }]}
+                disabled={pinBusy}
                 onPress={() => setShowSetPinModal(true)}
               >
                 <Text style={styles.dataButtonText}>Change PIN</Text>
