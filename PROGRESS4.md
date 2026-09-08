@@ -13,6 +13,49 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — FI Calculator non-functional on-device (bug #4)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), across three reported symptoms on SavingsScreen.tsx's FI
+Calculator section. Confirmed all three collapse into one root cause plus
+one secondary bug:
+- Root cause: none of the four FI fields (SWR, expected return, monthly
+  savings, current savings) had any auto-save path — only a manual "Save"
+  button at the bottom of the screen (`handleSaveFi`), which most people
+  would never scroll down to tap. Every value was held only in local
+  React state (`fiSwrInput`, `fiReturnRateInput`, `fiMonthlySavingsInput`,
+  `fiSavingsInput`) and discarded on unmount.
+- Symptom #1 ("Years Until FI" shows placeholder text) and symptom #2
+  (show/hide projected-date toggle missing entirely) are both downstream
+  of that: `fiCanProjectTimeline` requires all four fields to hold a real
+  value, which they never did after leaving and returning to the screen,
+  so it always fell into the "Enter more info" placeholder branch — and
+  the toggle is nested inside that same branch, so it never rendered
+  either. No separate toggle-specific bug existed.
+- Secondary bug found during investigation: blank "Current savings" was
+  being parsed as `NaN` (`parseFloat(fiSavingsDisplay)`) and treated as
+  invalid, blocking the whole calculation — even though a blank field is
+  a normal, valid answer meaning "starting from ₱0."
+- Confirmed via `git show`/`git log` that this file's `handleSaveFi`
+  function already existed, correctly writes all five FI fields to
+  `model.calculatorInputs`, and is fully correct — it just wasn't being
+  called anywhere except the manual Save button.
+
+Applied fix (hand-pasted by the person after review, as find/replace
+snippets rather than context-block inserts): added `onBlur={handleSaveFi}`
+to all four TextInputs (current savings, SWR custom input, expected
+return, monthly savings), and added an inline `handleSaveFi()` call to
+the SWR preset buttons (3.5%/4.0%/4.5%) and both "tap to use this"
+suggestion buttons (net-worth suggestion, monthly-savings suggestion),
+since taps have no blur event to rely on. Also changed
+`fiSavingsNum = parseFloat(fiSavingsDisplay)` to treat an empty field as
+`0` instead of `NaN`, so the calculation runs as soon as return rate and
+monthly savings are filled in even with current savings left blank.
+`npx tsc --noEmit` clean. Committed and pushed. Still needs a real
+on-device re-test — deliberately deferred by the person until the rest of
+this bug-fixing pass is done, then all fixes get tested together in one
+on-device pass rather than one at a time.
+
 ### Session — Left to Spend caution threshold not persisting (bug #3)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -222,10 +265,31 @@ pushed. Still needs a real on-device re-test to fully close out.
    app fully — swipe it away, not just background it — reopen, and confirm
    Settings still shows the new value and Home's Left to Spend widget uses
    it) before marking fully verified.
-4. FI Calculator (Savings tab) largely non-functional on-device — "Years
-   Until FI" shows literal placeholder text, the show/hide projected-date
-   toggle doesn't appear, and none of the new fields (SWR, expected return,
-   monthly savings, current savings) persist even locally.
+4. ✅ FIXED (pending on-device re-test) — FI Calculator (Savings tab)
+   largely non-functional on-device. Root cause: none of the four FI
+   fields (SWR, expected return, monthly savings, current savings) had
+   any auto-save path — only a manual "Save" button at the bottom of the
+   screen, easy to miss. The "Years Until FI" placeholder text and the
+   missing show/hide projected-date toggle were both downstream effects
+   of that (the calculation and the toggle both require all four fields
+   to hold a real value, which they never did after leaving and returning
+   to the screen) — not two separate bugs. A secondary bug was also found
+   and fixed: a blank "Current savings" field was being treated as
+   invalid (`NaN`) instead of a normal ₱0 starting point, which alone
+   would block the calculation even with everything else filled in.
+   Fixed by adding `onBlur={handleSaveFi}` to all four fields (reusing
+   the existing, already-correct `handleSaveFi` save function rather than
+   writing a new one), adding the same save call to the SWR preset
+   buttons and both "tap to use this" suggestion buttons (since taps have
+   no blur event), and changing the current-savings parsing so an empty
+   field means ₱0 instead of invalid. `npx tsc --noEmit` clean. STILL
+   NEEDS: a real on-device re-test (type into any of the four fields,
+   leave the screen without tapping Save, come back and confirm it
+   stuck; leave Current Savings blank and confirm Years Until FI now
+   calculates; confirm the show/hide date toggle appears) — the person
+   is deliberately deferring this until the rest of the current bug-
+   fixing pass is done, to test everything together in one on-device
+   pass.
 5. Emergency Fund "Saved" checkmark still doesn't appear after saving.
 6. None of the 3 promised background-save warnings (failed password-change
    cloud backup, failed account-recovery re-save, failed household-unlink
@@ -307,13 +371,15 @@ from here on will be tracked fresh in this file.
 - Work through the remaining real bugs found in the first on-device testing
   pass, one at a time, via the standard Antigravity/Copilot-investigates-
   first workflow — see the numbered list under ⚠️ Known issues above.
-  Suggested order: (4) FI Calculator's non-functional fields, (5)
-  Emergency Fund "Saved" checkmark, (6) background-save warnings, (7)
-  Events/Goals/Groceries/Settings silent save failures, (8) Travel
-  checklist-delete expense cleanup, (9) the remaining smaller bugs
-  (biometric capture, PIN-off loading indicator, Category Watchlist
-  wording, "which of these is you?" live update, AccountsScreen's missing
-  label).
+  Bugs #1–4 are now code-complete pending on-device re-test (deliberately
+  batched — the person is testing all fixes together in one on-device pass
+  once the remaining bugs below are also fixed, rather than one at a time).
+  Suggested order for what's left: (5) Emergency Fund "Saved" checkmark,
+  (6) background-save warnings, (7) Events/Goals/Groceries/Settings silent
+  save failures, (8) Travel checklist-delete expense cleanup, (9) the
+  remaining smaller bugs (biometric capture, PIN-off loading indicator,
+  Category Watchlist wording, "which of these is you?" live update,
+  AccountsScreen's missing label).
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
 - Once ready, separately scope and prioritize the design-change requests

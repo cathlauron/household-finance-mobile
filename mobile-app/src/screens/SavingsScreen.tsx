@@ -451,7 +451,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     !isNaN(efExpensesNum) && efExpensesNum > 0 && !isNaN(efSavingsNum) ? efSavingsNum / efExpensesNum : null;
 
   const fiExpensesNum = parseFloat(fiExpensesDisplay);
-  const fiSavingsNum = parseFloat(fiSavingsDisplay);
+  const fiSavingsNum = fiSavingsDisplay.trim() === '' ? 0 : parseFloat(fiSavingsDisplay);
 
   const FI_SWR_PRESETS = ['3.5', '4.0', '4.5'];
   const fiSwrDisplay =
@@ -753,13 +753,15 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiSavingsDisplay}
             onChangeText={setFiSavingsInput}
+            onBlur={handleSaveFi}
           />
           {suggestedNetWorth > 0 && (
             <TouchableOpacity
               style={styles.suggestionRow}
-              onPress={() =>
-                setFiSavingsInput(String(Math.round(suggestedNetWorth * 100) / 100))
-              }
+              onPress={() => {
+                setFiSavingsInput(String(Math.round(suggestedNetWorth * 100) / 100));
+                handleSaveFi();
+              }}
             >
               <Text style={styles.suggestionText}>
                 Based on your Cash, Debit &amp; Investment accounts: {formatPeso(suggestedNetWorth)} — tap to use this
@@ -777,9 +779,10 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                   fiSwrDisplay === preset && !fiSwrCustomOpen ? styles.swrPillButtonActive : null,
                 ]}
                 onPress={() => {
-                  setFiSwrCustomOpen(false);
-                  setFiSwrInput(preset);
-                }}
+        setFiSwrCustomOpen(false);
+        setFiSwrInput(preset);
+        handleSaveFi();
+      }}
               >
                 <Text
                   style={[
@@ -816,6 +819,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               keyboardType="decimal-pad"
               value={fiSwrDisplay}
               onChangeText={setFiSwrInput}
+              onBlur={handleSaveFi}
             />
           )}
 
@@ -827,6 +831,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiReturnDisplay}
             onChangeText={setFiReturnRateInput}
+            onBlur={handleSaveFi}
           />
 
           <Text style={styles.inputLabel}>Monthly savings toward FI (optional)</Text>
@@ -837,13 +842,15 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiMonthlySavingsDisplay}
             onChangeText={setFiMonthlySavingsInput}
+            onBlur={handleSaveFi}
           />
           {suggestedMonthlySavings > 0 && (
             <TouchableOpacity
               style={styles.suggestionRow}
-              onPress={() =>
-                setFiMonthlySavingsInput(String(Math.round(suggestedMonthlySavings * 100) / 100))
-              }
+              onPress={() => {
+                setFiMonthlySavingsInput(String(Math.round(suggestedMonthlySavings * 100) / 100));
+                handleSaveFi();
+              }}
             >
               <Text style={styles.suggestionText}>
                 Based on your income minus obligations: {formatPeso(suggestedMonthlySavings)}/mo — tap to use this
