@@ -13,6 +13,49 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — B.12b scoped via Antigravity investigation
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool) to recover the original intent behind the unscheduled "B.12b"
+item, since the full original scoping (from PROGRESS1.md/PROGRESS2.md)
+had never been folded into this file's own carried-forward notes.
+Antigravity searched the full codebase and commit history and confirmed:
+
+B.12 was originally scoped (PROGRESS1.md) as a Simplifi-inspired
+"expanded FI/retirement calculator" bundling four things: (1) configurable
+withdrawal rate/return rate/timeline, (2) a pension/Social Security
+offset, (3) a multi-account selector for which accounts count toward FI
+net worth, and (4) a scenario-comparison modal. During implementation
+(commit 4b808b1), item (1) was built directly into SavingsScreen.tsx as
+B.12a; items (2), (3), and (4) were explicitly deferred as B.12b.
+
+Confirmed via codebase search that none of B.12b's three pieces exist in
+any form today — no fields in `CalculatorInputs` (types.ts), no offset
+logic in SavingsScreen.tsx's FI math, no account-picker UI anywhere, and
+no FI-specific comparison modal. The app's only existing "scenario
+comparison" UI pattern is LoanPayoffSimulatorModal.tsx (Snowball vs.
+Avalanche side-by-side stat cards), which was confirmed as a usable
+structural reference for building B.12b's comparison modal once reached.
+
+Confirmed the exact gaps each piece would plug into, in SavingsScreen.tsx's
+real current FI math:
+- Pension/SS offset: `fiNumber = fiExpensesNum / (fiSwrForMath / 100)` —
+  currently assumes 100% of annual expenses must be portfolio-funded, with
+  no field to subtract guaranteed non-portfolio income first.
+- Multi-account selector: `suggestedNetWorth` unconditionally sums every
+  account in `model.balanceAccounts.investment/cash/debit` — no way to
+  pick which accounts should count.
+- Scenario-comparison modal: doesn't exist for Savings/FI in the mobile
+  app at all (only exists for Loans, via LoanPayoffSimulatorModal.tsx).
+
+Decision made: rather than build B.12b as one large session, split it into
+three smaller checkpoints — B.12b-1 (pension/SS offset — smallest, purely
+additive to existing FI math), B.12b-2 (multi-account selector — more UI
+work, self-contained to the "current savings" computation), and B.12b-3
+(scenario-comparison modal — largest, benefits from B.12b-1/2 being done
+first so there's something meaningful to compare). No code written this
+session — investigation and scoping only.
+
 ### Session — "Fewer words" pass: MoreScreen.tsx
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -1731,8 +1774,19 @@ from here on will be tracked fresh in this file.
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
   .apk/TestFlight link) and, optionally, C.2 (App Store / Play Store
   publishing).
-- B.12b (pension/Social Security offset, multi-account selector, possible
-  scenario-comparison modal) remains an open, unscheduled item.
+- B.12b is now SCOPED (see the "B.12b scoped via Antigravity investigation"
+  session entry above) and split into three checkpoints, none started:
+  - B.12b-1 — Pension/Social Security offset (smallest; subtract a new
+    guaranteed-income field from Annual Expenses before dividing by SWR
+    in SavingsScreen.tsx's FI math).
+  - B.12b-2 — Multi-account selector (let the person pick which
+    investment/cash/debit accounts count toward `suggestedNetWorth`,
+    instead of auto-summing all of them).
+  - B.12b-3 — Scenario-comparison modal for FI (side-by-side comparison,
+    modeled on LoanPayoffSimulatorModal.tsx's existing Snowball vs.
+    Avalanche pattern). Best tackled after B.12b-1/2 so there's something
+    meaningful to compare.
+  Person has not yet chosen which of the three to start with.
 
 📚 Older progress: PROGRESS3.md (Phase B Part 2 + first on-device testing
 pass, now closed), PROGRESS2.md (Phase B build, B.1–B.14, closed),
