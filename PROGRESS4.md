@@ -13,6 +13,75 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — FI Calculator fresh investigation + fix, round 2 (bug #4)
+
+Investigated via Antigravity (investigation-only, no commits from the
+tool), specifically re-examining the real current code rather than
+re-applying the original diagnosis, per the still-broken symptoms found
+in the prior on-device re-test pass. Confirmed two separate root causes:
+
+- Preset/suggestion-button taps not saving immediately: a classic React
+  stale-closure bug. Each button called `setFiSwrInput(preset)` /
+  `setFiSavingsInput(...)` / `setFiMonthlySavingsInput(...)` and then
+  called `handleSaveFi()` on the very next line, inside the same
+  synchronous event handler. React state updates are asynchronous —
+  `handleSaveFi()` ran before the just-scheduled state update had
+  actually landed, so it read `fiSwrInput`/`fiSavingsInput`/
+  `fiMonthlySavingsInput` (via their `?? fiXDisplay` fallback) as their
+  OLD value from the current render's closure, and saved that stale
+  value instead of the one just tapped. This is the exact same class of
+  bug already fixed once for Emergency Fund's suggestion button (see bug
+  #5b), which was given an override parameter for the same reason —
+  `handleSaveFi` had not been given the same treatment.
+- "Years Until FI" still showing placeholder with Current Savings blank:
+  traced to Annual Expenses, not Current Savings. The prior fix's blank-
+  Current-Savings-to-0 change was confirmed correct and working
+  (`fiSavingsNum` does become `0`, which passes `fiCanProjectTimeline`'s
+  `!isNaN(...)` check) — but `fiCanProjectTimeline` also requires
+  `fiNumber !== null`, which requires `fiExpensesNum > 0`. Annual
+  Expenses was the one field, of five on this section, that never got
+  an `onBlur={handleSaveFi}` added in the original fix — so it silently
+  reverted to blank on leaving/returning to the screen, `fiNumber` stayed
+  `null`, and the calculation stayed blocked regardless of what was
+  filled into the other three fields. Separately confirmed the
+  placeholder text itself was misleading — it read "Enter an expected
+  return rate and monthly savings above to see this," never mentioning
+  Annual Expenses at all, which is why testing with only Current Savings
+  left blank didn't surface the real missing field.
+
+Applied fix (hand-pasted by the person after review, in two rounds — see
+below): gave `handleSaveFi` an optional `overrides` parameter
+(`{ expenses?, savings?, swr?, returnRate?, monthlySavings? }`), each
+falling back through the existing `input ?? display` chain when not
+passed, mirroring the same pattern already used for Emergency Fund's
+`handleSaveEf`. Updated the SWR preset buttons and both "tap to use
+this" suggestion buttons to pass the freshly-computed value straight
+into `handleSaveFi({ ... })` instead of relying on state that hasn't
+landed yet. Added the missing `onBlur={handleSaveFi}` to the Annual
+Expenses TextInput, matching the other four FI fields. Corrected the
+placeholder text to also mention Annual Expenses.
+
+First `npx tsc --noEmit` pass surfaced 6 real type errors: React
+Native's `TextInput`'s `onBlur` prop expects a `(e: BlurEvent) => void`
+and `TouchableOpacity`'s `onPress` expects a
+`(event: GestureResponderEvent) => void` — passing the now-differently-
+shaped `handleSaveFi` (which expects an optional overrides object, not
+an event) directly as those props no longer type-checked, on the 5
+`onBlur={handleSaveFi}` references and 1 `onPress={handleSaveFi}`
+reference (the main "Save" button) that hadn't been touched by this
+fix. Fixed by wrapping each in a no-argument arrow —
+`onBlur={() => handleSaveFi()}` / `onPress={() => handleSaveFi()}` —
+via a plain find/replace across all 6 occurrences, since the fix text is
+identical everywhere it appears. Second `npx tsc --noEmit` pass came
+back clean, 0 errors.
+
+Per the person's direction, on-device re-test of this fix is being
+DEFERRED — rather than testing bug #4 alone right now, it'll be tested
+together with bug #5/5b and everything else once the whole bug-fixing
+pass is done, batched into one on-device pass before/alongside moving to
+Phase C. Status below reflects "fix applied, compiles clean, on-device
+re-test still pending" rather than fully verified.
+
 ### Session — On-device re-test pass across bugs #1–13
 
 Ran the on-device re-test checklist across all 13 previously-fixed bugs.
@@ -622,23 +691,27 @@ pushed. Still needs a real on-device re-test to fully close out.
    on-device: typed a new threshold value, fully closed the app (swiped
    away, not just backgrounded), reopened it, and both Settings and Home's
    Left to Spend widget showed the new value. No further action needed.
-4. ⚠️ PARTIALLY FIXED — FI Calculator (Savings tab) still not fully
-   functional on-device. The onBlur auto-save added to all four fields
-   (SWR, expected return, monthly savings, current savings) IS confirmed
-   working — a typed value now survives leaving and returning to the
-   screen without needing to tap the main Save button. However, on-device
-   re-test found the other two parts of the original fix did NOT work:
-   (a) leaving "Current savings" blank while filling in the other three
-   fields still does not make "Years Until FI" calculate — it still shows
-   placeholder text, even though the fix changed blank-current-savings
-   parsing from `NaN` to `0`; (b) tapping an SWR preset button (3.5%/
-   4.0%/4.5%) or either "tap to use this" suggestion button still does
-   not save immediately, even though an inline `handleSaveFi()` call was
-   added to each of those onPress handlers. Since the on-device behavior
-   doesn't match what the applied fix should have produced, the original
-   diagnosis is incomplete or something else is interfering — NEEDS A
-   FRESH ANTIGRAVITY INVESTIGATION PROMPT against the real, current code
-   (not a re-application of the same fix) before writing a new patch.
+4. ⏸️ FIX APPLIED, TSC CLEAN, ON-DEVICE RE-TEST DEFERRED — FI Calculator
+   (Savings tab). Fresh investigation (round 2, see session log above)
+   found the preset/suggestion-button taps were a stale-closure bug —
+   `handleSaveFi()` was called immediately after `setState(...)` in the
+   same synchronous handler, so it read the OLD state value rather than
+   the one just tapped. Fixed by giving `handleSaveFi` an optional
+   overrides parameter so each button can pass its new value directly,
+   mirroring the pattern already used for Emergency Fund's
+   `handleSaveEf`. Separately found "Years Until FI" staying blocked with
+   Current Savings blank was actually caused by Annual Expenses — the one
+   FI field that never got an `onBlur` auto-save in the original fix, so
+   it reverted to blank on leaving the screen, which blocks the
+   calculation regardless of the other three fields; fixed by adding the
+   missing `onBlur`, and corrected the placeholder text (which never
+   mentioned Annual Expenses) to say so. `npx tsc --noEmit` clean (after
+   a follow-up fix for 6 type errors caused by wrapping `handleSaveFi` in
+   an overrides-object signature — `onBlur`/`onPress` needed a
+   no-argument arrow wrapper instead of a direct function reference).
+   Per the person's direction, on-device re-test is DEFERRED — will be
+   tested together with bug #5/5b and batched with the rest of this pass
+   before/alongside moving to Phase C, rather than tested alone now.
 5. / 5b. ⚠️ PARTIALLY FIXED — Emergency Fund "Saved" checkmark still
    doesn't appear. The onBlur auto-save added to both fields (expenses,
    savings) IS confirmed working — editing either field and leaving the
@@ -842,18 +915,20 @@ SettingsScreen.tsx/ProfileScreen.tsx fewer-words pass). New/modified files
 from here on will be tracked fresh in this file.
 
 ▶️ Next step
-- Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) are the only two
-  items left open from the original 13-bug list — the on-device re-test
-  pass confirmed 11 of 13 are genuinely fixed (see the numbered list
-  above), but both #4 and #5/5b still fail on-device in ways the original
-  fix should have resolved. Next step for each: get a fresh, investigation-
-  only Antigravity/Copilot prompt against the real, current code (not a
-  re-application of the prior diagnosis) — for #4, focus on why
-  `handleSaveFi` isn't triggering from the SWR/suggestion buttons and why
-  the FI projection still won't calculate with Current Savings left blank;
-  for #5/5b, focus on why `handleSaveEf` still isn't reaching
-  `setEfSaved(true)` after the null-crash fix. Review what each returns
-  before writing any new patch, per the standing verification rules.
+- Bug #4 (FI Calculator) has a fresh fix applied and `npx tsc --noEmit`
+  clean (see session log above) — on-device re-test is deliberately
+  deferred, not yet confirmed working on a real device.
+- Bug #5/5b (Emergency Fund) is the one remaining item from the original
+  13-bug list with no round-2 fix yet. Next step: get a fresh,
+  investigation-only Antigravity/Copilot prompt against the real, current
+  code (not a re-application of the prior null-crash diagnosis) — focus
+  on why `handleSaveEf` still isn't reaching `setEfSaved(true)` after
+  that fix. Review what it returns before writing any new patch, per the
+  standing verification rules.
+- Once #5/5b has a fix applied and compiling clean, do ONE combined
+  on-device re-test pass covering both bug #4 and bug #5/5b together,
+  rather than testing them separately — per the person's direction this
+  session.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.

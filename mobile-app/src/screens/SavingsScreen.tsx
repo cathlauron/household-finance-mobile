@@ -387,14 +387,20 @@ export default function SavingsScreen() {
     setTimeout(() => setEfSaved(false), 1800);
   }
 
-  async function handleSaveFi() {
+  async function handleSaveFi(overrides?: {
+    expenses?: string;
+    savings?: string;
+    swr?: string;
+    returnRate?: string;
+    monthlySavings?: string;
+  }) {
     if (!model) return;
     const current = calcInputsFromModel();
-    const expensesRaw = (fiExpensesInput ?? fiExpensesDisplay).trim();
-    const savingsRaw = (fiSavingsInput ?? fiSavingsDisplay).trim();
-    const swrRaw = (fiSwrInput ?? fiSwrDisplay).trim();
-    const returnRaw = (fiReturnRateInput ?? fiReturnDisplay).trim();
-    const monthlySavingsRaw = (fiMonthlySavingsInput ?? fiMonthlySavingsDisplay).trim();
+    const expensesRaw = (overrides?.expenses ?? fiExpensesInput ?? fiExpensesDisplay).trim();
+    const savingsRaw = (overrides?.savings ?? fiSavingsInput ?? fiSavingsDisplay).trim();
+    const swrRaw = (overrides?.swr ?? fiSwrInput ?? fiSwrDisplay).trim();
+    const returnRaw = (overrides?.returnRate ?? fiReturnRateInput ?? fiReturnDisplay).trim();
+    const monthlySavingsRaw = (overrides?.monthlySavings ?? fiMonthlySavingsInput ?? fiMonthlySavingsDisplay).trim();
     const expenses = expensesRaw === '' ? '' : parseFloat(expensesRaw);
     const savings = savingsRaw === '' ? '' : parseFloat(savingsRaw);
     const swr = swrRaw === '' ? '' : parseFloat(swrRaw);
@@ -731,6 +737,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiExpensesDisplay}
             onChangeText={setFiExpensesInput}
+            onBlur={() => handleSaveFi()}
           />
           {suggestedAnnualExpenses > 0 && (
             <TouchableOpacity
@@ -759,14 +766,15 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiSavingsDisplay}
             onChangeText={setFiSavingsInput}
-            onBlur={handleSaveFi}
+            onBlur={() => handleSaveFi()}
           />
           {suggestedNetWorth > 0 && (
             <TouchableOpacity
               style={styles.suggestionRow}
               onPress={() => {
-                setFiSavingsInput(String(Math.round(suggestedNetWorth * 100) / 100));
-                handleSaveFi();
+                const rounded = String(Math.round(suggestedNetWorth * 100) / 100);
+                setFiSavingsInput(rounded);
+                handleSaveFi({ savings: rounded });
               }}
             >
               <Text style={styles.suggestionText}>
@@ -787,7 +795,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 onPress={() => {
         setFiSwrCustomOpen(false);
         setFiSwrInput(preset);
-        handleSaveFi();
+        handleSaveFi({ swr: preset });
       }}
               >
                 <Text
@@ -825,7 +833,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               keyboardType="decimal-pad"
               value={fiSwrDisplay}
               onChangeText={setFiSwrInput}
-              onBlur={handleSaveFi}
+              onBlur={() => handleSaveFi()}
             />
           )}
 
@@ -837,7 +845,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiReturnDisplay}
             onChangeText={setFiReturnRateInput}
-            onBlur={handleSaveFi}
+            onBlur={() => handleSaveFi()}
           />
 
           <Text style={styles.inputLabel}>Monthly savings toward FI (optional)</Text>
@@ -848,14 +856,15 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             keyboardType="decimal-pad"
             value={fiMonthlySavingsDisplay}
             onChangeText={setFiMonthlySavingsInput}
-            onBlur={handleSaveFi}
+            onBlur={() => handleSaveFi()}
           />
           {suggestedMonthlySavings > 0 && (
             <TouchableOpacity
               style={styles.suggestionRow}
               onPress={() => {
-                setFiMonthlySavingsInput(String(Math.round(suggestedMonthlySavings * 100) / 100));
-                handleSaveFi();
+                const rounded = String(Math.round(suggestedMonthlySavings * 100) / 100);
+                setFiMonthlySavingsInput(rounded);
+                handleSaveFi({ monthlySavings: rounded });
               }}
             >
               <Text style={styles.suggestionText}>
@@ -891,14 +900,14 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               </>
             ) : (
               <Text style={styles.resultSub}>
-                Enter an expected return rate and monthly savings above to see this
+                Enter your annual expenses, expected return rate, and monthly savings above to see this
               </Text>
             )}
           </View>
 
           <TouchableOpacity
             style={[styles.saveButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
-            onPress={handleSaveFi}
+            onPress={() => handleSaveFi()}
           >
             {fiSaved && <Ionicons name="checkmark" size={16} color={colors.navy2} style={{ marginRight: 6 }} />}
             <Text style={styles.saveButtonText}>{fiSaved ? 'Saved' : 'Save'}</Text>
