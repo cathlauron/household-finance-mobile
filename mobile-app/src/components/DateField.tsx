@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,12 @@ export type DateFieldProps = {
   minimumDate?: Date;
   maximumDate?: Date;
 };
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 function parseISODate(iso: string): Date {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return new Date();
@@ -60,11 +66,43 @@ export default function DateField({
 
   const currentDateObj = value ? parseISODate(value) : new Date();
 
-  function handleAndroidChange(event: DateTimePickerEvent, selectedDate?: Date) {
-    setShowPicker(false);
-    if (event.type === 'set' && selectedDate) {
-      onChange(formatISODate(selectedDate));
+  // Android inline calendar month/year view state
+  const [viewYear, setViewYear] = useState(() => currentDateObj.getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => currentDateObj.getMonth());
+
+  // Whenever the picker opens or value changes, reset viewed month to current value (or today)
+  useEffect(() => {
+    if (showPicker) {
+      const d = value ? parseISODate(value) : new Date();
+      setViewYear(d.getFullYear());
+      setViewMonth(d.getMonth());
     }
+  }, [showPicker, value]);
+
+  function goPrevMonth() {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  }
+
+  function goNextMonth() {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  }
+
+  function handleSelectDay(day: number) {
+    const mStr = String(viewMonth + 1).padStart(2, '0');
+    const dStr = String(day).padStart(2, '0');
+    const isoStr = `${viewYear}-${mStr}-${dStr}`;
+    onChange(isoStr);
+    setShowPicker(false);
   }
 
   function handleIOSChange(event: DateTimePickerEvent, selectedDate?: Date) {
@@ -77,6 +115,25 @@ export default function DateField({
     onChange('');
     setShowPicker(false);
   }
+
+  // Pre-calculate calendar grid cells for Android inline view
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sunday
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  // Pad the final week so all rows maintain exactly 7 columns
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push(cells.slice(i, i + 7));
+  }
+
+  const todayIso = formatISODate(new Date());
+  const minIso = minimumDate ? formatISODate(minimumDate) : null;
+  const maxIso = maximumDate ? formatISODate(maximumDate) : null;
 
   return (
     <View style={[styles.container, style]}>
@@ -102,17 +159,89 @@ export default function DateField({
         </View>
       </TouchableOpacity>
 
+      {/* Android: In-app themed inline calendar card */}
       {showPicker && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={currentDateObj}
-          mode="date"
-          display="default"
-          onChange={handleAndroidChange}
-          minimumDate={minimumDate}
-          maximumDate={maximumDate}
-        />
+        <View style={styles.androidPickerCard}>
+          <View style={styles.androidPickerHeader}>
+            <TouchableOpacity
+              onPress={goPrevMonth}
+              style={styles.androidNavButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chevron-back" size={18} color={colors.ink} />
+            </TouchableOpacity>
+
+            <Text style={styles.androidMonthLabel}>
+              {MONTHS[viewMonth]} {viewYear}
+            </Text>
+
+            <TouchableOpacity
+              onPress={goNextMonth}
+              style={styles.androidNavButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chevron-forward" size={18} color={colors.ink} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.dowRow}>
+            {DOW.map((d) => (
+              <View key={d} style={styles.dowCell}>
+                <Text style={styles.dowText}>{d}</Text>
+              </View>
+            ))}
+          </View>
+
+          {rows.map((row, rIdx) => (
+            <View key={rIdx} style={styles.weekRow}>
+              {row.map((day, cIdx) => {
+                if (day === null) {
+                  return <View key={cIdx} style={[styles.dayCell, styles.dayCellEmpty]} />;
+                }
+
+                const dayStr = String(day).padStart(2, '0');
+                const mStr = String(viewMonth + 1).padStart(2, '0');
+                const cellIso = `${viewYear}-${mStr}-${dayStr}`;
+
+                const isSelected = value === cellIso;
+                const isToday = cellIso === todayIso;
+
+                const isDisabled =
+                  (minIso !== null && cellIso < minIso) ||
+                  (maxIso !== null && cellIso > maxIso);
+
+                return (
+                  <TouchableOpacity
+                    key={cIdx}
+                    disabled={isDisabled}
+                    onPress={() => handleSelectDay(day)}
+                    activeOpacity={0.6}
+                    style={[
+                      styles.dayCell,
+                      isToday && styles.dayCellToday,
+                      isSelected && styles.dayCellSelected,
+                      isDisabled && styles.dayCellDisabled,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        isToday && styles.dayTextToday,
+                        isSelected && styles.dayTextSelected,
+                        isDisabled && styles.dayTextDisabled,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+        </View>
       )}
 
+      {/* iOS: Native inline DateTimePicker inside card (unchanged) */}
       {showPicker && Platform.OS === 'ios' && (
         <View style={styles.iosPickerCard}>
           <View style={styles.iosPickerHeader}>
@@ -200,6 +329,90 @@ function makeStyles(colors: any) {
       fontSize: 14,
       fontWeight: '600',
       color: colors.accent,
+    },
+    androidPickerCard: {
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      marginTop: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.navy4 || 'rgba(0,0,0,0.06)',
+    },
+    androidPickerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+      paddingHorizontal: 4,
+    },
+    androidNavButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.navy2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    androidMonthLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    dowRow: {
+      flexDirection: 'row',
+      marginBottom: 6,
+    },
+    dowCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 2,
+    },
+    dowText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.inkFaint,
+      textTransform: 'uppercase',
+    },
+    weekRow: {
+      flexDirection: 'row',
+      marginBottom: 4,
+    },
+    dayCell: {
+      flex: 1,
+      aspectRatio: 1,
+      margin: 2,
+      borderRadius: 8,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayCellEmpty: {
+      backgroundColor: 'transparent',
+    },
+    dayCellToday: {
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+    },
+    dayCellSelected: {
+      backgroundColor: colors.accent,
+    },
+    dayCellDisabled: {
+      opacity: 0.25,
+    },
+    dayText: {
+      fontSize: 13,
+      color: colors.ink,
+    },
+    dayTextToday: {
+      color: colors.gold,
+      fontWeight: '700',
+    },
+    dayTextSelected: {
+      color: '#ffffff',
+      fontWeight: '700',
+    },
+    dayTextDisabled: {
+      color: colors.inkFaint,
     },
   });
 }

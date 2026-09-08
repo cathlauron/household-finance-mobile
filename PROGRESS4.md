@@ -13,6 +13,42 @@ and PROGRESS.md (original Phases 0–11) are closed/historical before that.
 (New sessions from here on get logged here, newest near the top, same
 format as PROGRESS3.md's own session entries.)
 
+### Session — Android date picker replaced with in-app themed calendar (design-change request)
+
+Scoped and implemented via Antigravity (investigation + drafted
+implementation only, no commits from the tool). Scoping pass found all
+15 date-selection points across 9 screens already route through a
+single shared component, src/components/DateField.tsx — no screen
+files needed to change. Confirmed
+`@react-native-community/datetimepicker`'s Android implementation
+literally returns `null` from its React component and hands off
+entirely to the Android OS's native DatePickerDialog/MaterialDatePicker
+— there's no prop or mode to theme it in-app. Also confirmed every
+DateField call site already sits inside a BottomSheet or Modal, ruling
+out a nested `<Modal>` approach for the replacement (Android has known
+issues with nested modals) in favor of an inline expanding card, the
+same pattern the iOS branch already uses.
+
+Implemented (hand-pasted by the person after review): rewrote
+DateField.tsx's Android branch to render a fully custom, theme-aware
+inline calendar card in place of the native picker — month/year header
+with chevron navigation (reusing the exact day-count/first-weekday math
+already working in CalendarScreen.tsx), a day-of-week row, and a padded
+7-column day grid. Added local `viewYear`/`viewMonth` state (reset via
+`useEffect` whenever the picker opens or `value` changes) separate from
+the selected value. Selecting a day calls the existing `onChange`
+callback and closes the card, matching the native picker's prior
+behavior. Dates outside `minimumDate`/`maximumDate` render disabled and
+dimmed via ISO-string comparison. Today's date gets a gold border;
+the selected date gets a solid accent-color fill. Zero new npm
+dependencies — pure View/Text/TouchableOpacity, matching the app's
+existing components. iOS's native inline picker is completely
+untouched. Given the scope of the change (touching nearly every part
+of the file), it was applied as a full-file replacement rather than
+piecemeal snippets. `npx tsc --noEmit` clean. Still needs a real
+on-device re-test on Android — not yet confirmed working on a physical
+device.
+
 ### Session — Emergency Fund "Saved" checkmark, round 2 fix (bug #5/5b)
 
 Investigated via Antigravity (investigation-only, no commits from the
@@ -904,8 +940,12 @@ pushed. Still needs a real on-device re-test to fully close out.
     for each icon. No further action needed.
 
 🎨 Design-change requests surfaced during testing (need scoping, not quick fixes)
-- Replace Android's native date picker with the app's own themed calendar
-  popup.
+- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Replace
+  Android's native date picker with the app's own themed calendar
+  popup. See session log above for full detail — DateField.tsx now
+  renders a fully custom in-app calendar on Android (zero new
+  dependencies, all 15 call sites unaffected, iOS untouched). Needs a
+  real Android device test before this can be marked done.
 - Replace the PIN "Turn Off" text button with a toggle switch.
 - Redesign the SUB/CANCELLED badge as a real hollow-box badge (matching
   Accounts' Cash/Debit/Credit badges) instead of blending in as plain text.
@@ -963,6 +1003,12 @@ from here on will be tracked fresh in this file.
   re-test pass covering both together, per the person's standing
   direction — this closes out the entire original 13-bug list once
   confirmed.
+- The new Android in-app date-picker calendar (DateField.tsx) is
+  implemented and `npx tsc --noEmit` clean, but not yet tested on a
+  real Android device — worth folding into the same on-device pass as
+  bugs #4/#5-5b, checking a few different screens (e.g. Bills' due
+  date, Savings' target date) since it's a shared component used
+  everywhere a date is picked.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
