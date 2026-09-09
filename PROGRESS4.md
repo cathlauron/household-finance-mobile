@@ -81,12 +81,10 @@ this report. Judged acceptable to leave as-is — the trimmed text still
 conveys that fees need to be logged, just without the precise field
 name — not blocking the commit over it.
 
-⚠️ STATUS: this session's 19-file batch was committed and pushed, but
-the two wording corrections above were NOT yet pasted into
-CsvImportModal.tsx / LoanPayoffSimulatorModal.tsx before that commit.
-These two edits still need to be applied by hand, followed by a fresh
-`npx tsc --noEmit` and another commit+push, before the "fewer words"
-initiative can be considered fully closed.
+⚠ CONFIRMED (next session, via fresh Antigravity investigation): both
+wording corrections were already present on disk in the committed 19-file
+batch — the "pending" note above was stale. "fewer words" ranked inventory
+is now fully closed across all screens.
 
 ### Session — B.12b-3: scenario-comparison modal (implemented) — completes B.12b
 
@@ -1930,11 +1928,6 @@ from here on will be tracked fresh in this file.
   LoanPayoffSimulatorModal.tsx's structure.
 
 ▶️ Next step
-- IMMEDIATE: paste the two corrected wording fixes into
-  CsvImportModal.tsx and LoanPayoffSimulatorModal.tsx (see the top
-  session entry for exact before/after text), re-run
-  `npx tsc --noEmit`, then commit and push. This closes out the ENTIRE
-  "fewer words" ranked inventory.
 - Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions
   rows is now IMPLEMENTED and `npx tsc --noEmit` clean — fold into the
   same combined on-device pass described below: swipe each of the four
