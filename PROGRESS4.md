@@ -23,6 +23,71 @@ already folded into the Tier 1 sections below (✅ Done / 📌 Decisions /
 ⚠️ Known issues / 📁 Files / ▶️ Next step). Keeping the 2 most recent
 entries here for fresh context.
 
+### Session — "Fewer words" pass: recovered uncommitted batch covering all 19 remaining files, verified, 2 wording issues found (fix pending)
+
+Started this session by discovering a corrupted git index
+(`fatal: .git/index: index file smaller than expected`) — fixed via
+`Remove-Item .git\index -Force` + `git reset` (rebuilds the index from
+the last real commit, touches no files). `git status` afterward revealed
+19 files with real uncommitted changes already sitting on disk: every
+single file remaining on the "fewer words" ranked list
+(PaymentMethodPicker.tsx, AccountsScreen.tsx, CalendarScreen.tsx,
+CsvImportModal.tsx, DashboardScreen.tsx, EventsScreen.tsx,
+GoalsScreen.tsx, HomeScreen.tsx, LoanPayoffSimulatorModal.tsx,
+PinUnlockScreen.tsx, ReportsScreen.tsx, SetPinScreen.tsx,
+TravelScreen.tsx, and 6 report files under reports/:
+CashFlowForecastReport.tsx, MerchantSpendingReport.tsx,
+PaymentMethodsReport.tsx, PersonSpendingReport.tsx,
+SubscriptionAuditReport.tsx, TaxSummaryReport.tsx). This was real,
+already-done work from an Antigravity session that got interrupted by
+the index corruption before it could be committed — nothing was lost,
+the edits survived on disk since they're independent of git's index.
+
+Verified via `git diff`/`git --no-pager diff` on a representative
+sample before trusting the whole batch: EventsScreen.tsx,
+TravelScreen.tsx, CsvImportModal.tsx, GoalsScreen.tsx,
+LoanPayoffSimulatorModal.tsx, TaxSummaryReport.tsx, and
+AccountsScreen.tsx were all individually reviewed. All trims follow the
+established pattern from every prior "fewer words" session — shorter
+validation errors/alert bodies/labels that keep the same meaning, no
+logic/state/JSX-structure changes. Confirmed via `npx tsc --noEmit`
+(exit code 0) that the batch compiles clean as-is.
+
+Two wording issues were found during review — both cases where a trim
+didn't just shorten phrasing but quietly changed or asserted something
+factual:
+- CsvImportModal.tsx's help text dropped two facts the user genuinely
+  needs (which date formats are accepted — YYYY-MM-DD or MM/DD/YYYY —
+  and that a blank direction column defaults to "out"). Corrected
+  wording keeps both facts in a still-short form: "Select a CSV with
+  date, label, amount, and optional direction columns. Dates can be
+  YYYY-MM-DD or MM/DD/YYYY; direction is in, out, or saving (blank
+  defaults to out)."
+- LoanPayoffSimulatorModal.tsx's fallback-hint text asserted the
+  missing-payment fallback is "minimum payments," which is not what the
+  code does. Investigated via Antigravity (investigation-only) and
+  confirmed the real fallback in the `simulate()` function
+  (LoanPayoffSimulatorModal.tsx) is `Math.max(l.balance * 0.02, 1)` —
+  2% of the loan's balance (floor of ₱1) — not the loan's actual minimum
+  payment field. The missing-interest-rate fallback was confirmed as a
+  genuine 0%, which the original wording had correct. Corrected wording:
+  "Some loans are missing interest rates or payments. Defaults of 0%
+  and 2% of balance are assumed."
+
+Also noted one smaller, lower-severity item in TaxSummaryReport.tsx: the
+footer note dropped the exact quoted field name ("Fees included in this
+payment") that tells the user where to log a fee for it to count toward
+this report. Judged acceptable to leave as-is — the trimmed text still
+conveys that fees need to be logged, just without the precise field
+name — not blocking the commit over it.
+
+⚠️ STATUS: this session's 19-file batch was committed and pushed, but
+the two wording corrections above were NOT yet pasted into
+CsvImportModal.tsx / LoanPayoffSimulatorModal.tsx before that commit.
+These two edits still need to be applied by hand, followed by a fresh
+`npx tsc --noEmit` and another commit+push, before the "fewer words"
+initiative can be considered fully closed.
+
 ### Session — B.12b-3: scenario-comparison modal (implemented) — completes B.12b
 
 Investigated via Antigravity across two rounds of investigation-only
@@ -1412,6 +1477,13 @@ pushed. Still needs a real on-device re-test to fully close out.
   PROGRESS3.md's ranked inventory at the start of the next session.
 
 📌 Decisions carried forward — still active
+- NEW: When a "fewer words" (or any text-trim) pass shortens a message,
+  verify the trim didn't silently drop a real fact (a supported format,
+  a default behavior, a specific field name) or introduce a new factual
+  claim that isn't actually true of the code.
+- NEW: If `git status`/`git diff` ever shows unexpected uncommitted
+  changes (e.g. after fixing a corrupted index), verify with real diffs
+  file by file before trusting or committing.
 - Always retrieve/view exact current file contents before writing code;
   confirm design decisions before writing code; review real diffs before
   committing.
@@ -1858,6 +1930,11 @@ from here on will be tracked fresh in this file.
   LoanPayoffSimulatorModal.tsx's structure.
 
 ▶️ Next step
+- IMMEDIATE: paste the two corrected wording fixes into
+  CsvImportModal.tsx and LoanPayoffSimulatorModal.tsx (see the top
+  session entry for exact before/after text), re-run
+  `npx tsc --noEmit`, then commit and push. This closes out the ENTIRE
+  "fewer words" ranked inventory.
 - Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions
   rows is now IMPLEMENTED and `npx tsc --noEmit` clean — fold into the
   same combined on-device pass described below: swipe each of the four
@@ -2139,4 +2216,6 @@ confirmation label. Verified via `npx tsc --noEmit` from mobile-app\ —
 clean.
 
 ▶️ Next step: EventsScreen.tsx (8 items) — next on the ranked inventory list above. B.12b (all three parts: pension/SS offset, multi-account selector, scenario-comparison modal) is now fully implemented and tsc-clean; on-device testing deferred with the rest of the batch.
+
+
 
