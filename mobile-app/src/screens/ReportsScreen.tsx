@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -41,6 +41,7 @@ export default function ReportsScreen() {
   const [activeReport, setActiveReport] = useState<ReportTab>('monthly');
   const [activeTag, setActiveTag] = useState<string | undefined>(undefined);
   const [hiddenReportIds, setHiddenReportIdsState] = useState<ReportTab[]>([]);
+  const hiddenReportIdsRef = useRef<ReportTab[]>([]);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const { colors } = useTheme();
   const { model, username } = useData();
@@ -48,7 +49,11 @@ export default function ReportsScreen() {
 
   useEffect(() => {
     if (!username) return;
-    getHiddenReportIds(username).then((ids) => setHiddenReportIdsState(ids as ReportTab[]));
+    getHiddenReportIds(username).then((ids) => {
+      const tabs = ids as ReportTab[];
+      hiddenReportIdsRef.current = tabs;
+      setHiddenReportIdsState(tabs);
+    });
   }, [username]);
 
   const visibleTabs = REPORT_TABS.filter((tab) => !hiddenReportIds.includes(tab.id));
@@ -62,9 +67,12 @@ export default function ReportsScreen() {
 
   async function toggleReportVisibility(id: ReportTab) {
     if (!username) return;
-    const next = hiddenReportIds.includes(id)
-      ? hiddenReportIds.filter((x) => x !== id)
-      : [...hiddenReportIds, id];
+    const current = hiddenReportIdsRef.current;
+    const next = current.includes(id)
+      ? current.filter((x) => x !== id)
+      : [...current, id];
+    console.log('[ReportsScreen] toggleReportVisibility', { id, next });
+    hiddenReportIdsRef.current = next;
     setHiddenReportIdsState(next);
     try {
       await setHiddenReportIds(username, next);
@@ -86,6 +94,8 @@ export default function ReportsScreen() {
 
   const TAG_FILTERED_TABS: ReportTab[] = ['monthly', 'yearly', 'person', 'weekly', 'merchant', 'tax'];
   const showTagToolbar = TAG_FILTERED_TABS.includes(activeReport) && distinctTags.length > 0;
+
+  console.log('[ReportsScreen] render', { hiddenReportIds, hiddenReportIdsRef: hiddenReportIdsRef.current });
 
   return (
     <View style={styles.container}>
