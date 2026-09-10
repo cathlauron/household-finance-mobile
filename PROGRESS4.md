@@ -23,6 +23,94 @@ already folded into the Tier 1 sections below (✅ Done / 📌 Decisions /
 ⚠️ Known issues / 📁 Files / ▶️ Next step). Keeping the 2 most recent
 entries here for fresh context.
 
+### Session — Combined on-device re-test pass: 11 of 12 pending areas fully confirmed, 1 new bug found (Reports "Customize" multi-select not live)
+
+Ran the full combined on-device re-test pass across every item deferred
+across prior sessions, per the standing "batch everything, test once"
+direction: bug #4 (FI Calculator), bug #5/5b (Emergency Fund), and all
+9 pending design-change items (Android in-app date picker, bottom-nav
+Calendar removal + Home date shortcut, PIN "Turn Off" toggle,
+SUB/CANCELLED hollow-box badge, "Which of these is you?" confirm/cancel
+step, Reports screen checkbox show/hide, ToPayScreen/PlanningScreen
+icon+title pill reversal, swipe-to-navigate on Bills-derived
+Transactions rows, swipe-to-navigate on Debt/Loan/Income/Savings-
+derived rows), plus B.12b (Pension/Social Security offset, multi-
+account selector, scenario-comparison modal).
+
+CONFIRMED FIXED/WORKING, no further action needed (11 of 12 areas —
+every checklist item passed exactly as expected):
+- Bug #4 (FI Calculator): all four checklist items confirmed — SWR
+  preset buttons and both "tap to use this" suggestion buttons now save
+  immediately; leaving "Current savings" blank while filling in Annual
+  Expenses + Expected Return + Monthly Savings now correctly calculates
+  "Years Until FI" instead of showing the placeholder; and Annual
+  Expenses now correctly survives leaving and returning to the screen.
+- Bug #5/5b (Emergency Fund): all three checklist items confirmed —
+  editing only one of the two fields and tapping Save now shows the
+  "Saved" checkmark; using "use suggested expenses" without typing
+  anything else and tapping Save now shows the checkmark; and editing
+  either field and leaving the screen without tapping Save now
+  correctly auto-saves.
+- Android in-app date-picker calendar (DateField.tsx): confirmed
+  working across multiple screens (Bills due date, Savings target
+  date).
+- Bottom nav Calendar removal + Home date shortcut: confirmed the
+  4-tab bar (Home, To-Pay, Transactions, More) looks correct, and
+  tapping the new date pill on Home opens Calendar with the back button
+  correctly returning to Home.
+- PIN "Turn Off" → toggle switch: confirmed toggling off still shows
+  the existing confirmation alert and spinner, toggling back on opens
+  SetPinScreen, and "Change PIN" still opens its modal when a PIN is
+  set.
+- SUB/CANCELLED hollow-box badge: confirmed spacing/alignment looks
+  correct next to the bill name in both states.
+- "Which of these is you?" confirm/cancel step: confirmed tapping a
+  different person shows the Confirm/Cancel row, Cancel reverts without
+  saving, and Confirm updates Transactions and the Person Spending
+  report live with no restart needed.
+- ToPayScreen/PlanningScreen icon+title pill reversal: confirmed both
+  screens' pills render correctly and tapping still switches sub-tabs
+  (Bills/Debts/Loans; Groceries/Travel/Events/Goals).
+- Swipe-to-navigate on Bills-derived Transactions rows: confirmed the
+  gold "View Bill" action appears (not delete), tapping it opens the
+  To-Pay tab with that bill's edit sheet already open, a second swipe
+  of the same bill still opens it, and manual transaction rows still
+  swipe-to-delete normally.
+- Swipe-to-navigate on Debt/Loan/Income/Savings-derived rows: confirmed
+  all four row types (debt → Debts sub-tab, loan → Loans sub-tab,
+  income → Income screen with that source's edit sheet, savings →
+  Savings screen with that goal's edit sheet) open the right record,
+  and a second swipe of the same record still works for all four.
+- B.12b (Pension/Social Security offset, multi-account selector,
+  scenario-comparison modal): confirmed entering a Pension/SS amount
+  recalculates the FI number using net expenses; "Choose which accounts
+  count" correctly updates the net-worth suggestion when an account is
+  deselected; "Compare Scenarios" opens with Base Plan matching the
+  currently saved values; typing into What-If fields updates
+  numbers/timeline live without touching the saved plan; leaving a
+  What-If field blank correctly falls back to the Base Plan's value;
+  and "Reset What-If to Base Plan" clears everything.
+
+This closes out bugs #4 and #5/5b — all 13 bugs from the original list
+are now fully verified on-device — and closes out every design-change
+item except one.
+
+NEW BUG FOUND, tracked as bug #14 (1 of 12 areas): the Reports screen's
+"Customize" checkbox list does not reflect a multi-select in real
+time — checking several reports in the same sitting only shows the
+first one chosen; the others don't appear in the tab row until the
+sheet is closed and reopened. Every individual sub-item on the original
+checklist (open Customize, single check/uncheck, unchecking the active
+report and confirming auto-switch, unchecking all 9 and confirming the
+empty-state message, re-checking some, the tag-filter toolbar still
+working) passed correctly on its own — this only surfaces specifically
+with multiple selections made in one sitting. Person's own suggested
+direction: add an explicit confirm/apply button for the selected
+reports, rather than relying on instant per-checkbox live updates. Not
+yet investigated — needs a fresh Antigravity investigation pass against
+the real current code before any fix is written. See ⚠️ Known issues
+below for the tracked entry.
+
 ### Session — "Fewer words" pass: recovered uncommitted batch covering all 19 remaining files, verified, 2 wording issues found (fix pending)
 
 Started this session by discovering a corrupted git index
@@ -1573,7 +1661,7 @@ pushed. Still needs a real on-device re-test to fully close out.
    on-device: typed a new threshold value, fully closed the app (swiped
    away, not just backgrounded), reopened it, and both Settings and Home's
    Left to Spend widget showed the new value. No further action needed.
-4. ⏸️ FIX APPLIED, TSC CLEAN, ON-DEVICE RE-TEST DEFERRED — FI Calculator
+4. ✅ VERIFIED ON-DEVICE — FI Calculator
    (Savings tab). Fresh investigation (round 2, see session log above)
    found the preset/suggestion-button taps were a stale-closure bug —
    `handleSaveFi()` was called immediately after `setState(...)` in the
@@ -1591,11 +1679,13 @@ pushed. Still needs a real on-device re-test to fully close out.
    a follow-up fix for 6 type errors caused by wrapping `handleSaveFi` in
    an overrides-object signature — `onBlur`/`onPress` needed a
    no-argument arrow wrapper instead of a direct function reference).
-   Per the person's direction, on-device re-test is DEFERRED — will be
-   tested together with bug #5/5b and batched with the rest of this pass
-   before/alongside moving to Phase C, rather than tested alone now.
-5. / 5b. ⏸️ FIX APPLIED (round 2), TSC CLEAN, ON-DEVICE RE-TEST
-   DEFERRED — Emergency Fund "Saved" checkmark. The onBlur auto-save
+   CONFIRMED on-device: SWR presets and both suggestion buttons save
+   immediately; leaving Current Savings blank while the other three
+   fields are filled in now correctly calculates "Years Until FI"; and
+   Annual Expenses now survives leaving and returning to the screen. No
+   further action needed.
+5. / 5b. ✅ VERIFIED ON-DEVICE — Emergency Fund "Saved" checkmark. The
+   onBlur auto-save
    added to both fields (expenses, savings) IS confirmed working —
    editing either field and leaving the screen without tapping Save now
    sticks. Round 1's null-crash fix to `handleSaveEf` itself was
@@ -1609,9 +1699,10 @@ pushed. Still needs a real on-device re-test to fully close out.
    aborted `handleSaveEf` before `setEfSaved(true)`. Fixed by rewriting
    `calcInputsFromModel()` to always start from the full defaults object
    and spread the saved data on top, rather than choosing one or the
-   other. `npx tsc --noEmit` clean. Per the person's direction, on-device
-   re-test is DEFERRED — will be tested together with bug #4 in one
-   combined pass, not tested alone.
+   other. `npx tsc --noEmit` clean. CONFIRMED on-device: editing only
+   one field, and using "use suggested expenses" without typing
+   anything else, both now correctly show the "Saved" checkmark. No
+   further action needed.
 6. ✅ VERIFIED ON-DEVICE — None of the 3 promised background-save
    warnings ever showed on-device. Root cause: same disease as bug #2 —
    five separate `saveProfileCloudBackup`/`saveRecoveryKey`/
@@ -1745,105 +1836,88 @@ pushed. Still needs a real on-device re-test to fully close out.
     instead of a hardcoded `-1000`. `npx tsc --noEmit` clean. CONFIRMED
     on-device: tapping the Cards/List toggle showed the floating label
     for each icon. No further action needed.
+14. 🔧 NEEDS INVESTIGATION — Reports screen "Customize" checkbox list
+    doesn't reflect a multi-select live. Checking several report
+    checkboxes in the same sitting (without closing/reopening the
+    BottomSheet) only shows the first one chosen in the tab row — the
+    others don't appear until the sheet is closed and reopened. Found
+    during the combined on-device re-test pass; every other individual
+    checklist item for this screen (open/close Customize, single
+    check/uncheck, unchecking the active report, unchecking all 9,
+    re-checking, the tag-filter toolbar) passed correctly on its own —
+    this only surfaces specifically with multiple selections made in
+    one sitting. Person's suggested direction: add an explicit
+    confirm/apply button for the selected reports rather than relying
+    on instant per-checkbox live updates. Not yet investigated — needs
+    a fresh Antigravity investigation-only prompt against the real
+    current reportVisibility.ts/ReportsScreen.tsx code before any fix
+    is written.
 
-🎨 Design-change requests surfaced during testing (need scoping, not quick fixes)
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Replace
-  Android's native date picker with the app's own themed calendar
-  popup. See session log above for full detail — DateField.tsx now
-  renders a fully custom in-app calendar on Android (zero new
-  dependencies, all 15 call sites unaffected, iOS untouched). Needs a
-  real Android device test before this can be marked done.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Bottom nav:
-  Calendar dropped as a bottom tab (now 4 tabs: Home, To-Pay,
-  Transactions, More); CalendarScreen moved into RootStack.tsx as a
-  plain stack screen (`title: 'Calendar'`, back button reads "Home");
-  a small tappable date pill (icon + today's date) was added to
-  HomeScreen.tsx's top row, navigating to Calendar on tap. See session
-  log above for full detail. Needs a real on-device test to confirm the
-  new stack screen's back-navigation and the Home date pill both behave
-  correctly.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — PIN "Turn Off"
-  text button replaced with a toggle switch, matching the biometrics
-  toggle pattern already used elsewhere in Settings. "Change PIN" moved
-  to its own row underneath, shown only when a PIN is set. The existing
-  `pinBusy`/`removePin`/confirmation-alert logic from bug #10 is
-  untouched — only the on/off control changed from a button to a
-  toggle. See session log above for full detail. Needs a real on-device
-  test (both toggle directions, plus "Change PIN" still opening the
-  modal) before this can be marked done.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — SUB/CANCELLED
-  badge on Bills redesigned from plain text into a hollow-bordered
-  badge box (gold border for SUB, faint border for CANCELLED). Only one
-  spot in the whole codebase needed the change (BillsScreen.tsx's
-  collapsed bill row). See session log above for full detail. Low
-  visual risk (pure style change), but still worth a quick look
-  on-device to confirm spacing/alignment looks right next to the bill
-  name.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — "Which of
-  these is you?" now requires an explicit Confirm/Cancel step instead
-  of saving instantly on tap. Tapping a name only updates local pending
-  state; Confirm calls the same real `setMyPersonId` used before (so
-  bug #12's live-update-without-restart behavior is unchanged), Cancel
-  discards the pending pick. See session log above for full detail.
-  Needs a real on-device test: tap a different person, confirm
-  Transactions/Person Spending still update live without a restart
-  after tapping Confirm, and confirm Cancel correctly reverts the
-  highlight to the previously-saved person.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Reports
-  screen redesigned with a checkbox-driven show/hide list for its 9
-  report tabs. A new trailing "Customize" icon opens a BottomSheet
-  checkbox list (per-profile AsyncStorage preference, new
-  reportVisibility.ts file); unchecking a report removes its tab from
-  the row, unchecking the active tab auto-switches to the next visible
-  one, and unchecking everything shows an empty-state message instead
-  of a blank screen. See session log above for full detail. Needs a
-  real on-device test: open Customize, uncheck a few reports (including
-  the currently active one) and confirm the tab row/active report
-  update correctly, uncheck all 9 and confirm the empty-state message
-  appears, re-check some and confirm they reappear, and confirm the
-  tag-filter toolbar (on the 6 tag-filtered reports) still works
-  normally throughout.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING —
-  ToPayScreen.tsx and PlanningScreen.tsx's segmented pill tabs reversed
-  from icon-only circles back to icon + title pills, restoring each
-  screen's real pre-iconization pill style. `IconLabelHint` dropped
-  from both screens in favor of a plain icon + Text pill, since the
-  floating tooltip is redundant once the label is always visible. See
-  session log above for full detail. Needs a real on-device test:
-  confirm both screens' pills look right (spacing, active/inactive
-  colors) and that tapping still switches sub-tabs correctly on both
-  screens (Bills/Debts/Loans on ToPay; Groceries/Travel/Events/Goals on
-  Planning).
-- Bottom nav: drop Calendar as a bottom tab entirely, replace with a small
-  tappable date element at the top-center of Home that navigates to
-  Calendar.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Enable swipe on
-  Transactions' bill-derived rows (Option B — navigate to the source
-  Bill instead of allowing delete). Reuses a new transient pub-sub
-  module (openBillRequest.ts) rather than the notification-only
-  `openBillId` deep-link chain, specifically so it works safely from
-  inside an already-open app and so a repeat swipe of the same bill
-  still works. See session log above for full detail. Needs a real
-  on-device test: swipe a bill-sourced transaction row, confirm a gold
-  "View Bill" action appears (not the red delete button), confirm
-  tapping it switches to the To-Pay tab with that bill's edit sheet
-  already open, and confirm swiping the SAME bill's row a second time
-  still opens it (not just the first time). Also confirm manual
-  transaction rows still swipe-to-delete exactly as before.
-- ⏸️ IMPLEMENTED, TSC CLEAN, ON-DEVICE RE-TEST PENDING — Swipe-to-
-  navigate on Debt/Loan/Income/Savings-derived Transactions rows.
-  Debts/Loans reuse the same pub-sub mechanism as Bills (new
-  openDebtRequest.ts/openLoanRequest.ts, mirrored 1:1, Bills left
-  untouched); Income/Savings use a simpler plain-navigation-param
-  approach instead, since they're standalone RootStack screens rather
-  than ToPayScreen tabs and don't need the pub-sub/nonce mechanism at
-  all. See session log above for full detail. Needs a real on-device
-  test: swipe a debt-sourced row (gold "View Debt" action → opens on
-  the Debts sub-tab), a loan-sourced row (→ Loans sub-tab), an
-  income-sourced row (→ Income screen with that source's edit sheet
-  open), and a savings-sourced row (→ Savings screen with that goal's
-  edit sheet open) — confirm each opens the right record, and confirm
-  a second swipe of the same record still works for all four.
+🎨 Design-change requests — implemented, now confirmed on-device (except one, see bug #14)
+- ✅ VERIFIED ON-DEVICE — Android in-app themed calendar replacing the
+  native date picker (DateField.tsx). CONFIRMED on-device across
+  multiple screens (Bills due date, Savings target date). No further
+  action needed.
+- ✅ VERIFIED ON-DEVICE — Bottom nav: Calendar dropped as a bottom tab
+  (now 4 tabs: Home, To-Pay, Transactions, More); CalendarScreen moved
+  into RootStack.tsx as a plain stack screen (`title: 'Calendar'`, back
+  button reads "Home"); a small tappable date pill added to
+  HomeScreen.tsx's top row. CONFIRMED on-device: the 4-tab bar looks
+  correct, and tapping the date pill opens Calendar with the back
+  button correctly returning to Home. No further action needed.
+- ✅ VERIFIED ON-DEVICE — PIN "Turn Off" text button replaced with a
+  toggle switch, matching the biometrics toggle pattern; "Change PIN"
+  moved to its own row underneath, shown only when a PIN is set.
+  CONFIRMED on-device: toggling off still shows the existing
+  confirmation alert and spinner, toggling back on opens SetPinScreen,
+  and "Change PIN" still opens its modal when a PIN is set. No further
+  action needed.
+- ✅ VERIFIED ON-DEVICE — SUB/CANCELLED badge on Bills redesigned into
+  a hollow-bordered badge box (gold border for SUB, faint border for
+  CANCELLED). CONFIRMED on-device: spacing/alignment looks correct next
+  to the bill name in both states. No further action needed.
+- ✅ VERIFIED ON-DEVICE — "Which of these is you?" now requires an
+  explicit Confirm/Cancel step instead of saving instantly on tap.
+  CONFIRMED on-device: tapping a different person shows the
+  Confirm/Cancel row, Cancel reverts without saving, and Confirm
+  updates Transactions and the Person Spending report live with no
+  restart needed (bug #12 behavior unaffected). No further action
+  needed.
+- ⚠️ IMPLEMENTED, MOSTLY CONFIRMED — ONE NEW ISSUE FOUND (see bug #14)
+  — Reports screen redesigned with a checkbox-driven show/hide list for
+  its 9 report tabs, via a new "Customize" icon opening a BottomSheet
+  (per-profile AsyncStorage preference, reportVisibility.ts).
+  CONFIRMED on-device: opening Customize, single check/uncheck,
+  unchecking the active report (auto-switches to the next visible
+  one), unchecking all 9 (empty-state message), re-checking some (they
+  reappear), and the tag-filter toolbar on the 6 tag-filtered reports
+  all worked correctly. NOT confirmed: checking several reports in one
+  sitting doesn't show all of them live — only the first one chosen
+  renders until the sheet is reopened. Tracked as bug #14 above — needs
+  investigation, not yet fixed.
+- ✅ VERIFIED ON-DEVICE — ToPayScreen.tsx and PlanningScreen.tsx's
+  segmented pill tabs reversed from icon-only circles back to icon +
+  title pills. CONFIRMED on-device: both screens' pills render
+  correctly (spacing, active/inactive colors) and tapping still
+  switches sub-tabs correctly (Bills/Debts/Loans on ToPay;
+  Groceries/Travel/Events/Goals on Planning). No further action needed.
+- ✅ VERIFIED ON-DEVICE — Swipe-to-navigate on Bills-derived
+  Transactions rows (Option B — navigate to the source Bill instead of
+  allowing delete), via a new transient pub-sub module
+  (openBillRequest.ts). CONFIRMED on-device: swiping a bill-sourced row
+  shows the gold "View Bill" action (not delete), tapping it opens the
+  To-Pay tab with that bill's edit sheet already open, a second swipe
+  of the same bill still opens it, and manual transaction rows still
+  swipe-to-delete exactly as before. No further action needed.
+- ✅ VERIFIED ON-DEVICE — Swipe-to-navigate on Debt/Loan/Income/Savings-
+  derived Transactions rows (Debts/Loans reuse the same pub-sub
+  mechanism as Bills via openDebtRequest.ts/openLoanRequest.ts;
+  Income/Savings use a plain navigation-param approach). CONFIRMED
+  on-device: all four row types (debt → Debts sub-tab, loan → Loans
+  sub-tab, income → Income screen with that source's edit sheet,
+  savings → Savings screen with that goal's edit sheet) open the right
+  record, and a second swipe of the same record still works for all
+  four. No further action needed.
 
 🔔 Deferred to Phase C — do not chase now
 - Subscription reminder tap → deep-link to To-Pay → Bills → specific bill
@@ -1928,105 +2002,35 @@ from here on will be tracked fresh in this file.
   LoanPayoffSimulatorModal.tsx's structure.
 
 ▶️ Next step
-- Swipe-to-navigate on Debt/Loan/Income/Savings-derived Transactions
-  rows is now IMPLEMENTED and `npx tsc --noEmit` clean — fold into the
-  same combined on-device pass described below: swipe each of the four
-  new row types and confirm they open the right record on the right
-  screen/tab, and that a repeat swipe of the same record still works.
-- With this, the "fewer words" pass (next screen per PROGRESS3.md's
-  ranked list, after MoreScreen.tsx) is the only remaining genuinely
-  open new-work item besides the on-device re-test pass and the
-  unscheduled B.12b item.
-- Bugs #4 (FI Calculator) and #5/5b (Emergency Fund) both now have
-  round-2 fixes applied and `npx tsc --noEmit` clean — neither has been
-  re-tested on a real device yet. Next step: do ONE combined on-device
-  re-test pass covering both together, per the person's standing
-  direction — this closes out the entire original 13-bug list once
-  confirmed.
-- The new Android in-app date-picker calendar (DateField.tsx) is
-  implemented and `npx tsc --noEmit` clean, but not yet tested on a
-  real Android device — worth folding into the same on-device pass as
-  bugs #4/#5-5b, checking a few different screens (e.g. Bills' due
-  date, Savings' target date) since it's a shared component used
-  everywhere a date is picked.
-- The bottom-nav Calendar-tab removal + Home date shortcut is also
-  implemented and `npx tsc --noEmit` clean, not yet tested on-device —
-  fold into the same combined on-device pass: confirm the 4-tab bar
-  looks right, confirm tapping the new date pill on Home opens
-  Calendar with a working back button to Home, and confirm nothing
-  else (e.g. muscle memory reaching for the old tab position) feels
-  broken.
-- The PIN "Turn Off" → toggle switch redesign is also implemented and
-  `npx tsc --noEmit` clean, not yet tested on-device — fold into the
-  same combined on-device pass: toggle the PIN off (confirm the
-  existing confirmation alert + spinner still work exactly as before),
-  toggle it back on (confirm SetPinScreen opens), and confirm "Change
-  PIN" still opens the modal correctly when a PIN is set.
-- The SUB/CANCELLED hollow-box badge redesign is also implemented and
-  `npx tsc --noEmit` clean — fold a quick visual check into the same
-  on-device pass (badge spacing/alignment next to the bill name, both
-  SUB and CANCELLED states).
-- The "Which of these is you?" confirm/save step is also implemented
-  and `npx tsc --noEmit` clean — fold into the same on-device pass: tap
-  a different person, confirm the Confirm/Cancel row appears, confirm
-  Cancel reverts the highlight without saving, and confirm tapping
-  Confirm still updates Transactions/Person Spending live (bug #12
-  behavior) without needing an app restart.
-- The Reports screen checkbox show/hide redesign is also implemented
-  and `npx tsc --noEmit` clean — the person is deferring on-device
-  testing of this and every other pending design-change item until
-  the whole current batch is done. Fold into the same combined
-  on-device pass: Customize BottomSheet open/close, checking/
-  unchecking individual reports, the active-tab auto-switch, the
-  empty-state message when everything's unchecked, and the tag-filter
-  toolbar still working correctly on the 6 tag-filtered reports.
-- The ToPayScreen/PlanningScreen icon+title pill reversal is also
-  implemented and `npx tsc --noEmit` clean — fold into the same
-  combined on-device pass: confirm both screens' pills render and
-  switch sub-tabs correctly.
-- Swipe-to-navigate on Bills-derived Transactions rows is IMPLEMENTED
-  and `npx tsc --noEmit` clean — fold into the same combined on-device
-  pass: swipe a bill-sourced row (confirm the gold "View Bill" action,
-  not delete), confirm it opens the right bill on the To-Pay tab, and
-  confirm a second swipe of the same bill still works.
-- The same swipe-to-navigate behavior for debt/loan/income/savings-
-  derived rows is DECIDED (same approach) but deferred as its own
-  separate, later checkpoint — none of those four screens have any
-  deep-link wiring today, unlike Bills, so each needs that built first.
-  This is the next design-change item to scope/build once ready.
-- This closes out the rest of the design-change request list surfaced
-  during the first on-device testing pass.
+- The combined on-device re-test pass is done. All 13 original bugs
+  (#1–13) and every design-change item except one are now ✅ VERIFIED
+  ON-DEVICE — see the "🐞 Real bugs confirmed on-device" and "🎨
+  Design-change requests" sections above. B.12b (all three parts) is
+  also fully verified on-device.
+- Next up: investigate and fix bug #14 (Reports screen's "Customize"
+  checkbox list doesn't reflect a multi-select live — see its own entry
+  above). Start with a fresh Antigravity investigation-only prompt
+  against the real current reportVisibility.ts/ReportsScreen.tsx code,
+  per the standing workflow — do not guess at a fix from the symptom
+  alone.
+- Continue the "fewer words" pass in parallel or after bug #14, per the
+  person's preference. SettingsScreen.tsx, ProfileScreen.tsx,
+  OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx,
+  MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx,
+  CreateProfileScreen.tsx, GroceriesScreen.tsx, DebtsScreen.tsx,
+  TransactionsScreen.tsx, and BillsScreen.tsx are all complete. Next up
+  per the ranked inventory list further down this file:
+  EventsScreen.tsx (8 items).
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build in Phase C (EAS Build) —
   believed to be an Expo Go limitation, not re-testable until then.
 - Leave all reminder/notification testing and bugs alone until Phase C
   (C.1, EAS Build) is done — see the "🔔 Deferred to Phase C" list above.
-- Once ready, separately scope and prioritize the design-change requests
-  listed above (Android date picker, PIN toggle, SUB badge redesign,
-  confirm-step for "which of these is you?", bottom-nav Calendar removal,
-  Transactions swipe-to-delete on derived rows, Reports checkbox redesign,
-  ToPay/Planning icon+title reversal) — these are new work, not bug fixes.
-- Continue the "fewer words" pass: SettingsScreen.tsx, ProfileScreen.tsx,
-  OnboardingScreen.tsx, SavingsScreen.tsx, SignInScreen.tsx,
-  MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx, and
-  CreateProfileScreen.tsx are now all complete. Next up per the ranked
-  inventory list further down this file: GroceriesScreen.tsx (13 items).
-- Once the bug-fixing pass is far enough along (or the person decides to
-  move on regardless), proceed to Phase C (Publishing) — see
+- Once bug #14 is fixed and re-tested (or the person decides to move on
+  regardless), proceed to Phase C (Publishing) — see
   `4-REMAINING-WORK-ROADMAP.md`: C.1 (EAS Build → real installable
   .apk/TestFlight link) and, optionally, C.2 (App Store / Play Store
   publishing).
-- B.12b is now fully IMPLEMENTED (B.12b-1 Pension/Social Security
-  offset, B.12b-2 multi-account selector, B.12b-3 scenario-comparison
-  modal — all three done) and `npx tsc --noEmit` clean across all of
-  it. On-device testing of all three is deliberately deferred by the
-  person until right before moving to Phase C, batched with the other
-  pending on-device items. Fold into the same combined on-device pass:
-  open "Compare Scenarios" on the FI Calculator, confirm Base Plan
-  matches what's currently saved, type into a few What-If fields and
-  confirm the numbers/timeline update live without touching the saved
-  plan, confirm leaving a field blank falls back to the Base Plan's own
-  value, and confirm "Reset What-If to Base Plan" clears everything.
 
 📚 Older progress: PROGRESS3.md (Phase B Part 2 + first on-device testing
 pass, now closed), PROGRESS2.md (Phase B build, B.1–B.14, closed),
@@ -2208,7 +2212,7 @@ subtitle, 1 confirm-password placeholder, 1 encryption hint below the form,
 confirmation label. Verified via `npx tsc --noEmit` from mobile-app\ —
 clean.
 
-▶️ Next step: EventsScreen.tsx (8 items) — next on the ranked inventory list above. B.12b (all three parts: pension/SS offset, multi-account selector, scenario-comparison modal) is now fully implemented and tsc-clean; on-device testing deferred with the rest of the batch.
+▶️ Next step: EventsScreen.tsx (8 items) — next on the ranked inventory list above. B.12b (all three parts) is now fully implemented, tsc-clean, AND confirmed on-device — no longer deferred. Bug #14 (Reports "Customize" multi-select not live — see ⚠️ Known issues) is the one open item needing investigation before Phase C.
 
 
 
