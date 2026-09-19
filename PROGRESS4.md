@@ -1,4 +1,6 @@
-﻿Household Finance Mobile App — Progress Log (Phase B on-device bug-fixing → Phase C: Publishing)
+﻿CLOSED — PROGRESS4.md is now historical. The active progress file is PROGRESS5.md (Pre-Phase C: Visual Redesign & Branding, the "Finance Flow" rebrand).
+
+Household Finance Mobile App — Progress Log (Phase B on-device bug-fixing → Phase C: Publishing)
 
 This file picks up exactly where PROGRESS3.md left off. PROGRESS3.md is now
 closed/historical — it covers Phase B Part 2 in full (the Iconization &
