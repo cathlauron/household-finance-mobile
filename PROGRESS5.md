@@ -32,6 +32,14 @@ PROGRESS4.md for that detail, plus everything it links back to
   SignInScreen.tsx, MoreScreen.tsx, LoansScreen.tsx, IncomeScreen.tsx,
   GroceriesScreen.tsx, DebtsScreen.tsx, TransactionsScreen.tsx,
   BillsScreen.tsx, CreateProfileScreen.tsx.
+- PC.6-2 DONE: outlined red "Log out" pill under the Data group on the
+  Settings hub (testID settings-log-out-button), with a "Log out?" alert
+  (Cancel / "Yes, log out"). SettingsScreen takes an onSignOut prop, passed
+  from RootStack.tsx. Pushed and confirmed on-device.
+- PC.6-3 DONE: Language row (Preferences group, value "English") and a new
+  SUPPORT group (Help & support, About us). All three open static placeholder
+  pages inside the existing page mechanism. No new styles, no type changes,
+  no RootStack changes. Pushed and confirmed on-device.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -173,6 +181,24 @@ PROGRESS4.md for that detail, plus everything it links back to
   wrapped in page conditions, not extracted into files. The style
   deletion mistake from PC.5-2a is the reason no state or handler was
   moved.
+- PC.6-3: the About page version ("Version 1.0.0") is HARD-CODED text.
+  expo-constants is not installed. It will silently drift from app.json when
+  the version is bumped. Fix later by installing expo-constants or reading
+  the version from app.json.
+- PC.6-3: Language and Help & support are placeholders with no behaviour.
+  The Language row's value "English" is hard-coded and there is no i18n or
+  locale setup anywhere. Date and number formatting is a mix of hard-coded
+  en-US and en-PH. Help copy is placeholder wording and has not had the
+  "fewer words" pass.
+- PC.6-2: RootStack.tsx now registers Settings with a render callback
+  (children pattern, same as Profile) instead of component=, so it can pass
+  onSignOut. The Settings back listener is only attached while a page is
+  open, so Log out on the hub is not blocked by it. Log out while a
+  drill-in page is open is impossible by design (the pill is hub-only).
+- PC.6-2: settings-log-out-button now gives the Maestro flows a second
+  sign-out route (more-tab -> more-settings-row -> settings-log-out-button).
+  The sign-out-button reachability issue above is still unfixed and the
+  flows are still unrun.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -257,6 +283,13 @@ change-pin-button) were kept.
 PC.6-1b: mobile-app/flows/change-password.yaml and
 mobile-app/flows/pin-quick-unlock.yaml (extra tap on the Security /
 Quick Unlock row; committed untested).
+PC.6-2 and PC.6-3 (pushed, on-device tests passed):
+mobile-app/src/screens/SettingsScreen.tsx (onSignOut prop; Log out pill on
+the hub; Language row in Preferences; new Support group; three new page
+blocks with page ids 'language', 'help', 'about'), mobile-app/src/
+navigation/RootStack.tsx (Settings registered with a render callback that
+passes onSignOut). New testIDs: settings-log-out-button,
+settings-row-language, settings-row-help, settings-row-about.
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -589,6 +622,20 @@ not abandoned - return to them before or alongside Phase C.
   Antigravity that shows only the styles used by a block is NOT proof that
   the styles are contiguous; run npx tsc --noEmit before every commit.
 
+📌 PC.6-2 and PC.6-3 results (added this session)
+- Log out lives on the Settings hub only (page === null), as an outlined red
+  pill using colors.error. Alert wording matches the Profile screen's.
+- Antigravity's PC.6-3 investigation confirmed no existing Help, About,
+  version or language code, and that page is typed string | null, so new
+  page ids needed no type change.
+- Deliberate deviations from Antigravity's proposed copy: no "local-first"
+  claim in Help (the app syncs via Firebase), and the Language option reads
+  "English", not "English (US)".
+- SUPPORT sits between Data and the Log out pill. Language sits in
+  Preferences after List Rows.
+- (This entry sits above the earlier PC.6 entry, not below it, because the
+  end of that entry was not visible when this was added. Move if desired.)
+
 📌 PC.6 decisions and results (added this session)
 - Locked: Settings becomes an iPhone-style hub of short grouped cards.
   Each row opens ONE section on its own page inside the same file, driven
@@ -638,7 +685,7 @@ Checkpoint table
 | PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
-| PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 to PC.6-4 NOT STARTED. |
+| PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 NOT STARTED. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
@@ -649,15 +696,14 @@ every other phase.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
-- PC.6-1 is DONE (Settings hub, pushed, on-device test passed). PC.6-1b
-  (Maestro flow edits) is committed but untested.
-- PC.6-2 next: outlined red "Log out" pill at the bottom of the Settings
-  hub, testID settings-log-out-button, same "Log out?" / "Yes, log out"
-  alert. Needs a small RootStack.tsx edit so SettingsScreen receives
-  onSignOut. Start by looking at the real current RootStack.tsx Settings
-  registration and the bottom of the hub in SettingsScreen.tsx.
-- Then PC.6-3 (Language, Help & support, About us placeholders), PC.6-4
-  (value labels, polish), PC.7 (Subscription "Coming soon" screen), PC.8
+- PC.6-1, PC.6-2 and PC.6-3 are DONE (pushed, on-device tests passed).
+  PC.6-1b (Maestro flow edits) is committed but untested.
+- PC.6-4 next (value labels and polish). Its scope is NOT settled: the hub
+  already shows a value on Appearance and Language. Start with an
+  investigation-only prompt listing every hub row, whether a useful value
+  could be shown (for example Notifications or Quick Unlock on/off), and
+  anything visibly rough. Decide with the person before writing code.
+- Then PC.7 (Subscription "Coming soon" screen), PC.8
   (pull-to-refresh). PC.3 (real Google/Apple/Facebook OAuth) still waits
   for Phase C's EAS dev-client build.
 - Whenever a device or emulator is available: run change-password.yaml,
