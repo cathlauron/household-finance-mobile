@@ -40,6 +40,16 @@ PROGRESS4.md for that detail, plus everything it links back to
   SUPPORT group (Help & support, About us). All three open static placeholder
   pages inside the existing page mechanism. No new styles, no type changes,
   no RootStack changes. Pushed and confirmed on-device.
+- PC.6-4 DONE: value labels on the Settings hub and polish. Values added:
+  Quick Unlock ("On" only when a PIN is set, otherwise blank), Notifications
+  (On / Off from model.settings.pushNotificationsEnabled), Left to Spend
+  (caution threshold %, falls back to 20), and counts for Categories,
+  Category Watchlist, Merchants & Payees and Categorization Rules. Hub row
+  titles are now Title Case (Backup & Data, Help & Support, About Us).
+  SettingsRow title and value now truncate to one line (numberOfLines, plus
+  flexShrink on the value). Pushed and confirmed on-device.
+- PC.6 (Settings hub with drill-in pages) is COMPLETE: PC.6-1 through PC.6-4
+  done. Only PC.6-1b (Maestro flow edits) remains untested.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -199,6 +209,22 @@ PROGRESS4.md for that detail, plus everything it links back to
   sign-out route (more-tab -> more-settings-row -> settings-log-out-button).
   The sign-out-button reachability issue above is still unfixed and the
   flows are still unrun.
+- PC.6-4: Devices and List Rows deliberately show NO value on the hub.
+  Devices: deviceSessions includes signed-out and revoked devices, so
+  .length would overcount, and the status field name was not confirmed.
+  List Rows: the meaning of swipeToDeleteEnabled being false as "tap to
+  open" was not confirmed, so "Swipe / Tap" could mislabel it. Revisit both
+  after checking the real code.
+- PC.6-4: Quick Unlock's value depends on pinIsSet, which starts false and
+  loads async on mount, so the row shows blank until it loads, then "On" if
+  a PIN is set. It never shows "Off" for that reason.
+- PC.6-4: Notifications shows On / Off from pushNotificationsEnabled only. It
+  does not reflect the bill-alert or weekly-recap settings.
+- PC.6-4: Left to Spend uses ?? 20 as the fallback for
+  cautionThresholdPercent. It was not confirmed that 20 matches the real
+  default used elsewhere.
+- PC.6-4: Security, Backup & Data, Help & Support and About Us show no value
+  (no data exists to show, or it would be ambiguous).
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -290,6 +316,11 @@ blocks with page ids 'language', 'help', 'about'), mobile-app/src/
 navigation/RootStack.tsx (Settings registered with a render callback that
 passes onSignOut). New testIDs: settings-log-out-button,
 settings-row-language, settings-row-help, settings-row-about.
+PC.6-4 (pushed, on-device test passed): mobile-app/src/screens/
+SettingsScreen.tsx (value props on seven hub rows; three hub titles
+changed to Title Case), mobile-app/src/components/SettingsHub.tsx
+(numberOfLines on title and value, flexShrink on value). No new testIDs.
+Maestro flows unaffected (they tap by testID).
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -622,6 +653,16 @@ not abandoned - return to them before or alongside Phase C.
   Antigravity that shows only the styles used by a block is NOT proof that
   the styles are contiguous; run npx tsc --noEmit before every commit.
 
+📌 PC.6-4 results (added this session)
+- Antigravity's investigation proposed values for Devices and List Rows.
+  Both were rejected for now (see Known issues). Quick Unlock was changed
+  from "On / Off" to "On or blank" because pinIsSet loads async and would
+  show a false "Off".
+- Nothing in the hub or SettingsHub used hard-coded colours, and dark-mode
+  tokens were checked in theme.ts. No dark-mode fixes were needed.
+- No Maestro flow taps a Settings row by visible text, so the title and
+  value changes cannot break them.
+
 📌 PC.6-2 and PC.6-3 results (added this session)
 - Log out lives on the Settings hub only (page === null), as an outlined red
   pill using colors.error. Alert wording matches the Profile screen's.
@@ -685,7 +726,7 @@ Checkpoint table
 | PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
-| PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 NOT STARTED. |
+| PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 DONE (pushed, on-device test passed). PC.6 is COMPLETE apart from the untested PC.6-1b flows. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
@@ -696,14 +737,15 @@ every other phase.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
-- PC.6-1, PC.6-2 and PC.6-3 are DONE (pushed, on-device tests passed).
+- PC.6 is COMPLETE: PC.6-1 through PC.6-4 DONE (pushed, on-device tests passed).
   PC.6-1b (Maestro flow edits) is committed but untested.
-- PC.6-4 next (value labels and polish). Its scope is NOT settled: the hub
-  already shows a value on Appearance and Language. Start with an
-  investigation-only prompt listing every hub row, whether a useful value
-  could be shown (for example Notifications or Quick Unlock on/off), and
-  anything visibly rough. Decide with the person before writing code.
-- Then PC.7 (Subscription "Coming soon" screen), PC.8
+- PC.7 next: Subscription "Coming soon" screen. Reachable from Settings and
+  Profile, matches the mockup visually, no real payment or paywall logic.
+  Start with an investigation-only prompt: where it should be reachable from
+  (which Profile or Settings row), how RootStack registers screens, and the
+  mockup details (crown, premiumOrange #E08A2C). Confirm placement with the
+  person before writing code.
+- Then PC.8
   (pull-to-refresh). PC.3 (real Google/Apple/Facebook OAuth) still waits
   for Phase C's EAS dev-client build.
 - Whenever a device or emulator is available: run change-password.yaml,
