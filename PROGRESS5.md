@@ -1244,13 +1244,20 @@ every other phase.
   all pushed and on-device tested). PC.8 is done.
   Remaining pre-Phase C items, in no fixed order (after the two immediate
   items above):
-  (a) "Fewer words" pass: batches 1 and 2 pushed and confirmed on-device
-      (see the batch blocks above). Remaining files have very little
-      trimmable text. Decide whether to stop, or do a small batch 3 (Intro
-      slides, PinUnlockScreen, DashboardScreen, the smaller reports).
-  (b) Run the three Maestro flows (change-password.yaml,
-      pin-quick-unlock.yaml, sign-out-round-trip.yaml) once a device or
-      emulator is connected, and fix the sign-out-button reachability issue.
+  (a) "Fewer words" pass: CLOSED by the person's decision. Batches 1 and 2
+      pushed and confirmed on-device. The remaining files have almost no
+      trimmable text. Intro slide copy was not trimmed. Reopen only if
+      wanted.
+  (b) Maestro flows: DEFERRED TO PHASE C by the person's decision. Manual
+      on-device testing is the accepted check for now. When the first EAS
+      installed build exists, update all five flows (create-profile,
+      sign-in, change-password, pin-quick-unlock, sign-out-round-trip):
+      change appId from host.exp.exponent (Expo Go) to
+      com.cathlauron.householdfinance, replace the exp://192.168.1.62:8081
+      openLink with launching the installed app, replace the
+      "You're signed in.*" waits with a testID that exists on Home, and fix
+      the sign-out-button reachability issue. Needs a device or emulator
+      connected.
   (c) Optional: pull-to-refresh on Profile, Settings, and the Reports child
       screens, only if wanted (see Known issues for the Settings scrollTo
       risk).
@@ -1259,9 +1266,11 @@ every other phase.
   Then Phase C (EAS Build).
   PC.3 (real Google/Apple/Facebook OAuth) still waits for Phase C's EAS
   dev-client build.
-- Decision: the Maestro flows (change-password.yaml, pin-quick-unlock.yaml,
-  sign-out-round-trip.yaml) will be run after ALL of pre-Phase C is done, not
-  before. Until then they stay untested.
+- Decision (updated): the Maestro flows stay untested through the rest of
+  pre-Phase C and are updated and run once, against the Phase C installed
+  build, not against Expo Go. Reason: they currently target Expo Go, wait
+  on text Home no longer shows, and have never run, so fixing them now
+  would mean doing the work twice.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
