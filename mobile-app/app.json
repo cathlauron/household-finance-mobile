@@ -46,7 +46,13 @@
           "faceIDPermission": "Use Face ID to unlock your household finances quickly."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Finance Flow to access your photos so you can choose a profile picture or attach receipts."
+        }
+      ]
     ]
   }
 }

@@ -24,6 +24,7 @@ import type {
   Category,
   Payee,
   CategoryBudget,
+  AvatarConfig,
 } from './types';
 
 function normalizedName(name: string | undefined): string {
@@ -131,6 +132,24 @@ function mergeByName<T extends { name: string }>(listA: T[], listB: T[]): T[] {
   return merged;
 }
 
+// Avatars are keyed by username. If both sides have one for the same username,
+// the more recently updated one wins; ties go to "a" (same rule as settings).
+function mergeAvatars(
+  a: Record<string, AvatarConfig> | undefined,
+  b: Record<string, AvatarConfig> | undefined
+): Record<string, AvatarConfig> | undefined {
+  if (!a && !b) return undefined;
+  const merged: Record<string, AvatarConfig> = { ...(b ?? {}) };
+  Object.keys(a ?? {}).forEach((username) => {
+    const mine = (a as Record<string, AvatarConfig>)[username];
+    const theirs = merged[username];
+    if (!theirs || (mine.updatedAt ?? 0) >= (theirs.updatedAt ?? 0)) {
+      merged[username] = mine;
+    }
+  });
+  return merged;
+}
+
 export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdModel {
   // ---- People: match by name, remember how to remap b's ids ----
   const mergedPeople: Person[] = [...a.people];
@@ -221,6 +240,7 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     yearlyGoals: [...(a.yearlyGoals ?? []), ...(b.yearlyGoals ?? [])],
     payees: mergedPayees,
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
+    avatars: mergeAvatars(a.avatars, b.avatars),
   };
 
   return sanitizeModelIds(mergedModel);

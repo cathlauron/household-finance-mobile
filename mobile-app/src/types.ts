@@ -322,6 +322,17 @@ export type CategorizationRule = {
   category: string;
 };
 
+// ---- PC.5a: avatars ----
+// Stored inside the encrypted household model, keyed by username, so linked
+// members can see each other's. 'initials' is the default when nothing is set.
+// photoDataUri is a small (192px) JPEG data URI made by makeAvatarDataUri().
+export type AvatarConfig = {
+  type: 'initials' | 'preset' | 'photo';
+  presetId?: string;
+  photoDataUri?: string;
+  updatedAt?: number;
+};
+
 export type HouseholdModel = {
   settings: Settings;
   people: Person[];
@@ -342,4 +353,5 @@ export type HouseholdModel = {
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];
+  avatars?: Record<string, AvatarConfig>;
 };
