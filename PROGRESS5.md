@@ -257,6 +257,30 @@ PROGRESS4.md for that detail, plus everything it links back to
   crown, because SettingsRow only accepts Ionicons names and hard-codes the
   icon colour to colors.gold. Showing the crown in orange on the hub would
   need an optional icon colour or icon family prop in SettingsHub.tsx.
+- PC.9: only Dashboard uses PullToRefreshScrollView. The other screens are
+  NOT converted, and the swipe-vs-pull interaction on rows (SwipeableRow),
+  Calendar's month swipe and nested scrollers is UNVERIFIED. The design
+  expects a sideways drag to fail the pull gesture (failOffsetX), but this is
+  reasoning, not proof, until tested on a screen with swipeable rows.
+- PC.9: PullToRefreshScrollView accepts only style, contentContainerStyle,
+  refreshing, onRefresh and children. It sets its own ref and onScroll
+  internally. Screens that need keyboardShouldPersistTaps, their own onScroll
+  or a ref will need the component extended first.
+- PC.9: iOS uses RN's ScrollView and Android uses react-native-gesture-
+  handler's ScrollView, so scroll behaviour can differ slightly by platform.
+- PC.9: because useRefresh changed shape, any OTHER screen still
+  destructuring { refreshControl } from it would fail to compile. Not
+  confirmed either way: check with the rollout investigation and
+  npx tsc --noEmit.
+- PC.9: possible duplicate file, useRefresh.ts vs useRefresh.tsx. An earlier
+  Antigravity output showed "useRefresh.ts" while the PC.9 command wrote
+  src\useRefresh.tsx. Not yet checked. Run
+  Get-ChildItem mobile-app\src -Filter "useRefresh*".
+- PC.9: hashes for PC.8-1 and PC.9 were not recorded here (see git log).
+  The "spinner still collapses after an offline failed refresh" behaviour on
+  Android was part of the test plan, but its result was not recorded
+  separately from the overall "passed".
+- Bug #14 is unchanged by PC.8/PC.9 (still not fixed).
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -361,7 +385,14 @@ changed to Title Case), mobile-app/src/components/SettingsHub.tsx
   group above Account). New testIDs: settings-row-premium,
   premium-screen-container, premium-billing-monthly, premium-billing-yearly,
   premium-coming-soon-button. No changes to theme.ts or types.ts.
-
+  PC.8-1 and PC.9 (pushed, on-device tests passed on Dashboard):
+  mobile-app/src/PullToRefreshScrollView.tsx (NEW: iOS = RN ScrollView +
+  RefreshControl, Android = custom drag-following pull with PanGestureHandler),
+  mobile-app/src/useRefresh.tsx (returns { refreshing, onRefresh } now; first
+  added in PC.8-1 with a refreshControl), mobile-app/src/screens/
+  DashboardScreen.tsx (uses PullToRefreshScrollView; ScrollView import
+  removed). No changes to theme.ts, types.ts or RootStack. No new
+  dependencies. No new testIDs.
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
     ("Finance Flow" rebrand)
@@ -733,6 +764,52 @@ not abandoned - return to them before or alongside Phase C.
 - (This entry sits above the earlier PC.6 entry, not below it, because the
   end of that entry was not visible when this was added. Move if desired.)
 
+  📌 PC.8-1 and PC.9 decisions and results (added this session)
+- PC.8-1 (pushed, on-device test passed): pull-to-refresh on Dashboard only,
+  using React Native's built-in RefreshControl through a new useRefresh hook.
+  The hook calls refreshModel() from DataContext and shows an Alert per
+  outcome: 'failed' (Could not refresh), 'cannot_decrypt' (Backup is locked),
+  'conflict' (Not refreshed, nothing overwritten), 'backed_up' (Backed up).
+- The web app's pull-to-refresh (UI-8 in household-finance-app.html) only
+  re-rendered from the in-memory model, so it was a confidence cue, not a
+  real reload. The mobile version does a real refreshModel() call.
+- Request after PC.8-1: the screen itself should slide down as you pull, with
+  an animated indicator underneath. iOS's native RefreshControl already does
+  this. Android's only floats a small circle over the content, so this was
+  an Android-only gap.
+- Locked: Option B chosen over Option A. Option A (keep the native gesture,
+  add a "Refreshing..." banner) was offered as the safer path and declined,
+  knowing the gesture-coordination risk. Option B = hand-built gesture.
+- PC.9 (pushed, on-device test passed on Dashboard): new
+  mobile-app/src/PullToRefreshScrollView.tsx. iOS branch = RN ScrollView with
+  RefreshControl (unchanged look). Android branch = AndroidPullToRefresh:
+  PanGestureHandler wrapping an Animated.View, an indicator area above a
+  react-native-gesture-handler ScrollView that grows as you pull (pushing the
+  content down) with a sync-outline icon that rotates with the pull, then
+  spins continuously while refreshing and collapses when refreshing ends.
+  Constants: PULL_TRIGGER_DISTANCE = 70 (raw drag px to commit),
+  INDICATOR_MAX_HEIGHT = 64. Gesture props: enabled={isAtTop && !refreshing},
+  simultaneousHandlers={scrollRef}, activeOffsetY={[-1000, 15]},
+  failOffsetX={[-15, 15]}. GH ScrollView has overScrollMode="never",
+  onScroll + scrollEventThrottle 16 to track isAtTop. Height/opacity
+  animations use useNativeDriver:false; the continuous spin uses true.
+- useRefresh's return shape CHANGED from { refreshControl } to
+  { refreshing, onRefresh }. Screens now pass those two props to
+  <PullToRefreshScrollView> instead of a refreshControl prop.
+- react-native-reanimated is NOT installed, so the gesture uses only
+  react-native-gesture-handler + RN's own Animated. GestureHandlerRootView
+  already wraps the whole app (confirmed by Antigravity).
+- Dashboard was chosen as the first test screen because it has no tappable
+  or swipeable rows, so the pull gesture cannot fight anything there.
+  The other screens DO have SwipeableRow (horizontal swipe-to-delete),
+  CollapsibleRow, TextInputs, and Calendar's horizontal month swipe.
+- Rollout plan: one more Antigravity investigation (investigation only)
+  listing every screen's ScrollView props and nested scrollers, then a first
+  batch of 2-3 of the safest screens, then an on-device test, then the rest.
+  On-device checks per screen: pull refreshes, normal scrolling never
+  triggers the pull, swipe-to-delete still works, a sideways swipe never
+  starts a pull.
+
 📌 PC.6 decisions and results (added this session)
 - Locked: Settings becomes an iPhone-style hub of short grouped cards.
   Each row opens ONE section on its own page inside the same file, driven
@@ -784,7 +861,7 @@ Checkpoint table
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
 | PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 DONE (pushed, on-device test passed). PC.6 is COMPLETE apart from the untested PC.6-1b flows. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. DONE (pushed, on-device test passed). Entry point is Settings only, not Profile. |
-| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
+| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). Rollout to the other 11 screens NOT started: needs a swipe-vs-pull investigation first. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
 Each row is sized to be one session's worth of work, same pattern as
 every other phase.
@@ -797,11 +874,14 @@ every other phase.
   PC.6-1b (Maestro flow edits) is committed but untested.
 - PC.7 is DONE (Subscription placeholder screen, pushed, on-device test
   passed).
-- PC.8 next: pull-to-refresh. Start with an investigation-only prompt asking
-  which screens it applies to and what it should refresh (Firestore data or
-  just local state). Do not assume it fixes Bug #14. PC.3 (real
-  Google/Apple/Facebook OAuth) still waits
-  for Phase C's EAS dev-client build.
+- PC.8-1 and PC.9 are DONE on Dashboard (pushed, on-device tests passed).
+  Next: run the PC.9 rollout investigation (Antigravity, investigation only)
+  covering every screen's ScrollView props, SwipeableRow usage, nested
+  scrollers, and the current on-disk PullToRefreshScrollView.tsx. Then roll
+  out to 2-3 of the safest screens first, device-test, then the rest.
+  Check for the possible useRefresh.ts / useRefresh.tsx duplicate first.
+  Do not assume this fixes Bug #14. PC.3 (real Google/Apple/Facebook OAuth)
+  still waits for Phase C's EAS dev-client build.
 - Whenever a device or emulator is available: run change-password.yaml,
   pin-quick-unlock.yaml and sign-out-round-trip.yaml, and fix the
   sign-out-button reachability problem listed under Known issues.
