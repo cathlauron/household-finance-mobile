@@ -16,23 +16,25 @@ export type ThemeColors = {
   errorBg: string;
   ok: string;
   orange: string;
+  premium: string;
 };
 
 export const lightTheme: ThemeColors = {
-  ink: '#1C1917',
-  inkDim: '#57534E',
-  inkFaint: '#A8A29E',
-  navy1: '#EFEAE0',
-  navy2: '#F7F2E9',
-  navy3: '#FFFDF8',
-  navy4: '#DCD3C1',
-  gold: '#1C1917',
-  goldDim: '#44403C',
-  accent: '#059669',
+  ink: '#22281F',
+  inkDim: '#626A5B',
+  inkFaint: '#A0A597',
+  navy1: '#EEE9DE',
+  navy2: '#F6F1E6',
+  navy3: '#FBF9F3',
+  navy4: '#E5E0CF',
+  gold: '#2E5D3A',
+  goldDim: '#234A2E',
+  accent: '#3F7A50',
   error: '#E11D48',
   errorBg: '#FFF1F2',
   ok: '#059669',
   orange: '#EA580C',
+  premium: '#E08A2C',
 };
 
 export const darkTheme: ThemeColors = {
@@ -50,4 +52,5 @@ export const darkTheme: ThemeColors = {
   errorBg: '#3F1725',
   ok: '#34D399',
   orange: '#FB923C',
+  premium: '#E08A2C',
 };
