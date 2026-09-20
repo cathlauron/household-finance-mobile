@@ -82,8 +82,8 @@ PROGRESS4.md for that detail, plus everything it links back to
   testable through Expo Go.
 
 ⚠️ Known issues / gotchas - carried forward, still open
-- Bug #14 (ROOT CAUSE FOUND, FIX COMMITTED AND PUSHED in dc2a674, NOT YET
-  CONFIRMED ON-DEVICE): what looked like "only the first ticked
+- [RESOLVED, CONFIRMED ON-DEVICE by the person] Bug #14 (root cause found,
+  fix committed and pushed in dc2a674): what looked like "only the first ticked
   hiddenReportIdsRef/hiddenReportIds were confirmed correct at every step
   via on-device Metro logs (every tap logged the right growing/shrinking
   array, no lost taps, no stale reads). The real bug: the horizontal pill
@@ -102,9 +102,9 @@ PROGRESS4.md for that detail, plus everything it links back to
   document Bug 14 root cause..." commit), because the start-of-session
   block runs git add -A and swept the modified file in. Checked afterward:
   the file on disk has pillScroll { flex: 1, height: 54 } and the working
-  tree was clean. NOT YET on-device confirmed: need to see the pill row
-  render as multiple tappable icons, and confirm tapping a different one
-  switches the active report. Bug #14 stays open until that is confirmed.
+  tree was clean. Confirmed on-device by the person: the report icons now show and
+  switching between reports works. The fix had already been verified in an
+  earlier session, so this log entry was stale, not the fix.
   Process note: git add -A at session start commits any unfinished work.
   Check git status before running that block when something is
   deliberately uncommitted.
@@ -356,7 +356,7 @@ PROGRESS4.md for that detail, plus everything it links back to
   The "spinner still collapses after an offline failed refresh" behaviour on
   Android was part of the test plan, but its result was not recorded
   separately from the overall "passed".
-- Bug #14 is unchanged by PC.8/PC.9 (still not fixed).
+- Bug #14 was unchanged by PC.8/PC.9; it was fixed separately (see above).
 - PC.9 batch 1: which platform(s) the on-device test covered (Android only,
   or iOS as well) was not recorded. The custom pull gesture is Android-only;
   iOS uses the native RefreshControl, which is the lower-risk path.
@@ -931,7 +931,8 @@ not abandoned - return to them before or alongside Phase C.
   "(pending on-device test)", and the very next on-device test session is
   where Bug #14 was first ever reported - strong evidence this has never
   rendered correctly on a real device.
-- Fix applied to mobile-app/src/screens/ReportsScreen.tsx (uncommitted):
+- Fix applied to mobile-app/src/screens/ReportsScreen.tsx (committed in
+  dc2a674, confirmed on-device):
   pillScroll changed from `{ flexGrow: 0, flex: 1 }` to
   `{ flex: 1, height: 54 }` (54 = 38px pill height + 12px top padding +
   4px bottom padding from pillRow, so exactly one row of pills fits with
@@ -1124,26 +1125,14 @@ Checkpoint table
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
 | PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 DONE (pushed, on-device test passed). PC.6 is COMPLETE apart from the untested PC.6-1b flows. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. DONE (pushed, on-device test passed). Entry point is Settings only, not Profile. |
-| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). PC.9 batch 1 DONE (Bills, Debts, Income; pushed, on-device test passed). PC.9 batch 2a DONE (Loans, Transactions, Events, Goals, Travel; pushed, on-device test passed). PC.9 batch 2b DONE (Accounts, Groceries List tab, Savings Goals tab; pushed, on-device test passed). PC.9 rollout COMPLETE. Deliberately NOT converted: More, Premium, Calendar, Planning and Reports (pill rows), Reports child screens, Profile, Settings, Groceries Calculator tab, Savings Emergency Fund and FI tabs. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
+| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). PC.9 batch 1 DONE (Bills, Debts, Income; pushed, on-device test passed). PC.9 batch 2a DONE (Loans, Transactions, Events, Goals, Travel; pushed, on-device test passed). PC.9 batch 2b DONE (Accounts, Groceries List tab, Savings Goals tab; pushed, on-device test passed). PC.9 rollout COMPLETE. Deliberately NOT converted: More, Premium, Calendar, Planning and Reports (pill rows), Reports child screens, Profile, Settings, Groceries Calculator tab, Savings Emergency Fund and FI tabs. Bug #14 was fixed separately and is closed.|
 
 Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- IMMEDIATE, pick this up first: Bug #14's fix (ReportsScreen.tsx,
-  pillScroll { flex: 1, height: 54 }) is already COMMITTED and pushed
-  (dc2a674) but NOT confirmed on-device. Before doing anything else:
-  1. Confirm the two console.log debug lines are gone (grep
-     ReportsScreen.tsx for console.log, expect nothing).
-  2. Run the app on-device with several reports ticked visible in
-     Customize.
-  3. Confirm: is there a row of small tappable icons (one per ticked
-     report), and does tapping a different one switch the report shown
-     below?
-  4. If yes - mark Bug #14 fully closed in this file (no code change).
-  5. If the row is missing or looks wrong - report exactly what is seen and
-     run a follow-up Antigravity investigation. The fix is already pushed,
-     so a further fix means a new commit.
+- Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
+  continue with the remaining pre-Phase C items below.
 - Screenshot restriction: PARKED for Phase C. No code change needed (see
   Known issues). Re-test screenshots on the first installed EAS build.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
