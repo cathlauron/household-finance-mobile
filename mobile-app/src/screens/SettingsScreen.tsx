@@ -947,28 +947,28 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
 
         <SettingsGroup label="Account">
           <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Security" onPress={() => setPage('security')} />
-          <SettingsRow testID="settings-row-quickunlock" icon="keypad-outline" title="Quick Unlock" onPress={() => setPage('quickunlock')} />
+          <SettingsRow testID="settings-row-quickunlock" icon="keypad-outline" title="Quick Unlock" value={pinIsSet ? 'On' : undefined} onPress={() => setPage('quickunlock')} />
           <SettingsRow testID="settings-row-devices" icon="phone-portrait-outline" title="Devices" onPress={() => setPage('devices')} />
         </SettingsGroup>
         <SettingsGroup label="Preferences">
           <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => setPage('appearance')} />
-          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" onPress={() => setPage('notifications')} />
+          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" value={model.settings.pushNotificationsEnabled ? 'On' : 'Off'} onPress={() => setPage('notifications')} />
           <SettingsRow testID="settings-row-listrows" icon="list-outline" title="List Rows" onPress={() => setPage('listrows')} />
           <SettingsRow testID="settings-row-language" icon="language-outline" title="Language" value="English" onPress={() => setPage('language')} />
         </SettingsGroup>
         <SettingsGroup label="Budgeting">
-          <SettingsRow testID="settings-row-leftspend" icon="speedometer-outline" title="Left to Spend" onPress={() => setPage('leftspend')} />
-          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories" onPress={() => setPage('categories')} />
-          <SettingsRow testID="settings-row-watchlist" icon="eye-outline" title="Category Watchlist" onPress={() => setPage('watchlist')} />
-          <SettingsRow testID="settings-row-payees" icon="storefront-outline" title="Merchants & Payees" onPress={() => setPage('payees')} />
-          <SettingsRow testID="settings-row-rules" icon="funnel-outline" title="Categorization Rules" onPress={() => setPage('rules')} />
+          <SettingsRow testID="settings-row-leftspend" icon="speedometer-outline" title="Left to Spend" value={`${model.settings.cautionThresholdPercent ?? 20}%`} onPress={() => setPage('leftspend')} />
+          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories" value={String(model.categories.length)} onPress={() => setPage('categories')} />
+          <SettingsRow testID="settings-row-watchlist" icon="eye-outline" title="Category Watchlist" value={String((model.categoryBudgets ?? []).length)} onPress={() => setPage('watchlist')} />
+          <SettingsRow testID="settings-row-payees" icon="storefront-outline" title="Merchants & Payees" value={String((model.payees ?? []).length)} onPress={() => setPage('payees')} />
+          <SettingsRow testID="settings-row-rules" icon="funnel-outline" title="Categorization Rules" value={String((model.categorizationRules ?? []).length)} onPress={() => setPage('rules')} />
         </SettingsGroup>
         <SettingsGroup label="Data">
-          <SettingsRow testID="settings-row-data" icon="download-outline" title="Backup & data" onPress={() => setPage('data')} />
+          <SettingsRow testID="settings-row-data" icon="download-outline" title="Backup & Data" onPress={() => setPage('data')} />
         </SettingsGroup>
         <SettingsGroup label="Support">
-          <SettingsRow testID="settings-row-help" icon="help-circle-outline" title="Help & support" onPress={() => setPage('help')} />
-          <SettingsRow testID="settings-row-about" icon="information-circle-outline" title="About us" onPress={() => setPage('about')} />
+          <SettingsRow testID="settings-row-help" icon="help-circle-outline" title="Help & Support" onPress={() => setPage('help')} />
+          <SettingsRow testID="settings-row-about" icon="information-circle-outline" title="About Us" onPress={() => setPage('about')} />
         </SettingsGroup>
         </>
         )}
