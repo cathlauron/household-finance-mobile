@@ -99,6 +99,24 @@ PROGRESS4.md for that detail, plus everything it links back to
   PinUnlockScreen.tsx and SetPinScreen.tsx (each self-contained). Restyle later.
 - Sign-in recovery modal in SignInScreen.tsx still has the old look.
 - Settings > Security retroactive recovery-key modal still has the old look.
+- PC.5a: the "[avatar] base64 chars:" size printed in Metro was NOT
+  recorded. Check a real number next time (expected roughly 15,000 to
+  25,000, unverified).
+- PC.5a: app.json photosPermission option name for the expo-image-picker
+  plugin was written from memory. Phase C's EAS build is its real test.
+- PC.5a: avatars are keyed by username. Two linked members with the same
+  username would share one avatar. Cosmetic only. It is unconfirmed that
+  Firestore rules always stop duplicate usernames across phones.
+- PC.5a: getInitials() in ProfileScreen.tsx has a hard-coded special case
+  that turns the username "cathlauron" into "CL". Remove it during PC.5.
+- PC.5a: now-unused styles left behind (tsc does not flag these): avatar
+  and avatarText in HomeScreen.tsx, avatarCircle and avatarText in
+  ProfileScreen.tsx, profileAvatarCircle and profileAvatarText in
+  SettingsScreen.tsx. Tidy in PC.5/PC.6.
+- PC.5a: ManualTransaction.receiptPhoto stores UNRESIZED photos (quality
+  0.5 only) inside the encrypted model. Already the biggest inflator of
+  document size and a Firestore 1 MiB limit risk. Out of scope for PC.5a,
+  worth its own fix (resize on pick, same helper approach).
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -136,7 +154,18 @@ Home tab headerShown:false), mobile-app/src/screens/SettingsScreen.tsx
 (change-pin-button testID added), mobile-app/src/screens/ProfileScreen.tsx
 (lock-app-button testID added) - all committed. mobile-app/flows/
 pin-quick-unlock.yaml (rewritten for the new Settings/Profile-based PIN
-and Lock navigation path, run for real and passing) - commit pending.
+and Lock navigation path, run for real and passing) - committed as 75f2be3
+("PC.4c: Home redesign v2 + pin-quick-unlock.yaml Maestro flow update").
+PC.5a additions: mobile-app/src/types.ts (AvatarConfig type + optional
+avatars?: Record<string, AvatarConfig> on HouseholdModel),
+mobile-app/src/mergeModels.ts (mergeAvatars helper + avatars line in
+mergeModels), mobile-app/app.json (expo-image-picker plugin with
+photosPermission), mobile-app/package.json + package-lock.json
+(expo-image-manipulator 14.0.8), mobile-app/src/avatars.ts (new),
+mobile-app/src/components/Avatar.tsx (new),
+mobile-app/src/components/AvatarPickerSheet.tsx (new),
+mobile-app/src/screens/ProfileScreen.tsx, HomeScreen.tsx,
+SettingsScreen.tsx (old initials circles swapped for Avatar).
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -368,6 +397,46 @@ not abandoned - return to them before or alongside Phase C.
   green/teal) - the color difference predates this session's changes and
   was left as-is since the person didn't flag it as wrong.
 
+📌 PC.5a decisions and results (added this session)
+- PC.5a-1 (d298368): foundation, no visible change. AvatarConfig type
+  {type: 'initials'|'preset'|'photo', presetId?, photoDataUri?, updatedAt?}.
+  HouseholdModel gets optional avatars?: Record<string, AvatarConfig>,
+  KEYED BY USERNAME. Old models load fine (field is optional).
+  sanitizeModelIds spreads ...model so it passes avatars through untouched.
+- mergeModels lists every field by name, so avatars had to be added there
+  or "Merge both" during linking would silently drop everyone's avatars.
+  New mergeAvatars(): per username, the more recently updated wins, ties
+  go to "a".
+- Keyed by username, NOT Firebase uid: getCurrentFirebaseUser() can be
+  null on cold start, while username is always in memory on every screen.
+  Roster already has each member's username (memberUsernames).
+- Photos live INSIDE the encrypted household model (no Firebase Storage).
+  makeAvatarDataUri() in avatars.ts: 192px wide, JPEG quality 0.6,
+  rejects anything over 80,000 base64 chars (about 60 KB). Uses the NEW
+  ImageManipulator.manipulate(...).resize().renderAsync().saveAsync() API
+  because manipulateAsync is marked @deprecated in the installed 14.0.8.
+- Preset avatars = Ionicons icon on a coloured circle (12 presets in
+  AVATAR_PRESETS). Only the preset id is stored, no image files.
+- Avatar.tsx is one shared component (variant 'filled' for Home,
+  'outlined' for Profile/Settings). It takes initials as a prop so it
+  never imports a screen.
+- AvatarPickerSheet.tsx uses the existing BottomSheet: 12 presets, "Choose
+  a photo" (square crop), "Use my initials" (only shown once something is
+  set). Photo picking is wrapped in setAutoLockSuppressed(true/false),
+  same pattern as the receipt picker, so the PIN lock does not fire when
+  returning from the gallery.
+- Editing happens ONLY on Profile (tap the avatar, camera badge). Home
+  and Settings just display it. Saves go through the existing saveModel.
+- Testids added: avatar-edit-button (Profile), avatar-choose-photo and
+  avatar-picker-sheet (picker). No existing testID changed.
+- PC.5a-2 (hash not recorded here, see git log): picker sheet + Avatar on
+  Home/Settings/Profile. On-device verification PASSED: sheet opens,
+  preset saves and shows on Home/Settings/Profile, photo crop + save
+  works, PIN lock did not trigger after the gallery, "Use my initials"
+  resets, avatar persists after closing and reopening the app, dark mode
+  readable.
+- Household Members roster avatars deliberately deferred to PC.5.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -378,8 +447,8 @@ Checkpoint table
 | PC.2b | Create Profile restyle plus recovery-key modal restyle, and wrapped in a ScrollView/KeyboardAvoidingView (was a plain View: fields and button were unreachable with the keyboard open). | DONE and confirmed on-device. |
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. DEFERRED to Phase C: needs an EAS dev-client build, not testable in Expo Go. Sign-in buttons stay "Coming soon" alerts until then. | Not started, deliberately deferred. |
 | PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
-| PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | NOT STARTED. |
-| PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. | NOT STARTED. |
+| PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
+| PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. Also: show each linked member's avatar in the Household Members roster (use the Avatar component with model.avatars?.[m.username]). | NOT STARTED. |
 | PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
@@ -388,58 +457,18 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- PC.4c is done, on-device verified, and the Maestro flow it required
-  (pin-quick-unlock.yaml) has actually been RUN and passed - not just
-  tsc-checked. Commit it along with the six PC.4c code files still shown
-  as pending in the "Files in the repo" section above.
-- PC.5a next: avatar system (initials + preset avatars + real photo picker,
-  photo stored inside the encrypted household model, needs
-  expo-image-manipulator to shrink first per the PC.1 decisions). Start with
-  an Antigravity investigation-only prompt against the real current
-  ProfileScreen.tsx and getInitials helper before writing code.
+- PC.5a is done and on-device verified (d298368 plus the picker commit).
+  PC.4c and its Maestro flow are committed (75f2be3).
+- PC.5 next: Profile screen restyle to the mockup, "Member since" from
+  Firebase user.metadata.creationTime, avatars in the Household Members
+  roster, remove the "cathlauron" special case in getInitials, and tidy
+  the unused avatar styles. Start with an Antigravity investigation-only
+  prompt against the real current ProfileScreen.tsx before writing code.
 - Then PC.5 (Profile screen restyle, "Member since" from Firebase
   user.metadata.creationTime), PC.6 (Settings + Language/About rows), PC.7
   (Subscription "Coming soon" screen), PC.8 (pull-to-refresh). PC.3 (real
   Google/Apple/Facebook OAuth) still waits for Phase C's EAS dev-client build.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
-
---- Antigravity investigation prompt for PC.0 (run this next) ---
-
-Investigate only. Do not commit, push, or change anything - just
-report back exact, unelided file contents and findings so I can review
-them with Claude.
-
-I need two things:
-
-1. RENAMING SURFACE AREA: Search the entire repo for every place the
-   app's current name appears, so it can be renamed to "Finance Flow."
-   Specifically report the full real contents of:
-   - app.json (or app.config.js/ts if that is used instead) - full file
-   - package.json - the "name" field and anything else app-name-related
-   - eas.json if it exists
-   - Any splash screen component or config referencing the app name as
-     text
-   - Any screen that renders the app name as a visible string (search
-     for the literal current app name across src/)
-   - The current app icon and splash image file paths (just the paths,
-     not the image content), and the path convention used for any other
-     image assets already in the repo (so a new logo file lands in the
-     right place)
-
-2. CURRENT THEME/COLOR SYSTEM: Report the full real contents of
-   whatever file(s) define the app's color palette (provided via a
-   useTheme() hook). Show:
-   - The full theme/colors definition file(s)
-   - The ThemeProvider or context that supplies it
-   - Whether light/dark mode switching exists today, and how
-   - One example screen file's real import + usage of colors (e.g.
-     const { colors } = useTheme()) so the exact consumption pattern
-     is visible
-
-Report everything as real, complete code - no "..." elisions, no
-summaries. This is investigation only.
-
---- end of prompt ---
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
