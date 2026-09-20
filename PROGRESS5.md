@@ -107,9 +107,9 @@ PROGRESS4.md for that detail, plus everything it links back to
 - PC.5a: avatars are keyed by username. Two linked members with the same
   username would share one avatar. Cosmetic only. It is unconfirmed that
   Firestore rules always stop duplicate usernames across phones.
-- PC.5a: getInitials() in ProfileScreen.tsx has a hard-coded special case
+- [RESOLVED in PC.5-1, 49af80f] PC.5a: getInitials() in ProfileScreen.tsx has a hard-coded special case
   that turns the username "cathlauron" into "CL". Remove it during PC.5.
-- PC.5a: now-unused styles left behind (tsc does not flag these): avatar
+- [RESOLVED in PC.5-1, 49af80f: all five dead styles deleted] PC.5a: now-unused styles left behind (tsc does not flag these): avatar
   and avatarText in HomeScreen.tsx, avatarCircle and avatarText in
   ProfileScreen.tsx, profileAvatarCircle and profileAvatarText in
   SettingsScreen.tsx. Tidy in PC.5/PC.6.
@@ -117,6 +117,17 @@ PROGRESS4.md for that detail, plus everything it links back to
   0.5 only) inside the encrypted model. Already the biggest inflator of
   document size and a Firestore 1 MiB limit risk. Out of scope for PC.5a,
   worth its own fix (resize on pick, same helper approach).
+- PC.5-1: formatMemberSince() parses Firebase's user.metadata.creationTime
+  text with new Date(). If the text is ever missing or unreadable, the
+  "Member since" card silently hides (by design), so a missing card means
+  no usable date, not a crash. Uses the en-US locale ("Sep 2026").
+- PC.5-2 watch item: the Household Members roster falls back to the
+  usernames 'Owner' / 'Member' when memberUsernames is missing. Looking up
+  model.avatars?.[m.username] with those fallbacks would hit the wrong key,
+  so the roster avatar code must show plain initials for fallback names
+  instead of an avatar lookup. Confirm against the real roster code first.
+- Cosmetic, harmless: git prints "LF will be replaced by CRLF" for
+  ProfileScreen.tsx on Windows. No action needed.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -166,6 +177,13 @@ mobile-app/src/components/Avatar.tsx (new),
 mobile-app/src/components/AvatarPickerSheet.tsx (new),
 mobile-app/src/screens/ProfileScreen.tsx, HomeScreen.tsx,
 SettingsScreen.tsx (old initials circles swapped for Avatar).
+PC.5-1 (49af80f): mobile-app/src/screens/ProfileScreen.tsx (header restyled
+with no card box, larger avatar, pencil icon, @username, email, vault badge,
+new "Member since" card via formatMemberSince(); cathlauron special case
+removed; dead avatarCircle/avatarText styles removed),
+mobile-app/src/screens/HomeScreen.tsx (dead avatar/avatarText styles
+removed), mobile-app/src/screens/SettingsScreen.tsx (dead
+profileAvatarCircle/profileAvatarText styles removed).
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -437,6 +455,39 @@ not abandoned - return to them before or alongside Phase C.
   readable.
 - Household Members roster avatars deliberately deferred to PC.5.
 
+📌 PC.5-1 decisions and results (added this session)
+- PC.5 is split in two. PC.5-1 = cleanup + header restyle + "Member since"
+  (49af80f, pushed, on-device test passed). PC.5-2 = shortcut rows, roster
+  avatars, Log out / Lock App restyle.
+- Investigation (Antigravity) confirmed before any code: creationTime is an
+  optional string (not a Date); no Maestro flow asserts on visible Profile
+  text; only the testIDs matter, and all were kept. The roster
+  username fallback, the cathlauron special case and the dead styles were
+  all confirmed real.
+- Mockup interpretation, locked: the app has no display name, so the header
+  shows @username. Household & Sharing, the vault badge and Lock App are
+  kept (nothing existing removed). No dead "Personal information" row is
+  added. The pencil icon top-right replaces the old camera badge; tapping
+  the avatar OR the pencil opens the picker (avatar-edit-button testID
+  kept).
+- "Member since" card is hidden entirely when creationTime is missing or
+  unparseable.
+- Removed: the 'cathlauron' -> 'CL' special case in getInitials (all
+  callers keep working; they just get real initials now), and the five dead
+  styles listed under Known issues.
+
+📌 PC.5-2 plan, locked (added this session)
+- Shortcut rows: keep the two existing rows ("Password & Encryption Key",
+  "Active Devices") with shield and phone icons inside ONE grouped card, and
+  add a third row, "All settings", for the mockup rows that have no
+  matching feature yet. All rows open Settings (Settings accepts no
+  section param, so no deep-jump).
+- Sign Out is restyled as the outlined red "Log out" pill from the mockup
+  (existing testID must be kept). Lock App stays as a quiet outlined button
+  above it (lock-app-button testID kept).
+- Roster: show each linked member's Avatar using model.avatars?.[m.username]
+  (see the fallback-username watch item under Known issues).
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -448,7 +499,7 @@ Checkpoint table
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. DEFERRED to Phase C: needs an EAS dev-client build, not testable in Expo Go. Sign-in buttons stay "Coming soon" alerts until then. | Not started, deliberately deferred. |
 | PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
-| PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. Also: show each linked member's avatar in the Household Members roster (use the Avatar component with model.avatars?.[m.username]). | NOT STARTED. |
+| PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split: PC.5-1 = header restyle + Member since + cleanup (49af80f, DONE, on-device test passed). PC.5-2 = grouped shortcut card, roster avatars, Log out / Lock App restyle. | PC.5-1 done. PC.5-2 NOT STARTED. |
 | PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
@@ -459,15 +510,17 @@ every other phase.
 ▶️ Next step
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
-- PC.5 next: Profile screen restyle to the mockup, "Member since" from
-  Firebase user.metadata.creationTime, avatars in the Household Members
-  roster, remove the "cathlauron" special case in getInitials, and tidy
-  the unused avatar styles. Start with an Antigravity investigation-only
-  prompt against the real current ProfileScreen.tsx before writing code.
-- Then PC.5 (Profile screen restyle, "Member since" from Firebase
-  user.metadata.creationTime), PC.6 (Settings + Language/About rows), PC.7
-  (Subscription "Coming soon" screen), PC.8 (pull-to-refresh). PC.3 (real
-  Google/Apple/Facebook OAuth) still waits for Phase C's EAS dev-client build.
+- PC.5-1 is done (49af80f, pushed, on-device test passed): header restyle,
+  "Member since", cathlauron special case and dead avatar styles removed.
+- PC.5-2 next: grouped shortcut card (two existing rows plus "All settings"),
+  Household Members roster avatars, outlined red "Log out" pill with Lock
+  App as a quiet outlined button above it. Start with a short
+  Antigravity investigation-only prompt against the real CURRENT
+  ProfileScreen.tsx (the roster block and the Session Actions block), since
+  PC.5-1 changed the file.
+- Then PC.6 (Settings + Language/About rows), PC.7 (Subscription "Coming
+  soon" screen), PC.8 (pull-to-refresh). PC.3 (real Google/Apple/Facebook
+  OAuth) still waits for Phase C's EAS dev-client build.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
