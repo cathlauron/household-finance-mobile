@@ -82,7 +82,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
   return '';
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const navigation = useNavigation<any>();
   const {
@@ -966,6 +966,33 @@ export default function SettingsScreen() {
           <SettingsRow testID="settings-row-data" icon="download-outline" title="Backup & data" onPress={() => setPage('data')} />
         </SettingsGroup>
         </>
+        )}
+        {page === null && (
+        <TouchableOpacity
+          testID="settings-log-out-button"
+          activeOpacity={0.7}
+          onPress={() => {
+            Alert.alert(
+              'Log out?',
+              'You will need to sign in again to access your data.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Yes, log out', style: 'destructive', onPress: onSignOut },
+              ]
+            );
+          }}
+          style={{
+            borderRadius: 999,
+            borderWidth: 1.5,
+            borderColor: colors.error,
+            paddingVertical: 13,
+            alignItems: 'center',
+            marginTop: 4,
+            marginBottom: 8,
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.error }}>Log out</Text>
+        </TouchableOpacity>
         )}
         {page === 'appearance' && (
         <>

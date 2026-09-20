@@ -110,9 +110,10 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
       />
       <Stack.Screen
         name="Settings"
-        component={SettingsScreen}
         options={{ title: 'Settings', headerBackTitle: 'More' }}
-      />
+      >
+        {() => <SettingsScreen onSignOut={onSignOut} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
