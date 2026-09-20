@@ -112,6 +112,63 @@ PROGRESS4.md for that detail, plus everything it links back to
   subscription double-notify, Weekly Spending Recap toggle/day-pills/
   hour input + actual firing, Subscription Cancel-Reminder wording and
   tap-to-deep-link (warm and cold start).
+- Screenshot restriction on the person's phone, PARKED for Phase C (not a
+  bug in this repo). Device: Vivo V40 Lite 5G, Android 16, Expo Go only
+  (no other Expo project has ever been opened in it). Once signed in,
+  screenshots fail on Home, all four bottom tabs and the lock screen with
+  "Unable to capture screenshot due to app restrictions". Screenshots work
+  on the phone's home screen, in other apps, on Expo Go's project list and
+  on the Finance Flow sign-in screen. Ordered test after force-stopping
+  Expo Go: phone home screen OK, Expo Go project list OK, app sign-in
+  screen OK, signed-in Home FAILS (the only failing step).
+  Established (Antigravity, two investigation rounds, raw output):
+  * Nothing in this repo blocks screenshots. Zero hits for FLAG_SECURE,
+    setSecure, SECURE_FLAG, setRecentsScreenshotEnabled, ScreenCapture,
+    preventScreenCaptureAsync or screenCaptureAsync across mobile-app/src,
+    App.tsx, app.json, package.json and git history (including deleted
+    code). expo-screen-capture is not installed. There is no android/
+    folder, no app.config.*, no eas.json, and no relevant app.json plugin.
+  * 3,081 native/JS files in the 12 packages searched (expo,
+    expo-local-authentication, expo-notifications, expo-image-picker,
+    expo-sharing, expo-document-picker, expo-clipboard, expo-file-system,
+    datetimepicker, react-native-screens, gesture-handler,
+    safe-area-context) contain no FLAG_SECURE or setSecure. Antigravity
+    reports the only FLAG_SECURE in all of node_modules is react-native's
+    ReactModalHostView.kt, which copies the flag onto a Modal only if the
+    Activity already has it (its whole-node_modules scan output was never
+    shown, so that last claim is unverified).
+  * Modal and Alert.alert are used on both signed-out and signed-in
+    screens, and StatusBar / setStatusBarHidden is not used anywhere, so
+    none of them explains why only signed-in screens fail.
+  * Expo package 54.0.37. Expo Go expected for SDK 54: 54.0.8. The Expo Go
+    version actually installed on the phone was NOT checked.
+  * Expo Go's own native code is not in this repo, so anything set inside
+    Expo Go cannot be found here.
+  Tried and did NOT help: installed expo-screen-capture and called
+  allowScreenCaptureAsync() in App.tsx on every screen change. Screenshots
+  still failed. Fully reverted (git restore of App.tsx, package.json and
+  package-lock.json, then npm install). Confirm package.json has no
+  expo-screen-capture before Phase C.
+  NOT proven: Antigravity claimed 95%+ confidence in "Expo Go window flag
+  left by an earlier project" or "biometric overlay". Neither fits: only
+  this project was ever opened in Expo Go, and plain tabs fail with no
+  biometric prompt showing. One earlier failure on the sign-in screen
+  (with the temporary edit installed) cleared after force-stopping Expo Go.
+  That fits "restriction starts after sign-in and lasts until Expo Go is
+  force-stopped", but the force-stop and the edit removal happened
+  together, so it was not isolated. Other untested ideas: a Vivo / Android
+  16 system feature (the message wording may be Vivo's own, not stock
+  Android's, unconfirmed), or the installed Expo Go being an older build
+  than 54.0.8.
+  Phase C check: on the first EAS installed build (no Expo Go), take
+  screenshots on the sign-in screen and on signed-in Home and a tab. If
+  they work, the cause was Expo Go on this phone and nothing needs
+  changing. If they still fail, look at Vivo's own security / privacy
+  settings for the app first, and only then reopen a code investigation.
+  Nothing needs re-enabling before publishing, because the app never
+  blocked screenshots.
+  Meanwhile: Android emulator screenshots, or photographing the phone
+  screen, are the only workarounds.
 - Could not be tested yet (needs specific conditions, not pass/fail):
   legacy-profile crash guards on Home/Dashboard (no legacy profile
   available); two-device sync checks throughout (single-device
@@ -882,13 +939,12 @@ not abandoned - return to them before or alongside Phase C.
   https://status.ngrok.com/ first, and `npx expo start` (no --tunnel) works
   fine as a fallback whenever phone and computer share the same WiFi.
 - Screenshot-blocking removal: the person asked to temporarily disable
-  on-device screenshot prevention for easier UI screenshotting during this
-  redesign phase, to be re-enabled before publishing (or sooner, on
-  request). An Antigravity investigation-only prompt was written and sent
-  to find the exact mechanism (expo-screen-capture vs. native FLAG_SECURE,
-  how many places it's set, whether disabling it needs just a JS reload or
-  a full rebuild). Antigravity's response has NOT yet been pasted back or
-  reviewed - this is a fully open item for next session.
+  on-device screenshot prevention for UI screenshotting. Investigated and
+  CLOSED for now: the app contains no screenshot-blocking code, so there is
+  nothing to remove. Full findings, what is unproven, and the Phase C check
+  are under Known issues ("Screenshot restriction on the person's phone").
+  A temporary expo-screen-capture allow call was tried, did not help, and
+  was reverted.
 
   📌 PC.8-1 and PC.9 decisions and results (added this session)
 - PC.8-1 (pushed, on-device test passed): pull-to-refresh on Dashboard only,
@@ -1083,11 +1139,8 @@ every other phase.
   4. If the row is still missing, or looks wrong in some other way -
      report exactly what's seen; do not commit; this needs a follow-up
      Antigravity investigation with that new detail.
-- ALSO OPEN: screenshot-blocking removal for easier UI screenshotting.
-  An Antigravity investigation-only prompt was sent (see this session's
-  decisions block above for exactly what it asked). The response has NOT
-  been pasted back yet - do that next, and it'll get turned into an exact,
-  clearly-commented, easy-to-reverse edit.
+- Screenshot restriction: PARKED for Phase C. No code change needed (see
+  Known issues). Re-test screenshots on the first installed EAS build.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
@@ -1106,8 +1159,8 @@ every other phase.
   (c) Optional: pull-to-refresh on Profile, Settings, and the Reports child
       screens, only if wanted (see Known issues for the Settings scrollTo
       risk).
-  (d) Remember to re-enable screenshot blocking before Phase C publishing,
-      once the temporary removal above has actually been applied.
+  (d) Nothing to re-enable: the app never blocked screenshots. Re-test
+      screenshots on the first installed build (see Known issues).
   Then Phase C (EAS Build).
   PC.3 (real Google/Apple/Facebook OAuth) still waits for Phase C's EAS
   dev-client build.
