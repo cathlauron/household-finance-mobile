@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Image, Platform, KeyboardAvoidingView } from 'react-native';
+import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import CryptoJS from 'crypto-js';
@@ -18,6 +19,8 @@ type Props = {
 };
 
 export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: Props) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [usernameInput, setUsernameInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [password1, setPassword1] = useState('');
@@ -139,167 +142,221 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>FIRST-TIME SETUP</Text>
-      <Text style={styles.title}>Create your profile</Text>
-      <Text style={styles.sub}>
-        Enter an email, username, and password to create your account.
-      </Text>
-
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        testID="email-input"
-        style={styles.input}
-        value={emailInput}
-        onChangeText={setEmailInput}
-        placeholder="you@example.com"
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-      />
-
-      <Text style={styles.label}>Username</Text>
-      <TextInput
-        testID="username-input"
-        style={styles.input}
-        value={usernameInput}
-        onChangeText={setUsernameInput}
-        placeholder="e.g. miguel, ana"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      <Text style={styles.label}>Password</Text>
-      <PasswordField
-        testID="password-input"
-        style={styles.input}
-        value={password1}
-        onChangeText={setPassword1}
-        placeholder="At least 6 characters"
-      />
-      <Text style={styles.label}>Confirm password</Text>
-      <PasswordField
-        testID="confirm-password-input"
-        style={styles.input}
-        value={password2}
-        onChangeText={setPassword2}
-        placeholder="Re-enter password"
-      />
-
-      {!!error && <Text style={styles.error}>{error}</Text>}
-
-      <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={handleCreate} disabled={busy}>
-        <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.ghostBtn} onPress={onGoToSignIn}>
-        <Text style={styles.ghostBtnText}>Already have a profile? Sign in</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.hint}>
-        Your data is encrypted with this password. You will receive a Secret Recovery Key
-        next to protect against forgotten passwords.
-      </Text>
-
-      <Modal visible={!!recoveryCode} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.eyebrow}>CRITICAL SECURITY STEP</Text>
-            <Text style={styles.modalTitle}>Secret Recovery Key</Text>
-            <Text style={styles.modalSub}>
-              Save this key in a safe place. If you forget or reset your password, this is the
-              only way to restore your data.
-            </Text>
-
-            <View style={styles.codeBox}>
-              <Text selectable style={styles.codeText}>
-                {recoveryCode}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.copyButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
-              onPress={async () => {
-                if (!recoveryCode) return;
-                await Clipboard.setStringAsync(recoveryCode);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-            >
-              <Ionicons
-                name={copied ? 'checkmark' : 'copy-outline'}
-                size={16}
-                color="#FFFFFF"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.copyButtonText}>{copied ? 'Copied!' : 'Copy Key'}</Text>
-            </TouchableOpacity>
-
-            <Pressable
-              style={styles.checkRow}
-              onPress={() => setSavedAcknowledged((prev) => !prev)}
-            >
-              <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
-                {savedAcknowledged && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-              </View>
-              <Text style={styles.checkLabel}>
-                I have written down or saved this recovery key in a safe place.
-              </Text>
-            </Pressable>
-
-            <TouchableOpacity
-              style={[styles.primaryBtn, !savedAcknowledged && styles.btnDisabled]}
-              disabled={!savedAcknowledged}
-              onPress={() => {
-                if (createdInfo) {
-                  onProfileCreated(createdInfo.username, createdInfo.key);
-                }
-              }}
-            >
-              <Text style={styles.primaryBtnText}>Continue</Text>
-            </TouchableOpacity>
-          </View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.brandWrap}>
+          <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Text style={styles.brandName}>FINANCE FLOW</Text>
         </View>
-      </Modal>
-    </View>
+        <Text style={styles.title}>Create your account</Text>
+        <Text style={styles.sub}>Start your financial journey.</Text>
+
+        <Text style={styles.label}>Email address</Text>
+        <View style={styles.fieldWrap}>
+          <View style={styles.leftIcon} pointerEvents="none">
+            <Ionicons name="mail-outline" size={18} color={colors.inkFaint} />
+          </View>
+          <TextInput
+            testID="email-input"
+            style={styles.input}
+            value={emailInput}
+            onChangeText={setEmailInput}
+            placeholder="you@example.com"
+            placeholderTextColor={colors.inkFaint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+          />
+        </View>
+
+        <Text style={styles.label}>Username</Text>
+        <View style={styles.fieldWrap}>
+          <View style={styles.leftIcon} pointerEvents="none">
+            <Ionicons name="person-outline" size={18} color={colors.inkFaint} />
+          </View>
+          <TextInput
+            testID="username-input"
+            style={styles.input}
+            value={usernameInput}
+            onChangeText={setUsernameInput}
+            placeholder="e.g. miguel, ana"
+            placeholderTextColor={colors.inkFaint}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.fieldWrap}>
+          <View style={styles.leftIcon} pointerEvents="none">
+            <Ionicons name="lock-closed-outline" size={18} color={colors.inkFaint} />
+          </View>
+          <PasswordField
+            testID="password-input"
+            style={styles.input}
+            value={password1}
+            onChangeText={setPassword1}
+            placeholder="At least 6 characters"
+          />
+        </View>
+
+        <Text style={styles.label}>Confirm password</Text>
+        <View style={styles.fieldWrap}>
+          <View style={styles.leftIcon} pointerEvents="none">
+            <Ionicons name="lock-closed-outline" size={18} color={colors.inkFaint} />
+          </View>
+          <PasswordField
+            testID="confirm-password-input"
+            style={styles.input}
+            value={password2}
+            onChangeText={setPassword2}
+            placeholder="Re-enter password"
+          />
+        </View>
+
+        {!!error && <Text style={styles.error}>{error}</Text>}
+
+        <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={handleCreate} disabled={busy}>
+          <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
+          {!busy && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.linkBtn} onPress={onGoToSignIn}>
+          <Text style={styles.linkText}>Already have an account? Sign in</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.hint}>
+          Your data is encrypted with this password. You will receive a Secret Recovery Key
+          next to protect against forgotten passwords.
+        </Text>
+
+        <Modal visible={!!recoveryCode} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.eyebrow}>CRITICAL SECURITY STEP</Text>
+              <Text style={styles.modalTitle}>Secret Recovery Key</Text>
+              <Text style={styles.modalSub}>
+                Save this key in a safe place. If you forget or reset your password, this is the
+                only way to restore your data.
+              </Text>
+
+              <View style={styles.codeBox}>
+                <Text selectable style={styles.codeText}>
+                  {recoveryCode}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.copyButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
+                onPress={async () => {
+                  if (!recoveryCode) return;
+                  await Clipboard.setStringAsync(recoveryCode);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                <Ionicons
+                  name={copied ? 'checkmark' : 'copy-outline'}
+                  size={16}
+                  color={colors.gold}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.copyButtonText}>{copied ? 'Copied!' : 'Copy Key'}</Text>
+              </TouchableOpacity>
+
+              <Pressable
+                style={styles.checkRow}
+                onPress={() => setSavedAcknowledged((prev) => !prev)}
+              >
+                <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
+                  {savedAcknowledged && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkLabel}>
+                  I have written down or saved this recovery key in a safe place.
+                </Text>
+              </Pressable>
+
+              <TouchableOpacity
+                style={[styles.primaryBtn, !savedAcknowledged && styles.btnDisabled]}
+                disabled={!savedAcknowledged}
+                onPress={() => {
+                  if (createdInfo) {
+                    onProfileCreated(createdInfo.username, createdInfo.key);
+                  }
+                }}
+              >
+                <Text style={styles.primaryBtnText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF9', padding: 24, paddingTop: 80 },
-  eyebrow: { fontSize: 11, letterSpacing: 2, color: '#78716C', textAlign: 'center', marginBottom: 8 },
-  title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: '#1C1917', marginBottom: 8 },
-  sub: { fontSize: 14, color: '#57534E', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-  label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#57534E', marginBottom: 6, marginTop: 14 },
-  input: {
-    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#E7E5E4',
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917',
-  },
-  error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 24 },
-  primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
-  btnDisabled: { opacity: 0.4 },
-  ghostBtn: { paddingVertical: 14, marginTop: 4 },
-  ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
-  hint: { fontSize: 11, color: '#A8A29E', textAlign: 'center', marginTop: 24, lineHeight: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 24, width: '100%', maxWidth: 420 },
-  modalTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: '#1C1917', marginBottom: 8 },
-  modalSub: { fontSize: 13, color: '#57534E', textAlign: 'center', lineHeight: 18, marginBottom: 20 },
-  codeBox: {
-    backgroundColor: '#F5F5F4', borderWidth: 1, borderColor: '#D6D3D1', borderRadius: 8,
-    paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
-  },
-  codeText: { fontSize: 17, fontWeight: '700', letterSpacing: 2, color: '#0F172A', fontFamily: 'monospace' },
-  copyButton: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginBottom: 16 },
-  copyButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, borderColor: '#78716C',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
-  },
-  checkboxActive: { backgroundColor: '#1C1917', borderColor: '#1C1917' },
-  checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
-  checkLabel: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 18 },
-});
+function makeStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.navy2 },
+    scrollContent: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40 },
+    brandWrap: { alignItems: 'center', marginBottom: 16 },
+    brandLogo: { width: 56, height: 56 },
+    brandName: { marginTop: 8, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
+    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
+    title: {
+      fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',
+      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+    },
+    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 12, lineHeight: 20 },
+    label: { fontSize: 12, fontWeight: '600', color: colors.ink, marginBottom: 6, marginTop: 14 },
+    fieldWrap: { position: 'relative', justifyContent: 'center' },
+    leftIcon: { position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
+    input: {
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
+      paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
+    },
+    error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
+    primaryBtn: {
+      backgroundColor: colors.gold, borderRadius: 999, height: 52, marginTop: 20,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    },
+    primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    btnDisabled: { opacity: 0.4 },
+    linkBtn: { paddingVertical: 14, marginTop: 10 },
+    linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },
+    hint: { fontSize: 11, color: colors.inkDim, textAlign: 'center', marginTop: 16, lineHeight: 16 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(16,43,33,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalCard: {
+      backgroundColor: colors.navy3, borderRadius: 20, padding: 24, width: '100%', maxWidth: 420,
+      borderWidth: 1, borderColor: colors.navy4,
+    },
+    modalTitle: {
+      fontSize: 24, textAlign: 'center', color: colors.ink, marginBottom: 8,
+      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+    },
+    modalSub: { fontSize: 13, color: colors.inkDim, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
+    codeBox: {
+      backgroundColor: colors.navy2, borderWidth: 1, borderColor: colors.navy4, borderRadius: 12,
+      paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center',
+      marginBottom: 16,
+    },
+    codeText: { fontSize: 17, fontWeight: '700', letterSpacing: 2, color: colors.ink, fontFamily: 'monospace' },
+    copyButton: {
+      backgroundColor: colors.navy2, borderWidth: 1, borderColor: colors.gold, borderRadius: 999,
+      paddingVertical: 12, alignItems: 'center', marginBottom: 16,
+    },
+    copyButtonText: { color: colors.gold, fontWeight: '600', fontSize: 14 },
+    checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+    checkbox: {
+      width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.inkDim,
+      alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy3,
+    },
+    checkboxActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+    checkLabel: { flex: 1, fontSize: 13, color: colors.ink, lineHeight: 18 },
+  });
+}
