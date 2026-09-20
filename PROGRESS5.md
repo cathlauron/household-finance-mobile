@@ -1166,6 +1166,48 @@ not abandoned - return to them before or alongside Phase C.
   the flows are run: wait on a testID that exists on Home (e.g.
   home-calendar-shortcut) instead. Antigravity's claim that they "pass or
   warn" contradicts its own pasted YAML.
+📌 "Fewer words" batch 2 (added this session)
+- Audit by Antigravity (investigation only), then cut down by review.
+  Threshold used: only changes that save 4+ words or fix a string over
+  12 words. Applied in one pass (pushed, tsc-clean, CONFIRMED ON-DEVICE by
+  the person, except the avatar alert, which only shows when photo access
+  is denied and was not triggered):
+  * TaxSummaryReport.tsx: intro now "Income, spending, fees and savings
+    for {year}. Not tax advice." (15 -> 10 words); fees note now "Loan
+    late fees and logged debt fees only." (kept the meaning that unlogged
+    fees are not counted).
+  * SavingsFiComparisonModal.tsx: intro now "Base Plan is your saved plan.
+    Change fields below to compare a What-If Plan. Nothing here changes
+    what's saved." (28 -> 19 words; kept the terms Base Plan / What-If Plan
+    and the "nothing is saved" reassurance).
+  * AvatarPickerSheet.tsx: photo-permission alert now "Allow photo library
+    access in your phone settings." (13 -> 8).
+- Antigravity proposals REJECTED (do not redo without a new decision):
+  * Tax intro "Financial summary for {year}. Not tax advice." (dropped the
+    list of what is included) and fees note "Includes loan late fees and
+    logged debt fees." (dropped the warning that totals can be incomplete).
+  * Compare modal "Test a What-If scenario against your saved plan. Changes
+    here are not saved." (dropped the "Base Plan" term).
+  * PremiumScreen subtitle trim (placeholder screen built from the mockup;
+    "match the mockup" decision). Still open if the person wants it.
+  * PaymentMethodsReport footnote ("unassigned payments" reads oddly, saves
+    only 3 words), CashFlowForecastReport footnote ("planned entries" is
+    vaguer and drops what is included), ReportsScreen empty state ("Tap
+    Customize above" was not confirmed to match the visible label, which may
+    be an icon; saves 3 words).
+- Nothing worth changing found in GoalsScreen.tsx (31 strings looked at) or
+  SetPinScreen.tsx (11). Both left alone. Their delete alert and the PIN
+  warning are protected.
+- Not yet covered (batch 3, if wanted): AccountsScreen (long strings are
+  protected alerts), PinUnlockScreen, DashboardScreen, HomeScreen,
+  CalendarScreen, the other reports (YearInReview, SubscriptionAudit,
+  WeeklyDigest, MerchantSpending, PersonSpending, MonthlyCloseOut),
+  IntroScreen, IntroSlidesScreen, PlanningScreen, ToPayScreen,
+  InsightsScreen, and the small components. Their inventory word counts are
+  all low (0 strings over 8 words except AccountsScreen), so remaining gains
+  are small. Reasonable to STOP the pass here. Intro slide copy also has
+  not had the pass. About 38 strings over 12 words remain in the 13
+  earlier screens (many are protected security text).
 
 Checkpoint table
 
@@ -1202,9 +1244,10 @@ every other phase.
   all pushed and on-device tested). PC.8 is done.
   Remaining pre-Phase C items, in no fixed order (after the two immediate
   items above):
-  (a) "Fewer words" pass: batch 1 pushed (see the batch 1 block above).
-      Batch 1 confirmed on-device. Continue with the batch 2
-      files listed there (GoalsScreen and the report screens first).
+  (a) "Fewer words" pass: batches 1 and 2 pushed and confirmed on-device
+      (see the batch blocks above). Remaining files have very little
+      trimmable text. Decide whether to stop, or do a small batch 3 (Intro
+      slides, PinUnlockScreen, DashboardScreen, the smaller reports).
   (b) Run the three Maestro flows (change-password.yaml,
       pin-quick-unlock.yaml, sign-out-round-trip.yaml) once a device or
       emulator is connected, and fix the sign-out-button reachability issue.
