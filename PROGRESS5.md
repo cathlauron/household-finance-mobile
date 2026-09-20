@@ -169,6 +169,19 @@ not abandoned - return to them before or alongside Phase C.
   * New assets in mobile-app/assets: intro-track.png, intro-goals.png,
     intro-private.png, splash-bg.png.
     
+  📌 PC.1 findings and decisions (added this session)
+- Locked: avatars = initials + real photo picker + preset avatars.
+  Settings gets Language and About us rows (static), everything restyled to
+  the mockup, nothing existing removed. Match the mockup as closely as possible.
+- Sign-in uses email (Firebase) AND username (local profile lookup); keep both
+  fields in PC.2, restyled. No fake-email scheme exists.
+- "Member since" does not exist in the app. PC.5 derives it from Firebase
+  user.metadata.creationTime, no new storage.
+- expo-image-picker installed; expo-image-manipulator and Firebase Storage not.
+- CreateProfileScreen/SignInScreen use hardcoded old hex colours, not theme tokens.
+- PC.1b: remove OnboardingScreen step 1 (duplicates intro slide 3), relabel to
+  STEP 1 OF 2. First-run: intro -> createProfile -> recovery key -> Quick Unlock -> ready -> home.
+  
 Checkpoint table
 
 | Checkpoint | What happens | Done when |

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, Image, Platform } from 'react-native';
+import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -43,6 +44,8 @@ export default function SignInScreen({
   remoteRevokeNotice,
   onClearRemoteRevokeNotice,
 }: Props) {
+  const { colors } = useTheme();
+  const ms = makeMainStyles(colors);
   const [usernameInput, setUsernameInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [password, setPassword] = useState('');
@@ -724,10 +727,13 @@ export default function SignInScreen({
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>SIGN IN</Text>
-      <Text style={styles.title}>Welcome back</Text>
-      <Text style={styles.sub}>Sign in to your household account.</Text>
+    <View style={ms.container}>
+      <View style={ms.brandWrap}>
+        <Image source={require('../../assets/logo.png')} style={ms.brandLogo} resizeMode="contain" />
+        <Text style={ms.brandName}>FINANCE FLOW</Text>
+      </View>
+      <Text style={ms.title}>Welcome back</Text>
+      <Text style={ms.sub}>Sign in to your financial journey.</Text>
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <Ionicons name="warning-outline" size={16} color="#991B1B" style={{ marginRight: 6 }} />
@@ -740,48 +746,65 @@ export default function SignInScreen({
         </View>
       )}
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        testID="email-input"
-        style={styles.input}
-        value={emailInput}
-        onChangeText={setEmailInput}
-        placeholder="you@example.com"
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        editable={!busy}
-      />
+      <Text style={ms.label}>Email address</Text>
+      <View style={ms.fieldWrap}>
+        <View style={ms.leftIcon} pointerEvents="none">
+          <Ionicons name="mail-outline" size={18} color={colors.inkFaint} />
+        </View>
+        <TextInput
+          testID="email-input"
+          style={ms.input}
+          value={emailInput}
+          onChangeText={setEmailInput}
+          placeholder="you@example.com"
+          placeholderTextColor={colors.inkFaint}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          editable={!busy}
+        />
+      </View>
 
-      <Text style={styles.label}>Username</Text>
-      <TextInput
-        testID="username-input"
-        style={styles.input}
-        value={usernameInput}
-        onChangeText={setUsernameInput}
-        placeholder="e.g. miguel, ana"
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!busy}
-      />
+      <Text style={ms.label}>Username</Text>
+      <View style={ms.fieldWrap}>
+        <View style={ms.leftIcon} pointerEvents="none">
+          <Ionicons name="person-outline" size={18} color={colors.inkFaint} />
+        </View>
+        <TextInput
+          testID="username-input"
+          style={ms.input}
+          value={usernameInput}
+          onChangeText={setUsernameInput}
+          placeholder="e.g. miguel, ana"
+          placeholderTextColor={colors.inkFaint}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!busy}
+        />
+      </View>
 
-      <Text style={styles.label}>Password</Text>
-      <PasswordField
-        testID="password-input"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="********"
-        editable={!busy}
-      />
+      <Text style={ms.label}>Password</Text>
+      <View style={ms.fieldWrap}>
+        <View style={ms.leftIcon} pointerEvents="none">
+          <Ionicons name="lock-closed-outline" size={18} color={colors.inkFaint} />
+        </View>
+        <PasswordField
+          testID="password-input"
+          style={ms.input}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Enter your password"
+          editable={!busy}
+        />
+      </View>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Text style={ms.error}>{error}</Text>}
 
-      <TouchableOpacity testID="sign-in-button" style={styles.primaryBtn} onPress={handleSignIn} disabled={busy}>
+      <TouchableOpacity testID="sign-in-button" style={ms.primaryBtn} onPress={handleSignIn} disabled={busy}>
         {busy ? (
           <View style={styles.busyRow}>
             <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
-            <Text style={styles.primaryBtnText}>
+            <Text style={ms.primaryBtnText}>
               {isMigrating
                 ? 'Setting up sign-in...'
                 : isRestoring
@@ -790,18 +813,40 @@ export default function SignInScreen({
             </Text>
           </View>
         ) : (
-          <Text style={styles.primaryBtnText}>Sign in</Text>
+          <View style={styles.busyRow}>
+            <Text style={ms.primaryBtnText}>Sign in</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </View>
         )}
       </TouchableOpacity>
 
       {showSlowHint && (
-        <Text style={styles.slowHint}>
+        <Text style={ms.hint}>
           Deriving your encryption key can take up to a minute. Normal on sign-in.
         </Text>
       )}
 
-      <TouchableOpacity style={styles.ghostBtn} onPress={onGoToCreateProfile} disabled={busy}>
-        <Text style={styles.ghostBtnText}>Create a new profile</Text>
+      <View style={ms.dividerRow}>
+        <View style={ms.dividerLine} />
+        <Text style={ms.dividerText}>Or continue with</Text>
+        <View style={ms.dividerLine} />
+      </View>
+
+      <View style={ms.socialRow}>
+        {(['logo-google', 'logo-apple', 'logo-facebook'] as const).map((icon) => (
+          <TouchableOpacity
+            key={icon}
+            style={ms.socialBtn}
+            disabled={busy}
+            onPress={() => Alert.alert('Coming soon', 'Social sign-in will be available in a later update.')}
+          >
+            <Ionicons name={icon} size={22} color={colors.ink} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity style={ms.linkBtn} onPress={onGoToCreateProfile} disabled={busy}>
+        <Text style={ms.linkText}>Create a new account</Text>
       </TouchableOpacity>
 
       <Modal visible={!!recoveryContext} transparent animationType="slide">
@@ -984,3 +1029,37 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+function makeMainStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.navy2, paddingHorizontal: 24, paddingTop: 48 },
+    brandWrap: { alignItems: 'center', marginBottom: 20 },
+    brandLogo: { width: 64, height: 64 },
+    brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
+    title: {
+      fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',
+      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+    },
+    sub: { fontSize: 14, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
+    label: { fontSize: 12, fontWeight: '600', color: colors.ink, marginBottom: 6, marginTop: 14 },
+    fieldWrap: { position: 'relative', justifyContent: 'center' },
+    leftIcon: { position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
+    input: {
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
+      paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
+    },
+    error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
+    primaryBtn: { backgroundColor: colors.gold, borderRadius: 999, height: 52, justifyContent: 'center', marginTop: 20 },
+    primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    hint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 18 },
+    dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 16 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.navy4 },
+    dividerText: { marginHorizontal: 12, fontSize: 12, color: colors.inkDim },
+    socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
+    socialBtn: {
+      width: 48, height: 48, borderRadius: 24, backgroundColor: colors.navy3,
+      borderWidth: 1, borderColor: colors.navy4, alignItems: 'center', justifyContent: 'center',
+    },
+    linkBtn: { paddingVertical: 14, marginTop: 10 },
+    linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },
+  });
+}
