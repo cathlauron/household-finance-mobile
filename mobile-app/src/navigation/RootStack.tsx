@@ -9,6 +9,7 @@ import SavingsScreen from '../screens/SavingsScreen';
 import PlanningScreen from '../screens/PlanningScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import PremiumScreen from '../screens/PremiumScreen';
 import { useTheme } from '../ThemeContext';
 
 export type RootStackParamList = {
@@ -21,6 +22,7 @@ export type RootStackParamList = {
   Planning: undefined;
   Insights: undefined;
   Settings: undefined;
+  Premium: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -114,6 +116,11 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
       >
         {() => <SettingsScreen onSignOut={onSignOut} />}
       </Stack.Screen>
+      <Stack.Screen
+        name="Premium"
+        component={PremiumScreen}
+        options={{ title: 'Subscription', headerBackTitle: 'Settings' }}
+      />
     </Stack.Navigator>
   );
 }

@@ -945,6 +945,9 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
 
+        <SettingsGroup label="Membership">
+          <SettingsRow testID="settings-row-premium" icon="sparkles-outline" title="Subscription" value="Coming soon" onPress={() => navigation.navigate('Premium')} />
+        </SettingsGroup>
         <SettingsGroup label="Account">
           <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Security" onPress={() => setPage('security')} />
           <SettingsRow testID="settings-row-quickunlock" icon="keypad-outline" title="Quick Unlock" value={pinIsSet ? 'On' : undefined} onPress={() => setPage('quickunlock')} />
