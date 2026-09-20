@@ -300,6 +300,35 @@ PROGRESS4.md for that detail, plus everything it links back to
   file for "ScrollView" after editing, before running tsc.
 - PC.9: the pull only refreshes what refreshModel() refreshes (the cloud
   model). It does nothing for screens whose data is not in the model.
+- PC.9 rollout: the batch 1 open question "nested horizontal scroller
+  inside a main ScrollView" is CLOSED for every converted screen (none
+  exist, per the batch 2 investigation). The failOffsetX rule has still
+  only ever been tested against SwipeableRow pans, not other horizontal
+  gestures.
+- PC.9 rollout: pull-to-refresh now works on some tabs and not others
+  (Groceries List yes / Calculator no; Savings Goals yes / Emergency Fund
+  and FI no). This is deliberate, but the person may find the difference
+  confusing. Revisit if it feels inconsistent.
+- PC.9: Antigravity's stated reason for skipping the Savings calculator tabs,
+  that refreshModel() could wipe unsaved form calculations, was NOT verified
+  against the real refresh code. The real reason for skipping them is that
+  there is nothing to refresh on those tabs.
+- PC.9: screens NOT converted, on purpose or deferred: More (no data),
+  Premium (static), Calendar (no vertical scroller, the month grid is not
+  in a scroll container), Planning and Reports (horizontal pill rows only;
+  their child screens carry their own scrollers), the nine Reports child
+  screens (optional later), Profile, Settings. Settings has a scrollRef with
+  scrollTo, which is UNVERIFIED with the gesture-handler ScrollView (see the
+  earlier Settings note). Profile was assessed as a plain single
+  ScrollView but was not converted or tested.
+- PC.9: which platforms the batch 1, 2a and 2b on-device tests covered
+  (Android only, or iOS too) was not recorded. Android runs the custom
+  gesture; iOS uses the native RefreshControl.
+- PC.9: commit hashes for PC.8-1, PC.9, batch 1, 2a and 2b were not recorded
+  here (see git log).
+- PC.9: Home embeds DashboardScreen, so Home's pull-to-refresh comes through
+  Dashboard's PullToRefreshScrollView. It was not separately confirmed that
+  the pull works on the Home tab as well as when Dashboard is shown alone.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -418,6 +447,16 @@ changed to Title Case), mobile-app/src/components/SettingsHub.tsx
   DebtsScreen.tsx and IncomeScreen.tsx (now use PullToRefreshScrollView; each
   imports useRefresh and PullToRefreshScrollView; ScrollView removed from the
   react-native import). No new dependencies, testIDs or type changes.
+  PC.9 batch 2a (pushed, on-device test passed): mobile-app/src/screens/
+  LoansScreen.tsx, TransactionsScreen.tsx, EventsScreen.tsx, GoalsScreen.tsx
+  and TravelScreen.tsx (use PullToRefreshScrollView; Events, Goals and Travel
+  keep ScrollView in the react-native import for their modals).
+  PC.9 batch 2b (pushed, on-device test passed): mobile-app/src/screens/
+  AccountsScreen.tsx, GroceriesScreen.tsx and SavingsScreen.tsx (use
+  PullToRefreshScrollView on the main list, the Groceries List tab and the
+  Savings Goals tab only; ScrollView kept in the react-native import).
+  No new dependencies, testIDs, theme or type changes. PullToRefreshScrollView.tsx
+  and useRefresh.tsx were not changed after batch 1.
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -870,7 +909,45 @@ not abandoned - return to them before or alongside Phase C.
 - Batch 2 plan: 2a = Loans, Transactions, Events, Goals, Travel. 2b =
   Accounts (needs keyboardShouldPersistTaps="handled", now forwardable),
   Groceries List tab only, Savings Goals tab only. Investigation prompt
-  written, not yet run.
+  written and run; see the batch 2 results below.
+- PC.9 batch 2 investigation (Antigravity) findings: all eight screens have
+  one clean main vertical ScrollView with rows as direct children; every
+  hook line can go directly under the useData() line, above the
+  "if (!model)" early return; NO horizontal scroller sits inside any main
+  vertical ScrollView (Loans, Transactions, Accounts, Events, Goals, Travel,
+  Groceries, Savings). Transactions' sort pill row is a plain View, not a
+  scroller. That closes the batch 1 open question about nested horizontal
+  scrollers, for these screens.
+- PC.9 batch 2a (pushed, on-device test passed): LoansScreen.tsx,
+  TransactionsScreen.tsx, EventsScreen.tsx, GoalsScreen.tsx and
+  TravelScreen.tsx now use PullToRefreshScrollView. Loans and Transactions
+  got the same four edits as batch 1 (ScrollView removed from the
+  react-native import, two new imports, hook line under useData(), tags
+  swapped). Events, Goals and Travel did NOT remove ScrollView from the
+  react-native import, because each has a SECOND ScrollView inside its
+  add/edit Modal (outside the main list). In those three, only the FIRST
+  closing </ScrollView> was replaced.
+- Transactions uses SwipeableRow with a gold "View ..." viewAction for rows
+  linked to a bill, debt, loan or savings goal, and Delete for manual rows.
+  Both swipe kinds passed on-device alongside the pull gesture.
+- PC.9 batch 2b (pushed, on-device test passed): AccountsScreen.tsx,
+  GroceriesScreen.tsx and SavingsScreen.tsx. In all three, ScrollView was
+  KEPT in the react-native import. Accounts: the main list's opening tag
+  is now <PullToRefreshScrollView with keyboardShouldPersistTaps="handled",
+  refreshing and onRefresh (this used the prop forwarding from batch 1
+  Step 0); the horizontal card-colour swatch ScrollView inside its
+  BottomSheet is unchanged. Groceries and Savings each have one conditional
+  tab body per tab inside a single return. Only the first opening and first
+  closing tag were replaced: Groceries "list" tab and Savings "goals" tab.
+- Locked: the Groceries Calculator tab and the Savings Emergency Fund and
+  FI Calculator tabs stay on a plain ScrollView. They are local scratch
+  calculators with nothing in the cloud model to refresh, and they hold
+  TextInputs directly in the scroll body.
+- Rollout method that worked (keep using it): search for JSX tags without
+  leading spaces; when a tag appears more than once, put the cursor at the
+  top of the file (Ctrl+Home), confirm the match count ("1 of 2" etc.), and
+  use the single Replace button on the first match only; grep the files for
+  "ScrollView|useRefresh" after editing and BEFORE running tsc.
 
 📌 PC.6 decisions and results (added this session)
 - Locked: Settings becomes an iPhone-style hub of short grouped cards.
@@ -923,7 +1000,7 @@ Checkpoint table
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
 | PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 DONE (pushed, on-device test passed). PC.6 is COMPLETE apart from the untested PC.6-1b flows. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. DONE (pushed, on-device test passed). Entry point is Settings only, not Profile. |
-| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). PC.9 batch 1 DONE (Bills, Debts, Income; pushed, on-device test passed). Batch 2 (Loans, Transactions, Accounts, Events, Goals, Travel, Groceries List tab, Savings Goals tab) NOT started; its investigation prompt is written but not yet run. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
+| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). PC.9 batch 1 DONE (Bills, Debts, Income; pushed, on-device test passed). PC.9 batch 2a DONE (Loans, Transactions, Events, Goals, Travel; pushed, on-device test passed). PC.9 batch 2b DONE (Accounts, Groceries List tab, Savings Goals tab; pushed, on-device test passed). PC.9 rollout COMPLETE. Deliberately NOT converted: More, Premium, Calendar, Planning and Reports (pill rows), Reports child screens, Profile, Settings, Groceries Calculator tab, Savings Emergency Fund and FI tabs. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
 Each row is sized to be one session's worth of work, same pattern as
 every other phase.
@@ -936,14 +1013,20 @@ every other phase.
   PC.6-1b (Maestro flow edits) is committed but untested.
 - PC.7 is DONE (Subscription placeholder screen, pushed, on-device test
   passed).
-- PC.8-1 and PC.9 are DONE on Dashboard, and PC.9 batch 1 (Bills, Debts,
-  Income) is DONE (pushed, on-device tests passed).
-  Next: run the batch 2 investigation (Antigravity, investigation only) for
-  Loans, Transactions, Accounts, Events, Goals, Travel, Groceries and
-  Savings, including whether any horizontal scroller sits inside a main
-  vertical ScrollView. Then apply 2a (Loans, Transactions, Events, Goals,
-  Travel), device-test, then 2b (Accounts, Groceries List tab, Savings
-  Goals tab), device-test.
+- PC.8-1 and PC.9 are COMPLETE (Dashboard, batch 1, batch 2a and batch 2b;
+  all pushed and on-device tested). PC.8 is done.
+  Remaining pre-Phase C items, in no fixed order:
+  (a) Bug #14 (Reports "Customize" multi-select not updating live): needs
+      its own fresh investigation-only prompt against the real
+      reportVisibility.ts and ReportsScreen.tsx.
+  (b) "Fewer words" pass, next file EventsScreen.tsx.
+  (c) Run the three Maestro flows (change-password.yaml,
+      pin-quick-unlock.yaml, sign-out-round-trip.yaml) once a device or
+      emulator is connected, and fix the sign-out-button reachability issue.
+  (d) Optional: pull-to-refresh on Profile, Settings, and the Reports child
+      screens, only if wanted (see Known issues for the Settings scrollTo
+      risk).
+  Then Phase C (EAS Build).
   Do not assume this fixes Bug #14. PC.3 (real Google/Apple/Facebook OAuth)
   still waits for Phase C's EAS dev-client build.
 - Whenever a device or emulator is available: run change-password.yaml,
