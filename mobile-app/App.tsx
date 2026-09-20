@@ -11,6 +11,7 @@ import SignInScreen from './src/screens/SignInScreen';
 import PinUnlockScreen from './src/screens/PinUnlockScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
+import IntroSlidesScreen from './src/screens/IntroSlidesScreen';
 import RootStack from './src/navigation/RootStack';
 import { loadProfilesIndex } from './src/storage';
 import { hasPinSetUp } from './src/pin';
@@ -28,7 +29,7 @@ import {
   updateDeviceHeartbeat,
 } from './src/sessions';
 
-type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding';
+type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro';
 
 function AppContent() {
   const { colors } = useTheme();
@@ -143,7 +144,7 @@ function AppContent() {
     (async () => {
       const minDelay = new Promise((resolve) => setTimeout(resolve, 1600));
       const [profiles] = await Promise.all([loadProfilesIndex(), minDelay]);
-      setScreen(profiles.length ? 'signIn' : 'createProfile');
+      setScreen(profiles.length ? 'signIn' : 'intro');
       autoLockMinutesRef.current = await getAutoLockMinutes();
     })();
   }, []);
@@ -297,6 +298,14 @@ function AppContent() {
     );
   }
 
+    if (screen === 'intro') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+        <IntroSlidesScreen onDone={() => setScreen('createProfile')} />
+      </SafeAreaView>
+    );
+  }
+  
   if (screen === 'createProfile') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>

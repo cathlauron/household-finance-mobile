@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Image, StyleSheet, Animated } from 'react-native';
+import { View, Image, ImageBackground, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // This splash matches the native splash's deep green and ignores light/dark
 // mode on purpose, so it always looks the same on launch.
@@ -12,38 +13,56 @@ export default function IntroScreen() {
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const barProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
+    Animated.parallel([
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(logoOpacity, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.spring(logoScale, {
+            toValue: 1,
+            friction: 5,
+            tension: 30,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.delay(200),
+        Animated.timing(titleOpacity, {
           toValue: 1,
-          duration: 350,
+          duration: 450,
           useNativeDriver: true,
         }),
-        Animated.spring(logoScale, {
+        Animated.timing(taglineOpacity, {
           toValue: 1,
-          friction: 5,
-          tension: 30,
+          duration: 450,
           useNativeDriver: true,
         }),
       ]),
-      Animated.delay(200),
-      Animated.timing(titleOpacity, {
+      // The loading bar can't use the native driver because it animates width.
+      Animated.timing(barProgress, {
         toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.timing(taglineOpacity, {
-        toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
+        duration: 1500,
+        useNativeDriver: false,
       }),
     ]).start();
-  }, [logoOpacity, logoScale, titleOpacity, taglineOpacity]);
+  }, [logoOpacity, logoScale, titleOpacity, taglineOpacity, barProgress]);
+
+  const barWidth = barProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={require('../../assets/splash-bg.png')}
+      style={styles.container}
+      resizeMode="cover"
+    >
       <Animated.View
         style={{
           opacity: logoOpacity,
@@ -67,7 +86,14 @@ export default function IntroScreen() {
       <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
         Small steps. Bigger dreams.
       </Animated.Text>
-    </View>
+
+      <View style={styles.bottomGroup}>
+        <Ionicons name="leaf-outline" size={22} color={SPLASH_CREAM} style={{ opacity: 0.55 }} />
+        <View style={styles.barTrack}>
+          <Animated.View style={[styles.barFill, { width: barWidth }]} />
+        </View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -99,5 +125,23 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     letterSpacing: 0.6,
     color: SPLASH_CREAM_SOFT,
+  },
+  bottomGroup: {
+    position: 'absolute',
+    bottom: 56,
+    alignItems: 'center',
+  },
+  barTrack: {
+    marginTop: 14,
+    width: 64,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(246,243,231,0.25)',
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: SPLASH_CREAM,
   },
 });
