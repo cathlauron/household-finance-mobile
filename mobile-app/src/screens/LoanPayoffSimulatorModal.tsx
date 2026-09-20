@@ -177,7 +177,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
 
                 {usedFallback && (
                   <Text style={styles.hintText}>
-                    Some loans are missing interest rates or payments. Defaults of 0% and 2% of balance are assumed.
+                    Missing rates default to 0%, missing payments to 2% of balance.
                   </Text>
                 )}
 

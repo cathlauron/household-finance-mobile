@@ -157,7 +157,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
         setColumnAssignments(defaultAssignments(parsed.headers, parsed.detectedMapping));
       }
     } catch (e) {
-      setErrorMsg("Couldn't read file. Make sure it's a valid CSV.");
+      setErrorMsg("Couldn't read CSV file.");
     } finally {
       setLoading(false);
       setAutoLockSuppressed(false);
@@ -209,7 +209,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Import from CSV</Text>
             <Text style={styles.helpText}>
-              Select a CSV with date, label, amount, and optional direction columns. Dates can be YYYY-MM-DD or MM/DD/YYYY; direction is in, out, or saving (blank defaults to out).
+              Needs date, label and amount. Optional direction: in, out, saving (default out). Dates: YYYY-MM-DD or MM/DD/YYYY.
             </Text>
 
             {!doneMsg && (

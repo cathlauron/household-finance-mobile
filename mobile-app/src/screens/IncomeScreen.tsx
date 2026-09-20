@@ -362,8 +362,8 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
   function handleSwipeDelete(source: IncomeSource) {
     Alert.alert(
-      'Delete this income source?',
-      'This will permanently delete the source and its logged payments. This cannot be undone.',
+      'Delete this income source?','Deletes the source and its logged payments. Cannot be undone.'
+      ,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteSourceById(source.id) },

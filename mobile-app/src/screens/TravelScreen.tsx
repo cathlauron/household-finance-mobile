@@ -401,7 +401,7 @@ export default function TravelScreen() {
     <View style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <Text style={styles.sectionIntro}>
-          Add checklist items with estimated costs to track your trip budget.
+          Add items with costs to track budget.
         </Text>
 
         {trips.length === 0 && (
