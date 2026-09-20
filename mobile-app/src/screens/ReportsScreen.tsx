@@ -71,7 +71,6 @@ export default function ReportsScreen() {
     const next = current.includes(id)
       ? current.filter((x) => x !== id)
       : [...current, id];
-    console.log('[ReportsScreen] toggleReportVisibility', { id, next });
     hiddenReportIdsRef.current = next;
     setHiddenReportIdsState(next);
     try {
@@ -94,8 +93,6 @@ export default function ReportsScreen() {
 
   const TAG_FILTERED_TABS: ReportTab[] = ['monthly', 'yearly', 'person', 'weekly', 'merchant', 'tax'];
   const showTagToolbar = TAG_FILTERED_TABS.includes(activeReport) && distinctTags.length > 0;
-
-  console.log('[ReportsScreen] render', { hiddenReportIds, hiddenReportIdsRef: hiddenReportIdsRef.current });
 
   return (
     <View style={styles.container}>
@@ -206,7 +203,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.navy1 },
     tabRowWrap: { flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
-    pillScroll: { flexGrow: 0, flex: 1 },
+    pillScroll: { flex: 1, height: 54 },
     pillRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
     pill: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.navy3, alignItems: 'center', justifyContent: 'center' },
     pillActive: { backgroundColor: colors.gold },

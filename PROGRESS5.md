@@ -82,16 +82,28 @@ PROGRESS4.md for that detail, plus everything it links back to
   testable through Expo Go.
 
 ⚠️ Known issues / gotchas - carried forward, still open
-- Bug #14 (NOT YET FIXED): Reports screen's "Customize" checkbox list
-  doesn't reflect a multi-select live - checking several report
-  checkboxes in one sitting only shows the first one chosen until the
-  sheet is closed and reopened. Every other individual checklist
-  behavior on that screen works correctly. Needs a fresh Antigravity
-  investigation-only prompt against the real current
-  reportVisibility.ts/ReportsScreen.tsx before any fix is written -
-  do not assume PC.8's planned pull-to-refresh feature fixes this; if
-  the real cause is a stale closure rather than a stale render, a
-  manual refresh gesture won't fix the underlying data either.
+- Bug #14 (ROOT CAUSE FOUND, FIX APPLIED LOCALLY, NOT YET COMMITTED,
+  NOT YET CONFIRMED ON-DEVICE): what looked like "only the first ticked
+  report shows" was NOT a stale-closure or stale-render data bug at all -
+  hiddenReportIdsRef/hiddenReportIds were confirmed correct at every step
+  via on-device Metro logs (every tap logged the right growing/shrinking
+  array, no lost taps, no stale reads). The real bug: the horizontal pill
+  row that lets you SWITCH between multiple ticked reports was invisible
+  on-device. Root cause per Antigravity's investigation + git history:
+  mobile-app/src/screens/ReportsScreen.tsx's pillScroll style had
+  `{ flexGrow: 0, flex: 1 }` (self-contradicting) AND its parent
+  tabRowWrap used `alignItems: 'center'`, so the horizontal ScrollView
+  had no reliable width or height and collapsed to ~0px, leaving only the
+  fixed-size "Customize" icon visible. This was introduced in commit
+  751c42c, explicitly labeled "(pending on-device test)" - it has likely
+  NEVER worked correctly on a real phone. Fix applied to the file on disk:
+  pillScroll changed to `{ flex: 1, height: 54 }`; the two temporary
+  console.log debug lines (in toggleReportVisibility and right before the
+  return statement) were also removed. NOT YET COMMITTED - git status will
+  show ReportsScreen.tsx as modified. NOT YET on-device confirmed: need to
+  see the pill row actually render as multiple tappable icons, and confirm
+  tapping a different one switches the active report. Do NOT commit until
+  that on-device confirmation happens.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build - suspected to be an Expo
   Go limitation, not re-testable until Phase C.
@@ -829,6 +841,55 @@ not abandoned - return to them before or alongside Phase C.
 - (This entry sits above the earlier PC.6 entry, not below it, because the
   end of that entry was not visible when this was added. Move if desired.)
 
+📌 Bug #14 investigation and screenshot-blocking findings (added this session)
+- Bug #14 needed TWO separate Antigravity investigation rounds, not one,
+  because the person's first plain-English description ("ticks stay
+  saved, correct report shows, but only ever the first box") did not
+  match "stale closure" or "stale render" - it turned out to describe a
+  missing navigation control, not a data bug. Lesson: when the person's
+  on-device description doesn't cleanly match either of the two
+  hypotheses a prompt was built around, stop and ask a clarifying
+  question rather than trusting the first investigation's framing.
+- Antigravity's FIRST investigation (stale closure / stale render framing)
+  correctly found hiddenReportIdsRef was added in commit cd67c77 as an
+  unverified fix, and correctly proved via real Metro log lines pasted by
+  the person that state updates in the current code ARE correct on every
+  tap. Its proposed fix (draft-state-then-Done redesign of the Customize
+  sheet) was REJECTED as solving a problem that didn't exist - confirmed
+  first via two on-device checks (checkboxes flip instantly; no pill row
+  of report icons exists anywhere except the Customize icon itself).
+- Antigravity's SECOND investigation (pill row visibility framing) found
+  the real bug: mobile-app/src/screens/ReportsScreen.tsx's pillScroll
+  style `{ flexGrow: 0, flex: 1 }` combined with tabRowWrap's
+  `alignItems: 'center'` collapses the horizontal ScrollView holding the
+  report-switcher pills to near-zero size. Confirmed via git log -p that
+  this exact code was introduced in 751c42c with a commit message noting
+  "(pending on-device test)", and the very next on-device test session is
+  where Bug #14 was first ever reported - strong evidence this has never
+  rendered correctly on a real device.
+- Fix applied to mobile-app/src/screens/ReportsScreen.tsx (uncommitted):
+  pillScroll changed from `{ flexGrow: 0, flex: 1 }` to
+  `{ flex: 1, height: 54 }` (54 = 38px pill height + 12px top padding +
+  4px bottom padding from pillRow, so exactly one row of pills fits with
+  no extra gap). Both temporary console.log debug lines removed
+  (toggleReportVisibility's log line, and the render-time log line right
+  before `return (`). `npx tsc --noEmit` passed clean after the edit
+  (compiles fine either way - does not prove the layout is fixed).
+- Session also hit an unrelated Expo tooling snag: `npx expo start --tunnel`
+  failed twice (ngrok "failed to start tunnel", then a TypeError). Resolved
+  by simply retrying the same tunnel command a third time - no code change
+  involved, not a project bug. Noting in case it recurs: check
+  https://status.ngrok.com/ first, and `npx expo start` (no --tunnel) works
+  fine as a fallback whenever phone and computer share the same WiFi.
+- Screenshot-blocking removal: the person asked to temporarily disable
+  on-device screenshot prevention for easier UI screenshotting during this
+  redesign phase, to be re-enabled before publishing (or sooner, on
+  request). An Antigravity investigation-only prompt was written and sent
+  to find the exact mechanism (expo-screen-capture vs. native FLAG_SECURE,
+  how many places it's set, whether disabling it needs just a JS reload or
+  a full rebuild). Antigravity's response has NOT yet been pasted back or
+  reviewed - this is a fully open item for next session.
+
   📌 PC.8-1 and PC.9 decisions and results (added this session)
 - PC.8-1 (pushed, on-device test passed): pull-to-refresh on Dashboard only,
   using React Native's built-in RefreshControl through a new useRefresh hook.
@@ -1006,6 +1067,27 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
+- IMMEDIATE, pick this up first: mobile-app/src/screens/ReportsScreen.tsx
+  has an UNCOMMITTED local fix for Bug #14 (pillScroll style change +
+  debug log removal - see Known issues for exact detail). Before doing
+  anything else:
+  1. Run the app on-device with several reports ticked visible in
+     Customize.
+  2. Confirm: is there now a row of small tappable icons (one per ticked
+     report) visible on the Reports screen, and does tapping a different
+     one switch which report shows below?
+  3. If yes - commit this fix (a plain `git add -A` /
+     `git commit -m "Bug #14: fix collapsed pill row..."` / `git push`,
+     no further investigation needed) and mark Bug #14 fully closed in
+     this file.
+  4. If the row is still missing, or looks wrong in some other way -
+     report exactly what's seen; do not commit; this needs a follow-up
+     Antigravity investigation with that new detail.
+- ALSO OPEN: screenshot-blocking removal for easier UI screenshotting.
+  An Antigravity investigation-only prompt was sent (see this session's
+  decisions block above for exactly what it asked). The response has NOT
+  been pasted back yet - do that next, and it'll get turned into an exact,
+  clearly-commented, easy-to-reverse edit.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
@@ -1015,24 +1097,20 @@ every other phase.
   passed).
 - PC.8-1 and PC.9 are COMPLETE (Dashboard, batch 1, batch 2a and batch 2b;
   all pushed and on-device tested). PC.8 is done.
-  Remaining pre-Phase C items, in no fixed order:
-  (a) Bug #14 (Reports "Customize" multi-select not updating live): needs
-      its own fresh investigation-only prompt against the real
-      reportVisibility.ts and ReportsScreen.tsx.
-  (b) "Fewer words" pass, next file EventsScreen.tsx.
-  (c) Run the three Maestro flows (change-password.yaml,
+  Remaining pre-Phase C items, in no fixed order (after the two immediate
+  items above):
+  (a) "Fewer words" pass, next file EventsScreen.tsx.
+  (b) Run the three Maestro flows (change-password.yaml,
       pin-quick-unlock.yaml, sign-out-round-trip.yaml) once a device or
       emulator is connected, and fix the sign-out-button reachability issue.
-  (d) Optional: pull-to-refresh on Profile, Settings, and the Reports child
+  (c) Optional: pull-to-refresh on Profile, Settings, and the Reports child
       screens, only if wanted (see Known issues for the Settings scrollTo
       risk).
+  (d) Remember to re-enable screenshot blocking before Phase C publishing,
+      once the temporary removal above has actually been applied.
   Then Phase C (EAS Build).
-  Do not assume this fixes Bug #14. PC.3 (real Google/Apple/Facebook OAuth)
-  still waits for Phase C's EAS dev-client build.
-- Whenever a device or emulator is available: run change-password.yaml,
-  pin-quick-unlock.yaml and sign-out-round-trip.yaml, and fix the
-  sign-out-button reachability problem listed under Known issues.
-- Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
+  PC.3 (real Google/Apple/Facebook OAuth) still waits for Phase C's EAS
+  dev-client build.
 - Decision: the Maestro flows (change-password.yaml, pin-quick-unlock.yaml,
   sign-out-round-trip.yaml) will be run after ALL of pre-Phase C is done, not
   before. Until then they stay untested.
