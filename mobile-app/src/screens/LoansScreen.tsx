@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TextInput,
   ActivityIndicator,
 
@@ -14,6 +13,8 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
@@ -110,6 +111,7 @@ type LoansScreenProps = {
 export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
@@ -459,7 +461,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={[styles.balanceBanner, { flexDirection: 'row', justifyContent: 'space-between' }]}>
           <View>
             <Text style={styles.balanceBannerLabel}>OWED (BORROWED)</Text>
@@ -563,7 +565,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add loan</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <BottomSheet
         visible={modalOpen}

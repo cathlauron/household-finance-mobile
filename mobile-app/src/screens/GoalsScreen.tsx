@@ -16,6 +16,8 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import type { YearlyGoal, HouseholdModel } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
@@ -37,6 +39,7 @@ function goalPct(g: YearlyGoal): number {
 export default function GoalsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -210,7 +213,7 @@ export default function GoalsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={styles.yearBanner}>
           <Text style={styles.yearBannerLabel}>THIS YEAR'S PROGRESS</Text>
           <Text style={styles.yearBannerAmount}>
@@ -270,7 +273,7 @@ export default function GoalsScreen() {
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add goal</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
         <Pressable style={styles.modalOverlay} onPress={closeModal}>

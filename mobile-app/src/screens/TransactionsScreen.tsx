@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TextInput,
   ActivityIndicator,
 
@@ -18,6 +17,8 @@ import { useNavigation } from '@react-navigation/native';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
@@ -133,6 +134,7 @@ function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
   const { model, saveModel, username } = useData();
+    const { refreshing, onRefresh } = useRefresh();
   const navigation = useNavigation();
   const styles = makeStyles(colors);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -496,7 +498,7 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={styles.statRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>TOTAL IN</Text>
@@ -712,7 +714,7 @@ export default function TransactionsScreen() {
             <Text style={styles.importButtonText}>Import CSV</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
