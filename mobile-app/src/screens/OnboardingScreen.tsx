@@ -107,7 +107,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
               </View>
             </View>
 
-            <Text style={styles.title}>Welcome to Household Finance, {username}</Text>
+            <Text style={styles.title}>Welcome to Finance Flow, {username}</Text>
             <Text style={styles.sub}>Your private, encrypted financial vault.</Text>
 
             <View style={styles.featureCards}>

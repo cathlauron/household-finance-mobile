@@ -857,7 +857,7 @@ export default function SettingsScreen() {
     setExportBusy(true);
     try {
       const json = JSON.stringify(model, null, 2);
-      const fileUri = FileSystem.cacheDirectory + `household-finance-backup-${Date.now()}.json`;
+      const fileUri = FileSystem.cacheDirectory + `finance-flow-backup-${Date.now()}.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, {
         encoding: FileSystem.EncodingType.UTF8,
       });

@@ -61,7 +61,7 @@ export default function IntroScreen() {
         </View>
       </Animated.View>
       <Animated.Text style={[styles.eyebrow, { color: colors.gold, opacity: textOpacity }]}>
-        Household Finance
+        Finance Flow
       </Animated.Text>
     </View>
   );

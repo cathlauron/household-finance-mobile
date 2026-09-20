@@ -39,7 +39,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     inFlightRef.current = true;
     lastBiometricAttemptTime = Date.now();
     try {
-      const result = await attemptBiometricAuth('Unlock Household Finance');
+      const result = await attemptBiometricAuth('Unlock Finance Flow');
       if (result.success) {
         onUnlocked();
       } else {
