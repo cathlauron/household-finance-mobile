@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TextInput,
   ActivityIndicator,
 
@@ -14,6 +13,8 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
@@ -88,6 +89,7 @@ type BillsScreenProps = {
 export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
   // reached via the subscription-reminder deep link, or via a swipe-to-
@@ -361,7 +363,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={styles.balanceBanner}>
           <Text style={styles.balanceBannerLabel}>TOTAL BILLS</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalDue)}</Text>
@@ -527,7 +529,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add bill</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <BottomSheet
         visible={modalOpen}

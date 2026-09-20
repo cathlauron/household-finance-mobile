@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TextInput,
   ActivityIndicator,
 
@@ -13,6 +12,8 @@ import {
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Debt, HouseholdModel, PaymentMethod } from '../types';
@@ -82,6 +83,7 @@ type DebtsScreenProps = {
 export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null);
@@ -361,7 +363,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={styles.balanceBanner}>
           <Text style={styles.balanceBannerLabel}>TOTAL DEBT LOGGED</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
@@ -455,7 +457,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add debt</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <BottomSheet
         visible={modalOpen}

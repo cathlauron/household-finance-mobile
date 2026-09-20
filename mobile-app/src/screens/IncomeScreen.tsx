@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
@@ -14,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import {
   Frequency,
@@ -79,6 +80,7 @@ type IncomeScreenProps = {
 export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -383,7 +385,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={{ backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 16 }}>
           <Text style={{ fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
@@ -456,7 +458,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add income</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <BottomSheet
         visible={modalOpen}

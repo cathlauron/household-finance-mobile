@@ -1,25 +1,24 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
   ScrollView as RNScrollView,
+  ScrollViewProps,
   RefreshControl,
   Animated,
   StyleSheet,
   Easing,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  StyleProp,
-  ViewStyle,
 } from 'react-native';
 import { ScrollView as GHScrollView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 
-type Props = {
+// Accepts everything a normal ScrollView accepts (style, contentContainerStyle,
+// keyboardShouldPersistTaps, testID, onScroll, ...) plus refreshing/onRefresh.
+type Props = Omit<ScrollViewProps, 'refreshControl'> & {
   refreshing: boolean;
   onRefresh: () => void;
-  style?: StyleProp<ViewStyle>;
-  contentContainerStyle?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 };
 
@@ -27,19 +26,20 @@ type Props = {
 const PULL_TRIGGER_DISTANCE = 70;
 const INDICATOR_MAX_HEIGHT = 64;
 
-export function PullToRefreshScrollView({ refreshing, onRefresh, style, contentContainerStyle, children }: Props) {
+export const PullToRefreshScrollView = React.forwardRef<any, Props>(function PullToRefreshScrollView(
+  { refreshing, onRefresh, children, ...rest },
+  ref
+) {
   const { colors } = useTheme();
 
-  // iOS already pulls the whole screen down and shows a spinner natively —
-  // nothing custom needed there. This custom gesture exists only to give
-  // Android the same "screen slides down while refreshing" feel, since
-  // Android's native RefreshControl only floats a small circle over the top
-  // of the content instead of moving it.
+  // iOS already pulls the whole screen down and shows a spinner natively,
+  // so nothing custom is needed there. The custom gesture exists only to
+  // give Android the same "screen slides down while refreshing" feel.
   if (Platform.OS !== 'android') {
     return (
       <RNScrollView
-        style={style}
-        contentContainerStyle={contentContainerStyle}
+        {...rest}
+        ref={ref}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />
         }
@@ -51,32 +51,40 @@ export function PullToRefreshScrollView({ refreshing, onRefresh, style, contentC
 
   return (
     <AndroidPullToRefresh
+      {...rest}
+      ref={ref}
       refreshing={refreshing}
       onRefresh={onRefresh}
-      style={style}
-      contentContainerStyle={contentContainerStyle}
       goldColor={colors.gold}
       navy3={colors.navy3}
     >
       {children}
     </AndroidPullToRefresh>
   );
-}
+});
 
-function AndroidPullToRefresh({
-  refreshing,
-  onRefresh,
-  style,
-  contentContainerStyle,
-  goldColor,
-  navy3,
-  children,
-}: Props & { goldColor: string; navy3: string }) {
+type AndroidProps = Props & { goldColor: string; navy3: string };
+
+const AndroidPullToRefresh = React.forwardRef<any, AndroidProps>(function AndroidPullToRefresh(
+  { refreshing, onRefresh, goldColor, navy3, children, onScroll, ...rest },
+  forwardedRef
+) {
   const [isAtTop, setIsAtTop] = useState(true);
   const dragY = useRef(new Animated.Value(0)).current;
   const dragYValueRef = useRef(0);
   const spinValue = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<any>(null);
+
+  // One ref callback feeds BOTH our own scrollRef (needed for
+  // simultaneousHandlers) and any ref the calling screen passed in.
+  const setScrollRef = useCallback(
+    (node: any) => {
+      scrollRef.current = node;
+      if (typeof forwardedRef === 'function') forwardedRef(node);
+      else if (forwardedRef) (forwardedRef as any).current = node;
+    },
+    [forwardedRef]
+  );
 
   useEffect(() => {
     const id = dragY.addListener(({ value }) => {
@@ -146,6 +154,7 @@ function AndroidPullToRefresh({
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     setIsAtTop(e.nativeEvent.contentOffset.y <= 0);
+    if (onScroll) onScroll(e);
   }
 
   const indicatorHeight = dragY.interpolate({
@@ -186,9 +195,8 @@ function AndroidPullToRefresh({
           </Animated.View>
         </Animated.View>
         <GHScrollView
-          ref={scrollRef}
-          style={style}
-          contentContainerStyle={contentContainerStyle}
+          {...(rest as any)}
+          ref={setScrollRef}
           overScrollMode="never"
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -198,7 +206,7 @@ function AndroidPullToRefresh({
       </Animated.View>
     </PanGestureHandler>
   );
-}
+});
 
 const styles = StyleSheet.create({
   indicatorWrap: {
