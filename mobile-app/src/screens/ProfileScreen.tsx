@@ -55,12 +55,20 @@ import {
 export function getInitials(name: string): string {
   if (!name) return '?';
   const cleaned = name.trim();
-  if (cleaned.toLowerCase() === 'cathlauron') return 'CL';
   const parts = cleaned.split(/[\s._-]+/).filter(Boolean);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
   return cleaned.slice(0, 2).toUpperCase();
+}
+
+// Firebase gives creationTime as a text date (or nothing). Returns e.g. "Sep 2026",
+// or null when it is missing or unreadable so the card can simply be hidden.
+function formatMemberSince(creationTime?: string): string | null {
+  if (!creationTime) return null;
+  const d = new Date(creationTime);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function summarizeModel(m: HouseholdModel): string {
@@ -116,6 +124,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
   const currentUser = getCurrentFirebaseUser();
   const userEmail = currentUser?.email || 'No email registered';
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  const memberSinceText = formatMemberSince(currentUser?.metadata?.creationTime);
 
   // Peer recovery approval state
   const [pendingRecovery, setPendingRecovery] = useState<PeerRecoveryRequestDoc | null>(null);
@@ -621,25 +630,16 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
             <Avatar
               initials={getInitials(username || '')}
               config={model?.avatars?.[username || '']}
-              size={72}
+              size={88}
             />
-            <View
-              style={{
-                position: 'absolute',
-                right: -2,
-                bottom: -2,
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: colors.gold,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: colors.navy3,
-              }}
-            >
-              <Ionicons name="camera" size={12} color="#FFFFFF" />
-            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.editIconBtn}
+            activeOpacity={0.7}
+            onPress={() => setAvatarSheetOpen(true)}
+            accessibilityLabel="Edit profile picture"
+          >
+            <Ionicons name="create-outline" size={22} color={colors.gold} />
           </TouchableOpacity>
           <Text style={styles.usernameText}>@{username || 'user'}</Text>
           <Text style={styles.emailText}>{userEmail}</Text>
@@ -651,6 +651,18 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
             </Text>
           </View>
         </View>
+
+        {!!memberSinceText && (
+          <View style={styles.memberSinceCard}>
+            <View style={styles.memberSinceIcon}>
+              <Ionicons name="calendar-outline" size={18} color={colors.gold} />
+            </View>
+            <View>
+              <Text style={styles.memberSinceLabel}>Member since</Text>
+              <Text style={styles.memberSinceValue}>{memberSinceText}</Text>
+            </View>
+          </View>
+        )}
 
         {/* 2. Security & Devices Shortcuts */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Account &amp; Security</Text>
@@ -1314,29 +1326,42 @@ function makeStyles(colors: any) {
     scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },
     identityHeader: {
       alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      paddingVertical: 24,
-      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 8,
       marginBottom: 10,
     },
-    avatarCircle: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: colors.navy2,
-      borderWidth: 2,
-      borderColor: colors.gold,
+    editIconBtn: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 12,
     },
-    avatarText: {
-      fontSize: 26,
-      fontWeight: '700',
-      color: colors.gold,
-      letterSpacing: 1,
+    memberSinceCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.navy4,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 14,
     },
+    memberSinceIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.navy2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    memberSinceLabel: { fontSize: 11, color: colors.inkDim },
+    memberSinceValue: { fontSize: 13.5, fontWeight: '700', color: colors.ink },
     usernameText: {
       fontSize: 19,
       fontWeight: '700',

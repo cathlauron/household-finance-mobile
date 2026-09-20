@@ -1851,22 +1851,6 @@ function makeStyles(colors: any) {
       borderWidth: 1,
       borderColor: colors.navy4,
     },
-    profileAvatarCircle: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.navy2,
-      borderWidth: 1.5,
-      borderColor: colors.gold,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    profileAvatarText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.gold,
-    },
     profileUsernameText: {
       fontSize: 15,
       fontWeight: '700',
