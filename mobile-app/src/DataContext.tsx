@@ -26,6 +26,10 @@ import {
   loadEncryptedProfileData,
   saveEncryptedProfileData,
   loadProfilesIndex,
+  loadCloudSyncAt,
+  saveCloudSyncAt,
+  loadBackupPending,
+  setBackupPending,
   updateProfileSalt,
   updateProfileHouseholdId,
   loadPendingHostLink,
@@ -34,7 +38,7 @@ import {
 } from './storage';
 import { cancelLinkCode } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
-import { saveProfileCloudBackup } from './cloudBackup';
+import { saveProfileCloudBackup, loadProfileCloudBackup } from './cloudBackup';
 import { sanitizeModelIds } from './mergeModels';
 import { deleteRecoveryKey } from './recovery';
 import {
@@ -62,6 +66,15 @@ type LoadModelBootstrap = {
   householdKey?: CryptoJS.lib.WordArray;
 };
 
+export type RefreshOutcome =
+  | 'updated'
+  | 'up_to_date'
+  | 'backed_up'
+  | 'conflict'
+  | 'cannot_decrypt'
+  | 'failed'
+  | 'unavailable';
+
 type DataContextValue = {
   model: HouseholdModel | null;
   loading: boolean;
@@ -73,6 +86,7 @@ type DataContextValue = {
   ) => Promise<HouseholdModel | null>;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
+  refreshModel: () => Promise<RefreshOutcome>;
   changePassword: (
     currentPassword: string,
     newPassword: string
@@ -140,6 +154,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Pre-Phase-B Tier 1: tracks the last known encrypted payload for live household sync,
   // preventing echo-reloads when this device saves, while detecting remote updates.
   const lastEncryptedDataRef = useRef<string | null>(null);
+  // PC.8: bumped on every saveModel so a slow refresh can tell you saved while it
+  // was waiting, and back off instead of overwriting that edit.
+  const modelVersionRef = useRef(0);
+  const refreshInFlightRef = useRef(false);
 
   function cleanupHouseholdListener() {
     if (householdUnsubscribeRef.current) {
@@ -406,6 +424,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   async function saveModel(updatedModel: HouseholdModel) {
     const sanitizedModel = sanitizeModelIds(updatedModel);
+    modelVersionRef.current += 1;
     setModel(sanitizedModel);
     const username = usernameRef.current;
     if (!username) return;
@@ -466,12 +485,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!key) return;
     const encrypted = await encryptJSON(key, sanitizedModel);
     await saveEncryptedProfileData(username, encrypted);
+    if (saltRef.current) await setBackupPending(username, true);
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
       try {
         await withTimeout(
-          saveProfileCloudBackup(username, { salt: saltRef.current, data: encrypted }),
+          backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
           8000,
           'Timed out waiting for the cloud backup to sync.'
         );
@@ -482,6 +502,88 @@ export function DataProvider({ children }: { children: ReactNode }) {
           'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
         );
       }
+    }
+  }
+
+  // ---- PC.8: pull-to-refresh ----
+  // Uploads a personal backup, records which cloud version this device now knows about,
+  // and clears the "backup pending" flag, unless a newer save happened in the meantime.
+  async function backupPersonalData(username: string, salt: string, encrypted: string, version: number) {
+    const at = await saveProfileCloudBackup(username, { salt, data: encrypted });
+    await saveCloudSyncAt(username, at);
+    if (version === modelVersionRef.current) await setBackupPending(username, false);
+  }
+
+  async function refreshModel(): Promise<RefreshOutcome> {
+    if (refreshInFlightRef.current) return 'up_to_date';
+    refreshInFlightRef.current = true;
+    const startVersion = modelVersionRef.current;
+    try {
+      const username = usernameRef.current;
+      const key = keyRef.current;
+      if (!username || !key) return 'unavailable';
+
+      // ---- Linked household: cloud is the shared truth ----
+      const householdId = householdIdRef.current;
+      const householdKey = householdKeyRef.current;
+      if (householdId && householdKey) {
+        const encryptedHousehold = await withTimeout(loadHouseholdData(householdId), 6000, 'Refresh timed out.');
+        if (modelVersionRef.current !== startVersion) return 'up_to_date';
+        if (!encryptedHousehold || encryptedHousehold === lastEncryptedDataRef.current) return 'up_to_date';
+        let incoming: HouseholdModel;
+        try {
+          incoming = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, encryptedHousehold));
+        } catch (e) {
+          return 'cannot_decrypt';
+        }
+        lastEncryptedDataRef.current = encryptedHousehold;
+        setModel(incoming);
+        encryptJSON(key, incoming)
+          .then((enc) => saveEncryptedProfileData(username, enc))
+          .catch(() => {});
+        rescheduleBillNotifications(incoming).catch(() => {});
+        return 'updated';
+      }
+
+      // ---- Personal (unlinked) profile: never overwrite unbacked-up local edits ----
+      const salt = saltRef.current;
+      if (!salt) return 'unavailable';
+      const currentModel = model;
+      const pending = await loadBackupPending(username);
+      const syncAt = await loadCloudSyncAt(username);
+      const cloud = await withTimeout(loadProfileCloudBackup(username), 6000, 'Refresh timed out.');
+      if (modelVersionRef.current !== startVersion) return 'up_to_date';
+      const cloudChanged = !!(cloud && cloud.data && (syncAt === null || cloud.updatedAt !== syncAt));
+
+      if (pending) {
+        // This device has edits the cloud never received.
+        if (cloudChanged) return 'conflict'; // the cloud changed too: touch nothing
+        const localEncrypted = await loadEncryptedProfileData(username);
+        if (!localEncrypted) return 'unavailable';
+        await withTimeout(backupPersonalData(username, salt, localEncrypted, startVersion), 6000, 'Refresh timed out.');
+        return 'backed_up';
+      }
+
+      if (!cloudChanged || !cloud || !cloud.data) return 'up_to_date';
+      let cloudModel: HouseholdModel;
+      try {
+        cloudModel = sanitizeModelIds(decryptJSON<HouseholdModel>(key, cloud.data));
+      } catch (e) {
+        return 'cannot_decrypt'; // for example the password was changed on another device
+      }
+      if (currentModel && JSON.stringify(cloudModel) === JSON.stringify(currentModel)) {
+        await saveCloudSyncAt(username, cloud.updatedAt);
+        return 'up_to_date';
+      }
+      setModel(cloudModel);
+      await saveEncryptedProfileData(username, cloud.data);
+      await saveCloudSyncAt(username, cloud.updatedAt);
+      rescheduleBillNotifications(cloudModel).catch(() => {});
+      return 'updated';
+    } catch (e) {
+      return 'failed';
+    } finally {
+      refreshInFlightRef.current = false;
     }
   }
 
@@ -794,6 +896,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         loadModel,
         saveModel,
         clearModel,
+        refreshModel,
         changePassword,
         username: usernameRef.current,
         isLinked,

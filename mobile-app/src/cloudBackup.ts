@@ -41,7 +41,7 @@ export type ProfileCloudBackup = {
 export async function saveProfileCloudBackup(
   username: string,
   payload: { salt: string; householdId?: string; data?: string; ownerUid?: string }
-): Promise<void> {
+): Promise<number> {
   const uid = payload.ownerUid || getCurrentFirebaseUser()?.uid;
   const docData: Record<string, unknown> = {
     salt: payload.salt,
@@ -53,6 +53,7 @@ export async function saveProfileCloudBackup(
   }
   if (payload.data) docData.data = payload.data;
   await setDoc(doc(db, 'profileBackups', username), docData, { merge: true });
+  return docData.updatedAt as number;
 }
 
 // Returns this profile's cloud backup (salt + householdId + personal data, whichever of

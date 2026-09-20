@@ -100,3 +100,31 @@ export async function loadPendingHostLink(username: string): Promise<PendingHost
 export async function clearPendingHostLink(username: string): Promise<void> {
   await AsyncStorage.removeItem(pendingHostLinkKey(username));
 }
+
+// ---- PC.8: pull-to-refresh bookkeeping (unlinked profiles) ----
+function cloudSyncAtKey(username: string): string {
+  return `profile:${username}:cloud-sync-at`;
+}
+function backupPendingKey(username: string): string {
+  return `profile:${username}:backup-pending`;
+}
+
+// The cloud backup's updatedAt as of the last time THIS device uploaded or downloaded it.
+export async function saveCloudSyncAt(username: string, updatedAt: number): Promise<void> {
+  await AsyncStorage.setItem(cloudSyncAtKey(username), String(updatedAt));
+}
+export async function loadCloudSyncAt(username: string): Promise<number | null> {
+  const raw = await AsyncStorage.getItem(cloudSyncAtKey(username));
+  if (raw === null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+// True while a local save has not yet reached the cloud backup.
+export async function setBackupPending(username: string, pending: boolean): Promise<void> {
+  if (pending) await AsyncStorage.setItem(backupPendingKey(username), 'true');
+  else await AsyncStorage.removeItem(backupPendingKey(username));
+}
+export async function loadBackupPending(username: string): Promise<boolean> {
+  return (await AsyncStorage.getItem(backupPendingKey(username))) === 'true';
+}

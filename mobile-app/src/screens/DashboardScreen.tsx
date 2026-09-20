@@ -13,6 +13,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRefresh } from '../useRefresh';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { useTheme } from '../ThemeContext';
@@ -76,6 +77,7 @@ function formatDueDate(d: Date): string {
 
 export default function DashboardScreen() {
   const { model, loading } = useData();
+  const { refreshControl } = useRefresh();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
 
@@ -113,7 +115,7 @@ export default function DashboardScreen() {
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} refreshControl={refreshControl}>
       {/* Total balance */}
       <View style={[styles.card, styles.rowCard]}>
         <View style={{ flex: 1 }}>
