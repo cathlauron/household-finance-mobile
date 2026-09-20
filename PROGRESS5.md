@@ -91,6 +91,14 @@ PROGRESS4.md for that detail, plus everything it links back to
 - Intro slide copy has not had the "fewer words" pass.
 - Cosmetic: App.tsx 'intro' block is mis-indented with a trailing-
   whitespace line after it. Tidy when next editing that file.
+- PC.2b on-device check pending: keyboard + scrolling on Create Profile, eye
+  toggles on both password fields, error text, real test-account creation,
+  recovery modal (Copy Key, checkbox gating Continue), landing on Quick Unlock,
+  dark mode readability.
+- Other screens still using the old hardcoded hex colours (#FAFAF9, #1C1917):
+  PinUnlockScreen.tsx and SetPinScreen.tsx (each self-contained). Restyle later.
+- Sign-in recovery modal in SignInScreen.tsx still has the old look.
+- Settings > Security retroactive recovery-key modal still has the old look.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -112,6 +120,7 @@ src/screens/OnboardingScreen.tsx (step 1 removed), src/screens/SignInScreen.tsx
 (restyled); assets: logo.png, splash-logo.png, splash-icon.png, icon.png,
 adaptive-icon.png, eco_house_logo.svg, intro-track/goals/private.png,
 splash-bg.png.
+PC.2b: mobile-app/src/screens/CreateProfileScreen.tsx (restyled, scrolling added).
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -237,6 +246,29 @@ not abandoned - return to them before or alongside Phase C.
   border #E5E0CF, ink #22281F, inkDim #626A5B, inkFaint #A0A597, gold (primary
   button) #2E5D3A, error #E11D48.
 
+📌 PC.2b decisions and results (added this session)
+- CreateProfileScreen.tsx restyled with theme tokens, same look as sign-in
+  (logo.png badge, FINANCE FLOW wordmark, icon-prefixed fields, pill button,
+  serif centered heading). Old module-level styles object replaced by
+  makeStyles(colors) at the bottom of the file.
+- Real bug fixed: the screen was a plain View with no scrolling, so with the
+  keyboard open the password fields, button and hint were unreachable. Now
+  KeyboardAvoidingView (iOS padding) + ScrollView with
+  keyboardShouldPersistTaps="handled".
+- All five testIDs unchanged (email-input, username-input, password-input,
+  confirm-password-input, create-profile-button); Maestro flows in
+  mobile-app/flows/ (create-profile, sign-in, change-password,
+  sign-out-round-trip) depend on them.
+- Recovery-key modal restyled only (navy3 card, serif title, outlined green
+  Copy Key pill). Logic untouched: copy-to-clipboard with "Copied!" feedback,
+  "I have saved it" checkbox, Continue disabled until ticked, the retry alert
+  when the cloud save of the recovery key fails. The modal is used only in
+  this file; Settings has its own separate retroactive-recovery modal.
+- Copy changes: heading "Create your account", subtitle "Start your financial
+  journey.", link "Already have an account? Sign in". The old "FIRST-TIME
+  SETUP" eyebrow is gone from the main screen (modal keeps its own eyebrow).
+- PC.3 explicitly deferred to Phase C (see checkpoint table).
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -244,8 +276,8 @@ Checkpoint table
 | PC.0 | Lock the new palette into a central theme file, mapped onto the app's real existing token names; add eco_house_logo.svg into the repo in the correct assets location; confirm the rename touches every real spot it needs to (app.json, package.json, splash, any hardcoded name strings). | New palette + logo exist as real files in the repo; nothing else built on top yet. |
 | PC.1 | Onboarding carousel (3 intro slides) merged with the existing biometric/PIN setup into one continuous first-run flow. Split: PC.1a = splash + 3 slides + first-run wiring (cc6a74e, pushed, awaiting on-device check). PC.1b = drop duplicate onboarding welcome step, 2-step Quick Unlock flow (0a19088, pushed, tsc-clean). | New user sees intro -> create profile -> recovery key -> Quick Unlock -> ready -> home, restyled. |
 | PC.2 | Sign-in restyle: logo, icon-prefixed fields, pill button, social row (placeholder alerts), serif centered heading. Keeps BOTH email and username fields. | DONE and confirmed on-device (see decisions below). |
-| PC.2b | Create Profile restyle (currently hardcoded old hex colours) plus the recovery-key modal. | NOT STARTED. |
-| PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. | Sign-in with at least one real provider works on an EAS dev-client build (not testable in Expo Go). |
+| PC.2b | Create Profile restyle plus recovery-key modal restyle, and wrapped in a ScrollView/KeyboardAvoidingView (was a plain View: fields and button were unreachable with the keyboard open). | CODE-COMPLETE, tsc-clean. Awaiting on-device check and commit. |
+| PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. DEFERRED to Phase C: needs an EAS dev-client build, not testable in Expo Go. Sign-in buttons stay "Coming soon" alerts until then. | Not started, deliberately deferred. |
 | PC.4 | Home screen restyle. | Matches mockup layout/spacing/colors; all existing data/widgets intact. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | NOT STARTED. |
 | PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. | NOT STARTED. |
@@ -257,13 +289,14 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- PC.2b: Create Profile restyle including the recovery-key modal. Start with an
-  Antigravity investigation-only prompt against the real current
-  CreateProfileScreen.tsx (and any shared pieces it uses) before writing code.
-  Keep the recovery-key flow logic untouched; restyle only.
-- Then PC.3 (social sign-in, deferred for testing), PC.4 (Home), PC.5a
-  (avatar system), PC.5 (Profile), PC.6 (Settings + Language/About rows),
-  PC.7 (Subscription), PC.8 (pull-to-refresh).
+- Confirm PC.2b on-device, then commit ("PC.2b: restyle Create Profile and
+  recovery-key modal, add scrolling").
+- PC.4: Home screen restyle (balance card, this month, amount owed, due next
+  14 days, savings goals row). Start with an Antigravity investigation-only
+  prompt against the real current HomeScreen.tsx before writing code.
+- Then PC.5a (avatar system, photo in encrypted model), PC.5 (Profile),
+  PC.6 (Settings + Language/About rows), PC.7 (Subscription), PC.8
+  (pull-to-refresh). PC.3 waits for Phase C.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 --- Antigravity investigation prompt for PC.0 (run this next) ---
