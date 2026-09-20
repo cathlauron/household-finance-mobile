@@ -126,6 +126,17 @@ imports getInitials from ProfileScreen.tsx), mobile-app/src/screens/
 DashboardScreen.tsx (Total Balance/Amount Owed cards restyled with icon
 bubbles, card/container style tokens updated) - both committed together in
 "PC.4: restyle Home (header, date row, card styling, icon buttons)".
+PC.4c: mobile-app/src/theme.ts (okBg/warnBg tokens added),
+mobile-app/src/screens/HomeScreen.tsx (full-file redesign v2 - centered
+date pill, bell icon, no title text, tinted % Left to Spend card),
+mobile-app/src/screens/DashboardScreen.tsx (getUpcomingDue exported,
+This Month/Due Soon/Savings Goals cards get icon bubbles + arrow badges +
+dividers), mobile-app/src/navigation/MainTabs.tsx (onLock prop dropped,
+Home tab headerShown:false), mobile-app/src/screens/SettingsScreen.tsx
+(change-pin-button testID added), mobile-app/src/screens/ProfileScreen.tsx
+(lock-app-button testID added) - all committed. mobile-app/flows/
+pin-quick-unlock.yaml (rewritten for the new Settings/Profile-based PIN
+and Lock navigation path, run for real and passing) - commit pending.
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -311,6 +322,52 @@ not abandoned - return to them before or alongside Phase C.
   the investigation report) - no other screen was affected by its style
   changes.
 
+📌 PC.4c decisions and results (added this session)
+- Home Screen Redesign v2: centered date pill, bell icon (with a red dot
+  that lights up only when something's due in the next 14 days, reusing
+  DashboardScreen's now-exported getUpcomingDue helper), "Home" title text
+  removed, Left to Spend card tinted green/orange/red by status with a %
+  bar and "X left of Y" / "Z% used" line, icon bubbles added to Total
+  Balance/This Month/Amount Owed/Due Next 14 Days/Savings Goals, up/down
+  arrow badges + vertical divider lines added to the This Month
+  Income/Expenses/Net row.
+- Locked: the "% used" figure is % of TODAY'S total balance, not a
+  budget/limit (no budget-limit setting exists in the data model). Read as
+  "of what you have right now, this much is projected to be left by
+  payday" - flagged, not objected to.
+- Set PIN / Lock buttons removed from Home entirely (not just restyled).
+  Both capabilities already existed elsewhere and were kept, with new
+  testIDs added: Settings > Change PIN now has testID="change-pin-button";
+  Profile > Lock App now has testID="lock-app-button" (via Settings'
+  existing profile-card row, testID="profile-card", which already
+  navigated to Profile). theme.ts gained two new tokens, okBg and warnBg,
+  for the tinted Left to Spend backgrounds. MainTabs.tsx dropped the dead
+  onLock prop passthrough to HomeScreen and set headerShown: false on the
+  Home tab screen.
+- Files touched and committed (git status confirmed clean after commit):
+  theme.ts, HomeScreen.tsx (full-file replace), DashboardScreen.tsx,
+  MainTabs.tsx, SettingsScreen.tsx, ProfileScreen.tsx.
+- mobile-app/flows/pin-quick-unlock.yaml updated to match: the old
+  set-pin-button/lock-button taps (which no longer exist on Home) are
+  replaced with more-tab -> more-settings-row -> change-pin-button, and
+  later more-tab -> more-settings-row -> profile-card -> lock-app-button.
+  Confirmed via investigation this is the ONLY flow file referencing
+  either old testID. Confirmed more-tab's real testID
+  (tabBarButtonTestID: 'more-tab') and that ProfileScreen has no loading
+  gate before lock-app-button renders, so no extra wait step was needed
+  beyond the standard extendedWaitUntil.
+- On-device verification passed: header layout (avatar/greeting/date pill/
+  bell), tapping "Hi, {username} ›" opens Profile, tapping the date pill
+  opens Calendar, Settings > Change PIN and Profile > Lock App both still
+  work end to end, dark mode readable including the new tinted Left to
+  Spend card. The pin-quick-unlock.yaml Maestro flow was run for real
+  (not just tsc-checked) and passes.
+- Minor known non-issue: the "Due Next 14 Days" icon bubble renders
+  purple/indigo on-device even though its style block
+  (styles.iconBubbleSmall) is identical to This Month's (which renders
+  green/teal) - the color difference predates this session's changes and
+  was left as-is since the person didn't flag it as wrong.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -320,7 +377,7 @@ Checkpoint table
 | PC.2 | Sign-in restyle: logo, icon-prefixed fields, pill button, social row (placeholder alerts), serif centered heading. Keeps BOTH email and username fields. | DONE and confirmed on-device (see decisions below). |
 | PC.2b | Create Profile restyle plus recovery-key modal restyle, and wrapped in a ScrollView/KeyboardAvoidingView (was a plain View: fields and button were unreachable with the keyboard open). | DONE and confirmed on-device. |
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. DEFERRED to Phase C: needs an EAS dev-client build, not testable in Expo Go. Sign-in buttons stay "Coming soon" alerts until then. | Not started, deliberately deferred. |
-| PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). |
+| PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | NOT STARTED. |
 | PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. | NOT STARTED. |
 | PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
@@ -331,7 +388,10 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- PC.4 is done and confirmed on-device - no further action needed on it.
+- PC.4c is done, on-device verified, and the Maestro flow it required
+  (pin-quick-unlock.yaml) has actually been RUN and passed - not just
+  tsc-checked. Commit it along with the six PC.4c code files still shown
+  as pending in the "Files in the repo" section above.
 - PC.5a next: avatar system (initials + preset avatars + real photo picker,
   photo stored inside the encrypted household model, needs
   expo-image-manipulator to shrink first per the PC.1 decisions). Start with

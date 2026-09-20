@@ -23,9 +23,21 @@ appId: host.exp.exponent
 - tapOn:
     id: "home-tab"
 
-# 2. Tap Set a Quick PIN / Change my PIN button
+# 2. Navigate to Settings via More tab, then tap Change PIN
 - tapOn:
-    id: "set-pin-button"
+    id: "more-tab"
+- extendedWaitUntil:
+    visible:
+      id: "more-settings-row"
+    timeout: 15000
+- tapOn:
+    id: "more-settings-row"
+- extendedWaitUntil:
+    visible:
+      id: "change-pin-button"
+    timeout: 15000
+- tapOn:
+    id: "change-pin-button"
 
 # 3. Wait for Set PIN screen
 - extendedWaitUntil:
@@ -48,17 +60,31 @@ appId: host.exp.exponent
 - tapOn:
     id: "save-pin-button"
 
-# 6. Confirm returned to Home and Lock button is visible
+# 6. Navigate to Profile via More tab > Settings > Profile Card, confirm Lock App button is visible
+- tapOn:
+    id: "more-tab"
 - extendedWaitUntil:
     visible:
-      id: "lock-button"
+      id: "more-settings-row"
+    timeout: 15000
+- tapOn:
+    id: "more-settings-row"
+- extendedWaitUntil:
+    visible:
+      id: "profile-card"
+    timeout: 15000
+- tapOn:
+    id: "profile-card"
+- extendedWaitUntil:
+    visible:
+      id: "lock-app-button"
     timeout: 15000
 - assertVisible:
-    id: "lock-button"
+    id: "lock-app-button"
 
-# 7. Tap Lock button to trigger lock immediately
+# 7. Tap Lock App button to trigger lock immediately
 - tapOn:
-    id: "lock-button"
+    id: "lock-app-button"
 
 # 8. Confirm on Locked screen
 - extendedWaitUntil:
