@@ -24,7 +24,7 @@ const LOCK_SHACKLE_GREEN = '#2E5E45';
 
 export default function OnboardingScreen({ username, onFinish }: Props) {
   const { colors } = useTheme();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<2 | 3>(2);
 
   // Step 2 PIN state
   const [pin1, setPin1] = useState('');
@@ -84,7 +84,7 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
     <View style={styles.container}>
       {/* Top Header Row with Progress and Skip */}
       <View style={styles.headerRow}>
-        <Text style={styles.stepBadge}>STEP {step} OF 3</Text>
+        <Text style={styles.stepBadge}>STEP {step - 1} OF 2</Text>
         {step < 3 ? (
           <TouchableOpacity testID="onboarding-skip-button" onPress={handleSkip} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={styles.skipText}>Skip</Text>
@@ -95,56 +95,6 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* STEP 1: WELCOME */}
-        {step === 1 && (
-          <View style={styles.stepContainer}>
-            <View style={styles.logoFrame}>
-              <View style={styles.lockWrap}>
-                <View style={styles.shackle} />
-                <View style={styles.lockBody}>
-                  <Text style={styles.currencySymbol}>$</Text>
-                </View>
-              </View>
-            </View>
-
-            <Text style={styles.title}>Welcome to Finance Flow, {username}</Text>
-            <Text style={styles.sub}>Your private, encrypted financial vault.</Text>
-
-            <View style={styles.featureCards}>
-              <View style={styles.featureCard}>
-                <View style={styles.featureIconWrap}>
-                  <Ionicons name="shield-checkmark-outline" size={24} color={colors.accent} />
-                </View>
-                <View style={styles.featureTextWrap}>
-                  <Text style={styles.featureTitle}>End-to-End Encrypted</Text>
-                  <Text style={styles.featureDesc}>
-                    Your data is encrypted locally with your password — only you hold the keys.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.featureCard}>
-                <View style={styles.featureIconWrap}>
-                  <Ionicons name="people-outline" size={24} color={colors.accent} />
-                </View>
-                <View style={styles.featureTextWrap}>
-                  <Text style={styles.featureTitle}>Private Solo or Shared</Text>
-                  <Text style={styles.featureDesc}>
-                    Track expenses solo, or link with family or a partner anytime in Settings.
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              testID="onboarding-get-started-button"
-              style={styles.primaryBtn}
-              onPress={() => setStep(2)}
-            >
-              <Text style={styles.primaryBtnText}>Get Started</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* STEP 2: QUICK UNLOCK */}
         {step === 2 && (
