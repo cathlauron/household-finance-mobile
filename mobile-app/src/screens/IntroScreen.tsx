@@ -1,17 +1,17 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { useTheme } from '../ThemeContext';
+import { View, Image, StyleSheet, Animated } from 'react-native';
 
-// Muted, single-family green — lock body a touch darker than the shackle outline
-// so the two pieces read as one cohesive mark, not two competing colors.
-const LOCK_BODY_GREEN = '#3E7A5C';
-const LOCK_SHACKLE_GREEN = '#2E5E45';
+// This splash matches the native splash's deep green and ignores light/dark
+// mode on purpose, so it always looks the same on launch.
+const SPLASH_GREEN = '#1B372C';
+const SPLASH_CREAM = '#F6F3E7';
+const SPLASH_CREAM_SOFT = '#E4DFCC';
 
 export default function IntroScreen() {
-  const { colors } = useTheme();
   const logoScale = useRef(new Animated.Value(0.7)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
@@ -28,17 +28,22 @@ export default function IntroScreen() {
           useNativeDriver: true,
         }),
       ]),
-      Animated.delay(250),
-      Animated.timing(textOpacity, {
+      Animated.delay(200),
+      Animated.timing(titleOpacity, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(taglineOpacity, {
         toValue: 1,
         duration: 450,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [logoOpacity, logoScale, textOpacity]);
+  }, [logoOpacity, logoScale, titleOpacity, taglineOpacity]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.navy2 }]}>
+    <View style={styles.container}>
       <Animated.View
         style={{
           opacity: logoOpacity,
@@ -46,22 +51,21 @@ export default function IntroScreen() {
           alignItems: 'center',
         }}
       >
-        <View
-          style={[
-            styles.logoFrame,
-            { backgroundColor: colors.navy3, borderColor: colors.navy4 },
-          ]}
-        >
-          <View style={styles.lockWrap}>
-            <View style={[styles.shackle, { borderColor: LOCK_SHACKLE_GREEN }]} />
-            <View style={[styles.lockBody, { backgroundColor: LOCK_BODY_GREEN }]}>
-              <Text style={styles.currencySymbol}>$</Text>
-            </View>
-          </View>
-        </View>
+        <Image
+          source={require('../../assets/splash-logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </Animated.View>
-      <Animated.Text style={[styles.eyebrow, { color: colors.gold, opacity: textOpacity }]}>
-        Finance Flow
+      <Animated.Text
+        style={[styles.title, { opacity: titleOpacity }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        FINANCE FLOW
+      </Animated.Text>
+      <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
+        Small steps. Bigger dreams.
       </Animated.Text>
     </View>
   );
@@ -72,44 +76,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: SPLASH_GREEN,
   },
-  logoFrame: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
+  logo: {
+    width: 150,
+    height: 123,
   },
-  lockWrap: {
-    alignItems: 'center',
+  title: {
+    alignSelf: 'stretch',
+    marginTop: 34,
+    paddingLeft: 31,
+    paddingRight: 24,
+    textAlign: 'center',
+    fontSize: 28,
+    fontWeight: '300',
+    letterSpacing: 7,
+    color: SPLASH_CREAM,
   },
-  shackle: {
-    width: 26,
-    height: 18,
-    borderTopLeftRadius: 13,
-    borderTopRightRadius: 13,
-    borderWidth: 4,
-    borderBottomWidth: 0,
-    marginBottom: -2,
-  },
-  lockBody: {
-    width: 44,
-    height: 34,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+  tagline: {
+    marginTop: 14,
+    fontSize: 15,
+    fontWeight: '300',
+    letterSpacing: 0.6,
+    color: SPLASH_CREAM_SOFT,
   },
 });

@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1b372c"
     },
     "ios": {
       "supportsTablet": true,
@@ -22,7 +22,7 @@
       "package": "com.cathlauron.householdfinance",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#122b21"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
