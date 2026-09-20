@@ -34,6 +34,7 @@ import {
   hasRecoveryKeySetUp,
 } from '../recovery';
 import { getInitials } from './ProfileScreen';
+import Avatar from '../components/Avatar';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -899,8 +900,12 @@ export default function SettingsScreen() {
           activeOpacity={0.7}
           onPress={() => navigation.navigate('Profile')}
         >
-          <View style={styles.profileAvatarCircle}>
-            <Text style={styles.profileAvatarText}>{getInitials(username || '')}</Text>
+          <View style={{ marginRight: 12 }}>
+            <Avatar
+              initials={getInitials(username || '')}
+              config={model?.avatars?.[username || '']}
+              size={44}
+            />
           </View>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.profileUsernameText}>@{username || 'user'}</Text>

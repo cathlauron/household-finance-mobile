@@ -18,7 +18,9 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { getMyPersonId, setMyPersonId } from '../myPerson';
 import { getCurrentFirebaseUser } from '../authFirebase';
-import type { HouseholdModel } from '../types';
+import type { HouseholdModel, AvatarConfig } from '../types';
+import Avatar from '../components/Avatar';
+import AvatarPickerSheet from '../components/AvatarPickerSheet';
 import {
   startHouseholdLink,
   startHouseholdInvite,
@@ -97,6 +99,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
   const navigation = useNavigation<any>();
   const {
     model,
+    saveModel,
     username,
     loadModel,
     isLinked,
@@ -112,6 +115,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
 
   const currentUser = getCurrentFirebaseUser();
   const userEmail = currentUser?.email || 'No email registered';
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
 
   // Peer recovery approval state
   const [pendingRecovery, setPendingRecovery] = useState<PeerRecoveryRequestDoc | null>(null);
@@ -585,6 +589,18 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
     }
   }
 
+  // PC.5a: save (or clear) this user's avatar inside the encrypted household model.
+  async function handleSaveAvatar(config: AvatarConfig | null) {
+    if (!model || !username) throw new Error('Not ready');
+    const nextAvatars = { ...(model.avatars ?? {}) };
+    if (config) {
+      nextAvatars[username] = { ...config, updatedAt: Date.now() };
+    } else {
+      delete nextAvatars[username];
+    }
+    await saveModel({ ...model, avatars: nextAvatars });
+  }
+
   const unlinkConfirmText =
     householdMemberCount <= 1 || (isOwner && householdMemberCount <= 2)
       ? 'This will dissolve the household. Your data becomes your personal profile.'
@@ -595,9 +611,36 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 1. Identity Header */}
         <View style={styles.identityHeader}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{getInitials(username || '')}</Text>
-          </View>
+          <TouchableOpacity
+            testID="avatar-edit-button"
+            activeOpacity={0.8}
+            onPress={() => setAvatarSheetOpen(true)}
+            accessibilityLabel="Change profile picture"
+            style={{ marginBottom: 12 }}
+          >
+            <Avatar
+              initials={getInitials(username || '')}
+              config={model?.avatars?.[username || '']}
+              size={72}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                right: -2,
+                bottom: -2,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: colors.gold,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: colors.navy3,
+              }}
+            >
+              <Ionicons name="camera" size={12} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
           <Text style={styles.usernameText}>@{username || 'user'}</Text>
           <Text style={styles.emailText}>{userEmail}</Text>
           <View style={styles.vaultBadge}>
@@ -1253,6 +1296,14 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
           </Pressable>
         </Pressable>
       </Modal>
+
+      <AvatarPickerSheet
+        visible={avatarSheetOpen}
+        onClose={() => setAvatarSheetOpen(false)}
+        initials={getInitials(username || '')}
+        current={model?.avatars?.[username || '']}
+        onSave={handleSaveAvatar}
+      />
     </SafeAreaView>
   );
 }

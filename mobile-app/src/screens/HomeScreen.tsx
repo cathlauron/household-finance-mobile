@@ -10,6 +10,7 @@ import { useData } from '../DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { RootStackParamList } from '../navigation/RootStack';
 import { getInitials } from './ProfileScreen';
+import Avatar from '../components/Avatar';
 
 type Props = {
   username: string;
@@ -55,9 +56,12 @@ export default function HomeScreen({ username }: Props) {
           onPress={() => navigation.navigate('Profile')}
           accessibilityLabel="Open profile"
         >
-          <View style={hs.avatar}>
-            <Text style={hs.avatarText}>{getInitials(username || '')}</Text>
-          </View>
+          <Avatar
+            initials={getInitials(username || '')}
+            config={model?.avatars?.[username || '']}
+            size={36}
+            variant="filled"
+          />
           <Text style={hs.greeting} numberOfLines={1}>Hi, {username}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
         </TouchableOpacity>
