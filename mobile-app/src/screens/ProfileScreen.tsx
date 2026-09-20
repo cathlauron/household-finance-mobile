@@ -794,6 +794,9 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                       <Text style={[styles.hintText, { fontWeight: '700', marginBottom: 6 }]}>Household Members</Text>
                       {householdMembers.map((m) => {
                         const isMe = m.uid === getCurrentFirebaseUser()?.uid;
+const avatarName = isMe ? (username || m.username) : m.username;
+const isFallbackName = !isMe && (m.username === 'Owner' || m.username === 'Member');
+const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                         return (
                           <View
                             key={m.uid}
@@ -806,7 +809,8 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
                               borderBottomColor: colors.navy4,
                             }}
                           >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+<Avatar initials={getInitials(avatarName)} config={avatarConfig} size={32} />
                               <Text style={{ color: colors.ink, fontWeight: isMe ? '700' : '400', fontSize: 14 }}>
                                 {m.username} {isMe ? '(You)' : ''}
                               </Text>
@@ -1270,11 +1274,11 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
     activeOpacity={0.7}
     onPress={() => {
       Alert.alert(
-        'Sign out?',
+        'Log out?',
         'You will need to sign in again to access your data.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign Out', style: 'destructive', onPress: onSignOut },
+          { text: 'Yes, log out', style: 'destructive', onPress: onSignOut },
         ]
       );
     }}
