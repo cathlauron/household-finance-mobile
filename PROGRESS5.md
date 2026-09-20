@@ -80,6 +80,17 @@ PROGRESS4.md for that detail, plus everything it links back to
 - Orphaned households/{householdId} Firestore documents from abandoned
   link codes - known, accepted limitation, needs server-side cleanup,
   not a client patch.
+- PC.1a NOT yet verified on a real device (tsc-clean only). Check: splash
+  animation timing, slide swipe + dots, Skip/Get Started routing, image
+  sizing on small screens.
+- PC.1a has no persistent "seen intro" flag. Intro shows whenever the
+  device has zero local profiles, so (a) an existing account holder on a
+  fresh device sees the slides before signing in, and (b) quitting before
+  creating a profile shows them again on next launch. Decide in PC.1b
+  whether to add a stored flag or leave as-is.
+- Intro slide copy has not had the "fewer words" pass.
+- Cosmetic: App.tsx 'intro' block is mis-indented with a trailing-
+  whitespace line after it. Tidy when next editing that file.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -90,6 +101,11 @@ TransactionsScreen.tsx, types.ts, fiScenario.ts,
 SavingsFiComparisonModal.tsx). PROGRESS2.md/PROGRESS3.md hold the full
 inventory before that. New/modified files for this new phase will be
 tracked fresh below as they happen.
+PC.0/PC.1a additions: mobile-app/App.tsx (modified),
+mobile-app/src/screens/IntroScreen.tsx (modified, the splash),
+mobile-app/src/screens/IntroSlidesScreen.tsx (new),
+mobile-app/assets/{intro-track,intro-goals,intro-private,splash-bg}.png (new),
+plus theme.ts and the logo/splash assets from PC.0a-c.
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -133,12 +149,32 @@ not abandoned - return to them before or alongside Phase C.
   divider #E5E0CF (borders, dividers)
   premiumOrange #E08A2C (Subscription/crown accent only)
 
+📌 PC.0 / PC.1a decisions and results (added this session)
+- PC.0a (b62e17c): visible app name renamed to Finance Flow.
+- PC.0b (a256aeb): Finance Flow light palette in theme.ts, premium token added.
+- PC.0c (760af3c): Finance Flow logo assets, palette-matched splash with
+  wordmark and tagline.
+- PC.1a (cc6a74e): fuller splash, 3 intro slides, first-run wiring.
+  Verified against real code: tsc --noEmit clean, git status clean/pushed.
+  * IntroScreen.tsx (the splash): ImageBackground splash-bg.png, logo
+    spring/fade, staggered title/tagline fade, static leaf-outline icon,
+    1500ms loading bar via Animated (useNativeDriver:false because it
+    animates width). Uses hardcoded SPLASH_GREEN/CREAM constants on
+    purpose - ignores light/dark mode so launch always looks the same.
+  * IntroSlidesScreen.tsx (new): 3 slides (track / goals / private),
+    horizontal paging ScrollView, dots, Skip on slides 1-2, "Get Started"
+    on slide 3. Skip and Get Started both call onDone.
+  * App.tsx: new Screen state 'intro'. After the 1600ms splash minimum,
+    profiles.length ? 'signIn' : 'intro'. Intro onDone -> 'createProfile'.
+  * New assets in mobile-app/assets: intro-track.png, intro-goals.png,
+    intro-private.png, splash-bg.png.
+    
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
 |---|---|---|
 | PC.0 | Lock the new palette into a central theme file, mapped onto the app's real existing token names; add eco_house_logo.svg into the repo in the correct assets location; confirm the rename touches every real spot it needs to (app.json, package.json, splash, any hardcoded name strings). | New palette + logo exist as real files in the repo; nothing else built on top yet. |
-| PC.1 | Onboarding carousel (the 3 marketing-style intro screens from the mockup) merged with the existing biometric/PIN setup into one continuous first-run flow. | New user sees intro -> biometric/PIN setup -> app, restyled, in one flow. |
+| PC.1 | Onboarding carousel (the 3 marketing-style intro screens from the mockup) merged with the existing biometric/PIN setup into one continuous first-run flow. Split: PC.1a = splash + 3 slides + first-run wiring (CODE-COMPLETE, pushed as cc6a74e, awaiting on-device check). PC.1b = merge biometric/PIN setup into the same flow (NOT STARTED). | New user sees intro -> biometric/PIN setup -> app, restyled, in one flow. |
 | PC.2 | Sign-in screen restyle: new logo/palette/layout matching the mockup. | Looks match; existing email/password sign-in stays fully functional. |
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. | Sign-in with at least one real provider works on an EAS dev-client build (not testable in Expo Go). |
 | PC.4 | Home screen restyle. | Matches mockup layout/spacing/colors; all existing data/widgets intact. |
@@ -151,14 +187,13 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- Run the Antigravity investigation-only prompt below (real repo
-  contents needed before writing any PC.0 code) and paste the results
-  back.
-- Once that comes back: begin PC.0 - saving the theme file and the
-  logo asset for real, and confirming every spot the rename needs to
-  touch.
-- Bug #14 and the "fewer words" pass (next: EventsScreen.tsx, 8 items)
-  stay paused until this phase wraps up or the person says otherwise.
+- On-device check of PC.1a (see known issues), then PC.1b: merge the
+  existing biometric/PIN setup into the first-run flow so a new user
+  goes intro -> profile creation -> biometric/PIN -> app as one
+  continuous, restyled flow. Start with an Antigravity investigation-only
+  prompt against the real current OnboardingScreen.tsx and
+  CreateProfileScreen.tsx before writing any code.
+- Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 --- Antigravity investigation prompt for PC.0 (run this next) ---
 
