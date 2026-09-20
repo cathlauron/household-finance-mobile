@@ -82,8 +82,7 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Compare Scenarios</Text>
             <Text style={styles.sub}>
-              Base Plan is whatever's currently saved on this screen. Change any field below to see a
-              What-If Plan next to it — nothing here changes what's actually saved.
+              Base Plan is your saved plan. Change fields below to compare a What-If Plan. Nothing here changes what's saved.
             </Text>
 
             <View style={styles.statRow}>

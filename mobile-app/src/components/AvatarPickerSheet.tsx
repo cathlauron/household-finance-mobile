@@ -45,7 +45,7 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
       if (!permission.granted) {
         Alert.alert(
           'Permission needed',
-          'Allow photo library access in your phone settings to choose a profile picture.'
+          'Allow photo library access in your phone settings.'
         );
         return;
       }

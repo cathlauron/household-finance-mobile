@@ -123,7 +123,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
       </View>
 
       <Text style={styles.introNote}>
-        Summary of income, category spending, interest &amp; fees, and savings for {year}. Not tax advice.
+        Income, spending, fees and savings for {year}. Not tax advice.
       </Text>
 
       <View style={styles.statGrid}>
@@ -151,7 +151,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
           <Text style={[styles.feesBannerAmount, { color: colors.orange }]}>{formatPeso(interestFees)}</Text>
         </View>
         <Text style={styles.footerNote}>
-          Includes loan late fees and fees logged on debt payments. Unlogged fees are not included.
+          Loan late fees and logged debt fees only.
         </Text>
       </View>
 
