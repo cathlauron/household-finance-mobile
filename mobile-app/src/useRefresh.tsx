@@ -1,12 +1,11 @@
-﻿import React, { useCallback, useState } from 'react';
-import { Alert, RefreshControl } from 'react-native';
+﻿import { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 import { useData } from './DataContext';
-import { useTheme } from './ThemeContext';
 
-// Pull-to-refresh for a screen's ScrollView: pass `refreshControl` to it.
+// Pull-to-refresh state for a screen — pass `refreshing` and `onRefresh` to
+// <PullToRefreshScrollView>.
 export function useRefresh() {
   const { refreshModel } = useData();
-  const { colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -27,14 +26,5 @@ export function useRefresh() {
     }
   }, [refreshModel]);
 
-  const refreshControl = (
-    <RefreshControl
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      tintColor={colors.gold}
-      colors={[colors.gold]}
-    />
-  );
-
-  return { refreshControl };
+  return { refreshing, onRefresh };
 }
