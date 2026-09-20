@@ -257,12 +257,12 @@ PROGRESS4.md for that detail, plus everything it links back to
   crown, because SettingsRow only accepts Ionicons names and hard-codes the
   icon colour to colors.gold. Showing the crown in orange on the hub would
   need an optional icon colour or icon family prop in SettingsHub.tsx.
-- PC.9: only Dashboard uses PullToRefreshScrollView. The other screens are
+- [PARTLY RESOLVED: Bills, Debts, Income now use it, see batch 1] PC.9: only Dashboard used PullToRefreshScrollView. The other screens were
   NOT converted, and the swipe-vs-pull interaction on rows (SwipeableRow),
   Calendar's month swipe and nested scrollers is UNVERIFIED. The design
   expects a sideways drag to fail the pull gesture (failOffsetX), but this is
   reasoning, not proof, until tested on a screen with swipeable rows.
-- PC.9: PullToRefreshScrollView accepts only style, contentContainerStyle,
+- [RESOLVED in batch 1 Step 0: props and ref are now forwarded] PC.9: PullToRefreshScrollView accepted only style, contentContainerStyle,
   refreshing, onRefresh and children. It sets its own ref and onScroll
   internally. Screens that need keyboardShouldPersistTaps, their own onScroll
   or a ref will need the component extended first.
@@ -272,7 +272,7 @@ PROGRESS4.md for that detail, plus everything it links back to
   destructuring { refreshControl } from it would fail to compile. Not
   confirmed either way: check with the rollout investigation and
   npx tsc --noEmit.
-- PC.9: possible duplicate file, useRefresh.ts vs useRefresh.tsx. An earlier
+- [RESOLVED: checked, only useRefresh.tsx exists] PC.9: possible duplicate file, useRefresh.ts vs useRefresh.tsx. An earlier
   Antigravity output showed "useRefresh.ts" while the PC.9 command wrote
   src\useRefresh.tsx. Not yet checked. Run
   Get-ChildItem mobile-app\src -Filter "useRefresh*".
@@ -281,6 +281,25 @@ PROGRESS4.md for that detail, plus everything it links back to
   Android was part of the test plan, but its result was not recorded
   separately from the overall "passed".
 - Bug #14 is unchanged by PC.8/PC.9 (still not fixed).
+- PC.9 batch 1: which platform(s) the on-device test covered (Android only,
+  or iOS as well) was not recorded. The custom pull gesture is Android-only;
+  iOS uses the native RefreshControl, which is the lower-risk path.
+- PC.9 batch 1: the pull-vs-swipe interaction is now confirmed on Bills,
+  Debts and Income, but it is still UNVERIFIED for any screen with a
+  horizontal scroller (filter pills, tag rows) inside the main vertical
+  ScrollView. The failOffsetX rule was only tested against SwipeableRow.
+  Batch 2's investigation asks about this.
+- PC.9: SettingsScreen keeps a scrollRef and calls scrollTo({ y: 0,
+  animated: false }) when switching pages. It is UNVERIFIED that the
+  gesture-handler ScrollView (Android branch) exposes scrollTo through the
+  forwarded ref the same way. Do not convert Settings without testing this.
+- PC.9 process lesson: in batch 1, DebtsScreen.tsx's opening <ScrollView>
+  tag was NOT replaced (the find string, which included leading spaces,
+  did not match), while the closing tag WAS. tsc caught it (TS17002).
+  Rule now: search for JSX tags WITHOUT the leading spaces, and grep each
+  file for "ScrollView" after editing, before running tsc.
+- PC.9: the pull only refreshes what refreshModel() refreshes (the cloud
+  model). It does nothing for screens whose data is not in the model.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -393,6 +412,13 @@ changed to Title Case), mobile-app/src/components/SettingsHub.tsx
   DashboardScreen.tsx (uses PullToRefreshScrollView; ScrollView import
   removed). No changes to theme.ts, types.ts or RootStack. No new
   dependencies. No new testIDs.
+  PC.9 batch 1 (pushed, on-device test passed): mobile-app/src/
+  PullToRefreshScrollView.tsx (REWRITTEN: accepts ScrollViewProps, forwardRef
+  on both platforms, chains onScroll), mobile-app/src/screens/BillsScreen.tsx,
+  DebtsScreen.tsx and IncomeScreen.tsx (now use PullToRefreshScrollView; each
+  imports useRefresh and PullToRefreshScrollView; ScrollView removed from the
+  react-native import). No new dependencies, testIDs or type changes.
+
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
     ("Finance Flow" rebrand)
@@ -809,6 +835,42 @@ not abandoned - return to them before or alongside Phase C.
   On-device checks per screen: pull refreshes, normal scrolling never
   triggers the pull, swipe-to-delete still works, a sideways swipe never
   starts a pull.
+- PC.9 Step 0 (batch 1, pushed): PullToRefreshScrollView.tsx was rewritten
+  in full. Props are now Omit<ScrollViewProps, 'refreshControl'> plus
+  refreshing / onRefresh / children, so screens can pass keyboardShouldPersistTaps,
+  testID, style and so on. The component is React.forwardRef on both platforms.
+  On Android one ref callback (setScrollRef) feeds BOTH the internal scrollRef
+  (needed for simultaneousHandlers) and the caller's ref. A caller's own
+  onScroll is chained from handleScroll, so isAtTop detection is not
+  overwritten. The rest props are spread onto RNScrollView (iOS) and
+  GHScrollView (Android, via an "as any" cast to avoid RN vs gesture-handler
+  prop typing friction). Gesture logic is unchanged.
+- PC.9 batch 1 (pushed, on-device test passed): BillsScreen.tsx,
+  DebtsScreen.tsx and IncomeScreen.tsx now use PullToRefreshScrollView. Each
+  screen got the same four edits: ScrollView removed from the react-native
+  import, useRefresh and PullToRefreshScrollView imported, the hook line
+  "const { refreshing, onRefresh } = useRefresh();" added directly under
+  useData() (above the "if (!model)" early return, so the Rules of Hooks
+  hold), and the opening/closing <ScrollView> tags swapped. Only
+  contentContainerStyle, refreshing and onRefresh are passed.
+- Batch 1 was chosen because Antigravity's investigation confirmed for all
+  three: one vertical ScrollView, rows are direct children, every TextInput
+  sits inside the BottomSheet outside the ScrollView, no ref / onScroll /
+  keyboardShouldPersistTaps, and the balance banner is INSIDE the ScrollView
+  (so it slides down with the pull).
+- Real result: this was the first time the pull gesture ran on screens with
+  SwipeableRow, and it passed on-device. That was the untested interaction
+  after Dashboard.
+- Scope decisions for the rest: More, Premium, Calendar, Planning and Reports
+  (pill rows) are NOT getting pull-to-refresh (no synced data to refresh,
+  no vertical scroller, or only a horizontal pill row). Settings and Profile
+  are deferred. The Reports child screens are optional and later. The
+  Groceries Calculator tab and the Savings Emergency Fund and FI tabs are
+  scratch calculators, not synced lists, so they are not planned.
+- Batch 2 plan: 2a = Loans, Transactions, Events, Goals, Travel. 2b =
+  Accounts (needs keyboardShouldPersistTaps="handled", now forwardable),
+  Groceries List tab only, Savings Goals tab only. Investigation prompt
+  written, not yet run.
 
 📌 PC.6 decisions and results (added this session)
 - Locked: Settings becomes an iPhone-style hub of short grouped cards.
@@ -861,7 +923,7 @@ Checkpoint table
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
 | PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 DONE (pushed, on-device test passed). PC.6 is COMPLETE apart from the untested PC.6-1b flows. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. DONE (pushed, on-device test passed). Entry point is Settings only, not Profile. |
-| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). Rollout to the other 11 screens NOT started: needs a swipe-vs-pull investigation first. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
+| PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. Split: PC.8-1 = native RefreshControl on Dashboard only. PC.9 = custom drag-following pull gesture (Android only) via PullToRefreshScrollView, built and tested on Dashboard first. | PC.8-1 DONE (Dashboard, pushed, on-device test passed). PC.9 Option B DONE on Dashboard only (pushed, on-device test passed). PC.9 batch 1 DONE (Bills, Debts, Income; pushed, on-device test passed). Batch 2 (Loans, Transactions, Accounts, Events, Goals, Travel, Groceries List tab, Savings Goals tab) NOT started; its investigation prompt is written but not yet run. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
 Each row is sized to be one session's worth of work, same pattern as
 every other phase.
@@ -874,12 +936,14 @@ every other phase.
   PC.6-1b (Maestro flow edits) is committed but untested.
 - PC.7 is DONE (Subscription placeholder screen, pushed, on-device test
   passed).
-- PC.8-1 and PC.9 are DONE on Dashboard (pushed, on-device tests passed).
-  Next: run the PC.9 rollout investigation (Antigravity, investigation only)
-  covering every screen's ScrollView props, SwipeableRow usage, nested
-  scrollers, and the current on-disk PullToRefreshScrollView.tsx. Then roll
-  out to 2-3 of the safest screens first, device-test, then the rest.
-  Check for the possible useRefresh.ts / useRefresh.tsx duplicate first.
+- PC.8-1 and PC.9 are DONE on Dashboard, and PC.9 batch 1 (Bills, Debts,
+  Income) is DONE (pushed, on-device tests passed).
+  Next: run the batch 2 investigation (Antigravity, investigation only) for
+  Loans, Transactions, Accounts, Events, Goals, Travel, Groceries and
+  Savings, including whether any horizontal scroller sits inside a main
+  vertical ScrollView. Then apply 2a (Loans, Transactions, Events, Goals,
+  Travel), device-test, then 2b (Accounts, Groceries List tab, Savings
+  Goals tab), device-test.
   Do not assume this fixes Bug #14. PC.3 (real Google/Apple/Facebook OAuth)
   still waits for Phase C's EAS dev-client build.
 - Whenever a device or emulator is available: run change-password.yaml,
