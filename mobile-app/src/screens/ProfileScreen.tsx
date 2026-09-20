@@ -666,32 +666,59 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
 
         {/* 2. Security & Devices Shortcuts */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Account &amp; Security</Text>
-<Text style={styles.sectionSub}>
-  Manage credentials, encryption keys, and device sessions.
-</Text>
-<TouchableOpacity
-  style={styles.shortcutRow}
-  activeOpacity={0.7}
-  onPress={() => navigation.navigate('Settings')}
->
-  <View style={{ flex: 1 }}>
-    <Text style={styles.shortcutTitle}>Password & Encryption Key</Text>
-            <Text style={styles.shortcutSub}>Change password and access your Secret Recovery Key</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />
-        </TouchableOpacity>
+        <Text style={styles.sectionSub}>
+          Manage credentials, encryption keys, and device sessions.
+        </Text>
+        <View style={styles.shortcutCard}>
+          <TouchableOpacity
+            style={styles.shortcutItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <View style={styles.shortcutIconBubble}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shortcutTitle}>Password & Encryption Key</Text>
+              <Text style={styles.shortcutSub}>Change password and access your Secret Recovery Key</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} style={{ marginLeft: 10 }} />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-  style={styles.shortcutRow}
-  activeOpacity={0.7}
-  onPress={() => navigation.navigate('Settings')}
->
-  <View style={{ flex: 1, marginRight: 8 }}>
-  <Text style={styles.shortcutTitle}>Active Devices</Text>
-  <Text style={styles.shortcutSub}>View and sign out other devices.</Text>
-</View>
-          <Ionicons name="chevron-forward" size={18} color={colors.gold} style={{ marginLeft: 10 }} />
-        </TouchableOpacity>
+          <View style={styles.shortcutDivider} />
+
+          <TouchableOpacity
+            style={styles.shortcutItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <View style={styles.shortcutIconBubble}>
+              <Ionicons name="phone-portrait-outline" size={18} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shortcutTitle}>Active Devices</Text>
+              <Text style={styles.shortcutSub}>View and sign out other devices.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} style={{ marginLeft: 10 }} />
+          </TouchableOpacity>
+
+          <View style={styles.shortcutDivider} />
+
+          <TouchableOpacity
+            style={styles.shortcutItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <View style={styles.shortcutIconBubble}>
+              <Ionicons name="settings-outline" size={18} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shortcutTitle}>All settings</Text>
+              <Text style={styles.shortcutSub}>All other preferences.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} style={{ marginLeft: 10 }} />
+          </TouchableOpacity>
+        </View>
 
         {/* 3. Household & Sharing Section */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Household &amp; Sharing</Text>
@@ -1252,7 +1279,7 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
       );
     }}
   >
-    <Text style={styles.signOutButtonText}>Sign Out</Text>
+    <Text style={styles.signOutButtonText}>Log out</Text>
   </TouchableOpacity>
       </ScrollView>
 
@@ -1388,15 +1415,32 @@ function makeStyles(colors: any) {
     },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.ink, marginBottom: 4 },
     sectionSub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 14, lineHeight: 17 },
-    shortcutRow: {
+    shortcutCard: {
       backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       marginBottom: 8,
+    },
+    shortcutItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    shortcutIconBubble: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.navy2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    shortcutDivider: {
+      height: 1,
+      backgroundColor: colors.navy4,
+      marginLeft: 62,
     },
     shortcutTitle: {
       fontSize: 14,
@@ -1415,9 +1459,9 @@ function makeStyles(colors: any) {
       marginLeft: 10,
     },
     lockButton: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 14,
+      backgroundColor: 'transparent',
+      borderRadius: 999,
+      paddingVertical: 13,
       alignItems: 'center',
       marginBottom: 10,
       borderWidth: 1,
@@ -1426,19 +1470,21 @@ function makeStyles(colors: any) {
     lockButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.ink,
+      color: colors.inkDim,
     },
     signOutButton: {
-      backgroundColor: '#e5484d',
-      borderRadius: 10,
-      paddingVertical: 14,
+      backgroundColor: 'transparent',
+      borderRadius: 999,
+      paddingVertical: 13,
       alignItems: 'center',
       marginBottom: 8,
+      borderWidth: 1.5,
+      borderColor: colors.error,
     },
     signOutButtonText: {
       fontSize: 14,
-      fontWeight: '600',
-      color: '#fff',
+      fontWeight: '700',
+      color: colors.error,
     },
     inputLabel: {
       fontSize: 11,
