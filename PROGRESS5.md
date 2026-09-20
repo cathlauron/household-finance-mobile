@@ -1110,6 +1110,62 @@ not abandoned - return to them before or alongside Phase C.
   Log out on Settings plus the RootStack edit. PC.6-3 = Language, Help &
   support and About us placeholder pages. PC.6-4 = value labels ("English")
   and polish.
+📌 "Fewer words" batch 1 (added this session)
+- Audit run by Antigravity (investigation only): house style derived from
+  git diffs c9bbda7 (Bills/Transactions), 738e454 (Income), 4ab1c07
+  (Loans), e17a6bc (Events; it already trimmed EventsScreen, so Events
+  needed nothing more). Rules seen in the diffs: questions become noun
+  phrases, drop parenthetical explanations, drop "or leave it blank" and
+  "e.g." tails on errors, "Deletes the X and Y. Cannot be undone." for
+  delete alerts, empty states drop "Add your first one below.", buttons
+  drop "this" (Delete bill), conversational placeholders shortened.
+- Applied in one pass (pushed, tsc-clean; ON-DEVICE CHECK NOT CONFIRMED):
+  * IncomeScreen.tsx: swipe-delete alert body now "Deletes the source and
+    its logged payments. Cannot be undone." (the swipe path had been missed
+    in 738e454).
+  * TravelScreen.tsx: intro now "Add items with costs to track budget."
+  * CsvImportModal.tsx: error now "Couldn't read CSV file."; help text now
+    "Needs date, label and amount. Optional direction: in, out, saving
+    (default out). Dates: YYYY-MM-DD or MM/DD/YYYY."
+  * LoanPayoffSimulatorModal.tsx: hint now "Missing rates default to 0%,
+    missing payments to 2% of balance." The order (0% for rates, 2% for
+    payments) came from the old sentence; it was NOT checked against the
+    calculation code.
+- Deliberately SKIPPED (do not redo without a new decision): the 37
+  "Failed to save/delete. Please try again." messages (about 2 words saved
+  each, across many files); dropping "a"/"an" from "Enter a valid ...";
+  "Enter month 1-12" / "Enter day 1-31" (conflicts with the house style);
+  "Possible duplicate" -> "Duplicate" (the check is a date-window guess);
+  placeholder trims (e.g. GCash/BPI examples); savings toggle label
+  changes ("Don't save" would mislead); dropping "(optional)"; "COMMITTED
+  BUDGET (CHECKED ITEMS)" trim; Snowball/Avalanche subtitle rewrite; the
+  "Payoff order - <strategy>" heading trim (the strategy name appears in
+  text only there; the gold card border is the only other cue).
+- Protected, do NOT shorten: all delete/remove alerts already in short
+  form; recovery-key, encryption and password warnings in SetPin, Settings,
+  SignIn, CreateProfile, Profile; the exact text 'Password changed.'
+  (SettingsScreen compares passChangeMsg === 'Password changed.') and the
+  SignIn error string compared at SignInScreen.tsx:716; Maestro taps "Yes,
+  log out".
+- Not yet covered (next batches, by the audit's over-8-word counts):
+  AccountsScreen (its long strings are protected alerts; only small trims
+  remain), TaxSummaryReport, GoalsScreen, SavingsFiComparisonModal,
+  AvatarPickerSheet, SetPinScreen, PremiumScreen, PaymentMethodsReport,
+  CashFlowForecastReport, ReportsScreen, then the smaller files
+  (PinUnlockScreen, YearInReviewReport, DashboardScreen, other reports,
+  HomeScreen, CalendarScreen, small components). Also still open: about 38
+  strings over 12 words remain in the 13 already-done screens (mostly
+  Settings, Profile, SignIn, CreateProfile; many are protected security
+  text). Ask Antigravity to re-list them when wanted.
+- Maestro flows, suspected break (NOT verified): HomeScreen.tsx no longer
+  renders "You're signed in, {username}!" (replaced by "Hi, {username}" in
+  d4de454). create-profile, sign-in, pin-quick-unlock, change-password and
+  sign-out-round-trip still wait for that text with extendedWaitUntil
+  (timeout 120000). Only the assertVisible after it is optional: true, not
+  the wait, so the flows will probably time out and fail there. Fix when
+  the flows are run: wait on a testID that exists on Home (e.g.
+  home-calendar-shortcut) instead. Antigravity's claim that they "pass or
+  warn" contradicts its own pasted YAML.
 
 Checkpoint table
 
@@ -1146,7 +1202,9 @@ every other phase.
   all pushed and on-device tested). PC.8 is done.
   Remaining pre-Phase C items, in no fixed order (after the two immediate
   items above):
-  (a) "Fewer words" pass, next file EventsScreen.tsx.
+  (a) "Fewer words" pass: batch 1 pushed (see the batch 1 block above).
+      Confirm the four screens on-device, then continue with the batch 2
+      files listed there (GoalsScreen and the report screens first).
   (b) Run the three Maestro flows (change-password.yaml,
       pin-quick-unlock.yaml, sign-out-round-trip.yaml) once a device or
       emulator is connected, and fix the sign-out-button reachability issue.
