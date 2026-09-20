@@ -82,9 +82,8 @@ PROGRESS4.md for that detail, plus everything it links back to
   testable through Expo Go.
 
 ⚠️ Known issues / gotchas - carried forward, still open
-- Bug #14 (ROOT CAUSE FOUND, FIX APPLIED LOCALLY, NOT YET COMMITTED,
-  NOT YET CONFIRMED ON-DEVICE): what looked like "only the first ticked
-  report shows" was NOT a stale-closure or stale-render data bug at all -
+- Bug #14 (ROOT CAUSE FOUND, FIX COMMITTED AND PUSHED in dc2a674, NOT YET
+  CONFIRMED ON-DEVICE): what looked like "only the first ticked
   hiddenReportIdsRef/hiddenReportIds were confirmed correct at every step
   via on-device Metro logs (every tap logged the right growing/shrinking
   array, no lost taps, no stale reads). The real bug: the horizontal pill
@@ -99,11 +98,16 @@ PROGRESS4.md for that detail, plus everything it links back to
   NEVER worked correctly on a real phone. Fix applied to the file on disk:
   pillScroll changed to `{ flex: 1, height: 54 }`; the two temporary
   console.log debug lines (in toggleReportVisibility and right before the
-  return statement) were also removed. NOT YET COMMITTED - git status will
-  show ReportsScreen.tsx as modified. NOT YET on-device confirmed: need to
-  see the pill row actually render as multiple tappable icons, and confirm
-  tapping a different one switches the active report. Do NOT commit until
-  that on-device confirmation happens.
+  return statement) were also removed. The fix was committed and pushed by accident in dc2a674 (the "PROGRESS5:
+  document Bug 14 root cause..." commit), because the start-of-session
+  block runs git add -A and swept the modified file in. Checked afterward:
+  the file on disk has pillScroll { flex: 1, height: 54 } and the working
+  tree was clean. NOT YET on-device confirmed: need to see the pill row
+  render as multiple tappable icons, and confirm tapping a different one
+  switches the active report. Bug #14 stays open until that is confirmed.
+  Process note: git add -A at session start commits any unfinished work.
+  Check git status before running that block when something is
+  deliberately uncommitted.
 - Bug #9's Face-ID-specific "fails to even prompt" symptom still needs
   re-verification on a real installed build - suspected to be an Expo
   Go limitation, not re-testable until Phase C.
@@ -147,8 +151,11 @@ PROGRESS4.md for that detail, plus everything it links back to
   Tried and did NOT help: installed expo-screen-capture and called
   allowScreenCaptureAsync() in App.tsx on every screen change. Screenshots
   still failed. Fully reverted (git restore of App.tsx, package.json and
-  package-lock.json, then npm install). Confirm package.json has no
-  expo-screen-capture before Phase C.
+  package-lock.json, then npm install). Verified afterward: git status
+  clean, package.json has no expo-screen-capture, App.tsx has no
+  ScreenCapture, npx tsc --noEmit clean. (The revert was not actually done
+  when the first screenshot note was pushed; it was done and verified in a
+  follow-up.)
   NOT proven: Antigravity claimed 95%+ confidence in "Expo Go window flag
   left by an earlier project" or "biometric overlay". Neither fits: only
   this project was ever opened in Expo Go, and plain tabs fail with no
@@ -1123,22 +1130,20 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- IMMEDIATE, pick this up first: mobile-app/src/screens/ReportsScreen.tsx
-  has an UNCOMMITTED local fix for Bug #14 (pillScroll style change +
-  debug log removal - see Known issues for exact detail). Before doing
-  anything else:
-  1. Run the app on-device with several reports ticked visible in
+- IMMEDIATE, pick this up first: Bug #14's fix (ReportsScreen.tsx,
+  pillScroll { flex: 1, height: 54 }) is already COMMITTED and pushed
+  (dc2a674) but NOT confirmed on-device. Before doing anything else:
+  1. Confirm the two console.log debug lines are gone (grep
+     ReportsScreen.tsx for console.log, expect nothing).
+  2. Run the app on-device with several reports ticked visible in
      Customize.
-  2. Confirm: is there now a row of small tappable icons (one per ticked
-     report) visible on the Reports screen, and does tapping a different
-     one switch which report shows below?
-  3. If yes - commit this fix (a plain `git add -A` /
-     `git commit -m "Bug #14: fix collapsed pill row..."` / `git push`,
-     no further investigation needed) and mark Bug #14 fully closed in
-     this file.
-  4. If the row is still missing, or looks wrong in some other way -
-     report exactly what's seen; do not commit; this needs a follow-up
-     Antigravity investigation with that new detail.
+  3. Confirm: is there a row of small tappable icons (one per ticked
+     report), and does tapping a different one switch the report shown
+     below?
+  4. If yes - mark Bug #14 fully closed in this file (no code change).
+  5. If the row is missing or looks wrong - report exactly what is seen and
+     run a follow-up Antigravity investigation. The fix is already pushed,
+     so a further fix means a new commit.
 - Screenshot restriction: PARKED for Phase C. No code change needed (see
   Known issues). Re-test screenshots on the first installed EAS build.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
