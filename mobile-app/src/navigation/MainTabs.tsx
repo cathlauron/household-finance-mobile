@@ -13,7 +13,7 @@ type MainTabsProps = {
   onSignOut?: () => void;
   initialOpenBillId?: string;
 };
-export default function MainTabs({ username, onLock, onSignOut, initialOpenBillId }: MainTabsProps) {
+export default function MainTabs({ username, onSignOut, initialOpenBillId }: MainTabsProps) {
   const { colors } = useTheme();
   return (
     <Tab.Navigator
@@ -38,11 +38,12 @@ export default function MainTabs({ username, onLock, onSignOut, initialOpenBillI
       <Tab.Screen
         name="Home"
         options={{
+          headerShown: false,
           tabBarButtonTestID: 'home-tab',
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       >
-        {() => <HomeScreen username={username} onLock={onLock} />}
+        {() => <HomeScreen username={username} />}
       </Tab.Screen>
       <Tab.Screen
         name="To-Pay"

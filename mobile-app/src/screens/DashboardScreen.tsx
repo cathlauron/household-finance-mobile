@@ -34,7 +34,7 @@ type DueItem = {
   type: 'bill' | 'debt' | 'loan';
 };
 
-function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueItem[] {
+export function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueItem[] {
   const today = stripTime(new Date());
   const cutoff = new Date(today);
   cutoff.setDate(cutoff.getDate() + daysAhead);
@@ -128,18 +128,49 @@ export default function DashboardScreen() {
 
       {/* This month */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>{monthLabel}</Text>
+        <View style={styles.rowCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardLabel}>{monthLabel}</Text>
+          </View>
+          <View style={styles.iconBubbleSmall}>
+            <Ionicons name="calendar-outline" size={18} color={colors.gold} />
+          </View>
+        </View>
         <View style={styles.statRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Income</Text>
+            <View style={styles.statIconRow}>
+              <View style={[styles.statIconCircle, { backgroundColor: colors.okBg }]}>
+                <Ionicons name="arrow-up" size={11} color={colors.ok} />
+              </View>
+              <Text style={styles.statLabel}>Income</Text>
+            </View>
             <Text style={[styles.statValue, { color: colors.ok }]}>{formatPeso(monthTotals.totalIn)}</Text>
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Expenses</Text>
+          <View style={[styles.statBox, styles.statBoxDivider]}>
+            <View style={styles.statIconRow}>
+              <View style={[styles.statIconCircle, { backgroundColor: colors.errorBg }]}>
+                <Ionicons name="arrow-down" size={11} color={colors.error} />
+              </View>
+              <Text style={styles.statLabel}>Expenses</Text>
+            </View>
             <Text style={[styles.statValue, { color: colors.error }]}>{formatPeso(monthTotals.totalOut)}</Text>
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Net</Text>
+          <View style={[styles.statBox, styles.statBoxDivider]}>
+            <View style={styles.statIconRow}>
+              <View
+                style={[
+                  styles.statIconCircle,
+                  { backgroundColor: monthTotals.net >= 0 ? colors.okBg : colors.errorBg },
+                ]}
+              >
+                <Ionicons
+                  name={monthTotals.net >= 0 ? 'arrow-up' : 'arrow-down'}
+                  size={11}
+                  color={monthTotals.net >= 0 ? colors.ok : colors.error}
+                />
+              </View>
+              <Text style={styles.statLabel}>Net</Text>
+            </View>
             <Text style={[styles.statValue, { color: monthTotals.net >= 0 ? colors.ok : colors.error }]}>
               {formatPeso(monthTotals.net)}
             </Text>
@@ -169,7 +200,14 @@ export default function DashboardScreen() {
 
       {/* Due soon */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Due Next 14 Days</Text>
+        <View style={styles.rowCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardLabel}>Due Next 14 Days</Text>
+          </View>
+          <View style={styles.iconBubbleSmall}>
+            <Ionicons name="calendar-outline" size={18} color={colors.gold} />
+          </View>
+        </View>
         {dueSoon.length === 0 ? (
           <Text style={styles.emptyText}>Nothing due soon.</Text>
         ) : (
@@ -189,7 +227,14 @@ export default function DashboardScreen() {
 
       {/* Savings goals */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Savings Goals</Text>
+        <View style={styles.rowCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardLabel}>Savings Goals</Text>
+          </View>
+          <View style={[styles.iconBubbleSmall, { backgroundColor: colors.okBg }]}>
+            <Ionicons name="flag-outline" size={18} color={colors.ok} />
+          </View>
+        </View>
         {goals.length === 0 ? (
           <Text style={styles.emptyText}>No savings goals yet.</Text>
         ) : (
@@ -313,6 +358,32 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     statBox: {
       flex: 1,
+    },
+    statBoxDivider: {
+      borderLeftWidth: 1,
+      borderLeftColor: colors.navy4,
+      paddingLeft: 10,
+    },
+    statIconRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginBottom: 4,
+    },
+    statIconCircle: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconBubbleSmall: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.navy2,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     statLabel: {
       fontSize: 11,

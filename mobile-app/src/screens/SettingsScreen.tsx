@@ -1371,13 +1371,14 @@ export default function SettingsScreen() {
         {pinIsSet && (
           <View style={[styles.row, { marginTop: 4 }]}>
             <View style={{ flex: 1 }} />
-            <TouchableOpacity
-              style={[styles.dataButton, { alignSelf: 'center' }]}
-              disabled={pinBusy}
-              onPress={() => setShowSetPinModal(true)}
-            >
-              <Text style={styles.dataButtonText}>Change PIN</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+    testID="change-pin-button"
+    style={[styles.dataButton, { alignSelf: 'center' }]}
+    disabled={pinBusy}
+    onPress={() => setShowSetPinModal(true)}
+  >
+    <Text style={styles.dataButtonText}>Change PIN</Text>
+  </TouchableOpacity>
           </View>
         )}
 

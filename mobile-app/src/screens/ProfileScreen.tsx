@@ -1178,9 +1178,9 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
           Quickly lock the app, or sign out completely.
         </Text>
 
-        <TouchableOpacity style={styles.lockButton} activeOpacity={0.7} onPress={onLock}>
-          <Text style={styles.lockButtonText}>Lock App</Text>
-        </TouchableOpacity>
+        <TouchableOpacity testID="lock-app-button" style={styles.lockButton} activeOpacity={0.7} onPress={onLock}>
+  <Text style={styles.lockButtonText}>Lock App</Text>
+</TouchableOpacity>
 
           <TouchableOpacity
     testID="sign-out-button"

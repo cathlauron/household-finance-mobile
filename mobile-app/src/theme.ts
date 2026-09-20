@@ -15,7 +15,9 @@ export type ThemeColors = {
   error: string;
   errorBg: string;
   ok: string;
+  okBg: string;
   orange: string;
+  warnBg: string;
   premium: string;
 };
 
@@ -33,7 +35,9 @@ export const lightTheme: ThemeColors = {
   error: '#E11D48',
   errorBg: '#FFF1F2',
   ok: '#059669',
+  okBg: '#ECFDF5',
   orange: '#EA580C',
+  warnBg: '#FFF7ED',
   premium: '#E08A2C',
 };
 
@@ -51,6 +55,8 @@ export const darkTheme: ThemeColors = {
   error: '#FB7185',
   errorBg: '#3F1725',
   ok: '#34D399',
+  okBg: '#0F2A20',
   orange: '#FB923C',
+  warnBg: '#3A2412',
   premium: '#E08A2C',
 };
