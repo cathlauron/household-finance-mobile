@@ -50,6 +50,15 @@ PROGRESS4.md for that detail, plus everything it links back to
   flexShrink on the value). Pushed and confirmed on-device.
 - PC.6 (Settings hub with drill-in pages) is COMPLETE: PC.6-1 through PC.6-4
   done. Only PC.6-1b (Maestro flow edits) remains untested.
+- PC.7 DONE: Subscription "Coming soon" placeholder screen. New route
+  Premium (RootStack), new file mobile-app/src/screens/PremiumScreen.tsx,
+  built from the mockup image the person supplied: hero card with a crown
+  (MaterialCommunityIcons "crown", colors.premium), Monthly / Yearly toggle
+  with a "Save 20%" badge, a four-line benefits card, a plan card with price,
+  and a footer. Entry point: a one-row "Membership" group on the Settings hub
+  ("Subscription", value "Coming soon"), between the profile card and
+  Account. No payment, paywall or subscription state exists anywhere. Pushed
+  and confirmed on-device.
 
 📌 Decisions carried forward — still active
 - Always retrieve/view exact current file contents before writing code;
@@ -225,6 +234,29 @@ PROGRESS4.md for that detail, plus everything it links back to
   default used elsewhere.
 - PC.6-4: Security, Backup & Data, Help & Support and About Us show no value
   (no data exists to show, or it would be ambiguous).
+- PC.7: the Subscription screen is a static placeholder. The Subscribe button
+  is a non-touchable disabled View that reads "Coming soon". The footer says
+  "Not available yet. Nothing will be charged." on purpose, replacing the
+  mockup's "Cancel anytime. No hidden fees." (no purchase exists to cancel).
+- PC.7: prices are STATIC PLACEHOLDERS with a hard-coded peso sign. Monthly
+  is 99.00 (from the mockup). Yearly is 950.40, derived as 99 x 12 x 0.8 from
+  "Save 20%", not from the mockup. Neither follows the app's currency setting.
+- PC.7: the four benefit lines are copied from the mockup, but several are
+  already free today (Reports, multiple accounts, no transaction cap).
+  Decide what premium actually gates before this screen is used for real.
+- PC.7: the Monthly / Yearly toggle is local screen state only. It is not
+  stored anywhere and resets each time the screen opens.
+- PC.7: no Profile-screen row for Subscription. The Profile "Account &
+  Security" card's subtitle is about credentials and devices, so a
+  monetization row sat badly there. Add a separate banner later if wanted.
+- PC.7: the route is named Premium but the header title reads "Subscription".
+  This is intentional, so the route name cannot be confused with the
+  recurring-bill subscription feature (Bill.isSubscription, Subscription
+  Audit). Do not rename the route to Subscription.
+- PC.7: the Settings row uses the Ionicons sparkles-outline icon, not the
+  crown, because SettingsRow only accepts Ionicons names and hard-codes the
+  icon colour to colors.gold. Showing the crown in orange on the hub would
+  need an optional icon colour or icon family prop in SettingsHub.tsx.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -320,7 +352,15 @@ PC.6-4 (pushed, on-device test passed): mobile-app/src/screens/
 SettingsScreen.tsx (value props on seven hub rows; three hub titles
 changed to Title Case), mobile-app/src/components/SettingsHub.tsx
 (numberOfLines on title and value, flexShrink on value). No new testIDs.
-Maestro flows unaffected (they tap by testID).
+  Maestro flows unaffected (they tap by testID).
+  PC.7 (pushed, on-device test passed): mobile-app/src/screens/
+  PremiumScreen.tsx (NEW), mobile-app/src/navigation/RootStack.tsx (imports
+  PremiumScreen, Premium: undefined added to RootStackParamList, Premium
+  registered with component=, title "Subscription", headerBackTitle
+  "Settings"), mobile-app/src/screens/SettingsScreen.tsx (new "Membership"
+  group above Account). New testIDs: settings-row-premium,
+  premium-screen-container, premium-billing-monthly, premium-billing-yearly,
+  premium-coming-soon-button. No changes to theme.ts or types.ts.
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -363,6 +403,8 @@ not abandoned - return to them before or alongside Phase C.
   mutedText #6E7568 (secondary text/labels)
   divider #E5E0CF (borders, dividers)
   premiumOrange #E08A2C (Subscription/crown accent only)
+  [CORRECTION from PC.7: the real theme token is colors.premium, #E08A2C in
+  both light and dark. There is no premiumOrange token. Use colors.premium.]
 
 📌 PC.0 / PC.1a decisions and results (added this session)
 - PC.0a (b62e17c): visible app name renamed to Finance Flow.
@@ -653,6 +695,20 @@ not abandoned - return to them before or alongside Phase C.
   Antigravity that shows only the styles used by a block is NOT proof that
   the styles are contiguous; run npx tsc --noEmit before every commit.
 
+📌 PC.7 results (added this session)
+- The mockup was NOT in the repo. PROGRESS5.md said "matches the mockup" but
+  no image had ever been saved. The person supplied the image in chat, and
+  the screen was built from it. Consider saving the mockup into the repo.
+- Antigravity's proposed benefit list (real-time sync, unlimited household
+  members, advanced projections) was rejected as invented and inaccurate,
+  since the app already syncs through Firebase and links up to 5 members.
+  The mockup's own four lines were used instead.
+- Route named Premium, not Subscription, because "subscription" already has
+  many hits for recurring bills (BillsScreen, pushNotifications, Reports,
+  types.ts).
+- Crown icon came from MaterialCommunityIcons, already available through
+  @expo/vector-icons. Nothing new was installed.
+
 📌 PC.6-4 results (added this session)
 - Antigravity's investigation proposed values for Devices and List Rows.
   Both were rejected for now (see Known issues). Quick Unlock was changed
@@ -727,7 +783,7 @@ Checkpoint table
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
 | PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 DONE and PC.6-3 DONE (both pushed, on-device tests passed). PC.6-4 DONE (pushed, on-device test passed). PC.6 is COMPLETE apart from the untested PC.6-1b flows. |
-| PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
+| PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. DONE (pushed, on-device test passed). Entry point is Settings only, not Profile. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
 Each row is sized to be one session's worth of work, same pattern as
@@ -739,19 +795,20 @@ every other phase.
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
 - PC.6 is COMPLETE: PC.6-1 through PC.6-4 DONE (pushed, on-device tests passed).
   PC.6-1b (Maestro flow edits) is committed but untested.
-- PC.7 next: Subscription "Coming soon" screen. Reachable from Settings and
-  Profile, matches the mockup visually, no real payment or paywall logic.
-  Start with an investigation-only prompt: where it should be reachable from
-  (which Profile or Settings row), how RootStack registers screens, and the
-  mockup details (crown, premiumOrange #E08A2C). Confirm placement with the
-  person before writing code.
-- Then PC.8
-  (pull-to-refresh). PC.3 (real Google/Apple/Facebook OAuth) still waits
+- PC.7 is DONE (Subscription placeholder screen, pushed, on-device test
+  passed).
+- PC.8 next: pull-to-refresh. Start with an investigation-only prompt asking
+  which screens it applies to and what it should refresh (Firestore data or
+  just local state). Do not assume it fixes Bug #14. PC.3 (real
+  Google/Apple/Facebook OAuth) still waits
   for Phase C's EAS dev-client build.
 - Whenever a device or emulator is available: run change-password.yaml,
   pin-quick-unlock.yaml and sign-out-round-trip.yaml, and fix the
   sign-out-button reachability problem listed under Known issues.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
+- Decision: the Maestro flows (change-password.yaml, pin-quick-unlock.yaml,
+  sign-out-round-trip.yaml) will be run after ALL of pre-Phase C is done, not
+  before. Until then they stay untested.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
