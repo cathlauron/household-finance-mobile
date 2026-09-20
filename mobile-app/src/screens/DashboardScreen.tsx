@@ -13,6 +13,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { useTheme } from '../ThemeContext';
 import {
@@ -114,10 +115,15 @@ export default function DashboardScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* Total balance */}
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Total Balance</Text>
-        <Text style={styles.bigAmount}>{formatPeso(totalBalance)}</Text>
-        <Text style={styles.cardNote}>Cash, Debit &amp; Credit accounts</Text>
+      <View style={[styles.card, styles.rowCard]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardLabel}>Total Balance</Text>
+          <Text style={styles.bigAmount}>{formatPeso(totalBalance)}</Text>
+          <Text style={styles.cardNote}>Cash, Debit &amp; Credit accounts</Text>
+        </View>
+        <View style={styles.iconBubble}>
+          <Ionicons name="wallet-outline" size={24} color={colors.gold} />
+        </View>
       </View>
 
       {/* This month */}
@@ -143,10 +149,17 @@ export default function DashboardScreen() {
 
       {/* Amount owed */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Amount Owed</Text>
-        <Text style={[styles.bigAmount, { color: totalOwed > 0 ? colors.orange : colors.ink }]}>
-          {formatPeso(totalOwed)}
-        </Text>
+        <View style={styles.rowCard}>
+          <View style={[styles.iconBubble, { backgroundColor: colors.errorBg, marginRight: 12 }]}>
+            <Ionicons name="receipt-outline" size={22} color={colors.orange} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardLabel}>Amount Owed</Text>
+            <Text style={[styles.bigAmount, { color: totalOwed > 0 ? colors.orange : colors.ink }]}>
+              {formatPeso(totalOwed)}
+            </Text>
+          </View>
+        </View>
         <View style={styles.owedBreakdownRow}>
           <Text style={styles.cardNote}>Bills: {formatPeso(billsOwed)}</Text>
           <Text style={styles.cardNote}>Debts: {formatPeso(debtsOwed)}</Text>
@@ -238,7 +251,20 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.navy1,
+      backgroundColor: colors.navy2,
+    },
+    rowCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconBubble: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.navy2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 12,
     },
     contentContainer: {
       padding: 14,
@@ -252,7 +278,9 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     card: {
       backgroundColor: colors.navy3,
-      borderRadius: 10,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       padding: 16,
       marginBottom: 12,
     },

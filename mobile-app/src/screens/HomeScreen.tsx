@@ -10,6 +10,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, formatPeso } from '../balanceProjection';
 import type { RootStackParamList } from '../navigation/RootStack';
+import { getInitials } from './ProfileScreen';
 
 type Props = {
   username: string;
@@ -46,38 +47,45 @@ export default function HomeScreen({ username, onLock }: Props) {
   const leftToSpendStatus =
     leftToSpend && model ? getLeftToSpendStatus(leftToSpend.amount, model, colors) : null;
 
+  const hs = makeHomeStyles(colors);
+  const fullDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy2 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 }}>
-        <Text style={{ color: colors.inkDim, fontSize: 13 }}>Hi, {username}</Text>
-        <TouchableOpacity
-          testID="home-calendar-shortcut"
-          onPress={() => navigation.navigate('Calendar')}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.navy3 }}
-        >
-          <Ionicons name="calendar-outline" size={13} color={colors.gold} />
-          <Text style={{ color: colors.ink, fontSize: 12, fontWeight: '600' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </Text>
-        </TouchableOpacity>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity testID="set-pin-button" onPress={() => setShowSetPin(true)}>
-            <Text style={{ color: colors.gold, fontSize: 12, fontWeight: '600' }}>{pinIsSet ? 'Change PIN' : 'Set PIN'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity testID="lock-button" onPress={onLock}>
-            <Text style={{ color: colors.ink, fontSize: 12, fontWeight: '600' }}>Lock</Text>
-          </TouchableOpacity>
+      <View style={hs.headerRow}>
+        <View style={hs.avatar}>
+          <Text style={hs.avatarText}>{getInitials(username || '')}</Text>
         </View>
+        <View style={{ flex: 1 }}>
+          <Text style={hs.greeting}>Hi, {username}</Text>
+          <Text style={hs.greetingSub}>Good to see you!</Text>
+        </View>
+        <TouchableOpacity
+          testID="set-pin-button"
+          accessibilityLabel={pinIsSet ? 'Change PIN' : 'Set PIN'}
+          onPress={() => setShowSetPin(true)}
+          style={hs.iconBtn}
+        >
+          <Ionicons name={pinIsSet ? 'keypad' : 'keypad-outline'} size={19} color={colors.gold} />
+        </TouchableOpacity>
+        <TouchableOpacity testID="lock-button" accessibilityLabel="Lock" onPress={onLock} style={hs.iconBtn}>
+          <Ionicons name="lock-closed-outline" size={19} color={colors.ink} />
+        </TouchableOpacity>
       </View>
+
+      <TouchableOpacity testID="home-calendar-shortcut" onPress={() => navigation.navigate('Calendar')} style={hs.datePill}>
+        <Ionicons name="calendar-outline" size={18} color={colors.gold} />
+        <Text style={hs.dateText}>{fullDate}</Text>
+        <Ionicons name="chevron-down" size={18} color={colors.inkDim} />
+      </TouchableOpacity>
+
       {leftToSpend && leftToSpendStatus && (
-        <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: colors.navy3, borderRadius: 10, padding: 16 }}>
-          <Text style={{ fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.inkDim, marginBottom: 8 }}>
-            Left to Spend
-          </Text>
+        <View style={hs.leftCard}>
+          <Text style={hs.leftLabel}>Left to Spend</Text>
           <Text style={{ fontSize: 26, fontWeight: '700', color: leftToSpendStatus.color }}>
             {formatPeso(leftToSpend.amount)}
           </Text>
-          <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: 4 }}>
+          <Text style={{ fontSize: 12, color: colors.inkDim, marginTop: 4 }}>
             {leftToSpendStatus.label} · {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
           </Text>
         </View>
@@ -85,6 +93,31 @@ export default function HomeScreen({ username, onLock }: Props) {
       <DashboardScreen />
     </View>
   );
+}
+
+function makeHomeStyles(colors: any) {
+  return StyleSheet.create({
+    headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, gap: 10 },
+    avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+    greeting: { color: colors.ink, fontSize: 16, fontWeight: '700' },
+    greetingSub: { color: colors.inkDim, fontSize: 12, marginTop: 1 },
+    iconBtn: {
+      width: 38, height: 38, borderRadius: 19, backgroundColor: colors.navy3,
+      borderWidth: 1, borderColor: colors.navy4, alignItems: 'center', justifyContent: 'center',
+    },
+    datePill: {
+      flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 14, marginTop: 14,
+      backgroundColor: colors.navy3, borderRadius: 14, borderWidth: 1, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12,
+    },
+    dateText: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '600' },
+    leftCard: {
+      marginHorizontal: 14, marginTop: 12, backgroundColor: colors.navy3, borderRadius: 16,
+      borderWidth: 1, borderColor: colors.navy4, padding: 16,
+    },
+    leftLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.inkDim, marginBottom: 8 },
+  });
 }
 
 
