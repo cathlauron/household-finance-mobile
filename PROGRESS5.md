@@ -121,13 +121,31 @@ PROGRESS4.md for that detail, plus everything it links back to
   text with new Date(). If the text is ever missing or unreadable, the
   "Member since" card silently hides (by design), so a missing card means
   no usable date, not a crash. Uses the en-US locale ("Sep 2026").
-- PC.5-2 watch item: the Household Members roster falls back to the
+- [RESOLVED in PC.5-2b] PC.5-2 watch item: the Household Members roster falls back to the
   usernames 'Owner' / 'Member' when memberUsernames is missing. Looking up
   model.avatars?.[m.username] with those fallbacks would hit the wrong key,
   so the roster avatar code must show plain initials for fallback names
   instead of an avatar lookup. Confirm against the real roster code first.
 - Cosmetic, harmless: git prints "LF will be replaced by CRLF" for
   ProfileScreen.tsx on Windows. No action needed.
+- PC.5-2b: roster avatar fallback detection relies on capitalisation. Real
+  usernames are always lowercase (sanitizeUsername lowercases them), while
+  the fallbacks 'Owner' and 'Member' are capitalised, so a capitalised
+  non-current member gets plain initials with no avatar lookup. Unverified:
+  whether any hand-edited Firestore household doc has a capitalised real
+  username. Roster avatars for a SECOND linked member were not confirmed
+  on-device (single-account test only).
+- PC.5-2b: sign-out-round-trip.yaml and change-password.yaml now tap the
+  alert button "Yes, log out" after sign-out-button. Before this, neither
+  flow confirmed the alert, so both were probably already failing. It is
+  NOT confirmed that either flow has been re-run for real, and how Maestro
+  matches alert button text on the device is unverified. Re-run both.
+- PC.5-2a: iOS back label. RootStack sets Settings' headerBackTitle to a
+  fixed 'More', so reaching Settings from Profile may show "More" as the
+  back label on iOS while going back to Profile. Unverified, cosmetic.
+- Still hardcoded old red #e5484d in ProfileScreen.tsx: dangerButton
+  (roster Remove, unlink and similar) and errorText. Left alone on purpose.
+  Swap to colors.error / colors.errorBg in a later pass.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -184,6 +202,17 @@ removed; dead avatarCircle/avatarText styles removed),
 mobile-app/src/screens/HomeScreen.tsx (dead avatar/avatarText styles
 removed), mobile-app/src/screens/SettingsScreen.tsx (dead
 profileAvatarCircle/profileAvatarText styles removed).
+PC.5-2a and PC.5-2b: mobile-app/src/screens/ProfileScreen.tsx (Account &
+Security is now ONE grouped card with shield / phone / settings icon rows
+(Password & Encryption Key, Active Devices, All settings), all opening
+Settings; Lock App restyled as a quiet outlined pill, testID
+lock-app-button kept; Sign Out restyled as an outlined red pill reading
+"Log out", testID sign-out-button kept; the confirm alert now says
+"Log out?" with buttons Cancel / "Yes, log out"; Household Members roster
+shows an Avatar per member), mobile-app/flows/sign-out-round-trip.yaml and
+mobile-app/flows/change-password.yaml (added a tapOn text "Yes, log out"
+step after sign-out-button). New makeStyles entries: shortcutCard,
+shortcutItem, shortcutIconBubble, shortcutDivider (shortcutRow removed).
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -488,6 +517,34 @@ not abandoned - return to them before or alongside Phase C.
 - Roster: show each linked member's Avatar using model.avatars?.[m.username]
   (see the fallback-username watch item under Known issues).
 
+📌 PC.5-2 decisions and results (added this session)
+- PC.5-2a (commit "PC.5-2a: Profile grouped shortcut card, outlined Log out
+  pill, quiet Lock App", pushed, on-device test passed): grouped shortcut
+  card, Lock App and Log out restyle. Both pills use colors.error /
+  colors.navy4 tokens so they stay readable in dark mode.
+- PC.5-2b (commit "PC.5-2b: Log out alert wording, roster avatars, Maestro
+  sign-out confirm step", pushed, on-device test passed): alert wording,
+  flow fix, roster avatars. The alert confirm button is "Yes, log out" (not
+  "Log out") so it never shares text with the "Log out" pill behind it.
+- Roster avatar rule, locked: the current user always uses their real
+  username from useData(); other members use the roster username; a
+  capitalised 'Owner' / 'Member' means a fallback and skips the avatar
+  lookup (plain initials).
+- Investigation (Antigravity) confirmed: no Maestro flow tapped visible
+  text "Sign Out", "Lock App", "Password & Encryption Key" or "Active
+  Devices"; Settings is a stack push from Profile (back returns to
+  Profile); colors.error and colors.errorBg exist in light and dark.
+- PROCESS MISTAKE, do not repeat: in PC.5-2a I gave a "select from
+  lockButton down to hintText and paste" edit without having seen the real
+  lines in between. The range held eight unrelated styles (inputLabel,
+  input, errorText, successText, saveButton, saveButtonText, cancelButton,
+  cancelButtonText), so tsc reported 28 errors. Fixed by restoring the
+  originals from git (git show HEAD:...), nothing was committed broken.
+  Rules from now on: give "between markers" edits only when the real lines
+  on BOTH sides of the range have been seen; a style listing from
+  Antigravity that shows only the styles used by a block is NOT proof that
+  the styles are contiguous; run npx tsc --noEmit before every commit.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -499,7 +556,7 @@ Checkpoint table
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. DEFERRED to Phase C: needs an EAS dev-client build, not testable in Expo Go. Sign-in buttons stay "Coming soon" alerts until then. | Not started, deliberately deferred. |
 | PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
-| PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split: PC.5-1 = header restyle + Member since + cleanup (49af80f, DONE, on-device test passed). PC.5-2 = grouped shortcut card, roster avatars, Log out / Lock App restyle. | PC.5-1 done. PC.5-2 NOT STARTED. |
+| PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
 | PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
@@ -510,17 +567,17 @@ every other phase.
 ▶️ Next step
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
-- PC.5-1 is done (49af80f, pushed, on-device test passed): header restyle,
-  "Member since", cathlauron special case and dead avatar styles removed.
-- PC.5-2 next: grouped shortcut card (two existing rows plus "All settings"),
-  Household Members roster avatars, outlined red "Log out" pill with Lock
-  App as a quiet outlined button above it. Start with a short
-  Antigravity investigation-only prompt against the real CURRENT
-  ProfileScreen.tsx (the roster block and the Session Actions block), since
-  PC.5-1 changed the file.
-- Then PC.6 (Settings + Language/About rows), PC.7 (Subscription "Coming
-  soon" screen), PC.8 (pull-to-refresh). PC.3 (real Google/Apple/Facebook
-  OAuth) still waits for Phase C's EAS dev-client build.
+- PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
+- PC.6 next: Settings screen restyle to the mockup, with the static
+  "Language" and "About us" rows added. Every existing settings row and
+  toggle must keep working, and existing testIDs must stay (change-pin-button,
+  profile-card and others). Start with an Antigravity investigation-only
+  prompt against the real CURRENT SettingsScreen.tsx.
+- Also worth doing soon: re-run sign-out-round-trip.yaml and
+  change-password.yaml with Maestro to confirm the new "Yes, log out" step.
+- Then PC.7 (Subscription "Coming soon" screen), PC.8 (pull-to-refresh).
+  PC.3 (real Google/Apple/Facebook OAuth) still waits for Phase C's EAS
+  dev-client build.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
