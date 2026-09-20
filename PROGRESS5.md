@@ -1119,7 +1119,7 @@ not abandoned - return to them before or alongside Phase C.
   "e.g." tails on errors, "Deletes the X and Y. Cannot be undone." for
   delete alerts, empty states drop "Add your first one below.", buttons
   drop "this" (Delete bill), conversational placeholders shortened.
-- Applied in one pass (pushed, tsc-clean; ON-DEVICE CHECK NOT CONFIRMED):
+- Applied in one pass (pushed, tsc-clean, CONFIRMED ON-DEVICE by the person):
   * IncomeScreen.tsx: swipe-delete alert body now "Deletes the source and
     its logged payments. Cannot be undone." (the swipe path had been missed
     in 738e454).
@@ -1203,7 +1203,7 @@ every other phase.
   Remaining pre-Phase C items, in no fixed order (after the two immediate
   items above):
   (a) "Fewer words" pass: batch 1 pushed (see the batch 1 block above).
-      Confirm the four screens on-device, then continue with the batch 2
+      Batch 1 confirmed on-device. Continue with the batch 2
       files listed there (GoalsScreen and the report screens first).
   (b) Run the three Maestro flows (change-password.yaml,
       pin-quick-unlock.yaml, sign-out-round-trip.yaml) once a device or
