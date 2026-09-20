@@ -32,6 +32,8 @@ appId: host.exp.exponent
     timeout: 15000
 - tapOn:
     id: "more-settings-row"
+- tapOn:
+    id: "settings-row-quickunlock"
 - extendedWaitUntil:
     visible:
       id: "change-pin-button"

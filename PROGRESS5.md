@@ -146,6 +146,33 @@ PROGRESS4.md for that detail, plus everything it links back to
 - Still hardcoded old red #e5484d in ProfileScreen.tsx: dangerButton
   (roster Remove, unlink and similar) and errorText. Left alone on purpose.
   Swap to colors.error / colors.errorBg in a later pass.
+- PC.6-1b: Maestro flows edited but NEVER RUN. Maestro reported "0 devices
+  connected", so neither flow started. change-password.yaml now taps
+  settings-row-security after each more-settings-row (2 places).
+  pin-quick-unlock.yaml now taps settings-row-quickunlock once, before
+  waiting for change-pin-button. Committed untested by choice. Re-run both
+  once a device or emulator is connected, with Expo Go installed and Metro
+  running (the flows open exp://192.168.1.62:8081, whose IP may have changed).
+  Unverified: whether pin-quick-unlock.yaml's later Settings visit still
+  finds profile-card (the hub) or lands on a page left open from the first
+  visit.
+- POSSIBLY BROKEN, not yet checked: sign-out-button exists only on the
+  Profile screen, but sign-out-round-trip.yaml and the end of
+  change-password.yaml tap it right after home-tab. Those flows probably
+  need more-tab -> more-settings-row -> profile-card first, the way
+  pin-quick-unlock.yaml does. Fix in a separate small step once the flows
+  can run. The "Yes, log out" confirm step added in PC.5-2b is equally
+  unrun.
+- PC.6-1: Settings back handling uses a navigation 'beforeRemove' listener
+  that calls preventDefault and closes the open page. It passed the
+  on-device test, but it is unverified whether it could ever block a
+  programmatic removal of the Settings screen (for example a lock or
+  sign-out while a page is open). Watch for a Settings screen that will
+  not close.
+- PC.6-1: SettingsScreen.tsx is still about 2,200 lines. Sections were
+  wrapped in page conditions, not extracted into files. The style
+  deletion mistake from PC.5-2a is the reason no state or handler was
+  moved.
 
 📁 Files in the repo
 See PROGRESS4.md's own "Files in the repo" section for the full recent
@@ -213,6 +240,23 @@ shows an Avatar per member), mobile-app/flows/sign-out-round-trip.yaml and
 mobile-app/flows/change-password.yaml (added a tapOn text "Yes, log out"
 step after sign-out-button). New makeStyles entries: shortcutCard,
 shortcutItem, shortcutIconBubble, shortcutDivider (shortcutRow removed).
+PC.6-1 (pushed, on-device test passed): mobile-app/src/components/
+SettingsHub.tsx (NEW: SettingsGroup = labelled grouped card with dividers,
+SettingsRow = icon bubble, title, optional value, chevron, optional
+testID), mobile-app/src/screens/SettingsScreen.tsx (imports SettingsHub;
+new page state, scrollRef and a beforeRemove back listener; the screen now
+opens on a hub of grouped rows, and each existing section is wrapped in a
+{page === '...' && (...)} condition with its code unchanged). New testIDs:
+settings-back-button, settings-row-security, settings-row-quickunlock,
+settings-row-devices, settings-row-appearance, settings-row-notifications,
+settings-row-listrows, settings-row-leftspend, settings-row-categories,
+settings-row-watchlist, settings-row-payees, settings-row-rules,
+settings-row-data. Existing testIDs (profile-card, current-password-input,
+new-password-input, confirm-new-password-input, change-password-button,
+change-pin-button) were kept.
+PC.6-1b: mobile-app/flows/change-password.yaml and
+mobile-app/flows/pin-quick-unlock.yaml (extra tap on the Security /
+Quick Unlock row; committed untested).
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -545,6 +589,43 @@ not abandoned - return to them before or alongside Phase C.
   Antigravity that shows only the styles used by a block is NOT proof that
   the styles are contiguous; run npx tsc --noEmit before every commit.
 
+📌 PC.6 decisions and results (added this session)
+- Locked: Settings becomes an iPhone-style hub of short grouped cards.
+  Each row opens ONE section on its own page inside the same file, driven
+  by a single page state (null = hub). Rejected: separate sub-screen files
+  (would move about 800 lines of state and handlers across files, the same
+  kind of edit that caused the PC.5-2a style deletion), and extracting the
+  modals first.
+- Locked hub layout: profile card (profile-card, opens Profile) on top;
+  ACCOUNT = Security, Quick Unlock (includes Auto-lock), Devices;
+  PREFERENCES = Appearance (shows current value), Notifications (includes
+  the push and weekly recap toggles), List Rows, and later Language;
+  BUDGETING = Left to Spend, Categories, Category Watchlist, Merchants &
+  Payees, Categorization Rules; DATA = Backup & data; later SUPPORT = Help &
+  support, About us; later an outlined red "Log out" pill at the bottom.
+- Locked: the mockup's "Linked accounts" row is DROPPED, replaced by a
+  "Devices" row. Household linking already lives on Profile and there are no
+  social accounts until Phase C.
+- Locked: Language, Help & support and About us are static placeholders.
+  Help & support says "Coming soon". About us shows the app name (Finance
+  Flow) and version (1.0.0, from app.json). app.json has no privacy or
+  terms URL.
+- Locked: Settings gets its own Log out. Its testID will be
+  settings-log-out-button, NOT sign-out-button, because Profile stays
+  mounted under Settings and two elements with the same testID could
+  confuse Maestro. Same alert wording as Profile: "Log out?" with Cancel /
+  "Yes, log out". It needs onSignOut passed to SettingsScreen from
+  RootStack.tsx, as Profile receives it.
+- Investigation (Antigravity) confirmed: SettingsScreen takes no props;
+  Settings is registered in RootStack (no bottom tab bar); no route params,
+  scroll refs, back listeners or BackHandler existed; nothing in the app
+  navigates to Settings with params; react-navigation native 7.3.17,
+  native-stack 7.18.9, react-native 0.81.5, expo 54.
+- Plan: PC.6-1 hub (done). PC.6-1b flow updates (done, untested). PC.6-2 =
+  Log out on Settings plus the RootStack edit. PC.6-3 = Language, Help &
+  support and About us placeholder pages. PC.6-4 = value labels ("English")
+  and polish.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -557,7 +638,7 @@ Checkpoint table
 | PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). PC.4c (redesign v2 - centered date, bell, tinted % Left to Spend, card icons) also DONE, on-device verified, and its Maestro flow update run and passing. |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | DONE and confirmed on-device (PC.5a-1 d298368 foundation, PC.5a-2 picker + display). Roster avatars deferred to PC.5. |
 | PC.5 | Profile screen restyle, "Member since" from Firebase creationTime, roster avatars. Split into PC.5-1 (49af80f), PC.5-2a and PC.5-2b. | DONE and confirmed on-device. Header, Member since, grouped shortcut card, Lock App / Log out pills, roster avatars all verified (roster avatars for a second linked member not confirmed). |
-| PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
+| PC.6 | Settings screen restyle as an iPhone-style hub with drill-in pages. Split: PC.6-1 hub, PC.6-1b Maestro flow updates, PC.6-2 Log out on Settings, PC.6-3 Language / Help & support / About us placeholders, PC.6-4 value labels and polish. | PC.6-1 DONE (pushed, on-device test passed). PC.6-1b committed but the flows are UNTESTED (no device connected). PC.6-2 to PC.6-4 NOT STARTED. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
 
@@ -568,16 +649,20 @@ every other phase.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
-- PC.6 next: Settings screen restyle to the mockup, with the static
-  "Language" and "About us" rows added. Every existing settings row and
-  toggle must keep working, and existing testIDs must stay (change-pin-button,
-  profile-card and others). Start with an Antigravity investigation-only
-  prompt against the real CURRENT SettingsScreen.tsx.
-- Also worth doing soon: re-run sign-out-round-trip.yaml and
-  change-password.yaml with Maestro to confirm the new "Yes, log out" step.
-- Then PC.7 (Subscription "Coming soon" screen), PC.8 (pull-to-refresh).
-  PC.3 (real Google/Apple/Facebook OAuth) still waits for Phase C's EAS
-  dev-client build.
+- PC.6-1 is DONE (Settings hub, pushed, on-device test passed). PC.6-1b
+  (Maestro flow edits) is committed but untested.
+- PC.6-2 next: outlined red "Log out" pill at the bottom of the Settings
+  hub, testID settings-log-out-button, same "Log out?" / "Yes, log out"
+  alert. Needs a small RootStack.tsx edit so SettingsScreen receives
+  onSignOut. Start by looking at the real current RootStack.tsx Settings
+  registration and the bottom of the hub in SettingsScreen.tsx.
+- Then PC.6-3 (Language, Help & support, About us placeholders), PC.6-4
+  (value labels, polish), PC.7 (Subscription "Coming soon" screen), PC.8
+  (pull-to-refresh). PC.3 (real Google/Apple/Facebook OAuth) still waits
+  for Phase C's EAS dev-client build.
+- Whenever a device or emulator is available: run change-password.yaml,
+  pin-quick-unlock.yaml and sign-out-round-trip.yaml, and fix the
+  sign-out-button reachability problem listed under Known issues.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
