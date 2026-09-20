@@ -106,6 +106,12 @@ mobile-app/src/screens/IntroScreen.tsx (modified, the splash),
 mobile-app/src/screens/IntroSlidesScreen.tsx (new),
 mobile-app/assets/{intro-track,intro-goals,intro-private,splash-bg}.png (new),
 plus theme.ts and the logo/splash assets from PC.0a-c.
+PC.0 to PC.2 additions/changes: mobile-app/App.tsx, src/theme.ts,
+src/screens/IntroScreen.tsx (the splash), src/screens/IntroSlidesScreen.tsx (new),
+src/screens/OnboardingScreen.tsx (step 1 removed), src/screens/SignInScreen.tsx
+(restyled); assets: logo.png, splash-logo.png, splash-icon.png, icon.png,
+adaptive-icon.png, eco_house_logo.svg, intro-track/goals/private.png,
+splash-bg.png.
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -181,17 +187,68 @@ not abandoned - return to them before or alongside Phase C.
 - CreateProfileScreen/SignInScreen use hardcoded old hex colours, not theme tokens.
 - PC.1b: remove OnboardingScreen step 1 (duplicates intro slide 3), relabel to
   STEP 1 OF 2. First-run: intro -> createProfile -> recovery key -> Quick Unlock -> ready -> home.
-  
+
+📌 PC.0 to PC.2 decisions and results (added this session)
+- PC.0a (b62e17c): visible app name renamed to Finance Flow.
+- PC.0b (a256aeb): Finance Flow light palette in theme.ts, premium token.
+- PC.0c (760af3c): logo assets, palette-matched splash.
+- PC.1a (cc6a74e): IntroScreen.tsx (the splash) now has splash-bg.png,
+  logo spring/fade, staggered title/tagline, static leaf icon, 1500ms
+  Animated loading bar (useNativeDriver:false, animates width). Splash
+  uses hardcoded green/cream constants on purpose (ignores light/dark).
+  New IntroSlidesScreen.tsx: 3 slides (track/goals/private), paging
+  ScrollView, dots, Skip on slides 1-2, Get Started on slide 3.
+  App.tsx: new Screen state 'intro'; profiles.length ? 'signIn' : 'intro';
+  intro onDone -> 'createProfile'. New assets: intro-track/goals/private.png,
+  splash-bg.png.
+- PC.1b (0a19088): OnboardingScreen step 1 (welcome, duplicated intro slide
+  3) removed. Step state is now 2|3, badge reads STEP {step-1} OF 2.
+  First-run order: splash -> intro -> createProfile -> recovery key modal ->
+  Quick Unlock (PIN/biometric) -> ready -> home.
+- PC.2: SignInScreen.tsx restyled using theme tokens (navy2 background,
+  navy3 inputs/cards, navy4 borders, gold primary button, ink/inkDim/inkFaint
+  text). Uses logo.png (green badge), NOT splash-logo.png (cream line art,
+  invisible on cream). Left icons sit in a wrapper View because
+  PasswordField's style prop only reaches the inner TextInput. New
+  makeMainStyles(colors) at the bottom of the file; old styles object kept
+  for the recovery modal, which was deliberately NOT touched. Heading and
+  subtitle centered (deliberate change from the left-aligned mockup).
+- Locked: avatars = initials + preset avatars + real photo picker. Photo
+  stored inside the encrypted household model (option B); linked household
+  members can see each other's photos, accepted trade-off. Preset avatars
+  stored as a simple choice, not an image.
+- Locked: Settings gets static Language and About us rows; everything else
+  restyled to the mockup; nothing existing removed. Match the mockup as
+  closely as possible.
+- Locked: sign-in keeps email (Firebase Auth) AND username (local profile,
+  cloud backup, recovery key and PIN lookup). No fake-email scheme exists.
+- Locked: NO "Forgot password?" link. Data is encrypted with the password, a
+  Firebase reset email would change the login but not the encryption key and
+  would look like a lockout. Recovery already exists via the Secret Recovery Key.
+- Locked: social sign-in buttons are drawn now and show a "Coming soon" alert;
+  PC.3 makes them real (testing deferred to Phase C EAS build).
+- "Member since" did not exist anywhere in the app; PC.5 derives it from
+  Firebase account creation time, no new storage.
+- Real findings: expo-image-picker is installed; expo-image-manipulator and
+  Firebase Storage are not. No Google/Apple/Facebook sign-in packages installed.
+  CreateProfileScreen and SignInScreen recovery modal use hardcoded old hex
+  colours instead of theme tokens.
+- Theme token map: navy2 screen bg #F6F1E6, navy3 card/input #FBF9F3, navy4
+  border #E5E0CF, ink #22281F, inkDim #626A5B, inkFaint #A0A597, gold (primary
+  button) #2E5D3A, error #E11D48.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
 |---|---|---|
 | PC.0 | Lock the new palette into a central theme file, mapped onto the app's real existing token names; add eco_house_logo.svg into the repo in the correct assets location; confirm the rename touches every real spot it needs to (app.json, package.json, splash, any hardcoded name strings). | New palette + logo exist as real files in the repo; nothing else built on top yet. |
-| PC.1 | Onboarding carousel (the 3 marketing-style intro screens from the mockup) merged with the existing biometric/PIN setup into one continuous first-run flow. Split: PC.1a = splash + 3 slides + first-run wiring (CODE-COMPLETE, pushed as cc6a74e, awaiting on-device check). PC.1b = merge biometric/PIN setup into the same flow (NOT STARTED). | New user sees intro -> biometric/PIN setup -> app, restyled, in one flow. |
-| PC.2 | Sign-in screen restyle: new logo/palette/layout matching the mockup. | Looks match; existing email/password sign-in stays fully functional. |
+| PC.1 | Onboarding carousel (3 intro slides) merged with the existing biometric/PIN setup into one continuous first-run flow. Split: PC.1a = splash + 3 slides + first-run wiring (cc6a74e, pushed, awaiting on-device check). PC.1b = drop duplicate onboarding welcome step, 2-step Quick Unlock flow (0a19088, pushed, tsc-clean). | New user sees intro -> create profile -> recovery key -> Quick Unlock -> ready -> home, restyled. |
+| PC.2 | Sign-in restyle: logo, icon-prefixed fields, pill button, social row (placeholder alerts), serif centered heading. Keeps BOTH email and username fields. | DONE and confirmed on-device (see decisions below). |
+| PC.2b | Create Profile restyle (currently hardcoded old hex colours) plus the recovery-key modal. | NOT STARTED. |
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. | Sign-in with at least one real provider works on an EAS dev-client build (not testable in Expo Go). |
 | PC.4 | Home screen restyle. | Matches mockup layout/spacing/colors; all existing data/widgets intact. |
-| PC.5 | Profile screen restyle (keeping the existing "Member since" field). | Matches mockup; every existing profile field/action still works. |
+| PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | NOT STARTED. |
+| PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. | NOT STARTED. |
 | PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
 | PC.7 | New Subscription screen, "Coming soon" placeholder - no real payment/paywall logic. | Reachable from Settings/Profile, matches mockup visually, clearly non-functional. |
 | PC.8 | Pull-to-refresh gesture, added as one reusable component/hook, applied across relevant screens. | Swipe-down refresh works consistently everywhere it makes sense. Note: this does NOT automatically resolve Bug #14 - that still needs its own separate investigation. |
@@ -200,12 +257,13 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- On-device check of PC.1a (see known issues), then PC.1b: merge the
-  existing biometric/PIN setup into the first-run flow so a new user
-  goes intro -> profile creation -> biometric/PIN -> app as one
-  continuous, restyled flow. Start with an Antigravity investigation-only
-  prompt against the real current OnboardingScreen.tsx and
-  CreateProfileScreen.tsx before writing any code.
+- PC.2b: Create Profile restyle including the recovery-key modal. Start with an
+  Antigravity investigation-only prompt against the real current
+  CreateProfileScreen.tsx (and any shared pieces it uses) before writing code.
+  Keep the recovery-key flow logic untouched; restyle only.
+- Then PC.3 (social sign-in, deferred for testing), PC.4 (Home), PC.5a
+  (avatar system), PC.5 (Profile), PC.6 (Settings + Language/About rows),
+  PC.7 (Subscription), PC.8 (pull-to-refresh).
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 --- Antigravity investigation prompt for PC.0 (run this next) ---
