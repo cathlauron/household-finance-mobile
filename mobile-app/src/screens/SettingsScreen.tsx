@@ -954,6 +954,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => setPage('appearance')} />
           <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" onPress={() => setPage('notifications')} />
           <SettingsRow testID="settings-row-listrows" icon="list-outline" title="List Rows" onPress={() => setPage('listrows')} />
+          <SettingsRow testID="settings-row-language" icon="language-outline" title="Language" value="English" onPress={() => setPage('language')} />
         </SettingsGroup>
         <SettingsGroup label="Budgeting">
           <SettingsRow testID="settings-row-leftspend" icon="speedometer-outline" title="Left to Spend" onPress={() => setPage('leftspend')} />
@@ -964,6 +965,10 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
         </SettingsGroup>
         <SettingsGroup label="Data">
           <SettingsRow testID="settings-row-data" icon="download-outline" title="Backup & data" onPress={() => setPage('data')} />
+        </SettingsGroup>
+        <SettingsGroup label="Support">
+          <SettingsRow testID="settings-row-help" icon="help-circle-outline" title="Help & support" onPress={() => setPage('help')} />
+          <SettingsRow testID="settings-row-about" icon="information-circle-outline" title="About us" onPress={() => setPage('about')} />
         </SettingsGroup>
         </>
         )}
@@ -994,6 +999,32 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.error }}>Log out</Text>
         </TouchableOpacity>
         )}
+        {page === 'language' && (
+        <>
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Language</Text>
+        <Text style={styles.sectionSub}>More languages are coming later.</Text>
+        <View style={styles.row}>
+          <Text style={styles.rowName}>English</Text>
+          <Ionicons name="checkmark" size={18} color={colors.gold} />
+        </View>
+        </>
+        )}
+
+        {page === 'help' && (
+        <>
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Help & support</Text>
+        <Text style={styles.sectionSub}>Guides and a way to reach us are coming soon.</Text>
+        </>
+        )}
+
+        {page === 'about' && (
+        <>
+        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>About us</Text>
+        <Text style={styles.sectionSub}>Finance Flow · Version 1.0.0</Text>
+        <Text style={styles.hintText}>Household budgeting for you and the people you share a home with.</Text>
+        </>
+        )}
+
         {page === 'appearance' && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
