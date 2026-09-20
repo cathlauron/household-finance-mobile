@@ -121,6 +121,11 @@ src/screens/OnboardingScreen.tsx (step 1 removed), src/screens/SignInScreen.tsx
 adaptive-icon.png, eco_house_logo.svg, intro-track/goals/private.png,
 splash-bg.png.
 PC.2b: mobile-app/src/screens/CreateProfileScreen.tsx (restyled, scrolling added).
+PC.4: mobile-app/src/screens/HomeScreen.tsx (header/date-row/layout restyled,
+imports getInitials from ProfileScreen.tsx), mobile-app/src/screens/
+DashboardScreen.tsx (Total Balance/Amount Owed cards restyled with icon
+bubbles, card/container style tokens updated) - both committed together in
+"PC.4: restyle Home (header, date row, card styling, icon buttons)".
 
 =====================================================================
 🎨 NEW PHASE — Pre-Phase C: Visual Redesign & Branding
@@ -269,6 +274,43 @@ not abandoned - return to them before or alongside Phase C.
   SETUP" eyebrow is gone from the main screen (modal keeps its own eyebrow).
 - PC.3 explicitly deferred to Phase C (see checkpoint table).
 
+📌 PC.4 decisions and results (added this session)
+- Home screen is two files: HomeScreen.tsx (header + "Left to Spend" card)
+  embeds DashboardScreen.tsx (every other card: Total Balance, Amount Owed,
+  This Month, Due Soon, Savings Goals, etc.). Both were edited.
+- No bell/notification-dot added. Investigation confirmed nothing in the app
+  currently tracks unread or due-alert state, so a bell that did nothing
+  would be misleading - deliberately left out. Revisit only if/when real
+  due-alert tracking exists.
+- Header restyled to match the mockup: initials-circle avatar (via the
+  existing getInitials helper from ProfileScreen.tsx - avatar is initials-only
+  for now, real photo/preset avatars arrive in PC.5a), "Hi, {username}" +
+  "Good to see you!" greeting, and two round icon buttons replacing the old
+  Set PIN / Lock buttons' plain styling (keypad icon + lock icon). The
+  set-pin-button and lock-button testIDs were preserved unchanged since
+  Maestro flows depend on them.
+- Added a tappable full-date pill row ("Sat, Sep 18, 2026" style) below the
+  header using the existing home-calendar-shortcut testID (also preserved for
+  Maestro) - tapping it still navigates to Calendar, unchanged behavior.
+- "Left to Spend" card and "Watched Categories" card (both pre-existing
+  features) were kept and restyled to match the new look, not removed.
+- DashboardScreen.tsx: Total Balance and Amount Owed cards restyled with
+  icon-bubble accents (wallet icon for balance, receipt icon in an
+  orange-tinted bubble for Amount Owed); card corner radius increased and a
+  border added (borderColor: colors.navy4) across all cards; screen
+  background changed from colors.navy1 to colors.navy2 to match Home.
+- Confirmed via Antigravity investigation before writing code (per standing
+  workflow): keypad icon name resolves fine in Ionicons, no tsc errors from
+  the new imports.
+- On-device verification passed: header layout (avatar/greeting/icon
+  buttons), date pill navigates to Calendar, keypad icon opens Set/Change
+  PIN, lock icon locks and prompts PIN/biometric, Total Balance/Amount Owed
+  icon bubbles render correctly, rounded card corners throughout, no overlap
+  while scrolling, dark mode readable.
+- Confirmed DashboardScreen.tsx is only ever imported by HomeScreen.tsx (per
+  the investigation report) - no other screen was affected by its style
+  changes.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -276,9 +318,9 @@ Checkpoint table
 | PC.0 | Lock the new palette into a central theme file, mapped onto the app's real existing token names; add eco_house_logo.svg into the repo in the correct assets location; confirm the rename touches every real spot it needs to (app.json, package.json, splash, any hardcoded name strings). | New palette + logo exist as real files in the repo; nothing else built on top yet. |
 | PC.1 | Onboarding carousel (3 intro slides) merged with the existing biometric/PIN setup into one continuous first-run flow. Split: PC.1a = splash + 3 slides + first-run wiring (cc6a74e, pushed, awaiting on-device check). PC.1b = drop duplicate onboarding welcome step, 2-step Quick Unlock flow (0a19088, pushed, tsc-clean). | New user sees intro -> create profile -> recovery key -> Quick Unlock -> ready -> home, restyled. |
 | PC.2 | Sign-in restyle: logo, icon-prefixed fields, pill button, social row (placeholder alerts), serif centered heading. Keeps BOTH email and username fields. | DONE and confirmed on-device (see decisions below). |
-| PC.2b | Create Profile restyle plus recovery-key modal restyle, and wrapped in a ScrollView/KeyboardAvoidingView (was a plain View: fields and button were unreachable with the keyboard open). | CODE-COMPLETE, tsc-clean. Awaiting on-device check and commit. |
+| PC.2b | Create Profile restyle plus recovery-key modal restyle, and wrapped in a ScrollView/KeyboardAvoidingView (was a plain View: fields and button were unreachable with the keyboard open). | DONE and confirmed on-device. |
 | PC.3 | Real Google/Apple/Facebook sign-in wired to Firebase Auth. DEFERRED to Phase C: needs an EAS dev-client build, not testable in Expo Go. Sign-in buttons stay "Coming soon" alerts until then. | Not started, deliberately deferred. |
-| PC.4 | Home screen restyle. | Matches mockup layout/spacing/colors; all existing data/widgets intact. |
+| PC.4 | Home screen restyle. | DONE and confirmed on-device (header, date row, card styling, icon buttons all verified). |
 | PC.5a | Avatar system: initials, preset avatars, real photo picker. Photo stored inside the ENCRYPTED household model (needs expo-image-manipulator to shrink first). | NOT STARTED. |
 | PC.5 | Profile screen restyle. "Member since" derived from Firebase user.metadata.creationTime. | NOT STARTED. |
 | PC.6 | Settings screen restyle. | Matches mockup; every existing settings row/toggle still works. |
@@ -289,14 +331,16 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- Confirm PC.2b on-device, then commit ("PC.2b: restyle Create Profile and
-  recovery-key modal, add scrolling").
-- PC.4: Home screen restyle (balance card, this month, amount owed, due next
-  14 days, savings goals row). Start with an Antigravity investigation-only
-  prompt against the real current HomeScreen.tsx before writing code.
-- Then PC.5a (avatar system, photo in encrypted model), PC.5 (Profile),
-  PC.6 (Settings + Language/About rows), PC.7 (Subscription), PC.8
-  (pull-to-refresh). PC.3 waits for Phase C.
+- PC.4 is done and confirmed on-device - no further action needed on it.
+- PC.5a next: avatar system (initials + preset avatars + real photo picker,
+  photo stored inside the encrypted household model, needs
+  expo-image-manipulator to shrink first per the PC.1 decisions). Start with
+  an Antigravity investigation-only prompt against the real current
+  ProfileScreen.tsx and getInitials helper before writing code.
+- Then PC.5 (Profile screen restyle, "Member since" from Firebase
+  user.metadata.creationTime), PC.6 (Settings + Language/About rows), PC.7
+  (Subscription "Coming soon" screen), PC.8 (pull-to-refresh). PC.3 (real
+  Google/Apple/Facebook OAuth) still waits for Phase C's EAS dev-client build.
 - Bug #14 and the "fewer words" pass (next: EventsScreen.tsx) stay paused.
 
 --- Antigravity investigation prompt for PC.0 (run this next) ---
