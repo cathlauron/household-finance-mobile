@@ -16,6 +16,8 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
@@ -40,6 +42,7 @@ type PillTab = 'list' | 'calculator';
 export default function GroceriesScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [activeTab, setActiveTab] = useState<PillTab>('list');
@@ -291,7 +294,7 @@ export default function GroceriesScreen() {
       </View>
 
       {activeTab === 'list' && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
           <View style={styles.balanceBanner}>
             <Text style={styles.balanceBannerLabel}>BUDGET VS ACTUAL</Text>
             <Text style={styles.balanceBannerAmount}>
@@ -337,7 +340,7 @@ export default function GroceriesScreen() {
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
             <Text style={styles.addButtonText}>+ Add item</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </PullToRefreshScrollView>
       )}
 
       {activeTab === 'calculator' && (

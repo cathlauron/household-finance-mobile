@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
@@ -114,6 +116,7 @@ type SavingsScreenProps = {
 export default function SavingsScreen({ openSavingsId, openSavingsNonce }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
 
   const openedSavingsRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -608,7 +611,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       </View>
 
       {activeTab === 'goals' && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
           <View style={styles.balanceBanner}>
             <Text style={styles.balanceBannerLabel}>TOTAL SAVED</Text>
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalSaved)}</Text>
@@ -693,7 +696,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
             <Text style={styles.addButtonText}>+ Add goal</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </PullToRefreshScrollView>
       )}
 
       {activeTab === 'ef' && (

@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useRefresh } from '../useRefresh';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
@@ -47,6 +49,7 @@ function makeId(): string {
 export default function AccountsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
@@ -221,9 +224,9 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
+      <PullToRefreshScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="handled" refreshing={refreshing} onRefresh={onRefresh}
       >
         <View style={styles.balanceBanner}>
           <View>
@@ -342,7 +345,7 @@ export default function AccountsScreen() {
             </View>
           );
         })}
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <BottomSheet
         visible={activeGroup !== null}
