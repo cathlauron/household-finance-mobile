@@ -35,6 +35,7 @@ import {
 } from '../recovery';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
+import { SettingsGroup, SettingsRow } from '../components/SettingsHub';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -95,6 +96,21 @@ export default function SettingsScreen() {
     getHouseholdKey,
   } = useData();
   const styles = makeStyles(colors);
+
+  // Which page is open. null = the hub (the grouped list of rows).
+  const [page, setPage] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Back (header, swipe or Android) closes an open page first instead of leaving Settings.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (page === null) return;
+    const unsub = navigation.addListener('beforeRemove', (e: any) => {
+      e.preventDefault();
+      setPage(null);
+    });
+    return unsub;
+  }, [navigation, page]);
 
   // Retroactive recovery key setup state
   const [retroactiveModalOpen, setRetroactiveModalOpen] = useState(false);
@@ -892,7 +908,20 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
+        {page !== null && (
+          <TouchableOpacity
+            testID="settings-back-button"
+            activeOpacity={0.7}
+            onPress={() => setPage(null)}
+            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, paddingVertical: 4 }}
+          >
+            <Ionicons name="chevron-back" size={20} color={colors.gold} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.gold }}>Settings</Text>
+          </TouchableOpacity>
+        )}
+        {page === null && (
+        <>
         {/* Profile Card */}
         <TouchableOpacity
           testID="profile-card"
@@ -916,6 +945,30 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
 
+        <SettingsGroup label="Account">
+          <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Security" onPress={() => setPage('security')} />
+          <SettingsRow testID="settings-row-quickunlock" icon="keypad-outline" title="Quick Unlock" onPress={() => setPage('quickunlock')} />
+          <SettingsRow testID="settings-row-devices" icon="phone-portrait-outline" title="Devices" onPress={() => setPage('devices')} />
+        </SettingsGroup>
+        <SettingsGroup label="Preferences">
+          <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => setPage('appearance')} />
+          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" onPress={() => setPage('notifications')} />
+          <SettingsRow testID="settings-row-listrows" icon="list-outline" title="List Rows" onPress={() => setPage('listrows')} />
+        </SettingsGroup>
+        <SettingsGroup label="Budgeting">
+          <SettingsRow testID="settings-row-leftspend" icon="speedometer-outline" title="Left to Spend" onPress={() => setPage('leftspend')} />
+          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories" onPress={() => setPage('categories')} />
+          <SettingsRow testID="settings-row-watchlist" icon="eye-outline" title="Category Watchlist" onPress={() => setPage('watchlist')} />
+          <SettingsRow testID="settings-row-payees" icon="storefront-outline" title="Merchants & Payees" onPress={() => setPage('payees')} />
+          <SettingsRow testID="settings-row-rules" icon="funnel-outline" title="Categorization Rules" onPress={() => setPage('rules')} />
+        </SettingsGroup>
+        <SettingsGroup label="Data">
+          <SettingsRow testID="settings-row-data" icon="download-outline" title="Backup & data" onPress={() => setPage('data')} />
+        </SettingsGroup>
+        </>
+        )}
+        {page === 'appearance' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
 <Text style={styles.sectionSub}>
   Light, Dark, or match your phone's own setting.
@@ -937,6 +990,10 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        </>
+        )}
+        {page === 'listrows' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>List Rows</Text>
 <Text style={styles.sectionSub}>
   Swipe left to delete, or tap the row open and delete from inside.
@@ -961,6 +1018,10 @@ export default function SettingsScreen() {
         </View>
         <RowInteractionPreview mode={model.settings.swipeToDeleteEnabled ? 'swipe' : 'tap'} />
 
+        </>
+        )}
+        {page === 'notifications' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
 <View style={styles.row}>
           <Text style={styles.rowName}>Alert me</Text>
@@ -975,6 +1036,10 @@ export default function SettingsScreen() {
           <Text style={styles.rowName}>day(s) before due</Text>
         </View>
 
+        </>
+        )}
+        {page === 'leftspend' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Left to Spend</Text>
 <Text style={styles.sectionSub}>
   "Left to Spend" on Home turns orange once your balance drops below this % of your typical monthly bills, debts & loans.
@@ -992,6 +1057,10 @@ export default function SettingsScreen() {
           <Text style={styles.rowName}>% of monthly obligations</Text>
         </View>
 
+        </>
+        )}
+        {page === 'notifications' && (
+        <>
         <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={togglePushNotifications}>
           <Text style={styles.rowName}>Notify me on this phone</Text>
           <View
@@ -1066,6 +1135,10 @@ export default function SettingsScreen() {
           </>
         )}
 
+        </>
+        )}
+        {page === 'categories' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
 <Text style={styles.sectionSub}>
   Category names and colors used across Bills, Debts & Transactions.
@@ -1093,6 +1166,10 @@ export default function SettingsScreen() {
           <Text style={styles.addButtonText}>+ Add category</Text>
         </TouchableOpacity>
 
+        </>
+        )}
+        {page === 'watchlist' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
 <Text style={styles.sectionSub}>
   Set a monthly limit per category — flagged on the Dashboard when you get close.
@@ -1135,6 +1212,10 @@ export default function SettingsScreen() {
           <Text style={styles.addButtonText}>+ Add to Watchlist</Text>
         </TouchableOpacity>
 
+        </>
+        )}
+        {page === 'payees' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>
 <Text style={styles.sectionSub}>
   Save frequent names for quicker entry — set a default category to auto-fill it on matching transactions.
@@ -1166,6 +1247,10 @@ export default function SettingsScreen() {
           <Text style={styles.addButtonText}>+ Add payee</Text>
         </TouchableOpacity>
 
+        </>
+        )}
+        {page === 'rules' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categorization Rules</Text>
 <Text style={styles.sectionSub}>
   Auto-fill a category when a label matches text (and optionally an amount range). Checked top to bottom — first match wins; a payee's own default category above takes priority.
@@ -1219,6 +1304,10 @@ export default function SettingsScreen() {
           <Text style={styles.addButtonText}>+ Add rule</Text>
         </TouchableOpacity>
 
+        </>
+        )}
+        {page === 'security' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Security</Text>
 <Text style={styles.sectionSub}>
   Used to sign in and encrypt your data on this phone.
@@ -1303,6 +1392,10 @@ export default function SettingsScreen() {
         </View>
 
         {/* Quick Unlock & Biometrics */}
+        </>
+        )}
+        {page === 'quickunlock' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Quick Unlock</Text>
 <Text style={styles.sectionSub}>
   Unlock quickly with your device's biometrics or a short PIN.
@@ -1421,6 +1514,10 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        </>
+        )}
+        {page === 'devices' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Active Devices</Text>
 <Text style={styles.sectionSub}>
   Devices that have signed in. You can remotely sign any of them out.
@@ -1491,6 +1588,10 @@ export default function SettingsScreen() {
         )}
 
 
+        </>
+        )}
+        {page === 'data' && (
+        <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
 <Text style={styles.sectionSub}>
   Back up your data, or clear everything and start fresh.
@@ -1534,6 +1635,8 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        )}
+      </>
         )}
       </ScrollView>
 
