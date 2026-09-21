@@ -1269,6 +1269,54 @@ not abandoned - return to them before or alongside Phase C.
 - Not yet done: iOS build (needs an Apple developer account, about $99 a
   year), Google Play (about $25 once), PC.3 social sign-in.
 
+📌 Firebase review after the first installed build (added this session)
+- Authentication > Sign-in method: only Email/Password is enabled; no
+  Anonymous provider. Google's banner recommending "Sign in with Google" was
+  ignored; the Google provider was NOT enabled (real social sign-in is PC.3,
+  needs a dev-client build).
+- Firestore rules were READ, not fully tested. The live version in the
+  console is the one starred Sept 4, 2026 6:27 pm; it was assumed to match
+  the text the person pasted (not diffed). Good: default deny at the end,
+  list disabled on the sensitive collections, link codes readable for 15
+  minutes, households capped at 5 members, household data readable only by
+  members.
+- FINDING: householdKeys (get, update), profileBackups (get) and
+  recoveryKeys (update) use resource.data.get('ownerUid', request.auth.uid)
+  == request.auth.uid, so a document with NO ownerUid can be read (or
+  updated) by any signed-in user. Rules Playground (simulation type get,
+  authenticated, fake UID) confirmed "read allowed" on /profileBackups/cas
+  when it had no ownerUid. Old test documents lacked the field.
+- Fix applied by the person (I did not see it): added ownerUid to the
+  documents that lacked it, and deleted the other test accounts (cath2,
+  cath4, cathh, fern). Only cas and cath remain. Retest in the playground:
+  the person reported cas and cath "denied" (the collection tested was not
+  stated; confirm /profileBackups and /householdKeys for both). Whether the
+  deleted test users also were removed from Authentication was not stated.
+- Rules were NOT changed. Optional hardening: remove the ownerUid fallback
+  from those four rules. Only safe once every document has ownerUid (the
+  create rules already require it for new documents). Test in the
+  playground before publishing; a wrong edit could lock every user out.
+  Never publish rules from a chat without testing.
+- NOT verified (low to medium priority): whether anyone signed in can join
+  a household just by knowing its ID (the join rule checks only that the
+  caller adds their own uid; the ID looked 24 hex characters long in the
+  console, generation code not read); usernames can be claimed by any
+  account on householdKeys/{username} create; the linkCodes update rules
+  have no 15-minute limit (only get does); link-code guessability; whether
+  sign-up is restricted.
+- Leftover test data seen in the console: an old linkCodes invite, an
+  approved householdRecovery document, and empty-looking sessions entries
+  (normal). Optional cleanup; do not delete sessions entries.
+- Console screenshots shown in chat included household and user IDs, salts
+  and one link code. Not passwords or usable keys, but future screenshots
+  should be cropped to field names.
+- Cold start on the installed build: switching to another app and back asks
+  for the PIN; fully closing and reopening asks for email, username and
+  password. Believed by design (the derived key lives only in memory), NOT
+  confirmed: PinUnlockScreen.tsx and biometrics.ts were not read. Letting a
+  PIN unlock after a full close would mean storing the key on the phone;
+  a security decision, deferred.
+  
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
