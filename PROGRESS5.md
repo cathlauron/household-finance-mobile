@@ -77,9 +77,10 @@ PROGRESS4.md for that detail, plus everything it links back to
   claims or commit messages alone.
 - Never hand the person a conditional/branching instruction - get the
   real answer via investigation first, then give one unconditional fix.
-- Reminder/notification-related bugs and testing stay deferred until a
-  real installed build exists (Phase C, EAS Build) - not reliably
-  testable through Expo Go.
+- Reminder/notification testing is DEFERRED BY THE PERSON, to be the LAST
+  thing tested or done when asked. An installed build now exists (Phase C
+  preview APK), so it is testable; see "Notifications: investigation done,
+  TESTING DEFERRED" above for the plan.
 
 ⚠️ Known issues / gotchas - carried forward, still open
 - [RESOLVED, CONFIRMED ON-DEVICE by the person] Bug #14 (root cause found,
@@ -1316,7 +1317,88 @@ not abandoned - return to them before or alongside Phase C.
   confirmed: PinUnlockScreen.tsx and biometrics.ts were not read. Letting a
   PIN unlock after a full close would mean storing the key on the phone;
   a security decision, deferred.
-  
+
+📌 Notifications: investigation done, TESTING DEFERRED by the person
+- Decision: real-device notification testing is deliberately deferred. It
+  will be the LAST thing tested, or when the person asks. Do not start it
+  unprompted.
+- Antigravity read the code (nothing was run on a device). Confirmed in
+  code: all notifications are LOCAL (expo-notifications), no server push.
+  The whole schedule is cleared and rebuilt by rescheduleBillNotifications()
+  (pushNotifications.ts) on sign-in, PIN unlock, every saveModel, every
+  refresh, and linked-household snapshots. It is NOT run on cold start
+  (the data is encrypted until sign-in), so reminders are only as fresh as
+  the last sign-in or save.
+- Timing, from the code:
+  * Bill "X is due soon" and subscription "Still want X?": fire at exactly
+    9:00 AM local, on the day that is (Settings > Alert me) days before the
+    next due date. If that 9:00 AM has already passed, the reminder is
+    silently skipped, not scheduled. Skipped for bills with no unpaid
+    amount (first payment cycle only) or no computable due date.
+  * Weekly recap: fires on the chosen weekday at the chosen hour (whole
+    hours, 0-23, default Sunday 18:00). Always scheduled for the next
+    future occurrence. It ignores Alert me. The amount in its text is
+    baked in at schedule time.
+  * All three use one-time DATE triggers, Android channel "bill-alerts".
+    Foreground display is enabled (banner, sound, list).
+- Which reminder a bill gets: an ACTIVE subscription gets only the "Still
+  want X?" reminder; every other unpaid bill gets "due soon"; no bill gets
+  both (the two loops use exactly complementary conditions).
+- Tap handling (App.tsx): only the subscription reminder carries data
+  (type subscriptionReminder, billId) and deep-links: To-Pay > Bills >
+  that bill's edit sheet. From a cold start or the PIN lock screen the
+  billId is held in a ref and opened after sign-in / unlock. "Due soon" and
+  the recap carry no data and just open the app.
+- Settings UI: Settings > Notifications shows Alert me, "Notify me on this
+  phone", and "Weekly spending recap" all the time; the day pills and hour
+  box appear only when the recap toggle is on. There are no subscription
+  reminder controls in Settings (subscription reminders share the global
+  toggle and Alert me; a bill is flagged in BillsScreen).
+- No debug button or test trigger exists. Do not change the phone clock to
+  force a reminder (effect on sign-in/sync unknown).
+- FLAGS, all UNTESTED (found by reading code):
+  1. Sign-out does not cancel scheduled notifications
+     (cancelAllScheduledNotificationsAsync is only called inside
+     rescheduleBillNotifications). Reminders and the recap total can still
+     appear on the lock screen after signing out. Notification text is not
+     encrypted. Highest-priority fix candidate; the fix looks small (cancel
+     on sign-out and on remote revoke), investigate first.
+  2. A CANCELLED subscription is treated as an ordinary bill, so it still
+     gets a "due soon" reminder if it has an unpaid amount. The cancel
+     alert says "Stop reminders", so this looks like a bug.
+  3. The recap text says "tap to see the breakdown", but tapping opens
+     nothing specific.
+  Also: the header comment in pushNotifications.ts still says the app runs
+  through Expo Go (stale). PROGRESS.md line 93 claimed reminders were
+  confirmed firing on a real device in an earlier phase; not re-verified.
+  Unverified: whether a new bill saved with an amount records a first
+  payment cycle (needed for reminders); whether Android restores the
+  scheduled notifications after a phone restart.
+- Vivo prep to do before testing: Settings > battery, allow Finance Flow
+  background activity (unrestricted); allow autostart if offered; confirm
+  the "Bill alerts" channel is on. Vivo battery settings are the first
+  suspect if a reminder never arrives.
+- TEST PLAN, ready to run when asked (write down the time and screenshot
+  every notification):
+  1. Settings > Notifications: turn on Notify me (allow the Android
+     prompt), turn on the weekly recap, set Alert me to 1 (reset after).
+  2. Recap run 1: today's weekday pill and the NEXT hour (24-hour; the
+     current hour rolls to next week). At the hour check the title, the
+     amount against Reports > Weekly Digest, and the tap.
+  3. Create four one-time bills, each with an amount, due two days from
+     today: an ordinary bill, subscription A, subscription B, and
+     subscription C (marked subscription, then cancelled).
+  4. Recap run 2: set the next hour, SIGN OUT, and see whether the recap
+     still arrives (expected yes, flag 1). Sign back in.
+  5. Next morning at 9:00 AM (do not sign out first; A fully swiped away,
+     B in the background): expect "Ordinary is due soon", "Still want A?",
+     "Still want B?", and watch for a "due soon" for C (flag 2). Tap A
+     while the app is closed: expect sign-in, then A's edit sheet. Tap B:
+     expect the PIN, then B's edit sheet. Check wording, dates, amounts.
+  6. Delete the test bills and reset Alert me.
+  Send back: what arrived, when, exact text, screenshots, and which steps
+  did not happen.
+
 Checkpoint table
 
 | Checkpoint | What happens | Done when |
@@ -1366,6 +1448,10 @@ every other phase.
       "You're signed in.*" waits with a testID that exists on Home, and fix
       the sign-out-button reachability issue. Needs a device or emulator
       connected.
+    (b2) Notification testing: DEFERRED by the person, do it LAST or when
+      asked (plan and three untested flags in the notifications block
+      above). Fix candidate when the time comes: cancel scheduled
+      notifications on sign-out.
   (c) Optional: pull-to-refresh on Profile, Settings, and the Reports child
       screens, only if wanted (see Known issues for the Settings scrollTo
       risk).
