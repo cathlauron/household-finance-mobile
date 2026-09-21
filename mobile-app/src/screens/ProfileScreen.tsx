@@ -1,3 +1,4 @@
+import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -608,6 +609,9 @@ export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps)
       delete nextAvatars[username];
     }
     await saveModel({ ...model, avatars: nextAvatars });
+    updateRecentAccountIfPresent(username, {
+      avatarConfig: nextAvatars[username] ?? { type: 'initials' },
+    }).catch(() => {});
   }
 
   const unlinkConfirmText =

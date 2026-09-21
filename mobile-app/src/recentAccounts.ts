@@ -36,10 +36,24 @@ export async function loadRecentAccounts(): Promise<RecentAccount[]> {
 }
 
 async function saveRecentAccounts(accounts: RecentAccount[]): Promise<void> {
+  // TEMP (Step 2 check, remove in Step 4): shows what was saved, without photo data.
+  console.log(
+    '[recent accounts] saved:',
+    JSON.stringify(
+      accounts.map((a) => ({
+        username: a.username,
+        uid: a.uid ? 'yes' : 'NO',
+        hasPin: a.hasPin,
+        bio: a.biometricsEnabled,
+        avatar: a.avatarConfig ? a.avatarConfig.type : 'none',
+      }))
+    )
+  );
   await AsyncStorage.setItem(RECENT_ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
-// Adds or updates one account, keeping any field that is not passed in.
+// Adds or updates one account, keeping any field that is not passed in
+// (a field passed as undefined counts as "not passed in").
 // Only the 5 most recently used accounts are kept. Returns the usernames
 // that were pushed off the list, so the caller can also wipe their
 // quick-unlock data (added in Step 3).
@@ -72,6 +86,18 @@ export async function upsertRecentAccount(
   const evicted = accounts.slice(MAX_RECENT_ACCOUNTS).map((a) => a.username);
   await saveRecentAccounts(kept);
   return evicted;
+}
+
+// Updates an account ONLY if it is already in the list. Used for background
+// changes (PIN, fingerprint, avatar) so they never create a half-empty entry
+// (no uid) for an account that has not signed in since this feature existed.
+export async function updateRecentAccountIfPresent(
+  username: string,
+  patch: Partial<RecentAccount>
+): Promise<void> {
+  const accounts = await loadRecentAccounts();
+  if (!accounts.some((a) => a.username === username)) return;
+  await upsertRecentAccount({ ...patch, username });
 }
 
 // Removes one account from the switcher entirely. Used on explicit log out

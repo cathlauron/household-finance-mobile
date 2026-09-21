@@ -1,3 +1,5 @@
+import { upsertRecentAccount, removeRecentAccount } from './src/recentAccounts';
+import type { RecentAccount } from './src/recentAccounts';
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
@@ -40,6 +42,9 @@ function AppContent() {
   const [remoteRevokeNotice, setRemoteRevokeNotice] = useState<string | null>(null);
 
   const screenRef = useRef<Screen>('loading');
+  // Set only by the lock screen's "Sign in to another account" button, so that
+  // switching away does NOT remove the account from the recent-accounts list.
+  const keepRecentOnSignOutRef = useRef(false);
 
   useEffect(() => {
     screenRef.current = screen;
@@ -89,6 +94,30 @@ function AppContent() {
   const currentDeviceIdRef = useRef<string | null>(null);
   const deviceSessionUnsubRef = useRef<(() => void) | null>(null);
 
+    // Saves this account into the recent-accounts list, with the current
+  // PIN / fingerprint state. Passing undefined for householdId or avatarConfig
+  // means "leave what is already stored".
+  async function recordRecentAccount(
+    username: string,
+    uid: string,
+    householdId: string | undefined,
+    avatarConfig: RecentAccount['avatarConfig']
+  ) {
+    const [pinIsSetUp, biometricState] = await Promise.all([
+      hasPinSetUp(username),
+      getBiometricState(username),
+    ]);
+    await upsertRecentAccount({
+      username,
+      uid,
+      householdId,
+      avatarConfig,
+      lastUsedAt: Date.now(),
+      hasPin: pinIsSetUp,
+      biometricsEnabled: biometricState === 'ENABLED',
+    });
+  }
+
   async function registerAndListenDeviceSession(uid: string) {
     if (deviceSessionUnsubRef.current) {
       deviceSessionUnsubRef.current();
@@ -106,6 +135,11 @@ function AppContent() {
   }
 
   async function handleRemoteRevoked() {
+    // Read the username first: it is cleared later in this function.
+    const revokedUsername = usernameRef.current;
+    if (revokedUsername) {
+      removeRecentAccount(revokedUsername).catch(() => {});
+    }
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -215,6 +249,13 @@ function AppContent() {
   }, [screen]);
 
   async function handleFullSignOut() {
+    // Read these first: the username is cleared later in this function.
+    const signedOutUsername = usernameRef.current;
+    const keepRecent = keepRecentOnSignOutRef.current;
+    keepRecentOnSignOutRef.current = false;
+    if (signedOutUsername && !keepRecent) {
+      removeRecentAccount(signedOutUsername).catch(() => {});
+    }
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -267,7 +308,10 @@ function AppContent() {
             }
             setScreen('home');
           }}
-          onSignOut={handleFullSignOut}
+          onSignOut={() => {
+            keepRecentOnSignOutRef.current = true;
+            handleFullSignOut();
+          }}
         />
       </SafeAreaView>
     );
@@ -318,6 +362,7 @@ function AppContent() {
             const user = getCurrentFirebaseUser();
             if (user) {
               registerAndListenDeviceSession(user.uid).catch(() => {});
+              recordRecentAccount(username, user.uid, undefined, undefined).catch(() => {});
             }
             setScreen('onboarding');
           }}
@@ -350,6 +395,12 @@ function AppContent() {
           const user = getCurrentFirebaseUser();
           if (user) {
             registerAndListenDeviceSession(user.uid).catch(() => {});
+            recordRecentAccount(
+              username,
+              user.uid,
+              profile?.householdId,
+              initialModel ? (initialModel.avatars?.[username] ?? { type: 'initials' }) : undefined
+            ).catch(() => {});
           }
           setScreen('home');
           if (initialModel) {

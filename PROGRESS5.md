@@ -1420,8 +1420,8 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Step 1 done and pushed. Option 1 chosen. Next: Step 2 (keep
-  the recent-accounts list up to date).
+  this file). Steps 1 and 2 done and pushed. Option 1 chosen. Next: Step 3
+  (vault storage for email + username + password).
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1522,8 +1522,8 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
 📌 Plan (one Antigravity investigation before each step)
 - Step 1: install expo-secure-store; add src/recentAccounts.ts (max 5). DONE
   in this commit, tsc-clean. Nothing visible changes.
-- Step 2: keep the recent-accounts list up to date (sign-in, create profile,
-  avatar change, PIN/fingerprint toggles, removal on log out/revoke).
+- Step 2: DONE. The recent-accounts list is kept up to date (sign-in, create
+  profile, avatar, PIN on/off, fingerprint on/off, removal on log out/revoke).
 - Step 3: src/quickUnlock.ts (vault copies), saves at the right moments,
   wipes on log out, revoke and 5 wrong PINs.
 - Step 4: AccountSwitcherScreen (avatars, fingerprint first, PIN fallback,
@@ -1555,6 +1555,50 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
   app.json plugin config. Unverified, check when an iOS build is planned.
 - Saving a fingerprint-locked item may itself show a fingerprint prompt once.
   Unverified.
+
+
+📌 Step 2 results (recent-accounts list kept up to date)
+- Antigravity's plan was adjusted in five ways: (1) it awaited inside
+  non-async callbacks (would not compile), so recordRecentAccount() in
+  App.tsx does the awaits; (2) upsertRecentAccount ignores undefined fields,
+  so clearing an avatar with undefined would have kept the old photo, and a
+  cleared avatar is now stored as { type: 'initials' }; (3) turning the PIN
+  off was missing from its plan (hasPin false is now set); (4) PIN,
+  fingerprint and avatar updates use the new updateRecentAccountIfPresent so
+  they never create a half-empty entry (no uid); (5) the lock screen's
+  "Sign in to another account" is NOT a log out, so it keeps the account in
+  the list (keepRecentOnSignOutRef in App.tsx).
+- Written on: sign-in and profile creation (App.tsx, through
+  recordRecentAccount, with uid, householdId, avatar, hasPin,
+  biometricsEnabled); avatar save (ProfileScreen handleSaveAvatar); PIN set
+  (SetPinScreen); PIN off and fingerprint on/off (SettingsScreen). Removed
+  on explicit log out (Profile and Settings) and on remote revoke
+  (handleRemoteRevoked).
+- Skipped on purpose: refreshing lastUsedAt when the lock screen unlocks
+  (only matters with 2+ accounts; Step 5a's cold-start unlock will do it).
+- TEMP: saveRecentAccounts in recentAccounts.ts prints "[recent accounts]
+  saved:" to Metro on every write (no photo data). Remove in Step 4.
+- Checked in Expo Go through the Metro log (sign-in, PIN on/off,
+  fingerprint on/off, avatar set/clear, lock-screen switch, log out).
+
+⚠️ Step 2 gotchas
+- Avatar changes made on ANOTHER phone are not copied into the list until
+  the next sign-in on this phone. Step 5a should refresh the avatar on unlock.
+- Existing accounts appear in the list only after their next sign-in.
+- The lock screen's password mode (chip row for other accounts) unlocks
+  another account's DATA without signing into Firebase as that account (it
+  derives the key but never calls sign-in) and registers no device session.
+  Read from code, not tested. Step 5b replaces this path.
+- "Sign in to another account" runs the full sign-out, which deletes this
+  device's sessions document. While switched away, another phone's Devices
+  screen may not be able to revoke this phone for that account, yet Step 3's
+  vault would still allow a fingerprint sign-in. Decide in Step 5b (for
+  example: keep the document, marked signed out, and check it before
+  re-sign-in).
+- Two writes to the list at the same moment could overwrite each other
+  (read-modify-write, no lock). Unlikely with the current hooks.
+- Antigravity claimed AsyncStorage has no practical size limit; not
+  verified. 5 photo avatars is about 400 KB, which is small.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,

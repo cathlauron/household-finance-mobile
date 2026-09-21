@@ -1,3 +1,4 @@
+import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { isValidPinFormat, savePin } from '../pin';
@@ -28,6 +29,7 @@ export default function SetPinScreen({ username, onDone, onCancel }: Props) {
     setBusy(true);
     try {
       await savePin(username, pin1);
+      updateRecentAccountIfPresent(username, { hasPin: true }).catch(() => {});
       setBusy(false);
       onDone();
     } catch (e) {

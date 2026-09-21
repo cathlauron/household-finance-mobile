@@ -1,3 +1,4 @@
+import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -187,11 +188,13 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
     setBiometricError('');
     if (biometricState === 'ENABLED') {
       await setBiometricsDisabled(username, true);
+      updateRecentAccountIfPresent(username, { biometricsEnabled: false }).catch(() => {});
       setBiometricState('DISABLED');
     } else {
       const result = await attemptBiometricAuth(`Verify ${biometricLabel} to enable`);
       if (result.success) {
         await setBiometricsDisabled(username, false);
+        updateRecentAccountIfPresent(username, { biometricsEnabled: true }).catch(() => {});
         setBiometricState('ENABLED');
       } else {
         setBiometricError(biometricErrorMessage(result.error, biometricLabel) || "Couldn't verify — try again");
@@ -1505,6 +1508,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
                           setPinBusy(true);
                           try {
                             await removePin(username);
+                            updateRecentAccountIfPresent(username, { hasPin: false }).catch(() => {});
                             setPinIsSet(false);
                           } catch (e) {
                             Alert.alert('Failed to remove PIN', 'Please try again.');
