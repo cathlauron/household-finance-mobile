@@ -37,19 +37,22 @@ type Props = {
   onGoToCreateProfile: () => void;
   remoteRevokeNotice?: string | null;
   onClearRemoteRevokeNotice?: () => void;
+  initialUsername?: string;
+  autoSignIn?: { email: string; username: string; password: string };
+  onAutoSignInFailed?: (username: string) => void;
 };
 
 export default function SignInScreen({
   onSignedIn,
   onGoToCreateProfile,
   remoteRevokeNotice,
-  onClearRemoteRevokeNotice,
+  onClearRemoteRevokeNotice, initialUsername, autoSignIn, onAutoSignInFailed,
 }: Props) {
   const { colors } = useTheme();
   const ms = makeMainStyles(colors);
-  const [usernameInput, setUsernameInput] = useState('');
-  const [emailInput, setEmailInput] = useState('');
-  const [password, setPassword] = useState('');
+  const [usernameInput, setUsernameInput] = useState(autoSignIn?.username ?? initialUsername ?? '');
+  const [emailInput, setEmailInput] = useState(autoSignIn?.email ?? '');
+  const [password, setPassword] = useState(autoSignIn?.password ?? '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // Checkpoint A.5 - true only while we're quietly creating a missing
@@ -316,6 +319,19 @@ export default function SignInScreen({
   }, [busy]);
 
   // Turns a raw Firebase sign-in error into a plain-English message.
+  // Quick unlock (Step 4b): when the account switcher unlocked saved sign-in
+  // details, sign in with them once, right after this screen first appears.
+  // autoAttemptRef is true only while that one attempt is running.
+  const autoStartedRef = useRef(false);
+  const autoAttemptRef = useRef(false);
+  useEffect(() => {
+    if (!autoSignIn || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    autoAttemptRef.current = true;
+    handleSignIn().finally(() => {
+      autoAttemptRef.current = false;
+    });
+  }, []);
   function friendlyFirebaseSignInError(e: any): string {
     const code = e?.code || '';
     if (
@@ -448,7 +464,14 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         }
 
         setBusy(false);
-        setError(friendlyFirebaseSignInError(firebaseError));
+        const firebaseMsg = friendlyFirebaseSignInError(firebaseError);
+        if (autoAttemptRef.current && firebaseMsg === 'Incorrect email or password.') {
+          // The saved password no longer works: clear it and let the app wipe the saved copies.
+          setPassword('');
+          if (onAutoSignInFailed) onAutoSignInFailed(username);
+          return;
+        }
+        setError(firebaseMsg);
         return;
       }
 

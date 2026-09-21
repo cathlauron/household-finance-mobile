@@ -1,5 +1,5 @@
-import { wipeQuickUnlock, saveFingerprintCopyIfPossible } from './src/quickUnlock';
-import { upsertRecentAccount, removeRecentAccount } from './src/recentAccounts';
+import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
+import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox } from 'react-native';
@@ -11,6 +11,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
 import SignInScreen from './src/screens/SignInScreen';
+import AccountSwitcherScreen from './src/screens/AccountSwitcherScreen';
 import PinUnlockScreen from './src/screens/PinUnlockScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
@@ -32,7 +33,7 @@ import {
   updateDeviceHeartbeat,
 } from './src/sessions';
 
-type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro';
+type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
 
 function AppContent() {
   const { colors } = useTheme();
@@ -41,6 +42,10 @@ function AppContent() {
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [derivedKey, setDerivedKey] = useState<CryptoJS.lib.WordArray | null>(null);
   const [remoteRevokeNotice, setRemoteRevokeNotice] = useState<string | null>(null);
+  // Quick unlock (Step 4b)
+  const [recentAccounts, setRecentAccounts] = useState<RecentAccount[]>([]);
+  const [autoSignIn, setAutoSignIn] = useState<{ email: string; username: string; password: string } | null>(null);
+  const [signInPrefillUsername, setSignInPrefillUsername] = useState<string | undefined>(undefined);
 
   const screenRef = useRef<Screen>('loading');
   // Set only by the lock screen's "Sign in to another account" button, so that
@@ -188,8 +193,15 @@ function AppContent() {
   useEffect(() => {
     (async () => {
       const minDelay = new Promise((resolve) => setTimeout(resolve, 1600));
-      const [profiles] = await Promise.all([loadProfilesIndex(), minDelay]);
-      setScreen(profiles.length ? 'signIn' : 'intro');
+      const [profiles, recents] = await Promise.all([loadProfilesIndex(), loadRecentAccounts(), minDelay]);
+      if (!profiles.length) {
+        setScreen('intro');
+      } else if (recents.length) {
+        setRecentAccounts(recents);
+        setScreen('switcher');
+      } else {
+        setScreen('signIn');
+      }
       autoLockMinutesRef.current = await getAutoLockMinutes();
     })();
   }, []);
@@ -366,6 +378,33 @@ function AppContent() {
     );
   }
   
+    if (screen === 'switcher') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+        <AccountSwitcherScreen
+          accounts={recentAccounts}
+          onUnlocked={(creds) => {
+            resetPinFailures(creds.username).catch(() => {});
+            setRemoteRevokeNotice(null);
+            setSignInPrefillUsername(undefined);
+            setAutoSignIn(creds);
+            setScreen('signIn');
+          }}
+          onUsePassword={(username) => {
+            setAutoSignIn(null);
+            setSignInPrefillUsername(username);
+            setScreen('signIn');
+          }}
+          onUseOtherAccount={() => {
+            setAutoSignIn(null);
+            setSignInPrefillUsername(undefined);
+            setScreen('signIn');
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   if (screen === 'createProfile') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
@@ -398,10 +437,21 @@ function AppContent() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
-      <SignInScreen
+<SignInScreen
         remoteRevokeNotice={remoteRevokeNotice}
         onClearRemoteRevokeNotice={() => setRemoteRevokeNotice(null)}
+        initialUsername={signInPrefillUsername}
+        autoSignIn={autoSignIn ?? undefined}
+        onAutoSignInFailed={(username) => {
+          wipeQuickUnlock(username).catch(() => {});
+          setAutoSignIn(null);
+          setSignInPrefillUsername(username);
+          setRemoteRevokeNotice('Your saved sign-in is out of date. Sign in with your password.');
+        }}
         onSignedIn={(username, key, initialModel, profile, householdKey, credentials) => {
+          const viaQuickUnlock = autoSignIn !== null;
+          setAutoSignIn(null);
+          setSignInPrefillUsername(undefined);
           setRemoteRevokeNotice(null);
           setCurrentUsername(username);
           setDerivedKey(key);
@@ -426,7 +476,7 @@ function AppContent() {
               initialModel ? (initialModel.avatars?.[username] ?? { type: 'initials' }) : undefined
             ).catch(() => {});
           }
-          if (credentials) {
+          if (credentials && !viaQuickUnlock) {
             saveFingerprintCopyIfPossible({
               email: credentials.email,
               username,

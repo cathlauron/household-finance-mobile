@@ -1419,17 +1419,13 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1 and 3c-2 done and pushed (3c-2
-  finished in 66c53a4, see "Step 3c-2 results, part 2"). Option 1 chosen.
-  Next: Step 4 (AccountSwitcherScreen: avatars, fingerprint first, PIN
-  fallback, password fallback), which starts with an Antigravity
-  investigation. Steps 4/5 must also remove the TEMP logs and TEMP checks
-  (list under part 2). Still open, decide before Step 5: what a lockout
-  should do to the old PIN hash and the hasPin / biometricsEnabled flags
-  (finding 3 under part 1). The slowness findings (Change PIN, lock-screen
-  password unlock, and now Turn on fingerprint at about 17 seconds) are NOTED
-  ONLY, to be fixed later if the person decides to.
+- ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a and 4b
+  done and pushed. Next: Step 4c (remove every TEMP log and TEMP check, including the
+  read-back in quickUnlock.ts), then Step 5a (offline path, revocation check before
+  registerDeviceSession, refresh avatar on unlock, lockout decision), 5b (switching accounts),
+  then Step 6 (ONE EAS build and the full on-device test). Still open, decide before 5a: what a
+  lockout should do to the old PIN hash and the hasPin / biometricsEnabled flags. Noted only:
+  the slowness of Change PIN and Turn on fingerprint (about 17 s in Expo Go).
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1952,6 +1948,45 @@ node_modules/expo-secure-store, no code changed)
   tsc reported "Cannot redeclare block-scoped variable" (8 errors). Fixed by
   deleting the duplicate pair. From now on a "paste below this line" snippet
   shows the landmark as a comment or plain text, not as code to paste.
+
+📌 Step 4a and 4b results (account switcher, quick unlock after a full close)
+- 4a (40d553b): new mobile-app/src/screens/AccountSwitcherScreen.tsx. One remembered
+  account skips the list; two or more show a list with avatars. Fingerprint tried first
+  (loadFingerprintCopy), "Use PIN instead" (attemptPinUnlock, 50 ms wait so the spinner
+  draws), "Use password instead", "Use another account". Uses getQuickUnlockPresence (the
+  real copies), NOT the old hasPin / biometricsEnabled flags. A "missing" fingerprint copy is
+  deleted. It only unlocks the saved { email, username, password }; App.tsx signs in.
+  New testIDs: account-switcher-container, account-switcher-item-<username>,
+  account-switcher-fingerprint-button, account-switcher-use-pin, account-switcher-pin-input,
+  account-switcher-pin-submit, account-switcher-use-password, account-switcher-back,
+  account-switcher-other-account.
+- 4b: SignInScreen.tsx got optional props initialUsername, autoSignIn and onAutoSignInFailed.
+  autoSignIn seeds the three inputs; a mount-only effect calls the existing handleSignIn()
+  (handleSignIn itself was not edited except one branch). If an AUTOMATIC attempt gets
+  "Incorrect email or password." the password field is cleared and App.tsx wipes that
+  account's copies and shows "Your saved sign-in is out of date. Sign in with your password."
+  (reuses the remoteRevokeNotice banner). Other failures leave the copies alone.
+  App.tsx: new Screen 'switcher'; the launch effect shows it when there are recent accounts;
+  onUnlocked resets the wrong-PIN counter and starts the auto sign-in; onSignedIn skips the
+  fingerprint re-save when viaQuickUnlock (avoids two extra prompts).
+- Tested on-device (Expo Go, Android, by the person): fingerprint, PIN (one wrong then right),
+  password paths and log out all behaved as expected. Metro confirmed no fingerprint re-save on
+  quick-unlock sign-ins, a password sign-in DOES re-save, and log out wipes the copies. The
+  spinner after unlock "appears shorter" (not timed; only one key derivation now). NOT tested:
+  airplane mode, 5 wrong PINs on the switcher, two or more accounts in the list, a phone with
+  weak biometrics.
+- Known limits: (1) ONLINE ONLY: handleSignIn starts with a Firebase sign-in, so an offline
+  launch fails ("Sign-in failed. Check your connection"); Step 5a adds the offline path.
+  (2) REVOCATION GAP: a quick-unlock sign-in still runs registerDeviceSession, which deletes
+  and recreates this device's session document, erasing a revoked flag. Step 5a must read the
+  revoked flag AFTER the Firebase sign-in and BEFORE registerDeviceSession. Do not test
+  "revoke while closed" until then. (3) If an auto sign-in fails for a reason other than a
+  wrong password, the saved password stays in the (masked) field in memory. (4) After "Use
+  password instead" there is no way back to the account list except restarting. (5) "Use
+  password instead" leaves the email blank (email is not stored outside the locked copies).
+  (6) Unexplained "Text strings must be rendered within a <Text> component" ERROR seen twice
+  in Metro just before a log out, and once before Step 4 existed (after a fingerprint
+  turn-on). Cause unknown; possible '' && <View> pattern (a guess).
   
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
