@@ -116,7 +116,9 @@ PROGRESS4.md for that detail, plus everything it links back to
   subscription double-notify, Weekly Spending Recap toggle/day-pills/
   hour input + actual firing, Subscription Cancel-Reminder wording and
   tap-to-deep-link (warm and cold start).
-- Screenshot restriction on the person's phone, PARKED for Phase C (not a
+- [RESOLVED: screenshots work on the installed Phase C build, so the cause
+  was Expo Go on this phone; no repo change was needed] Screenshot
+  restriction on the person's phone, was PARKED for Phase C (not a
   bug in this repo). Device: Vivo V40 Lite 5G, Android 16, Expo Go only
   (no other Expo project has ever been opened in it). Once signed in,
   screenshots fail on Home, all four bottom tabs and the lock screen with
@@ -1208,7 +1210,7 @@ not abandoned - return to them before or alongside Phase C.
   are small. Reasonable to STOP the pass here. Intro slide copy also has
   not had the pass. About 38 strings over 12 words remain in the 13
   earlier screens (many are protected security text).
-  
+
 📌 Phase C start: first Android EAS build (added this session)
 - Prep committed and pushed (423182b): mobile-app/eas.json (new; profile
   "preview" = internal distribution, Android buildType apk;
@@ -1227,7 +1229,7 @@ not abandoned - return to them before or alongside Phase C.
 - First build: eas build --platform android --profile preview FINISHED.
   Build page:
   https://expo.dev/accounts/cathlauron/projects/mobile-app/builds/0fd9cd0b-17c1-4642-8280-5dd02b2577d4
-  NOT YET installed or tested on the phone at the time of writing.
+  Installed and tested on the person's Vivo V40 Lite 5G (Android 16).
   Free plan per the billing page screenshot: 15 Android and 15 iOS builds
   a month, low-priority queue. Whether fast-failed builds are still waived
   was not confirmed (2024 changelog said up to 10 a month).
@@ -1247,10 +1249,20 @@ not abandoned - return to them before or alongside Phase C.
   duplicated blocks and broke the JSON (expo-doctor then crashed with a
   config error). Fixed by replacing the whole file. For short files, give a
   full-file replacement.
-- TO DO on the installed build: screenshot re-test (sign-in, Home, a tab);
-  edge-to-edge layout; fingerprint/face unlock; photo avatar (no microphone
-  prompt); notification permission and icon; gestures; restart behaviour.
-  Then update the five Maestro flows (appId com.cathlauron.householdfinance,
+- Installed-build test results (first preview APK, on-device, by the
+  person): screenshots WORK on sign-in, Home and tabs; layout OK;
+  fingerprint/face unlock OK; photo avatar OK; notifications OK; gestures
+  OK (checklist items 1 to 6 passed). Item 7: after fully closing and
+  reopening the app it asks for email, username and password again, not the
+  PIN. Believed to be by design (the encryption key exists only in memory,
+  and App.tsx always starts at sign-in when a profile exists), but NOT
+  confirmed: PinUnlockScreen.tsx and biometrics.ts were not read. The
+  switch-away-and-return test (expect PIN screen) was not yet run. Letting a
+  PIN unlock after a full close would mean storing the key on the phone; a
+  security decision, deferred.
+- Still TO DO on the installed build: reminder round (bill reminders,
+  weekly recap, subscription reminder tap, all deferred from Expo Go), then
+  update the five Maestro flows (appId com.cathlauron.householdfinance,
   replace the "You're signed in" waits).
 - TO DO before real users: confirm the Firestore security rules require
   sign-in in the Firebase Console (the readiness report never checked them).
@@ -1279,8 +1291,8 @@ every other phase.
 ▶️ Next step
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
-- Screenshot restriction: PARKED for Phase C. No code change needed (see
-  Known issues). Re-test screenshots on the first installed EAS build.
+- Screenshot restriction: CLOSED. Works on the installed build; it was
+  Expo Go on this phone.
 - PC.5a is done and on-device verified (d298368 plus the picker commit).
   PC.4c and its Maestro flow are committed (75f2be3).
 - PC.5 is DONE (PC.5-1, PC.5-2a, PC.5-2b, all pushed and on-device tested).
@@ -1309,8 +1321,8 @@ every other phase.
   (c) Optional: pull-to-refresh on Profile, Settings, and the Reports child
       screens, only if wanted (see Known issues for the Settings scrollTo
       risk).
-  (d) Nothing to re-enable: the app never blocked screenshots. Re-test
-      screenshots on the first installed build (see Known issues).
+  (d) Nothing to re-enable: the app never blocked screenshots, and they
+      work on the installed build.
   Then Phase C (EAS Build).
   PC.3 (real Google/Apple/Facebook OAuth) still waits for Phase C's EAS
   dev-client build.
