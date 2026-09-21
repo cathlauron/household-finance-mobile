@@ -361,7 +361,7 @@ function AppContent() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <CreateProfileScreen
-          onProfileCreated={(username, key) => {
+          onProfileCreated={(username, key, credentials) => {
             setRemoteRevokeNotice(null);
             setCurrentUsername(username);
             setDerivedKey(key);
@@ -370,6 +370,13 @@ function AppContent() {
             if (user) {
               registerAndListenDeviceSession(user.uid).catch(() => {});
               recordRecentAccount(username, user.uid, undefined, undefined).catch(() => {});
+            }
+            if (credentials) {
+              saveFingerprintCopyIfPossible({
+                email: credentials.email,
+                username,
+                password: credentials.password,
+              }).catch(() => {});
             }
             setScreen('onboarding');
           }}

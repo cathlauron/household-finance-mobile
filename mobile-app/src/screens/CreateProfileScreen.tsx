@@ -14,7 +14,7 @@ import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
 import PasswordField from '../components/PasswordField';
 
 type Props = {
-  onProfileCreated: (username: string, key: CryptoJS.lib.WordArray) => void;
+  onProfileCreated: (username: string, key: CryptoJS.lib.WordArray, credentials?: { email: string; password: string }) => void;
   onGoToSignIn: () => void;
 };
 
@@ -286,7 +286,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 disabled={!savedAcknowledged}
                 onPress={() => {
                   if (createdInfo) {
-                    onProfileCreated(createdInfo.username, createdInfo.key);
+                  onProfileCreated(createdInfo.username, createdInfo.key, { email: emailInput.trim(), password: password1 });
                   }
                 }}
               >

@@ -1420,8 +1420,9 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Steps 1, 2, 3a and 3b-1 done and pushed. Option 1 chosen. Next:
-  3b-2 (profile creation), then 3c.
+  this file). Steps 1, 2, 3a, 3b-1 and 3b-2 done and pushed. Option 1 chosen.
+  Next: 3c (password prompt on PIN set and fingerprint on, PIN copy, and the
+  5-wrong-PIN limit on the lock screen).
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1736,6 +1737,28 @@ node_modules/expo-secure-store, no code changed)
   a password change saved a new copy and read it back. The app did NOT lock
   itself during any prompt. Not tested: a second phone, a fingerprint added or
   removed after saving, iOS.
+
+📌 Step 3b-2 results (fingerprint copy saved at profile creation)
+- CreateProfileScreen: onProfileCreated takes an optional 3rd argument
+  credentials { email, password }. The Continue button in the recovery-key
+  modal passes { email: emailInput.trim(), password: password1 } (both are
+  still in the component's state while the modal is open, and the same trimmed
+  email was used for createFirebaseAccount). App.tsx's onProfileCreated calls
+  saveFingerprintCopyIfPossible after registering the device session and
+  recording the recent account, before setScreen('onboarding'). The fingerprint
+  prompt therefore appears on the Onboarding screen, which already says
+  "Fingerprint enabled". Skipping Onboarding or its PIN step does not remove
+  the copy.
+- Process lesson (3b-1): a multi-row find/replace table put one call site's
+  replacement text on the wrong line (tsc caught it) and skipped another (line
+  550; tsc could NOT catch it because credentials is optional; a Select-String
+  listing of every onSignedIn( call did). Rules: check the Replace box before
+  each Replace All, verify with Select-String, and make a new argument required
+  when the compiler should catch a missed call.
+- Checked in Expo Go (Android): a throwaway account was created; the
+  fingerprint prompt appeared on Onboarding, the copy saved and read back, the
+  app did not lock, and log out wiped it. A test account remains in Firebase
+  and on the phone (harmless).
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
