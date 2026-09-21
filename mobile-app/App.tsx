@@ -1,4 +1,4 @@
-import { wipeQuickUnlock } from './src/quickUnlock';
+import { wipeQuickUnlock, saveFingerprintCopyIfPossible } from './src/quickUnlock';
 import { upsertRecentAccount, removeRecentAccount } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import React, { useEffect, useRef, useState } from 'react';
@@ -384,7 +384,7 @@ function AppContent() {
       <SignInScreen
         remoteRevokeNotice={remoteRevokeNotice}
         onClearRemoteRevokeNotice={() => setRemoteRevokeNotice(null)}
-        onSignedIn={(username, key, initialModel, profile, householdKey) => {
+        onSignedIn={(username, key, initialModel, profile, householdKey, credentials) => {
           setRemoteRevokeNotice(null);
           setCurrentUsername(username);
           setDerivedKey(key);
@@ -408,6 +408,13 @@ function AppContent() {
               profile?.householdId,
               initialModel ? (initialModel.avatars?.[username] ?? { type: 'initials' }) : undefined
             ).catch(() => {});
+          }
+          if (credentials) {
+            saveFingerprintCopyIfPossible({
+              email: credentials.email,
+              username,
+              password: credentials.password,
+            }).catch(() => {});
           }
           setScreen('home');
           if (initialModel) {

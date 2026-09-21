@@ -31,7 +31,8 @@ type Props = {
     key: CryptoJS.lib.WordArray,
     initialModel?: HouseholdModel,
     profile?: ProfileIndexEntry,
-    householdKey?: CryptoJS.lib.WordArray
+    householdKey?: CryptoJS.lib.WordArray,
+    credentials?: { email: string; password: string }
   ) => void;
   onGoToCreateProfile: () => void;
   remoteRevokeNotice?: string | null;
@@ -159,7 +160,7 @@ export default function SignInScreen({
 
         setRecoveryBusy(false);
         setRecoveryContext(null);
-        onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, unwrappedKey);
+        onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, unwrappedKey, { email: recoveryContext.email, password: recoveryContext.password });
         return;
       }
 
@@ -206,7 +207,7 @@ export default function SignInScreen({
 
       setRecoveryBusy(false);
       setRecoveryContext(null);
-      onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry);
+      onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, undefined, { email: recoveryContext.email, password: recoveryContext.password });
     } catch (e: any) {
       setRecoveryBusy(false);
       setRecoveryError(e?.message || 'Could not recover with this key. Check and try again.');
@@ -267,7 +268,7 @@ export default function SignInScreen({
 
             setIsWaitingForPeer(false);
             setRecoveryContext(null);
-            onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, householdKey);
+            onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, householdKey, { email: recoveryContext.email, password: recoveryContext.password });
           } catch (err: any) {
             setPeerError(err?.message || 'Failed to complete peer recovery.');
           }
@@ -426,7 +427,7 @@ export default function SignInScreen({
                   // verified above.
                   setIsMigrating(false);
                   setBusy(false);
-                  onSignedIn(username, localKey, localModel, profile);
+onSignedIn(username, localKey, localModel, profile, undefined, { email, password });
                   return;
                 } catch (migrationError: any) {
                   setIsMigrating(false);
@@ -546,7 +547,7 @@ export default function SignInScreen({
 
         setIsRestoring(false);
         setBusy(false);
-        onSignedIn(username, key, restoredModel, newEntry, restoredHouseholdKey);
+        onSignedIn(username, key, restoredModel, newEntry, restoredHouseholdKey, { email, password });
         return;
       }
 
@@ -626,7 +627,7 @@ export default function SignInScreen({
         }
 
         setBusy(false);
-        onSignedIn(username, result.key, result.model, profile, result.householdKey);
+        onSignedIn(username, result.key, result.model, profile, result.householdKey, { email, password });
         return;
       }
 
@@ -678,7 +679,7 @@ export default function SignInScreen({
           saveProfileCloudBackup(username, { salt: profile.salt, householdId: wrapped.householdId }).catch(() => {});
 
           setBusy(false);
-          onSignedIn(username, result.key, result.model, profile, result.householdKey);
+          onSignedIn(username, result.key, result.model, profile, result.householdKey, { email, password });
           return;
         }
       }
@@ -706,7 +707,7 @@ export default function SignInScreen({
         return;
       }
       setBusy(false);
-      onSignedIn(username, key, loadedModel, profile);
+      onSignedIn(username, key, loadedModel, profile, undefined, { email, password });
     } catch (e) {
       setBusy(false);
       setIsMigrating(false);

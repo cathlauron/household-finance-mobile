@@ -1,3 +1,4 @@
+import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -819,6 +820,25 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
     setNewPass1Input('');
     setNewPass2Input('');
     setPassChangeMsg('Password changed.');
+    // Quick unlock: any stored copy holds the OLD password. Remove both, then try
+    // to store the new one (fingerprint only; PIN quick unlock returns when the
+    // PIN is set again). A cancelled fingerprint prompt is ignored.
+    if (username) {
+      const quickUser = username;
+      const quickEmail = getCurrentFirebaseUser()?.email;
+      const quickPassword = newPass1Input;
+      (async () => {
+        await removeFingerprintCopy(quickUser);
+        await removePinCopy(quickUser);
+        if (quickEmail) {
+          await saveFingerprintCopyIfPossible({
+            email: quickEmail,
+            username: quickUser,
+            password: quickPassword,
+          });
+        }
+      })().catch(() => {});
+    }
     if (!isLinked) {
       setHasRecoveryKey(false);
     }

@@ -1420,8 +1420,8 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Steps 1, 2 and 3a done and pushed. Option 1 chosen. Next: 3b
-  (save the fingerprint copy at sign-in and profile creation).
+  this file). Steps 1, 2, 3a and 3b-1 done and pushed. Option 1 chosen. Next:
+  3b-2 (profile creation), then 3c.
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1690,6 +1690,52 @@ node_modules/expo-secure-store, no code changed)
   and require the password.
 - expo-secure-store needs the Step 6 EAS build to be tested for real
   (fingerprint prompt, invalidation after a fingerprint change).
+
+📌 Step 3b-1 results (fingerprint copy saved at sign-in, refreshed on password change)
+- Antigravity's 3b investigation (real code read, nothing run) and my corrections:
+  * Auto-lock: it claims any fingerprint prompt makes AppState go inactive/
+    background and lock the app. UNVERIFIED (code reading only). Counter-
+    evidence: in the Step 2 test the Settings fingerprint toggle was turned on
+    with a PIN set (hasPin true) and the app did not lock. Suppressing is
+    harmless (auto-expires after 60 s), so saveFingerprintCopyIfPossible wraps
+    the prompt in setAutoLockSuppressed. Note handleToggleBiometrics in
+    SettingsScreen does NOT use suppression today.
+  * biometrics.getBiometricState checks hardware + enrolled + not switched off
+    in the app, NOT strength. SecureStore.canUseBiometricAuthentication()
+    (synchronous, Android and iOS) is the strength check and is used before
+    every save. Where it is false (for example 2D face unlock only) no
+    fingerprint copy is saved; quick unlock must then use the PIN copy or the
+    password. The Onboarding text "Fingerprint Enabled" does not check this.
+  * Antigravity's proposed SignInScreen Props code used wrong types
+    (HouseholdModel | null, ProfileEntry, householdKey string). The real types
+    (initialModel?: HouseholdModel, profile?: ProfileIndexEntry, householdKey?:
+    CryptoJS.lib.WordArray) were kept.
+- Built: onSignedIn has an optional 6th argument credentials { email,
+  password } at all 8 call sites in SignInScreen (5 in handleSignIn, 3 recovery
+  flows through recoveryContext). App.tsx's onSignedIn calls
+  saveFingerprintCopyIfPossible (quickUnlock.ts): fingerprint switched on AND
+  strong biometric, auto-lock paused during the prompt, never throws, never
+  shows an error (a cancelled prompt is ignored). One fingerprint prompt
+  appears after every password sign-in.
+- Password change (SettingsScreen handleChangePassword): after success it
+  removes BOTH copies (both hold the old password; Antigravity removed only
+  the PIN copy, which would leave a stale fingerprint copy if the new prompt
+  was cancelled), then tries to save a new fingerprint copy. PIN quick unlock
+  returns when the PIN is set again (3c).
+- TEMP logs (remove in Step 4/5): "[quick unlock] fingerprint state",
+  "fingerprint copy save", "TEMP read-back" (a second prompt that proves the
+  copy can be read), "TEMP wiped copies for". No password is ever logged.
+- NOT done yet (3b-2): profile creation. CreateProfileScreen's
+  onProfileCreated needs the same credentials argument. OnboardingScreen has no
+  access to the password, and its Skip button is harmless because the copy is
+  saved at creation, not in Onboarding.Steps 1, 2 and 3a done and pushed.
+- Checked in Expo Go on the Vivo V40 Lite 5G (Android): fingerprint state
+  ENABLED, strong fingerprint true; sign-in saved the copy and the read-back
+  worked (so requireAuthentication works in Expo Go on Android on this phone);
+  cancelling the prompt was ignored with no error; log out wiped the copies;
+  a password change saved a new copy and read it back. The app did NOT lock
+  itself during any prompt. Not tested: a second phone, a fingerprint added or
+  removed after saving, iOS.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,

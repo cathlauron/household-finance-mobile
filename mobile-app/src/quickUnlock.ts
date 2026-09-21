@@ -1,6 +1,8 @@
 ﻿import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { deriveKey, encryptJSON, decryptJSON, generateSalt } from './encryption';
+import { getBiometricState } from './biometrics';
+import { setAutoLockSuppressed } from './autoLockSuppress';
 
 // Quick unlock storage. For each account, up to two locked copies of that
 // account's { email, username, password } can sit in the phone's secure vault:
@@ -233,4 +235,42 @@ export async function attemptPinUnlock(username: string, pin: string): Promise<P
 export async function wipeQuickUnlock(username: string): Promise<void> {
   await removeFingerprintCopy(username);
   await removePinCopy(username);
+  console.log('[quick unlock] TEMP wiped copies for:', username);
+}
+
+// ---------- Safe save (used by sign-in and password change) ----------
+
+export type FingerprintSaveOutcome = SaveResult | 'unavailable';
+
+// Saves the fingerprint copy ONLY if it can work: fingerprint is switched on for
+// this account AND the phone's enrolled fingerprint is strong enough for the
+// vault. While the phone's prompt is on screen, the app's auto-lock is paused.
+// Never throws and never shows an error: a cancelled prompt is simply ignored.
+export async function saveFingerprintCopyIfPossible(
+  creds: QuickUnlockCredentials
+): Promise<FingerprintSaveOutcome> {
+  try {
+    const state = await getBiometricState(creds.username);
+    const strong = SecureStore.canUseBiometricAuthentication();
+    // TEMP (remove in Step 4/5)
+    console.log('[quick unlock] fingerprint state:', state, '| strong fingerprint:', strong);
+    if (state !== 'ENABLED' || !strong) return 'unavailable';
+    setAutoLockSuppressed(true);
+    try {
+      const outcome = await saveFingerprintCopy(creds);
+      // TEMP (remove in Step 4/5)
+      console.log('[quick unlock] fingerprint copy save:', outcome);
+      if (outcome === 'saved') {
+        // TEMP read-back: proves the copy can be read (shows a second prompt).
+        const check = await loadFingerprintCopy(creds.username);
+        console.log('[quick unlock] TEMP read-back:', check.status);
+      }
+      return outcome;
+    } finally {
+      setAutoLockSuppressed(false);
+    }
+  } catch (e) {
+    console.log('[quick unlock] fingerprint save error');
+    return 'failed';
+  }
 }
