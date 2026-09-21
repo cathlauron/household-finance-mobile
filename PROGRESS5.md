@@ -1420,13 +1420,16 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Steps 1, 2, 3a, 3b-1, 3b-2 and 3c-1 done and pushed. Option 1
-  chosen. 3c-2 is HALF done: the PIN-off and fingerprint-off wipes and the
-  5-wrong-PIN limit are built and tested (see "Step 3c-2 results, part 1").
-  Still to do in 3c-2: the Settings fingerprint-ON flow (ask for the password,
-  verify it, save the fingerprint copy). Then Step 4. The two slowness
-  findings (Change PIN, lock-screen password unlock) are NOTED ONLY, to be
-  fixed later if the person decides to.
+  this file). Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1 and 3c-2 done and pushed (3c-2
+  finished in 66c53a4, see "Step 3c-2 results, part 2"). Option 1 chosen.
+  Next: Step 4 (AccountSwitcherScreen: avatars, fingerprint first, PIN
+  fallback, password fallback), which starts with an Antigravity
+  investigation. Steps 4/5 must also remove the TEMP logs and TEMP checks
+  (list under part 2). Still open, decide before Step 5: what a lockout
+  should do to the old PIN hash and the hasPin / biometricsEnabled flags
+  (finding 3 under part 1). The slowness findings (Change PIN, lock-screen
+  password unlock, and now Turn on fingerprint at about 17 seconds) are NOTED
+  ONLY, to be fixed later if the person decides to.
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1877,7 +1880,79 @@ node_modules/expo-secure-store, no code changed)
     "unavailable", which behaves like today's lock-screen-only fingerprint.)
   * Keep the old "Verify to enable" prompt? (Leaning: drop it, since the
     password now proves ownership and the save itself prompts on Android.)
-    
+
+📌 Step 3c-2 results, part 2 (Settings fingerprint ON asks for the password)
+- Pushed as 66c53a4, tsc-clean. This settles the two questions left open at
+  the end of part 1 and finishes 3c-2.
+- Antigravity's investigation (real code read, nothing run) confirmed:
+  verifyPassword was NOT destructured from useData() in SettingsScreen;
+  getCurrentFirebaseUser, PasswordField, saveFingerprintCopyIfPossible,
+  removeFingerprintCopy and updateRecentAccountIfPresent were already
+  imported; saveFingerprintCopyIfPossible returns 'unavailable' unless
+  fingerprint is already switched on, so setBiometricsDisabled(false) must
+  run BEFORE it; the Secret Recovery Key modal was the pattern to copy.
+  Its per-platform prompt counts (Android 3 prompts with the old verify, 2
+  without; iOS 2 and 1) and its reason for 'unavailable' (weak biometrics)
+  are from code reading, UNVERIFIED.
+- Changes I made to its plan: if there is no email the vault save is skipped
+  and treated as 'unavailable' (an empty email makes a copy that can never
+  be read); the modal cannot be closed while the password check runs; the
+  typed password is cleared from state once used; no red text for
+  'unavailable'.
+- Built in SettingsScreen.tsx: turning fingerprint ON opens a password modal
+  (copy of the recovery-key modal, same styles). New state:
+  biometricPasswordModalOpen, biometricPassword, biometricPasswordBusy,
+  biometricPasswordError. New handleConfirmBiometricPassword: empty check,
+  busy on, a 50 ms wait so the spinner can draw, verifyPassword, then
+  setBiometricsDisabled(false), then saveFingerprintCopyIfPossible with
+  { email, username, password }. Outcomes: 'saved' and 'unavailable' keep
+  the toggle ON (and update the recent-accounts list); 'cancelled' rolls
+  back to OFF with no message; 'failed' rolls back to OFF with "Couldn't set
+  up quick unlock. Try again." Turning OFF is unchanged (removes the
+  fingerprint copy only). The old "Verify <biometric> to enable" prompt was
+  removed. New testIDs: biometric-toggle, biometric-password-input,
+  biometric-password-submit-button, biometric-password-cancel-button.
+  attemptBiometricAuth and biometricErrorMessage may now be unused in
+  SettingsScreen; the import was not checked or cleaned up.
+- Tested on-device by the person (Expo Go, Metro log shown; Android): the
+  password box opens; a wrong password is rejected; the right password shows
+  the spinner then the fingerprint prompt; two prompts appear (the TEMP
+  read-back is still in place); the log showed "fingerprint copy save: saved"
+  and "TEMP read-back: ok"; cancelling the fingerprint prompt left the
+  toggle OFF ("fingerprint copy save: cancelled"); cancelling from the
+  password box left it OFF; turning OFF removed the copy and the recent-
+  accounts entry showed bio false. The person said everything behaved as
+  described.
+- NOT tested: the 'unavailable' path (needs a phone with weak biometrics);
+  the 'failed' path; a missing email (the vault save is skipped in that case).
+- MEASURED (by the person's count, not a timer): the spinner showed for about
+  17 seconds before the fingerprint prompt, in Expo Go. This is the same
+  slowness as Change PIN (over 10 seconds) and probably the lock-screen
+  password unlock. Likely cause, NOT proven: verifyPassword does a 100,000-
+  round key derivation on the JS thread, and Expo Go runs slower than an
+  installed build. It is unknown how much faster the installed Phase C
+  build is; measure there before deciding on a fix. The 50 ms wait does make
+  the spinner appear here; the same trick is NOT used in SetPinScreen or the
+  lock-screen password unlock (findings 1 and 2 above).
+- NEW, UNEXPLAINED: the Metro log showed one red "ERROR Text strings must be
+  rendered within a <Text> component." right after the first successful
+  fingerprint turn-on. It did not repeat in the next three turn-on cycles.
+  Cause unknown: it may or may not come from the new modal or the toggle
+  row. If it shows again, copy the lines under it, especially "This error is
+  located at:", and which screen was open.
+- TEMP items to remove in Step 4/5 (nothing removes them yet): the
+  "[quick unlock] fingerprint state", "fingerprint copy save", "TEMP
+  read-back" (a second prompt), "TEMP wiped copies for" logs and the read-back
+  itself in saveFingerprintCopyIfPossible (quickUnlock.ts); the "TEMP PIN
+  copy saved" checks in SetPinScreen (two extra attemptPinUnlock runs, which
+  also add key-derivation time); "TEMP onboarding PIN copy saved" in
+  OnboardingScreen; "[recent accounts] saved:" in recentAccounts.ts.
+- Process lesson: my snippet for the new state showed two of the existing lines
+  (pinBusy and showSetPinModal) as "landmarks" and they were pasted twice, so
+  tsc reported "Cannot redeclare block-scoped variable" (8 errors). Fixed by
+  deleting the duplicate pair. From now on a "paste below this line" snippet
+  shows the landmark as a comment or plain text, not as code to paste.
+  
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
 PROGRESS2.md, PROGRESS1.md, PROGRESS.md.
