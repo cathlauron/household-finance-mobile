@@ -9,12 +9,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { isValidPinFormat, savePin } from '../pin';
+import { savePinCopy } from '../quickUnlock';
+import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { getBiometricState, getBiometricLabel } from '../biometrics';
 import { markOnboardingCompleted } from '../onboarding';
 import PinField from '../components/PinField';
 
 type Props = {
   username: string;
+  initialCredentials?: { email: string; password: string };
   onFinish: () => void;
 };
 
@@ -22,7 +25,7 @@ type Props = {
 const LOCK_BODY_GREEN = '#3E7A5C';
 const LOCK_SHACKLE_GREEN = '#2E5E45';
 
-export default function OnboardingScreen({ username, onFinish }: Props) {
+export default function OnboardingScreen({ username, onFinish, initialCredentials }: Props) {
   const { colors } = useTheme();
   const [step, setStep] = useState<2 | 3>(2);
 
@@ -66,6 +69,15 @@ export default function OnboardingScreen({ username, onFinish }: Props) {
     setBusy(true);
     try {
       await savePin(username, pin1);
+      updateRecentAccountIfPresent(username, { hasPin: true }).catch(() => {});
+      if (initialCredentials) {
+        const copied = await savePinCopy(
+          { email: initialCredentials.email, username, password: initialCredentials.password },
+          pin1
+        );
+        // TEMP (remove in Step 4/5)
+        console.log('[quick unlock] TEMP onboarding PIN copy saved:', copied);
+      }
       setPinSaved(true);
       setBusy(false);
       setStep(3);

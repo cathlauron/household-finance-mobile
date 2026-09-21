@@ -87,6 +87,7 @@ type DataContextValue = {
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
   refreshModel: () => Promise<RefreshOutcome>;
+  verifyPassword: (password: string) => Promise<boolean>;
   changePassword: (
     currentPassword: string,
     newPassword: string
@@ -735,6 +736,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // in-memory key this session is using for future saves is swapped over — so the very next
   // saveModel() call (e.g. editing a bill right after) keeps working correctly without
   // needing to sign out and back in.
+
+  // Local, offline check: is this the account password? Same checks as the first
+  // half of changePassword (linked profile: unwrap the household key; personal
+  // profile: decrypt the saved data). Used before saving a PIN copy.
+  async function verifyPassword(password: string): Promise<boolean> {
+    const user = usernameRef.current;
+    if (!user || !password) return false;
+    const profiles = await loadProfilesIndex();
+    const profile = profiles.find((p) => p.username === user);
+    if (!profile) return false;
+    const candidateKey = deriveKey(password, profile.salt);
+
+    if (householdIdRef.current && householdKeyRef.current) {
+      const wrapped = await loadWrappedHouseholdKey(user);
+      if (!wrapped) return false;
+      try {
+        unwrapHouseholdKey(wrapped.wrappedKey, candidateKey);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const encrypted = await loadEncryptedProfileData(user);
+    if (!encrypted) return false;
+    try {
+      decryptJSON(candidateKey, encrypted);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   async function changePassword(
     currentPassword: string,
     newPassword: string
@@ -898,6 +932,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         clearModel,
         refreshModel,
         changePassword,
+        verifyPassword,
         username: usernameRef.current,
         isLinked,
         getPersonalKey,

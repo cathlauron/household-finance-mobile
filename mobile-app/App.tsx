@@ -46,9 +46,14 @@ function AppContent() {
   // Set only by the lock screen's "Sign in to another account" button, so that
   // switching away does NOT remove the account from the recent-accounts list.
   const keepRecentOnSignOutRef = useRef(false);
+  // Holds { email, password } ONLY while the Onboarding screen is showing, so the
+  // PIN copy can be saved without asking for the password again. Cleared the moment
+  // Onboarding ends, for any reason.
+  const onboardingCredsRef = useRef<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     screenRef.current = screen;
+    if (screen !== 'onboarding') onboardingCredsRef.current = null;
   }, [screen]);
 
   // B.14: deep-link plumbing. `pendingDeepLinkBillId` survives across
@@ -343,7 +348,11 @@ function AppContent() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <OnboardingScreen
           username={currentUsername}
-          onFinish={() => setScreen('home')}
+          initialCredentials={onboardingCredsRef.current ?? undefined}
+          onFinish={() => {
+            onboardingCredsRef.current = null;
+            setScreen('home');
+          }}
         />
       </SafeAreaView>
     );
@@ -362,6 +371,7 @@ function AppContent() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
         <CreateProfileScreen
           onProfileCreated={(username, key, credentials) => {
+            onboardingCredsRef.current = credentials ?? null;
             setRemoteRevokeNotice(null);
             setCurrentUsername(username);
             setDerivedKey(key);

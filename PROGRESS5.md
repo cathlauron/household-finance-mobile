@@ -1420,8 +1420,8 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Steps 1, 2, 3a, 3b-1 and 3b-2 done and pushed. Option 1 chosen.
-  Next: 3c (password prompt on PIN set and fingerprint on, PIN copy, and the
+  this file). Steps 1, 2, 3a, 3b-1, 3b-2 and 3c-1 done and pushed. Option 1
+  chosen. Next: 3c-2 (Settings fingerprint toggle and PIN-removal hooks, and the
   5-wrong-PIN limit on the lock screen).
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
@@ -1764,6 +1764,50 @@ node_modules/expo-secure-store, no code changed)
   fingerprint prompt appeared on Onboarding, the copy saved and read back, the
   app did not lock. Log out of this account was NOT run (Expo was stopped first); the log-out wipe was verified on the other account in 3b-1. The recent-accounts list then held both accounts. A test account remains in Firebase
   and on the phone (harmless).
+  
+📌 Step 3c-1 results (password check, PIN copy on set/change, Onboarding PIN copy)
+- Antigravity's 3c investigation (real code read, nothing run) and my
+  corrections:
+  * SetPinScreen is rendered ONLY in SettingsScreen (Modal). OnboardingScreen has
+    its OWN PIN form. My Step 2 hook (hasPin true) was only in SetPinScreen, so
+    Onboarding never updated hasPin in the recent-accounts list; fixed here.
+  * verifyPassword(password) added to DataContext (mirrors the first half of
+    changePassword: linked = unwrap the household key, personal = decrypt saved
+    data; a profile with no saved data fails). PinUnlockScreen's own check
+    would accept a profile with no saved data.
+  * SetPinScreen now asks for the account password first (testID
+    set-pin-password-input), verifies it locally, saves the PIN as before,
+    then savePinCopy. Email comes from a new optional email prop that
+    SettingsScreen passes (getCurrentFirebaseUser()?.email), so no import path
+    was guessed. Layout is now KeyboardAvoidingView + ScrollView so Save stays
+    reachable. If there is no email the PIN is still saved, just no PIN copy.
+  * Onboarding exception (design item 7): App.tsx keeps { email, password } in
+    onboardingCredsRef only while screen === 'onboarding' (set in
+    onProfileCreated, cleared in onFinish and by an effect whenever screen
+    changes); OnboardingScreen gets it as initialCredentials and saves the PIN
+    copy in handleSavePin.
+- TEMP logs (remove in Step 4/5): "[quick unlock] TEMP PIN copy saved ... right
+  PIN -> ... wrong PIN -> ..." (SetPinScreen, runs attemptPinUnlock twice then
+  resetPinFailures) and "TEMP onboarding PIN copy saved".
+- WARNING for 3c-2 (Antigravity's plan would break existing PINs): the warm
+  lock screen must KEEP checking the PIN with verifyPin (hash), and only call
+  registerPinFailure on a wrong PIN. attemptPinUnlock reads the vault PIN copy,
+  and anyone whose PIN was set before this feature has none. Also
+  wipeQuickUnlock resets the counter, so "read the counter on mount" cannot
+  detect a lockout; keep the lockout in PinUnlockScreen state (the same
+  instance stays mounted while locked). Disable BOTH the PIN box and the
+  biometric auto-prompt/buttons after the 5th wrong PIN (the lock screen's
+  biometrics use LocalAuthentication, so wiping the vault does not stop them).
+  Reset the counter (resetPinFailures) after a successful fingerprint, PIN or
+  password unlock. readPinFailures is not exported from quickUnlock.ts.
+- Known: saving a PIN copy runs PBKDF2 (100k) several times, so Save PIN takes
+  a few seconds (longer while the TEMP checks exist). The local password check
+  can pass while Firebase would reject it if the password was changed on another
+  device (stale local salt); Step 5's sign-in failure path must wipe that
+  account.
+- Known: pin-quick-unlock.yaml (untested, deferred to Phase C) needs a
+  set-pin-password-input step before save-pin-button. Not edited.
+- Existing PINs have no PIN copy until re-set through Change PIN.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,

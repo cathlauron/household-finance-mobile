@@ -1569,6 +1569,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           <Modal visible={showSetPinModal} animationType="slide">
             <SetPinScreen
               username={username}
+              email={getCurrentFirebaseUser()?.email ?? undefined}
               onDone={() => {
                 setShowSetPinModal(false);
                 setPinIsSet(true);
