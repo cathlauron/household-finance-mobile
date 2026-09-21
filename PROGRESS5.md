@@ -1987,7 +1987,22 @@ node_modules/expo-secure-store, no code changed)
   (6) Unexplained "Text strings must be rendered within a <Text> component" ERROR seen twice
   in Metro just before a log out, and once before Step 4 existed (after a fingerprint
   turn-on). Cause unknown; possible '' && <View> pattern (a guess).
-  
+
+📌 Fix: "Text strings must be rendered within a <Text> component" (found and fixed after 4b)
+- Cause: the literal words "(blank line)" sat directly inside SettingsScreen.tsx's root
+  view, between two <Modal> blocks (about line 1970). git log -S shows it was added in
+  66c53a4 (Step 3c-2). Almost certainly a placeholder from that step's paste instructions
+  that was pasted literally. tsc cannot catch raw text in JSX.
+- Found by an Antigravity AST scan of ProfileScreen.tsx and SettingsScreen.tsx (other
+  screens NOT scanned). Deleted the line; a search for "blank line" across mobile-app/src
+  now returns nothing and tsc is clean.
+- Its four other findings (editingId, editingPayeeId, editingRuleId,
+  showSetPinModal && username) were judged NOT the cause: those values are a real id or
+  null, never an empty string. Left as they are; !! could harden them later.
+- Process rule: never put placeholder words like "(blank line)" in a paste block, and after
+  pasting run a quick Select-String for any placeholder text. Do not rely on tsc for this.
+- Metro check on-device: (fill in after testing: error gone / still shows).
+
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
 PROGRESS2.md, PROGRESS1.md, PROGRESS.md.
