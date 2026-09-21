@@ -1419,6 +1419,9 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
+- ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
+  this file). Step 1 done. Next: Step 2, after the Option 1 / Option 2
+  decision is recorded.
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1465,6 +1468,87 @@ every other phase.
   build, not against Expo Go. Reason: they currently target Expo Go, wait
   on text Home no longer shows, and have never run, so fixing them now
   would mean doing the work twice.
+
+=====================================================================
+🔐 PHASE C FEATURE - Quick unlock after a full app close (IN PROGRESS)
+=====================================================================
+Goal: fully closing and reopening the app must NOT ask for email, username
+and password. Only an explicit Log out, or a remote revoke from the Devices
+screen, forces full sign-in. After a close: account switcher with avatars ->
+pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
+
+📌 Confirmed by Antigravity investigation (real code read, nothing run)
+- This CONFIRMS the two earlier "believed by design, not confirmed"
+  cold-start notes above.
+- Cause: App.tsx's launch effect only calls loadProfilesIndex() and sets
+  'signIn' if any local profile exists (else 'intro'). It never checks
+  Firebase's saved login, even though firebase.ts already configures Auth
+  persistence with AsyncStorage.
+- derivedKey lives only in React state (memory) in App.tsx, so every full
+  close destroys it. PinUnlockScreen only works after backgrounding.
+- Nothing signs the user out on close or background. Only handleFullSignOut
+  (explicit) and handleRemoteRevoked (Firestore session doc revoked:true).
+- No revocation check runs on launch. Sessions live at
+  sessions/{uid}/devices/{deviceId}.
+- Sign-in derives the key with deriveKey(password, salt) (encryption.ts,
+  PBKDF2 100k). Linked households also unwrap a household key and pass it
+  to loadModel. The Firebase password and the encryption password are the
+  same string.
+- expo-secure-store was NOT installed (zero uses). expo-local-authentication
+  ~17.0.9 is installed. biometrics.ts and pin.ts exist, both keyed per
+  username.
+- No recent-accounts store existed. Avatars live inside the encrypted model
+  (model.avatars[username]).
+
+📌 Decisions locked (quick unlock)
+- Option A: OS-enforced vault (expo-secure-store, requireAuthentication) for
+  a fingerprint/face-locked copy, plus a separate PIN-locked copy.
+- Explicit Log out and remote revoke wipe both copies and remove the account
+  from the switcher.
+- Offline at launch: let the person in (fingerprint/PIN still required),
+  check revocation as soon as the phone is back online.
+- 5 wrong PINs: wipe the quick-unlock copies, full password required.
+- The switcher shows real avatar photos (an unencrypted copy sits in the
+  app's private storage).
+- The switcher lists up to 5 recent accounts (same as the household max).
+- OPEN DECISION before Step 3: Option 1 = every one of the 5 accounts gets
+  quick unlock by storing its password + email in the vault (reuses the
+  normal sign-in path; stores the real password), or Option 2 = only the
+  account Firebase remembers gets quick unlock, no passwords stored.
+
+📌 Plan (one Antigravity investigation before each step)
+- Step 1: install expo-secure-store; add src/recentAccounts.ts (max 5). DONE
+  in this commit, tsc-clean. Nothing visible changes.
+- Step 2: keep the recent-accounts list up to date (sign-in, create profile,
+  avatar change, PIN/fingerprint toggles, removal on log out/revoke).
+- Step 3: src/quickUnlock.ts (vault copies), saves at the right moments,
+  wipes on log out, revoke and 5 wrong PINs.
+- Step 4: AccountSwitcherScreen (avatars, fingerprint first, PIN fallback,
+  password fallback).
+- Step 5a: App.tsx launch logic plus revocation check (offline: allow, check
+  later). Step 5b: switching to another remembered account (Option 1 only).
+- Step 6: ONE EAS build, then on-device test (close/reopen, log out, remote
+  revoke, 5 wrong PINs, airplane mode, photo avatar, all 5 accounts).
+
+⚠️ Known issues / gotchas (quick unlock)
+- expo-secure-store is native: the installed APK does not have it until the
+  Step 6 build. Batch into ONE build (free plan: 15 Android builds a month).
+- Firebase keeps ONE signed-in user, so quick unlock for several accounts
+  needs a sign-in per switch (Option 1) or is limited to one (Option 2).
+- Existing PINs are stored only as a hash, so a PIN-locked copy cannot be
+  made for a PIN that was set earlier without the plaintext PIN. Step 3's
+  investigation must decide how to migrate (for example on the next
+  successful PIN entry).
+- Recent accounts on a switch: leave the other account's sessions document
+  alone so remote revoke still works, and check it BEFORE calling
+  registerDeviceSession (which deletes and recreates the document and would
+  erase a revoked flag). To confirm in Step 5.
+- The PIN-locked copy can be guessed offline by someone who breaks the vault
+  itself; the 5-tries rule does not stop that.
+- iOS: expo-secure-store likely needs a faceIDPermission entry in its
+  app.json plugin config. Unverified, check when an iOS build is planned.
+- Saving a fingerprint-locked item may itself show a fingerprint prompt once.
+  Unverified.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
