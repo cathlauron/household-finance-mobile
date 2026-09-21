@@ -27,7 +27,8 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "USE_BIOMETRIC"
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -56,6 +57,12 @@
         }
       ],
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fc22064f-0d07-4d26-814d-61d99dbe6efd"
+      }
+    },
+    "owner": "cathlauron"
   }
 }
