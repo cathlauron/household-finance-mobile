@@ -1662,6 +1662,11 @@ node_modules/expo-secure-store, no code changed)
 6. The existing PIN is only a hash, so it is re-set once in Settings. Until
    then a cold start uses fingerprint or password. Each account also needs one
    full sign-in after this feature ships to get its fingerprint copy.
+7. Onboarding exception (person chose option A): right after account creation
+   the PIN copy is saved WITHOUT asking for the password again, because the
+   password is held in memory only while the Onboarding screen is showing (an
+   App.tsx ref, cleared on Skip or Go to Dashboard). Rejected: retyping the
+   password on the Onboarding PIN step (B), and skipping the PIN copy there (C).
 
 📌 Step 3a results
 - New file mobile-app/src/quickUnlock.ts: saveFingerprintCopy /
@@ -1757,7 +1762,7 @@ node_modules/expo-secure-store, no code changed)
   when the compiler should catch a missed call.
 - Checked in Expo Go (Android): a throwaway account was created; the
   fingerprint prompt appeared on Onboarding, the copy saved and read back, the
-  app did not lock, and log out wiped it. A test account remains in Firebase
+  app did not lock. Log out of this account was NOT run (Expo was stopped first); the log-out wipe was verified on the other account in 3b-1. The recent-accounts list then held both accounts. A test account remains in Firebase
   and on the phone (harmless).
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
