@@ -1580,7 +1580,10 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
   saved:" to Metro on every write (no photo data). Remove in Step 4.
 - Checked in Expo Go through the Metro log (sign-in, PIN on/off,
   fingerprint on/off, avatar set/clear, lock-screen switch, log out).
-
+- Metro showed "[avatar] base64 chars: 4516" for one test photo, far under the
+  80,000 cap (this fills the number the PC.5a note said was never recorded;
+  it is one sample, not the largest possible).
+  
 ⚠️ Step 2 gotchas
 - Avatar changes made on ANOTHER phone are not copied into the list until
   the next sign-in on this phone. Step 5a should refresh the avatar on unlock.
