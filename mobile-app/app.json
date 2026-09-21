@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.cathlauron.householdfinance",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#122b21"
@@ -50,9 +51,11 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Finance Flow to access your photos so you can choose a profile picture or attach receipts."
+          "photosPermission": "Allow Finance Flow to access your photos so you can choose a profile picture or attach receipts.",
+          "microphonePermission": false
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
