@@ -1420,8 +1420,8 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Steps 1 and 2 done and pushed. Option 1 chosen. Next: Step 3
-  (vault storage for email + username + password).
+  this file). Steps 1, 2 and 3a done and pushed. Option 1 chosen. Next: 3b
+  (save the fingerprint copy at sign-in and profile creation).
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1524,8 +1524,11 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
   in this commit, tsc-clean. Nothing visible changes.
 - Step 2: DONE. The recent-accounts list is kept up to date (sign-in, create
   profile, avatar, PIN on/off, fingerprint on/off, removal on log out/revoke).
-- Step 3: src/quickUnlock.ts (vault copies), saves at the right moments,
-  wipes on log out, revoke and 5 wrong PINs.
+- Step 3 is split in three (see "Step 3 design, locked" below):
+  3a DONE (src/quickUnlock.ts + wipe hooks). 3b = save the fingerprint copy at
+  sign-in and profile creation, refresh it on password change. 3c = ask for
+  the password on PIN set/change and fingerprint on, PIN copy saved there,
+  and the 5-wrong-PIN limit on the lock screen.
 - Step 4: AccountSwitcherScreen (avatars, fingerprint first, PIN fallback,
   password fallback).
 - Step 5a: App.tsx launch logic plus revocation check (offline: allow, check
@@ -1602,6 +1605,91 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
   (read-modify-write, no lock). Unlikely with the current hooks.
 - Antigravity claimed AsyncStorage has no practical size limit; not
   verified. 5 photo avatars is about 400 KB, which is small.
+
+📌 Step 3 investigation results (Antigravity read the real files in
+node_modules/expo-secure-store, no code changed)
+- Key names may contain only letters, digits ".", "-", "_". Usernames from
+  sanitizeUsername (a-z 0-9 . _ -) always qualify. Value limit is 2048 bytes
+  (only a console warning today); the credentials blob is far under it.
+- Android: requireAuthentication creates a key with
+  setUserAuthenticationRequired(true) and NO validity duration, so EVERY
+  operation prompts, including setItemAsync (saving shows a fingerprint
+  prompt). It requires BIOMETRIC_STRONG and does NOT accept the phone's
+  PIN/pattern as a fallback. Face unlock on some phones may not count as
+  strong (unverified on the Vivo V40 Lite 5G).
+- Adding or removing a fingerprint on the phone invalidates the key. Android
+  getItemAsync then returns null (no error). iOS uses biometryCurrentSet and
+  the read throws. Antigravity's claim that setItemAsync regenerates the key
+  was NOT verified (only the read code was shown).
+- A cancelled prompt throws an error whose message contains "cancel"
+  (Android "User canceled the authentication", iOS "User canceled the
+  operation."). deleteItemAsync needs no authentication on either platform.
+- iOS needs NSFaceIDUsageDescription: app.json infoPlist already has it, and
+  the "expo-secure-store" plugin is listed. requireAuthentication does not
+  work in Expo Go on iOS. Expo Go on Android is not confirmed either way.
+- The password is typed only in SignInScreen and CreateProfileScreen and is
+  never kept afterward. All 8 onSignedIn call sites have email and password in
+  scope (5 in handleSignIn, 3 recovery flows through recoveryContext).
+- changePassword() in DataContext.tsx has both old and new password. It
+  updates keyRef.current, but App.tsx's derivedKey is NOT updated (an
+  existing gap, not caused by this feature).
+- PinUnlockScreen has NO wrong-attempt limit today (unlimited tries).
+  SetPinScreen never asks for the old PIN or the password.
+- handleSignIn depends on component state (setBusy, setError, setIsMigrating,
+  setIsRestoring, triggerRecovery, the recovery modal, the slow hint), so
+  signing in with stored credentials needs auto-submit props on SignInScreen
+  (decide in Step 5).
+
+📌 Step 3 design, locked (person: "go with your recommendations")
+1. Sign-in and profile creation save the fingerprint copy automatically (the
+   password is already typed). Nothing is kept in memory afterward. Rejected:
+   keeping the password in memory all session, and fetching the password from
+   the fingerprint copy to build the PIN copy (fails when that copy is
+   missing or invalidated).
+2. Anywhere else that needs to create a copy asks for the password once,
+   checked against local data: setting or changing the PIN, and turning
+   fingerprint on in Settings. This also stops someone with the unlocked
+   phone from setting their own PIN.
+3. Changing the password refreshes the fingerprint copy and wipes the PIN
+   copy (the PIN is set again to get PIN quick unlock back).
+4. Wipes: log out, remote revoke, 5 wrong PINs (both lock screens), PIN
+   removed (PIN copy only), fingerprint off (fingerprint copy only), account
+   dropped off the 5-account list.
+5. If a copy cannot be used, fall back to the other copy or the password. If
+   a stored password no longer works (for example it was changed on another
+   device), wipe that account and require full sign-in with a message.
+6. The existing PIN is only a hash, so it is re-set once in Settings. Until
+   then a cold start uses fingerprint or password. Each account also needs one
+   full sign-in after this feature ships to get its fingerprint copy.
+
+📌 Step 3a results
+- New file mobile-app/src/quickUnlock.ts: saveFingerprintCopy /
+  loadFingerprintCopy / removeFingerprintCopy (requireAuthentication, prompt
+  text, keychainAccessible WHEN_UNLOCKED_THIS_DEVICE_ONLY), savePinCopy /
+  removePinCopy (PIN-derived key over the credentials, stored in SecureStore,
+  salt in AsyncStorage), a persisted wrong-PIN counter (MAX_PIN_ATTEMPTS = 5;
+  counted BEFORE the check, reset on success; attemptPinUnlock,
+  registerPinFailure, resetPinFailures), getQuickUnlockPresence (no prompt), and
+  wipeQuickUnlock (both copies plus the counter). Nothing calls the save
+  functions yet.
+- Wipes hooked in App.tsx: handleRemoteRevoked, handleFullSignOut (skipped
+  for the lock screen's "Sign in to another account", same rule as the recent
+  accounts list) and recordRecentAccount (accounts dropped off the 5-account
+  list).
+- Checked in Expo Go: log out and sign in still work with the new wipe calls.
+  Nothing was saved or wiped for real yet; that is tested in 3b/3c and Step 6.
+
+⚠️ Step 3 gotchas
+- The stored password is the REAL password (same on every device). The wipe
+  rules are mandatory, and a bug in them would leave a real password on the
+  phone.
+- The PIN copy can be guessed offline by someone who breaks into the vault
+  itself; the 5-tries rule does not stop that.
+- 3c must decide what "5 wrong PINs" does on the warm lock screen (the app
+  was only backgrounded, the key is still in memory): wipe the vault copies
+  and require the password.
+- expo-secure-store needs the Step 6 EAS build to be tested for real
+  (fingerprint prompt, invalidation after a fingerprint change).
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,

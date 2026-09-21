@@ -1,3 +1,4 @@
+import { wipeQuickUnlock } from './src/quickUnlock';
 import { upsertRecentAccount, removeRecentAccount } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import React, { useEffect, useRef, useState } from 'react';
@@ -107,7 +108,7 @@ function AppContent() {
       hasPinSetUp(username),
       getBiometricState(username),
     ]);
-    await upsertRecentAccount({
+    const evicted = await upsertRecentAccount({
       username,
       uid,
       householdId,
@@ -116,6 +117,10 @@ function AppContent() {
       hasPin: pinIsSetUp,
       biometricsEnabled: biometricState === 'ENABLED',
     });
+      // An account pushed off the 5-account list also loses its quick-unlock copies.
+    for (const evictedUsername of evicted) {
+      wipeQuickUnlock(evictedUsername).catch(() => {});
+    }
   }
 
   async function registerAndListenDeviceSession(uid: string) {
@@ -139,6 +144,7 @@ function AppContent() {
     const revokedUsername = usernameRef.current;
     if (revokedUsername) {
       removeRecentAccount(revokedUsername).catch(() => {});
+      wipeQuickUnlock(revokedUsername).catch(() => {});
     }
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
@@ -255,6 +261,7 @@ function AppContent() {
     keepRecentOnSignOutRef.current = false;
     if (signedOutUsername && !keepRecent) {
       removeRecentAccount(signedOutUsername).catch(() => {});
+      wipeQuickUnlock(signedOutUsername).catch(() => {});
     }
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
