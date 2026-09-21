@@ -1420,8 +1420,8 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
-  this file). Step 1 done. Next: Step 2, after the Option 1 / Option 2
-  decision is recorded.
+  this file). Step 1 done and pushed. Option 1 chosen. Next: Step 2 (keep
+  the recent-accounts list up to date).
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1511,10 +1511,13 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
 - The switcher shows real avatar photos (an unencrypted copy sits in the
   app's private storage).
 - The switcher lists up to 5 recent accounts (same as the household max).
-- OPEN DECISION before Step 3: Option 1 = every one of the 5 accounts gets
-  quick unlock by storing its password + email in the vault (reuses the
-  normal sign-in path; stores the real password), or Option 2 = only the
-  account Firebase remembers gets quick unlock, no passwords stored.
+- DECIDED (Option 1): every one of the 5 accounts gets quick unlock. The vault
+  stores that account's email, username and password in two locked copies
+  (fingerprint/face-locked and PIN-locked). After unlock, the app runs the
+  normal sign-in path, including the linked-household key handling. This
+  stores the REAL password (same on every device), so the wipe rules on log
+  out, remote revoke and 5 wrong PINs are mandatory. Option 2 (one account,
+  no passwords stored) was rejected.
 
 📌 Plan (one Antigravity investigation before each step)
 - Step 1: install expo-secure-store; add src/recentAccounts.ts (max 5). DONE
@@ -1533,8 +1536,11 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
 ⚠️ Known issues / gotchas (quick unlock)
 - expo-secure-store is native: the installed APK does not have it until the
   Step 6 build. Batch into ONE build (free plan: 15 Android builds a month).
-- Firebase keeps ONE signed-in user, so quick unlock for several accounts
-  needs a sign-in per switch (Option 1) or is limited to one (Option 2).
+- Firebase keeps ONE signed-in user, so switching accounts means a Firebase
+  sign-in each time (Option 1). Do not touch the other account's sessions
+  document when switching.
+- app.json plugins now include "expo-secure-store" and package.json has
+  expo-secure-store ~15.0.8 (both pushed in Step 1).
 - Existing PINs are stored only as a hash, so a PIN-locked copy cannot be
   made for a PIN that was set earlier without the plaintext PIN. Step 3's
   investigation must decide how to migrate (for example on the next
