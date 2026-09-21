@@ -96,6 +96,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
     isLinked,
     getPersonalKey,
     getHouseholdKey,
+    verifyPassword,
   } = useData();
   const styles = makeStyles(colors);
 
@@ -130,6 +131,10 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
   const [pinIsSet, setPinIsSet] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
   const [showSetPinModal, setShowSetPinModal] = useState(false);
+  const [biometricPasswordModalOpen, setBiometricPasswordModalOpen] = useState(false);
+  const [biometricPassword, setBiometricPassword] = useState('');
+  const [biometricPasswordBusy, setBiometricPasswordBusy] = useState(false);
+  const [biometricPasswordError, setBiometricPasswordError] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -193,14 +198,55 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
       updateRecentAccountIfPresent(username, { biometricsEnabled: false }).catch(() => {});
       setBiometricState('DISABLED');
     } else {
-      const result = await attemptBiometricAuth(`Verify ${biometricLabel} to enable`);
-      if (result.success) {
-        await setBiometricsDisabled(username, false);
+      setBiometricPassword('');
+      setBiometricPasswordError('');
+      setBiometricPasswordBusy(false);
+      setBiometricPasswordModalOpen(true);
+    }
+  }
+
+  async function handleConfirmBiometricPassword() {
+    if (!username) return;
+    if (!biometricPassword) {
+      setBiometricPasswordError('Enter your account password.');
+      return;
+    }
+    setBiometricPasswordError('');
+    setBiometricPasswordBusy(true);
+    // Let the spinner draw before the slow password check freezes the screen.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    try {
+      const passwordOk = await verifyPassword(biometricPassword);
+      if (!passwordOk) {
+        setBiometricPasswordBusy(false);
+        setBiometricPasswordError('Incorrect password.');
+        return;
+      }
+      const password = biometricPassword;
+      setBiometricPasswordModalOpen(false);
+      setBiometricPassword('');
+      setBiometricPasswordBusy(false);
+      // saveFingerprintCopyIfPossible only works while fingerprint is switched on.
+      await setBiometricsDisabled(username, false);
+      const email = getCurrentFirebaseUser()?.email ?? '';
+      const outcome = email
+        ? await saveFingerprintCopyIfPossible({ email, username, password })
+        : 'unavailable';
+      if (outcome === 'saved' || outcome === 'unavailable') {
         updateRecentAccountIfPresent(username, { biometricsEnabled: true }).catch(() => {});
         setBiometricState('ENABLED');
+        setBiometricError('');
       } else {
-        setBiometricError(biometricErrorMessage(result.error, biometricLabel) || "Couldn't verify — try again");
+        await setBiometricsDisabled(username, true);
+        await removeFingerprintCopy(username);
+        updateRecentAccountIfPresent(username, { biometricsEnabled: false }).catch(() => {});
+        setBiometricState('DISABLED');
+        setBiometricError(outcome === 'failed' ? "Couldn't set up quick unlock. Try again." : '');
       }
+    } catch (e) {
+      setBiometricPasswordBusy(false);
+      setBiometricPasswordError('Something went wrong. Try again.');
+      setBiometricError("Couldn't turn on. Try again.");
     }
   }
 
@@ -1494,7 +1540,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           </View>
         ) : (
           <>
-            <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={handleToggleBiometrics}>
+              <TouchableOpacity testID="biometric-toggle" style={styles.row} activeOpacity={0.7} onPress={handleToggleBiometrics}>
               <Text style={styles.rowName}>{biometricLabel} Unlock</Text>
               <View style={[styles.toggleTrack, biometricState === 'ENABLED' && styles.toggleTrackActive]}>
                 <View style={[styles.toggleThumb, biometricState === 'ENABLED' && styles.toggleThumbActive]} />
@@ -1875,6 +1921,53 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
         </TouchableOpacity>
       </BottomSheet>
 
+      {/* Fingerprint password Modal */}
+      <Modal
+        visible={biometricPasswordModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!biometricPasswordBusy) setBiometricPasswordModalOpen(false); }}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => { if (!biometricPasswordBusy) setBiometricPasswordModalOpen(false); }}
+        >
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Turn on {biometricLabel}</Text>
+            <Text style={styles.sectionSub}>Enter your account password.</Text>
+            <Text style={styles.inputLabel}>Password</Text>
+            <PasswordField
+              testID="biometric-password-input"
+              style={styles.input}
+              placeholder="Your password"
+              value={biometricPassword}
+              onChangeText={setBiometricPassword}
+            />
+            {!!biometricPasswordError && <Text style={styles.errorText}>{biometricPasswordError}</Text>}
+            <TouchableOpacity
+              testID="biometric-password-submit-button"
+              style={[styles.saveButton, (!biometricPassword || biometricPasswordBusy) && { opacity: 0.4 }]}
+              disabled={!biometricPassword || biometricPasswordBusy}
+              onPress={handleConfirmBiometricPassword}
+            >
+              {biometricPasswordBusy ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Turn on</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="biometric-password-cancel-button"
+              style={[styles.cancelButton, biometricPasswordBusy && { opacity: 0.4 }]}
+              disabled={biometricPasswordBusy}
+              onPress={() => setBiometricPasswordModalOpen(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      (blank line)
 
       {/* Retroactive Recovery Key Modal */}
       <Modal
