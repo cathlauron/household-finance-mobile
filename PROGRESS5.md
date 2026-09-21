@@ -1421,8 +1421,12 @@ every other phase.
 ▶️ Next step
 - ACTIVE: quick unlock after a full close (see the 🔐 block near the end of
   this file). Steps 1, 2, 3a, 3b-1, 3b-2 and 3c-1 done and pushed. Option 1
-  chosen. Next: 3c-2 (Settings fingerprint toggle and PIN-removal hooks, and the
-  5-wrong-PIN limit on the lock screen).
+  chosen. 3c-2 is HALF done: the PIN-off and fingerprint-off wipes and the
+  5-wrong-PIN limit are built and tested (see "Step 3c-2 results, part 1").
+  Still to do in 3c-2: the Settings fingerprint-ON flow (ask for the password,
+  verify it, save the fingerprint copy). Then Step 4. The two slowness
+  findings (Change PIN, lock-screen password unlock) are NOTED ONLY, to be
+  fixed later if the person decides to.
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -1809,6 +1813,71 @@ node_modules/expo-secure-store, no code changed)
   set-pin-password-input step before save-pin-button. Not edited.
 - Existing PINs have no PIN copy until re-set through Change PIN.
 
+📌 Step 3c-2 results, part 1 (PIN removal, fingerprint off, 5-wrong-PIN limit)
+- Antigravity's 3c-2 investigation (real code read, nothing run) and my
+  corrections:
+  * registerPinFailure(username) and resetPinFailures(username) both take a
+    username. I had guessed "no arguments"; that was wrong.
+  * It claimed removePinCopy and removeFingerprintCopy were already imported
+    at the top of SettingsScreen.tsx but never showed the line. tsc was the
+    check; the tsc result was not recorded here.
+- Built in SettingsScreen.tsx: turning the PIN off now also calls
+  removePinCopy(username) (the fingerprint copy is left alone). Turning
+  fingerprint off now also calls removeFingerprintCopy(username) (the PIN
+  copy is left alone).
+- Built in PinUnlockScreen.tsx: imports registerPinFailure and
+  resetPinFailures from ../quickUnlock; new isLockedOut state. The typed PIN
+  is still checked with verifyPin (the hash). A wrong PIN calls
+  registerPinFailure and shows "Incorrect PIN - N attempts left." On the 5th
+  wrong PIN (wiped: true) the screen goes into lockout: forced into password
+  mode; the PIN box, the fingerprint buttons and the "Use PIN or biometrics"
+  link are hidden; runBiometricAuth returns early while isLockedOut.
+  resetPinFailures runs after a right PIN, a successful fingerprint, or a
+  right password. The lockout lives in the screen's own state (App.tsx keeps
+  the same instance mounted while locked; read from code, not proven).
+- Tested on-device by the person: it worked. Which exact steps were run
+  beyond the 5-wrong-PIN lockout was not recorded.
+
+📌 Findings from the on-device test (NOTED ONLY, not fixed; the person will
+    decide when to come back to them)
+1. Change PIN is slow. It takes more than 10 seconds and the screen gives no
+   clear sign it is still working. Likely cause (NOT measured): Save PIN runs
+   the local password check (verifyPassword) and savePinCopy, and each does
+   the 100k-round key derivation, plus the TEMP checks in SetPinScreen
+   (attemptPinUnlock twice, then resetPinFailures), which run it more. The
+   derivation runs on the JS thread. The TEMP checks are due for removal in
+   Step 4/5, which should cut some of the time. Not re-checked: what the Save
+   button shows while busy. Ideas: an explicit "Saving..." state or overlay;
+   remove the TEMP checks.
+2. Password unlock after a lockout looks frozen. After typing the password on
+   the lockout screen there was no sign it was logging in. Likely cause (NOT
+   verified): handlePasswordUnlock in PinUnlockScreen.tsx calls setBusy(true)
+   and then runs deriveKey straight away. deriveKey is synchronous, so the
+   JS thread is busy before the screen can repaint, and the spinner already
+   in the button (busy ? ActivityIndicator : "Unlock") may never appear. Idea:
+   let one frame render before the heavy work starts (a short await), or show
+   "Unlocking..." text. The same pattern may exist in other flows; not checked.
+3. OPEN DECISION (not chosen yet; the code currently behaves like option B):
+   wipeQuickUnlock deletes the two vault copies but NOT the older PIN hash in
+   pin.ts, the hasPin flag, or the biometricsEnabled flag. After a lockout and
+   a password unlock, the lock screen shows the PIN box again with a fresh
+   counter and the old PIN still works, while Settings says Quick PIN is
+   active but no PIN copy exists. Option A: on lockout also call
+   removePin(username) and set hasPin false and biometricsEnabled false in the
+   recent-accounts list. Option B: leave it until the cold-start flow exists.
+- Still to do in 3c-2: the Settings fingerprint-ON flow. A follow-up
+  investigation was drafted (imports and useData() line in SettingsScreen.tsx;
+  where the email prop for SetPinScreen comes from; whether
+  getCurrentFirebaseUser exists; the retroactive-recovery and recovery-key
+  modals in full as a possible password-prompt pattern; setBiometricsDisabled
+  and getBiometricState signatures; SetPinScreen's full "if (email)" block).
+  Questions to settle before writing code:
+  * If the fingerprint copy save is cancelled or fails, should the toggle
+    roll back to off? (Leaning: yes for cancelled or failed; keep it on for
+    "unavailable", which behaves like today's lock-screen-only fingerprint.)
+  * Keep the old "Verify to enable" prompt? (Leaning: drop it, since the
+    password now proves ownership and the save itself prompts on Android.)
+    
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
 PROGRESS2.md, PROGRESS1.md, PROGRESS.md.

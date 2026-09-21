@@ -8,6 +8,7 @@ import PasswordField from '../components/PasswordField';
 import { loadProfilesIndex, ProfileIndexEntry, loadEncryptedProfileData } from '../storage';
 import { deriveKey, decryptJSON } from '../encryption';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey } from '../household';
+import { registerPinFailure, resetPinFailures } from '../quickUnlock';
 
 type Props = {
   username: string;
@@ -29,11 +30,13 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   const [passwordInput, setPasswordInput] = useState('');
   const [profiles, setProfiles] = useState<ProfileIndexEntry[]>([]);
   const [selectedUsername, setSelectedUsername] = useState(username);
+  const [isLockedOut, setIsLockedOut] = useState(false);
 
   const inFlightRef = useRef(false);
 
   async function runBiometricAuth(isManual = false) {
     if (inFlightRef.current) return;
+    if (isLockedOut) return;
     if (!isManual && Date.now() - lastBiometricAttemptTime < 3000) return;
 
     inFlightRef.current = true;
@@ -41,6 +44,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     try {
       const result = await attemptBiometricAuth('Unlock Finance Flow');
       if (result.success) {
+        await resetPinFailures(username);
         onUnlocked();
       } else {
         const msg = biometricErrorMessage(result.error, biometricLabel);
@@ -91,6 +95,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
         }
       }
       setBusy(false);
+      await resetPinFailures(selectedUsername);
       onUnlocked(selectedUsername, key);
     } catch (e) {
       setBusy(false);
@@ -103,13 +108,22 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     setError('');
     setBusy(true);
     const ok = await verifyPin(username, pin);
-    setBusy(false);
-    if (!ok) {
-      setError('Incorrect PIN — try again.');
-      setPin('');
+    if (ok) {
+      await resetPinFailures(username);
+      setBusy(false);
+      onUnlocked();
       return;
     }
-    onUnlocked();
+    const { wiped, attemptsLeft } = await registerPinFailure(username);
+    setBusy(false);
+    setPin('');
+    if (wiped) {
+      setIsLockedOut(true);
+      setUsePasswordMode(true);
+      setError('Too many incorrect PINs. Enter your account password to unlock.');
+      return;
+    }
+    setError(`Incorrect PIN — ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.`);
   }
 
   return (
@@ -152,9 +166,11 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
           >
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(false); setError(''); }}>
-            <Text style={styles.ghostBtnText}>Use PIN or biometrics</Text>
-          </TouchableOpacity>
+          {!isLockedOut && (
+            <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(false); setError(''); }}>
+              <Text style={styles.ghostBtnText}>Use PIN or biometrics</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={[styles.ghostBtn, { marginTop: 4 }]} onPress={onSignOut}>
             <Text style={[styles.ghostBtnText, { color: '#78716C' }]}>Sign in to another account</Text>
           </TouchableOpacity>

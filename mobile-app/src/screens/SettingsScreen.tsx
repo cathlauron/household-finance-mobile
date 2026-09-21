@@ -189,6 +189,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
     setBiometricError('');
     if (biometricState === 'ENABLED') {
       await setBiometricsDisabled(username, true);
+      await removeFingerprintCopy(username);
       updateRecentAccountIfPresent(username, { biometricsEnabled: false }).catch(() => {});
       setBiometricState('DISABLED');
     } else {
@@ -1528,6 +1529,7 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
                           setPinBusy(true);
                           try {
                             await removePin(username);
+                            await removePinCopy(username);
                             updateRecentAccountIfPresent(username, { hasPin: false }).catch(() => {});
                             setPinIsSet(false);
                           } catch (e) {
