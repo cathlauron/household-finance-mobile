@@ -1967,7 +1967,6 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           </Pressable>
         </Pressable>
       </Modal>
-      (blank line)
 
       {/* Retroactive Recovery Key Modal */}
       <Modal
