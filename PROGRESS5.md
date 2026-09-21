@@ -1208,6 +1208,54 @@ not abandoned - return to them before or alongside Phase C.
   are small. Reasonable to STOP the pass here. Intro slide copy also has
   not had the pass. About 38 strings over 12 words remain in the 13
   earlier screens (many are protected security text).
+  
+📌 Phase C start: first Android EAS build (added this session)
+- Prep committed and pushed (423182b): mobile-app/eas.json (new; profile
+  "preview" = internal distribution, Android buildType apk;
+  cli.appVersionSource "local"), app.json android.versionCode 1, expo-font
+  added (~14.0.12; expo-doctor now 18/18, duplicate expo-font gone),
+  expo-image-picker microphonePermission false (drops RECORD_AUDIO; the
+  camera permission was NOT blocked because nobody checked whether the app
+  uses the camera).
+- eas init run: project @cathlauron/mobile-app on the person's personal
+  account (there is also a team account cathlaurons-team), project ID
+  fc22064f-0d07-4d26-814d-61d99dbe6efd, app.json now has extra.eas.projectId
+  and owner "cathlauron". eas init also rewrote android.permissions to
+  android.permission.USE_BIOMETRIC and android.permission.USE_FINGERPRINT.
+  Probably harmless (same permission, full name); not confirmed why. If
+  biometric unlock misbehaves on the installed build, look here first.
+- First build: eas build --platform android --profile preview FINISHED.
+  Build page:
+  https://expo.dev/accounts/cathlauron/projects/mobile-app/builds/0fd9cd0b-17c1-4642-8280-5dd02b2577d4
+  NOT YET installed or tested on the phone at the time of writing.
+  Free plan per the billing page screenshot: 15 Android and 15 iOS builds
+  a month, low-priority queue. Whether fast-failed builds are still waived
+  was not confirmed (2024 changelog said up to 10 a month).
+- Antigravity's Phase C readiness report (investigation only): the app
+  schedules LOCAL notifications only (no push token calls), so no FCM setup
+  is needed; Firebase uses the JS SDK with a hard-coded config in
+  src/firebase.ts (committed); no google-services.json; icons are 1024x1024
+  and square; expo-image-picker photosPermission is iOS-only (resolves the
+  old PC.5a note). Unverified claims in that report, not acted on: a
+  missing SafeAreaProvider (I believe React Navigation supplies one), the
+  notification icon being full colour (cosmetic).
+- Decision: first build is the "preview" APK. expo-dev-client deferred until
+  real Google/Apple/Facebook sign-in (PC.3) or heavy on-device iteration
+  needs it.
+- Process lesson: in the app.json edit, my find/replace snippets included
+  context lines that were pasted on top of the existing ones, which
+  duplicated blocks and broke the JSON (expo-doctor then crashed with a
+  config error). Fixed by replacing the whole file. For short files, give a
+  full-file replacement.
+- TO DO on the installed build: screenshot re-test (sign-in, Home, a tab);
+  edge-to-edge layout; fingerprint/face unlock; photo avatar (no microphone
+  prompt); notification permission and icon; gestures; restart behaviour.
+  Then update the five Maestro flows (appId com.cathlauron.householdfinance,
+  replace the "You're signed in" waits).
+- TO DO before real users: confirm the Firestore security rules require
+  sign-in in the Firebase Console (the readiness report never checked them).
+- Not yet done: iOS build (needs an Apple developer account, about $99 a
+  year), Google Play (about $25 once), PC.3 social sign-in.
 
 Checkpoint table
 
