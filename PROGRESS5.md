@@ -1420,12 +1420,11 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a and 4b
-  done and pushed. Next: Step 4c (remove every TEMP log and TEMP check, including the
-  read-back in quickUnlock.ts), then Step 5a (offline path, revocation check before
-  registerDeviceSession, refresh avatar on unlock, lockout decision), 5b (switching accounts),
-  then Step 6 (ONE EAS build and the full on-device test). Still open, decide before 5a: what a
-  lockout should do to the old PIN hash and the hasPin / biometricsEnabled flags. Noted only:
-  the slowness of Change PIN and Turn on fingerprint (about 17 s in Expo Go).
+  done and pushed. Steps 4c-1 and 4c-2 also done and pushed. Next: Step 5a (offline path, revocation
+check before registerDeviceSession, refresh avatar on unlock, lockout decision),
+then 5b (switching accounts), then Step 6 (ONE EAS build and the full on-device test).
+Also open: the ~50-second Change PIN timing finding above needs re-measuring on an
+installed build before deciding whether it needs a real fix.
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -2002,6 +2001,41 @@ node_modules/expo-secure-store, no code changed)
 - Process rule: never put placeholder words like "(blank line)" in a paste block, and after
   pasting run a quick Select-String for any placeholder text. Do not rely on tsc for this.
 - Metro check on-device: (fill in after testing: error gone / still shows).
+
+📌 Step 4c results (TEMP cleanup)
+- 4c-1: removed the "[recent accounts] saved" log from recentAccounts.ts, the
+  "[quick unlock] TEMP wiped copies for" log from wipeQuickUnlock, and the TEMP
+  read-back (a second fingerprint prompt) from saveFingerprintCopyIfPossible in
+  quickUnlock.ts. Turning fingerprint on now shows exactly one prompt.
+- 4c-2: removed the two extra attemptPinUnlock checks and the resetPinFailures call
+  they needed in SetPinScreen.tsx (Change PIN), and the TEMP log in
+  OnboardingScreen.tsx's first-time PIN step. Both now call savePinCopy without
+  awaiting a variable that was only used for the removed logging. Confirmed by
+  search (no TEMP/console.log/attemptPinUnlock/resetPinFailures/copied remain in
+  either file) and a clean npx tsc --noEmit.
+- Tested on-device (Expo Go, Android, by the person): fingerprint toggle shows one
+  prompt; a throwaway profile's first-time PIN in Onboarding still saved and moved
+  to step 3; the switcher's PIN path still unlocked correctly on both paths
+  afterward, which is now the only proof the copy saves correctly (the TEMP checks
+  that used to prove this are gone). No [quick unlock] or [recent accounts] lines
+  appear anywhere anymore.
+- TIMING FINDING, NOT FIXED, noted for later: Change PIN was stopwatch-timed at
+  ~50 seconds, TWICE in a row on the same account (ruling out a one-time cold-start
+  cost) - slower than the "over 10 seconds" noted before this cleanup, even though
+  4c-2 removed two of the three key derivations Change PIN used to run. This
+  contradicts the expectation that removing work would speed it up, so the real
+  cost is NOT primarily the two removed checks. Not investigated further this
+  session. First-time PIN in Onboarding was separately timed at ~25 seconds for a
+  single savePinCopy call. Suspect (UNVERIFIED): the PBKDF2 derivation itself
+  (100k rounds, used by verifyPassword, savePin/savePinCopy) may simply be this
+  slow on the JS thread in Expo Go on this phone, and the earlier "10+ seconds"
+  notes undercounted it, rather than the TEMP checks being the main cost. Measure
+  on the Phase C installed build before deciding whether this needs a real fix
+  (e.g. moving derivation off the JS thread, reducing rounds, or a "Saving..."
+  overlay so it doesn't look frozen even if it stays slow).
+- All four TEMP items from the Step 4a investigation are now removed. Nothing else
+  changed in quickUnlock.ts, recentAccounts.ts, SetPinScreen.tsx or
+  OnboardingScreen.tsx.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
