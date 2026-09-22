@@ -1420,8 +1420,16 @@ every other phase.
 
 ▶️ Next step
 - ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a and 4b
-  done and pushed. Steps 4c-1 and 4c-2 also done and pushed. Next: Step 5a (offline path, revocation
-check before registerDeviceSession, refresh avatar on unlock, lockout decision),
+  done and pushed. Steps 4c-1 and 4c-2 also done and pushed. Next: Step 5a-1 also done and pushed (revocation check + Change PIN slow hint). Next: Step 5a-2
+(offline unlock for UNLINKED profiles only — linked profiles stay online-only for now, per
+the loadModel offline-cache gap noted during the 5a investigation), then 5b (switching
+accounts), then Step 6 (ONE EAS build and the full on-device test). Open, deliberately
+deferred: cutting Change PIN's two derivations down to one (see the 5a-1 note above);
+avatar refresh for OTHER remembered accounts in the switcher (only the currently-signing-in
+account's avatar refreshes today); the pre-existing loadModel offline-cache gap for linked
+households (a local cache of the last-synced household model already exists but isn't used
+when offline — found during investigation, not caused by this feature, needs its own fix
+later). 
 then 5b (switching accounts), then Step 6 (ONE EAS build and the full on-device test).
 Also open: the ~50-second Change PIN timing finding above needs re-measuring on an
 installed build before deciding whether it needs a real fix.
@@ -2036,6 +2044,50 @@ node_modules/expo-secure-store, no code changed)
 - All four TEMP items from the Step 4a investigation are now removed. Nothing else
   changed in quickUnlock.ts, recentAccounts.ts, SetPinScreen.tsx or
   OnboardingScreen.tsx.
+
+📌 Step 5a-1 results (revocation check on quick-unlock sign-in, Change PIN slow hint)
+- New sessions.ts export: isThisDeviceRevoked(uid, deviceId) — a one-time getDoc read of
+  sessions/{uid}/devices/{deviceId} that never creates or touches the document, so it can
+  see a revoked flag set while the app was closed before registerDeviceSession() would
+  otherwise recreate the document and erase that flag. Never throws (offline/error = "not
+  revoked", not a hard failure).
+- App.tsx: inside onSignedIn, ONLY when viaQuickUnlock is true, this check now runs before
+  registerAndListenDeviceSession. If revoked: wipeQuickUnlock, removeRecentAccount, clear
+  the in-memory session, show "You were signed out from another device.", and return to
+  sign-in. DESIGN CHOICE, not proven optimal: this does not block the rest of onSignedIn
+  (model load, Home) while it runs, so there is a brief flash of Home before the kick-out
+  in the revoked case, rather than waiting on a network round-trip on every sign-in.
+  Normal password sign-in (viaQuickUnlock false) is completely unaffected — no new check,
+  no new delay.
+- SetPinScreen.tsx (Change PIN): added a "This can take a little while on some phones —
+  hang tight." message. IMPORTANT FINDING: a setTimeout-delayed version (2s, matching
+  SignInScreen's existing pattern) does NOT work here and was corrected mid-session — once
+  deriveKey's synchronous PBKDF2 loop starts, it blocks the JS thread including the timer
+  queue, so a timer scheduled before the block starts cannot fire until the block ends.
+  SignInScreen's 2s hint only works because a real network call (signInWithFirebase) comes
+  before deriveKey and gives the timer a window to fire. SetPinScreen has no such gap
+  (verifyPassword's local AsyncStorage read is too fast), so the hint now shows
+  IMMEDIATELY on tap instead of after a delay. This same root cause likely explains the
+  earlier "looks frozen" findings for Change PIN and the lock-screen password unlock noted
+  after Step 3c-2 (not fixed there, now understood).
+- Tested on-device (Expo Go, Android, by the person): normal password sign-in unaffected;
+  quick-unlock (fingerprint/PIN) still reaches Home normally when not revoked; the
+  immediate slow-hint shows and clears correctly on Change PIN; the revocation kick-out
+  was tested for real with a SECOND PHONE (quick-unlock signed in, then that device's own
+  session was revoked from Settings > Active Devices on the other phone, then force-stop
+  and reopen to quick-unlock again) and worked exactly as designed: brief Home flash, then
+  kicked to sign-in with the notice.
+- CLARIFIED, not a regression: Change PIN's ~50 second timing (two PBKDF2 derivations,
+  verifyPassword then savePinCopy) is UNCHANGED by this step — 5a-1 only added the
+  visibility (the hint), not any new work. The earlier "~17 seconds" note was for a
+  DIFFERENT screen (Settings > Turn on fingerprint, from Step 3c-2), not Change PIN, and
+  was mixed up mid-session. Two real ways to actually cut Change PIN's time exist and were
+  deliberately NOT done here, left as a future decision: (1) drop the verifyPassword call
+  and rely on savePinCopy's own derivation as implicit password proof — cuts Change PIN to
+  one derivation (~25s), at the cost of losing immediate "wrong password" feedback; (2)
+  lower PBKDF2_ITERATIONS in encryption.ts — would speed up EVERY derivation app-wide
+  (sign-in, PIN copy, switcher) but weakens the encryption strength on all stored data, not
+  something to change without a deliberate decision.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
