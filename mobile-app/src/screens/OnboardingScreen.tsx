@@ -71,12 +71,10 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
       await savePin(username, pin1);
       updateRecentAccountIfPresent(username, { hasPin: true }).catch(() => {});
       if (initialCredentials) {
-        const copied = await savePinCopy(
+        await savePinCopy(
           { email: initialCredentials.email, username, password: initialCredentials.password },
           pin1
         );
-        // TEMP (remove in Step 4/5)
-        console.log('[quick unlock] TEMP onboarding PIN copy saved:', copied);
       }
       setPinSaved(true);
       setBusy(false);

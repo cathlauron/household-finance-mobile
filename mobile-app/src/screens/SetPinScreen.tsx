@@ -12,7 +12,7 @@ import { isValidPinFormat, savePin } from '../pin';
 import PinField from '../components/PinField';
 import PasswordField from '../components/PasswordField';
 import { useData } from '../DataContext';
-import { savePinCopy, attemptPinUnlock, resetPinFailures } from '../quickUnlock';
+import { savePinCopy } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 
 type Props = {
@@ -56,20 +56,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
       await savePin(username, pin1);
       updateRecentAccountIfPresent(username, { hasPin: true }).catch(() => {});
       if (email) {
-        const copied = await savePinCopy({ email, username, password }, pin1);
-        // TEMP checks (remove in Step 4/5): the PIN copy reads back, and a wrong PIN is rejected and counted.
-        const okCheck = await attemptPinUnlock(username, pin1);
-        const wrongCheck = await attemptPinUnlock(username, pin1 === '000000' ? '111111' : '000000');
-        await resetPinFailures(username);
-        console.log(
-          '[quick unlock] TEMP PIN copy saved:',
-          copied,
-          '| right PIN ->',
-          okCheck.status,
-          '| wrong PIN ->',
-          wrongCheck.status,
-          wrongCheck.status === 'wrong' ? wrongCheck.attemptsLeft + ' left' : ''
-        );
+      await savePinCopy({ email, username, password }, pin1);
       }
       setBusy(false);
       onDone();
