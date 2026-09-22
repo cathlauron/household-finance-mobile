@@ -36,19 +36,6 @@ export async function loadRecentAccounts(): Promise<RecentAccount[]> {
 }
 
 async function saveRecentAccounts(accounts: RecentAccount[]): Promise<void> {
-  // TEMP (Step 2 check, remove in Step 4): shows what was saved, without photo data.
-  console.log(
-    '[recent accounts] saved:',
-    JSON.stringify(
-      accounts.map((a) => ({
-        username: a.username,
-        uid: a.uid ? 'yes' : 'NO',
-        hasPin: a.hasPin,
-        bio: a.biometricsEnabled,
-        avatar: a.avatarConfig ? a.avatarConfig.type : 'none',
-      }))
-    )
-  );
   await AsyncStorage.setItem(RECENT_ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 

@@ -235,7 +235,6 @@ export async function attemptPinUnlock(username: string, pin: string): Promise<P
 export async function wipeQuickUnlock(username: string): Promise<void> {
   await removeFingerprintCopy(username);
   await removePinCopy(username);
-  console.log('[quick unlock] TEMP wiped copies for:', username);
 }
 
 // ---------- Safe save (used by sign-in and password change) ----------
@@ -252,25 +251,15 @@ export async function saveFingerprintCopyIfPossible(
   try {
     const state = await getBiometricState(creds.username);
     const strong = SecureStore.canUseBiometricAuthentication();
-    // TEMP (remove in Step 4/5)
-    console.log('[quick unlock] fingerprint state:', state, '| strong fingerprint:', strong);
     if (state !== 'ENABLED' || !strong) return 'unavailable';
     setAutoLockSuppressed(true);
     try {
       const outcome = await saveFingerprintCopy(creds);
-      // TEMP (remove in Step 4/5)
-      console.log('[quick unlock] fingerprint copy save:', outcome);
-      if (outcome === 'saved') {
-        // TEMP read-back: proves the copy can be read (shows a second prompt).
-        const check = await loadFingerprintCopy(creds.username);
-        console.log('[quick unlock] TEMP read-back:', check.status);
-      }
       return outcome;
     } finally {
       setAutoLockSuppressed(false);
     }
   } catch (e) {
-    console.log('[quick unlock] fingerprint save error');
     return 'failed';
   }
 }
