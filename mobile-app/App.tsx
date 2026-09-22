@@ -1,6 +1,7 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
+import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
@@ -468,7 +469,27 @@ function AppContent() {
           ).catch(() => {});
           const user = getCurrentFirebaseUser();
           if (user) {
-            registerAndListenDeviceSession(user.uid).catch(() => {});
+            const proceedWithSession = async () => {
+              // Quick-unlock path only: check whether THIS device was revoked
+              // while the app was closed, before registerAndListenDeviceSession
+              // recreates the session document and would erase that flag.
+              if (viaQuickUnlock) {
+                const deviceId = await getDeviceId();
+                const revoked = await isThisDeviceRevoked(user.uid, deviceId);
+                if (revoked) {
+                  wipeQuickUnlock(username).catch(() => {});
+                  removeRecentAccount(username).catch(() => {});
+                  clearModel();
+                  setCurrentUsername(null);
+                  setDerivedKey(null);
+                  setRemoteRevokeNotice('You were signed out from another device.');
+                  setScreen('signIn');
+                  return;
+                }
+              }
+              registerAndListenDeviceSession(user.uid).catch(() => {});
+            };
+            proceedWithSession();
             recordRecentAccount(
               username,
               user.uid,

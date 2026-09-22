@@ -30,6 +30,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
   const [pin2, setPin2] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showSlowHint, setShowSlowHint] = useState(false);
 
   async function handleSave() {
     setError('');
@@ -46,9 +47,11 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
       return;
     }
     setBusy(true);
+    setShowSlowHint(true);
     try {
       const passwordOk = await verifyPassword(password);
       if (!passwordOk) {
+        setShowSlowHint(false);
         setBusy(false);
         setError('Incorrect password.');
         return;
@@ -58,9 +61,11 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
       if (email) {
       await savePinCopy({ email, username, password }, pin1);
       }
+      setShowSlowHint(false);
       setBusy(false);
       onDone();
     } catch (e) {
+      setShowSlowHint(false);
       setBusy(false);
       setError('Could not save PIN. Please try again.');
     }
@@ -100,6 +105,9 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
           onChangeText={setPin2}
         />
 
+        {showSlowHint && !error && (
+          <Text style={styles.sub}>This can take a little while on some phones — hang tight.</Text>
+        )}
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity testID="save-pin-button" style={styles.primaryBtn} onPress={handleSave} disabled={busy}>

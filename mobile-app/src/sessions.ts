@@ -8,6 +8,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   deleteDoc,
   updateDoc,
@@ -81,6 +82,22 @@ export async function getDeviceId(): Promise<string> {
     await AsyncStorage.setItem(DEVICE_ID_KEY, newId);
   } catch (e) {}
   return newId;
+}
+
+// Reads this device's own session document once, WITHOUT creating or
+// touching it, so a revoked flag set while the app was fully closed can be
+// seen before registerDeviceSession() below would otherwise recreate the
+// document and erase that flag. Never throws: any error (offline, etc.)
+// is treated as "can't tell right now", not as "not revoked".
+export async function isThisDeviceRevoked(uid: string, deviceId: string): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, 'sessions', uid, 'devices', deviceId));
+    if (!snap.exists()) return false;
+    const data = snap.data() as DeviceSession;
+    return data.revoked === true;
+  } catch (e) {
+    return false;
+  }
 }
 
 // Correction 1: Always delete any existing document for this deviceId first,
