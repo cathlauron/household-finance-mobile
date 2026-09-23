@@ -77,10 +77,13 @@ PROGRESS4.md for that detail, plus everything it links back to
   claims or commit messages alone.
 - Never hand the person a conditional/branching instruction - get the
   real answer via investigation first, then give one unconditional fix.
-- Reminder/notification testing is DEFERRED BY THE PERSON, to be the LAST
-  thing tested or done when asked. An installed build now exists (Phase C
-  preview APK), so it is testable; see "Notifications: investigation done,
-  TESTING DEFERRED" above for the plan.
+- Reminder/notification testing: bill-related reminders and the weekly
+  spending recap were tested on the installed build and CONFIRMED WORKING
+  by the person. See the "Notifications" section below for what's been
+  confirmed vs. still open. The three code-review flags noted there
+  (sign-out doesn't cancel scheduled notifications, a cancelled
+  subscription still gets a "due soon" reminder, the recap's "tap to see
+  the breakdown" opens nothing specific) are still unverified/unfixed.
 
 ⚠️ Known issues / gotchas - carried forward, still open
 - [RESOLVED, CONFIRMED ON-DEVICE by the person] Bug #14 (root cause found,
@@ -1261,10 +1264,12 @@ not abandoned - return to them before or alongside Phase C.
   switch-away-and-return test (expect PIN screen) was not yet run. Letting a
   PIN unlock after a full close would mean storing the key on the phone; a
   security decision, deferred.
-- Still TO DO on the installed build: reminder round (bill reminders,
-  weekly recap, subscription reminder tap, all deferred from Expo Go), then
-  update the five Maestro flows (appId com.cathlauron.householdfinance,
-  replace the "You're signed in" waits).
+- Reminder round on the installed build: DONE. Bill reminders and the
+  weekly recap were tested and CONFIRMED WORKING by the person. The
+  subscription reminder ("Still want X?") tap-to-deep-link path was not
+  part of that confirmation and is still open. Still TO DO: update the
+  five Maestro flows (appId com.cathlauron.householdfinance, replace the
+  "You're signed in" waits).
 - TO DO before real users: confirm the Firestore security rules require
   sign-in in the Firebase Console (the readiness report never checked them).
 - Not yet done: iOS build (needs an Apple developer account, about $99 a
@@ -1318,10 +1323,13 @@ not abandoned - return to them before or alongside Phase C.
   PIN unlock after a full close would mean storing the key on the phone;
   a security decision, deferred.
 
-📌 Notifications: investigation done, TESTING DEFERRED by the person
-- Decision: real-device notification testing is deliberately deferred. It
-  will be the LAST thing tested, or when the person asks. Do not start it
-  unprompted.
+📌 Notifications: TESTED ON-DEVICE — bill reminders and weekly recap PASSED
+- Result: the person tested bill-related reminders and the weekly spending
+  recap on the installed build and confirmed both worked. Exact fire times,
+  wording, and screenshots from the run were not pasted into this log, so
+  the code-level behavior described below stays the reference for what
+  should fire. The subscription reminder ("Still want X?") tap-to-deep-link
+  path was NOT part of this confirmation — treat it as still open.
 - Antigravity read the code (nothing was run on a device). Confirmed in
   code: all notifications are LOCAL (expo-notifications), no server push.
   The whole schedule is cleared and rebuilt by rescheduleBillNotifications()
@@ -1374,12 +1382,20 @@ not abandoned - return to them before or alongside Phase C.
   Unverified: whether a new bill saved with an amount records a first
   payment cycle (needed for reminders); whether Android restores the
   scheduled notifications after a phone restart.
+- CONFIRMED by this on-device pass: a bill with an amount does get
+  scheduled and its reminder fires, and the weekly recap fires with real
+  content — both seen live on the phone by the person. Still unverified:
+  the three FLAGS above (sign-out cancellation, cancelled-subscription
+  reminders, recap tap target) and whether Android restores the schedule
+  after a phone restart.
 - Vivo prep to do before testing: Settings > battery, allow Finance Flow
   background activity (unrestricted); allow autostart if offered; confirm
   the "Bill alerts" channel is on. Vivo battery settings are the first
   suspect if a reminder never arrives.
-- TEST PLAN, ready to run when asked (write down the time and screenshot
-  every notification):
+- TEST PLAN status: run by the person on the installed build; bill
+  reminders and the weekly recap both fired and were confirmed working.
+  Plan kept below for reference (e.g. re-running after future changes to
+  pushNotifications.ts):
   1. Settings > Notifications: turn on Notify me (allow the Android
      prompt), turn on the weekly recap, set Alert me to 1 (reset after).
   2. Recap run 1: today's weekday pill and the NEXT hour (24-hour; the
@@ -1466,9 +1482,13 @@ every other phase.
       "You're signed in.*" waits with a testID that exists on Home, and fix
       the sign-out-button reachability issue. Needs a device or emulator
       connected.
-    (b2) Notification testing: DEFERRED by the person, do it LAST or when
-      asked (plan and three untested flags in the notifications block
-      above). Fix candidate when the time comes: cancel scheduled
+    (b2) Notification testing: DONE for bill reminders and the weekly
+      recap (confirmed working on the installed build). Still open: the
+      subscription reminder tap-to-deep-link path, and the three
+      code-review flags in the notifications block above (sign-out doesn't
+      cancel scheduled notifications, a cancelled subscription still gets
+      a "due soon" reminder, the recap's "tap to see the breakdown" opens
+      nothing specific). Fix candidate when revisited: cancel scheduled
       notifications on sign-out.
   (c) Optional: pull-to-refresh on Profile, Settings, and the Reports child
       screens, only if wanted (see Known issues for the Settings scrollTo
