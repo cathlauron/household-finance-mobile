@@ -1437,11 +1437,17 @@ every other phase.
 ▶️ Next step
 - ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a, 4b,
   4c-1, 4c-2 and 5a-1 done and pushed. Step 5a-2 (offline unlock for UNLINKED profiles) is
-  CODE-COMPLETE and tsc-clean, but only PARTLY on-device tested (see Step 5a-2 results
-  above). Immediate next action: run tests #1, #3 and #4 from that section (all WiFi-on,
-  all valid in Expo Go right now) and report the results before moving to 5b. Test #2
-  (true offline relaunch) is deliberately DEFERRED to Step 6's EAS build test, where it
-  can actually be tested — it is not blocking 5b.
+  CODE-COMPLETE, tsc-clean, and on-device tested: tests #1, #3 and #4 all PASSED
+  functionally (see Step 5a-2 results above for the full detail). One new, not-yet-fixed
+  finding from test #1: the offline-unlock path shows no visible loading indicator and
+  looks like a freeze, even though it completes correctly. Test #2 (true offline relaunch)
+  is still deliberately DEFERRED to Step 6's EAS build test, where it can actually be
+  tested (Expo Go cannot launch at all with zero network, since it fetches the JS bundle
+  from Metro on every launch).
+- Immediate next action: optionally investigate/fix the Test #1 missing-loading-indicator
+  finding (small, not blocking), then move to Step 5b (switching between remembered
+  accounts). An Antigravity investigation prompt for Step 5b has already been prepared and
+  run/pending — see the chat for its findings once returned, then design the fix.
 - After 5a-2's remaining tests are confirmed: Step 5b (switching between remembered
   accounts), then Step 6 (ONE EAS build and the full on-device test, including the
   deferred true-offline-relaunch test).
@@ -2152,9 +2158,29 @@ node_modules/expo-secure-store, no code changed)
   DECISION: the true-offline relaunch test is DEFERRED to Step 6's on-device test against
   the EAS installed build, where it will actually be a valid test. It is NOT considered a
   failure of 5a-2's code, and does not block moving on to 5b.
-- Tests #1 (online, unlinked account, offline-path taken), #3 (linked account regression,
-  must stay on the online path unchanged) and #4 (log-out regression, no switcher shown)
-  are all still validly testable in Expo Go with WiFi on, and are PENDING — not yet run.
+- Tests #1, #3 and #4 were run on-device (Expo Go, WiFi on) and RESULTS:
+  * Test #1 (unlinked account, offline-path taken via fingerprint/PIN): WORKED — reached
+    Home correctly. BUT the loading animation was NOT visible during the unlock — the
+    screen appeared to freeze/hang rather than show any spinner or indicator, before
+    landing on Home. Not yet diagnosed. Possible cause (UNVERIFIED, not investigated):
+    attemptOfflineUnlock's local deriveKey + decryptJSON work runs synchronously on the
+    JS thread (same PBKDF2-on-JS-thread pattern already flagged elsewhere in this doc as
+    the cause of "looks frozen" symptoms on Change PIN and the lock-screen password
+    unlock), so any spinner state set just before it may not get a chance to paint before
+    the block starts. Needs a real investigation, not assumed.
+  * Test #3 (linked account, must stay on the online path unchanged): WORKED — a loading
+    screen WAS visible during this path (as expected, since it goes through the normal
+    Firebase online sign-in flow, unaffected by 5a-2). Confirms the linked-account
+    regression check passed and the two paths look visibly different, which also lines up
+    with the Test #1 finding — the "no spinner" symptom is specific to the new offline
+    path, not a general regression.
+  * Test #4 (log out, reopen, switcher should not appear): WORKED as described.
+- New follow-up item (not yet investigated): Test #1's missing loading indicator on the
+  offline-unlock path. Likely needs its own small Antigravity investigation (trace
+  attemptOfflineUnlock's call site in AccountSwitcherScreen.tsx and whatever busy/loading
+  state is supposed to show during it) before deciding on a fix — possibly the same "let
+  one frame render before the heavy synchronous work starts" fix already used elsewhere
+  (Change PIN's slow-hint fix, 5a-1), possibly something else. Not blocking Step 5b.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
