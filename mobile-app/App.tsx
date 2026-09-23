@@ -1,5 +1,5 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
-import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
+import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts, updateRecentAccountIfPresent } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
 import React, { useEffect, useRef, useState } from 'react';
@@ -18,14 +18,18 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
 import IntroSlidesScreen from './src/screens/IntroSlidesScreen';
 import RootStack from './src/navigation/RootStack';
-import { loadProfilesIndex } from './src/storage';
+import { loadProfilesIndex, loadEncryptedProfileData } from './src/storage';
+import type { ProfileIndexEntry } from './src/storage';
 import { hasPinSetUp } from './src/pin';
+import { deriveKey, decryptJSON } from './src/encryption';
+import { sanitizeModelIds } from './src/mergeModels';
+import type { HouseholdModel } from './src/types';
 import { getBiometricState } from './src/biometrics';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { DataProvider, useData } from './src/DataContext';
-import { getCurrentFirebaseUser, signOutFirebase } from './src/authFirebase';
+import { getCurrentFirebaseUser, signOutFirebase, signInWithFirebase } from './src/authFirebase';
 import { rescheduleBillNotifications } from './src/pushNotifications';
 import {
   registerDeviceSession,
@@ -106,9 +110,66 @@ function AppContent() {
   const currentDeviceIdRef = useRef<string | null>(null);
   const deviceSessionUnsubRef = useRef<(() => void) | null>(null);
 
-    // Saves this account into the recent-accounts list, with the current
+  // Saves this account into the recent-accounts list, with the current
   // PIN / fingerprint state. Passing undefined for householdId or avatarConfig
   // means "leave what is already stored".
+  // Step 5a-2: tries to unlock an UNLINKED profile's model entirely offline,
+  // the same way PinUnlockScreen's password path already does, deriving the
+  // key locally and decrypting the local cache, no Firebase call. Returns
+  // null (never throws) if the profile is linked, not found locally, or the
+  // saved password no longer decrypts anything, the caller falls back to
+  // the normal online sign-in path in every one of those cases.
+  async function attemptOfflineUnlock(
+    username: string,
+    creds: { email: string; password: string }
+  ): Promise<{ key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry } | null> {
+    try {
+      const profiles = await loadProfilesIndex();
+      const profile = profiles.find((p) => p.username === username);
+      if (!profile || profile.householdId) return null;
+      const key = deriveKey(creds.password, profile.salt);
+      const encrypted = await loadEncryptedProfileData(username);
+      if (!encrypted) return null;
+      const model = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+      return { key, model, profile };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // After an offline unlock, tries the SAME online steps a normal sign-in
+  // already does (Firebase sign-in, then 5a-1's revocation check, then
+  // registerAndListenDeviceSession) — quietly, in the background. If this
+  // device is offline, signInWithFirebase simply fails and nothing further
+  // happens; the person keeps using the app normally. If it succeeds and
+  // this device turns out to have been revoked, the same wipe/kick-out as
+  // the online quick-unlock path runs.
+  async function reconcileOfflineUnlockWithServer(
+    username: string,
+    creds: { email: string; password: string }
+  ) {
+    try {
+      await signInWithFirebase(creds.email, creds.password);
+    } catch (e) {
+      return;
+    }
+    const user = getCurrentFirebaseUser();
+    if (!user) return;
+    const deviceId = await getDeviceId();
+    const revoked = await isThisDeviceRevoked(user.uid, deviceId);
+    if (revoked) {
+      wipeQuickUnlock(username).catch(() => {});
+      removeRecentAccount(username).catch(() => {});
+      clearModel();
+      setCurrentUsername(null);
+      setDerivedKey(null);
+      setRemoteRevokeNotice('You were signed out from another device.');
+      setScreen('signIn');
+      return;
+    }
+    registerAndListenDeviceSession(user.uid).catch(() => {});
+  }
+
   async function recordRecentAccount(
     username: string,
     uid: string,
@@ -386,10 +447,36 @@ function AppContent() {
           accounts={recentAccounts}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
-            setRemoteRevokeNotice(null);
-            setSignInPrefillUsername(undefined);
-            setAutoSignIn(creds);
-            setScreen('signIn');
+            (async () => {
+              const offline = await attemptOfflineUnlock(creds.username, creds);
+              if (offline) {
+                setRemoteRevokeNotice(null);
+                setCurrentUsername(creds.username);
+                setDerivedKey(offline.key);
+                loadModel(
+                  creds.username,
+                  offline.key,
+                  { profile: offline.profile, initialModel: offline.model },
+                  { deferNotifications: true }
+                ).catch(() => {});
+                recordRecentAccount(
+                  creds.username,
+                  offline.model.avatars ? '' : '',
+                  undefined,
+                  offline.model.avatars?.[creds.username]
+                ).catch(() => {});
+                setScreen('home');
+                setTimeout(() => {
+                  rescheduleBillNotifications(offline.model).catch(() => {});
+                }, 0);
+                reconcileOfflineUnlockWithServer(creds.username, creds).catch(() => {});
+                return;
+              }
+              setRemoteRevokeNotice(null);
+              setSignInPrefillUsername(undefined);
+              setAutoSignIn(creds);
+              setScreen('signIn');
+            })();
           }}
           onUsePassword={(username) => {
             setAutoSignIn(null);

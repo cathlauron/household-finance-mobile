@@ -1419,20 +1419,24 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a and 4b
-  done and pushed. Steps 4c-1 and 4c-2 also done and pushed. Next: Step 5a-1 also done and pushed (revocation check + Change PIN slow hint). Next: Step 5a-2
-(offline unlock for UNLINKED profiles only — linked profiles stay online-only for now, per
-the loadModel offline-cache gap noted during the 5a investigation), then 5b (switching
-accounts), then Step 6 (ONE EAS build and the full on-device test). Open, deliberately
-deferred: cutting Change PIN's two derivations down to one (see the 5a-1 note above);
-avatar refresh for OTHER remembered accounts in the switcher (only the currently-signing-in
-account's avatar refreshes today); the pre-existing loadModel offline-cache gap for linked
-households (a local cache of the last-synced household model already exists but isn't used
-when offline — found during investigation, not caused by this feature, needs its own fix
-later). 
-then 5b (switching accounts), then Step 6 (ONE EAS build and the full on-device test).
-Also open: the ~50-second Change PIN timing finding above needs re-measuring on an
-installed build before deciding whether it needs a real fix.
+- ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a, 4b,
+  4c-1, 4c-2 and 5a-1 done and pushed. Step 5a-2 (offline unlock for UNLINKED profiles) is
+  CODE-COMPLETE and tsc-clean, but only PARTLY on-device tested (see Step 5a-2 results
+  above). Immediate next action: run tests #1, #3 and #4 from that section (all WiFi-on,
+  all valid in Expo Go right now) and report the results before moving to 5b. Test #2
+  (true offline relaunch) is deliberately DEFERRED to Step 6's EAS build test, where it
+  can actually be tested — it is not blocking 5b.
+- After 5a-2's remaining tests are confirmed: Step 5b (switching between remembered
+  accounts), then Step 6 (ONE EAS build and the full on-device test, including the
+  deferred true-offline-relaunch test).
+- Open, deliberately deferred: cutting Change PIN's two derivations down to one (see the
+  5a-1 note above); avatar refresh for OTHER remembered accounts in the switcher (only the
+  currently-signing-in account's avatar refreshes today); the pre-existing loadModel
+  offline-cache gap for linked households (a local cache of the last-synced household
+  model already exists but isn't used when offline — found during investigation, not
+  caused by this feature, needs its own fix later); the ~50-second Change PIN timing
+  finding needs re-measuring on an installed build before deciding whether it needs a
+  real fix.
 - Bug #14 is CLOSED (confirmed on-device). Nothing immediate is pending;
   continue with the remaining pre-Phase C items below.
 - Screenshot restriction: CLOSED. Works on the installed build; it was
@@ -2084,10 +2088,53 @@ node_modules/expo-secure-store, no code changed)
   was mixed up mid-session. Two real ways to actually cut Change PIN's time exist and were
   deliberately NOT done here, left as a future decision: (1) drop the verifyPassword call
   and rely on savePinCopy's own derivation as implicit password proof — cuts Change PIN to
-  one derivation (~25s), at the cost of losing immediate "wrong password" feedback; (2)
-  lower PBKDF2_ITERATIONS in encryption.ts — would speed up EVERY derivation app-wide
+  one derivation (~25s), at the cost of losing immediate "wrong password" feedback; (2) lower PBKDF2_ITERATIONS in encryption.ts — would speed up EVERY derivation app-wide
   (sign-in, PIN copy, switcher) but weakens the encryption strength on all stored data, not
   something to change without a deliberate decision.
+
+📌 Step 5a-2 results (offline unlock for UNLINKED profiles)
+- Code committed, tsc-clean, NOT YET on-device tested. New App.tsx functions:
+  attemptOfflineUnlock(username, creds) reads loadProfilesIndex() locally; returns null
+  immediately for a linked profile or one not found locally (caller falls back to the
+  normal online path). For an unlinked profile it derives the key locally with deriveKey
+  and decrypts loadEncryptedProfileData + decryptJSON — the same offline-capable path
+  PinUnlockScreen's password mode already uses. Returns { key, model, profile } on
+  success, null on any failure. reconcileOfflineUnlockWithServer(username, creds) runs
+  AFTER a successful offline unlock, in the background: quietly attempts
+  signInWithFirebase plus the 5a-1 revocation check. If there's no connection it fails
+  silently (no error shown); if the device turns out to be revoked, it wipes/kicks out
+  the same way the online path does.
+- AccountSwitcherScreen's onUnlocked now tries attemptOfflineUnlock FIRST. On success it
+  sets currentUsername/derivedKey, loads the model from the local bootstrap (no network
+  call), updates the recent-account entry (avatar refresh only — never touches uid/hasPin/
+  biometricsEnabled), goes straight to Home, and fires reconcileOfflineUnlockWithServer in
+  the background. On failure (including "this account is linked") it falls back to the
+  existing online autoSignIn path unchanged.
+- KEY INVESTIGATION FINDING: RecentAccount.householdId can be STALE — linking a profile
+  via the in-app flow calls updateProfileHouseholdId on the profiles index but NEVER calls
+  recordRecentAccount/upsertRecentAccount, so the switcher's own remembered copy of
+  "linked or not" cannot be trusted by itself. attemptOfflineUnlock therefore always
+  reads the real, current loadProfilesIndex() as the authoritative source, not the
+  recent-accounts entry.
+- IMPORTANT TESTING LIMITATION FOUND: the person attempted the "true offline" test
+  (Airplane Mode on + WiFi off, then force-stop and relaunch) in Expo Go. The app got
+  stuck on a blank white screen with Expo Go's OWN loading spinner for 2+ minutes and
+  never reached our app's UI at all. Root cause (reasoned from how Expo Go works, not
+  from reading Expo's own source): Expo Go fetches the JS bundle from the Metro dev
+  server over the network on every single launch — with no network reachable at all, it
+  can never even start running OUR code, so the app never reaches attemptOfflineUnlock or
+  anything else 5a-2 built. This is a LIMITATION OF EXPO GO, not a bug in 5a-2 — the same
+  category of thing as the Google/Apple/Facebook sign-in buttons, already noted elsewhere
+  as untestable until Phase C's EAS build (which bundles the JS into the installed app, so
+  it never needs Metro to launch). CONFIRMED by turning WiFi back on: the spinner cleared
+  and the app loaded normally, proving it was stuck waiting on Metro, not stuck in app
+  code.
+  DECISION: the true-offline relaunch test is DEFERRED to Step 6's on-device test against
+  the EAS installed build, where it will actually be a valid test. It is NOT considered a
+  failure of 5a-2's code, and does not block moving on to 5b.
+- Tests #1 (online, unlinked account, offline-path taken), #3 (linked account regression,
+  must stay on the online path unchanged) and #4 (log-out regression, no switcher shown)
+  are all still validly testable in Expo Go with WiFi on, and are PENDING — not yet run.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
