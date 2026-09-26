@@ -1435,24 +1435,21 @@ Each row is sized to be one session's worth of work, same pattern as
 every other phase.
 
 ▶️ Next step
-- ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a, 4b,
-  4c-1, 4c-2 and 5a-1 done and pushed. Step 5a-2 (offline unlock for UNLINKED profiles) is
-  CODE-COMPLETE, tsc-clean, and on-device tested: tests #1, #3 and #4 all PASSED
-  functionally. One new, not-yet-fixed finding from 5a-2 test #1: the offline-unlock path
-  shows no visible loading indicator and looks like a freeze, even though it completes
-  correctly. 5a-2's Test #2 (true offline relaunch) is still deliberately DEFERRED to
-  Step 6's EAS build test (Expo Go cannot launch at all with zero network).
-- Step 5b (switching between remembered accounts) is CODE-COMPLETE and tsc-clean
-  (uid bug fixed, handleSwitchAccount() added, both entry points wired — see Step 5b
-  results above for full detail) but ON-DEVICE TESTING IS IN PROGRESS, NOT YET CONFIRMED.
-  IMMEDIATE NEXT ACTION: from PinUnlockScreen's chip-picker screen, explicitly tap "Sign in
-  to another account" and report what appears (this is the one still-unconfirmed step of
-  Test 3). Then re-run Test 1 with the corrected steps (switch away WITHOUT logging out
-  first), then Tests 2, 4, 5 and 6 — see the full test list in the Step 5b results section.
-- After Step 5b's on-device tests are all confirmed: the Test #1 missing-loading-indicator
-  finding from 5a-2 can optionally be investigated/fixed (small, not blocking), then
-  Step 6 (ONE EAS build and the full on-device test, including the deferred
-  true-offline-relaunch test and real Google/Apple/Facebook sign-in testing for PC.3).
+- Quick unlock after a full close: Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a, 4b, 4c-1,
+  4c-2, 5a-1 and 5b are ALL DONE and pushed/confirmed on-device. Step 5a-2 (offline unlock
+  for UNLINKED profiles) is CODE-COMPLETE, tsc-clean, and on-device tested: tests #1, #3
+  and #4 all PASSED functionally. One still-open, not-yet-fixed finding from 5a-2 test #1:
+  the offline-unlock path shows no visible loading indicator and looks like a freeze, even
+  though it completes correctly. 5a-2's Test #2 (true offline relaunch) is still
+  deliberately DEFERRED to Step 6's EAS build test (Expo Go cannot launch at all with zero
+  network).
+- IMMEDIATE NEXT ACTION: decide whether to spend a small session investigating/fixing the
+  5a-2 Test #1 missing-loading-indicator finding before Step 6, or leave it as a known,
+  non-blocking cosmetic issue and go straight to Step 6. Either way, Step 6 is next: ONE
+  EAS build, then the full on-device test — including the deferred true-offline-relaunch
+  test from 5a-2, and real Google/Apple/Facebook sign-in testing for PC.3 (see the
+  "quick unlock" feature block above for the full Step 6 test list: close/reopen, log out,
+  remote revoke, 5 wrong PINs, airplane mode, photo avatar, all 5 accounts).
 - Open, deliberately deferred: cutting Change PIN's two derivations down to one (see the
   5a-1 note above); avatar refresh for OTHER remembered accounts in the switcher (only the
   currently-signing-in account's avatar refreshes today); the pre-existing loadModel
@@ -2192,7 +2189,7 @@ node_modules/expo-secure-store, no code changed)
   one frame render before the heavy synchronous work starts" fix already used elsewhere
   (Change PIN's slow-hint fix, 5a-1), possibly something else. Not blocking Step 5b.
 
-📌 Step 5b results (switching between remembered accounts) — IN PROGRESS
+📌 Step 5b results (switching between remembered accounts) — DONE, confirmed on-device
 - Two-round Antigravity investigation (real code read, nothing run) confirmed: the
   switcher (AccountSwitcherScreen) was previously reachable ONLY on cold launch, when
   currentUsername/derivedKey/model are all null. There was no existing path back to the
@@ -2264,12 +2261,24 @@ node_modules/expo-secure-store, no code changed)
        actual button entry point 1 wires) correctly reaches the NEW switcher afterward.
        NEXT STEP: explicitly tap "Sign in to another account" from that chip screen and
        report exactly what appears.
-- STILL TO DO before Step 5b is considered done: confirm Test 1 (corrected steps) shows
-  both accounts on the switcher; confirm Test 3's actual "Sign in to another account" tap
-  reaches the switcher correctly; run Test 2 (switching preserves fingerprint/PIN unlock for
-  the account left behind), Test 4 (Profile's new button), Test 5 (repeated back-and-forth
-  switching doesn't break either side), and Test 6 (no data leakage/flash between accounts
-  when switching — the old account's live Firestore listener must actually be torn down).
+- ALL SIX TESTS CONFIRMED PASSING on-device (person's own words: "yes to all" / "works as
+  described" / "does as described" for each — no further step-by-step detail was recorded
+  beyond pass/fail, so if something related breaks later, these tests may be worth re-running
+  with closer observation):
+  * Test 1 (both accounts show on the switcher, switching lands on the right Home): PASSED.
+  * Test 2 (the account switched away FROM can still be fingerprint/PIN-unlocked afterward,
+    proving its vault copies were not wiped): PASSED.
+  * Test 3 (lock screen's "Sign in to another account" reaches the NEW switcher, not the old
+    chip-picker "Welcome back" screen): CONFIRMED — lands on the new switcher correctly.
+  * Test 4 (Profile screen's own "Switch Account" button reaches the same switcher and works
+    the same way): PASSED.
+  * Test 5 (repeated back-and-forth switching, A to B to A to B, does not break or stall):
+    PASSED.
+  * Test 6 (no data leakage/flash between accounts when switching — the old account's live
+    Firestore listener is actually torn down): PASSED.
+- STEP 5B IS COMPLETE. The earlier open question about entry point 1 (whether "Sign in to
+  another account" was really wired to the new switcher, vs. accidentally still hitting the
+  old pre-existing chip-picker fallback) is resolved: it is wired correctly.
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
