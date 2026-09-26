@@ -101,9 +101,10 @@ function summarizeModel(m: HouseholdModel): string {
 type ProfileScreenProps = {
   onLock: () => void;
   onSignOut: () => void;
+  onSwitchAccount: () => void;
 };
 
-export default function ProfileScreen({ onLock, onSignOut }: ProfileScreenProps) {
+export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: ProfileScreenProps) {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const {
@@ -1270,6 +1271,10 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
         <TouchableOpacity testID="lock-app-button" style={styles.lockButton} activeOpacity={0.7} onPress={onLock}>
   <Text style={styles.lockButtonText}>Lock App</Text>
+</TouchableOpacity>
+
+        <TouchableOpacity testID="switch-account-button" style={styles.lockButton} activeOpacity={0.7} onPress={onSwitchAccount}>
+  <Text style={styles.lockButtonText}>Switch Account</Text>
 </TouchableOpacity>
 
           <TouchableOpacity

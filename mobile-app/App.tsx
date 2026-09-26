@@ -172,7 +172,7 @@ function AppContent() {
 
   async function recordRecentAccount(
     username: string,
-    uid: string,
+    uid: string | undefined,
     householdId: string | undefined,
     avatarConfig: RecentAccount['avatarConfig']
   ) {
@@ -377,6 +377,45 @@ function AppContent() {
     setScreen('signIn');
   }
 
+  // Switches away from the current account WITHOUT forgetting it: keeps its
+  // recent-accounts entry and quick-unlock vault copies intact (unlike
+  // handleFullSignOut, which wipes them), so it can still be unlocked with
+  // fingerprint/PIN from the switcher afterward. Marks only this device's
+  // own session document signedOutAt (same as a normal sign-out, so Active
+  // Devices reads it correctly), then reloads the recent-accounts list
+  // fresh and lands back on the switcher instead of a blank sign-in form.
+  async function handleSwitchAccount() {
+    clearIdleTimer();
+    // 1. Unsubscribe listener FIRST (same ordering as handleFullSignOut)
+    if (deviceSessionUnsubRef.current) {
+      deviceSessionUnsubRef.current();
+      deviceSessionUnsubRef.current = null;
+    }
+    // 2. Mark this device's own session document signed out BEFORE
+    // signing out of Firebase — the write needs request.auth to still
+    // match this account's uid, same reasoning as handleFullSignOut.
+    const user = getCurrentFirebaseUser();
+    const deviceId = currentDeviceIdRef.current;
+    if (user && deviceId) {
+      await Promise.race([
+        deleteDeviceSession(user.uid, deviceId),
+        new Promise((resolve) => setTimeout(resolve, 1000)),
+      ]).catch(() => {});
+    }
+    currentDeviceIdRef.current = null;
+
+    try {
+      await signOutFirebase();
+    } catch (e) {
+      // Continue switching locally even if the network call fails.
+    }
+    clearModel();
+    setCurrentUsername(null);
+    setDerivedKey(null);
+    const recents = await loadRecentAccounts();
+    setRecentAccounts(recents);
+    setScreen('switcher');
+  }
   if (screen === 'loading') {
     return <IntroScreen />;
   }
@@ -395,8 +434,7 @@ function AppContent() {
             setScreen('home');
           }}
           onSignOut={() => {
-            keepRecentOnSignOutRef.current = true;
-            handleFullSignOut();
+            handleSwitchAccount();
           }}
         />
       </SafeAreaView>
@@ -410,6 +448,7 @@ function AppContent() {
           <RootStack
             username={currentUsername}
             onSignOut={handleFullSignOut}
+            onSwitchAccount={handleSwitchAccount}
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
@@ -461,7 +500,7 @@ function AppContent() {
                 ).catch(() => {});
                 recordRecentAccount(
                   creds.username,
-                  offline.model.avatars ? '' : '',
+                  undefined,
                   undefined,
                   offline.model.avatars?.[creds.username]
                 ).catch(() => {});

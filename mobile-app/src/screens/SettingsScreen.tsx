@@ -84,7 +84,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
   return '';
 }
 
-export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }) {
+export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const navigation = useNavigation<any>();
   const {
@@ -1044,6 +1044,24 @@ export default function SettingsScreen({ onSignOut }: { onSignOut?: () => void }
           <SettingsRow testID="settings-row-about" icon="information-circle-outline" title="About Us" onPress={() => setPage('about')} />
         </SettingsGroup>
         </>
+        )}
+        {page === null && (
+        <TouchableOpacity
+          testID="settings-switch-account-button"
+          activeOpacity={0.7}
+          onPress={onSwitchAccount}
+          style={{
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: colors.navy4,
+            paddingVertical: 13,
+            alignItems: 'center',
+            marginTop: 4,
+            marginBottom: 10,
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.inkDim }}>Switch Account</Text>
+        </TouchableOpacity>
         )}
         {page === null && (
         <TouchableOpacity

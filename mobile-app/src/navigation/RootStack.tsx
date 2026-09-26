@@ -31,9 +31,10 @@ type RootStackProps = {
   username: string;
   onLock: () => void;
   onSignOut: () => void;
+  onSwitchAccount: () => void;
 };
 
-export default function RootStack({ username, onLock, onSignOut }: RootStackProps) {
+export default function RootStack({ username, onLock, onSignOut, onSwitchAccount }: RootStackProps) {
   const { colors } = useTheme();
 
   return (
@@ -66,7 +67,7 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
           headerBackTitle: 'Settings',
         }}
       >
-        {() => <ProfileScreen onLock={onLock} onSignOut={onSignOut} />}
+        {() => <ProfileScreen onLock={onLock} onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>
       <Stack.Screen
         name="Calendar"
@@ -114,7 +115,7 @@ export default function RootStack({ username, onLock, onSignOut }: RootStackProp
         name="Settings"
         options={{ title: 'Settings', headerBackTitle: 'More' }}
       >
-        {() => <SettingsScreen onSignOut={onSignOut} />}
+        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>
       <Stack.Screen
         name="Premium"

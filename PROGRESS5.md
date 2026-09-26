@@ -1438,19 +1438,21 @@ every other phase.
 - ACTIVE: quick unlock after a full close. Steps 1, 2, 3a, 3b-1, 3b-2, 3c-1, 3c-2, 4a, 4b,
   4c-1, 4c-2 and 5a-1 done and pushed. Step 5a-2 (offline unlock for UNLINKED profiles) is
   CODE-COMPLETE, tsc-clean, and on-device tested: tests #1, #3 and #4 all PASSED
-  functionally (see Step 5a-2 results above for the full detail). One new, not-yet-fixed
-  finding from test #1: the offline-unlock path shows no visible loading indicator and
-  looks like a freeze, even though it completes correctly. Test #2 (true offline relaunch)
-  is still deliberately DEFERRED to Step 6's EAS build test, where it can actually be
-  tested (Expo Go cannot launch at all with zero network, since it fetches the JS bundle
-  from Metro on every launch).
-- Immediate next action: optionally investigate/fix the Test #1 missing-loading-indicator
-  finding (small, not blocking), then move to Step 5b (switching between remembered
-  accounts). An Antigravity investigation prompt for Step 5b has already been prepared and
-  run/pending — see the chat for its findings once returned, then design the fix.
-- After 5a-2's remaining tests are confirmed: Step 5b (switching between remembered
-  accounts), then Step 6 (ONE EAS build and the full on-device test, including the
-  deferred true-offline-relaunch test).
+  functionally. One new, not-yet-fixed finding from 5a-2 test #1: the offline-unlock path
+  shows no visible loading indicator and looks like a freeze, even though it completes
+  correctly. 5a-2's Test #2 (true offline relaunch) is still deliberately DEFERRED to
+  Step 6's EAS build test (Expo Go cannot launch at all with zero network).
+- Step 5b (switching between remembered accounts) is CODE-COMPLETE and tsc-clean
+  (uid bug fixed, handleSwitchAccount() added, both entry points wired — see Step 5b
+  results above for full detail) but ON-DEVICE TESTING IS IN PROGRESS, NOT YET CONFIRMED.
+  IMMEDIATE NEXT ACTION: from PinUnlockScreen's chip-picker screen, explicitly tap "Sign in
+  to another account" and report what appears (this is the one still-unconfirmed step of
+  Test 3). Then re-run Test 1 with the corrected steps (switch away WITHOUT logging out
+  first), then Tests 2, 4, 5 and 6 — see the full test list in the Step 5b results section.
+- After Step 5b's on-device tests are all confirmed: the Test #1 missing-loading-indicator
+  finding from 5a-2 can optionally be investigated/fixed (small, not blocking), then
+  Step 6 (ONE EAS build and the full on-device test, including the deferred
+  true-offline-relaunch test and real Google/Apple/Facebook sign-in testing for PC.3).
 - Open, deliberately deferred: cutting Change PIN's two derivations down to one (see the
   5a-1 note above); avatar refresh for OTHER remembered accounts in the switcher (only the
   currently-signing-in account's avatar refreshes today); the pre-existing loadModel
@@ -1599,7 +1601,15 @@ pick an account -> fingerprint/face first -> "Use PIN instead" fallback.
   app.json plugin config. Unverified, check when an iOS build is planned.
 - Saving a fingerprint-locked item may itself show a fingerprint prompt once.
   Unverified.
-
+- [FIXED in Step 5b] recordRecentAccount's offline-unlock call site was passing uid: ''
+  instead of undefined, which upsertRecentAccount's merge logic does NOT treat as "skip
+  this field" (only exactly `undefined` is skipped) — so it was silently overwriting that
+  account's real stored uid with an empty string on every offline unlock. Fixed by passing
+  undefined and loosening recordRecentAccount's uid parameter type to `string | undefined`.
+- PinUnlockScreen.tsx's password-mode chip row (shown when 2+ local profiles exist and
+  "Use password instead" is tapped) has garbled/truncated username labels on-device
+  (observed during Step 5b testing) — pre-existing cosmetic issue, unrelated to Step 5b,
+  not yet investigated or fixed.
 
 📌 Step 2 results (recent-accounts list kept up to date)
 - Antigravity's plan was adjusted in five ways: (1) it awaited inside
@@ -2181,6 +2191,85 @@ node_modules/expo-secure-store, no code changed)
   state is supposed to show during it) before deciding on a fix — possibly the same "let
   one frame render before the heavy synchronous work starts" fix already used elsewhere
   (Change PIN's slow-hint fix, 5a-1), possibly something else. Not blocking Step 5b.
+
+📌 Step 5b results (switching between remembered accounts) — IN PROGRESS
+- Two-round Antigravity investigation (real code read, nothing run) confirmed: the
+  switcher (AccountSwitcherScreen) was previously reachable ONLY on cold launch, when
+  currentUsername/derivedKey/model are all null. There was no existing path back to the
+  switcher from a live session — both "Sign in to another account" (lock screen) and
+  "Log out" (Profile/Settings) went through handleFullSignOut, which always wipes the
+  current account's recent-accounts entry and quick-unlock vault copies (removeRecentAccount
+  + wipeQuickUnlock) and lands on a blank SignInScreen, never the switcher.
+- REAL BUG FOUND (unrelated to 5b, fixed alongside it): App.tsx's offline-unlock branch of
+  onUnlocked called recordRecentAccount(creds.username, '', undefined, ...) — passing an
+  empty string, not undefined, for uid. upsertRecentAccount's merge only skips a field when
+  it is exactly undefined (`if (v !== undefined) cleaned[k] = v`), so '' was NOT skipped and
+  silently overwrote that account's real stored uid with ''. FIXED: the call now passes
+  undefined instead of ''. This in turn required loosening recordRecentAccount's own type
+  signature (defined locally inside App.tsx, not in recentAccounts.ts) from
+  `uid: string` to `uid: string | undefined`, confirmed safe because the only other two call
+  sites already pass a real `user.uid` string, never undefined in practice.
+- Design decisions locked (person confirmed): (a) entry point is the lock screen's existing
+  "Sign in to another account" repurposed to go to the switcher, PLUS a second explicit
+  entry point in both Profile and Settings, alongside "Log out" but NOT wiping anything.
+  (b) Switching away from an account must KEEP its recent-accounts entry and quick-unlock
+  vault copies intact (unlike Log out), so it can be fingerprint/PIN-unlocked again later.
+  (c) The account being switched away from gets ONLY its own device-session doc marked
+  signedOutAt (same as a normal sign-out, so Active Devices reads it correctly) — it is
+  NOT removed from recentAccounts and its vault is NOT wiped.
+- New function added to App.tsx, right after handleFullSignOut: handleSwitchAccount().
+  Ordering copied exactly from handleFullSignOut (unsubscribe the device-session listener
+  FIRST, then mark this device's session doc signedOutAt BEFORE calling signOutFirebase() —
+  the Firestore rule needs request.auth.uid to still match while that write happens), but
+  differs by: never calling removeRecentAccount/wipeQuickUnlock, and — since
+  setRecentAccounts() was previously called only once at cold launch — reloading
+  loadRecentAccounts() fresh and calling setRecentAccounts() itself before landing on
+  screen: 'switcher' (this refresh was a gotcha Antigravity's investigation specifically
+  flagged; without it the switcher would show stale data on live-session switches).
+- Entry point 1 wired: PinUnlockScreen's onSignOut prop (label "Sign in to another
+  account") in App.tsx's 'locked' screen block now calls handleSwitchAccount() directly,
+  replacing the old `keepRecentOnSignOutRef.current = true; handleFullSignOut();` workaround
+  (that whole ref existed only because no real switch function existed yet).
+- Entry point 2 wired: a new onSwitchAccount prop threaded through
+  App.tsx -> RootStack.tsx -> both ProfileScreen.tsx and SettingsScreen.tsx.
+  - ProfileScreen.tsx: a new "Switch Account" button (testID switch-account-button) added
+    between the existing "Lock App" and "Log out" buttons, reusing the existing neutral
+    lockButton style (no new style needed).
+  - SettingsScreen.tsx: a new "Switch Account" button (testID
+    settings-switch-account-button) added on the hub (page === null) directly above the
+    existing "Log out" pill, styled as a neutral bordered pill (colors.navy4 border,
+    colors.inkDim text) rather than the destructive colors.error look Log out uses, and with
+    no confirmation alert (unlike Log out).
+- npx tsc --noEmit confirmed clean after all of the above (uid fix, handleSwitchAccount,
+  both entry-point wirings).
+- ON-DEVICE TESTING IN PROGRESS (not yet fully confirmed):
+  * Test 1 (basic switch lands on switcher with both accounts listed): the FIRST attempt
+    failed because the test steps themselves were wrong (told the person to Log out first,
+    which — correctly — wipes the account from the switcher entirely, so only one account
+    ever showed up). Corrected test steps written: switch away WITHOUT logging out first, so
+    both accounts stay remembered. Re-run pending.
+  * Test 3 (switch from the lock screen's "Sign in to another account"): attempted with a
+    LINKED account. Two things observed, not yet fully diagnosed:
+    1. A Firestore "Could not reach Cloud Firestore backend... unavailable" console error
+       appeared once, then did not reproduce on a retry — most likely a transient network
+       blip, not caused by this feature, but not confirmed either way.
+    2. Tapping through landed on PinUnlockScreen's OLDER, separate "Welcome back" chip-picker
+       screen (the pre-existing multi-profile password-mode fallback showing every profile
+       ever created on the phone, with garbled truncated username chip labels — a
+       pre-existing cosmetic issue, unrelated to this session's changes) rather than
+       confirming whether "Sign in to another account" itself was tapped and what happened
+       right after. Root cause not yet established: the person got there via fingerprint
+       prompt -> cancel -> "Use password instead", which is a normal, expected path to that
+       chip screen, but it's still unconfirmed whether "Sign in to another account" (the
+       actual button entry point 1 wires) correctly reaches the NEW switcher afterward.
+       NEXT STEP: explicitly tap "Sign in to another account" from that chip screen and
+       report exactly what appears.
+- STILL TO DO before Step 5b is considered done: confirm Test 1 (corrected steps) shows
+  both accounts on the switcher; confirm Test 3's actual "Sign in to another account" tap
+  reaches the switcher correctly; run Test 2 (switching preserves fingerprint/PIN unlock for
+  the account left behind), Test 4 (Profile's new button), Test 5 (repeated back-and-forth
+  switching doesn't break either side), and Test 6 (no data leakage/flash between accounts
+  when switching — the old account's live Firestore listener must actually be torn down).
 
 📚 Older progress: PROGRESS4.md (combined on-device re-test pass,
 B.12b, fewer-words through 13 screens, now closed), PROGRESS3.md,
