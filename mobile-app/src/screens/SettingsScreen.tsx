@@ -1,3 +1,4 @@
+import { hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
@@ -191,6 +192,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   async function handleToggleBiometrics() {
     if (!username || biometricState === 'UNAVAILABLE') return;
+    hapticSelection();
     setBiometricError('');
     if (biometricState === 'ENABLED') {
       await setBiometricsDisabled(username, true);
@@ -405,6 +407,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }, [cautionThresholdInput]);
     async function togglePushNotifications() {
     if (!model) return;
+    hapticSelection();
     setNotifStatusMsg('');
     const turningOn = !model.settings.pushNotificationsEnabled;
 
@@ -432,6 +435,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   async function toggleWeeklyRecap() {
     if (!model) return;
+    hapticSelection();
     const turningOn = !model.settings.weeklyRecapEnabled;
 
     if (turningOn && !model.settings.pushNotificationsEnabled) {
@@ -1579,6 +1583,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
+                hapticSelection();
                 if (pinIsSet) {
                   Alert.alert(
                     'Turn Off Quick PIN',

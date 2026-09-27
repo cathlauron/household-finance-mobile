@@ -3,6 +3,7 @@ import { Animated, StyleSheet, TouchableOpacity } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import { hapticMedium, hapticSelection } from '../haptics';
 
 export type SwipeableRowProps = {
   children: React.ReactNode;
@@ -40,6 +41,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
           style={[styles.deleteAction, { backgroundColor: colors.gold }]}
           activeOpacity={0.8}
           onPress={() => {
+            hapticSelection();
             swipeableRef.current?.close();
             viewAction.onPress();
           }}
@@ -57,6 +59,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
         style={[styles.deleteAction, { backgroundColor: colors.error }]}
         activeOpacity={0.8}
         onPress={() => {
+          hapticMedium();
           swipeableRef.current?.close();
           onDelete();
         }}

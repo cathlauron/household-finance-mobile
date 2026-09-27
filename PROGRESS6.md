@@ -175,13 +175,48 @@ EXPLICITLY SKIPPED, with reasons (so this isn't silently re-proposed later):
   cross-fade — native platform defaults are the expected feel for in-app navigation; not
   worth fighting them.
 
+🔧 D.2 — IN PROGRESS. Haptics added, partially wired; on-device testing deferred.
+
+What's done this session:
+- expo-haptics installed; npx tsc --noEmit confirmed clean (0 errors) after fixing an
+  import-path mistake (mobile-app/src/haptics.ts was imported as '../utils/haptics' in
+  SettingsScreen.tsx before it was corrected to '../haptics', its real location).
+- mobile-app/src/haptics.ts created — exports hapticSelection(), hapticLight(),
+  hapticMedium(), each wrapped to no-op on Platform.OS === 'web' and to swallow errors on
+  a device that doesn't support haptics.
+- Wired into mobile-app/src/components/SwipeableRow.tsx: hapticSelection() fires on
+  pressing a revealed viewAction button, hapticMedium() fires on pressing the revealed
+  delete button. This covers all 11 screens that use SwipeableRow (Accounts, Bills, Debts,
+  Events, Goals, Groceries, Income, Loans, Savings, Transactions, Travel).
+- Wired into mobile-app/src/screens/SettingsScreen.tsx: hapticSelection() fires on all 4
+  track-and-thumb toggle switches — Biometric unlock, Push notifications, Weekly spending
+  recap, and Quick PIN.
+
+What's confirmed NOT yet wired (still open from D.2's original scope):
+- mobile-app/src/PullToRefreshScrollView.tsx — no haptic call anywhere; the pull-to-
+  refresh commit point (inside onHandlerStateChange, where onRefresh() actually fires)
+  has nothing wired yet.
+- The custom checkmark-style toggle pills in EventsScreen.tsx, GoalsScreen.tsx,
+  GroceriesScreen.tsx, TransactionsScreen.tsx, TravelScreen.tsx, and SavingsScreen.tsx
+  (a separate category from SettingsScreen's track-and-thumb switches, per the D.1 audit)
+  — none of these call a haptic function. Open question for next session: are these in
+  scope for "toggle switches" under D.2, or were they meant to be skipped? Not yet decided.
+- No primary Save/Submit button anywhere in the app (Bills, Debts, Accounts, Events,
+  Goals, SignIn, or any other screen) calls a haptic function on press.
+
+📌 Decision: on-device testing for this design-polish phase is being deferred until D.4
+is also complete. D.2 (haptics), D.3 (root-level cross-fade), and D.4 (radii/spacing
+token file) will all be tested together in one on-device pass at the end, rather than
+testing after each checkpoint individually. This applies specifically to this design
+phase, not to the still-paused PROGRESS5.md Quick Unlock Step 6 testing.
+
 ▶️ Next step
-- D.1 is done (see findings + decision above). D.2 is next: add expo-haptics and wire it
-  into swipe-to-delete, toggles, pull-to-refresh, and primary Save/Submit buttons.
-- IMMEDIATE NEXT ACTION for the next session: run an Antigravity investigation-only prompt
-  to find the exact real file/line locations of (a) every toggle/switch component in the
-  app, (b) every "primary" Save/Submit-style button component (shared button component vs.
-  ad hoc per-screen), (c) SwipeableRow's exact current onDelete/viewAction call sites, and
-  (d) PullToRefreshScrollView's exact commit-the-refresh point (onHandlerStateChange) —
-  so the haptic calls can be placed precisely rather than guessed at. Then Claude designs
-  the wrapper + exact call sites and hands over paste-ready snippets.
+- D.2 is partially done (see status block above) — haptics wired into SwipeableRow and
+  SettingsScreen's 4 toggles; NOT yet wired into PullToRefreshScrollView, the other
+  screens' custom toggle pills, or any primary Save/Submit button.
+- IMMEDIATE NEXT ACTION for the next session: decide whether to (a) finish out the rest
+  of D.2's original scope (pull-to-refresh commit point + primary Save/Submit buttons,
+  and settle the open question on the other screens' toggle pills) before moving on, or
+  (b) treat the current SwipeableRow + Settings-toggle coverage as "enough" for D.2 and
+  move straight to D.3 (the App.tsx root-level cross-fade). Either way, no on-device
+  testing yet — that's deferred until D.4 is also finished, per this session's decision.
