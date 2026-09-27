@@ -223,10 +223,40 @@ token file) will all be tested together in one on-device pass at the end, rather
 testing after each checkpoint individually. This applies specifically to this design
 phase, not to the still-paused PROGRESS5.md Quick Unlock Step 6 testing.
 
+✅ D.3 — DONE. Root-level screen swaps in App.tsx now fade in instead of hard-cutting.
+
+What shipped:
+- mobile-app/App.tsx: added `Animated` to the existing react-native import line.
+- Added `fadeAnim` (Animated.Value, starts at 1) and `isFirstRenderRef` inside
+  AppContent. A useEffect keyed on `screen` resets fadeAnim to 0 and animates it to 1
+  over 220ms on every screen change EXCEPT the very first render — the cold-start
+  'loading' -> IntroScreen transition still shows instantly with no fade, matching how
+  IntroScreen already runs its own internal splash animation.
+- The existing waterfall of 8 `if (screen === ...) return ...;` blocks was left
+  completely untouched internally — it was wrapped as-is inside a new nested
+  `renderScreen()` function, and AppContent's real return is now a single
+  `<Animated.View style={{ flex: 1, backgroundColor: colors.navy2, opacity: fadeAnim }}>`
+  wrapping `renderScreen()`.
+- 📌 Decision (from Antigravity's investigation): this is a FADE-IN of the incoming
+  screen, not a true two-layer cross-fade. A true cross-fade would need the outgoing
+  screen to stay mounted while fading out — but screens like 'home' have
+  currentUsername/derivedKey set to null immediately on sign-out/lock, so keeping that
+  screen mounted underneath an overlay risked it rendering with null user data. A
+  single fade-in of the new screen, on a shared solid background color, was the
+  architecturally safe choice instead.
+- npx tsc --noEmit confirmed clean (0 errors) after the change.
+- Not yet tested on a real device (deferred to the batched D.2+D.3+D.4 test pass, per
+  the standing decision below) — a quick optional gut-check was suggested (sign in,
+  trigger a lock/switch, confirm the fade shows and the splash still appears instantly
+  with no flash) but not required before moving on.
+
+📌 Decision: on-device testing for this design-polish phase is being deferred until D.4
+is also complete. D.2 (haptics), D.3 (root-level cross-fade), and D.4 (radii/spacing
+token file) will all be tested together in one on-device pass at the end, rather than
+testing after each checkpoint individually. This applies specifically to this design
+phase, not to the still-paused PROGRESS5.md Quick Unlock Step 6 testing.
+
 ▶️ Next step
-- D.2 is fully done (see above). Next up is D.3 — cross-fade the root-level screen swaps
-  in App.tsx (Intro/Onboarding/SignIn/PinUnlock/RootStack), which today hard-cut with zero
-  animation (the single most visually jarring thing found in the D.1 audit). Reuses the
-  existing plain Animated API already used elsewhere in the app (see D.1's audit notes) —
-  no new dependency needed. No on-device testing yet for any of this phase — still
-  deferred until D.4 is also finished, per the decision above.
+- D.3 is done (see above). Next up is D.4 — build the radii/spacing token file. No
+  on-device testing yet — still deferred until D.4 is fully finished, per the decision
+  above; that testing pass will cover D.2, D.3, and D.4 together in one go.

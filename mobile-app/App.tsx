@@ -3,7 +3,7 @@ import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts, updateRec
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
 import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox } from 'react-native';
+import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -60,6 +60,26 @@ function AppContent() {
   // PIN copy can be saved without asking for the password again. Cleared the moment
   // Onboarding ends, for any reason.
   const onboardingCredsRef = useRef<{ email: string; password: string } | null>(null);
+
+  // D.3: cross-fades between top-level screens instead of a hard cut. Starts
+  // at 1 so the very first render (cold-start 'loading' -> IntroScreen) shows
+  // immediately with no fade-in; isFirstRenderRef skips animating on that
+  // initial mount, and every subsequent `screen` change fades in from 0.
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const isFirstRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [screen, fadeAnim]);
 
   useEffect(() => {
     screenRef.current = screen;
@@ -416,6 +436,7 @@ function AppContent() {
     setRecentAccounts(recents);
     setScreen('switcher');
   }
+  function renderScreen(): React.ReactElement {
   if (screen === 'loading') {
     return <IntroScreen />;
   }
@@ -640,6 +661,13 @@ function AppContent() {
         onGoToCreateProfile={() => setScreen('createProfile')}
       />
     </SafeAreaView>
+  );
+  }
+
+  return (
+    <Animated.View style={{ flex: 1, backgroundColor: colors.navy2, opacity: fadeAnim }}>
+      {renderScreen()}
+    </Animated.View>
   );
 }
 
