@@ -27,6 +27,7 @@ import {
 } from '../csvImport';
 import type { ManualTransaction, HouseholdModel } from '../types';
 import { makeId } from '../utils';
+import { hapticLight } from '../haptics';
 
 type Props = {
   visible: boolean;
@@ -325,7 +326,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
                     {importableRows.length > 0 && (
                       <TouchableOpacity
                         style={styles.importConfirmButton}
-                        onPress={handleConfirmImport}
+                        onPress={() => { hapticLight(); handleConfirmImport(); }}
                         disabled={importing}
                       >
                         {importing ? (

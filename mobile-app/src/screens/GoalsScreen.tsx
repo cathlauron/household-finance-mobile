@@ -23,6 +23,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField'
+import { hapticLight, hapticSelection } from '../haptics';
 
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
@@ -360,7 +361,7 @@ export default function GoalsScreen() {
                 ) : (
                   <TouchableOpacity
                     style={[styles.completedToggle, completedInput && styles.completedToggleActive]}
-                    onPress={() => setCompletedInput((v) => !v)}
+                    onPress={() => { hapticSelection(); setCompletedInput((v) => !v); }}
                   >
                     {completedInput && (
                       <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
@@ -378,7 +379,7 @@ export default function GoalsScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveGoal}>
+                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveGoal(); }}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
 

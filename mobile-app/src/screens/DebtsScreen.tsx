@@ -23,6 +23,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import { hapticLight } from '../haptics';
 
 function debtAmount(debt: Debt): number {
   const first = debt.cycles && debt.cycles[0];
@@ -610,7 +611,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
                 <TouchableOpacity
                   style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={handleSave}
+                  onPress={() => { hapticLight(); handleSave(); }}
                   disabled={saving}
                 >
                   {saving ? (

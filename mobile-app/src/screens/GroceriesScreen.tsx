@@ -22,6 +22,7 @@ import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
+import { hapticLight, hapticSelection } from '../haptics';
 
 function plannedTotal(items: GroceryItem[]): number {
   return items.reduce((sum, g) => sum + (typeof g.plannedAmount === 'number' ? g.plannedAmount : 0), 0);
@@ -446,7 +447,7 @@ export default function GroceriesScreen() {
 
                 <TouchableOpacity
                   style={[styles.purchasedToggle, purchasedInput && styles.purchasedToggleActive]}
-                  onPress={() => setPurchasedInput((v) => !v)}
+                  onPress={() => { hapticSelection(); setPurchasedInput((v) => !v); }}
                 >
                   {purchasedInput && (
                     <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
@@ -463,7 +464,7 @@ export default function GroceriesScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveItem}>
+                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveItem(); }}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
 

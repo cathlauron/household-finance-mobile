@@ -23,6 +23,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
+import { hapticLight } from '../haptics';
 
 function todayISO(): string {
   const d = new Date();
@@ -765,7 +766,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
                     saving && { opacity: 0.6 },
                   ]}
-                  onPress={() => handleSaveEf()}
+                  onPress={() => { hapticLight(); handleSaveEf(); }}
                   disabled={saving}
                 >
                   {saving ? (
@@ -996,7 +997,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
           <TouchableOpacity
             style={[styles.saveButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
-            onPress={() => handleSaveFi()}
+            onPress={() => { hapticLight(); handleSaveFi(); }}
           >
             {fiSaved && <Ionicons name="checkmark" size={16} color={colors.navy2} style={{ marginRight: 6 }} />}
             <Text style={styles.saveButtonText}>{fiSaved ? 'Saved' : 'Save'}</Text>
@@ -1071,7 +1072,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveGoal}>
+                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveGoal(); }}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
 

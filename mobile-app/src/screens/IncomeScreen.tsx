@@ -29,6 +29,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import { hapticLight } from '../haptics';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -663,7 +664,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
                 <TouchableOpacity
                   style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={handleSave}
+                  onPress={() => { hapticLight(); handleSave(); }}
                   disabled={saving}
                 >
                   {saving ? (

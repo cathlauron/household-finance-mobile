@@ -24,6 +24,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import { hapticLight, hapticSelection } from '../haptics';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
@@ -542,7 +543,7 @@ export default function EventsScreen() {
                     styles.trackSavingsToggle,
                     trackInSavingsInput && styles.trackSavingsToggleActive,
                   ]}
-                  onPress={() => setTrackInSavingsInput((v) => !v)}
+                  onPress={() => { hapticSelection(); setTrackInSavingsInput((v) => !v); }}
                 >
                   {trackInSavingsInput && (
                     <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
@@ -559,7 +560,7 @@ export default function EventsScreen() {
 
                 <TouchableOpacity
                   style={[styles.completedToggle, completedInput && styles.completedToggleActive]}
-                  onPress={() => setCompletedInput((v) => !v)}
+                  onPress={() => { hapticSelection(); setCompletedInput((v) => !v); }}
                 >
                   {completedInput && (
                     <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
@@ -576,7 +577,7 @@ export default function EventsScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveEvent}>
+                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveEvent(); }}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
 

@@ -25,6 +25,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import { hapticLight } from '../haptics';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {
@@ -819,7 +820,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
 
                 <TouchableOpacity
                   style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={handleSave}
+                  onPress={() => { hapticLight(); handleSave(); }}
                   disabled={saving}
                 >
                   {saving ? (

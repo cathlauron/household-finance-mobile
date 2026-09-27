@@ -14,6 +14,7 @@ import PasswordField from '../components/PasswordField';
 import { useData } from '../DataContext';
 import { savePinCopy } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { hapticLight } from '../haptics';
 
 type Props = {
   username: string;
@@ -110,7 +111,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
         )}
         {!!error && <Text style={styles.error}>{error}</Text>}
 
-        <TouchableOpacity testID="save-pin-button" style={styles.primaryBtn} onPress={handleSave} disabled={busy}>
+        <TouchableOpacity testID="save-pin-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleSave(); }} disabled={busy}>
           <Text style={styles.primaryBtnText}>{busy ? 'Saving…' : 'Save PIN'}</Text>
         </TouchableOpacity>
 

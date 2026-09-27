@@ -175,34 +175,47 @@ EXPLICITLY SKIPPED, with reasons (so this isn't silently re-proposed later):
   cross-fade — native platform defaults are the expected feel for in-app navigation; not
   worth fighting them.
 
-🔧 D.2 — IN PROGRESS. Haptics added, partially wired; on-device testing deferred.
+✅ D.2 — DONE. Haptics fully wired across the curated D.2 scope; on-device testing still
+deferred until D.4 (per the standing decision below).
 
-What's done this session:
-- expo-haptics installed; npx tsc --noEmit confirmed clean (0 errors) after fixing an
-  import-path mistake (mobile-app/src/haptics.ts was imported as '../utils/haptics' in
-  SettingsScreen.tsx before it was corrected to '../haptics', its real location).
-- mobile-app/src/haptics.ts created — exports hapticSelection(), hapticLight(),
-  hapticMedium(), each wrapped to no-op on Platform.OS === 'web' and to swallow errors on
-  a device that doesn't support haptics.
-- Wired into mobile-app/src/components/SwipeableRow.tsx: hapticSelection() fires on
-  pressing a revealed viewAction button, hapticMedium() fires on pressing the revealed
-  delete button. This covers all 11 screens that use SwipeableRow (Accounts, Bills, Debts,
-  Events, Goals, Groceries, Income, Loans, Savings, Transactions, Travel).
-- Wired into mobile-app/src/screens/SettingsScreen.tsx: hapticSelection() fires on all 4
-  track-and-thumb toggle switches — Biometric unlock, Push notifications, Weekly spending
-  recap, and Quick PIN.
-
-What's confirmed NOT yet wired (still open from D.2's original scope):
-- mobile-app/src/PullToRefreshScrollView.tsx — no haptic call anywhere; the pull-to-
-  refresh commit point (inside onHandlerStateChange, where onRefresh() actually fires)
-  has nothing wired yet.
-- The custom checkmark-style toggle pills in EventsScreen.tsx, GoalsScreen.tsx,
-  GroceriesScreen.tsx, TransactionsScreen.tsx, TravelScreen.tsx, and SavingsScreen.tsx
-  (a separate category from SettingsScreen's track-and-thumb switches, per the D.1 audit)
-  — none of these call a haptic function. Open question for next session: are these in
-  scope for "toggle switches" under D.2, or were they meant to be skipped? Not yet decided.
-- No primary Save/Submit button anywhere in the app (Bills, Debts, Accounts, Events,
-  Goals, SignIn, or any other screen) calls a haptic function on press.
+Full D.2 scope, as shipped:
+- expo-haptics installed; mobile-app/src/haptics.ts exports hapticSelection(),
+  hapticLight(), hapticMedium(), each wrapped to no-op on Platform.OS === 'web' and to
+  swallow errors on a device that doesn't support haptics.
+- SwipeableRow.tsx (covers all 11 screens that use it: Accounts, Bills, Debts, Events,
+  Goals, Groceries, Income, Loans, Savings, Transactions, Travel): hapticSelection() on
+  the revealed view action, hapticMedium() on the revealed delete action.
+- SettingsScreen.tsx's 4 track-and-thumb toggles (Biometric unlock, Push notifications,
+  Weekly spending recap, Quick PIN): hapticSelection().
+- PullToRefreshScrollView.tsx: hapticMedium() fires right before onRefresh() is invoked
+  inside onHandlerStateChange, at the moment a pull gesture crosses PULL_TRIGGER_DISTANCE
+  and commits (Android's custom hand-built gesture path only — iOS uses the native
+  RefreshControl, which already has its own built-in system haptic).
+- Primary Save/Submit buttons: hapticLight() wired into all of the following (settled
+  decision: "+Add"-style sub-row buttons and anything that isn't the screen's own single
+  confirming action were explicitly excluded, e.g. LoansScreen's "+ Add payment"):
+  BillsScreen, DebtsScreen, AccountsScreen, EventsScreen (Save Event), GoalsScreen (Save
+  Goal), GroceriesScreen (Save Item), IncomeScreen, LoansScreen (Save only, not Add
+  Payment), SavingsScreen (Save Goal + EF calculator Save + FI calculator Save),
+  TransactionsScreen, TravelScreen (Save Trip), SignInScreen, CreateProfileScreen,
+  SetPinScreen, CsvImportModal (Import confirm), ProfileScreen (Approve peer recovery),
+  and SettingsScreen's 3 sub-modal saves (Category, Payee, Rule).
+- Toggle pills (settled decision: hapticSelection() only on genuine single-tap
+  settings-style boolean flips, styled as a checkmark pill — NOT on list/multi-select
+  checkboxes or text-link view switches, which stay untouched): EventsScreen ("Auto-save
+  to Savings" toggle, "Completed" toggle), GoalsScreen ("Completed" toggle),
+  GroceriesScreen ("Bought" toggle), TransactionsScreen ("Expecting a refund" toggle),
+  TravelScreen ("Auto-saving to Savings tab" toggle), BillsScreen ("Subscription"
+  checkbox).
+- Explicitly left untouched, and NOT part of D.2's scope (a deliberate decision, not an
+  oversight — revisit only if this specific gap is raised again later): Travel's
+  checklist-item checkbox, Savings' FI-calculator account-picker multi-select checkboxes,
+  Savings' "Show/Hide projected date" text link, and every "+Add" sub-row button
+  throughout the app (e.g. Loans' "+ Add payment").
+- Weight convention settled for this phase: hapticMedium() is reserved for rarer, heavier
+  "commit" moments (delete via SwipeableRow, pull-to-refresh commit) — hapticLight() is
+  used for frequently-tapped Save/Submit buttons so they don't feel heavy-handed —
+  hapticSelection() is used for simple boolean toggle flips.
 
 📌 Decision: on-device testing for this design-polish phase is being deferred until D.4
 is also complete. D.2 (haptics), D.3 (root-level cross-fade), and D.4 (radii/spacing
@@ -211,12 +224,9 @@ testing after each checkpoint individually. This applies specifically to this de
 phase, not to the still-paused PROGRESS5.md Quick Unlock Step 6 testing.
 
 ▶️ Next step
-- D.2 is partially done (see status block above) — haptics wired into SwipeableRow and
-  SettingsScreen's 4 toggles; NOT yet wired into PullToRefreshScrollView, the other
-  screens' custom toggle pills, or any primary Save/Submit button.
-- IMMEDIATE NEXT ACTION for the next session: decide whether to (a) finish out the rest
-  of D.2's original scope (pull-to-refresh commit point + primary Save/Submit buttons,
-  and settle the open question on the other screens' toggle pills) before moving on, or
-  (b) treat the current SwipeableRow + Settings-toggle coverage as "enough" for D.2 and
-  move straight to D.3 (the App.tsx root-level cross-fade). Either way, no on-device
-  testing yet — that's deferred until D.4 is also finished, per this session's decision.
+- D.2 is fully done (see above). Next up is D.3 — cross-fade the root-level screen swaps
+  in App.tsx (Intro/Onboarding/SignIn/PinUnlock/RootStack), which today hard-cut with zero
+  animation (the single most visually jarring thing found in the D.1 audit). Reuses the
+  existing plain Animated API already used elsewhere in the app (see D.1's audit notes) —
+  no new dependency needed. No on-device testing yet for any of this phase — still
+  deferred until D.4 is also finished, per the decision above.

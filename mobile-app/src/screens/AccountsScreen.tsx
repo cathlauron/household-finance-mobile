@@ -24,6 +24,7 @@ import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
+import { hapticLight } from '../haptics';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -398,7 +399,7 @@ export default function AccountsScreen() {
 
                         <TouchableOpacity
                   style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={handleSave}
+                  onPress={() => { hapticLight(); handleSave(); }}
                   disabled={saving}
                 >
                   {saving ? (

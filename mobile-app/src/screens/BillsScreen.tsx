@@ -24,6 +24,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import { hapticLight, hapticSelection } from '../haptics';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
@@ -648,7 +649,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
 
                 <TouchableOpacity
                   style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}
-                  onPress={() => setSubscriptionInput((prev) => !prev)}
+                  onPress={() => { hapticSelection(); setSubscriptionInput((prev) => !prev); }}
                 >
                   <View
                     style={{
@@ -688,7 +689,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
 
                 <TouchableOpacity
                   style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={handleSave}
+                  onPress={() => { hapticLight(); handleSave(); }}
                   disabled={saving}
                 >
                   {saving ? (

@@ -52,6 +52,7 @@ import {
   approvePeerRecoveryRequest,
   type PeerRecoveryRequestDoc,
 } from '../recovery';
+import { hapticLight } from '../haptics';
 
 export function getInitials(name: string): string {
   if (!name) return '?';
@@ -1329,7 +1330,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                 (approvalCodeInput.trim().length !== 6 || approvalBusy) && { opacity: 0.4 },
               ]}
               disabled={approvalCodeInput.trim().length !== 6 || approvalBusy}
-              onPress={handleApprovePeerRecovery}
+              onPress={() => { hapticLight(); handleApprovePeerRecovery(); }}
             >
               {approvalBusy ? (
                 <ActivityIndicator color="#FFFFFF" />

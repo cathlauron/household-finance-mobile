@@ -39,6 +39,7 @@ import { makeId } from '../utils';
 import { CollapsibleRow } from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
+import { hapticLight, hapticSelection } from '../haptics';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -761,7 +762,7 @@ export default function TransactionsScreen() {
           <>
             <TouchableOpacity
               style={[styles.refundToggle, refundTrackingEnabled && styles.refundToggleActive]}
-              onPress={() => setRefundTrackingEnabled((prev) => !prev)}
+              onPress={() => { hapticSelection(); setRefundTrackingEnabled((prev) => !prev); }}
             >
               {refundTrackingEnabled && (
                 <Ionicons name="checkmark" size={15} color="#fff" style={{ marginRight: 6 }} />
@@ -876,7 +877,7 @@ export default function TransactionsScreen() {
 
                                 <TouchableOpacity
                   style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={handleSave}
+                  onPress={() => { hapticLight(); handleSave(); }}
                   disabled={saving}
                 >
                   {saving ? (

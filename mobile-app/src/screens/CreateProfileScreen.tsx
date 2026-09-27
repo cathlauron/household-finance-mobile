@@ -12,6 +12,7 @@ import { createFirebaseAccount } from '../authFirebase';
 import { saveProfileCloudBackup } from '../cloudBackup';
 import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
 import PasswordField from '../components/PasswordField';
+import { hapticLight } from '../haptics';
 
 type Props = {
   onProfileCreated: (username: string, key: CryptoJS.lib.WordArray, credentials?: { email: string; password: string }) => void;
@@ -221,7 +222,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
-        <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={handleCreate} disabled={busy}>
+        <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
           <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
           {!busy && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />}
         </TouchableOpacity>

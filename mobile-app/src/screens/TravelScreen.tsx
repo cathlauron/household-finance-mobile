@@ -30,6 +30,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import { hapticLight, hapticSelection } from '../haptics';
 
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -490,7 +491,7 @@ export default function TravelScreen() {
 
                 <TouchableOpacity
                   style={[styles.trackToggle, trackInSavings && styles.trackToggleActive]}
-                  onPress={() => setTrackInSavings((prev) => !prev)}
+                  onPress={() => { hapticSelection(); setTrackInSavings((prev) => !prev); }}
                 >
                   {trackInSavings && (
                     <Ionicons
@@ -565,7 +566,7 @@ export default function TravelScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveTrip}>
+                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveTrip(); }}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
 

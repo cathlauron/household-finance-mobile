@@ -1,4 +1,4 @@
-import { hapticSelection } from '../haptics';
+import { hapticLight, hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
@@ -1828,7 +1828,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSave(); }}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
 
@@ -1868,7 +1868,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSavePayee}>
+        <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSavePayee(); }}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
 
@@ -1929,7 +1929,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveRule}>
+        <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveRule(); }}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
 

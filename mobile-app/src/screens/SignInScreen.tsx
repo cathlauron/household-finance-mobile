@@ -24,6 +24,7 @@ import {
 } from '../recovery';
 import PasswordField from '../components/PasswordField';
 import { withTimeout } from '../DataContext';
+import { hapticLight } from '../haptics';
 
 type Props = {
   onSignedIn: (
@@ -824,7 +825,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
 
       {!!error && <Text style={ms.error}>{error}</Text>}
 
-      <TouchableOpacity testID="sign-in-button" style={ms.primaryBtn} onPress={handleSignIn} disabled={busy}>
+      <TouchableOpacity testID="sign-in-button" style={ms.primaryBtn} onPress={() => { hapticLight(); handleSignIn(); }} disabled={busy}>
         {busy ? (
           <View style={styles.busyRow}>
             <ActivityIndicator color="#FFFFFF" style={styles.spinner} />

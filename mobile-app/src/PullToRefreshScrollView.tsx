@@ -13,6 +13,7 @@ import {
 import { ScrollView as GHScrollView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
+import { hapticMedium } from './haptics';
 
 // Accepts everything a normal ScrollView accepts (style, contentContainerStyle,
 // keyboardShouldPersistTaps, testID, onScroll, ...) plus refreshing/onRefresh.
@@ -132,6 +133,7 @@ const AndroidPullToRefresh = React.forwardRef<any, AndroidProps>(function Androi
     if (e.nativeEvent.oldState === State.ACTIVE) {
       const committed = dragYValueRef.current >= PULL_TRIGGER_DISTANCE;
       if (committed && !refreshing) {
+        hapticMedium();
         onRefresh();
         // Held open at full height until the `refreshing` prop flips back
         // to false above, which is what actually collapses it.
