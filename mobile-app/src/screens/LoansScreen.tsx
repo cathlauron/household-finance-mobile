@@ -26,6 +26,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {
@@ -981,10 +982,10 @@ function makeStyles(colors: any) {
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
+      borderRadius: radii.pill,
+      paddingVertical: spacing[12],
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },

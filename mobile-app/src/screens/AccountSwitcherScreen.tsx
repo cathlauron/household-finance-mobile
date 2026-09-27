@@ -23,6 +23,7 @@ import {
   attemptPinUnlock,
 } from '../quickUnlock';
 import type { QuickUnlockCredentials } from '../quickUnlock';
+import { radii, spacing } from '../tokens';
 
 // Shown after the app was fully closed and reopened. Lists the accounts that
 // have signed in on this phone, then unlocks the chosen one with fingerprint
@@ -362,10 +363,10 @@ function makeStyles(colors: any) {
     },
     primaryBtn: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
+      borderRadius: radii.pill,
       height: 52,
       justifyContent: 'center',
-      marginTop: 20,
+      marginTop: spacing[20],
     },
     primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
     btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },

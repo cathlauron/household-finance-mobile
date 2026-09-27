@@ -25,6 +25,7 @@ import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -578,10 +579,10 @@ function makeStyles(colors: any) {
     },
     saveButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
+      borderRadius: radii.pill,
+      paddingVertical: spacing[12],
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: spacing[10],
     },
     saveButtonText: {
       fontSize: 14,

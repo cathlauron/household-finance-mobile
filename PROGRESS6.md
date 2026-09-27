@@ -327,16 +327,100 @@ happening).
 Design-polish phase D.1 through D.4 are now fully complete and verified, including
 on-device confirmation.
 
+✅ D.5 — DONE. Retrofitted the D.4 radii/spacing tokens onto the three shared
+high-visibility components flagged in D.4's own "next step" notes: AccountCard,
+BottomSheet, CollapsibleRow. Primary buttons turned out to be a much bigger job (no
+shared button component exists — the same style block is copy-pasted across 16 separate
+files) and were split out into their own checkpoint, D.5b, below.
+
+What shipped, per an Antigravity investigation (full, unelided current file contents +
+a value-by-value mapping against tokens.ts's existing radii/spacing keys, flagging
+anything that didn't cleanly match):
+
+- mobile-app/src/tokens.ts: added two new keys to `radii` — `16: 16` and `20: 20` —
+  rather than forcing AccountCard's card corner (16) and BottomSheet's sheet corner (20)
+  down to the nearest existing key (14) and changing how they actually look. 📌 Decision:
+  same "codify what's already really in use" principle D.4 was built on originally — the
+  first D.4 audit simply hadn't looked at these three files yet.
+- AccountCard.tsx: new `import { radii, spacing } from '../tokens';` line; `card`'s
+  `borderRadius: 16` -> `radii[16]`, `padding: 16` -> `spacing[16]`,
+  `marginBottom: 12` -> `spacing[12]`; `topRightIcons`'s `gap: 8` -> `spacing[8]`;
+  `editHintBadge`'s `borderRadius: 6` -> `radii[6]`; `topRow`'s `marginBottom: 12` ->
+  `spacing[12]`; `badge`'s `paddingHorizontal: 8` -> `spacing[8]` and
+  `borderRadius: 6` -> `radii[6]`; `nameWrap`'s `marginBottom: 14` -> `spacing[14]`;
+  `balanceLabel`'s `marginBottom: 2` -> `spacing[2]`.
+- BottomSheet.tsx: new `import { radii, spacing } from '../tokens';` line; `sheet`'s
+  `borderTopLeftRadius`/`borderTopRightRadius: 20` -> `radii[20]`; `handleWrap`'s
+  `paddingTop: 10` -> `spacing[10]` and `paddingBottom: 6` -> `spacing[6]`; `header`'s
+  `paddingHorizontal: 20` -> `spacing[20]`, `paddingTop: 4` -> `spacing[4]`,
+  `paddingBottom: 12` -> `spacing[12]`; `scrollContent`'s `paddingHorizontal: 20` ->
+  `spacing[20]` and its iOS/Android conditional `paddingBottom: 12`/`20` ->
+  `spacing[12]`/`spacing[20]`.
+- CollapsibleRow.tsx: new `import { radii, spacing } from '../tokens';` line;
+  `container`'s `borderRadius: 10` -> `radii[10]` and `marginBottom: 8` -> `spacing[8]`;
+  `headerRow`'s `paddingVertical: 12` -> `spacing[12]` and `paddingHorizontal: 14` ->
+  `spacing[14]`; `contentWrap`'s `marginRight: 8` -> `spacing[8]`; `chevronWrap`'s
+  `paddingLeft: 4` -> `spacing[4]`; `drawerDivider`'s `marginHorizontal: 14` ->
+  `spacing[14]`; `drawerContent`'s `paddingHorizontal: 14` -> `spacing[14]`,
+  `paddingTop: 12` -> `spacing[12]`, `paddingBottom: 14` -> `spacing[14]`; `editButton`'s
+  `borderRadius: 8` -> `radii[8]`, `paddingHorizontal: 14` -> `spacing[14]`,
+  `marginTop: 12` -> `spacing[12]`; `editIcon`'s `marginRight: 6` -> `spacing[6]`.
+- 📌 Decision: a handful of odd small values found during the investigation were
+  deliberately left as literal numbers, untouched — AccountCard's
+  `paddingHorizontal: 7` and its three `paddingVertical: 3` / `marginRight: 3` spots, and
+  CollapsibleRow's `editButton` `paddingVertical: 9`, plus BottomSheet's drag-handle
+  `borderRadius: 2`. None of these cleanly matched an existing or newly-added token, and
+  forcing them onto one would have meant either inventing an oddly-specific new token key
+  for a single use, or slightly changing the actual rendered spacing — consistent with
+  D.4's original judgment call not to force-fit every number onto a token.
+- npx tsc --noEmit confirmed clean after pasting.
+- Visual no-op expected (values map to what was already rendering) — not yet re-checked
+  on-device.
+
+✅ D.5b — DONE. Retrofitted the D.4 radii/spacing tokens onto every primary Save/Submit
+button in the app — the larger, separately-scoped piece split out of D.5 above, since it
+touches 16 files rather than 3 shared components.
+
+What shipped, per a two-pass Antigravity investigation (first pass gathered sample style
+blocks; a second, more targeted pass confirmed exact unelided imports/style blocks/usage
+scope for all 16 files before any code was written, since the first pass didn't fully
+spell out SignInScreen.tsx's two separate button styles):
+
+- 12 feature screens using a shared `saveButton` style key — AccountsScreen, BillsScreen,
+  DebtsScreen, EventsScreen, GoalsScreen, GroceriesScreen, IncomeScreen, LoansScreen,
+  SavingsScreen, SettingsScreen, TransactionsScreen, TravelScreen. Each got one new
+  `import { radii, spacing } from '../tokens';` line and its `saveButton` block's
+  `borderRadius: 999` -> `radii.pill`, `paddingVertical: 12` -> `spacing[12]`,
+  `marginBottom: 10` -> `spacing[10]`.
+- 4 auth/onboarding screens using a `primaryBtn` style key — CreateProfileScreen,
+  AccountSwitcherScreen, SetPinScreen, and SignInScreen.tsx (which turned out to have TWO
+  separate `primaryBtn` blocks: a static non-theme one for the account-recovery modal,
+  and a theme-aware one for the main Sign In button — both were confirmed and updated).
+  Same token substitution pattern (`radii.pill` or `radii[8]`, `spacing[N]`) applied to
+  each.
+- 📌 Decision: SettingsScreen.tsx's separate `primaryFullButton` style (used only by the
+  "Change password" button) was deliberately left untouched — it was never part of this
+  checkpoint's scope, and no assumption was made that it should be included.
+- 📌 Decision (from the investigation step): every file was confirmed to use its
+  save/submit style key for ONLY that screen's primary confirm action — no shared style
+  block was found to be secretly reused by an unrelated secondary/cancel button, so no
+  button's styling changed other than the intended Save/Submit ones.
+- npx tsc --noEmit confirmed clean after pasting all 16 files' changes.
+- Not yet re-tested on a real device.
+
 ▶️ Next step
-- Decide what (if anything) comes next in the Apple-inspired design polish phase beyond
-  D.4 — no further checkpoint has been identified yet. Options to weigh, not yet decided:
-  (a) call the design-polish phase complete as-is and move back to the paused
-  PROGRESS5.md Quick Unlock Step 6 test checklist (close/reopen, log out, remote revoke,
-  5 wrong PINs, airplane-mode/true-offline relaunch, photo avatar in the switcher, all 5
-  accounts, plus real Google/Apple/Facebook sign-in testing for PC.3), which has been on
-  hold since this design phase began; (b) consider a small, explicitly-scoped D.5 to
-  retrofit the D.4 token file (radii/spacing) onto the same short high-visibility
-  component list originally flagged in the D.1 decision (AccountCard, BottomSheet,
-  CollapsibleRow, primary buttons) — note this was deliberately left out of D.4's own
-  scope to avoid regressions, so if picked up it should stay just as narrowly scoped now.
-  Whichever is chosen, confirm with Cath before starting rather than assuming.
+- D.5 and D.5b are both pasted and confirmed compiling clean, but not yet committed,
+  pushed, or checked on a real device. Next: push both, then do a quick on-device
+  eyeball check (not a full formal test pass) across a small sample — e.g. the Accounts
+  tab (AccountCard + a bottom sheet), a screen using CollapsibleRow, and one or two of
+  the 16 Save/Submit-button screens (e.g. Bills, plus the Sign In screen) — confirming
+  corners/spacing still look right, since a wrong token value would compile fine but
+  look visually off.
+- Then decide what (if anything) comes next in the Apple-inspired design polish phase.
+  Options to weigh, not yet decided: (a) call the design-polish phase complete as-is and
+  move back to the paused PROGRESS5.md Quick Unlock Step 6 test checklist (close/reopen,
+  log out, remote revoke, 5 wrong PINs, airplane-mode/true-offline relaunch, photo avatar
+  in the switcher, all 5 accounts, plus real Google/Apple/Facebook sign-in testing for
+  PC.3), which has been on hold since this design phase began; (b) a further, even more
+  narrowly-scoped retrofit pass if any other high-visibility spot is specifically flagged
+  later. Confirm with Cath before starting rather than assuming.

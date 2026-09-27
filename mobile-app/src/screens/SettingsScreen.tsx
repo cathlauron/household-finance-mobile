@@ -58,6 +58,7 @@ import PasswordField from '../components/PasswordField';
 import { makeId } from '../utils';
 import * as Clipboard from 'expo-clipboard';
 import { DOW_LABELS } from '../income';
+import { radii, spacing } from '../tokens';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -2314,10 +2315,10 @@ function makeStyles(colors: any) {
     successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
+      borderRadius: radii.pill,
+      paddingVertical: spacing[12],
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
     primaryFullButton: {

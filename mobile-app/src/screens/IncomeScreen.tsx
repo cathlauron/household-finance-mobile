@@ -30,6 +30,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -760,10 +761,10 @@ function makeStyles(colors: any) {
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
+      borderRadius: radii.pill,
+      paddingVertical: spacing[12],
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },

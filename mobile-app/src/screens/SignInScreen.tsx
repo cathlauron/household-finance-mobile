@@ -25,6 +25,7 @@ import {
 import PasswordField from '../components/PasswordField';
 import { withTimeout } from '../DataContext';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 type Props = {
   onSignedIn: (
@@ -993,7 +994,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917',
   },
   error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 14 },
+  primaryBtn: { backgroundColor: '#1C1917', borderRadius: radii[8], paddingVertical: spacing[14], marginTop: spacing[14] },
   primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
   secondaryBtn: {
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D6D3D1', borderRadius: 8,
@@ -1073,7 +1074,7 @@ function makeMainStyles(colors: any) {
       paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
-    primaryBtn: { backgroundColor: colors.gold, borderRadius: 999, height: 52, justifyContent: 'center', marginTop: 20 },
+    primaryBtn: { backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[20] },
     primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
     hint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 18 },
     dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 16 },

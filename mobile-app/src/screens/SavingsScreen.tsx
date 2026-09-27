@@ -24,6 +24,7 @@ import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 function todayISO(): string {
   const d = new Date();
@@ -1223,10 +1224,10 @@ function makeStyles(colors: any) {
     resultSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 8 },
     saveButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
+      borderRadius: radii.pill,
+      paddingVertical: spacing[12],
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
 swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },

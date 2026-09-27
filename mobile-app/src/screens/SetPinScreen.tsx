@@ -15,6 +15,7 @@ import { useData } from '../DataContext';
 import { savePinCopy } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 type Props = {
   username: string;
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917',
   },
   error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 24 },
+  primaryBtn: { backgroundColor: '#1C1917', borderRadius: radii[8], paddingVertical: spacing[14], marginTop: spacing[24] },
   primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
   ghostBtn: { paddingVertical: 14, marginTop: 4 },
   ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },

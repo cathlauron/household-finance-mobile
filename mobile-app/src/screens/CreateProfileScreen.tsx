@@ -13,6 +13,7 @@ import { saveProfileCloudBackup } from '../cloudBackup';
 import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
 import PasswordField from '../components/PasswordField';
 import { hapticLight } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 type Props = {
   onProfileCreated: (username: string, key: CryptoJS.lib.WordArray, credentials?: { email: string; password: string }) => void;
@@ -323,7 +324,7 @@ function makeStyles(colors: any) {
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
     primaryBtn: {
-      backgroundColor: colors.gold, borderRadius: 999, height: 52, marginTop: 20,
+      backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     },
     primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },

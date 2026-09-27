@@ -23,6 +23,7 @@ import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import { hapticLight, hapticSelection } from '../haptics';
+import { radii, spacing } from '../tokens';
 
 function plannedTotal(items: GroceryItem[]): number {
   return items.reduce((sum, g) => sum + (typeof g.plannedAmount === 'number' ? g.plannedAmount : 0), 0);
@@ -608,10 +609,10 @@ function makeStyles(colors: any) {
     purchasedToggleTextActive: { color: '#10b981' },
     saveButton: {
       backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
+      borderRadius: radii.pill,
+      paddingVertical: spacing[12],
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
     addToListButton: {
