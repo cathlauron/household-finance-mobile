@@ -256,7 +256,67 @@ token file) will all be tested together in one on-device pass at the end, rather
 testing after each checkpoint individually. This applies specifically to this design
 phase, not to the still-paused PROGRESS5.md Quick Unlock Step 6 testing.
 
+✅ D.4 — DONE. Shared radii/spacing token file created.
+
+What shipped:
+- New file mobile-app/src/tokens.ts — exports `radii` and `spacing`, each a plain `as
+  const` object keyed by the actual pixel value (e.g. `radii[10]`, `spacing[16]`), plus
+  one named exception: `radii.pill` (999) for fully-rounded pill/capsule shapes.
+- 📌 Decision: these values were NOT invented — they were reverse-engineered from a real
+  audit (via Antigravity investigation) of BillsScreen.tsx, SettingsScreen.tsx,
+  SwipeableRow.tsx, and PullToRefreshScrollView.tsx's existing StyleSheet.create(...)
+  blocks. The audit found the app already uses a naturally consistent small set of radii
+  (4, 6, 8, 10, 12, 14, plus 999 for pills) and a roughly 4px-based spacing scale (2, 4,
+  6, 8, 10, 12, 14, 16, 20, 24, 40) — no scattered/arbitrary magic numbers were found. So
+  D.4 codifies what's already in use rather than introducing a new opinionated scale.
+- 📌 Decision: kept as a separate plain constants file (mobile-app/src/tokens.ts), NOT
+  folded into theme.ts or ThemeContext. Reasoning: colors need to be React Context
+  because they're dynamic at runtime (light/dark mode, live OS appearance changes) —
+  radii/spacing are static and never change at runtime, so routing them through a hook
+  would add unnecessary re-render overhead for no benefit.
+- 📌 Decision: tokens are keyed by their own pixel value (e.g. `spacing[16]`) rather than
+  semantic names like xs/sm/md/lg, specifically to avoid having to bikeshed which name a
+  value like 14 belongs under when it doesn't map cleanly onto a 4-step naming scale.
+- 📌 Decision (scope): this checkpoint ONLY creates the token file — it does NOT migrate
+  any existing screen/component to use it. Retrofitting the ~9+ files that currently
+  hardcode these numbers is separate, larger follow-up work, deliberately not bundled
+  into D.4, so as not to risk a visual regression across many screens in one pass.
+- npx tsc --noEmit confirmed clean (0 errors) — expected, since nothing yet imports this
+  new file.
+
+✅ D.2 + D.3 + D.4 are now ALL complete. Per the standing decision below, the on-device
+test pass that was being held until D.4 finished is now due.
+
+📌 Decision: on-device testing for this design-polish phase was deferred until D.2, D.3,
+and D.4 were all complete, so they could be verified together in one pass rather than
+after each checkpoint. That condition is now met. This does not apply to the still-paused
+PROGRESS5.md Quick Unlock Step 6 testing, which remains separately paused.
+
 ▶️ Next step
-- D.3 is done (see above). Next up is D.4 — build the radii/spacing token file. No
-  on-device testing yet — still deferred until D.4 is fully finished, per the decision
-  above; that testing pass will cover D.2, D.3, and D.4 together in one go.
+- Run the combined on-device test pass for D.2 (haptics), D.3 (root-level screen
+  fade-in), and D.4 (token file — nothing to visually test here since it isn't wired
+  into any screen yet, but worth confirming the app still builds/runs fine on a real
+  device with the file present). Suggested checklist for the person to run through on
+  their phone:
+  1. Launch the app fresh — confirm the splash (IntroScreen) still appears instantly
+     with NO fade-in flash (D.3's cold-start exception).
+  2. Sign in — confirm the transition into the home screen fades in smoothly rather than
+     hard-cutting (D.3).
+  3. Swipe open a row on at least 2-3 different screens (e.g. Bills, Transactions,
+     Savings) and tap both the revealed view action and the revealed delete action —
+     confirm a light haptic buzz fires on view, a slightly stronger one on delete (D.2).
+  4. Toggle at least 2 of the 4 Settings screen switches (Biometric unlock, Push
+     notifications, Weekly spending recap, Quick PIN) — confirm each gives a haptic tap
+     (D.2).
+  5. Pull-to-refresh on a screen that supports it — confirm a haptic fires at the moment
+     the pull commits (Android only; iOS uses its own native system haptic here) (D.2).
+  6. Tap a primary Save button (e.g. save a new Bill, save a new Goal) — confirm a light
+     haptic fires (D.2).
+  7. Flip one of the checkmark-pill-style toggles (e.g. Events' "Completed" toggle,
+     Groceries' "Bought" toggle) — confirm a haptic fires (D.2).
+  8. Lock the app (or switch accounts) from within Home — confirm the transition back to
+     the lock/switcher screen also fades in rather than hard-cutting (D.3).
+  Once this checklist is run and reported back, note the pass/fail results in PROGRESS6.md
+  and move on to whichever next design-polish checkpoint follows D.4 (check
+  4-REMAINING-WORK-ROADMAP.md and/or the original D.1 audit notes for what comes next —
+  not yet identified in this file).
