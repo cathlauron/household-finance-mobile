@@ -504,7 +504,8 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                   ))}
                 </View>
 
-                <Text style={styles.inputLabel}>Source name (optional)</Text>                <TextInput
+                <Text style={styles.inputLabel}>Source name (optional)</Text>
+                <TextInput
                   style={styles.input}
                   placeholder="e.g. Freelance design, ABC Corp"
                   placeholderTextColor={colors.inkFaint}

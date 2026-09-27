@@ -2,7 +2,7 @@ import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts, updateRecentAccountIfPresent } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -68,7 +68,7 @@ function AppContent() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const isFirstRenderRef = useRef(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
       return;

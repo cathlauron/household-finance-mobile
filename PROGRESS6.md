@@ -289,34 +289,54 @@ test pass that was being held until D.4 finished is now due.
 
 📌 Decision: on-device testing for this design-polish phase was deferred until D.2, D.3,
 and D.4 were all complete, so they could be verified together in one pass rather than
-after each checkpoint. That condition is now met. This does not apply to the still-paused
-PROGRESS5.md Quick Unlock Step 6 testing, which remains separately paused.
+after each checkpoint. That condition was met, and the combined test pass below is now
+DONE.
+
+✅ D.2 + D.3 + D.4 on-device test pass — DONE, all confirmed working.
+
+What happened: initial on-device retest showed no haptic feedback and no visible
+fade-in at all, despite the code (haptics.ts logging wrapper, the VIBRATE permission in
+app.json, and App.tsx's useLayoutEffect swap) all being confirmed present and correct via
+file inspection. No `[haptics] ... failed` warnings appeared in the Metro log either,
+which — combined with Metro reliably picking up other same-session edits (confirmed via
+an unrelated `<Text>` string-wrapping fix landing correctly) — pointed away from a code
+bug and toward a stale bundle/cache.
+
+📌 Root cause confirmed: a stale Metro bundle/cache, not a code issue. Running
+`npx expo start -c` (clears the bundler cache) followed by a full close (swipe away from
+recent apps, not just backgrounding) and fresh reopen of Expo Go resolved it completely —
+haptics are now felt on a real device.
+
+📌 Decision / lesson for future sessions: after any change to native-feedback code
+(haptics, permissions, anything touching a native module) or to root-level
+App.tsx render logic, do a full `npx expo start -c` + fully-closed-and-reopened Expo Go
+retest before concluding a fix didn't work — a stale bundle can silently mask a correct
+fix and look identical to a real bug (no errors, no warnings, just nothing visibly
+happening).
+
+- D.2 (haptics) confirmed on-device: swipe-to-reveal view/delete actions on multiple
+  screens, Settings toggles, pull-to-refresh commit, primary Save buttons, and
+  checkmark-pill toggles all produce the expected haptic feedback (light for
+  Save/Submit and toggles, medium for delete/pull-to-refresh commit).
+- D.3 (root-level fade-in) confirmed on-device: cold launch still shows the splash
+  instantly with no fade flash; sign-in and lock/account-switch transitions now visibly
+  fade rather than hard-cutting.
+- D.4 (token file) confirmed the app still builds/runs fine on a real device with
+  tokens.ts present (expected, since nothing yet imports it — no visual regression).
+
+Design-polish phase D.1 through D.4 are now fully complete and verified, including
+on-device confirmation.
 
 ▶️ Next step
-- Run the combined on-device test pass for D.2 (haptics), D.3 (root-level screen
-  fade-in), and D.4 (token file — nothing to visually test here since it isn't wired
-  into any screen yet, but worth confirming the app still builds/runs fine on a real
-  device with the file present). Suggested checklist for the person to run through on
-  their phone:
-  1. Launch the app fresh — confirm the splash (IntroScreen) still appears instantly
-     with NO fade-in flash (D.3's cold-start exception).
-  2. Sign in — confirm the transition into the home screen fades in smoothly rather than
-     hard-cutting (D.3).
-  3. Swipe open a row on at least 2-3 different screens (e.g. Bills, Transactions,
-     Savings) and tap both the revealed view action and the revealed delete action —
-     confirm a light haptic buzz fires on view, a slightly stronger one on delete (D.2).
-  4. Toggle at least 2 of the 4 Settings screen switches (Biometric unlock, Push
-     notifications, Weekly spending recap, Quick PIN) — confirm each gives a haptic tap
-     (D.2).
-  5. Pull-to-refresh on a screen that supports it — confirm a haptic fires at the moment
-     the pull commits (Android only; iOS uses its own native system haptic here) (D.2).
-  6. Tap a primary Save button (e.g. save a new Bill, save a new Goal) — confirm a light
-     haptic fires (D.2).
-  7. Flip one of the checkmark-pill-style toggles (e.g. Events' "Completed" toggle,
-     Groceries' "Bought" toggle) — confirm a haptic fires (D.2).
-  8. Lock the app (or switch accounts) from within Home — confirm the transition back to
-     the lock/switcher screen also fades in rather than hard-cutting (D.3).
-  Once this checklist is run and reported back, note the pass/fail results in PROGRESS6.md
-  and move on to whichever next design-polish checkpoint follows D.4 (check
-  4-REMAINING-WORK-ROADMAP.md and/or the original D.1 audit notes for what comes next —
-  not yet identified in this file).
+- Decide what (if anything) comes next in the Apple-inspired design polish phase beyond
+  D.4 — no further checkpoint has been identified yet. Options to weigh, not yet decided:
+  (a) call the design-polish phase complete as-is and move back to the paused
+  PROGRESS5.md Quick Unlock Step 6 test checklist (close/reopen, log out, remote revoke,
+  5 wrong PINs, airplane-mode/true-offline relaunch, photo avatar in the switcher, all 5
+  accounts, plus real Google/Apple/Facebook sign-in testing for PC.3), which has been on
+  hold since this design phase began; (b) consider a small, explicitly-scoped D.5 to
+  retrofit the D.4 token file (radii/spacing) onto the same short high-visibility
+  component list originally flagged in the D.1 decision (AccountCard, BottomSheet,
+  CollapsibleRow, primary buttons) — note this was deliberately left out of D.4's own
+  scope to avoid regressions, so if picked up it should stay just as narrowly scoped now.
+  Whichever is chosen, confirm with Cath before starting rather than assuming.

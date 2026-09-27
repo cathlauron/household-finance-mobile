@@ -664,7 +664,8 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                       marginRight: 10,
                     }}
                   >
-                    {subscriptionInput && <Text style={{ color: colors.navy2, fontSize: 14, fontWeight: '700' }}>✓</Text>}                    {subscriptionInput && <Ionicons name="checkmark" size={14} color={colors.navy2} />}                  </View>
+                    {subscriptionInput && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
+                  </View>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>Subscription</Text>
                 </TouchableOpacity>
 

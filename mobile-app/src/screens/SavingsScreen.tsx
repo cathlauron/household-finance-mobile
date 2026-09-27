@@ -731,7 +731,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             </TouchableOpacity>
           )}
 
-          {efIncomeDisplay && (
+          {!!efIncomeDisplay && (
             <View style={styles.suggestionRow}>
               <Text style={styles.suggestionText}>{efIncomeDisplay}</Text>
             </View>
@@ -812,7 +812,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             </TouchableOpacity>
           )}
 
-          {fiIncomeDisplay && (
+          {!!fiIncomeDisplay && (
             <View style={styles.suggestionRow}>
               <Text style={styles.suggestionText}>{fiIncomeDisplay}</Text>
             </View>
