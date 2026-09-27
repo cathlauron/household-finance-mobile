@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import IconLabelHint from './IconLabelHint';
 import { useTheme } from '../ThemeContext';
+import { radii, spacing } from '../tokens';
 
 // Enable LayoutAnimation for Android devices if not already enabled
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -96,8 +97,8 @@ function makeStyles(colors: any) {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.navy3,
-      borderRadius: 10,
-      marginBottom: 8,
+      borderRadius: radii[10],
+      marginBottom: spacing[8],
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: 'transparent',
@@ -108,17 +109,17 @@ function makeStyles(colors: any) {
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 14,
+      paddingVertical: spacing[12],
+      paddingHorizontal: spacing[14],
     },
     contentWrap: {
       flex: 1,
-      marginRight: 8,
+      marginRight: spacing[8],
     },
     chevronWrap: {
       justifyContent: 'center',
       alignItems: 'center',
-      paddingLeft: 4,
+      paddingLeft: spacing[4],
     },
     expandedDrawer: {
       backgroundColor: colors.navy3,
@@ -126,12 +127,12 @@ function makeStyles(colors: any) {
     drawerDivider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: colors.navy4,
-      marginHorizontal: 14,
+      marginHorizontal: spacing[14],
     },
     drawerContent: {
-      paddingHorizontal: 14,
-      paddingTop: 12,
-      paddingBottom: 14,
+      paddingHorizontal: spacing[14],
+      paddingTop: spacing[12],
+      paddingBottom: spacing[14],
     },
     editButton: {
       flexDirection: 'row',
@@ -140,13 +141,13 @@ function makeStyles(colors: any) {
       backgroundColor: colors.navy2,
       borderWidth: 1,
       borderColor: colors.navy4,
-      borderRadius: 8,
+      borderRadius: radii[8],
       paddingVertical: 9,
-      paddingHorizontal: 14,
-      marginTop: 12,
+      paddingHorizontal: spacing[14],
+      marginTop: spacing[12],
     },
     editIcon: {
-      marginRight: 6,
+      marginRight: spacing[6],
     },
     editButtonText: {
       fontSize: 13,

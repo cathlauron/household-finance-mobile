@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry } from '../types';
+import { radii, spacing } from '../tokens';
 
 export type AccountGroup = 'cash' | 'debit' | 'credit';
 
@@ -118,9 +119,9 @@ export default function AccountCard({ account, group, onPress, style, testID, is
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: radii[16],
+    padding: spacing[16],
+    marginBottom: spacing[12],
     minHeight: 128,
     justifyContent: 'space-between',
     borderWidth: 1,
@@ -140,14 +141,14 @@ const styles = StyleSheet.create({
   topRightIcons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing[8],
   },
   editHintBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: radii[6],
   },
   editHintText: {
     fontSize: 10,
@@ -158,12 +159,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing[12],
   },
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing[8],
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: radii[6],
   },
   badgeText: {
     fontSize: 10,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   nameWrap: {
-    marginBottom: 14,
+    marginBottom: spacing[14],
   },
   accountName: {
     fontSize: 18,
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '600',
     letterSpacing: 0.8,
-    marginBottom: 2,
+    marginBottom: spacing[2],
   },
   balanceAmount: {
     fontSize: 22,

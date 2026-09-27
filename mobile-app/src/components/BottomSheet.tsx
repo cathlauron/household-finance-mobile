@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import { radii, spacing } from '../tokens';
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -97,8 +98,8 @@ function makeStyles(colors: any, screenHeight: number) {
     },
     sheet: {
       backgroundColor: colors.navy3,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: radii[20],
+      borderTopRightRadius: radii[20],
       borderBottomLeftRadius: 0,
       borderBottomRightRadius: 0,
       maxHeight: Math.round(screenHeight * 0.85),
@@ -114,8 +115,8 @@ function makeStyles(colors: any, screenHeight: number) {
     },
     handleWrap: {
       alignItems: 'center',
-      paddingTop: 10,
-      paddingBottom: 6,
+      paddingTop: spacing[10],
+      paddingBottom: spacing[6],
     },
     handle: {
       width: 36,
@@ -125,9 +126,9 @@ function makeStyles(colors: any, screenHeight: number) {
       opacity: 0.5,
     },
     header: {
-      paddingHorizontal: 20,
-      paddingTop: 4,
-      paddingBottom: 12,
+      paddingHorizontal: spacing[20],
+      paddingTop: spacing[4],
+      paddingBottom: spacing[12],
     },
     title: {
       fontSize: 18,
@@ -139,8 +140,8 @@ function makeStyles(colors: any, screenHeight: number) {
       flexGrow: 0,
     },
     scrollContent: {
-      paddingHorizontal: 20,
-      paddingBottom: Platform.OS === 'ios' ? 12 : 20,
+      paddingHorizontal: spacing[20],
+      paddingBottom: Platform.OS === 'ios' ? spacing[12] : spacing[20],
     },
     bottomSafeArea: {
       backgroundColor: colors.navy3,
