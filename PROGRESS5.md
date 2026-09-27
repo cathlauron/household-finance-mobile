@@ -7,6 +7,13 @@ verified on-device), and the "fewer words" pass through 13 screens. See
 PROGRESS4.md for that detail, plus everything it links back to
 (PROGRESS3.md, PROGRESS2.md, PROGRESS1.md, PROGRESS.md).
 
+⏸️ PAUSED as of this line — NOT abandoned. Work in this file is deliberately paused
+mid-way through Quick Unlock Step 6 (the EAS build exists, is installed, and opens — the
+actual on-device test checklist has not been run yet) to prioritize a design/UX polish
+pass first. See PROGRESS6.md for the current active phase. Resume here by picking up
+exactly at Step 6's test checklist — see the "▶️ Next step" section below, which was
+last updated before the pause and is still accurate for where to pick back up.
+
 ✅ Carried forward from PROGRESS4.md — still true
 - Phase A (Firebase Auth, household linking, account recovery,
   multi-device sessions) — complete. Detail in PROGRESS1.md.
