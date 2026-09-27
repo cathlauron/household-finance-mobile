@@ -119,16 +119,69 @@ Checkpoint table (proposed structure, mirroring Phase B's audit-first approach)
 | D.1 | Audit pass — go through the app's actual current screens/interactions against the four buckets above (an Antigravity investigation into what libraries/patterns already exist, e.g. current animations, haptics, corner-radius usage, transition style, plus the person deciding what's realistic and worth doing), and produce a short, prioritized, written list of specific changes. | A written list exists in this file, each item roughly sized to a session. |
 | D.2+ | Phased implementation of that list, one small piece per session, each with its own on-device verification before moving to the next. | Each listed item is either done and verified, or explicitly deferred with a reason. |
 
+✅ D.1 — DONE. Audit findings (Antigravity investigation, full detail in chat transcript):
+- Animation: NO react-native-reanimated anywhere. 7 existing uses of React Native's
+  built-in Animated API and LayoutAnimation, all reasonably well-built already — springs/
+  timings in IntroScreen, IconLabelHint, RowInteractionPreview; LayoutAnimation accordion
+  expand/collapse in CollapsibleRow and AccountsScreen's stacked-card view; scale-on-swipe
+  in SwipeableRow. PC.9's Android pull-to-refresh (PullToRefreshScrollView.tsx) already
+  does real drag-following physics via PanGestureHandler + Animated — genuinely solid,
+  reuse this pattern rather than reaching for a new dependency.
+- Screen-to-screen nav: 100% default React Navigation transitions (native-stack +
+  bottom-tabs), zero custom transition specs anywhere. The top-level app-state switch in
+  App.tsx (Intro -> Onboarding/SignIn -> PinUnlock -> RootStack) is a hard conditional
+  re-render with NO animation at all — a flat cut every time.
+- Haptics: confirmed completely absent. Zero calls anywhere in src/ or App.tsx, and
+  expo-haptics is not in package.json, package-lock.json, or node_modules.
+- Corner radius / spacing: confirmed NO shared token file. borderRadius is hardcoded
+  298 times across the codebase with arbitrary per-file values (2, 4, 6, 8, 10, 12, 14,
+  16, 18, 20, 24, 29, 999, etc.); spacing (margin/padding) is the same story, no scale.
+- Dependencies confirmed present: none of react-native-reanimated, expo-haptics, expo-av,
+  react-native-svg, or any Skia package are installed. Full current dependency list is in
+  package.json as of this session (see chat transcript for the exact block).
+- Full screen inventory taken: 33 screens in mobile-app/src/screens plus 9 report
+  sub-screens in mobile-app/src/screens/reports (42 total) — for reference in later
+  design-pass sessions.
+
+📌 D.1 DECISION — the actual plan for D.2 onward (agreed with Cath, do not re-litigate
+without a real reason to revisit):
+
+DOING, in this order:
+- D.2 — Add expo-haptics (new, small dependency) and wire calibrated haptic feedback into
+  a short curated list of moments only: swipe-to-delete (SwipeableRow), toggle switches,
+  the pull-to-refresh trigger point in PullToRefreshScrollView, and primary Save/Submit
+  buttons. Not a blanket sweep of every tap in the app.
+- D.3 — Cross-fade the root-level screen swaps in App.tsx (Intro/Onboarding/SignIn/
+  PinUnlock/RootStack), which today hard-cut with zero animation. Reuses the existing
+  plain Animated API already used elsewhere in the app — no new dependency. This is the
+  single most visually jarring thing found in the audit.
+- D.4 — Create one small shared radii/spacing token file (new, no dependency) and retrofit
+  it onto a short hand-picked list of high-visibility shared components only — AccountCard,
+  BottomSheet, CollapsibleRow, and primary buttons — NOT all 298 existing borderRadius
+  call sites. The token file itself should still be used for all new code going forward.
+
+EXPLICITLY SKIPPED, with reasons (so this isn't silently re-proposed later):
+- react-native-reanimated — not adopting it. What already exists (plain Animated +
+  PC.9's PanGestureHandler-based pull-to-refresh) already covers the app's real physics
+  needs; adding reanimated would be a real dependency/rewrite decision for no concrete win.
+- True squircle corners — no RN primitive for this; would require an SVG/Skia library for
+  a mostly-invisible refinement. Not worth the dependency for this app.
+- Audio/click sound cues — would require adding expo-av for something that reads as
+  tonally wrong in a finance app. Skipped.
+- A full borderRadius/spacing migration across all 298 existing hardcoded sites — too
+  large and too risky for a "polish pass"; the smaller D.4 token-file + spot-retrofit
+  approach captures most of the visible benefit at a fraction of the risk.
+- Overriding React Navigation's default stack/tab transitions beyond the D.3 root-level
+  cross-fade — native platform defaults are the expected feel for in-app navigation; not
+  worth fighting them.
+
 ▶️ Next step
-- Nothing has been investigated or decided yet — this session only set up the new file and
-  paused PROGRESS5.md.
-- IMMEDIATE NEXT ACTION for the next session: run D.1. Suggested shape (confirm before
-  running): an Antigravity investigation-only prompt asking it to report, with real file
-  paths and real code, (a) which screens/components currently do anything animation- or
-  transition-related and how, (b) whether expo-haptics or any haptics call exists anywhere,
-  (c) how corner radius is currently applied (a shared style token vs. scattered per-screen
-  values), and (d) confirmation of whether react-native-reanimated is truly absent from
-  package.json. Bring that back, and separately/alongside it, go screen by screen (or
-  flow by flow — e.g. "deleting a transaction," "switching tabs," "opening a bill") and
-  decide together which of the four buckets are worth pursuing and how far, before writing
-  any code.
+- D.1 is done (see findings + decision above). D.2 is next: add expo-haptics and wire it
+  into swipe-to-delete, toggles, pull-to-refresh, and primary Save/Submit buttons.
+- IMMEDIATE NEXT ACTION for the next session: run an Antigravity investigation-only prompt
+  to find the exact real file/line locations of (a) every toggle/switch component in the
+  app, (b) every "primary" Save/Submit-style button component (shared button component vs.
+  ad hoc per-screen), (c) SwipeableRow's exact current onDelete/viewAction call sites, and
+  (d) PullToRefreshScrollView's exact commit-the-refresh point (onHandlerStateChange) —
+  so the haptic calls can be placed precisely rather than guessed at. Then Claude designs
+  the wrapper + exact call sites and hands over paste-ready snippets.
