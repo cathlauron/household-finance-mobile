@@ -206,6 +206,40 @@ export default function CalendarScreen() {
     swipeListRef.current?.scrollToIndex({ index: pageIndex, animated: true });
   }, [pageIndex, navMode]);
 
+  
+  // Scroll mode: a tall vertical list of months, reusing the same page list as Swipe.
+  const verticalListRef = useRef<FlatList<{ year: number; month: number }>>(null);
+  const skipNextScrollSync = useRef(false);
+  const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      const top = viewableItems[0].item;
+      skipNextScrollSync.current = true;
+      setYear(top.year);
+      setMonth(top.month);
+    }
+  }).current;
+
+  function handleScrollToIndexFailed(info: any) {
+    setTimeout(() => {
+      verticalListRef.current?.scrollToIndex({ index: info.index, animated: true });
+    }, 100);
+  }
+
+  // Whenever the month changes from the chevrons or Today, jump the scrolling
+  // list to match. Skipped once right after a scroll itself changed the month,
+  // so scrolling doesn't fight the gesture that's already in progress.
+  useEffect(() => {
+    if (navMode !== 'scroll') return;
+    if (pageIndex < 0 || pageIndex >= monthPages.length) return;
+    if (skipNextScrollSync.current) {
+      skipNextScrollSync.current = false;
+      return;
+    }
+    verticalListRef.current?.scrollToIndex({ index: pageIndex, animated: true });
+  }, [pageIndex, navMode]);
+
   useEffect(() => {
     getCalendarViewMode().then(setViewMode);
     getCalendarNavMode().then(setNavMode);
@@ -389,6 +423,7 @@ export default function CalendarScreen() {
 
       {navMode === 'swipe' ? (
         <FlatList
+          key="swipe-list"
           ref={swipeListRef}
           style={{ flexGrow: 0 }}
           horizontal
@@ -414,12 +449,33 @@ export default function CalendarScreen() {
           )}
         />
       ) : (
-        <MonthView
-          year={year}
-          month={month}
-          viewMode={viewMode}
-          effectivePreviewDay={effectivePreviewDay}
-          onDayPress={handleDayPress}
+        <FlatList
+          key="scroll-list"
+          ref={verticalListRef}
+          style={{ flex: 1 }}
+          data={monthPages}
+          keyExtractor={(item) => `${item.year}-${item.month}`}
+          initialScrollIndex={pageIndex}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfigRef}
+          initialNumToRender={3}
+          windowSize={5}
+          maxToRenderPerBatch={3}
+          renderItem={({ item }) => (
+            <View>
+              <Text style={styles.inlineMonthTitle}>
+                {MONTHS[item.month]} {item.year}
+              </Text>
+              <MonthView
+                year={item.year}
+                month={item.month}
+                viewMode={viewMode}
+                effectivePreviewDay={item.year === year && item.month === month ? effectivePreviewDay : null}
+                onDayPress={handleDayPress}
+              />
+            </View>
+          )}
         />
       )}
 
@@ -599,6 +655,13 @@ function makeStyles(colors: any) {
       fontSize: 18,
       fontWeight: '600',
       color: colors.ink,
+    },
+        inlineMonthTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.ink,
+      marginTop: 10,
+      marginBottom: 4,
     },
     todayButton: {
       alignSelf: 'center',
