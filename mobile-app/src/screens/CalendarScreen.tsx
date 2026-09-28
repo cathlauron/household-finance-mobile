@@ -33,6 +33,129 @@ const EVENT_DOT_COLORS: Record<CalendarEvent['type'], string> = {
   manual: '#94a3b8',
 };
 
+type MonthViewProps = {
+  year: number;
+  month: number;
+  viewMode: CalendarViewMode;
+  effectivePreviewDay: number | null;
+  onDayPress: (day: number) => void;
+};
+
+// Draws one month's grid of week rows and day cells. Pulled out of
+// CalendarScreen so Swipe and Scroll modes can reuse it for many months.
+const MonthView = React.memo(function MonthView({
+  year,
+  month,
+  viewMode,
+  effectivePreviewDay,
+  onDayPress,
+}: MonthViewProps) {
+  const { colors } = useTheme();
+  const { model } = useData();
+  const today = new Date();
+  const styles = makeStyles(colors);
+
+  const monthEvents = useMemo(() => {
+    if (!model) return {} as Record<number, CalendarEvent[]>;
+    return computeMonthEvents(model, year, month);
+  }, [model, year, month]);
+
+  const projectedBalances = useMemo(() => {
+    if (!model) return {} as Record<number, number>;
+    return computeRunningBalances(model, year, month);
+  }, [model, year, month]);
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push(cells.slice(i, i + 7));
+  }
+
+  return (
+    <View>
+      {rows.map((row, rowIndex) => (
+        <View key={rowIndex} style={styles.weekRow}>
+          {row.map((day, colIndex) => {
+            const isToday = isCurrentMonth && day === today.getDate();
+            return (
+              <TouchableOpacity
+                key={colIndex}
+                disabled={day === null}
+                onPress={() => day !== null && onDayPress(day)}
+                activeOpacity={0.6}
+                style={[
+                  styles.dayCell,
+                  viewMode === 'details' ? styles.dayCellDetails : viewMode === 'list' ? styles.dayCellList : styles.dayCellSquare,
+                  day === null && styles.dayCellEmpty,
+                  isToday && styles.dayCellToday,
+                  viewMode === 'list' && day !== null && day === effectivePreviewDay && !isToday && styles.dayCellSelected,
+                ]}
+              >
+                {day !== null && (
+                  <>
+                    <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
+                      {day}
+                    </Text>
+                    {viewMode === 'stacked' && monthEvents[day] && monthEvents[day].length > 0 && (
+                      <View style={styles.stackWrap}>
+                        {monthEvents[day].slice(0, 3).map((ev, i) => (
+                          <View
+                            key={i}
+                            style={[styles.stackBar, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
+                          />
+                        ))}
+                      </View>
+                    )}
+                    {viewMode === 'details' && monthEvents[day] && monthEvents[day].length > 0 && (
+                      <View style={styles.pillWrap}>
+                        {monthEvents[day].slice(0, 2).map((ev, i) => (
+                          <View
+                            key={i}
+                            style={[styles.pill, { backgroundColor: EVENT_DOT_COLORS[ev.type] + '33' }]}
+                          >
+                            <Text style={styles.pillText} numberOfLines={1}>
+                              {ev.label}
+                            </Text>
+                          </View>
+                        ))}
+                        {monthEvents[day].length > 2 && (
+                          <Text style={styles.pillMore}>+{monthEvents[day].length - 2} more</Text>
+                        )}
+                      </View>
+                    )}
+                    {viewMode !== 'stacked' && viewMode !== 'details' && monthEvents[day] && monthEvents[day].length > 0 && (
+                      <View style={styles.dotRow}>
+                        {monthEvents[day].slice(0, 4).map((ev, i) => (
+                          <View
+                            key={i}
+                            style={[styles.dot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
+                          />
+                        ))}
+                      </View>
+                    )}
+                    {viewMode !== 'details' && viewMode !== 'list' && (
+                      <Text style={styles.dayBalanceText} numberOfLines={1}>
+                        {formatPeso(projectedBalances[day] ?? 0)}
+                      </Text>
+                    )}
+                  </>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+});
+
 export default function CalendarScreen() {
   const { colors } = useTheme();
   const { model } = useData();
@@ -124,21 +247,8 @@ export default function CalendarScreen() {
   }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday
 
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
-
-  // Build a flat list of cells: empty placeholders for the days before day 1,
-  // then one cell per real day of the month.
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  // Split the flat list into rows of 7 (one row per week).
-  const rows: (number | null)[][] = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    rows.push(cells.slice(i, i + 7));
-  }
 
   // The actual balance math — see src/balanceProjection.ts for how this is calculated.
   const totalBalance = totalLiquidBalance(model);
@@ -222,78 +332,13 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      {rows.map((row, rowIndex) => (
-        <View key={rowIndex} style={styles.weekRow}>
-          {row.map((day, colIndex) => {
-            const isToday = isCurrentMonth && day === today.getDate();
-            return (
-              <TouchableOpacity
-                key={colIndex}
-                disabled={day === null}
-                onPress={() => day !== null && handleDayPress(day)}
-                activeOpacity={0.6}
-                style={[
-                  styles.dayCell,
-                  viewMode === 'details' ? styles.dayCellDetails : viewMode === 'list' ? styles.dayCellList : styles.dayCellSquare,
-                  day === null && styles.dayCellEmpty,
-                  isToday && styles.dayCellToday,
-                  viewMode === 'list' && day !== null && day === effectivePreviewDay && !isToday && styles.dayCellSelected,
-                ]}
-              >
-                {day !== null && (
-                  <>
-                    <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
-                      {day}
-                    </Text>
-                    {viewMode === 'stacked' && monthEvents[day] && monthEvents[day].length > 0 && (
-                      <View style={styles.stackWrap}>
-                        {monthEvents[day].slice(0, 3).map((ev, i) => (
-                          <View
-                            key={i}
-                            style={[styles.stackBar, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
-                          />
-                        ))}
-                      </View>
-                    )}
-                    {viewMode === 'details' && monthEvents[day] && monthEvents[day].length > 0 && (
-                      <View style={styles.pillWrap}>
-                        {monthEvents[day].slice(0, 2).map((ev, i) => (
-                          <View
-                            key={i}
-                            style={[styles.pill, { backgroundColor: EVENT_DOT_COLORS[ev.type] + '33' }]}
-                          >
-                            <Text style={styles.pillText} numberOfLines={1}>
-                              {ev.label}
-                            </Text>
-                          </View>
-                        ))}
-                        {monthEvents[day].length > 2 && (
-                          <Text style={styles.pillMore}>+{monthEvents[day].length - 2} more</Text>
-                        )}
-                      </View>
-                    )}
-                    {viewMode !== 'stacked' && viewMode !== 'details' && monthEvents[day] && monthEvents[day].length > 0 && (
-                      <View style={styles.dotRow}>
-                        {monthEvents[day].slice(0, 4).map((ev, i) => (
-                          <View
-                            key={i}
-                            style={[styles.dot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
-                          />
-                        ))}
-                      </View>
-                    )}
-                    {viewMode !== 'details' && viewMode !== 'list' && (
-                      <Text style={styles.dayBalanceText} numberOfLines={1}>
-                        {formatPeso(projectedBalances[day] ?? 0)}
-                      </Text>
-                    )}
-                  </>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ))}
+      <MonthView
+        year={year}
+        month={month}
+        viewMode={viewMode}
+        effectivePreviewDay={effectivePreviewDay}
+        onDayPress={handleDayPress}
+      />
 
       {viewMode === 'list' && (
         <View style={styles.previewPanel}>
