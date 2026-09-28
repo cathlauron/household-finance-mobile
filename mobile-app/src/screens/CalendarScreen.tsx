@@ -185,12 +185,10 @@ export default function CalendarScreen() {
           <Text style={styles.sheetDone}>Done</Text>
         </TouchableOpacity>
       </View>
-      {viewMode !== 'list' && (
-        <View style={styles.balanceBanner}>
-          <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
-        </View>
-      )}
+      <View style={styles.balanceBanner}>
+        <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
+        <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+      </View>
 
       <View style={styles.toolbarRow}>
         <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.menuButton}>
