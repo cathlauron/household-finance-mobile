@@ -38,7 +38,7 @@ type MonthViewProps = {
   month: number;
   viewMode: CalendarViewMode;
   effectivePreviewDay: number | null;
-  onDayPress: (day: number) => void;
+  onDayPress: (day: number, year: number, month: number) => void;
 };
 
 // Draws one month's grid of week rows and day cells. Pulled out of
@@ -88,7 +88,7 @@ const MonthView = React.memo(function MonthView({
               <TouchableOpacity
                 key={colIndex}
                 disabled={day === null}
-                onPress={() => day !== null && onDayPress(day)}
+                onPress={() => day !== null && onDayPress(day, year, month)}
                 activeOpacity={0.6}
                 style={[
                   styles.dayCell,
@@ -163,7 +163,9 @@ export default function CalendarScreen() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  // The day the popup is open for. Remembers its own month and year so this
+  // keeps working once several months can be on screen at the same time.
+  const [selectedDate, setSelectedDate] = useState<{ year: number; month: number; day: number } | null>(null);
   
   // View style (Compact / Stacked / Details / List) and how months move
   // (Scroll / Swipe) — both remembered between app launches.
@@ -172,7 +174,7 @@ export default function CalendarScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Which day is showing in the List-mode preview panel under the grid.
   // null = default (today if we're on the current month, otherwise the 1st).
-  const [previewDay, setPreviewDay] = useState<number | null>(null);
+  const [previewDate, setPreviewDate] = useState<{ year: number; month: number; day: number } | null>(null);
 
   useEffect(() => {
     getCalendarViewMode().then(setViewMode);
@@ -186,6 +188,17 @@ export default function CalendarScreen() {
     if (!model) return {};
     return computeMonthEvents(model, year, month);
   }, [model, year, month]);
+  
+  // Events and projected balances for the month of whichever day the popup is open for.
+  const selectedMonthEvents = useMemo(() => {
+    if (!model || !selectedDate) return {} as Record<number, CalendarEvent[]>;
+    return computeMonthEvents(model, selectedDate.year, selectedDate.month);
+  }, [model, selectedDate]);
+
+  const selectedMonthBalances = useMemo(() => {
+    if (!model || !selectedDate) return {} as Record<number, number>;
+    return computeRunningBalances(model, selectedDate.year, selectedDate.month);
+  }, [model, selectedDate]);
 
   const styles = makeStyles(colors);
 
@@ -222,16 +235,17 @@ export default function CalendarScreen() {
     setMonth(today.getMonth());
   }
 
-  function handleDayPress(day: number) {
+  function handleDayPress(day: number, dayYear: number, dayMonth: number) {
+    const picked = { year: dayYear, month: dayMonth, day };
     if (viewMode === 'list') {
-      setPreviewDay(day);
+      setPreviewDate(picked);
     } else {
-      setSelectedDay(day);
+      setSelectedDate(picked);
     }
   }
 
   function closeDayModal() {
-    setSelectedDay(null);
+    setSelectedDate(null);
   }
   
   function chooseViewMode(mode: CalendarViewMode) {
@@ -256,21 +270,23 @@ export default function CalendarScreen() {
 
   // Full, friendly label for whichever day is currently selected, e.g.
   // "Friday, August 22, 2026" — used in the popup title.
-  const selectedDateLabel =
-    selectedDay !== null
-      ? new Date(year, month, selectedDay).toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        })
-      : '';
+  const selectedDateLabel = selectedDate
+    ? new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '';
 
-  const selectedDayBalance = selectedDay !== null ? projectedBalances[selectedDay] : null;
+  const selectedDayBalance = selectedDate ? selectedMonthBalances[selectedDate.day] ?? null : null;
+  const selectedDayEvents = selectedDate ? selectedMonthEvents[selectedDate.day] || [] : [];
   
   // List-mode preview panel values
   const effectivePreviewDay = Math.min(
-    previewDay ?? (isCurrentMonth ? today.getDate() : 1),
+    previewDate && previewDate.year === year && previewDate.month === month
+      ? previewDate.day
+      : (isCurrentMonth ? today.getDate() : 1),
     daysInMonth
   );
   const previewEvents = monthEvents[effectivePreviewDay] || [];
@@ -405,7 +421,7 @@ export default function CalendarScreen() {
       </Modal>
 
       <Modal
-        visible={selectedDay !== null}
+        visible={selectedDate !== null}
         transparent
         animationType="fade"
         onRequestClose={closeDayModal}
@@ -418,9 +434,9 @@ export default function CalendarScreen() {
                 Projected balance: {formatPeso(selectedDayBalance)}
               </Text>
             )}
-            {selectedDay !== null && monthEvents[selectedDay] && monthEvents[selectedDay].length > 0 ? (
+            {selectedDayEvents.length > 0 ? (
               <ScrollView style={styles.modalEventList}>
-                {monthEvents[selectedDay].map((ev, i) => (
+                {selectedDayEvents.map((ev, i) => (
                   <View key={i} style={styles.modalEventRow}>
                     <View
                       style={[styles.modalEventDot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
