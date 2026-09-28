@@ -47,6 +47,9 @@ export default function CalendarScreen() {
   const [viewMode, setViewMode] = useState<CalendarViewMode>(DEFAULT_VIEW_MODE);
   const [navMode, setNavMode] = useState<CalendarNavMode>(DEFAULT_NAV_MODE);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Which day is showing in the List-mode preview panel under the grid.
+  // null = default (today if we're on the current month, otherwise the 1st).
+  const [previewDay, setPreviewDay] = useState<number | null>(null);
 
   useEffect(() => {
     getCalendarViewMode().then(setViewMode);
@@ -97,7 +100,11 @@ export default function CalendarScreen() {
   }
 
   function handleDayPress(day: number) {
-    setSelectedDay(day);
+    if (viewMode === 'list') {
+      setPreviewDay(day);
+    } else {
+      setSelectedDay(day);
+    }
   }
 
   function closeDayModal() {
@@ -150,6 +157,20 @@ export default function CalendarScreen() {
       : '';
 
   const selectedDayBalance = selectedDay !== null ? projectedBalances[selectedDay] : null;
+  
+  // List-mode preview panel values
+  const effectivePreviewDay = Math.min(
+    previewDay ?? (isCurrentMonth ? today.getDate() : 1),
+    daysInMonth
+  );
+  const previewEvents = monthEvents[effectivePreviewDay] || [];
+  const previewBalance = projectedBalances[effectivePreviewDay] ?? null;
+  const previewDateLabel = new Date(year, month, effectivePreviewDay).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -164,10 +185,12 @@ export default function CalendarScreen() {
           <Text style={styles.sheetDone}>Done</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.balanceBanner}>
-        <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-        <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
-      </View>
+      {viewMode !== 'list' && (
+        <View style={styles.balanceBanner}>
+          <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
+          <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+        </View>
+      )}
 
       <View style={styles.toolbarRow}>
         <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.menuButton}>
@@ -213,9 +236,10 @@ export default function CalendarScreen() {
                 activeOpacity={0.6}
                 style={[
                   styles.dayCell,
-                  viewMode === 'details' ? styles.dayCellDetails : styles.dayCellSquare,
+                  viewMode === 'details' ? styles.dayCellDetails : viewMode === 'list' ? styles.dayCellList : styles.dayCellSquare,
                   day === null && styles.dayCellEmpty,
                   isToday && styles.dayCellToday,
+                  viewMode === 'list' && day !== null && day === effectivePreviewDay && !isToday && styles.dayCellSelected,
                 ]}
               >
                 {day !== null && (
@@ -260,7 +284,7 @@ export default function CalendarScreen() {
                         ))}
                       </View>
                     )}
-                    {viewMode !== 'details' && (
+                    {viewMode !== 'details' && viewMode !== 'list' && (
                       <Text style={styles.dayBalanceText} numberOfLines={1}>
                         {formatPeso(projectedBalances[day] ?? 0)}
                       </Text>
@@ -272,6 +296,34 @@ export default function CalendarScreen() {
           })}
         </View>
       ))}
+
+      {viewMode === 'list' && (
+        <View style={styles.previewPanel}>
+          <Text style={styles.previewTitle}>{previewDateLabel}</Text>
+          {previewBalance !== null && (
+            <Text style={styles.previewBalance}>
+              Projected balance: {formatPeso(previewBalance)}
+            </Text>
+          )}
+          {previewEvents.length > 0 ? (
+            <ScrollView>
+              {previewEvents.map((ev, i) => (
+                <View key={i} style={styles.modalEventRow}>
+                  <View
+                    style={[styles.modalEventDot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
+                  />
+                  <Text style={styles.modalEventLabel} numberOfLines={1}>
+                    {ev.label}
+                  </Text>
+                  <Text style={styles.modalEventAmount}>{formatPeso(ev.amount)}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.previewEmpty}>Nothing due on this date.</Text>
+          )}
+        </View>
+      )}
 
       <Modal
         visible={menuOpen}
@@ -504,6 +556,38 @@ function makeStyles(colors: any) {
     },
         dayCellSquare: {
       aspectRatio: 1,
+    },
+        dayCellList: {
+      height: 44,
+    },
+    dayCellSelected: {
+      borderWidth: 1.5,
+      borderColor: colors.inkDim,
+    },
+    previewPanel: {
+      flex: 1,
+      marginTop: 10,
+      marginBottom: 8,
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      padding: 14,
+    },
+    previewTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.ink,
+      marginBottom: 4,
+    },
+    previewBalance: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.gold,
+      marginBottom: 8,
+    },
+    previewEmpty: {
+      fontSize: 13,
+      color: colors.inkDim,
+      marginTop: 6,
     },
     dayCellDetails: {
       minHeight: 78,
