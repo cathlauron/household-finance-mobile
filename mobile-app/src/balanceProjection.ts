@@ -32,6 +32,7 @@ export type CalendarEvent = {
   label: string;
   amount: number;
   direction?: 'in' | 'out' | 'saving'; // only set for manual transactions
+  id?: string; // set for bill, debt and loan events
 };
 
 function toNumber(v: number | '' | undefined): number {
@@ -291,14 +292,14 @@ export function computeMonthEvents(
   model.bills.forEach((bill) => {
     const amount = Math.max(0, outstandingBalance(bill));
     nextOccurrenceInMonth(bill, year, monthIndex).forEach((day) => {
-      push(day, { type: 'bill', label: bill.name || 'Bill', amount });
+      push(day, { type: 'bill', label: bill.name || 'Bill', amount, id: bill.id });
     });
   });
 
   model.debts.forEach((debt) => {
     const amount = Math.max(0, outstandingBalance(debt));
     nextOccurrenceInMonth(debt, year, monthIndex).forEach((day) => {
-      push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount });
+      push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount, id: debt.id });
     });
   });
 
@@ -307,7 +308,7 @@ export function computeMonthEvents(
     const amount = toNumber(loan.expectedPayment);
     if (amount <= 0) return;
     loanOccurrenceInMonth(loan, year, monthIndex).forEach((day) => {
-      push(day, { type: 'loan', label: loan.name || 'Loan', amount });
+      push(day, { type: 'loan', label: loan.name || 'Loan', amount, id: loan.id });
     });
   });
 

@@ -1,4 +1,4 @@
-﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass)
+﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, plus the H series Home redesign)
 
 This file picks up from PROGRESS5.md. PROGRESS5.md is now PAUSED, not closed for good —
 work there stopped mid-way through Quick Unlock Step 6 (build made, installed, opens; the
@@ -166,6 +166,8 @@ EXPLICITLY SKIPPED, with reasons (so this isn't silently re-proposed later):
   needs; adding reanimated would be a real dependency/rewrite decision for no concrete win.
 - True squircle corners — no RN primitive for this; would require an SVG/Skia library for
   a mostly-invisible refinement. Not worth the dependency for this app.
+  (UPDATE, H.4: react-native-svg WAS later added for the Home leaf artwork. True squircles
+  are still skipped.)
 - Audio/click sound cues — would require adding expo-av for something that reads as
   tonally wrong in a finance app. Skipped.
 - A full borderRadius/spacing migration across all 298 existing hardcoded sites — too
@@ -463,7 +465,102 @@ Fixes applied in code (paste-by-hand, tsc clean unless noted):
   'react-native-safe-area-context'. Deliberately NOT bundled into this fix (separate
   checkpoint, low priority).
 
+=====================================================================
+🏡 H SERIES: Home Screen Redesign (H.1 to H.5), DONE and device-tested in Expo Go
+=====================================================================
+
+Why: a mockup-driven redesign of Home (Finance Flow look: quieter dashboard, tappable
+cards, faint leaf artwork). Worked as Antigravity investigates (read-only), Claude reviews,
+Cath pastes by hand. Every checkpoint compiled clean (npx tsc --noEmit, 0 errors). The
+whole series was then device-tested in Expo Go and everything behaved as described.
+
+✅ H.1: Date pill moved from the Home header into the Left to Spend card (top right,
+chevron-forward, still opens Calendar, keeps testID home-calendar-shortcut). The wallet
+bubble in that card was removed and the amount enlarged (26 to 32). The Total Balance
+card was removed from DashboardScreen (HomeScreen still reads totalLiquidBalance() for
+the "left of X" line; Accounts, Calendar and notifications never depended on that card).
+The "Hi, testt..." greeting truncation is fixed: the old 3-slot flex header
+(1 / 1.4 / 1) left the greeting ~39pt, so headerCenter was deleted and headerLeft/
+headerRight are now content-sized.
+
+✅ H.2: Dashboard quieted. This Month numbers are neutral (statValue now 14/600 in
+colors.ink; the small green/red arrows are the only colour cue). Amount Owed, Due Next 14
+Days and Savings Goals icons are now smaller (16), colors.inkDim, and moved to the left
+using a new iconBubbleQuiet style. Amount Owed's amount is neutral, size 22.
+
+✅ H.3: Tappable Home cards.
+- This Month opens the Transactions tab.
+- Amount Owed opens To-Pay; tapping the "Bills", "Debts" or "Loans" text inside it opens
+  that sub-tab.
+- Due Next 14 Days opens a BottomSheet listing ALL due items; each row opens that bill,
+  debt or loan. The card itself shows the first 5 plus a "+N more" line.
+- Savings Goals opens Savings. Watched Categories is not tappable.
+- Plumbing: new src/openToPayTabRequest.ts (requestToPayTab, subscribeToToPayTabRequest,
+  consumePendingToPayTab; holds a "pending" tab if ToPayScreen has not mounted yet).
+  ToPayScreen subscribes and clears any stale open-bill/debt/loan request when the
+  sub-tab is switched this way. CalendarEvent (balanceProjection.ts) got an optional
+  id, set for bill, debt and loan events. DashboardScreen's DueItem got id, and
+  getUpcomingDue no longer slices to 5 (the card slices, the sheet shows all).
+
+✅ H.4: react-native-svg 15.12.1 installed (npx expo install). New
+src/components/LeafBackground.tsx draws four faint leaves (opacity 0.07, brand green
+colors.gold) behind Home, built from the logo's own leaf paths in
+assets/eco_house_logo.svg (the left leaf was an open curve and was closed with Z so it
+can be filled). It is exported as RIGHT_LEAF, LEFT_LEAF and LEAF_VIEWBOX (cropped
+'420 480 200 210'). It is click-through. DashboardScreen's scroll container style is now
+backgroundColor 'transparent' so the leaves show through.
+
+✅ H.5: Leaf transition on navigation. New src/leafTransition.ts (transient signal:
+triggerLeafTransition / subscribeToLeafTransition) and
+src/components/LeafTransitionOverlay.tsx (plain Animated, useNativeDriver true, ~750ms,
+peak opacity 0.25, four leaves drift up and right and fade out, click-through). App.tsx:
+NavigationContainer now has onReady={handleNavReady} and
+onStateChange={handleNavStateChange}; those compare navigationRef.getCurrentRoute()?.name
+against lastRouteNameRef and fire the transition only when the route name changes (so
+bottom sheets and modals do not trigger it). The overlay renders right after the
+NavigationContainer, inside the home block. Respects the phone's reduce-motion setting
+via AccessibilityInfo (the app has no reduce-motion setting of its own).
+
+📌 H-series decisions
+- Leaves are SVG from the logo's own paths, not a PNG and not Ionicons leaf icons.
+- react-native-svg was added for this. react-native-reanimated is still NOT used; plain
+  Animated only (consistent with the D.1 decision).
+- The leaf transition is an overlay in App.tsx above NavigationContainer, because every
+  screen paints an opaque navy2 background, so anything behind the navigation tree would
+  be hidden.
+- Amount Owed has two tap behaviours: card tap goes to To-Pay; the three labels go to
+  their own sub-tabs. Antigravity's suggested workaround of calling requestOpenDebt('') to
+  switch sub-tabs was NOT used (built a proper tab-request signal instead).
+- Watched Categories deliberately not tappable.
+
+⚠️ H-series known issues / gotchas
+- react-native-svg is a native module. The already-installed EAS build does NOT contain
+  it, so Home would crash on that install. A NEW EAS build is required before the H series
+  reaches a real installed app. Expo Go works.
+- This Month opens Transactions showing ALL time. TransactionsScreen has no month filter
+  or route params, so a real current-month filter is a separate future item.
+- Leaves only show around cards, in gaps and at edges, since the cards are solid. Tuning
+  values: LeafBackground.tsx (o = 0.07, sizes, positions) and LeafTransitionOverlay.tsx
+  (PEAK_OPACITY 0.25, DURATION_MS 750). Dark mode's brighter green may want lower opacity.
+- App.tsx: the two leaf imports (LeafTransitionOverlay, triggerLeafTransition) were placed
+  just above function AppContent(), which is valid but untidy; could be moved into the
+  top import block later.
+- A tab that keeps a nested screen open might not report a new route name, so it could
+  skip the leaf transition (not observed in testing).
+
+📁 H-series files
+- New: src/openToPayTabRequest.ts, src/leafTransition.ts,
+  src/components/LeafBackground.tsx, src/components/LeafTransitionOverlay.tsx
+- Edited: src/screens/HomeScreen.tsx, src/screens/DashboardScreen.tsx,
+  src/screens/ToPayScreen.tsx, src/balanceProjection.ts, App.tsx, package.json
+  (react-native-svg)
+- Not yet committed unless the git commands from the session-wrap were run.
+
 ▶️ Next step
+- (H series) Commit and push the H.1 to H.5 work if not already done. Optional
+  follow-ups: a current-month filter for Transactions (so This Month lands on that month),
+  tidy the App.tsx leaf imports, and a new EAS build so react-native-svg is in an
+  installed build.
 - FIRST: fix the intro slides' Skip/Back status-bar collision (useSafeAreaInsets on
   IntroSlidesScreen's topRow), re-test, then confirm the two OnboardingScreen items
   above. Then commit/push D.6.

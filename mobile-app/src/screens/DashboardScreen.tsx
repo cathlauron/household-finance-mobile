@@ -11,15 +11,14 @@
 // skipped, matching the same gap noted in balanceProjection.ts.
 // ============================================================
 
-import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { useTheme } from '../ThemeContext';
 import {
-  totalLiquidBalance,
   computeMonthEvents,
   outstandingBalance,
   loanOutstandingBalance,
@@ -28,12 +27,19 @@ import {
 import { buildTransactionsList, transactionTotals, computeCategorySpend, getCategoryBudgetStatus } from '../transactions';
 import { stripTime } from '../recurrence';
 import type { HouseholdModel } from '../types';
+import { useNavigation } from '@react-navigation/native';
+import BottomSheet from '../components/BottomSheet';
+import { requestOpenBill } from '../openBillRequest';
+import { requestOpenDebt } from '../openDebtRequest';
+import { requestOpenLoan } from '../openLoanRequest';
+import { requestToPayTab, ToPayTab } from '../openToPayTabRequest';
 
 type DueItem = {
   date: Date;
   label: string;
   amount: number;
   type: 'bill' | 'debt' | 'loan';
+  id?: string;
 };
 
 export function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueItem[] {
@@ -62,13 +68,13 @@ export function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueIte
       evs.forEach((ev) => {
         if (ev.type !== 'bill' && ev.type !== 'debt' && ev.type !== 'loan') return;
         if (ev.amount <= 0) return;
-        results.push({ date, label: ev.label, amount: ev.amount, type: ev.type });
+        results.push({ date, label: ev.label, amount: ev.amount, type: ev.type, id: ev.id });
       });
     });
   });
 
   results.sort((a, b) => a.date.getTime() - b.date.getTime());
-  return results.slice(0, 5);
+  return results;
 }
 
 function formatDueDate(d: Date): string {
@@ -81,6 +87,21 @@ export default function DashboardScreen() {
   const { refreshing, onRefresh } = useRefresh();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const navigation = useNavigation<any>();
+  const [dueSheetOpen, setDueSheetOpen] = useState(false);
+
+  function goToPay(tab: ToPayTab) {
+    requestToPayTab(tab);
+    navigation.navigate('To-Pay');
+  }
+
+  function openDueItem(item: DueItem) {
+    if (item.type === 'bill' && item.id) requestOpenBill(item.id);
+    else if (item.type === 'debt' && item.id) requestOpenDebt(item.id);
+    else if (item.type === 'loan' && item.id) requestOpenLoan(item.id);
+    else requestToPayTab(item.type === 'bill' ? 'bills' : item.type === 'debt' ? 'debts' : 'loans');
+    navigation.navigate('To-Pay');
+  }
 
   if (loading || !model) {
     return (
@@ -89,8 +110,6 @@ export default function DashboardScreen() {
       </View>
     );
   }
-
-  const totalBalance = totalLiquidBalance(model);
 
   const today = new Date();
   const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -116,27 +135,21 @@ export default function DashboardScreen() {
   );
 
   return (
+    <>
     <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer} refreshing={refreshing} onRefresh={onRefresh}>
-      {/* Total balance */}
-      <View style={[styles.card, styles.rowCard]}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardLabel}>Total Balance</Text>
-          <Text style={styles.bigAmount}>{formatPeso(totalBalance)}</Text>
-          <Text style={styles.cardNote}>Cash, Debit &amp; Credit accounts</Text>
-        </View>
-        <View style={styles.iconBubble}>
-          <Ionicons name="wallet-outline" size={24} color={colors.gold} />
-        </View>
-      </View>
 
       {/* This month */}
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('Transactions')}
+      >
         <View style={styles.rowCard}>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>{monthLabel}</Text>
           </View>
           <View style={styles.iconBubbleSmall}>
-            <Ionicons name="calendar-outline" size={18} color={colors.gold} />
+            <Ionicons name="calendar-outline" size={16} color={colors.inkFaint} />
           </View>
         </View>
         <View style={styles.statRow}>
@@ -147,7 +160,7 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.statLabel}>Income</Text>
             </View>
-            <Text style={[styles.statValue, { color: colors.ok }]}>{formatPeso(monthTotals.totalIn)}</Text>
+            <Text style={styles.statValue}>{formatPeso(monthTotals.totalIn)}</Text>
           </View>
           <View style={[styles.statBox, styles.statBoxDivider]}>
             <View style={styles.statIconRow}>
@@ -156,7 +169,7 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.statLabel}>Expenses</Text>
             </View>
-            <Text style={[styles.statValue, { color: colors.error }]}>{formatPeso(monthTotals.totalOut)}</Text>
+            <Text style={styles.statValue}>{formatPeso(monthTotals.totalOut)}</Text>
           </View>
           <View style={[styles.statBox, styles.statBoxDivider]}>
             <View style={styles.statIconRow}>
@@ -174,47 +187,60 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.statLabel}>Net</Text>
             </View>
-            <Text style={[styles.statValue, { color: monthTotals.net >= 0 ? colors.ok : colors.error }]}>
-              {formatPeso(monthTotals.net)}
-            </Text>
+            <Text style={styles.statValue}>{formatPeso(monthTotals.net)}</Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Amount owed */}
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('To-Pay')}
+      >
         <View style={styles.rowCard}>
-          <View style={[styles.iconBubble, { backgroundColor: colors.errorBg, marginRight: 12 }]}>
-            <Ionicons name="receipt-outline" size={22} color={colors.orange} />
+          <View style={styles.iconBubbleQuiet}>
+            <Ionicons name="receipt-outline" size={16} color={colors.inkDim} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>Amount Owed</Text>
-            <Text style={[styles.bigAmount, { color: totalOwed > 0 ? colors.orange : colors.ink }]}>
+            <Text style={[styles.bigAmount, { fontSize: 22 }]}>
               {formatPeso(totalOwed)}
             </Text>
           </View>
         </View>
         <View style={styles.owedBreakdownRow}>
-          <Text style={styles.cardNote}>Bills: {formatPeso(billsOwed)}</Text>
-          <Text style={styles.cardNote}>Debts: {formatPeso(debtsOwed)}</Text>
-          <Text style={styles.cardNote}>Loans: {formatPeso(loansOwed)}</Text>
+          <TouchableOpacity onPress={() => goToPay('bills')} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={styles.cardNote}>Bills: {formatPeso(billsOwed)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => goToPay('debts')} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={styles.cardNote}>Debts: {formatPeso(debtsOwed)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => goToPay('loans')} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+            <Text style={styles.cardNote}>Loans: {formatPeso(loansOwed)}</Text>
+          </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Due soon */}
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        disabled={dueSoon.length === 0}
+        onPress={() => setDueSheetOpen(true)}
+      >
         <View style={styles.rowCard}>
+          <View style={styles.iconBubbleQuiet}>
+            <Ionicons name="calendar-outline" size={16} color={colors.inkDim} />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>Due Next 14 Days</Text>
-          </View>
-          <View style={styles.iconBubbleSmall}>
-            <Ionicons name="calendar-outline" size={18} color={colors.gold} />
           </View>
         </View>
         {dueSoon.length === 0 ? (
           <Text style={styles.emptyText}>Nothing due soon.</Text>
         ) : (
-          dueSoon.map((item, idx) => (
+          dueSoon.slice(0, 5).map((item, idx) => (
             <View key={idx} style={styles.listRow}>
               <View style={styles.listRowLeft}>
                 <Text style={styles.listDateBadge}>{formatDueDate(item.date)}</Text>
@@ -226,16 +252,23 @@ export default function DashboardScreen() {
             </View>
           ))
         )}
-      </View>
+        {dueSoon.length > 5 && (
+          <Text style={styles.cardNote}>+{dueSoon.length - 5} more · tap to see all</Text>
+        )}
+      </TouchableOpacity>
 
       {/* Savings goals */}
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('Savings')}
+      >
         <View style={styles.rowCard}>
+          <View style={styles.iconBubbleQuiet}>
+            <Ionicons name="flag-outline" size={16} color={colors.inkDim} />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>Savings Goals</Text>
-          </View>
-          <View style={[styles.iconBubbleSmall, { backgroundColor: colors.okBg }]}>
-            <Ionicons name="flag-outline" size={18} color={colors.ok} />
           </View>
         </View>
         {goals.length === 0 ? (
@@ -267,7 +300,7 @@ export default function DashboardScreen() {
             })}
           </>
         )}
-      </View>
+      </TouchableOpacity>
 
       {/* Category watchlist */}
       {(model.categoryBudgets || []).length > 0 && (
@@ -292,6 +325,27 @@ export default function DashboardScreen() {
         </View>
       )}
     </PullToRefreshScrollView>
+
+    <BottomSheet visible={dueSheetOpen} onClose={() => setDueSheetOpen(false)} title="Due Next 14 Days">
+      {dueSoon.map((item, idx) => (
+        <TouchableOpacity
+          key={idx}
+          style={styles.listRow}
+          onPress={() => {
+            setDueSheetOpen(false);
+            openDueItem(item);
+          }}
+        >
+          <View style={styles.listRowLeft}>
+            <Text style={styles.listDateBadge}>{formatDueDate(item.date)}</Text>
+            <Text style={styles.listLabel} numberOfLines={1}>{item.label}</Text>
+          </View>
+          <Text style={styles.listAmount}>{formatPeso(item.amount)}</Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+        </TouchableOpacity>
+      ))}
+    </BottomSheet>
+    </>
   );
 }
 
@@ -299,7 +353,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.navy2,
+      backgroundColor: 'transparent',
     },
     rowCard: {
       flexDirection: 'row',
@@ -394,8 +448,18 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       marginBottom: 2,
     },
     statValue: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    iconBubbleQuiet: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.navy2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
     },
     emptyText: {
       fontSize: 13,

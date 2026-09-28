@@ -11,6 +11,7 @@ import { computeLeftToSpend, getLeftToSpendStatus, totalLiquidBalance, formatPes
 import type { RootStackParamList } from '../navigation/RootStack';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
+import LeafBackground from '../components/LeafBackground';
 
 type Props = {
   username: string;
@@ -50,6 +51,7 @@ export default function HomeScreen({ username }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy2, paddingTop: insets.top }}>
+      <LeafBackground />
       <View style={hs.headerRow}>
         <TouchableOpacity
           style={hs.headerLeft}
@@ -66,18 +68,6 @@ export default function HomeScreen({ username }: Props) {
           <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
         </TouchableOpacity>
 
-        <View style={hs.headerCenter}>
-          <TouchableOpacity
-            testID="home-calendar-shortcut"
-            onPress={() => navigation.navigate('Calendar')}
-            style={hs.datePill}
-          >
-            <Ionicons name="calendar-outline" size={16} color={colors.gold} />
-            <Text style={hs.dateText} numberOfLines={1}>{fullDate}</Text>
-            <Ionicons name="chevron-down" size={16} color={colors.inkDim} />
-          </TouchableOpacity>
-        </View>
-
         <View style={hs.headerRight}>
           <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn}>
             <Ionicons name="notifications-outline" size={20} color={colors.ink} />
@@ -89,20 +79,25 @@ export default function HomeScreen({ username }: Props) {
       {leftToSpend && leftToSpendStatus && (
         <View style={[hs.leftCard, { backgroundColor: leftToSpendBg }]}>
           <View style={hs.leftCardTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={hs.leftLabel}>Left to Spend</Text>
-              <Text style={{ fontSize: 26, fontWeight: '700', color: leftToSpendStatus.color }}>
-                {formatPeso(leftToSpend.amount)}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.inkDim, marginTop: 4 }}>
-                {leftToSpendStatus.label} ·{' '}
-                {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
-              </Text>
-            </View>
-            <View style={hs.leftCardIconBubble}>
-              <Ionicons name="wallet-outline" size={22} color={colors.gold} />
-            </View>
+            <Text style={[hs.leftLabel, { marginBottom: 0 }]}>Left to Spend</Text>
+            <TouchableOpacity
+              testID="home-calendar-shortcut"
+              onPress={() => navigation.navigate('Calendar')}
+              style={hs.datePill}
+              accessibilityLabel="Open calendar"
+            >
+              <Ionicons name="calendar-outline" size={16} color={colors.gold} />
+              <Text style={hs.dateText} numberOfLines={1}>{fullDate}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.inkDim} />
+            </TouchableOpacity>
           </View>
+          <Text style={{ fontSize: 32, fontWeight: '700', color: leftToSpendStatus.color, marginTop: 10 }}>
+            {formatPeso(leftToSpend.amount)}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.inkDim, marginTop: 4 }}>
+            {leftToSpendStatus.label} ·{' '}
+            {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
+          </Text>
           <View style={hs.pctTrack}>
             <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: leftToSpendStatus.color }]} />
           </View>
@@ -124,17 +119,18 @@ function makeHomeStyles(colors: any) {
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: 12,
       paddingTop: 12,
       paddingBottom: 8,
     },
-    headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-    headerCenter: { flex: 1.4, alignItems: 'center' },
-    headerRight: { flex: 1, alignItems: 'flex-end' },
+    headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
+    headerRight: { alignItems: 'flex-end' },
     greeting: { color: colors.ink, fontSize: 15, fontWeight: '700' },
     bellBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
     bellDot: { position: 'absolute', top: 6, right: 7, width: 8, height: 8, borderRadius: 4 },
     datePill: {
+      flexShrink: 1,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
@@ -147,7 +143,7 @@ function makeHomeStyles(colors: any) {
     },
     dateText: { color: colors.ink, fontSize: 12.5, fontWeight: '600' },
     leftCard: { marginHorizontal: 14, marginTop: 8, borderRadius: 16, padding: 16 },
-    leftCardTop: { flexDirection: 'row', alignItems: 'flex-start' },
+    leftCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     leftCardIconBubble: {
       width: 44,
       height: 44,

@@ -41,6 +41,9 @@ import {
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
 
+import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
+import { triggerLeafTransition } from './src/leafTransition';
+
 function AppContent() {
   const { colors } = useTheme();
   const { loadModel, clearModel } = useData();
@@ -438,6 +441,23 @@ function AppContent() {
     setRecentAccounts(recents);
     setScreen('switcher');
   }
+  // H.5: remembers which screen/tab was showing, so the leaf transition
+  // only plays when it actually changes (not on sheets, modals, etc.).
+  const lastRouteNameRef = useRef<string | null>(null);
+
+  function handleNavReady() {
+    lastRouteNameRef.current = navigationRef.getCurrentRoute()?.name ?? null;
+    flushPendingDeepLink();
+  }
+
+  function handleNavStateChange() {
+    const name = navigationRef.getCurrentRoute()?.name ?? null;
+    if (name && name !== lastRouteNameRef.current) {
+      triggerLeafTransition();
+    }
+    lastRouteNameRef.current = name;
+  }
+
   function renderScreen(): React.ReactElement {
   if (screen === 'loading') {
     return <IntroScreen />;
@@ -467,7 +487,11 @@ function AppContent() {
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.navy2 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
-        <NavigationContainer ref={navigationRef} onReady={flushPendingDeepLink}>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={handleNavReady}
+          onStateChange={handleNavStateChange}
+        >
           <RootStack
             username={currentUsername}
             onSignOut={handleFullSignOut}
@@ -475,6 +499,7 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
+        <LeafTransitionOverlay />
       </View>
     );
   }

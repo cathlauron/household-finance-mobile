@@ -7,6 +7,7 @@ import LoansScreen from './LoansScreen';
 import { subscribeToOpenBillRequest, OpenBillRequest } from '../openBillRequest';
 import { subscribeToOpenDebtRequest, OpenDebtRequest } from '../openDebtRequest';
 import { subscribeToOpenLoanRequest, OpenLoanRequest } from '../openLoanRequest';
+import { subscribeToToPayTabRequest, consumePendingToPayTab } from '../openToPayTabRequest';
 
 import { Ionicons } from '@expo/vector-icons';
 
@@ -58,6 +59,19 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
       setSwipeOpenLoanRequest(request);
       setActiveSubTab('loans');
     });
+  }, []);
+  // Home's Amount Owed card: "just show me this sub-tab". Also clears any
+  // old "open this item" request so a previously viewed item doesn't reopen.
+  useEffect(() => {
+    function showTab(tab: SubTab) {
+      setSwipeOpenRequest(null);
+      setSwipeOpenDebtRequest(null);
+      setSwipeOpenLoanRequest(null);
+      setActiveSubTab(tab);
+    }
+    const pending = consumePendingToPayTab();
+    if (pending) showTab(pending);
+    return subscribeToToPayTabRequest(showTab);
   }, []);
   const styles = makeStyles(colors);
   return (
