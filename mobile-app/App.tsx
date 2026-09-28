@@ -452,7 +452,9 @@ function AppContent() {
 
   function handleNavStateChange() {
     const name = navigationRef.getCurrentRoute()?.name ?? null;
-    if (name && name !== lastRouteNameRef.current) {
+    const prevName = lastRouteNameRef.current;
+    const involvesSheet = name === 'Calendar' || prevName === 'Calendar';
+    if (name && name !== prevName && !involvesSheet) {
       triggerLeafTransition();
     }
     lastRouteNameRef.current = name;

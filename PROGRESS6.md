@@ -556,7 +556,72 @@ via AccessibilityInfo (the app has no reduce-motion setting of its own).
   (react-native-svg)
 - Not yet committed unless the git commands from the session-wrap were run.
 
+=====================================================================
+📅 D.7: Calendar opens as a bottom sheet
+=====================================================================
+
+✅ D.7 — DONE on Android. Calendar now slides up as a rounded bottom sheet over Home
+(instead of a full-screen push with a "< Home" header), styled after the iPhone
+Calendar app's "New Event" sheet. Confirmed on a real Android phone: Calendar opens and
+closes correctly and nothing else broke. The iPhone look could NOT be tested (Cath only
+has an Android phone).
+
+Findings (Antigravity investigation, real code viewed):
+- Only one place opens Calendar: the Home date pill (testID home-calendar-shortcut). No
+  Maestro flow touches Calendar.
+- Installed: react-native-screens 4.16.0, @react-navigation/native-stack 7.18.9,
+  @react-navigation/native 7.3.17. In this version presentation: 'formSheet' uses a real
+  Material BottomSheetBehavior on Android (swipe-down + dimmed background). The older
+  JSDoc in native-stack that says it falls back to "modal" on Android is outdated.
+- 'transparentModal' was rejected: no swipe-down on Android and no gesture on iOS, so it
+  would have needed hand-built close handling.
+- The "Home shrinks back and peeks out above the sheet" effect in the reference
+  screenshot is iPhone-only (native 'modal' presentation). Android has no equivalent, so
+  Android shows a plain sheet over a dimmed Home.
+
+What shipped:
+- RootStack.tsx: new first line `import { Platform } from 'react-native';`. The Calendar
+  Stack.Screen options are now presentation: Platform.OS === 'ios' ? 'modal' :
+  'formSheet', headerShown: false, sheetAllowedDetents: [0.94], sheetCornerRadius: 20,
+  sheetGrabberVisible: true (grabber is iOS-only; ignored on Android).
+- CalendarScreen.tsx: added `import { useNavigation } from '@react-navigation/native';`
+  and `const navigation = useNavigation();`. Added a sheet header at the top of the
+  screen (empty left slot, "Calendar" title centred, "Done" on the right, which calls
+  navigation.goBack()). New styles: sheetHeader, sheetHeaderSide, sheetTitle, sheetDone.
+- App.tsx handleNavStateChange: the leaf transition is now skipped whenever the route
+  being left or entered is 'Calendar' (prevName / involvesSheet check), since the leaf
+  would otherwise drift over both Home and the sheet.
+- npx tsc --noEmit confirmed clean after fixing the paste errors below.
+
+📌 D.7 decisions
+- Chose Option B: iPhone uses the native 'modal' look (like the reference screenshot),
+  Android keeps 'formSheet'. Option A (formSheet on both) was the safer alternative.
+- Did NOT build a custom "Home shrinks back" animation for Android.
+- Calendar's own day-tap popup stays a React Native <Modal>, untouched.
+
+⚠️ D.7 known issues / gotchas
+- The iPhone 'modal' look is UNTESTED. Check it the first time an iPhone or iOS build
+  is available.
+- Cath reported "it still works, nothing broke" on Android. The specific checks from
+  the test list (day popup opening and closing without closing the sheet, auto-lock or
+  back gesture while the sheet is open) were not itemised individually. A native
+  <Modal> opening inside a native sheet can misbehave. If it does, the planned fix is to
+  turn the day popup into an in-screen overlay instead of a <Modal>.
+- Lesson: the first paste attempt left duplicate lines (a second Ionicons import,
+  duplicate `const { model }` and `const today` lines) and overwrote the loadingContainer
+  style, giving 7 tsc errors. Fixed by removing the duplicates and restoring
+  loadingContainer. When a snippet says "add after X", check the file for what is
+  already there before pasting.
+- Home's date pill still has the same tap target; only Calendar's presentation changed.
+
+📁 D.7 files edited
+- mobile-app/src/navigation/RootStack.tsx
+- mobile-app/src/screens/CalendarScreen.tsx
+- mobile-app/App.tsx
+
 ▶️ Next step
+- (D.7) Commit and push the Calendar bottom-sheet change. When an iPhone or iOS build
+  is available, check the 'modal' look, and re-check the day popup inside the sheet.
 - (H series) Commit and push the H.1 to H.5 work if not already done. Optional
   follow-ups: a current-month filter for Transactions (so This Month lands on that month),
   tidy the App.tsx leaf imports, and a new EAS build so react-native-svg is in an

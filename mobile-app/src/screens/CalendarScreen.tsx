@@ -4,6 +4,7 @@ import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { computeRunningBalances, totalLiquidBalance, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
+import { useNavigation } from '@react-navigation/native';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -25,6 +26,7 @@ const EVENT_DOT_COLORS: Record<CalendarEvent['type'], string> = {
 export default function CalendarScreen() {
   const { colors } = useTheme();
   const { model } = useData();
+  const navigation = useNavigation();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
@@ -118,6 +120,17 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.sheetHeader}>
+        <View style={styles.sheetHeaderSide} />
+        <Text style={styles.sheetTitle}>Calendar</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[styles.sheetHeaderSide, { alignItems: 'flex-end' }]}
+          accessibilityLabel="Close calendar"
+        >
+          <Text style={styles.sheetDone}>Done</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.balanceBanner}>
         <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
         <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
@@ -243,6 +256,25 @@ function makeStyles(colors: any) {
     loadingContainer: {
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    sheetHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    sheetHeaderSide: {
+      width: 60,
+    },
+    sheetTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    sheetDone: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.gold,
     },
     balanceBanner: {
       backgroundColor: colors.navy3,

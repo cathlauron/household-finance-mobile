@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabs from './MainTabs';
@@ -72,7 +73,13 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen
         name="Calendar"
         component={CalendarScreen}
-        options={{ title: 'Calendar', headerBackTitle: 'Home' }}
+        options={{
+          presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
+          headerShown: false,
+          sheetAllowedDetents: [0.94],
+          sheetCornerRadius: 20,
+          sheetGrabberVisible: true,
+        }}
       />
       <Stack.Screen
         name="Accounts"
