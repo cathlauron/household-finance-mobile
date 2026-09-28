@@ -408,8 +408,66 @@ spell out SignInScreen.tsx's two separate button styles):
 - npx tsc --noEmit confirmed clean after pasting all 16 files' changes.
 - Not yet re-tested on a real device.
 
+✅ D.6 — IN PROGRESS (onboarding layout fixes + intro slides for new accounts). Found
+during a fresh test-account run on a real Android phone. Nothing here is committed yet
+unless the person says so.
+
+Findings, from Antigravity investigations (real code viewed, not summaries):
+- IntroSlidesScreen (3 slides) only ever showed when the device had ZERO saved profiles at
+  launch (App.tsx: `if (!profiles.length) setScreen('intro')`, no persisted "seen" flag).
+  So new test accounts on a phone that already had profiles never saw it. That was
+  expected behavior, not a bug.
+- Slides overlapped and bled off-screen: the illustration <Image> used width:'100%' +
+  aspectRatio 900/800 with no bounded height inside a horizontal paging ScrollView.
+- OnboardingScreen ("Set up Quick Unlock" STEP 1 OF 2, "You're all set!" STEP 2 OF 2)
+  had no safe-area handling: headerRow paddingTop was a flat 16, and App.tsx's
+  SafeAreaView is imported from 'react-native', which does NOTHING on Android. Other
+  screens only looked fine because of hardcoded paddingTop of 40-80 (Sign In 48, Create
+  Profile 40, PinUnlock 80, Account Switcher 48) or a real useSafeAreaInsets() (Home).
+- "Quick PIN enabled" pill rendered twice on the "You're all set!" screen (one orphan
+  block above the badge row, one inside it).
+
+Fixes applied in code (paste-by-hand, tsc clean unless noted):
+- IntroSlidesScreen.tsx: added `height` from useWindowDimensions(); wrapped the image in
+  an `illustrationWrap` View with explicit height (height * 0.3); image is now
+  width/height 100% inside it. Confirmed on-device: illustration stays on-screen and no
+  longer touches the headline.
+- OnboardingScreen.tsx: imported useSafeAreaInsets, added `const insets =
+  useSafeAreaInsets();`, headerRow now `[styles.headerRow, { paddingTop: 16 +
+  insets.top }]`; removed the orphan duplicate "Quick PIN enabled" block.
+- App.tsx: the useSafeAreaInsets() call initially crashed with "No safe area value
+  available" (no SafeAreaProvider existed above OnboardingScreen; React Navigation only
+  provides one deeper in the tree). Fixed by importing SafeAreaProvider from
+  'react-native-safe-area-context' and wrapping the root `App` component's tree in it.
+  Crash confirmed gone on-device.
+- 📌 Decision: intro slides now show BEFORE Create Profile for every new-account path,
+  not just first launch. Sign In's "Create a new account" now sets `introFromSignIn` and
+  goes to 'intro'; the intro's onDone still goes to 'createProfile'. IntroSlidesScreen got
+  an optional `onBack` prop (Back link, top-left), passed only when opened from Sign In,
+  so true first launch (nothing to go back to) shows no Back. topRow style changed to
+  flexDirection:'row', justifyContent:'space-between'. Confirmed on-device: slides appear
+  with Back/Skip and the illustration fits.
+- Screen-flow facts learned: account creation is a top-level state switch in App.tsx
+  (createProfile -> onboarding -> home), not React Navigation. OnboardingScreen renders
+  BOTH the Quick Unlock step (step 2) and the "all set" step (step 3).
+
+⚠️ OPEN (found on-device this session):
+- Intro slides' "Skip" (and "Back") still collide with the Android status bar/battery
+  icon. IntroSlidesScreen has no safe-area handling of its own and sits under App.tsx's
+  Android-inert SafeAreaView. Planned fix: same useSafeAreaInsets() pattern as
+  OnboardingScreen, adding insets.top to the topRow padding/height.
+- NOT yet explicitly confirmed on-device after the fixes: OnboardingScreen's
+  "STEP 1 OF 2"/"Skip" clearing the status bar, and "Quick PIN enabled" showing once.
+- Deprecation warning in Metro: 'react-native' SafeAreaView is deprecated; every
+  SafeAreaView import in App.tsx should eventually come from
+  'react-native-safe-area-context'. Deliberately NOT bundled into this fix (separate
+  checkpoint, low priority).
+
 ▶️ Next step
-- D.5 and D.5b are both pasted and confirmed compiling clean, but not yet committed,
+- FIRST: fix the intro slides' Skip/Back status-bar collision (useSafeAreaInsets on
+  IntroSlidesScreen's topRow), re-test, then confirm the two OnboardingScreen items
+  above. Then commit/push D.6.
+- (Carried over, still open) D.5 and D.5b are both pasted and confirmed compiling clean but not yet committed,
   pushed, or checked on a real device. Next: push both, then do a quick on-device
   eyeball check (not a full formal test pass) across a small sample — e.g. the Accounts
   tab (AccountCard + a bottom sheet), a screen using CollapsibleRow, and one or two of

@@ -16,6 +16,7 @@ import { useTheme } from '../ThemeContext';
 
 type Props = {
   onDone: () => void;
+  onBack?: () => void;
 };
 
 const SLIDES = [
@@ -39,10 +40,10 @@ const SLIDES = [
   },
 ];
 
-export default function IntroSlidesScreen({ onDone }: Props) {
+export default function IntroSlidesScreen({ onDone, onBack }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const isLast = index === SLIDES.length - 1;
@@ -64,6 +65,17 @@ export default function IntroSlidesScreen({ onDone }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
+        {onBack ? (
+          <TouchableOpacity
+            testID="intro-back-button"
+            onPress={onBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.skipText}>Back</Text>
+          </TouchableOpacity>
+        ) : (
+          <View />
+        )}
         {!isLast && (
           <TouchableOpacity
             testID="intro-skip-button"
@@ -86,7 +98,9 @@ export default function IntroSlidesScreen({ onDone }: Props) {
       >
         {SLIDES.map((slide) => (
           <View key={slide.key} style={[styles.slide, { width }]}>
-            <Image source={slide.image} style={styles.illustration} resizeMode="contain" />
+            <View style={[styles.illustrationWrap, { height: height * 0.3 }]}>
+              <Image source={slide.image} style={styles.illustration} resizeMode="contain" />
+            </View>
             <Text style={styles.title}>{slide.title}</Text>
             <Text style={styles.body}>{slide.body}</Text>
           </View>
@@ -115,8 +129,9 @@ function makeStyles(colors: any) {
     },
     topRow: {
       height: 44,
-      alignItems: 'flex-end',
-      justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: 24,
     },
     skipText: {
@@ -131,10 +146,15 @@ function makeStyles(colors: any) {
       paddingHorizontal: 24,
       justifyContent: 'center',
     },
+    illustrationWrap: {
+      width: '100%',
+      marginBottom: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     illustration: {
       width: '100%',
-      aspectRatio: 900 / 800,
-      marginBottom: 20,
+      height: '100%',
     },
     title: {
       fontSize: 32,

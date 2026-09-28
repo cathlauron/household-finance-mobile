@@ -6,6 +6,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -43,6 +44,7 @@ type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onbo
 function AppContent() {
   const { colors } = useTheme();
   const { loadModel, clearModel } = useData();
+  const [introFromSignIn, setIntroFromSignIn] = useState(false);
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [derivedKey, setDerivedKey] = useState<CryptoJS.lib.WordArray | null>(null);
@@ -495,7 +497,10 @@ function AppContent() {
     if (screen === 'intro') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
-        <IntroSlidesScreen onDone={() => setScreen('createProfile')} />
+        <IntroSlidesScreen
+          onDone={() => setScreen('createProfile')}
+          onBack={introFromSignIn ? () => { setIntroFromSignIn(false); setScreen('signIn'); } : undefined}
+        />
       </SafeAreaView>
     );
   }
@@ -658,7 +663,7 @@ function AppContent() {
             }, 0);
           }
         }}
-        onGoToCreateProfile={() => setScreen('createProfile')}
+        onGoToCreateProfile={() => { setIntroFromSignIn(true); setScreen('intro'); }}
       />
     </SafeAreaView>
   );
@@ -673,12 +678,14 @@ function AppContent() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <DataProvider>
-          <AppContent />
-        </DataProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider>
+          <DataProvider>
+            <AppContent />
+          </DataProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

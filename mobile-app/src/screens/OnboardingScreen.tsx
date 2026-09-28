@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 import { isValidPinFormat, savePin } from '../pin';
 import { savePinCopy } from '../quickUnlock';
@@ -27,6 +28,7 @@ const LOCK_SHACKLE_GREEN = '#2E5E45';
 
 export default function OnboardingScreen({ username, onFinish, initialCredentials }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<2 | 3>(2);
 
   // Step 2 PIN state
@@ -93,7 +95,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
   return (
     <View style={styles.container}>
       {/* Top Header Row with Progress and Skip */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { paddingTop: 16 + insets.top }]}>
         <Text style={styles.stepBadge}>STEP {step - 1} OF 2</Text>
         {step < 3 ? (
           <TouchableOpacity testID="onboarding-skip-button" onPress={handleSkip} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -185,12 +187,6 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
             <Text style={styles.title}>You're all set!</Text>
             <Text style={styles.sub}>Your profile is ready to go.</Text>
 
-            {pinSaved && (
-              <View style={styles.pinConfirmedBadge}>
-                <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
-              </View>
-            )}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {biometricsAvailable && (
                 <View style={styles.pinConfirmedBadge}>
