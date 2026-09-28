@@ -619,7 +619,104 @@ What shipped:
 - mobile-app/src/screens/CalendarScreen.tsx
 - mobile-app/App.tsx
 
+=====================================================================
+📅 Calendar: View Modes menu + Swipe/Scroll month navigation (new work this session)
+=====================================================================
+
+✅ View modes menu — DONE, confirmed on-device, pushed. New iOS-Calendar-style menu
+button in the Calendar header opens a popup (checkmark on the active choice) with four
+view choices — Compact (existing dots), Stacked (thin colored bars per event, using the
+same EVENT_DOT_COLORS as the dots/popup), Details (small labeled event pills, up to 2 per
+day plus "+N more") — divider — List (a slim grid with the selected day's items listed in
+a panel underneath, no popup) — divider — and two navigation choices, Swipe and Scroll
+(see below). New file mobile-app/src/calendarSettings.ts (AsyncStorage-backed
+getCalendarViewMode/setCalendarViewMode/getCalendarNavMode/setCalendarNavMode, mirroring
+the existing autoLock.ts pattern) persists both choices between app launches.
+
+✅ List mode's preview panel — DONE, confirmed on-device ("does not feel cramped"),
+pushed. Tapping a day in List mode updates a panel under the grid (date, projected
+balance, scrollable event list) instead of opening the popup; the tapped day gets a
+faint ring. Compact/Stacked/Details still open the existing popup. One early bug (the
+Total Balance banner was accidentally hidden in List mode) was found and fixed — the
+banner now shows in all four view modes.
+
+✅ MonthView extraction + day-taps-remember-their-own-month — DONE, confirmed on-device
+together, pushed. The month grid was pulled out of CalendarScreen into its own
+`MonthView` component (memoized per model/year/month) purely so Swipe/Scroll could reuse
+it for many months at once — no visible change. Then `selectedDate` and `previewDate`
+were changed from a bare day number to `{ year, month, day }`, so the popup and the List
+preview always show the tapped day's own month rather than whatever month the header
+happens to be on. (Minor, intended side effect: in List mode, leaving a month and coming
+back no longer remembers which day was tapped — it resets to today/the 1st.)
+
+✅ Swipe navigation — DONE, confirmed on-device ("device test went as described"),
+pushed. A horizontal, paging FlatList of 49 months (24 before/after today,
+`PAGES_EACH_SIDE = 24`) renders one `MonthView` per page. Swiping snaps one month at a
+time and updates the header/chevrons via `onMomentumScrollEnd`; the chevrons and Today
+button call `scrollToIndex` on the same list via a `pageIndex`-keyed `useEffect`, so
+tapping them slides the page rather than just changing a label.
+⚠️ Known limit (not yet fixed): past 24 months either side of today, the chevrons would
+change the month title but the swipe list has no further page to show — flagged as
+optional to fix if it comes up.
+
+🔧 Scroll navigation — CODE APPLIED, HIT A CRASH ON FIRST DEVICE TEST, FIX GIVEN BUT NOT
+YET RE-TESTED, NOT YET COMMITTED/PUSHED. Scroll mode was built as a vertical FlatList of
+the same 49-month page list, each item showing its own "Month YYYY" label above a
+`MonthView`; `onViewableItemsChanged` (50% visibility threshold) updates the header/
+chevrons as the list scrolls; the chevrons and Today call `scrollToIndex` the same way
+Swipe does, guarded by a `skipNextScrollSync` ref so a scroll-driven month change doesn't
+immediately re-trigger its own scroll-to-index. No `getItemLayout` is set (a 4-week
+month, a 6-week month, Details mode and List mode are all different heights, so item
+height can't be predicted up front) — `onScrollToIndexFailed` retries the jump after a
+short delay instead.
+
+⚠️ Crash found on first on-device test of Scroll: switching the menu to "Scroll months"
+threw `Invariant Violation: Changing onViewableItemsChanged nullability on the fly is
+not supported`, with a Render Error overlay and a matching FlatList/invariant stack in
+the Metro log (screenshot + full log reviewed). Root cause: the Swipe FlatList and the
+Scroll FlatList sit in the same spot in a ternary with no `key` prop on either, so React
+treated switching between them as updating one list in place rather than unmounting one
+and mounting the other — and the vertical list's `onViewableItemsChanged` prop then
+appeared "out of nowhere" on what React still thought was the same list instance, which
+FlatList disallows changing after the fact.
+
+📌 Fix given (paste provided, NOT yet confirmed applied/tested/pushed): add
+`key="swipe-list"` to the Swipe FlatList and `key="scroll-list"` to the Scroll FlatList,
+so React unmounts/remounts cleanly when the nav mode is switched. Also flagged: after
+pasting, do a full reload (shake → Reload) rather than just editing in place, since the
+crash's error screen can leave stale JS state behind.
+
+📌 Calendar decisions
+- Stacked mode reuses the exact same `EVENT_DOT_COLORS` palette already used for the
+  Compact dots and the popup's event dots — no separate color set was introduced.
+- Swipe and Scroll share one `MonthView` component and one 49-month page list
+  (`buildMonthPages()`), rather than each mode having its own month-rendering logic.
+- Per-month `computeMonthEvents`/`computeRunningBalances` are memoized inside `MonthView`
+  itself (keyed on `model`, `year`, `month`), per an Antigravity investigation finding
+  that `computeRunningBalances` walks every month between the accounts' "as of" date and
+  the target month — memoizing was flagged as necessary once several months can be on
+  screen at once (Swipe/Scroll), not optional polish.
+- No new dependency was added for Swipe/Scroll — both use React Native's built-in
+  `FlatList` (horizontal paging for Swipe, vertical for Scroll), consistent with the
+  project's existing no-reanimated stance from the D.1 design-audit decision.
+
+📁 Calendar files
+- New: mobile-app/src/calendarSettings.ts
+- Edited: mobile-app/src/screens/CalendarScreen.tsx (imports; new `MonthView` component;
+  `viewMode`/`navMode`/`menuOpen` state loaded from calendarSettings.ts; `selectedDate`/
+  `previewDate` as `{year,month,day}`; the view-mode menu popup; Stacked/Details/List
+  cell rendering; the Swipe and Scroll FlatLists, both now needing their `key` props
+  confirmed working)
+
 ▶️ Next step
+- (Calendar, most urgent) Re-test the `key="swipe-list"` / `key="scroll-list"` fix for
+  the Scroll-mode crash: paste it, run `npx tsc --noEmit`, fully reload the app (shake →
+  Reload, not just edit-in-place, since the crash screen can leave stale JS state), then
+  re-run the full Scroll checklist — header/chevrons following scroll, tapping chevrons
+  and Today, tapping a day after scrolling a few months, List mode's preview panel inside
+  Scroll, and switching back to Swipe to confirm it's unaffected. Only once that's clean:
+  commit and push all of the Calendar view-modes/Swipe/Scroll work in one go (it has not
+  been pushed since the "swipe between months" commit).
 - (D.7) Commit and push the Calendar bottom-sheet change. When an iPhone or iOS build
   is available, check the 'modal' look, and re-check the day popup inside the sheet.
 - (H series) Commit and push the H.1 to H.5 work if not already done. Optional
