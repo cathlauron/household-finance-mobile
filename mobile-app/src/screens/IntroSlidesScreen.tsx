@@ -12,6 +12,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 
 type Props = {
@@ -44,6 +45,7 @@ export default function IntroSlidesScreen({ onDone, onBack }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const isLast = index === SLIDES.length - 1;
@@ -64,7 +66,7 @@ export default function IntroSlidesScreen({ onDone, onBack }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, { height: 44 + insets.top, paddingTop: insets.top }]}>
         {onBack ? (
           <TouchableOpacity
             testID="intro-back-button"
