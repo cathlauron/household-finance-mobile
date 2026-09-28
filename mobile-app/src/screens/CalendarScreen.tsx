@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
@@ -32,6 +32,19 @@ const EVENT_DOT_COLORS: Record<CalendarEvent['type'], string> = {
   saving: '#f59e0b',
   manual: '#94a3b8',
 };
+
+// Swipe mode lets you page 24 months back and 24 months forward from today.
+const PAGES_EACH_SIDE = 24;
+
+function buildMonthPages() {
+  const now = new Date();
+  const pages: { year: number; month: number }[] = [];
+  for (let i = -PAGES_EACH_SIDE; i <= PAGES_EACH_SIDE; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    pages.push({ year: d.getFullYear(), month: d.getMonth() });
+  }
+  return pages;
+}
 
 type MonthViewProps = {
   year: number;
@@ -176,6 +189,23 @@ export default function CalendarScreen() {
   // null = default (today if we're on the current month, otherwise the 1st).
   const [previewDate, setPreviewDate] = useState<{ year: number; month: number; day: number } | null>(null);
 
+    // Swipe mode: one page per month, sized to the screen minus the 12pt side padding.
+  const { width: screenWidth } = useWindowDimensions();
+  const pageWidth = screenWidth - 24;
+  const monthPages = useMemo(() => buildMonthPages(), []);
+  const swipeListRef = useRef<FlatList<{ year: number; month: number }>>(null);
+  const nowForIndex = new Date();
+  const pageIndex =
+    (year - nowForIndex.getFullYear()) * 12 + (month - nowForIndex.getMonth()) + PAGES_EACH_SIDE;
+
+  // Whenever the month changes (chevrons, Today, or a swipe), make sure the
+  // swiping list is showing that month's page.
+  useEffect(() => {
+    if (navMode !== 'swipe') return;
+    if (pageIndex < 0 || pageIndex >= monthPages.length) return;
+    swipeListRef.current?.scrollToIndex({ index: pageIndex, animated: true });
+  }, [pageIndex, navMode]);
+
   useEffect(() => {
     getCalendarViewMode().then(setViewMode);
     getCalendarNavMode().then(setNavMode);
@@ -233,6 +263,15 @@ export default function CalendarScreen() {
   function goToday() {
     setYear(today.getFullYear());
     setMonth(today.getMonth());
+  }
+
+    function handleSwipeEnd(e: any) {
+    const index = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+    const page = monthPages[index];
+    if (page && (page.year !== year || page.month !== month)) {
+      setYear(page.year);
+      setMonth(page.month);
+    }
   }
 
   function handleDayPress(day: number, dayYear: number, dayMonth: number) {
@@ -348,13 +387,41 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      <MonthView
-        year={year}
-        month={month}
-        viewMode={viewMode}
-        effectivePreviewDay={effectivePreviewDay}
-        onDayPress={handleDayPress}
-      />
+      {navMode === 'swipe' ? (
+        <FlatList
+          ref={swipeListRef}
+          style={{ flexGrow: 0 }}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          data={monthPages}
+          keyExtractor={(item) => `${item.year}-${item.month}`}
+          initialScrollIndex={pageIndex}
+          initialNumToRender={3}
+          windowSize={3}
+          getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
+          onMomentumScrollEnd={handleSwipeEnd}
+          renderItem={({ item }) => (
+            <View style={{ width: pageWidth }}>
+              <MonthView
+                year={item.year}
+                month={item.month}
+                viewMode={viewMode}
+                effectivePreviewDay={item.year === year && item.month === month ? effectivePreviewDay : null}
+                onDayPress={handleDayPress}
+              />
+            </View>
+          )}
+        />
+      ) : (
+        <MonthView
+          year={year}
+          month={month}
+          viewMode={viewMode}
+          effectivePreviewDay={effectivePreviewDay}
+          onDayPress={handleDayPress}
+        />
+      )}
 
       {viewMode === 'list' && (
         <View style={styles.previewPanel}>
