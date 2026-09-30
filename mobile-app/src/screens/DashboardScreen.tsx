@@ -82,7 +82,10 @@ function formatDueDate(d: Date): string {
   return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({
+  header,
+  onScrollY,
+}: { header?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
   const { model, loading } = useData();
   const { refreshing, onRefresh } = useRefresh();
   const { colors } = useTheme();
@@ -136,7 +139,15 @@ export default function DashboardScreen() {
 
   return (
     <>
-    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer} refreshing={refreshing} onRefresh={onRefresh}>
+    <PullToRefreshScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      onScroll={onScrollY ? (e: any) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+      scrollEventThrottle={16}
+    >
+      {header}
 
       {/* This month */}
       <TouchableOpacity

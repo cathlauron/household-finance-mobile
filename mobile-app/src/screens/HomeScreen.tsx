@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +22,7 @@ export default function HomeScreen({ username }: Props) {
   const { model } = useData();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+  const [showSlimBar, setShowSlimBar] = useState(false);
 
   const leftToSpend = model ? computeLeftToSpend(model) : null;
   const leftToSpendStatus =
@@ -75,40 +76,52 @@ export default function HomeScreen({ username }: Props) {
         </View>
       </View>
 
-      {leftToSpend && leftToSpendStatus && (
-        <View style={[hs.leftCard, { overflow: 'hidden', backgroundColor: colors.cardTealStart }]}>
-          <CardGradient start={colors.cardTealStart} end={colors.cardTealEnd} />
-          <View style={hs.leftCardTop}>
-            <Text style={[hs.leftLabel, { marginBottom: 0, color: colors.cardTealTextDim }]}>Left to Spend</Text>
-            <TouchableOpacity
-              testID="home-calendar-shortcut"
-              onPress={() => navigation.navigate('Calendar')}
-              style={[hs.datePill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.2)' }]}
-              accessibilityLabel="Open calendar"
-            >
-              <Ionicons name="calendar-outline" size={16} color={colors.mintAccent} />
-              <Text style={[hs.dateText, { color: colors.cardTealText }]} numberOfLines={1}>{fullDate}</Text>
-            </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <DashboardScreen
+          onScrollY={(y) => setShowSlimBar(y > 150)}
+          header={
+            leftToSpend && leftToSpendStatus ? (
+              <View style={[hs.leftCard, { overflow: 'hidden', backgroundColor: colors.cardTealStart }]}>
+                <CardGradient start={colors.cardTealStart} end={colors.cardTealEnd} />
+                <View style={hs.leftCardTop}>
+                  <Text style={[hs.leftLabel, { marginBottom: 0, color: colors.cardTealTextDim }]}>Left to Spend</Text>
+                  <TouchableOpacity
+                    testID="home-calendar-shortcut"
+                    onPress={() => navigation.navigate('Calendar')}
+                    style={[hs.datePill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.2)' }]}
+                    accessibilityLabel="Open calendar"
+                  >
+                    <Ionicons name="calendar-outline" size={16} color={colors.mintAccent} />
+                    <Text style={[hs.dateText, { color: colors.cardTealText }]} numberOfLines={1}>{fullDate}</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ fontSize: 32, fontWeight: '700', color: colors.cardTealText, marginTop: 10 }}>
+                  {formatPeso(leftToSpend.amount)}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.cardTealTextDim, marginTop: 4 }}>
+                  {leftToSpendStatus.label} ·{' '}
+                  {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
+                </Text>
+                <View style={[hs.pctTrack, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: colors.mintAccent }]} />
+                </View>
+                <View style={hs.pctLabelRow}>
+                  <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>
+                    {formatPeso(leftToSpend.amount)} left of {formatPeso(totalBalanceToday)}
+                  </Text>
+                  <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>{Math.round(pctUsed)}% used</Text>
+                </View>
+              </View>
+            ) : undefined
+          }
+        />
+        {showSlimBar && leftToSpend && (
+          <View pointerEvents="none" style={[hs.slimBar, { backgroundColor: colors.cardTealStart }]}>
+            <Text style={[hs.slimBarLabel, { color: colors.cardTealTextDim }]}>Left to Spend</Text>
+            <Text style={[hs.slimBarAmount, { color: colors.cardTealText }]}>{formatPeso(leftToSpend.amount)}</Text>
           </View>
-          <Text style={{ fontSize: 32, fontWeight: '700', color: colors.cardTealText, marginTop: 10 }}>
-            {formatPeso(leftToSpend.amount)}
-          </Text>
-          <Text style={{ fontSize: 12, color: colors.cardTealTextDim, marginTop: 4 }}>
-            {leftToSpendStatus.label} ·{' '}
-            {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
-          </Text>
-          <View style={[hs.pctTrack, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-            <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: colors.mintAccent }]} />
-          </View>
-          <View style={hs.pctLabelRow}>
-            <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>
-              {formatPeso(leftToSpend.amount)} left of {formatPeso(totalBalanceToday)}
-            </Text>
-            <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>{Math.round(pctUsed)}% used</Text>
-          </View>
-        </View>
-      )}
-      <DashboardScreen />
+        )}
+      </View>
     </View>
   );
 }
@@ -141,7 +154,21 @@ function makeHomeStyles(colors: any) {
       paddingVertical: 8,
     },
     dateText: { color: colors.ink, fontSize: 12.5, fontWeight: '600' },
-    leftCard: { marginHorizontal: 14, marginTop: 8, borderRadius: 16, padding: 16 },
+    leftCard: { marginBottom: 12, borderRadius: 16, padding: 16 },
+    slimBar: {
+      position: 'absolute',
+      top: 0,
+      left: 14,
+      right: 14,
+      height: 36,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    slimBarLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+    slimBarAmount: { fontSize: 15, fontWeight: '700' },
     leftCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     leftCardIconBubble: {
       width: 44,
