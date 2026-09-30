@@ -204,7 +204,10 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
 
 function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy1 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
     yearNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 14, gap: 16 },

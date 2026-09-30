@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import CardGradient from '../components/CardGradient';
 import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -11,7 +12,6 @@ import { computeLeftToSpend, getLeftToSpendStatus, totalLiquidBalance, formatPes
 import type { RootStackParamList } from '../navigation/RootStack';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
-import LeafBackground from '../components/LeafBackground';
 
 type Props = {
   username: string;
@@ -50,8 +50,7 @@ export default function HomeScreen({ username }: Props) {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.navy2, paddingTop: insets.top }}>
-      <LeafBackground />
+    <View style={{ flex: 1, backgroundColor: 'transparent', paddingTop: insets.top }}>
       <View style={hs.headerRow}>
         <TouchableOpacity
           style={hs.headerLeft}
@@ -77,35 +76,36 @@ export default function HomeScreen({ username }: Props) {
       </View>
 
       {leftToSpend && leftToSpendStatus && (
-        <View style={[hs.leftCard, { backgroundColor: leftToSpendBg }]}>
+        <View style={[hs.leftCard, { overflow: 'hidden', backgroundColor: colors.cardTealStart }]}>
+          <CardGradient start={colors.cardTealStart} end={colors.cardTealEnd} />
           <View style={hs.leftCardTop}>
-            <Text style={[hs.leftLabel, { marginBottom: 0 }]}>Left to Spend</Text>
+            <Text style={[hs.leftLabel, { marginBottom: 0, color: colors.cardTealTextDim }]}>Left to Spend</Text>
             <TouchableOpacity
               testID="home-calendar-shortcut"
               onPress={() => navigation.navigate('Calendar')}
-              style={hs.datePill}
+              style={[hs.datePill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.2)' }]}
               accessibilityLabel="Open calendar"
             >
-              <Ionicons name="calendar-outline" size={16} color={colors.gold} />
-              <Text style={hs.dateText} numberOfLines={1}>{fullDate}</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.inkDim} />
+              <Ionicons name="calendar-outline" size={16} color={colors.mintAccent} />
+              <Text style={[hs.dateText, { color: colors.cardTealText }]} numberOfLines={1}>{fullDate}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.cardTealTextDim} />
             </TouchableOpacity>
           </View>
-          <Text style={{ fontSize: 32, fontWeight: '700', color: leftToSpendStatus.color, marginTop: 10 }}>
+          <Text style={{ fontSize: 32, fontWeight: '700', color: colors.cardTealText, marginTop: 10 }}>
             {formatPeso(leftToSpend.amount)}
           </Text>
-          <Text style={{ fontSize: 12, color: colors.inkDim, marginTop: 4 }}>
+          <Text style={{ fontSize: 12, color: colors.cardTealTextDim, marginTop: 4 }}>
             {leftToSpendStatus.label} ·{' '}
             {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
           </Text>
-          <View style={hs.pctTrack}>
-            <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: leftToSpendStatus.color }]} />
+          <View style={[hs.pctTrack, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: colors.mintAccent }]} />
           </View>
           <View style={hs.pctLabelRow}>
-            <Text style={hs.pctLabelText}>
+            <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>
               {formatPeso(leftToSpend.amount)} left of {formatPeso(totalBalanceToday)}
             </Text>
-            <Text style={hs.pctLabelText}>{Math.round(pctUsed)}% used</Text>
+            <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>{Math.round(pctUsed)}% used</Text>
           </View>
         </View>
       )}

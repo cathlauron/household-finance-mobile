@@ -1363,7 +1363,10 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },
     identityHeader: {
       alignItems: 'center',

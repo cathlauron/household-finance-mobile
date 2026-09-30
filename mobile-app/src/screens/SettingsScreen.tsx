@@ -2144,7 +2144,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
     profileCard: {

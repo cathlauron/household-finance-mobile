@@ -59,7 +59,10 @@ export default function PlanningScreen() {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     pillRow: {
       flexDirection: 'row',
       gap: 8,

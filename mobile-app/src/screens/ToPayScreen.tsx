@@ -116,7 +116,10 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
 }
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     switcherRow: {
       flexDirection: 'row',
       gap: 8,

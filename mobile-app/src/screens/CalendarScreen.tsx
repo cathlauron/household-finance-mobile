@@ -588,7 +588,7 @@ function makeStyles(colors: any) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.navy2,
+      backgroundColor: colors.navy3,
       paddingHorizontal: 12,
       paddingTop: 16,
     },

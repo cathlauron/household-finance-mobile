@@ -160,7 +160,7 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.statLabel}>Income</Text>
             </View>
-            <Text style={styles.statValue}>{formatPeso(monthTotals.totalIn)}</Text>
+            <Text style={[styles.statValue, { color: colors.ok }]}>{formatPeso(monthTotals.totalIn)}</Text>
           </View>
           <View style={[styles.statBox, styles.statBoxDivider]}>
             <View style={styles.statIconRow}>
@@ -169,7 +169,7 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.statLabel}>Expenses</Text>
             </View>
-            <Text style={styles.statValue}>{formatPeso(monthTotals.totalOut)}</Text>
+            <Text style={[styles.statValue, { color: colors.error }]}>{formatPeso(monthTotals.totalOut)}</Text>
           </View>
           <View style={[styles.statBox, styles.statBoxDivider]}>
             <View style={styles.statIconRow}>
@@ -187,24 +187,24 @@ export default function DashboardScreen() {
               </View>
               <Text style={styles.statLabel}>Net</Text>
             </View>
-            <Text style={styles.statValue}>{formatPeso(monthTotals.net)}</Text>
+            <Text style={[styles.statValue, { color: monthTotals.net >= 0 ? colors.ok : colors.error }]}>{formatPeso(monthTotals.net)}</Text>
           </View>
         </View>
       </TouchableOpacity>
 
       {/* Amount owed */}
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, { backgroundColor: colors.peachCard, borderColor: colors.peachBubble }]}
         activeOpacity={0.7}
         onPress={() => navigation.navigate('To-Pay')}
       >
         <View style={styles.rowCard}>
-          <View style={styles.iconBubbleQuiet}>
-            <Ionicons name="receipt-outline" size={16} color={colors.inkDim} />
+          <View style={[styles.iconBubbleQuiet, { backgroundColor: colors.peachBubble }]}>
+            <Ionicons name="receipt-outline" size={16} color={colors.orange} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>Amount Owed</Text>
-            <Text style={[styles.bigAmount, { fontSize: 22 }]}>
+            <Text style={[styles.bigAmount, { fontSize: 22, color: colors.orange }]}>
               {formatPeso(totalOwed)}
             </Text>
           </View>
@@ -230,8 +230,8 @@ export default function DashboardScreen() {
         onPress={() => setDueSheetOpen(true)}
       >
         <View style={styles.rowCard}>
-          <View style={styles.iconBubbleQuiet}>
-            <Ionicons name="calendar-outline" size={16} color={colors.inkDim} />
+          <View style={[styles.iconBubbleQuiet, { backgroundColor: colors.indigoBg }]}>
+            <Ionicons name="calendar-outline" size={16} color={colors.indigo} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>Due Next 14 Days</Text>
@@ -264,8 +264,8 @@ export default function DashboardScreen() {
         onPress={() => navigation.navigate('Savings')}
       >
         <View style={styles.rowCard}>
-          <View style={styles.iconBubbleQuiet}>
-            <Ionicons name="flag-outline" size={16} color={colors.inkDim} />
+          <View style={[styles.iconBubbleQuiet, { backgroundColor: colors.okBg }]}>
+            <Ionicons name="flag-outline" size={16} color={colors.ok} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>Savings Goals</Text>
@@ -305,7 +305,14 @@ export default function DashboardScreen() {
       {/* Category watchlist */}
       {(model.categoryBudgets || []).length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>Watched Categories</Text>
+          <View style={styles.rowCard}>
+            <View style={[styles.iconBubbleQuiet, { backgroundColor: colors.okBg }]}>
+              <Ionicons name="pricetag-outline" size={16} color={colors.ok} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardLabel}>Watched Categories</Text>
+            </View>
+          </View>
           {(model.categoryBudgets || []).map((cb) => {
             const budget = typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0;
             const spent = computeCategorySpend(model, cb.category, monthPrefix);
@@ -481,8 +488,8 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     listDateBadge: {
       fontSize: 11,
-      color: colors.orange,
-      backgroundColor: colors.navy2,
+      color: colors.indigo,
+      backgroundColor: colors.indigoBg,
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 999,

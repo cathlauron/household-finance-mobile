@@ -201,7 +201,10 @@ export default function ReportsScreen() {
 
 function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy1 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     tabRowWrap: { flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
     pillScroll: { flex: 1, height: 54 },
     pillRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },

@@ -483,10 +483,11 @@ The "Hi, testt..." greeting truncation is fixed: the old 3-slot flex header
 (1 / 1.4 / 1) left the greeting ~39pt, so headerCenter was deleted and headerLeft/
 headerRight are now content-sized.
 
-✅ H.2: Dashboard quieted. This Month numbers are neutral (statValue now 14/600 in
-colors.ink; the small green/red arrows are the only colour cue). Amount Owed, Due Next 14
+✅ H.2: Dashboard quieted. This Month numbers were neutral here (statValue 14/600 in
+colors.ink; the small green/red arrows the only colour cue). SUPERSEDED: the mint-restyle
+checkpoint 3 (see below) made Income/Expenses/Net coloured again on purpose. Amount Owed, Due Next 14
 Days and Savings Goals icons are now smaller (16), colors.inkDim, and moved to the left
-using a new iconBubbleQuiet style. Amount Owed's amount is neutral, size 22.
+using a new iconBubbleQuiet style. Amount Owed's amount was neutral, size 22 (now orange, see the mint-restyle section).
 
 ✅ H.3: Tappable Home cards.
 - This Month opens the Transactions tab.
@@ -508,7 +509,9 @@ colors.gold) behind Home, built from the logo's own leaf paths in
 assets/eco_house_logo.svg (the left leaf was an open curve and was closed with Z so it
 can be filled). It is exported as RIGHT_LEAF, LEFT_LEAF and LEAF_VIEWBOX (cropped
 '420 480 200 210'). It is click-through. DashboardScreen's scroll container style is now
-backgroundColor 'transparent' so the leaves show through.
+backgroundColor 'transparent' so the leaves show through. SUPERSEDED: LeafBackground is
+now rendered ONCE in App.tsx behind the whole navigator, no longer inside HomeScreen (see
+the mint-restyle section, checkpoint 4).
 
 ✅ H.5: Leaf transition on navigation. New src/leafTransition.ts (transient signal:
 triggerLeafTransition / subscribeToLeafTransition) and
@@ -547,7 +550,11 @@ via AccessibilityInfo (the app has no reduce-motion setting of its own).
   top import block later.
 - A tab that keeps a nested screen open might not report a new route name, so it could
   skip the leaf transition (not observed in testing).
-
+- Superseded notes: the "Leaves only show around cards" tuning note and the "Amount Owed
+  neutral" / "This Month neutral" statements above describe H.1-H.5 as shipped. The later
+  mint-restyle changed the page background, card colours, section colours and where the
+  leaves are rendered; see the mint-restyle section.
+  
 📁 H-series files
 - New: src/openToPayTabRequest.ts, src/leafTransition.ts,
   src/components/LeafBackground.tsx, src/components/LeafTransitionOverlay.tsx
@@ -729,13 +736,140 @@ crash's error screen can leave stale JS state behind.
 ⚠️ Still required: a NEW EAS build before the H series works in an installed app
   (react-native-svg is a native module).
 
+=====================================================================
+🎨 Shared mint background + white cards + filled tab icons (checkpoints 1-6, plus card/Calendar colour)
+=====================================================================
+
+Why: Cath supplied a mockup image as a colour/background reference ONLY for what already
+exists. Explicitly NOT brought back: the Total Balance card, the wallet bubble in Left to
+Spend, and the header date pill (the date pill stays inside the Left to Spend card).
+Worked as Antigravity investigates (read-only), Claude reviews, Cath pastes by hand. No
+new dependency and NO new EAS build (react-native-svg was already installed for H.4).
+
+✅ Checkpoint 1: bottom tab bar. New TabIcon helper in MainTabs.tsx (added
+`import { View } from 'react-native';`). Active tab shows the filled Ionicons variant
+(home, receipt, swap-horizontal, ellipsis-horizontal), brand green label and a small
+underline; inactive tabs are the outline icons in muted gray. The underline slot is
+ALWAYS reserved (transparent when inactive) so icons do not jump when switching tabs.
+tabBarLabelStyle is now { fontSize: 9.5, fontWeight: '600' }. Confirmed on-device.
+
+✅ Checkpoint 2: theme tokens + page gradient. theme.ts: new ThemeColors keys added to
+the type and to both palettes: indigo, indigoBg, cardTealStart, cardTealEnd,
+cardTealText, cardTealTextDim, mintAccent, pageGradStart, pageGradEnd, peachCard,
+peachBubble. Light values: pageGradStart #EAF5EE to pageGradEnd #FFFFFF, teal card
+#134E48 to #082F2C, indigo #4F46E5 / #EEF2FF, peach #FFF6ED / #FFEDD5. Dark values: page
+#0E1B15 to #161412, teal #164E44 to #0D332D, indigo #818CF8 / #1E1B4B, peach #281D17 /
+#3E271B. LeafBackground.tsx now draws an SVG LinearGradient (id "pageBgGrad") behind the
+four leaves. Confirmed on-device in light and dark mode.
+
+✅ Checkpoint 3: Left to Spend card + Dashboard section colours.
+- HomeScreen.tsx: card is a teal gradient with white text, mint progress bar and a
+  translucent date pill (still inside the card, still opens Calendar).
+- DashboardScreen.tsx: This Month Income = colors.ok, Expenses = colors.error, Net =
+  ok/error by sign (this REVERSES H.2's neutral numbers on purpose). Amount Owed = peach
+  card, peach icon bubble, orange amount. Due Next 14 Days = indigo icon bubble and
+  indigo date pills (listDateBadge). Savings Goals and Watched Categories = light green
+  icon bubble (Watched Categories gained an icon row using pricetag-outline).
+
+✅ Left to Spend cropping fix: the first SVG approach measured itself before the card's
+content laid out, so the teal stopped short of the right edge, the date pill ran off it
+and the footer line sat on the pale background. Fixed with a NEW component,
+mobile-app/src/components/CardGradient.tsx, which reads its real size from onLayout and
+draws the gradient at exactly that size, plus a solid backgroundColor: colors.cardTealStart
+on the card as a safety net (with overflow: 'hidden'). Confirmed working. A later
+screenshot showed the card cropped again, but that was already fixed in earlier sessions;
+the Antigravity investigation prompt for it was NOT run and is no longer needed.
+
+✅ Checkpoint 4: ONE shared background behind the whole app.
+- App.tsx: imports DefaultTheme and LeafBackground. In the authenticated `home` block,
+  <LeafBackground /> renders ONCE just inside the outer View, before NavigationContainer,
+  and NavigationContainer got theme={{ ...DefaultTheme, colors: { ...DefaultTheme.colors,
+  background: 'transparent' } }}. The outer View deliberately KEEPS backgroundColor:
+  colors.navy2 as a safety net under the gradient.
+- RootStack.tsx: screenOptions gained contentStyle: { backgroundColor: 'transparent' }.
+- MainTabs.tsx: screenOptions gained sceneStyle: { backgroundColor: 'transparent' }.
+- HomeScreen.tsx: its own <LeafBackground /> and import were removed; root View is
+  transparent.
+- container style set to transparent in ToPayScreen, TransactionsScreen, MoreScreen.
+Confirmed on-device.
+
+✅ Checkpoint 5: container style set to backgroundColor: 'transparent' in ProfileScreen,
+AccountsScreen, IncomeScreen, SavingsScreen, PlanningScreen, SettingsScreen,
+PremiumScreen, BillsScreen, DebtsScreen, LoansScreen, EventsScreen, GoalsScreen,
+GroceriesScreen, TravelScreen. Confirmed on-device.
+
+✅ Checkpoint 6: container style set to transparent (it was navy1, not navy2) in
+InsightsScreen, ReportsScreen and all nine files in screens/reports (CashFlowForecast,
+MerchantSpending, MonthlyCloseOut, PaymentMethods, PersonSpending, SubscriptionAudit,
+TaxSummary, WeeklyDigest, YearInReview). Insights wraps Reports, so all 11 were changed
+together to avoid a solid band. Confirmed on-device.
+
+✅ White cards (light mode only): theme.ts lightTheme navy3 changed from #FBF9F3 to
+#FFFFFF. Dark theme untouched. Side effect, intended and accepted: everything that uses
+navy3 is white in light mode too, i.e. cards, the stack and tab headers, the bottom tab
+bar, and bottom sheets. Confirmed on-device.
+
+✅ Calendar background: CalendarScreen.tsx container style backgroundColor changed from
+colors.navy2 to colors.navy3 (white in light mode, still dark in dark mode). Only that one
+line changed; the existing paddingHorizontal: 12 and paddingTop: 16 in the same style stay
+as they were. Calendar deliberately does NOT get the shared mint background: on iOS it
+opens as a native 'modal' and on Android as a 'formSheet', both outside the shared
+background, so it keeps its own solid colour. Confirmed on-device (Android).
+
+📌 Decisions for this restyle
+- Layout is unchanged. The mockup was a colour/background reference only.
+- ONE shared <LeafBackground /> in App.tsx instead of one per screen. Reasons: the SVG
+  gradient id "pageBgGrad" could clash if mounted many times; leaves would ghost and
+  double up during push/pop slides; it avoids duplicating the SVG tree per screen.
+- Left to Spend is ALWAYS teal, not status-coloured. The status label text ("Looking
+  good", etc.) still carries the status. Cath did not object.
+- SVG gradients via the already-installed react-native-svg, NOT expo-linear-gradient
+  (which would have needed a new native dependency and a new EAS build).
+- Only the `container` style was changed per screen. Other navy1/navy2 uses (chips,
+  inputs, rows, chart tracks) were deliberately left alone.
+- Bottom sheets, dialog modal cards (CsvImport, LoanPayoffSimulator, SavingsFiComparison,
+  Calendar day popup) stay OPAQUE.
+- Screens with their own background on purpose were left alone: IntroScreen (splash
+  image, #1A3F22), SignInScreen, PinUnlockScreen, SetPinScreen, AccountSwitcherScreen,
+  CreateProfileScreen, OnboardingScreen, IntroSlidesScreen. The shared background only
+  exists inside the authenticated `home` block, so these are unaffected.
+- Headers and the bottom tab bar stay solid so scrolled content never shows through them.
+
+⚠️ Known issues / gotchas for this restyle
+- Because navy3 is now white in light mode, headers, the tab bar and bottom sheets are
+  white too. If they should stay cream, give them their own colour instead of navy3.
+- Calendar's own cells and cards also use navy3; on the now-white Calendar page they may
+  look flat. If so, consider a mint or navy2 tint for the page or the cells.
+- The iOS-only 'modal' presentation for Calendar is still untested (no iPhone).
+- Push/pop screen slides now show the shared background through the gap between cards
+  during the ~300ms slide. Not observed as a problem. If it is, set animation: 'fade' or
+  'simple_push' in RootStack's screenOptions.
+- Not yet checked on the installed EAS build (see the react-native-svg note in the
+  H-series known issues; that same NEW build is still required).
+
+📁 Files for this restyle
+- New: mobile-app/src/components/CardGradient.tsx
+- Edited: mobile-app/App.tsx, mobile-app/src/theme.ts,
+  mobile-app/src/components/LeafBackground.tsx,
+  mobile-app/src/navigation/MainTabs.tsx, mobile-app/src/navigation/RootStack.tsx,
+  mobile-app/src/screens/HomeScreen.tsx, DashboardScreen.tsx, ToPayScreen.tsx,
+  TransactionsScreen.tsx, MoreScreen.tsx, ProfileScreen.tsx, AccountsScreen.tsx,
+  IncomeScreen.tsx, SavingsScreen.tsx, PlanningScreen.tsx, SettingsScreen.tsx,
+  PremiumScreen.tsx, BillsScreen.tsx, DebtsScreen.tsx, LoansScreen.tsx, EventsScreen.tsx,
+  GoalsScreen.tsx, GroceriesScreen.tsx, TravelScreen.tsx, CalendarScreen.tsx,
+  InsightsScreen.tsx, ReportsScreen.tsx, and the nine files in
+  mobile-app/src/screens/reports/
+- Confirmed on-device on Android; commit status: see the git commands in the session wrap.
+
 ▶️ Next step
 - Commit and push everything (D.5, D.5b, D.6, D.7, H series, Calendar view modes/Swipe/
-  Scroll, Skip/Back fix).
+  Scroll, Skip/Back fix, and the mint background + white cards + filled tab icons
+  restyle).
 - Decide: (a) call the design-polish phase complete and return to PROGRESS5.md's paused
   Quick Unlock Step 6 checklist (plus PC.3 real social sign-in), or (b) make a new EAS
-  build first so the H series (react-native-svg) is testable on an installed app — this
-  could double as the Step 6 build. Confirm with Cath before starting.
+  build first so the H series and the mint restyle (react-native-svg) are testable on an
+  installed app; this could double as the Step 6 build. Confirm with Cath before starting.
 - Optional small items: current-month filter for Transactions ("This Month" card), tidy
   App.tsx leaf imports, move SafeAreaView imports to react-native-safe-area-context,
-  Calendar swipe list stops at ±24 months.
+  Calendar swipe list stops at +/-24 months, and a look at whether Calendar's cells need
+  a tint now that the page is white.

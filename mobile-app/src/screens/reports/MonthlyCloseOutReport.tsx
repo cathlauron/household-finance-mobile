@@ -106,7 +106,10 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
 
 function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy1 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
     card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },

@@ -19,6 +19,17 @@ export type ThemeColors = {
   orange: string;
   warnBg: string;
   premium: string;
+  indigo: string;
+  indigoBg: string;
+  cardTealStart: string;
+  cardTealEnd: string;
+  cardTealText: string;
+  cardTealTextDim: string;
+  mintAccent: string;
+  pageGradStart: string;
+  pageGradEnd: string;
+  peachCard: string;
+  peachBubble: string;
 };
 
 export const lightTheme: ThemeColors = {
@@ -27,7 +38,7 @@ export const lightTheme: ThemeColors = {
   inkFaint: '#A0A597',
   navy1: '#EEE9DE',
   navy2: '#F6F1E6',
-  navy3: '#FBF9F3',
+  navy3: '#FFFFFF',
   navy4: '#E5E0CF',
   gold: '#2E5D3A',
   goldDim: '#234A2E',
@@ -39,6 +50,17 @@ export const lightTheme: ThemeColors = {
   orange: '#EA580C',
   warnBg: '#FFF7ED',
   premium: '#E08A2C',
+  indigo: '#4F46E5',
+  indigoBg: '#EEF2FF',
+  cardTealStart: '#134E48',
+  cardTealEnd: '#082F2C',
+  cardTealText: '#FFFFFF',
+  cardTealTextDim: '#A7F3D0',
+  mintAccent: '#34D399',
+  pageGradStart: '#EAF5EE',
+  pageGradEnd: '#FFFFFF',
+  peachCard: '#FFF6ED',
+  peachBubble: '#FFEDD5',
 };
 
 export const darkTheme: ThemeColors = {
@@ -59,4 +81,15 @@ export const darkTheme: ThemeColors = {
   orange: '#FB923C',
   warnBg: '#3A2412',
   premium: '#E08A2C',
+  indigo: '#818CF8',
+  indigoBg: '#1E1B4B',
+  cardTealStart: '#164E44',
+  cardTealEnd: '#0D332D',
+  cardTealText: '#F1F0EF',
+  cardTealTextDim: '#A7F3D0',
+  mintAccent: '#34D399',
+  pageGradStart: '#0E1B15',
+  pageGradEnd: '#161412',
+  peachCard: '#281D17',
+  peachBubble: '#3E271B',
 };

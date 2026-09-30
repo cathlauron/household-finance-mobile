@@ -83,7 +83,10 @@ export default function PremiumScreen() {
 
 function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2 },
+    container: {
+      flex: 1,
+      backgroundColor: 'transparent',
+    },
     content: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 40 },
     heroCard: {
       backgroundColor: colors.navy3,

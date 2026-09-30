@@ -50,7 +50,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.navy1,
+      backgroundColor: 'transparent',
     },
     pillRow: {
       flexDirection: 'row',

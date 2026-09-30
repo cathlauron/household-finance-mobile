@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
 
 // Leaf shapes copied from assets/eco_house_logo.svg (the logo's own leaves).
@@ -37,6 +37,15 @@ export default function LeafBackground() {
   const o = 0.07;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="pageBgGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={colors.pageGradStart} />
+            <Stop offset="1" stopColor={colors.pageGradEnd} />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#pageBgGrad)" />
+      </Svg>
       <Leaf d={RIGHT_LEAF} size={200} rotate="20deg" color={c} opacity={o} position={{ top: 40, right: -50 }} />
       <Leaf d={LEFT_LEAF} size={150} rotate="-25deg" color={c} opacity={o} position={{ top: 330, right: -45 }} />
       <Leaf d={RIGHT_LEAF} size={170} rotate="-15deg" color={c} opacity={o} position={{ bottom: 190, left: -55 }} />

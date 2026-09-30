@@ -7,7 +7,7 @@ import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { navigationRef } from './src/navigation/navigationRef';
 import CryptoJS from 'crypto-js';
@@ -42,6 +42,7 @@ import {
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
 
 import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
+import LeafBackground from './src/components/LeafBackground';
 import { triggerLeafTransition } from './src/leafTransition';
 
 function AppContent() {
@@ -489,8 +490,13 @@ function AppContent() {
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.navy2 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
+        <LeafBackground />
         <NavigationContainer
           ref={navigationRef}
+          theme={{
+            ...DefaultTheme,
+            colors: { ...DefaultTheme.colors, background: 'transparent' },
+          }}
           onReady={handleNavReady}
           onStateChange={handleNavStateChange}
         >

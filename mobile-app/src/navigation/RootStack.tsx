@@ -42,6 +42,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
     <Stack.Navigator
       id={undefined}
       screenOptions={{
+        contentStyle: { backgroundColor: 'transparent' },
         headerStyle: { backgroundColor: colors.navy3 },
         headerTintColor: colors.ink,
         headerTitleStyle: { fontWeight: '700' },
