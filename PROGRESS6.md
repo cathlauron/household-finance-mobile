@@ -863,7 +863,7 @@ background, so it keeps its own solid colour. Confirmed on-device (Android).
 - Confirmed on-device on Android; commit status: see the git commands in the session wrap.
 
 =====================================================================
-🏠 Home screen round 2: tappable hints, rubber band, scrolling Left to Spend, Watched Categories drill-down (DONE), bell inbox (DESIGNED, NOT YET BUILT)
+🏠 Home screen round 2: tappable hints, rubber band, scrolling Left to Spend, Watched Categories drill-down (DONE), bell inbox (DONE, device-tested)
 =====================================================================
 
 Why: Cath reviewed Home on a real Android phone (screenshots) and asked for several
@@ -1066,12 +1066,61 @@ pushed.
   user taps "Clear filter", even after leaving and returning. The chip is always visible.
   If it should reset on leaving the tab, that is a small follow-up.
 - Transactions still has no general month filter; only the category drill-down sets one.
-- The bell button is still inert (no onPress), and its red dot still only reflects
-  due-soon items. Both are replaced by the bell inbox.
+- (RESOLVED) The bell used to be inert. It now opens the inbox (3a/3b-1/3b-2).
 - Rubber band on Android 12+ is a stretch, subtler than iPhone. Cath reports it works as
   described; revisit only if it is raised again.
 
-▶️ Still to build (in this order)
+✅ Checkpoint 3a: bell data layer — DONE, compiled clean, pushed.
+- New src/dateUtils.ts: todayISO() returns the LOCAL date (not toISOString, which is UTC
+  and wrong in PH between midnight and 8am).
+- New src/overdue.ts: getOverdueItems(model) returns OverdueItem[] (kind 'bill' | 'debt' |
+  'loan', id, optional cycleId, name, dueDate, amountOwed, key), oldest first. Bills and
+  debts: a cycle with dueDate before today and amountDue - amountPaid > 0. Loans: ONLY
+  one-time loans with direction 'borrowed' (dueDate.date before today, and
+  loanOutstandingBalance > 0). Recurring loans are never overdue (decision 7).
+- New src/bellReadState.ts: loadBellRead / markBellRead / pruneBellRead, key
+  `profile:${username}:bell-read`, plain AsyncStorage JSON array with try/catch, following
+  reportVisibility.ts.
+- New src/usePendingRecovery.ts: the bell's own household listener (subscribeToHousehold +
+  getPeerRecoveryRequest), logic copied from ProfileScreen's effect. Returns
+  { request, requestId }. A request counts only when status is 'pending' and requesterUid
+  is not the current uid. ProfileScreen untouched.
+
+✅ Checkpoint 3b-1: bell sheet, recovery + overdue groups — DONE, device-tested, pushed.
+- New src/useBellInbox.ts combines the three sources and read state. HomeScreen got a
+  BottomSheet titled "Notifications", an onPress on the bell, and a count badge (9+ cap).
+- One tsc error on the way: navigation.navigate('To-Pay') is not a valid route name for
+  HomeScreen's stack-typed navigation (To-Pay is a TAB route). Fixed with a local cast,
+  (navigation as any).navigate('To-Pay'), on that one call only.
+
+✅ Checkpoint 3b-2: "Due in the next 14 days" group — DONE, compiled clean, device-tested,
+pushed.
+- useBellInbox now also takes getUpcomingDue(model, 14) (imported from DashboardScreen).
+  BellItem has a third variant, group 'due', with key
+  `due:${type}:${id || label}:${localISO(date)}`. DashboardScreen's DueItem is not
+  exported, so the hook defines a matching BellDue type.
+- HomeScreen: the old small due-soon dot and hasDueSoon-based rendering on the bell were
+  removed; the badge now counts unread items across all three groups. The tap handler
+  handles overdue and due items (requestOpenBill/Debt/Loan, with requestToPayTab as the
+  fallback when an id is missing), then navigates to To-Pay.
+- Pruning: read marks for overdue/due items that no longer exist are dropped; recovery
+  marks are left alone because the recovery request loads later than the other lists.
+
+📌 Bell inbox limits (as shipped)
+- Only one-time borrowed loans can show as overdue.
+- Read marks live on the phone, per profile. Two people in one household each have their
+  own read/unread state.
+- The due-soon window is fixed at 14 days, the same as the Dashboard card.
+- The recovery row only opens Profile; approve/decline still lives there.
+- Over-budget categories are NOT in the bell (decision 5).
+
+⚠️ Bell test coverage: Cath reported the device test as "described" for each checkpoint.
+The overdue debt/loan tap-through (landing on the right To-Pay sub-tab) was assumed to
+pass, because openDueItem in Dashboard uses the identical request helpers. The recovery
+row was NOT tested with a real second device. The fresh-launch case (close app, tap a
+bell item before ever opening To-Pay) was not tested separately; it relies on Checkpoint 0.
+
+▶️ Still to build (older list, bell items now done; see Next step at the bottom)
 Done: corrections, Checkpoint 0 (lost open requests), Checkpoint 1 (Left to Spend
 scrolling + slim bar), Checkpoint 2 (Watched Categories drill-down).
 Remaining:
@@ -1087,8 +1136,11 @@ Remaining:
     from the bell and a recovery-request test if a second device is available.
 
 📁 Files for this round
-- New: none so far (3a/3b will add a todayISO helper, a pending-recovery hook, a
-  bell read-state file, and a bell inbox component)
+- New: src/dateUtils.ts, src/overdue.ts, src/bellReadState.ts, src/usePendingRecovery.ts,
+  src/useBellInbox.ts
+- Edited for the bell: src/screens/HomeScreen.tsx (BottomSheet inbox, bell onPress, unread
+  badge, tap handler, bell styles, imports of BottomSheet / useBellInbox / the open-request
+  helpers / requestToPayTab)
 - Edited and pushed: mobile-app/src/screens/HomeScreen.tsx (chevron removed; Left to Spend
   passed as header; slim bar), mobile-app/src/screens/DashboardScreen.tsx (header/onScrollY
   props; tappable Watched Categories; This Month, Amount Owed and status-label fixes),
@@ -1098,11 +1150,8 @@ Remaining:
   request memory)
 
 ▶️ Next step
-- Build the bell inbox in two parts so each can be device-tested separately if needed:
-  3a (data layer) then 3b (sheet UI), using the design decisions 5-8 above. Claude writes
-  3a as an Antigravity investigation-only prompt only if more real code is needed;
-  otherwise goes straight to paste-by-hand snippets built from the real code recorded in
-  the findings above.
+- The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
+  recovery row with a second device, and the fresh-launch bell tap-through.
 - Then commit and push everything outstanding (this round is already pushed through
   Checkpoint 2; older items listed below should be checked with `git status` first).
 - Then decide: (a) call the design-polish phase complete and return to PROGRESS5.md's paused
