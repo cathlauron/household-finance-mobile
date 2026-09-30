@@ -863,7 +863,7 @@ background, so it keeps its own solid colour. Confirmed on-device (Android).
 - Confirmed on-device on Android; commit status: see the git commands in the session wrap.
 
 =====================================================================
-🏠 Home screen round 2: tappable hints, rubber band, scrolling Left to Spend, bell inbox (IN PROGRESS)
+🏠 Home screen round 2: tappable hints, rubber band, scrolling Left to Spend, Watched Categories drill-down (DONE), bell inbox (DESIGNED, NOT YET BUILT)
 =====================================================================
 
 Why: Cath reviewed Home on a real Android phone (screenshots) and asked for several
@@ -874,28 +874,20 @@ Nothing new is committed beyond what is noted below.
 - Removed the chevron-forward beside the date in the Left to Spend date pill
   (HomeScreen.tsx). The pill still opens Calendar (it opens as a bottom sheet).
 
-🔧 APPLIED by hand, on-device screenshot reviewed, NEEDS FIXING (fix given, not yet
-confirmed applied or committed):
-- DashboardScreen.tsx "This Month" card: icon moved to the left as an iconBubbleQuiet
-  (colors.okBg bubble, colors.ok swap-horizontal-outline icon, the Transactions tab icon).
-  MISTAKE in the first paste: the rowCard also got `gap: 12`, but iconBubbleQuiet already
-  has marginRight: 12, so the title sat too far from the bubble. Fix given: change
-  `[styles.rowCard, { gap: 12 }]` to `[styles.rowCard, { marginBottom: 10 }]`.
-- Amount Owed tappable pills (Bills / Debts / Loans): first version used flexWrap, and
-  the pills wrapped to two lines. Cath wants ONE LINE. Fix given: three flex:1 pills in a
-  row, each with the label above the amount (owedPillTextWrap, owedPillLabel,
-  owedPillAmount), the amount using adjustsFontSizeToFit / minimumFontScale 0.75, plus
-  a chevron. The pill fill is colors.navy3 with a navy4 border. (peachBubble was rejected
-  because the card itself is peach, so the pills would have been nearly invisible.)
-- Watched Categories row: the category name and status label touch ("AaaOver budget").
-  Cause: listRowLeft has no gap. The fix is marginLeft: 8 on the status label only.
-  (A gap on listRowLeft would also change the Due Next 14 Days rows.)
-- PullToRefreshScrollView.tsx: full rewrite given. The file no longer does pull-to-refresh.
-  It accepts refreshing/onRefresh (ignored, so the 12 screens still compile) and gives the
-  platform's elastic overscroll: RN ScrollView with bounces + alwaysBounceVertical on iOS;
-  GHScrollView with overScrollMode="always" on Android. The 12 screens that use it are
-  Accounts, Bills, Dashboard, Debts, Events, Goals, Groceries, Income, Loans, Savings,
-  Transactions and Travel.
+✅ DONE, code confirmed from real files shown by Antigravity, then device-tested with the batch (Cath: "everything works as described"):
+- DashboardScreen.tsx "This Month" card: icon on the left as an iconBubbleQuiet (colors.okBg
+  bubble, swap-horizontal-outline icon). The rowCard now uses `{ marginBottom: 10 }` (the
+  earlier `gap: 12` mistake is gone, since iconBubbleQuiet already has marginRight: 12).
+- Amount Owed pills (Bills / Debts / Loans): now three flex:1 pills in ONE row (owedPill,
+  owedPillTextWrap, owedPillLabel, owedPillAmount with adjustsFontSizeToFit and
+  minimumFontScale 0.75, plus a chevron). Each opens its own To-Pay sub-tab.
+- Watched Categories status label has marginLeft: 8, so name and status no longer touch.
+- PullToRefreshScrollView.tsx rewritten: no longer does pull-to-refresh. Accepts
+  refreshing/onRefresh (ignored, so the 12 screens still compile). iOS: RN ScrollView with
+  bounces + alwaysBounceVertical. Android: GHScrollView with overScrollMode="always". It
+  forwards every other ScrollView prop (onScroll, scrollEventThrottle, stickyHeaderIndices
+  all work). The 12 screens that use it are Accounts, Bills, Dashboard, Debts, Events,
+  Goals, Groceries, Income, Loans, Savings, Transactions and Travel.
 
 📌 Decisions (Cath, this session)
 1. Remove pull-to-refresh from ALL screens and add a rubber-band feel to ALL screens.
@@ -905,15 +897,40 @@ confirmed applied or committed):
    12 screens is ignored for now and can be tidied later.
 2. Left to Spend moves INSIDE the scrolling content so the whole page moves under the
    finger (it also gets the rubber band at the top). Once scrolled past, a slim, simpler
-   "Left to Spend ₱X" bar fades in and stays pinned. That is how Claude read it; it is
-   not yet confirmed with Cath.
-3. Watched Categories rows become tappable via option (a): open Transactions filtered to
-   that category. This SUPERSEDES the H.3 decision that Watched Categories is not tappable.
+   "Left to Spend ₱X" bar fades in and stays pinned under the profile/bell row. CONFIRMED
+   and built (Checkpoint 1 below).
+3. Watched Categories rows are tappable: they open Transactions filtered to that exact
+   category, money out, this month. CONFIRMED and built (Checkpoint 2 below). This
+   SUPERSEDES the H.3 decision that Watched Categories is not tappable.
 4. Bell v1 = overdue bills and debts (overdue loans pending a check of how loan due dates
    are stored), over-budget categories, and peer-recovery requests. All of these clear
    themselves, so NO dismiss storage is needed. Goal milestones and the weekly recap are
    held back because they would need AsyncStorage dismiss state. Cath will test after all
    of it is built.
+5. Bell inbox design (Cath accepted Claude's recommendations): the inbox shows three groups
+   in this order: (1) peer recovery requests, which open Profile where the approve button
+   already lives; (2) overdue items: bills and debts with a cycle whose due date is before
+   today and an unpaid balance, plus ONE-TIME loans you owe (direction 'borrowed') with a
+   past due date and money still owed; (3) "due in the next 14 days", the same list as the
+   Dashboard card. Tapping an overdue or due item opens it via the requestOpenBill/Debt/
+   Loan helpers. Over-budget categories from the earlier v1 list are NOT in this
+   design; revisit only if Cath asks.
+6. Bell read state: tracked PER ITEM, saved per profile in its own small file following
+   the reportVisibility.ts pattern (key `profile:${username}:...`, try/catch, plain
+   AsyncStorage). Opening the bell does NOT mark everything read; tapping an item marks it
+   read. The red dot / unread count clears when every item is read. An item that stays
+   overdue stays in the list but shows as read. A new item, or a recovery request with a
+   new id, shows as unread. Read marks for items no longer relevant are pruned
+   automatically so the saved list cannot grow forever. This SUPERSEDES decision 4's
+   "no dismiss storage needed" (that assumed only self-clearing alerts).
+7. Recurring loans are NOT treated as overdue: loans have only a payment history, no
+   cycles, so there is no reliable way to say a recurring loan is late. Only one-time loans
+   count. Antigravity's "today's date is past the due day and no payment this month" rule
+   was an invented heuristic and was rejected.
+8. ProfileScreen is left completely untouched. The bell gets its OWN small hook for the
+   peer-recovery listener (a second listener on the same household doc is harmless).
+   Antigravity's first hook was rejected: it used import paths that do not exist and would
+   have left ProfileScreen without owner/member info.
 
 📌 Findings from Antigravity (real code viewed)
 - The white band during pull-to-refresh was the Android refresh indicator (opaque navy3)
@@ -950,6 +967,90 @@ confirmed applied or committed):
   newArchEnabled true. Android 12+ stretch overscroll IS supported on this stack, and the
   old code suppressed it with overScrollMode="never".
 
+✅ Checkpoint 0: lost "open this bill/debt/loan" requests — DONE, compiled clean, pushed.
+Existing bug found by investigation: openBillRequest.ts, openDebtRequest.ts and
+openLoanRequest.ts dropped a request if nobody was listening (ToPayScreen is the only
+listener, and tabs mount lazily, so on a fresh launch before To-Pay was ever opened the
+request was lost and the user just landed on To-Pay with nothing open). Only
+openToPayTabRequest.ts remembered a pending request.
+Fix: each of the three files now keeps `let pendingRequest` and, when requestOpenX() is
+called with zero listeners, stores it instead of dropping it; subscribeToOpenXRequest()
+hands a pending request to the first subscriber and clears it. ToPayScreen needed no
+change. Device-tested as part of the batch ("as described"); the specific fresh-launch
+case (close app, go straight to Home, tap a due item without opening To-Pay) was not
+itemised separately, so re-check it once if anything ever looks off.
+
+✅ Checkpoint 1: Left to Spend scrolls, slim bar pins — DONE, compiled clean, device-tested,
+pushed.
+- DashboardScreen now takes optional props `{ header?: React.ReactNode; onScrollY?:
+  (y: number) => void }`, renders {header} at the very top of its PullToRefreshScrollView,
+  and forwards onScroll (scrollEventThrottle 16) to onScrollY. InsightsScreen still renders
+  <DashboardScreen /> with no props, so it is unchanged.
+- HomeScreen: the whole Left to Spend card is now passed in as `header`. New
+  `showSlimBar` state flips on when scrollY > 150. The slim bar is an absolutely
+  positioned, click-through View (slimBar / slimBarLabel / slimBarAmount styles) inside a
+  `<View style={{ flex: 1 }}>` wrapping DashboardScreen. leftCard style lost its
+  marginHorizontal and marginTop (DashboardScreen's padding: 14 already supplies the side
+  margin) and gained marginBottom: 12.
+- The 150px switch-over is a guess at the card's height; changing it is a one-number edit
+  in HomeScreen's onScrollY.
+- Correction to an earlier Antigravity claim: pull-to-refresh is disabled in this
+  component, so no refresh spinner "moves"; this change is layout only.
+
+✅ Checkpoint 2: Watched Categories tap-through — DONE, compiled clean, device-tested,
+pushed.
+- DashboardScreen: each Watched Categories row is a TouchableOpacity that calls
+  navigation.navigate('Transactions', { categoryFilter, monthFilter: monthPrefix,
+  filterNonce: Date.now() }), with a chevron. Navigation is untyped (useNavigation<any>)
+  and there is no tab param list type, so no type changes were needed.
+- TransactionsScreen: now imports useRoute, keeps `categoryFilter` state ({ category,
+  month } or null), sets it from route params in a useEffect keyed on filterNonce, and
+  filters the list to direction 'out' + exact category + date.startsWith(month), the
+  same three conditions computeCategorySpend uses, so the list adds up to the card. A
+  "Clear filter" chip (category · month, close icon) shows above the sort pills when a
+  filter is active. The totals follow the filtered list automatically because they are
+  computed from `transactions`.
+
+📌 Findings from the second and third Antigravity investigations (real code viewed)
+- Getting due items right: getUpcomingDue strips today to midnight and every event date
+  is also midnight, so items due TODAY are included; only yesterday or earlier is dropped.
+  Not a bug.
+- The word "overdue" appears nowhere in mobile-app/src. Bills, Debts and the bell have no
+  existing overdue logic to copy. Bills only sorts by next due date. The overdue rule is
+  new: a cycle with dueDate before today (LOCAL date, not toISOString, which is UTC and
+  wrong in PH between midnight and 8am) and amountDue - amountPaid > 0. Bills and Debts
+  share the BillCycle shape (id, dueDate, amountDue, amountPaid, paidDate, notes, optional
+  paymentMethod and feesPortion). Loan type has recurringType?, dueDate?, direction
+  ('borrowed' | 'lent'), actualPayments (id, date, actual, paymentMethod?).
+- Existing helpers: outstandingBalance(record) for bills and debts, loanOutstandingBalance
+  (loan) (total minus actual payments, floored at 0), both in balanceProjection.ts (toNumber
+  there is private). getNextDueDate(recurringType, dueDate, today, customStartDate,
+  customFreq, customOccurrenceCount) in recurrence.ts returns a PAST date for a one-time
+  item and rolls forward for recurring ones.
+- Income is a STACK route (RootStack), not a tab. IncomeScreen and SavingsScreen receive
+  openIncomeId/openIncomeNonce and openSavingsId/openSavingsNonce as props from RootStack's
+  route.params. Tab.Navigator does not set `lazy`, so tabs mount lazily (default).
+- ToPayScreen is the only subscriber to the open-bill/debt/loan requests, and passes them
+  to Bills/Debts/Loans as props (openBillId/openBillNonce etc.). Each child has a ref
+  guard so the same id + nonce does not reopen after a manual dismissal.
+- storage.ts is only for profiles, encrypted data, pending host link and cloud-sync
+  bookkeeping (AsyncStorage). Small per-profile preferences live in their own files:
+  reportVisibility.ts (`profile:${username}:hidden-reports`, try/catch, JSON array) and
+  onboarding.ts (`profile:${username}:onboarding-completed`). The bell's read state
+  follows that pattern.
+- ProfileScreen real imports for the household listener: getCurrentFirebaseUser from
+  '../authFirebase'; loadProfilesIndex from '../storage'; subscribeToHousehold and
+  HouseholdMemberInfo from '../household'; getPeerRecoveryRequest and
+  PeerRecoveryRequestDoc from '../recovery'. The household id comes from
+  loadProfilesIndex() -> the profile's householdId (no getStoredHouseholdId exists). The
+  listener also sets owner/member state, so it cannot be swapped for a slimmer hook.
+  Pending recovery is shown when the request status is 'pending' and requesterUid is not
+  the current uid.
+- BottomSheet scrolls (ScrollView inside, max height 85% of the screen), so it can hold a
+  long inbox list. Do not nest another ScrollView in it.
+- HomeScreen currently computes `hasDueSoon` from getUpcomingDue(model, 14) and shows a red
+  dot on the bell; the bell button has no onPress yet.
+
 ⚠️ Known issues / gotchas (this round)
 - The rubber-band rewrite is a BET. On Android 12+ the stretch appears once overScrollMode
   is not "never", but it stretches rather than slides, so it is subtler than iPhone. Cath's
@@ -961,44 +1062,55 @@ confirmed applied or committed):
 - If tsc complains about unused refreshing / onRefresh, paste the error.
 - Antigravity's proposed bell used `new Date().toISOString()` for "today" (UTC bug), only
   checked bills, and used unverified screen names and BottomSheet props. All corrected.
+- Transactions is a tab that stays mounted, so a Watched Categories filter stays until the
+  user taps "Clear filter", even after leaving and returning. The chip is always visible.
+  If it should reset on leaving the tab, that is a small follow-up.
+- Transactions still has no general month filter; only the category drill-down sets one.
+- The bell button is still inert (no onPress), and its red dot still only reflects
+  due-soon items. Both are replaced by the bell inbox.
+- Rubber band on Android 12+ is a stretch, subtler than iPhone. Cath reports it works as
+  described; revisit only if it is raised again.
 
 ▶️ Still to build (in this order)
-1. Apply the corrections above (This Month gap, single-line pills, status label margin,
-   PullToRefreshScrollView rewrite), then run `npx tsc --noEmit` and commit.
-2. Second Antigravity investigation prompt was written (NOT yet run). It asks for: the
-   full DashboardScreen component and its InsightsScreen usage; the full TransactionsScreen
-   component, how MainTabs registers Transactions, and how Dashboard navigates to it; the
-   Loan type and how loan due dates work (for "overdue loan"); requestOpenBill and any
-   debt/loan equivalents plus openDueItem; ProfileScreen's pendingRecovery listener (can it
-   become a small reusable hook?); full BottomSheet.tsx (does it scroll?) and any existing
-   AsyncStorage usage.
-3. Left to Spend scrolling with the slim pinned bar.
-4. Watched Categories tap opens Transactions filtered to that category, money out, this
-   month, with a "Filtered: <category> · <Month YYYY> ✕" banner.
-5. Bell inbox (BottomSheet, unread count instead of the red dot).
-6. One combined on-device test pass (Cath's choice).
+Done: corrections, Checkpoint 0 (lost open requests), Checkpoint 1 (Left to Spend
+scrolling + slim bar), Checkpoint 2 (Watched Categories drill-down).
+Remaining:
+3a. Bell data layer: a new shared local-date todayISO helper; an overdue list for bills and
+    debts (cycle rule above) plus one-time borrowed loans; a new small hook for the
+    peer-recovery request (own listener, real imports listed above, ProfileScreen
+    untouched); a new per-profile read-state file following reportVisibility.ts, with
+    pruning.
+3b. Bell UI: BottomSheet inbox opened from the bell, three groups (recovery, overdue, due
+    in 14 days), per-item read marking, unread count replacing the red dot, tap-through
+    (recovery -> Profile; items -> requestOpenBill/Debt/Loan then navigate to To-Pay).
+4.  One combined on-device test pass for 3a + 3b, including a fresh-launch tap-through
+    from the bell and a recovery-request test if a second device is available.
 
 📁 Files for this round
-- Edited (pushed): mobile-app/src/screens/HomeScreen.tsx (chevron removed)
-- Edited (applied, fixes pending): mobile-app/src/screens/DashboardScreen.tsx
-- Rewrite pending: mobile-app/src/PullToRefreshScrollView.tsx
-- Upcoming: HomeScreen.tsx, DashboardScreen.tsx, TransactionsScreen.tsx, a new shared
-  todayISO / overdue helper, a possible new hook for pending recovery, and the bell inbox.
+- New: none so far (3a/3b will add a todayISO helper, a pending-recovery hook, a
+  bell read-state file, and a bell inbox component)
+- Edited and pushed: mobile-app/src/screens/HomeScreen.tsx (chevron removed; Left to Spend
+  passed as header; slim bar), mobile-app/src/screens/DashboardScreen.tsx (header/onScrollY
+  props; tappable Watched Categories; This Month, Amount Owed and status-label fixes),
+  mobile-app/src/screens/TransactionsScreen.tsx (category/month filter and Clear filter
+  chip), mobile-app/src/PullToRefreshScrollView.tsx (rubber band rewrite),
+  mobile-app/src/openBillRequest.ts, openDebtRequest.ts, openLoanRequest.ts (pending
+  request memory)
 
 ▶️ Next step
-- Apply the Home round 2 corrections (see the Home screen round 2 section), run
-  `npx tsc --noEmit`, and commit.
-- Run the second Antigravity investigation, then build: Left to Spend scrolling with a slim
-  pinned bar, Watched Categories filtered drill-down, bell inbox. Test everything together
-  on-device.
-- Then commit and push everything still outstanding (D.5, D.5b, D.6, D.7, H series, Calendar
-  view modes/Swipe/Scroll, the mint background restyle, and Home round 2).
+- Build the bell inbox in two parts so each can be device-tested separately if needed:
+  3a (data layer) then 3b (sheet UI), using the design decisions 5-8 above. Claude writes
+  3a as an Antigravity investigation-only prompt only if more real code is needed;
+  otherwise goes straight to paste-by-hand snippets built from the real code recorded in
+  the findings above.
+- Then commit and push everything outstanding (this round is already pushed through
+  Checkpoint 2; older items listed below should be checked with `git status` first).
 - Then decide: (a) call the design-polish phase complete and return to PROGRESS5.md's paused
   Quick Unlock Step 6 checklist (plus PC.3 real social sign-in), or (b) make a new EAS
   build first so the H series and mint restyle (react-native-svg) are testable on an
   installed app; this could double as the Step 6 build. Confirm with Cath before starting.
-- Optional small items: current-month filter for Transactions (the Watched Categories
-  drill-down needs a category filter anyway, so a month filter may be a natural companion),
-  tidy App.tsx leaf imports, move SafeAreaView imports to react-native-safe-area-context,
-  Calendar swipe list stops at +/-24 months, and a look at whether Calendar's cells need a
-  tint now that the page is white.
+- Optional small items: reset the Transactions category filter when leaving the tab; a
+  general month filter for Transactions; tidy App.tsx leaf imports; move SafeAreaView
+  imports to react-native-safe-area-context; Calendar swipe list stops at +/-24 months; a
+  look at whether Calendar's cells need a tint now that the page is white; tidy leftover
+  useRefresh / refreshing / onRefresh usage in the 12 screens that no longer refresh.
