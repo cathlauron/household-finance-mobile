@@ -88,7 +88,6 @@ export default function HomeScreen({ username }: Props) {
             >
               <Ionicons name="calendar-outline" size={16} color={colors.mintAccent} />
               <Text style={[hs.dateText, { color: colors.cardTealText }]} numberOfLines={1}>{fullDate}</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.cardTealTextDim} />
             </TouchableOpacity>
           </View>
           <Text style={{ fontSize: 32, fontWeight: '700', color: colors.cardTealText, marginTop: 10 }}>
