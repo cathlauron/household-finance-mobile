@@ -144,12 +144,12 @@ export default function DashboardScreen() {
         activeOpacity={0.7}
         onPress={() => navigation.navigate('Transactions')}
       >
-        <View style={styles.rowCard}>
+        <View style={[styles.rowCard, { marginBottom: 10 }]}>
+          <View style={[styles.iconBubbleQuiet, { backgroundColor: colors.okBg }]}>
+            <Ionicons name="swap-horizontal-outline" size={16} color={colors.ok} />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardLabel}>{monthLabel}</Text>
-          </View>
-          <View style={styles.iconBubbleSmall}>
-            <Ionicons name="calendar-outline" size={16} color={colors.inkFaint} />
           </View>
         </View>
         <View style={styles.statRow}>
@@ -210,14 +210,26 @@ export default function DashboardScreen() {
           </View>
         </View>
         <View style={styles.owedBreakdownRow}>
-          <TouchableOpacity onPress={() => goToPay('bills')} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
-            <Text style={styles.cardNote}>Bills: {formatPeso(billsOwed)}</Text>
+          <TouchableOpacity style={styles.owedPill} onPress={() => goToPay('bills')} activeOpacity={0.7}>
+            <View style={styles.owedPillTextWrap}>
+              <Text style={styles.owedPillLabel}>Bills</Text>
+              <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(billsOwed)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={11} color={colors.orange} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => goToPay('debts')} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
-            <Text style={styles.cardNote}>Debts: {formatPeso(debtsOwed)}</Text>
+          <TouchableOpacity style={styles.owedPill} onPress={() => goToPay('debts')} activeOpacity={0.7}>
+            <View style={styles.owedPillTextWrap}>
+              <Text style={styles.owedPillLabel}>Debts</Text>
+              <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(debtsOwed)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={11} color={colors.orange} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => goToPay('loans')} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
-            <Text style={styles.cardNote}>Loans: {formatPeso(loansOwed)}</Text>
+          <TouchableOpacity style={styles.owedPill} onPress={() => goToPay('loans')} activeOpacity={0.7}>
+            <View style={styles.owedPillTextWrap}>
+              <Text style={styles.owedPillLabel}>Loans</Text>
+              <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(loansOwed)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={11} color={colors.orange} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -321,7 +333,7 @@ export default function DashboardScreen() {
               <View key={cb.id} style={styles.listRow}>
                 <View style={styles.listRowLeft}>
                   <Text style={styles.listLabel} numberOfLines={1}>{cb.category}</Text>
-                  <Text style={{ fontSize: 12, color: status.color }}>{status.label}</Text>
+                  <Text style={{ fontSize: 12, color: status.color, marginLeft: 8 }}>{status.label}</Text>
                 </View>
                 <Text style={styles.listAmount}>
                   {formatPeso(spent)} / {formatPeso(budget)}
@@ -413,8 +425,36 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     owedBreakdownRow: {
       flexDirection: 'row',
+      gap: 6,
+      marginTop: 10,
+    },
+    owedPill: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: 8,
+      gap: 4,
+      backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
+      paddingHorizontal: 9,
+      paddingVertical: 7,
+      borderRadius: 14,
+    },
+    owedPillTextWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    owedPillLabel: {
+      fontSize: 10.5,
+      fontWeight: '600',
+      color: colors.inkDim,
+    },
+    owedPillAmount: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.ink,
     },
     statRow: {
       flexDirection: 'row',
