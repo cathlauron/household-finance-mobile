@@ -14,9 +14,15 @@ type OpenDebtRequestListener = (request: OpenDebtRequest) => void;
 
 const listeners = new Set<OpenDebtRequestListener>();
 let nonceCounter = 0;
+let pendingRequest: OpenDebtRequest | null = null;
 
 export function subscribeToOpenDebtRequest(listener: OpenDebtRequestListener): () => void {
   listeners.add(listener);
+  if (pendingRequest) {
+    const pending = pendingRequest;
+    pendingRequest = null;
+    listener(pending);
+  }
   return () => {
     listeners.delete(listener);
   };
@@ -25,5 +31,9 @@ export function subscribeToOpenDebtRequest(listener: OpenDebtRequestListener): (
 export function requestOpenDebt(debtId: string): void {
   nonceCounter += 1;
   const request: OpenDebtRequest = { debtId, nonce: nonceCounter };
+  if (listeners.size === 0) {
+    pendingRequest = request;
+    return;
+  }
   listeners.forEach((listener) => listener(request));
 }

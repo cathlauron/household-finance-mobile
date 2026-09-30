@@ -18,9 +18,15 @@ type OpenBillRequestListener = (request: OpenBillRequest) => void;
 
 const listeners = new Set<OpenBillRequestListener>();
 let nonceCounter = 0;
+let pendingRequest: OpenBillRequest | null = null;
 
 export function subscribeToOpenBillRequest(listener: OpenBillRequestListener): () => void {
   listeners.add(listener);
+  if (pendingRequest) {
+    const pending = pendingRequest;
+    pendingRequest = null;
+    listener(pending);
+  }
   return () => {
     listeners.delete(listener);
   };
@@ -29,5 +35,9 @@ export function subscribeToOpenBillRequest(listener: OpenBillRequestListener): (
 export function requestOpenBill(billId: string): void {
   nonceCounter += 1;
   const request: OpenBillRequest = { billId, nonce: nonceCounter };
+  if (listeners.size === 0) {
+    pendingRequest = request;
+    return;
+  }
   listeners.forEach((listener) => listener(request));
 }

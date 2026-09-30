@@ -14,9 +14,15 @@ type OpenLoanRequestListener = (request: OpenLoanRequest) => void;
 
 const listeners = new Set<OpenLoanRequestListener>();
 let nonceCounter = 0;
+let pendingRequest: OpenLoanRequest | null = null;
 
 export function subscribeToOpenLoanRequest(listener: OpenLoanRequestListener): () => void {
   listeners.add(listener);
+  if (pendingRequest) {
+    const pending = pendingRequest;
+    pendingRequest = null;
+    listener(pending);
+  }
   return () => {
     listeners.delete(listener);
   };
@@ -25,5 +31,9 @@ export function subscribeToOpenLoanRequest(listener: OpenLoanRequestListener): (
 export function requestOpenLoan(loanId: string): void {
   nonceCounter += 1;
   const request: OpenLoanRequest = { loanId, nonce: nonceCounter };
+  if (listeners.size === 0) {
+    pendingRequest = request;
+    return;
+  }
   listeners.forEach((listener) => listener(request));
 }
