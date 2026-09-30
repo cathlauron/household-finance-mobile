@@ -17,6 +17,7 @@ import { useBellInbox, BellItem } from '../useBellInbox';
 import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
+import { requestToPayTab } from '../openToPayTabRequest';
 
 type Props = {
   username: string;
@@ -56,10 +57,18 @@ export default function HomeScreen({ username }: Props) {
       navigation.navigate('Profile');
       return;
     }
-    const o = item.overdue;
-    if (o.kind === 'bill') requestOpenBill(o.id);
-    else if (o.kind === 'debt') requestOpenDebt(o.id);
-    else requestOpenLoan(o.id);
+    if (item.group === 'overdue') {
+      const o = item.overdue;
+      if (o.kind === 'bill') requestOpenBill(o.id);
+      else if (o.kind === 'debt') requestOpenDebt(o.id);
+      else requestOpenLoan(o.id);
+    } else {
+      const d = item.due;
+      if (d.type === 'bill' && d.id) requestOpenBill(d.id);
+      else if (d.type === 'debt' && d.id) requestOpenDebt(d.id);
+      else if (d.type === 'loan' && d.id) requestOpenLoan(d.id);
+      else requestToPayTab(d.type === 'bill' ? 'bills' : d.type === 'debt' ? 'debts' : 'loans');
+    }
     (navigation as any).navigate('To-Pay');
   };
 
@@ -96,8 +105,6 @@ export default function HomeScreen({ username }: Props) {
               <View style={[hs.bellBadge, { backgroundColor: colors.error }]}>
                 <Text style={hs.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
               </View>
-            ) : hasDueSoon ? (
-              <View style={[hs.bellDot, { backgroundColor: colors.error }]} />
             ) : null}
           </TouchableOpacity>
         </View>
@@ -155,13 +162,13 @@ export default function HomeScreen({ username }: Props) {
           <Text style={hs.bellEmpty}>Nothing needs your attention right now.</Text>
         ) : (
           <>
-            {(['recovery', 'overdue'] as const).map(group => {
+            {(['recovery', 'overdue', 'due'] as const).map(group => {
               const rows = bellItems.filter(i => i.group === group);
               if (!rows.length) return null;
               return (
                 <View key={group}>
                   <Text style={hs.bellGroupTitle}>
-                    {group === 'recovery' ? 'Sign-in help requests' : 'Overdue'}
+                    {group === 'recovery' ? 'Sign-in help requests' : group === 'overdue' ? 'Overdue' : 'Due in the next 14 days'}
                   </Text>
                   {rows.map(item => (
                     <TouchableOpacity
@@ -177,6 +184,9 @@ export default function HomeScreen({ username }: Props) {
                       </View>
                       {item.group === 'overdue' && (
                         <Text style={hs.bellRowAmt}>{formatPeso(item.overdue.amountOwed)}</Text>
+                      )}
+                      {item.group === 'due' && (
+                        <Text style={hs.bellRowAmt}>{formatPeso(item.due.amount)}</Text>
                       )}
                       <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
                     </TouchableOpacity>
