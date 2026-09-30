@@ -341,7 +341,18 @@ export default function DashboardScreen({
             const spent = computeCategorySpend(model, cb.category, monthPrefix);
             const status = getCategoryBudgetStatus(spent, budget, colors);
             return (
-              <View key={cb.id} style={styles.listRow}>
+              <TouchableOpacity
+                key={cb.id}
+                style={styles.listRow}
+                activeOpacity={0.7}
+                onPress={() =>
+                  navigation.navigate('Transactions', {
+                    categoryFilter: cb.category,
+                    monthFilter: monthPrefix,
+                    filterNonce: Date.now(),
+                  })
+                }
+              >
                 <View style={styles.listRowLeft}>
                   <Text style={styles.listLabel} numberOfLines={1}>{cb.category}</Text>
                   <Text style={{ fontSize: 12, color: status.color, marginLeft: 8 }}>{status.label}</Text>
@@ -349,7 +360,8 @@ export default function DashboardScreen({
                 <Text style={styles.listAmount}>
                   {formatPeso(spent)} / {formatPeso(budget)}
                 </Text>
-              </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
             );
           })}
         </View>

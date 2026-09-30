@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -138,6 +138,15 @@ export default function TransactionsScreen() {
   const { model, saveModel, username } = useData();
     const { refreshing, onRefresh } = useRefresh();
   const navigation = useNavigation();
+  const route = useRoute<any>();
+  const [categoryFilter, setCategoryFilter] = useState<{ category: string; month: string } | null>(null);
+  const filterNonce = route.params?.filterNonce;
+  useEffect(() => {
+    const p = route.params;
+    if (p?.categoryFilter && p?.monthFilter) {
+      setCategoryFilter({ category: p.categoryFilter, month: p.monthFilter });
+    }
+  }, [filterNonce]);
   const styles = makeStyles(colors);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
@@ -169,8 +178,17 @@ export default function TransactionsScreen() {
   const [saving, setSaving] = useState(false);
   const transactions = useMemo(() => {
     if (!model) return [];
-    return sortTransactions(buildTransactionsList(model), sortOrder);
-  }, [model, sortOrder]);
+    let list = buildTransactionsList(model);
+    if (categoryFilter) {
+      list = list.filter(
+        (t) =>
+          t.direction === 'out' &&
+          t.category === categoryFilter.category &&
+          t.date.startsWith(categoryFilter.month)
+      );
+    }
+    return sortTransactions(list, sortOrder);
+  }, [model, sortOrder, categoryFilter]);
 
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
@@ -523,6 +541,32 @@ export default function TransactionsScreen() {
           <Text style={styles.netLabel}>NET (CASH IN HAND)</Text>
           <Text style={styles.netAmount}>{formatPeso(totals.net)}</Text>
         </View>
+
+        {categoryFilter && (
+          <TouchableOpacity
+            onPress={() => setCategoryFilter(null)}
+            accessibilityLabel="Clear filter"
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 999,
+              backgroundColor: colors.navy3,
+              borderWidth: 1,
+              borderColor: colors.navy4,
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.ink }}>
+              {categoryFilter.category} · {categoryFilter.month}
+            </Text>
+            <Ionicons name="close-circle" size={16} color={colors.inkDim} />
+            <Text style={{ fontSize: 12, color: colors.inkDim }}>Clear filter</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.pillRow}>
           <TouchableOpacity
