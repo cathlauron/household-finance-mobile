@@ -708,36 +708,34 @@ crash's error screen can leave stale JS state behind.
   cell rendering; the Swipe and Scroll FlatLists, both now needing their `key` props
   confirmed working)
 
+=====================================================================
+📅 Full on-device test pass — ALL PASSED (Android)
+=====================================================================
+
+✅ One combined on-device test pass covered everything below, and everything passed:
+- Calendar Scroll mode: the `key="swipe-list"` / `key="scroll-list"` fix resolved the
+  "Changing onViewableItemsChanged nullability" crash. Header/chevrons follow scroll, Today
+  works, day taps open their own month's popup, List mode works inside Scroll, and
+  switching back to Swipe is unaffected. View/nav choices persist after a full close.
+- D.7 Calendar bottom sheet: opens/closes via Done and swipe-down; day popup inside the
+  sheet works; no leaf animation on open/close.
+- D.6 onboarding: intro slides show before Create Profile with Back/Skip; illustration
+  fits; Skip/Back status-bar collision is FIXED and confirmed; OnboardingScreen header
+  clears the status bar; "Quick PIN enabled" pill shows once.
+- H.1–H.5 Home redesign: all tappable cards, sheets, leaves, and leaf transition behave.
+- D.5 / D.5b token retrofit: corners/spacing look unchanged (visual no-op confirmed).
+- Regression: haptics, root fade, and instant cold-start splash all still work.
+⚠️ Still untested: iPhone 'modal' look for Calendar (no iPhone available).
+⚠️ Still required: a NEW EAS build before the H series works in an installed app
+  (react-native-svg is a native module).
+
 ▶️ Next step
-- (Calendar, most urgent) Re-test the `key="swipe-list"` / `key="scroll-list"` fix for
-  the Scroll-mode crash: paste it, run `npx tsc --noEmit`, fully reload the app (shake →
-  Reload, not just edit-in-place, since the crash screen can leave stale JS state), then
-  re-run the full Scroll checklist — header/chevrons following scroll, tapping chevrons
-  and Today, tapping a day after scrolling a few months, List mode's preview panel inside
-  Scroll, and switching back to Swipe to confirm it's unaffected. Only once that's clean:
-  commit and push all of the Calendar view-modes/Swipe/Scroll work in one go (it has not
-  been pushed since the "swipe between months" commit).
-- (D.7) Commit and push the Calendar bottom-sheet change. When an iPhone or iOS build
-  is available, check the 'modal' look, and re-check the day popup inside the sheet.
-- (H series) Commit and push the H.1 to H.5 work if not already done. Optional
-  follow-ups: a current-month filter for Transactions (so This Month lands on that month),
-  tidy the App.tsx leaf imports, and a new EAS build so react-native-svg is in an
-  installed build.
-- FIRST: fix the intro slides' Skip/Back status-bar collision (useSafeAreaInsets on
-  IntroSlidesScreen's topRow), re-test, then confirm the two OnboardingScreen items
-  above. Then commit/push D.6.
-- (Carried over, still open) D.5 and D.5b are both pasted and confirmed compiling clean but not yet committed,
-  pushed, or checked on a real device. Next: push both, then do a quick on-device
-  eyeball check (not a full formal test pass) across a small sample — e.g. the Accounts
-  tab (AccountCard + a bottom sheet), a screen using CollapsibleRow, and one or two of
-  the 16 Save/Submit-button screens (e.g. Bills, plus the Sign In screen) — confirming
-  corners/spacing still look right, since a wrong token value would compile fine but
-  look visually off.
-- Then decide what (if anything) comes next in the Apple-inspired design polish phase.
-  Options to weigh, not yet decided: (a) call the design-polish phase complete as-is and
-  move back to the paused PROGRESS5.md Quick Unlock Step 6 test checklist (close/reopen,
-  log out, remote revoke, 5 wrong PINs, airplane-mode/true-offline relaunch, photo avatar
-  in the switcher, all 5 accounts, plus real Google/Apple/Facebook sign-in testing for
-  PC.3), which has been on hold since this design phase began; (b) a further, even more
-  narrowly-scoped retrofit pass if any other high-visibility spot is specifically flagged
-  later. Confirm with Cath before starting rather than assuming.
+- Commit and push everything (D.5, D.5b, D.6, D.7, H series, Calendar view modes/Swipe/
+  Scroll, Skip/Back fix).
+- Decide: (a) call the design-polish phase complete and return to PROGRESS5.md's paused
+  Quick Unlock Step 6 checklist (plus PC.3 real social sign-in), or (b) make a new EAS
+  build first so the H series (react-native-svg) is testable on an installed app — this
+  could double as the Step 6 build. Confirm with Cath before starting.
+- Optional small items: current-month filter for Transactions ("This Month" card), tidy
+  App.tsx leaf imports, move SafeAreaView imports to react-native-safe-area-context,
+  Calendar swipe list stops at ±24 months.
