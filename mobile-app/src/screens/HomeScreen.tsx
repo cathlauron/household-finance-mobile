@@ -12,6 +12,11 @@ import { computeLeftToSpend, getLeftToSpendStatus, totalLiquidBalance, formatPes
 import type { RootStackParamList } from '../navigation/RootStack';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
+import BottomSheet from '../components/BottomSheet';
+import { useBellInbox, BellItem } from '../useBellInbox';
+import { requestOpenBill } from '../openBillRequest';
+import { requestOpenDebt } from '../openDebtRequest';
+import { requestOpenLoan } from '../openLoanRequest';
 
 type Props = {
   username: string;
@@ -41,6 +46,22 @@ export default function HomeScreen({ username }: Props) {
       : colors.errorBg;
 
   const hasDueSoon = model ? getUpcomingDue(model, 14).length > 0 : false;
+  const [bellOpen, setBellOpen] = useState(false);
+  const { items: bellItems, unreadCount, isRead, markRead } = useBellInbox(username, model);
+
+  const onBellItemPress = (item: BellItem) => {
+    markRead(item.key);
+    setBellOpen(false);
+    if (item.group === 'recovery') {
+      navigation.navigate('Profile');
+      return;
+    }
+    const o = item.overdue;
+    if (o.kind === 'bill') requestOpenBill(o.id);
+    else if (o.kind === 'debt') requestOpenDebt(o.id);
+    else requestOpenLoan(o.id);
+    (navigation as any).navigate('To-Pay');
+  };
 
   const hs = makeHomeStyles(colors);
   const fullDate = new Date().toLocaleDateString('en-US', {
@@ -69,9 +90,15 @@ export default function HomeScreen({ username }: Props) {
         </TouchableOpacity>
 
         <View style={hs.headerRight}>
-          <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn}>
+          <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn} onPress={() => setBellOpen(true)}>
             <Ionicons name="notifications-outline" size={20} color={colors.ink} />
-            {hasDueSoon && <View style={[hs.bellDot, { backgroundColor: colors.error }]} />}
+            {unreadCount > 0 ? (
+              <View style={[hs.bellBadge, { backgroundColor: colors.error }]}>
+                <Text style={hs.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            ) : hasDueSoon ? (
+              <View style={[hs.bellDot, { backgroundColor: colors.error }]} />
+            ) : null}
           </TouchableOpacity>
         </View>
       </View>
@@ -122,6 +149,44 @@ export default function HomeScreen({ username }: Props) {
           </View>
         )}
       </View>
+
+      <BottomSheet visible={bellOpen} onClose={() => setBellOpen(false)} title="Notifications">
+        {bellItems.length === 0 ? (
+          <Text style={hs.bellEmpty}>Nothing needs your attention right now.</Text>
+        ) : (
+          <>
+            {(['recovery', 'overdue'] as const).map(group => {
+              const rows = bellItems.filter(i => i.group === group);
+              if (!rows.length) return null;
+              return (
+                <View key={group}>
+                  <Text style={hs.bellGroupTitle}>
+                    {group === 'recovery' ? 'Sign-in help requests' : 'Overdue'}
+                  </Text>
+                  {rows.map(item => (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={hs.bellRow}
+                      onPress={() => onBellItemPress(item)}
+                      accessibilityLabel={item.title}
+                    >
+                      <View style={[hs.bellUnreadDot, { backgroundColor: isRead(item.key) ? 'transparent' : colors.error }]} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[hs.bellRowTitle, { fontWeight: isRead(item.key) ? '500' : '700' }]} numberOfLines={1}>{item.title}</Text>
+                        <Text style={hs.bellRowSub} numberOfLines={1}>{item.subtitle}</Text>
+                      </View>
+                      {item.group === 'overdue' && (
+                        <Text style={hs.bellRowAmt}>{formatPeso(item.overdue.amountOwed)}</Text>
+                      )}
+                      <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })}
+          </>
+        )}
+      </BottomSheet>
     </View>
   );
 }
@@ -141,6 +206,15 @@ function makeHomeStyles(colors: any) {
     greeting: { color: colors.ink, fontSize: 15, fontWeight: '700' },
     bellBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
     bellDot: { position: 'absolute', top: 6, right: 7, width: 8, height: 8, borderRadius: 4 },
+    bellBadge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+    bellBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+    bellEmpty: { color: colors.inkDim, fontSize: 13.5, paddingVertical: 20, textAlign: 'center' },
+    bellGroupTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.inkDim, marginTop: 8, marginBottom: 6 },
+    bellRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.navy4 },
+    bellUnreadDot: { width: 8, height: 8, borderRadius: 4 },
+    bellRowTitle: { color: colors.ink, fontSize: 14 },
+    bellRowSub: { color: colors.inkDim, fontSize: 12, marginTop: 2 },
+    bellRowAmt: { color: colors.orange, fontSize: 13, fontWeight: '600' },
     datePill: {
       flexShrink: 1,
       flexDirection: 'row',
