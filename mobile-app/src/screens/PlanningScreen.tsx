@@ -31,6 +31,7 @@ export default function PlanningScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.pillScroll}
         contentContainerStyle={styles.pillRow}
       >
         {tabs.map((t) => {
@@ -63,8 +64,10 @@ function makeStyles(colors: any) {
       flex: 1,
       backgroundColor: 'transparent',
     },
+    pillScroll: { flexGrow: 0 },
     pillRow: {
       flexDirection: 'row',
+      alignItems: 'center',
       gap: 8,
       paddingHorizontal: 12,
       paddingTop: 12,

@@ -141,8 +141,8 @@ export default function ReportsScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.pillScroll}
-          contentContainerStyle={styles.pillRow}
+          style={styles.tagScroll}
+          contentContainerStyle={styles.tagRow}
         >
           <TouchableOpacity
             style={[styles.tagPill, activeTag === undefined && styles.tagPillActive]}
@@ -208,6 +208,8 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     tabRowWrap: { flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
     pillScroll: { flex: 1, height: 54 },
     pillRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
+    tagScroll: { flexGrow: 0 },
+    tagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8 },
     pill: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.navy3, alignItems: 'center', justifyContent: 'center' },
     pillActive: { backgroundColor: colors.gold },
     tagPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.navy2, borderWidth: 1, borderColor: colors.navy3 },
