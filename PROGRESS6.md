@@ -1,4 +1,4 @@
-﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, plus the H series Home redesign)
+﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, the H series Home redesign, and the V series visual-system pass: mint base, accessible colors, shared components)
 
 This file picks up from PROGRESS5.md. PROGRESS5.md is now PAUSED, not closed for good —
 work there stopped mid-way through Quick Unlock Step 6 (build made, installed, opens; the
@@ -862,6 +862,14 @@ background, so it keeps its own solid colour. Confirmed on-device (Android).
   mobile-app/src/screens/reports/
 - Confirmed on-device on Android; commit status: see the git commands in the session wrap.
 
+
+SUPERSEDED by the V series (below), light mode only: navy1/navy2/navy4 changed from cream to
+mint tints, cardTealStart/End changed from teal (#134E48/#082F2C) to forest green
+(#2E5D3A/#173D2B), and ink/ok/error/orange values were deepened for contrast. The
+"navy3 = white" decision above still stands. Solid auth screens (SignIn, CreatePofile,
+PinUnlock, SetPin, AccountSwitcher, Onboarding, IntroSlides) still paint navy2, which is
+now mint rather than cream, but they have no leaf background yet (planned for V.2).
+
 =====================================================================
 🏠 Home screen round 2: tappable hints, rubber band, scrolling Left to Spend, Watched Categories drill-down (DONE), bell inbox (DONE, device-tested)
 =====================================================================
@@ -1149,7 +1157,175 @@ Remaining:
   mobile-app/src/openBillRequest.ts, openDebtRequest.ts, openLoanRequest.ts (pending
   request memory)
 
+=====================================================================
+🎨 V SERIES: Visual-system pass (screenshot audit, mint everywhere, accessible colors, shared components)
+=====================================================================
+
+Why: Cath supplied 51 screenshots of the real app for a design review. Claude reviewed them
+and ran contrast math on the real theme values. Same working pattern as the rest of the
+project: Antigravity investigates (read-only), Claude reviews, Cath pastes by hand. A
+browser "studio" mockup file (screen-studio-v2.html) with before/after screens was built from
+the real tokens as a reference only; it is not part of the repo.
+Screenshots 00-04 were camera photos of the phone, not real screenshots, and were skipped.
+The fingerprint and PIN prompts block screenshots on purpose, so they cannot be captured.
+
+📌 V-series decisions (Cath agreed, do not re-litigate without a real reason)
+1. MINT everywhere (not cream), including sign-in, onboarding, PIN, account switcher and
+   every Settings sub-page. Cream was considered; Cath chose mint.
+2. One green family: hero card, primary buttons and active pills share one hue.
+3. New accessible semantic colors (about 4.5:1 or better on white and mint).
+4. Account cards: subtle tints of the brand-green family plus a clear label for Cash /
+   Debit / Credit, with a visible name and balance strip when stacked. Must also work with
+   user-chosen colors (AccountCard has a 15-color COLOR_PALETTE).
+5. One pill component, one card, one button set, one header. The page name goes in the
+   header ("Security", "Help & support"), and the duplicate "‹ Settings" link under the
+   header is removed.
+6. Tab bar labels go from 9.5px to 11-12px, with a darker inactive color.
+7. Destructive actions get quieter (outlined or text-only), with solid red reserved for the
+   final confirmation.
+8. Type scale: fixed sizes for title / section / body / caption / amounts, minimum about 12px.
+   One font family, with serif reserved for a few deliberate moments. (No custom fonts are
+   loaded today; expo-font is installed but unused.)
+
+📌 Findings from the Antigravity investigations (real code viewed)
+- Theme lives in src/theme.ts (ThemeColors type, lightTheme, darkTheme) and src/tokens.ts
+  (radii, spacing). There are NO shared Card, Button, Input, Pill or Header components;
+  every screen defines its own inline. Only CollapsibleRow, SwipeableRow, AccountCard,
+  BottomSheet, DateField, PasswordField, PinField and a few sheets are shared.
+- Hardcoded colors are scattered: #E5484D in 16 files, SignInScreen has about 19 hex values,
+  TransactionsScreen hardcodes its own green/red/orange (#2f9e44 / #e5484d / #c2410c) that
+  differ from the theme and ignore dark mode. Top hex files: theme.ts, SettingsScreen (21),
+  SignInScreen (19), AccountCard (18), avatars.ts (12).
+- SignInScreen has two style sets: module-level `styles` (near-black #1C1917 primaryBtn,
+  used ONLY by the recovery-key modal's "Unlock & Restore Data" button) and theme-aware `ms`
+  from makeMainStyles (colors.gold, used by the main green "Sign in" button). The near-black
+  button is a stray inconsistent style, still to fix.
+- Planning tab bug: PlanningScreen's horizontal ScrollView had no style, so it grew to share
+  space with the flex:1 content and stretched the pills (ToPayScreen works because it uses a
+  plain View). Reports tag chips: they reused pillScroll ({ flex: 1, height: 54 }), written
+  for a horizontal row, inside a vertical column, with no alignItems:'center'.
+- Stacked account cards overlap on purpose (marginTop: -80, zIndex by index), so only a
+  strip of each earlier card shows, and that strip has no balance. It reads as clipped.
+- Root cause of mixed backgrounds: authenticated screens are transparent over the shared
+  LeafBackground gradient, but pre-auth screens and Settings sub-pages paint solid navy2.
+- Smallest fonts: Calendar day balance 7.5px, event count 8px, chart axes 8-9px, tab labels
+  9.5px, many captions at 10-11px.
+- Settings sub-pages show two back controls (native header arrow plus an in-page "‹ Settings"
+  link), and the header says "Settings" on every sub-page.
+- Contrast on the ORIGINAL light values (white / mint backgrounds): inkFaint #A0A597 2.5 /
+  2.3 (fails), ok #059669 3.8 (fails small text), orange #EA580C 3.6, error #E11D48 4.7
+  (barely passes), Transactions' hardcoded green/red 3.5 / 3.9 (fail), white on Cash card
+  #059669 3.8 (fails small text), dark-mode inkFaint about 4.4 (borderline).
+- Dark mode has an existing problem NOT yet fixed: white icons/text sit on pastel
+  error/orange/ok backgrounds (SwipeableRow delete, HomeScreen bell badge, TransactionsScreen
+  refund toggle and badges) at about 1.8-2.5:1.
+
+✅ V.0: Layout bug fixes — DONE, applied by Cath (ran tsc; on-device look confirmed as part
+of the Step 1 review; commit status: confirm with git status)
+- PlanningScreen.tsx: ScrollView got style={styles.pillScroll}; styles gained
+  pillScroll: { flexGrow: 0 } and pillRow gained alignItems: 'center'.
+- ReportsScreen.tsx: the SECOND ScrollView (tag chips) now uses styles.tagScroll /
+  styles.tagRow; two new styles after pillRow: tagScroll: { flexGrow: 0 } and tagRow:
+  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14,
+  paddingVertical: 8 }. The first ScrollView (icon row) was left alone.
+
+✅ V.1: Color tokens + mint base (Step 1) — DONE, tsc clean, reviewed on-device
+(Home and Security screenshots), commit command given
+- theme.ts ThemeColors type: new key `decor: string;` after inkFaint.
+- lightTheme: inkDim #626A5B -> #586152; inkFaint #A0A597 -> #5F6657; NEW decor #A0A597
+  (the old faint value, for purely decorative uses); navy1 #EEE9DE -> #DDEDE3; navy2
+  #F6F1E6 -> #EAF5EE; navy3 stays #FFFFFF; navy4 #E5E0CF -> #DCE8E0; error #E11D48 ->
+  #C81E43; ok #059669 -> #0B7A4B; orange #EA580C -> #C2410C; cardTealStart/End
+  #134E48 / #082F2C -> #2E5D3A / #173D2B.
+- darkTheme: only added decor: '#8C857F' (same as its inkFaint). Nothing else changed.
+- BottomSheet.tsx: handle backgroundColor colors.inkFaint -> colors.decor (so the drag
+  handle does not turn dark).
+- reports/PaymentMethodsReport.tsx (about line 155): the 'unset' bar uses colors.decor
+  instead of colors.inkFaint.
+- Gotcha hit: the BottomSheet replacement first lost its trailing comma, giving
+  "TS1005: ',' expected" at the next line (header: {). Fixed by restoring the comma.
+  Lesson: when replacing one entry inside a style object, include the trailing comma.
+- Gotcha: #059669 appears in BOTH light ok and dark goldDim. Never use find-and-replace-all
+  on hex values; match the whole `ok: '#059669',` line.
+- Checked safe: the four places that append an alpha suffix (LoansScreen 522 ok/orange +
+  '20', ProfileScreen 1422 gold + '55', SettingsScreen 2415 ok + '22', TravelScreen 727
+  accent + '22') all work, because the new values are plain 6-digit hex.
+- Checked beneficial: white-on-orange refund badges in TransactionsScreen go from about
+  3.2:1 to 4.6:1; text/checkmarks on green buttons switch from cream to mint (about 7-8:1).
+- On-device result (Android, light mode): hero card is forest green and matches the primary
+  button; deeper money colors read clearly; inactive tab labels are clearly darker;
+  placeholders and hints are readable; page is mint on both Home and Security.
+
+⚠️ V-series known issues / still to do
+- Inputs (Security page etc.) are tinted a different green than the page and look muddy; the
+  Secret Recovery Key card is white but the inputs are not. Plan: white inputs with a border
+  (V.3).
+- Double back link on Settings sub-pages is still there; page title is not in the header
+  (V.2).
+- Tab bar labels are still 9.5px (V.2). TabIcon underline and icons are fine.
+- "Active" badge on the Security page uses bright green text on pale green; should use the
+  new ok color and a stronger fill.
+- Leaf watermarks are quite visible on Security and one cuts behind the form fields. Taste
+  call: drop opacity from 0.07 to about 0.05 or reposition. Not changed yet.
+- Auth/pre-auth screens are now mint but have no leaf background (they paint a solid navy2);
+  Settings sub-pages like Help and About previously showed solid cream (now mint, still
+  solid).
+- Chevrons (CollapsibleRow, Dashboard rows, SettingsHub, ProfileScreen, AccountSwitcher) and
+  empty checkbox borders (BillsScreen 661, ReportsScreen 236, SavingsScreen 1289,
+  TravelScreen 659) and the TravelScreen inactive dot (733) still use inkFaint, so they are
+  now darker/heavier. Small separate step: move them to colors.decor.
+- Dark mode white-on-pastel badges (see findings) — NOT fixed yet; Cath asked to check
+  swipe-delete and the bell badge in dark mode.
+- darkTheme.cardTealStart/End (#164E44 / #0D332D) are still blue-teal; suggested #1A3B2B /
+  #0F261B to match the new forest green. darkTheme.inkFaint (#8C857F) is borderline 4.35:1;
+  suggested #9E9892.
+- TransactionsScreen hardcoded money colors, the SignIn recovery button (#1C1917), the
+  19 hardcoded SignIn colors and the #E5484D uses in 16 files still need to move onto the
+  theme.
+- Tiny fonts (<11px): CalendarScreen 327/334 (7.5 and 8px), CashFlowForecastReport 219/203,
+  YearInReviewReport 238/248, CsvImportModal 415, LoansScreen 278, AccountCard 188,
+  MainTabs 94, TravelScreen 312, and about 33 occurrences at 10px.
+- Calendar days show the same balance under every date; plan to show a balance only on days
+  with activity.
+- Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
+- Sub-tab pills, segmented controls and filter chips are three different pill styles; plan
+  one shared Pill component.
+- Destructive actions: "Clear all data" is a full-width red button right under "Save a
+  backup"; screen 11 has seven red "Sign out" buttons in a row.
+
+▶️ V-series planned order (each step = one Antigravity investigation, one paste, one tsc, one
+commit, one on-device check)
+- V.2 (NEXT): navigation chrome — Settings sub-page header title plus removing the duplicate
+  "‹ Settings" link (and what the native back arrow does on a sub-page today); tab bar
+  label size and inactive color (check 360dp width with "Transactions"); LeafBackground on
+  the auth screens; the dark-mode white-on-pastel badge fix. An investigation prompt for
+  this was given to Cath; the result is pending.
+- V.3: input field style (white with a border), the Active badge, leaf opacity, chevron and
+  checkbox borders to colors.decor.
+- V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
+  screen; move hardcoded colors onto the theme.
+- V.5: account card tints and a visible name/balance strip when stacked.
+- V.6: tiny fonts and the type scale; Calendar balances only on days with activity;
+  number-field formatting.
+- V.7: quieter destructive actions.
+- Dark mode follow-ups from the V.1 findings (cardTeal and inkFaint values above).
+
+📁 V-series files (so far)
+- Edited: mobile-app/src/theme.ts, mobile-app/src/components/BottomSheet.tsx,
+  mobile-app/src/screens/reports/PaymentMethodsReport.tsx,
+  mobile-app/src/screens/PlanningScreen.tsx, mobile-app/src/screens/ReportsScreen.tsx
+- Commit used for V.1 (run from the repo root, one command per line):
+  git add -A
+  git commit -m "Design pass step 1: mint base, accessible text and money colors, decor token"
+  git push
+
 ▶️ Next step
+- ACTIVE RIGHT NOW: the V series (visual-system pass, see above). V.0 and V.1 are done. Next
+  is V.2 (navigation chrome). Cath is about to paste the result of the V.2 Antigravity
+  investigation (Settings sub-page header and back link, tab bar label size, auth-screen leaf
+  background, input field backgrounds, dark-mode badges). Claude reviews it, then gives exact
+  paste edits. First confirm with `git status` that V.0 and V.1 are committed and pushed.
+- Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.
 - Then commit and push everything outstanding (this round is already pushed through
