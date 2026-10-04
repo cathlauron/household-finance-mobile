@@ -118,13 +118,7 @@ function makeStyles(colors: any, screenHeight: number) {
       paddingTop: spacing[10],
       paddingBottom: spacing[6],
     },
-    handle: {
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.inkFaint,
-      opacity: 0.5,
-    },
+    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.decor, opacity: 0.5 },
     header: {
       paddingHorizontal: spacing[20],
       paddingTop: spacing[4],

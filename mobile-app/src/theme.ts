@@ -5,6 +5,7 @@ export type ThemeColors = {
   ink: string;
   inkDim: string;
   inkFaint: string;
+  decor: string;
   navy1: string;
   navy2: string;
   navy3: string;
@@ -34,26 +35,27 @@ export type ThemeColors = {
 
 export const lightTheme: ThemeColors = {
   ink: '#22281F',
-  inkDim: '#626A5B',
-  inkFaint: '#A0A597',
-  navy1: '#EEE9DE',
-  navy2: '#F6F1E6',
+  inkDim: '#586152',
+  inkFaint: '#5F6657',
+  decor: '#A0A597',
+  navy1: '#DDEDE3',
+  navy2: '#EAF5EE',
   navy3: '#FFFFFF',
-  navy4: '#E5E0CF',
+  navy4: '#DCE8E0',
   gold: '#2E5D3A',
   goldDim: '#234A2E',
   accent: '#3F7A50',
-  error: '#E11D48',
+  error: '#C81E43',
   errorBg: '#FFF1F2',
-  ok: '#059669',
+  ok: '#0B7A4B',
   okBg: '#ECFDF5',
-  orange: '#EA580C',
+  orange: '#C2410C',
   warnBg: '#FFF7ED',
   premium: '#E08A2C',
   indigo: '#4F46E5',
   indigoBg: '#EEF2FF',
-  cardTealStart: '#134E48',
-  cardTealEnd: '#082F2C',
+  cardTealStart: '#2E5D3A',
+  cardTealEnd: '#173D2B',
   cardTealText: '#FFFFFF',
   cardTealTextDim: '#A7F3D0',
   mintAccent: '#34D399',
@@ -67,6 +69,7 @@ export const darkTheme: ThemeColors = {
   ink: '#F1F0EF',
   inkDim: '#C7C2BE',
   inkFaint: '#8C857F',
+  decor: '#8C857F',
   navy1: '#161412',
   navy2: '#1C1917',
   navy3: '#242020',

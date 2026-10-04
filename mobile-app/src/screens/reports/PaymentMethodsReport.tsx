@@ -152,7 +152,7 @@ export default function PaymentMethodsReport() {
                 <View
                   style={[
                     styles.progressFill,
-                    { width: `${pct}%`, backgroundColor: m.key === 'unset' ? colors.inkFaint : colors.gold },
+                    { width: `${pct}%`, backgroundColor: m.key === 'unset' ? colors.decor : colors.gold },
                   ]}
                 />
               </View>
