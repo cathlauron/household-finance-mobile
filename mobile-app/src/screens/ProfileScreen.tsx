@@ -1511,7 +1511,9 @@ function makeStyles(colors: any) {
       marginBottom: 6,
     },
     input: {
-      backgroundColor: colors.navy2,
+      backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,

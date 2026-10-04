@@ -61,9 +61,9 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         headerStyle: { backgroundColor: colors.navy3 },
         headerTintColor: colors.ink,
         tabBarStyle: { backgroundColor: colors.navy3, borderTopColor: colors.navy4 },
-        tabBarLabelStyle: { fontSize: 9.5, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarActiveTintColor: colors.gold,
-        tabBarInactiveTintColor: colors.inkFaint,
+        tabBarInactiveTintColor: colors.inkDim,
       }}
     >
       <Tab.Screen

@@ -102,7 +102,7 @@ export default function HomeScreen({ username }: Props) {
           <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn} onPress={() => setBellOpen(true)}>
             <Ionicons name="notifications-outline" size={20} color={colors.ink} />
             {unreadCount > 0 ? (
-              <View style={[hs.bellBadge, { backgroundColor: colors.error }]}>
+              <View style={[hs.bellBadge, { backgroundColor: '#C81E43' }]}>
                 <Text style={hs.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
               </View>
             ) : null}

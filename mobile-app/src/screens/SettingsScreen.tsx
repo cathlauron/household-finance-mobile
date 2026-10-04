@@ -116,6 +116,30 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     });
     return unsub;
   }, [navigation, page]);
+  const PAGE_TITLES: Record<string, string> = {
+    language: 'Language',
+    help: 'Help & support',
+    about: 'About us',
+    appearance: 'Appearance',
+    listrows: 'List Rows',
+    notifications: 'Notifications',
+    leftspend: 'Left to Spend',
+    categories: 'Categories',
+    watchlist: 'Category Watchlist',
+    payees: 'Merchants & Payees',
+    rules: 'Categorization Rules',
+    security: 'Security',
+    quickunlock: 'Quick Unlock',
+    devices: 'Active Devices',
+    data: 'Data',
+  };
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: page ? (PAGE_TITLES[page] ?? 'Settings') : 'Settings',
+      headerBackTitle: page ? 'Settings' : 'More',
+    });
+  }, [navigation, page]);
 
   // Retroactive recovery key setup state
   const [retroactiveModalOpen, setRetroactiveModalOpen] = useState(false);
@@ -984,17 +1008,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
-        {page !== null && (
-          <TouchableOpacity
-            testID="settings-back-button"
-            activeOpacity={0.7}
-            onPress={() => setPage(null)}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, paddingVertical: 4 }}
-          >
-            <Ionicons name="chevron-back" size={20} color={colors.gold} />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.gold }}>Settings</Text>
-          </TouchableOpacity>
-        )}
         {page === null && (
         <>
         {/* Profile Card */}

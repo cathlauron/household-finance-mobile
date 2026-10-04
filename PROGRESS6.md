@@ -1256,13 +1256,76 @@ of the Step 1 review; commit status: confirm with git status)
   button; deeper money colors read clearly; inactive tab labels are clearly darker;
   placeholders and hints are readable; page is mint on both Home and Security.
 
+
+✅ V.2: Navigation chrome, dark-mode contrast, bordered inputs (partial V.3) — DONE, tsc
+clean, device-tested in light and dark mode ("as described"). Commit status: confirm with
+git status. Worked as Antigravity investigates (two read-only passes), Claude reviews,
+Cath pastes by hand.
+
+What shipped:
+- MainTabs.tsx: tabBarLabelStyle fontSize 9.5 -> 11 (SUPERSEDES the 9.5 noted in
+  Checkpoint 1); tabBarInactiveTintColor colors.inkFaint -> colors.inkDim. No wrapping
+  on "Transactions" (about 63dp of 90dp per tab, estimate only).
+- SwipeableRow.tsx: swipe delete background colors.error -> '#C81E43'; the "view" action
+  icon (on colors.gold) color '#fff' -> colors.navy2.
+- HomeScreen.tsx: bell badge background colors.error -> '#C81E43'.
+- RowInteractionPreview.tsx: deleteBehind background colors.error -> '#C81E43' (matches
+  the real swipe delete).
+- TransactionsScreen.tsx: refundToggleTextActive and refundBadgeText '#fff' ->
+  colors.navy2.
+- SignInScreen, CreateProfileScreen, AccountSwitcherScreen, OnboardingScreen:
+  primaryBtnText '#FFFFFF' -> colors.navy2 (white on dark-mode gold #10B981 failed
+  contrast).
+- SettingsScreen.tsx: added a PAGE_TITLES map plus a useEffect calling
+  navigation.setOptions({ title, headerBackTitle }) so the native header shows the
+  sub-page name; removed the in-body "‹ Settings" back link (testID settings-back-button)
+  and the 15 in-body sectionTitle lines. Fixes the double back link and double title. The
+  existing beforeRemove listener still sends native back / swipe-back / Android back to
+  the Settings hub (confirmed from real code).
+- SettingsScreen.tsx and ProfileScreen.tsx: styles.input -> backgroundColor colors.navy3,
+  borderWidth 1, borderColor colors.navy4 (inputs on the mint page had no edge and
+  vanished: Settings Security and Watchlist pages, Profile "join with a code").
+
+Findings (real code viewed):
+- Settings page ids and header titles: language "Language", help "Help & support", about
+  "About us", appearance "Appearance", listrows "List Rows", notifications
+  "Notifications", leftspend "Left to Spend", categories "Categories", watchlist
+  "Category Watchlist", payees "Merchants & Payees", rules "Categorization Rules",
+  security "Security", quickunlock "Quick Unlock", devices "Active Devices", data "Data".
+- All 15 sub-pages are fragments inside one transparent container, so none paints a solid
+  background in code.
+- In dark mode error/orange/ok/gold are pastels, so white text or icons on them failed
+  contrast. In light mode error is already #C81E43, so the fixed '#C81E43' is safe in
+  both modes.
+- LeafBackground uses StyleSheet.absoluteFill and renders once in App.tsx behind the
+  NavigationContainer.
+- Auth screens: App.tsx wrapper AND each screen container paint opaque colors.navy2, so
+  a LeafBackground behind them would be invisible until their containers are transparent.
+
+📌 V.2 decisions
+- Never put white text/icons on a pastel status color. Use colors.navy2 (light in light
+  mode, near-black in dark mode), or the fixed '#C81E43' for destructive actions and
+  notification badges.
+- The native header title is driven by navigation.setOptions inside SettingsScreen. Do not
+  re-add in-body back links or titles.
+
+📁 V.2 files edited: mobile-app/src/navigation/MainTabs.tsx, src/components/SwipeableRow.tsx,
+src/components/RowInteractionPreview.tsx, src/screens/HomeScreen.tsx,
+TransactionsScreen.tsx, SignInScreen.tsx, CreateProfileScreen.tsx,
+AccountSwitcherScreen.tsx, OnboardingScreen.tsx, SettingsScreen.tsx, ProfileScreen.tsx
+
 ⚠️ V-series known issues / still to do
-- Inputs (Security page etc.) are tinted a different green than the page and look muddy; the
-  Secret Recovery Key card is white but the inputs are not. Plan: white inputs with a border
-  (V.3).
-- Double back link on Settings sub-pages is still there; page title is not in the header
-  (V.2).
-- Tab bar labels are still 9.5px (V.2). TabIcon underline and icons are fine.
+- Inputs: FIXED in Settings and Profile (V.2, white with a border). Check that PasswordField
+  (Security page) does not add a second border. Other screens' styles.input still use
+  navy2 (fine inside white bottom sheets, only risky where the input sits directly on the
+  mint page).
+- Double back link on Settings sub-pages: FIXED in V.2. Check whether any Maestro/e2e test
+  references the removed testID settings-back-button, and whether Ionicons is still used in
+  SettingsScreen.tsx. Some Settings sub-pages were reported as looking cream/solid
+  on-device, but the code shows all 15 are transparent; cause not found (need to know
+  which pages).
+- Tab bar labels: FIXED in V.2 (11px, darker inactive). Re-check with Android's large font
+  setting turned on.
 - "Active" badge on the Security page uses bright green text on pale green; should use the
   new ok color and a stronger fill.
 - Leaf watermarks are quite visible on Security and one cuts behind the form fields. Taste
@@ -1274,8 +1337,10 @@ of the Step 1 review; commit status: confirm with git status)
   empty checkbox borders (BillsScreen 661, ReportsScreen 236, SavingsScreen 1289,
   TravelScreen 659) and the TravelScreen inactive dot (733) still use inkFaint, so they are
   now darker/heavier. Small separate step: move them to colors.decor.
-- Dark mode white-on-pastel badges (see findings) — NOT fixed yet; Cath asked to check
-  swipe-delete and the bell badge in dark mode.
+- Dark mode white-on-pastel badges: FIXED in V.2 for swipe delete/view, bell badge, refund
+  toggle and badges, and the four primary buttons. The search only looked a few lines
+  around each backgroundColor, so more white-on-colored pairs may exist; run a broader
+  grep later.
 - darkTheme.cardTealStart/End (#164E44 / #0D332D) are still blue-teal; suggested #1A3B2B /
   #0F261B to match the new forest green. darkTheme.inkFaint (#8C857F) is borderline 4.35:1;
   suggested #9E9892.
@@ -1295,13 +1360,16 @@ of the Step 1 review; commit status: confirm with git status)
 
 ▶️ V-series planned order (each step = one Antigravity investigation, one paste, one tsc, one
 commit, one on-device check)
-- V.2 (NEXT): navigation chrome — Settings sub-page header title plus removing the duplicate
-  "‹ Settings" link (and what the native back arrow does on a sub-page today); tab bar
-  label size and inactive color (check 360dp width with "Transactions"); LeafBackground on
-  the auth screens; the dark-mode white-on-pastel badge fix. An investigation prompt for
-  this was given to Cath; the result is pending.
-- V.3: input field style (white with a border), the Active badge, leaf opacity, chevron and
-  checkbox borders to colors.decor.
+- V.2 — DONE (see the V.2 section above), except LeafBackground on the auth screens, which
+  moves to V.2b.
+- V.2b (NEXT): auth/pre-auth screens background. Investigate (read-only) how App.tsx wraps
+  each pre-auth screen (locked, onboarding, intro, switcher, createProfile, signIn), what
+  each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
+  and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
+  behind). Also the SignIn recovery-modal near-black button.
+- V.3 (remaining): the Active badge (ok color, stronger fill), leaf opacity (0.07 to about
+  0.05, or reposition), chevron and checkbox borders to colors.decor, inputs on any other
+  screens that sit directly on the mint page.
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
   screen; move hardcoded colors onto the theme.
 - V.5: account card tints and a visible name/balance strip when stacked.
@@ -1320,11 +1388,9 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series (visual-system pass, see above). V.0 and V.1 are done. Next
-  is V.2 (navigation chrome). Cath is about to paste the result of the V.2 Antigravity
-  investigation (Settings sub-page header and back link, tab bar label size, auth-screen leaf
-  background, input field backgrounds, dark-mode badges). Claude reviews it, then gives exact
-  paste edits. First confirm with `git status` that V.0 and V.1 are committed and pushed.
+- ACTIVE RIGHT NOW: the V series (visual-system pass, see above). V.0, V.1 and V.2 are done
+  and device-tested. Next is V.2b (leaf background on the auth screens), then the rest of
+  V.3. First confirm with `git status` that V.0, V.1 and V.2 are committed and pushed.
 - Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.

@@ -56,7 +56,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
     }
     return (
       <TouchableOpacity
-        style={[styles.deleteAction, { backgroundColor: colors.error }]}
+        style={[styles.deleteAction, { backgroundColor: '#C81E43' }]}
         activeOpacity={0.8}
         onPress={() => {
           hapticMedium();
