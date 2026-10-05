@@ -134,22 +134,6 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
       <Text style={styles.eyebrow}>LOCKED</Text>
       <Text style={styles.title}>Welcome back, {selectedUsername}</Text>
 
-      {usePasswordMode && profiles.length > 1 && (
-        <View style={styles.accountChooserRow}>
-          {profiles.map((p) => (
-            <TouchableOpacity
-              key={p.username}
-              style={[styles.accountChip, p.username === selectedUsername && styles.accountChipActive]}
-              onPress={() => { setSelectedUsername(p.username); setError(''); }}
-            >
-              <Text style={[styles.accountChipText, p.username === selectedUsername && styles.accountChipTextActive]}>
-                {p.username}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
       {usePasswordMode && (
         <>
           <Text style={styles.sub}>Enter your account password to unlock.</Text>
@@ -256,13 +240,5 @@ function makeStyles(colors: any) {
     retryBiometricText: { color: colors.ink, fontWeight: '600', fontSize: 14 },
     ghostBtn: { paddingVertical: 14, marginTop: 4 },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
-    accountChooserRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-    accountChip: {
-      paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999,
-      backgroundColor: colors.navy3, borderWidth: 1, borderColor: colors.navy4,
-    },
-    accountChipActive: { backgroundColor: colors.gold, borderColor: colors.gold },
-    accountChipText: { color: colors.inkDim, fontSize: 13 },
-    accountChipTextActive: { color: colors.navy2, fontWeight: '700' },
   });
 }
