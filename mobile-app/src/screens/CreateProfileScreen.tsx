@@ -304,7 +304,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2 },
+    container: { flex: 1, backgroundColor: 'transparent' },
     scrollContent: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40 },
     brandWrap: { alignItems: 'center', marginBottom: 16 },
     brandLogo: { width: 56, height: 56 },

@@ -902,14 +902,14 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                 />
                 {!!recoveryError && <Text style={styles.errorText}>{recoveryError}</Text>}
                 <TouchableOpacity
-                  style={[styles.primaryBtn, (!recoveryKeyInput.trim() || recoveryBusy) && styles.btnDisabled]}
+                  style={[ms.primaryBtn, (!recoveryKeyInput.trim() || recoveryBusy) && styles.btnDisabled]}
                   onPress={handleRecoverWithKey}
                   disabled={!recoveryKeyInput.trim() || recoveryBusy || peerBusy}
                 >
                   {recoveryBusy ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.navy2} />
                   ) : (
-                    <Text style={styles.primaryBtnText}>Unlock &amp; Restore Data</Text>
+                    <Text style={ms.primaryBtnText}>Unlock &amp; Restore Data</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -1057,7 +1057,7 @@ const styles = StyleSheet.create({
 });
 function makeMainStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.navy2, paddingHorizontal: 24, paddingTop: 48 },
+    container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },
     brandWrap: { alignItems: 'center', marginBottom: 20 },
     brandLogo: { width: 64, height: 64 },
     brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
@@ -1075,7 +1075,7 @@ function makeMainStyles(colors: any) {
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
     primaryBtn: { backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[20] },
-    primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     hint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 18 },
     dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 16 },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.navy4 },

@@ -227,7 +227,7 @@ function makeStyles(colors: any) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.navy2,
+      backgroundColor: 'transparent',
     },
     headerRow: {
       flexDirection: 'row',

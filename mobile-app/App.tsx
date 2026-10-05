@@ -45,6 +45,18 @@ import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
 import LeafBackground from './src/components/LeafBackground';
 import { triggerLeafTransition } from './src/leafTransition';
 
+// Each top-level screen fades in on its own Animated value that starts at 0
+// from its very first frame, so the new screen never flashes at full opacity
+// before fading. skip = true keeps the cold-start splash instant.
+function ScreenFade({ skip, children }: { skip: boolean; children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(skip ? 1 : 0)).current;
+  useLayoutEffect(() => {
+    if (skip) return;
+    Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+  }, []);
+  return <Animated.View style={{ flex: 1, opacity }}>{children}</Animated.View>;
+}
+
 function AppContent() {
   const { colors } = useTheme();
   const { loadModel, clearModel } = useData();
@@ -66,26 +78,6 @@ function AppContent() {
   // PIN copy can be saved without asking for the password again. Cleared the moment
   // Onboarding ends, for any reason.
   const onboardingCredsRef = useRef<{ email: string; password: string } | null>(null);
-
-  // D.3: cross-fades between top-level screens instead of a hard cut. Starts
-  // at 1 so the very first render (cold-start 'loading' -> IntroScreen) shows
-  // immediately with no fade-in; isFirstRenderRef skips animating on that
-  // initial mount, and every subsequent `screen` change fades in from 0.
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const isFirstRenderRef = useRef(true);
-
-  useLayoutEffect(() => {
-    if (isFirstRenderRef.current) {
-      isFirstRenderRef.current = false;
-      return;
-    }
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [screen, fadeAnim]);
 
   useEffect(() => {
     screenRef.current = screen;
@@ -468,7 +460,7 @@ function AppContent() {
 
   if (screen === 'locked' && currentUsername && derivedKey) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <PinUnlockScreen
           username={currentUsername}
           onUnlocked={(newUsername, newKey) => {
@@ -489,8 +481,7 @@ function AppContent() {
 
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.navy2 }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
-        <LeafBackground />
+      <View style={{ flex: 1, backgroundColor: 'transparent' }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
         <NavigationContainer
           ref={navigationRef}
           theme={{
@@ -514,7 +505,7 @@ function AppContent() {
 
   if (screen === 'onboarding' && currentUsername && derivedKey) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <OnboardingScreen
           username={currentUsername}
           initialCredentials={onboardingCredsRef.current ?? undefined}
@@ -529,7 +520,7 @@ function AppContent() {
 
     if (screen === 'intro') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <IntroSlidesScreen
           onDone={() => setScreen('createProfile')}
           onBack={introFromSignIn ? () => { setIntroFromSignIn(false); setScreen('signIn'); } : undefined}
@@ -540,7 +531,7 @@ function AppContent() {
   
     if (screen === 'switcher') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <AccountSwitcherScreen
           accounts={recentAccounts}
           onUnlocked={(creds) => {
@@ -593,7 +584,7 @@ function AppContent() {
 
   if (screen === 'createProfile') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <CreateProfileScreen
           onProfileCreated={(username, key, credentials) => {
             onboardingCredsRef.current = credentials ?? null;
@@ -622,7 +613,7 @@ function AppContent() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy2 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
 <SignInScreen
         remoteRevokeNotice={remoteRevokeNotice}
         onClearRemoteRevokeNotice={() => setRemoteRevokeNotice(null)}
@@ -703,9 +694,12 @@ function AppContent() {
   }
 
   return (
-    <Animated.View style={{ flex: 1, backgroundColor: colors.navy2, opacity: fadeAnim }}>
-      {renderScreen()}
-    </Animated.View>
+    <View style={{ flex: 1, backgroundColor: colors.navy2 }}>
+      {screen !== 'loading' && <LeafBackground />}
+      <ScreenFade key={screen} skip={screen === 'loading'}>
+        {renderScreen()}
+      </ScreenFade>
+    </View>
   );
 }
 

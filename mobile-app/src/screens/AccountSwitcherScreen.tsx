@@ -183,7 +183,7 @@ export default function AccountSwitcherScreen({
   return (
     <KeyboardAvoidingView
       testID="account-switcher-container"
-      style={{ flex: 1, backgroundColor: colors.navy2 }}
+      style={{ flex: 1, backgroundColor: 'transparent' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
