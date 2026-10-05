@@ -9,6 +9,7 @@ import { loadProfilesIndex, ProfileIndexEntry, loadEncryptedProfileData } from '
 import { deriveKey, decryptJSON } from '../encryption';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey } from '../household';
 import { registerPinFailure, resetPinFailures } from '../quickUnlock';
+import { useTheme } from '../ThemeContext';
 
 type Props = {
   username: string;
@@ -20,6 +21,8 @@ type Props = {
 let lastBiometricAttemptTime = 0;
 
 export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Props) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -164,7 +167,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             onPress={handlePasswordUnlock}
             disabled={busy || !passwordInput}
           >
-            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
+            {busy ? <ActivityIndicator color={colors.navy2} /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
           </TouchableOpacity>
           {!isLockedOut && (
             <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(false); setError(''); }}>
@@ -172,7 +175,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             </TouchableOpacity>
           )}
           <TouchableOpacity style={[styles.ghostBtn, { marginTop: 4 }]} onPress={onSignOut}>
-            <Text style={[styles.ghostBtnText, { color: '#78716C' }]}>Sign in to another account</Text>
+            <Text style={styles.ghostBtnText}>Sign in to another account</Text>
           </TouchableOpacity>
         </>
       )}
@@ -220,7 +223,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
           {biometricState === 'ENABLED' && hasPin !== false && (
             <TouchableOpacity testID="retry-biometrics-button" style={[styles.retryBiometricBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} onPress={() => runBiometricAuth(true)}>
-              <Ionicons name="refresh-outline" size={16} color="#1C1917" style={{ marginRight: 6 }} />
+              <Ionicons name="refresh-outline" size={16} color={colors.ink} style={{ marginRight: 6 }} />
               <Text style={styles.retryBiometricText}>Try {biometricLabel} again</Text>
             </TouchableOpacity>
           )}
@@ -234,27 +237,32 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF9', padding: 24, paddingTop: 80 },
-  eyebrow: { fontSize: 11, letterSpacing: 2, color: '#78716C', textAlign: 'center', marginBottom: 8 },
-  title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: '#1C1917', marginBottom: 8 },
-  sub: { fontSize: 14, color: '#57534E', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-  label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#57534E', marginBottom: 6, marginTop: 14 },
-  input: {
-    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#E7E5E4',
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917', textAlign: 'center', letterSpacing: 6,
-  },
-  error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  noPinHint: { color: '#78716C', fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: 8, paddingVertical: 14, marginTop: 24 },
-  primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
-  retryBiometricBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center' },
-  retryBiometricText: { color: '#1C1917', fontWeight: '600', fontSize: 14 },
-  ghostBtn: { paddingVertical: 14, marginTop: 4 },
-  ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
+function makeStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 80 },
+    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
+    title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+    label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
+    input: {
+      backgroundColor: colors.navy3, borderRadius: 8, borderWidth: 1, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, textAlign: 'center', letterSpacing: 6,
+    },
+    error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
+    noPinHint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 16 },
+    primaryBtn: { backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 14, marginTop: 24 },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    retryBiometricBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center' },
+    retryBiometricText: { color: colors.ink, fontWeight: '600', fontSize: 14 },
+    ghostBtn: { paddingVertical: 14, marginTop: 4 },
+    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
     accountChooserRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  accountChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#2A2A2A' },
-  accountChipActive: { backgroundColor: '#D4AF37' },
-  accountChipText: { color: '#A8A29E', fontSize: 13 },
-  accountChipTextActive: { color: '#1C1917', fontWeight: '700' },
-});
+    accountChip: {
+      paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999,
+      backgroundColor: colors.navy3, borderWidth: 1, borderColor: colors.navy4,
+    },
+    accountChipActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+    accountChipText: { color: colors.inkDim, fontSize: 13 },
+    accountChipTextActive: { color: colors.navy2, fontWeight: '700' },
+  });
+}
