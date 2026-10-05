@@ -46,7 +46,7 @@ PROGRESS3.md, PROGRESS2.md, PROGRESS1.md, PROGRESS.md).
 - Actual Phase C publishing (C.1 real installable build for distribution, C.2 optional
   Google Play / Apple App Store listing).
 - Small stray items: Change PIN's ~50-second timing never re-measured on an installed
-  build; PinUnlockScreen's password-mode chip row has garbled/truncated username labels;
+  build; (RESOLVED in V.2d: the chip row was removed) PinUnlockScreen's password-mode chip row had garbled/truncated username labels;
   avatar refresh in the switcher only updates the account currently signing in; a known
   offline-cache gap for linked households' data; iOS may need a faceIDPermission config
   entry (unconfirmed, only matters once an iOS build happens); About page's version number
@@ -248,6 +248,11 @@ What shipped:
   single fade-in of the new screen, on a shared solid background color, was the
   architecturally safe choice instead.
 - npx tsc --noEmit confirmed clean (0 errors) after the change.
+- SUPERSEDED in V.2b: the fadeAnim / isFirstRenderRef / useLayoutEffect mechanism described
+  above caused a one-frame flash (new screen shown at opacity 1, then snapped to 0). It was
+  replaced by a ScreenFade component keyed on `screen` that starts at opacity 0 from its
+  first frame. The behaviour (220ms fade-in, instant cold-start splash) is the same. See
+  the "Sign-in flicker fix" entry in the V series.
 - Not yet tested on a real device (deferred to the batched D.2+D.3+D.4 test pass, per
   the standing decision below) — a quick optional gut-check was suggested (sign in,
   trigger a lock/switch, confirm the fade shows and the splash still appears instantly
@@ -830,6 +835,9 @@ background, so it keeps its own solid colour. Confirmed on-device (Android).
   inputs, rows, chart tracks) were deliberately left alone.
 - Bottom sheets, dialog modal cards (CsvImport, LoanPayoffSimulator, SavingsFiComparison,
   Calendar day popup) stay OPAQUE.
+- SUPERSEDED in V.2b/V.2c: all of those pre-auth screens except IntroScreen now render
+  transparent over the shared LeafBackground, which moved to App.tsx's root. SetPinScreen
+  is still its own thing (it is a modal inside Settings).
 - Screens with their own background on purpose were left alone: IntroScreen (splash
   image, #1A3F22), SignInScreen, PinUnlockScreen, SetPinScreen, AccountSwitcherScreen,
   CreateProfileScreen, OnboardingScreen, IntroSlidesScreen. The shared background only
@@ -1314,6 +1322,90 @@ src/components/RowInteractionPreview.tsx, src/screens/HomeScreen.tsx,
 TransactionsScreen.tsx, SignInScreen.tsx, CreateProfileScreen.tsx,
 AccountSwitcherScreen.tsx, OnboardingScreen.tsx, SettingsScreen.tsx, ProfileScreen.tsx
 
+✅ V.2b: Shared leaf background behind ALL pre-auth screens + themed recovery button —
+DONE, tsc clean, device-tested ("as described"), pushed. Worked as Antigravity
+investigates (read-only), Claude reviews, Cath pastes by hand.
+
+What shipped:
+- App.tsx (AppContent final return): now `<View style={{ flex: 1, backgroundColor:
+  colors.navy2 }}>` containing `{screen !== 'loading' && <LeafBackground />}` and then the
+  fading screen wrapper. LeafBackground therefore renders ONCE at the root, BEHIND the
+  fade, so leaves stay still while screens fade in over them. 'loading' (IntroScreen) is
+  excluded because it is an opaque splash image on purpose.
+- App.tsx 'home' block: its own <LeafBackground /> was removed (it would have doubled up)
+  and its wrapper View is now backgroundColor 'transparent'.
+- App.tsx: the six <SafeAreaView> wrappers (locked, onboarding, intro, switcher,
+  createProfile, signIn) changed from colors.navy2 to 'transparent'.
+- Container backgroundColor navy2 -> 'transparent' in IntroSlidesScreen, OnboardingScreen,
+  CreateProfileScreen (the ScrollView style), SignInScreen (module-level container style)
+  and AccountSwitcherScreen (the KeyboardAvoidingView inline style).
+- SignInScreen.tsx recovery modal: the near-black "Unlock & Restore Data" button now uses
+  ms.primaryBtn / ms.primaryBtnText (themed green) instead of the module-level
+  styles.primaryBtn (#1C1917); its ActivityIndicator uses colors.navy2.
+- SignInScreen.tsx makeMainStyles: primaryBtnText '#FFFFFF' -> colors.navy2. This was
+  missed in V.2 and found by grepping primaryBtnText. A module-level (non-themed)
+  styles.primaryBtnText with #FFFFFF still exists at the top level; it is no longer used
+  by any button.
+
+✅ Sign-in flicker fix (found while device-testing V.2b) — DONE, confirmed gone on-device,
+pushed.
+- Root cause: the old D.3 fade (see D.3 above) committed the NEW screen at opacity 1 and
+  only THEN, in useLayoutEffect, snapped fadeAnim to 0 and animated back up. That gave a
+  one-frame flash of the new screen, then a snap to invisible, then a fade-in. Antigravity's
+  first suggested fix (just delete the setValue(0) snap) was REJECTED because it would
+  have turned the fade into 1 -> 1 and deleted D.3 entirely.
+- Fix: removed the fadeAnim / isFirstRenderRef / useLayoutEffect block from AppContent and
+  added a small `ScreenFade` component (just above function AppContent) that owns its OWN
+  Animated.Value, created at 0 on mount (1 when skip is true), and animates to 1 over
+  220ms. AppContent renders `<ScreenFade key={screen} skip={screen === 'loading'}>`, so
+  each screen change remounts a fresh fade that starts invisible from its very first
+  frame. Cold-start splash is still instant.
+- Alternatives from Antigravity's ranked list, deliberately NOT applied (change one thing
+  at a time; revisit only if a flicker is seen again): (2) SignInScreen.tsx ~line 734
+  calls setBusy(false) right before onSignedIn (probably harmless, same synchronous batch);
+  (3) for linked-household members SignInScreen passes householdKey undefined to
+  onSignedIn, so loadModel does an async load and Home can briefly show zeroes before the
+  numbers appear; (4) SignInScreen busy starts false on the autoSignIn path, so the idle
+  "Sign in" label can show for one frame before it becomes a spinner (possible fix:
+  useState(Boolean(autoSignIn))).
+
+✅ V.2c: PinUnlockScreen themed and transparent — DONE, tsc clean, device-tested, pushed.
+- PinUnlockScreen.tsx now imports useTheme and builds its styles with makeStyles(colors)
+  (module-level StyleSheet.create removed). Container is 'transparent', so the shared leaf
+  background shows through when screen === 'locked'. LeafBackground is mounted for every
+  screen except 'loading', and PinUnlockScreen can never render while screen is 'loading'.
+- Token mapping used: title / typed text / retry icon+text -> colors.ink; eyebrow, subtitle,
+  PIN/PASSWORD label (inkDim, not ink, so labels do not get heavier than before), hint
+  text, ghost links -> colors.inkDim; input -> navy3 with navy4 border; error -> colors.error;
+  primary button -> colors.gold with colors.navy2 text and spinner.
+- The inline '#78716C' override on "Sign in to another account" was dropped (ghostBtnText
+  is already inkDim).
+
+✅ V.2d: account chips removed from PinUnlockScreen's password mode — DONE, device-tested,
+pushed. The chip row only appeared after tapping "Use password instead" and duplicated the
+account switcher, which "Sign in to another account" already opens. selectedUsername and
+profiles state were left in place because handlePasswordUnlock still reads them. The five
+chip styles (accountChooserRow, accountChip, accountChipActive, accountChipText,
+accountChipTextActive) in makeStyles are now unused; harmless, can be deleted later.
+
+📌 V.2b-d decisions
+- LeafBackground lives in ONE place (App.tsx root), behind the screen fade, for every
+  screen except the 'loading' splash.
+- IntroScreen stays opaque on purpose. Its real SPLASH_GREEN is '#1B372C' (an earlier note
+  in this file said #1A3F22, which was wrong).
+- SetPinScreen was NOT touched: it is not a pre-auth route, it renders as a modal inside
+  SettingsScreen, and it still has hardcoded #FAFAF9 / legacy colors (not yet reviewed).
+- Fade timing/behaviour is now owned by ScreenFade, not by fadeAnim in AppContent.
+
+⚠️ V.2b-d known issues / still to check
+- PinField.tsx and PasswordField.tsx were opened by Antigravity but their code was never
+  shown, so any hardcoded dot/placeholder/icon colors inside them are unreviewed. They
+  looked fine in a light-mode screenshot of the PIN password mode (eye icon and dots
+  readable). Dark mode of the pre-auth screens was not itemised in the device test.
+- SetPinScreen's hardcoded legacy colors (see above) are still outstanding.
+- Metro deprecation warning: SafeAreaView imported from 'react-native' (does nothing on
+  Android) should eventually come from 'react-native-safe-area-context'.
+
 ⚠️ V-series known issues / still to do
 - Inputs: FIXED in Settings and Profile (V.2, white with a border). Check that PasswordField
   (Security page) does not add a second border. Other screens' styles.input still use
@@ -1330,9 +1422,10 @@ AccountSwitcherScreen.tsx, OnboardingScreen.tsx, SettingsScreen.tsx, ProfileScre
   new ok color and a stronger fill.
 - Leaf watermarks are quite visible on Security and one cuts behind the form fields. Taste
   call: drop opacity from 0.07 to about 0.05 or reposition. Not changed yet.
-- Auth/pre-auth screens are now mint but have no leaf background (they paint a solid navy2);
-  Settings sub-pages like Help and About previously showed solid cream (now mint, still
-  solid).
+- Auth/pre-auth screens: FIXED in V.2b/V.2c (shared leaf background, transparent
+  containers). Settings sub-pages like Help and About were previously reported as looking
+  solid; the code shows they are transparent, and the cause was never found. Ask which
+  pages if it is seen again.
 - Chevrons (CollapsibleRow, Dashboard rows, SettingsHub, ProfileScreen, AccountSwitcher) and
   empty checkbox borders (BillsScreen 661, ReportsScreen 236, SavingsScreen 1289,
   TravelScreen 659) and the TravelScreen inactive dot (733) still use inkFaint, so they are
@@ -1362,12 +1455,12 @@ AccountSwitcherScreen.tsx, OnboardingScreen.tsx, SettingsScreen.tsx, ProfileScre
 commit, one on-device check)
 - V.2 — DONE (see the V.2 section above), except LeafBackground on the auth screens, which
   moves to V.2b.
-- V.2b (NEXT): auth/pre-auth screens background. Investigate (read-only) how App.tsx wraps
+- V.2b, V.2c, V.2d: DONE (see the V.2b section above). Original plan: auth/pre-auth screens background. Investigate (read-only) how App.tsx wraps
   each pre-auth screen (locked, onboarding, intro, switcher, createProfile, signIn), what
   each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
   and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
   behind). Also the SignIn recovery-modal near-black button.
-- V.3 (remaining): the Active badge (ok color, stronger fill), leaf opacity (0.07 to about
+- V.3 (NEXT, remaining): the Active badge (ok color, stronger fill), leaf opacity (0.07 to about
   0.05, or reposition), chevron and checkbox borders to colors.decor, inputs on any other
   screens that sit directly on the mint page.
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
@@ -1382,15 +1475,23 @@ commit, one on-device check)
 - Edited: mobile-app/src/theme.ts, mobile-app/src/components/BottomSheet.tsx,
   mobile-app/src/screens/reports/PaymentMethodsReport.tsx,
   mobile-app/src/screens/PlanningScreen.tsx, mobile-app/src/screens/ReportsScreen.tsx
+- V.2b-d edited: mobile-app/App.tsx, src/screens/IntroSlidesScreen.tsx,
+  OnboardingScreen.tsx, CreateProfileScreen.tsx, SignInScreen.tsx,
+  AccountSwitcherScreen.tsx, PinUnlockScreen.tsx
 - Commit used for V.1 (run from the repo root, one command per line):
   git add -A
   git commit -m "Design pass step 1: mint base, accessible text and money colors, decor token"
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series (visual-system pass, see above). V.0, V.1 and V.2 are done
-  and device-tested. Next is V.2b (leaf background on the auth screens), then the rest of
-  V.3. First confirm with `git status` that V.0, V.1 and V.2 are committed and pushed.
+- ACTIVE RIGHT NOW: the V series (visual-system pass, see above). V.0, V.1, V.2, V.2b,
+  V.2c, V.2d and the sign-in flicker fix are done and device-tested. Next is V.3: the
+  "Active" badge on the Security page (ok color, stronger fill), leaf opacity (0.07 to
+  about 0.05, or reposition), chevrons and empty-checkbox borders moved to colors.decor,
+  and inputs on any other screen that sits directly on the mint page. After V.3 comes V.4
+  (shared Pill / Card / Button / Header), V.5 (account card tints), V.6 (tiny fonts,
+  Calendar balances only on active days, number formatting) and V.7 (quieter destructive
+  buttons). First confirm with `git status` that everything above is committed and pushed.
 - Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.
