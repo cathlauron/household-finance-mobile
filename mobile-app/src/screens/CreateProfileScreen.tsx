@@ -161,7 +161,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         <Text style={styles.label}>Email address</Text>
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
-            <Ionicons name="mail-outline" size={18} color={colors.inkFaint} />
+            <Ionicons name="mail-outline" size={18} color={colors.decor} />
           </View>
           <TextInput
             testID="email-input"
@@ -179,7 +179,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         <Text style={styles.label}>Username</Text>
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
-            <Ionicons name="person-outline" size={18} color={colors.inkFaint} />
+            <Ionicons name="person-outline" size={18} color={colors.decor} />
           </View>
           <TextInput
             testID="username-input"
@@ -196,7 +196,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         <Text style={styles.label}>Password</Text>
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
-            <Ionicons name="lock-closed-outline" size={18} color={colors.inkFaint} />
+            <Ionicons name="lock-closed-outline" size={18} color={colors.decor} />
           </View>
           <PasswordField
             testID="password-input"
@@ -210,7 +210,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         <Text style={styles.label}>Confirm password</Text>
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
-            <Ionicons name="lock-closed-outline" size={18} color={colors.inkFaint} />
+            <Ionicons name="lock-closed-outline" size={18} color={colors.decor} />
           </View>
           <PasswordField
             testID="confirm-password-input"

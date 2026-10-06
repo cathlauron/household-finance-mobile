@@ -775,7 +775,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <Text style={ms.label}>Email address</Text>
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
-          <Ionicons name="mail-outline" size={18} color={colors.inkFaint} />
+          <Ionicons name="mail-outline" size={18} color={colors.decor} />
         </View>
         <TextInput
           testID="email-input"

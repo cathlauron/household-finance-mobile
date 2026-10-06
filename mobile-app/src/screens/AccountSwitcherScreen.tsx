@@ -209,7 +209,7 @@ export default function AccountSwitcherScreen({
                 <Text style={s.rowName} numberOfLines={1}>
                   {a.username}
                 </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+                <Ionicons name="chevron-forward" size={18} color={colors.decor} />
               </TouchableOpacity>
             ))}
           </>

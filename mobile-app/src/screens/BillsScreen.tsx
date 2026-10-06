@@ -407,7 +407,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                             paddingVertical: 2,
                             borderRadius: 6,
                             borderWidth: 1,
-                            borderColor: colors.inkFaint,
+                            borderColor: colors.decor,
                           }}
                         >
                           <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.inkFaint }}>

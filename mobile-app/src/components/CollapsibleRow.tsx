@@ -62,7 +62,7 @@ export function CollapsibleRow({
           <Ionicons
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={16}
-            color={colors.inkFaint}
+            color={colors.decor}
           />
         </View>
       </TouchableOpacity>

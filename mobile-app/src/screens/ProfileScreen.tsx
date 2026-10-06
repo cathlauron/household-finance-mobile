@@ -688,7 +688,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               <Text style={styles.shortcutTitle}>Password & Encryption Key</Text>
               <Text style={styles.shortcutSub}>Change password and access your Secret Recovery Key</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} style={{ marginLeft: 10 }} />
+            <Ionicons name="chevron-forward" size={18} color={colors.decor} style={{ marginLeft: 10 }} />
           </TouchableOpacity>
 
           <View style={styles.shortcutDivider} />
@@ -705,7 +705,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               <Text style={styles.shortcutTitle}>Active Devices</Text>
               <Text style={styles.shortcutSub}>View and sign out other devices.</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} style={{ marginLeft: 10 }} />
+            <Ionicons name="chevron-forward" size={18} color={colors.decor} style={{ marginLeft: 10 }} />
           </TouchableOpacity>
 
           <View style={styles.shortcutDivider} />
@@ -722,7 +722,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               <Text style={styles.shortcutTitle}>All settings</Text>
               <Text style={styles.shortcutSub}>All other preferences.</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} style={{ marginLeft: 10 }} />
+            <Ionicons name="chevron-forward" size={18} color={colors.decor} style={{ marginLeft: 10 }} />
           </TouchableOpacity>
         </View>
 

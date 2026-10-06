@@ -78,7 +78,7 @@ export function SettingsRow({
       </View>
       <Text numberOfLines={1} style={{ flex: 1, fontSize: 14.5, fontWeight: '600', color: colors.ink }}>{title}</Text>
       {!!value && <Text numberOfLines={1} style={{ fontSize: 13, color: colors.inkDim, marginRight: 6, flexShrink: 1 }}>{value}</Text>}
-      <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+      <Ionicons name="chevron-forward" size={18} color={colors.decor} />
     </TouchableOpacity>
   );
 }

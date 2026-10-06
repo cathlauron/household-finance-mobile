@@ -360,7 +360,7 @@ export default function DashboardScreen({
                 <Text style={styles.listAmount}>
                   {formatPeso(spent)} / {formatPeso(budget)}
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+                <Ionicons name="chevron-forward" size={14} color={colors.decor} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
             );
           })}
@@ -382,8 +382,7 @@ export default function DashboardScreen({
             <Text style={styles.listDateBadge}>{formatDueDate(item.date)}</Text>
             <Text style={styles.listLabel} numberOfLines={1}>{item.label}</Text>
           </View>
-          <Text style={styles.listAmount}>{formatPeso(item.amount)}</Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+          <Ionicons name="chevron-forward" size={14} color={colors.decor} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
       ))}
     </BottomSheet>
