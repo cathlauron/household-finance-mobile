@@ -34,7 +34,7 @@ function Leaf({ d, size, rotate, color, opacity, position }: LeafProps) {
 export default function LeafBackground() {
   const { colors } = useTheme();
   const c = colors.gold;
-  const o = 0.07;
+  const o = 0.05;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg style={StyleSheet.absoluteFill}>

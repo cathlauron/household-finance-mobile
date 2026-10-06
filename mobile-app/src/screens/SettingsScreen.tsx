@@ -1532,8 +1532,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               </View>
             )}
             {hasRecoveryKey === true && (
-              <View style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ color: '#22c55e', fontSize: 11, fontWeight: '600' }}>Active</Text>
+              <View style={styles.statusBadgeActive}>
+                <Text style={styles.statusBadgeTextActive}>Active</Text>
               </View>
             )}
           </View>
@@ -2316,7 +2316,9 @@ function makeStyles(colors: any) {
       marginBottom: 6,
     },
     input: {
-      backgroundColor: colors.navy2,
+      backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,
@@ -2425,15 +2427,15 @@ function makeStyles(colors: any) {
       color: colors.navy1,
     },
     statusBadgeActive: {
-      backgroundColor: colors.ok + '22',
+      backgroundColor: colors.ok + '26',
       borderColor: colors.ok,
       borderWidth: 1,
-      borderRadius: 4,
-      paddingHorizontal: 6,
-      paddingVertical: 1.5,
+      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
     },
     statusBadgeTextActive: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '700',
       color: colors.ok,
     },
