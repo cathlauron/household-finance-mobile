@@ -1406,11 +1406,59 @@ accountChipTextActive) in makeStyles are now unused; harmless, can be deleted la
 - Metro deprecation warning: SafeAreaView imported from 'react-native' (does nothing on
   Android) should eventually come from 'react-native-safe-area-context'.
 
+✅ V.3: Active badge, leaf opacity, bordered Settings inputs, decor chevrons — CODE GIVEN
+(Step A and Step B), NOT YET CONFIRMED applied, tsc-checked or device-tested. Worked as
+Antigravity investigates (two read-only passes), Claude reviews, Cath pastes by hand.
+
+Step A (given):
+- LeafBackground.tsx: `const o = 0.07;` -> `0.05`. Dark mode uses the same value.
+- SettingsScreen.tsx: the Security page "Secret Recovery Key" Active badge was hardcoded
+  (rgba(34, 197, 94, 0.15) fill, #22c55e border/text). It now uses styles.statusBadgeActive
+  / styles.statusBadgeTextActive, the same styles as the Active Devices badge.
+- statusBadgeActive is now: backgroundColor colors.ok + '26', borderColor colors.ok,
+  borderWidth 1, borderRadius 6, paddingHorizontal 8, paddingVertical 2.
+  statusBadgeTextActive is now fontSize 11, fontWeight '700', color colors.ok.
+  Side effect: the Active Devices rows also get the slightly bigger, stronger badge.
+- SettingsScreen.tsx styles.input (the one with marginBottom: 14): backgroundColor
+  colors.navy3, borderWidth 1, borderColor colors.navy4. This fixes the Security,
+  Notifications/Watchlist and Household inputs that sat on the mint page with no edge.
+  Side effect: inputs inside Settings' own bottom sheets (Category, Payee, Rule) are now
+  white with a border on a white sheet (expected to look fine, not yet seen).
+
+Step B (given): colors.inkFaint -> colors.decor on decorative-only items:
+- Chevrons: CollapsibleRow.tsx (real code is isExpanded ? 'chevron-up' : 'chevron-down',
+  size 16), DashboardScreen.tsx (2: Watched Categories row, Due Next 14 Days sheet row),
+  SettingsHub.tsx, ProfileScreen.tsx (3: Password & Encryption Key, Active Devices, All
+  settings), AccountSwitcherScreen.tsx.
+- BillsScreen.tsx: CANCELLED badge BORDER only. The badge text stays inkFaint.
+- TravelScreen.tsx: trackToggleDot inactive background only.
+- SignInScreen.tsx (3) and CreateProfileScreen.tsx (4): the leading mail / person / lock
+  icons inside the inputs (non-tappable, pointerEvents none).
+
+📌 V.3 decisions
+- Empty CHECKBOX borders STAY on inkFaint (Bills Subscription, Reports, Savings, Travel).
+  A checkbox edge is how you see a tappable box exists, and decor is only about 2.5:1 on
+  white. Revisit only if Cath prefers the lighter look.
+- Interactive icons STAY on inkFaint: eye toggles in PasswordField and PinField,
+  DateField's close-circle, LoansScreen's close icon. DateField's calendar icon also stays
+  (its surrounding code was not shown, so it was not changed).
+- No other input sits directly on the mint page: all the screens' other styles.input are
+  inside white BottomSheets or navy3 modal cards. PasswordField adds no border or
+  background of its own, so it cannot double up with the Settings input border.
+- Part 2 search found no other borderColor / backgroundColor uses of inkFaint beyond
+  those listed.
+
+⚠️ V.3 notes
+- Antigravity's first report described CollapsibleRow's chevron wrongly and only returned
+  matching lines for the rest. The real code was fetched in a second pass before any
+  Step B edit was written.
+- Dark mode: decor is #8C857F; check chevrons still read on dark cards.
+- ok + '26' on dark backgrounds has not been checked.
+- Not verified: other uses of the hardcoded #22c55e, if any (the grep ran but its result
+  was not shown).
+
 ⚠️ V-series known issues / still to do
-- Inputs: FIXED in Settings and Profile (V.2, white with a border). Check that PasswordField
-  (Security page) does not add a second border. Other screens' styles.input still use
-  navy2 (fine inside white bottom sheets, only risky where the input sits directly on the
-  mint page).
+UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other input was found directly on the mint page.
 - Double back link on Settings sub-pages: FIXED in V.2. Check whether any Maestro/e2e test
   references the removed testID settings-back-button, and whether Ionicons is still used in
   SettingsScreen.tsx. Some Settings sub-pages were reported as looking cream/solid
@@ -1418,18 +1466,14 @@ accountChipTextActive) in makeStyles are now unused; harmless, can be deleted la
   which pages).
 - Tab bar labels: FIXED in V.2 (11px, darker inactive). Re-check with Android's large font
   setting turned on.
-- "Active" badge on the Security page uses bright green text on pale green; should use the
-  new ok color and a stronger fill.
-- Leaf watermarks are quite visible on Security and one cuts behind the form fields. Taste
+- "Active" badge on the Security page: FIXED in V.3 Step A (theme ok color, stronger fill). Awaiting device confirmation.
+- Leaf watermarks: opacity lowered to 0.05 in V.3 Step A (repositioning not done). Awaiting device confirmation.
   call: drop opacity from 0.07 to about 0.05 or reposition. Not changed yet.
 - Auth/pre-auth screens: FIXED in V.2b/V.2c (shared leaf background, transparent
   containers). Settings sub-pages like Help and About were previously reported as looking
   solid; the code shows they are transparent, and the cause was never found. Ask which
   pages if it is seen again.
-- Chevrons (CollapsibleRow, Dashboard rows, SettingsHub, ProfileScreen, AccountSwitcher) and
-  empty checkbox borders (BillsScreen 661, ReportsScreen 236, SavingsScreen 1289,
-  TravelScreen 659) and the TravelScreen inactive dot (733) still use inkFaint, so they are
-  now darker/heavier. Small separate step: move them to colors.decor.
+- Chevrons and the Travel inactive dot: moved to colors.decor in V.3 Step B (awaiting device confirmation). Empty-checkbox borders were deliberately kept on inkFaint (see V.3 decisions).
 - Dark mode white-on-pastel badges: FIXED in V.2 for swipe delete/view, bell badge, refund
   toggle and badges, and the four primary buttons. The search only looked a few lines
   around each backgroundColor, so more white-on-colored pairs may exist; run a broader
@@ -1450,6 +1494,12 @@ accountChipTextActive) in makeStyles are now unused; harmless, can be deleted la
   one shared Pill component.
 - Destructive actions: "Clear all data" is a full-width red button right under "Save a
   backup"; screen 11 has seven red "Sign out" buttons in a row.
+- Profile's three shortcut rows (Password & Encryption Key, Active Devices, All settings)
+  all call navigation.navigate('Settings') and open the Settings hub, not their own pages.
+  Fixing needs a route param plus a useEffect in SettingsScreen (it does not read params).
+- PremiumScreen's "SAVE 17%" pill uses okBg (#ECFDF5), about 1.05:1 on a white card, so it
+  is nearly invisible. LoansScreen's LENT/BORROWED badge text is 9px with a 12% tint.
+  Both are left for V.4 (shared Pill) and V.6 (fonts).
 
 ▶️ V-series planned order (each step = one Antigravity investigation, one paste, one tsc, one
 commit, one on-device check)
@@ -1460,9 +1510,7 @@ commit, one on-device check)
   each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
   and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
   behind). Also the SignIn recovery-modal near-black button.
-- V.3 (NEXT, remaining): the Active badge (ok color, stronger fill), leaf opacity (0.07 to about
-  0.05, or reposition), chevron and checkbox borders to colors.decor, inputs on any other
-  screens that sit directly on the mint page.
+- V.3: code given in two steps (A and B), see the V.3 section; waiting on tsc and device confirmation.
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
   screen; move hardcoded colors onto the theme.
 - V.5: account card tints and a visible name/balance strip when stacked.
@@ -1472,6 +1520,7 @@ commit, one on-device check)
 - Dark mode follow-ups from the V.1 findings (cardTeal and inkFaint values above).
 
 📁 V-series files (so far)
+- V.3 edited (pending confirmation): LeafBackground.tsx, SettingsScreen.tsx, CollapsibleRow.tsx, SettingsHub.tsx, DashboardScreen.tsx, ProfileScreen.tsx, AccountSwitcherScreen.tsx, BillsScreen.tsx, TravelScreen.tsx, SignInScreen.tsx, CreateProfileScreen.tsx
 - Edited: mobile-app/src/theme.ts, mobile-app/src/components/BottomSheet.tsx,
   mobile-app/src/screens/reports/PaymentMethodsReport.tsx,
   mobile-app/src/screens/PlanningScreen.tsx, mobile-app/src/screens/ReportsScreen.tsx
@@ -1484,14 +1533,13 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series (visual-system pass, see above). V.0, V.1, V.2, V.2b,
-  V.2c, V.2d and the sign-in flicker fix are done and device-tested. Next is V.3: the
-  "Active" badge on the Security page (ok color, stronger fill), leaf opacity (0.07 to
-  about 0.05, or reposition), chevrons and empty-checkbox borders moved to colors.decor,
-  and inputs on any other screen that sits directly on the mint page. After V.3 comes V.4
-  (shared Pill / Card / Button / Header), V.5 (account card tints), V.6 (tiny fonts,
-  Calendar balances only on active days, number formatting) and V.7 (quieter destructive
-  buttons). First confirm with `git status` that everything above is committed and pushed.
+- ACTIVE RIGHT NOW: the V series. V.3 Step A and Step B edits have been given. First run
+  `npx tsc --noEmit` from mobile-app, then check on the phone in light AND dark mode: Security
+  "Active" badge and inputs, fainter leaves, softer chevrons, Sign In / Create Profile icons,
+  Bills CANCELLED badge, and that checkboxes keep their darker border. Then commit and push.
+  After V.3 comes V.4 (shared Pill / Card / Button / Header), V.5 (account card tints),
+  V.6 (tiny fonts, Calendar balances only on active days, number formatting) and V.7
+  (quieter destructive buttons). Confirm with `git status` that everything is pushed.
 - Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.
