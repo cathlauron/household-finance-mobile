@@ -1406,8 +1406,9 @@ accountChipTextActive) in makeStyles are now unused; harmless, can be deleted la
 - Metro deprecation warning: SafeAreaView imported from 'react-native' (does nothing on
   Android) should eventually come from 'react-native-safe-area-context'.
 
-✅ V.3: Active badge, leaf opacity, bordered Settings inputs, decor chevrons — CODE GIVEN
-(Step A and Step B), NOT YET CONFIRMED applied, tsc-checked or device-tested. Worked as
+✅ V.3: Active badge, leaf opacity, bordered Settings inputs, decor chevrons — DONE
+(Step A and Step B), applied, tsc clean, device-tested in light and dark mode ("as
+described"). Worked as
 Antigravity investigates (two read-only passes), Claude reviews, Cath pastes by hand.
 
 Step A (given):
@@ -1510,7 +1511,7 @@ commit, one on-device check)
   each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
   and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
   behind). Also the SignIn recovery-modal near-black button.
-- V.3: code given in two steps (A and B), see the V.3 section; waiting on tsc and device confirmation.
+- V.3: DONE and device-tested (see the V.3 section).
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
   screen; move hardcoded colors onto the theme.
 - V.5: account card tints and a visible name/balance strip when stacked.
@@ -1533,13 +1534,13 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series. V.3 Step A and Step B edits have been given. First run
-  `npx tsc --noEmit` from mobile-app, then check on the phone in light AND dark mode: Security
-  "Active" badge and inputs, fainter leaves, softer chevrons, Sign In / Create Profile icons,
-  Bills CANCELLED badge, and that checkboxes keep their darker border. Then commit and push.
-  After V.3 comes V.4 (shared Pill / Card / Button / Header), V.5 (account card tints),
-  V.6 (tiny fonts, Calendar balances only on active days, number formatting) and V.7
-  (quieter destructive buttons). Confirm with `git status` that everything is pushed.
+- ACTIVE RIGHT NOW: the V series. V.0 through V.3 are done and device-tested. Next is V.4:
+  build shared Pill, Card, Button and Header components, then adopt them screen by screen
+  and move hardcoded colors onto the theme. Start with an Antigravity investigation of the
+  three existing pill styles (sub-tab pills, segmented controls, filter chips) so one Pill
+  can replace them. After V.4 come V.5 (account card tints), V.6 (tiny fonts, Calendar
+  balances only on active days, number formatting) and V.7 (quieter destructive buttons).
+  Confirm with `git status` that everything is pushed.
 - Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.
