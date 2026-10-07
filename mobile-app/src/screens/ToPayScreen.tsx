@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import Pill from '../components/Pill';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
@@ -77,19 +78,15 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.switcherRow}>
-        {TOPAY_TABS.map((tab) => {
-          const isActive = activeSubTab === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.switcherBtn, isActive && styles.switcherBtnActive]}
-              onPress={() => setActiveSubTab(tab.id)}
-            >
-              <Ionicons name={tab.icon} size={16} color={isActive ? colors.navy2 : colors.inkDim} style={{ marginRight: 6 }} />
-              <Text style={[styles.switcherBtnText, isActive && styles.switcherBtnTextActive]}>{tab.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        {TOPAY_TABS.map((tab) => (
+          <Pill
+            key={tab.id}
+            label={tab.label}
+            icon={tab.icon}
+            active={activeSubTab === tab.id}
+            onPress={() => setActiveSubTab(tab.id)}
+          />
+        ))}
       </View>
       <View style={styles.contentWrap}>
         {activeSubTab === 'bills' && (
@@ -127,17 +124,6 @@ function makeStyles(colors: any) {
       paddingTop: 10,
       paddingBottom: 4,
     },
-    switcherBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 999,
-      backgroundColor: colors.navy3,
-    },
-    switcherBtnActive: { backgroundColor: colors.gold },
-    switcherBtnText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    switcherBtnTextActive: { color: colors.navy2 },
     contentWrap: { flex: 1 },
   });
 }
