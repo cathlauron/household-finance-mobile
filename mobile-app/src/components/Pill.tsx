@@ -14,6 +14,8 @@ type Props = {
   tone?: 'page' | 'sheet';
   // true = share the row equally with sibling pills (segmented control).
   fill?: boolean;
+  // Optional minimum width so a wrapping row breaks onto a new line instead of squeezing.
+  minWidth?: number;
   testID?: string;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -27,6 +29,7 @@ export default function Pill({
   icon,
   tone = 'page',
   fill = false,
+  minWidth,
   testID,
   accessibilityLabel,
   style,
@@ -45,6 +48,7 @@ export default function Pill({
         styles.base,
         { backgroundColor: active ? colors.gold : inactiveBg },
         fill && styles.fill,
+        minWidth !== undefined && { minWidth },
         style,
       ]}
     >

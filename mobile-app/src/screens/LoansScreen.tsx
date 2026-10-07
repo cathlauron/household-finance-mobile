@@ -25,6 +25,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -594,26 +595,20 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
 
                 <Text style={styles.inputLabel}>Direction</Text>
                 <View style={styles.pillRow}>
-                  <TouchableOpacity
-                    style={[styles.pillButton, directionInput === 'borrowed' && styles.pillButtonActive]}
+                  <Pill
+                    label="Borrowed"
+                    tone="sheet"
+                    fill
+                    active={directionInput === 'borrowed'}
                     onPress={() => setDirectionInput('borrowed')}
-                  >
-                    <Text
-                      style={[styles.pillButtonText, directionInput === 'borrowed' && styles.pillButtonTextActive]}
-                    >
-                      Borrowed
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.pillButton, directionInput === 'lent' && styles.pillButtonActive]}
+                  />
+                  <Pill
+                    label="Lent"
+                    tone="sheet"
+                    fill
+                    active={directionInput === 'lent'}
                     onPress={() => setDirectionInput('lent')}
-                  >
-                    <Text
-                      style={[styles.pillButtonText, directionInput === 'lent' && styles.pillButtonTextActive]}
-                    >
-                      Lent
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 </View>
 
                 <Text style={styles.inputLabel}>Total loan amount</Text>
@@ -639,15 +634,15 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                 <Text style={styles.inputLabel}>Repeats</Text>
                 <View style={styles.pillRow}>
                   {RECUR_TYPES.map((rt) => (
-                    <TouchableOpacity
+                    <Pill
                       key={rt}
-                      style={[styles.pillButton, recurTypeInput === rt && styles.pillButtonActive]}
+                      label={recurringTypeLabel(rt)}
+                      tone="sheet"
+                      fill
+                      minWidth={80}
+                      active={recurTypeInput === rt}
                       onPress={() => setRecurTypeInput(rt)}
-                    >
-                      <Text style={[styles.pillButtonText, recurTypeInput === rt && styles.pillButtonTextActive]}>
-                        {recurringTypeLabel(rt)}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -708,20 +703,15 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                     <Text style={styles.inputLabel}>Frequency</Text>
                     <View style={styles.pillRow}>
                       {['daily', 'weekly', 'biweekly', 'monthly', 'yearly'].map((freq) => (
-                        <TouchableOpacity
+                        <Pill
                           key={freq}
-                          style={[styles.pillButton, customFreqInput === freq && styles.pillButtonActive]}
+                          label={freq.charAt(0).toUpperCase() + freq.slice(1)}
+                          tone="sheet"
+                          fill
+                          minWidth={80}
+                          active={customFreqInput === freq}
                           onPress={() => setCustomFreqInput(freq)}
-                        >
-                          <Text
-                            style={[
-                              styles.pillButtonText,
-                              customFreqInput === freq && styles.pillButtonTextActive,
-                            ]}
-                          >
-                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                          </Text>
-                        </TouchableOpacity>
+                        />
                       ))}
                     </View>
 
@@ -971,17 +961,7 @@ function makeStyles(colors: any) {
     paymentAddButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.gold },
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    pillButton: {
-      flex: 1,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
+    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,

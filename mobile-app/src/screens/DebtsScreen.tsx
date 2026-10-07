@@ -23,6 +23,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -497,15 +498,15 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
                 <Text style={styles.inputLabel}>Repeats</Text>
                 <View style={styles.pillRow}>
                   {RECUR_TYPES.map((rt) => (
-                    <TouchableOpacity
+                    <Pill
                       key={rt}
-                      style={[styles.pillButton, recurTypeInput === rt && styles.pillButtonActive]}
+                      label={recurringTypeLabel(rt)}
+                      tone="sheet"
+                      fill
+                      minWidth={80}
+                      active={recurTypeInput === rt}
                       onPress={() => setRecurTypeInput(rt)}
-                    >
-                      <Text style={[styles.pillButtonText, recurTypeInput === rt && styles.pillButtonTextActive]}>
-                        {recurringTypeLabel(rt)}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -715,17 +716,6 @@ function makeStyles(colors: any) {
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    pillButton: {
-      flex: 1,
-      minWidth: 80,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
