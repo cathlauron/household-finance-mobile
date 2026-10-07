@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import Pill from '../components/Pill';
 import GroceriesScreen from './GroceriesScreen';
 import TravelScreen from './TravelScreen';
 import EventsScreen from './EventsScreen';
@@ -34,19 +35,15 @@ export default function PlanningScreen() {
         style={styles.pillScroll}
         contentContainerStyle={styles.pillRow}
       >
-        {tabs.map((t) => {
-          const isActive = activeTab === t.id;
-          return (
-            <TouchableOpacity
-              key={t.id}
-              style={[styles.pillButton, isActive && styles.pillButtonActive]}
-              onPress={() => setActiveTab(t.id)}
-            >
-              <Ionicons name={t.icon} size={16} color={isActive ? colors.navy2 : colors.inkDim} style={{ marginRight: 6 }} />
-              <Text style={[styles.pillButtonText, isActive && styles.pillButtonTextActive]}>{t.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        {tabs.map((t) => (
+          <Pill
+            key={t.id}
+            label={t.label}
+            icon={t.icon}
+            active={activeTab === t.id}
+            onPress={() => setActiveTab(t.id)}
+          />
+        ))}
       </ScrollView>
       <View style={styles.content}>
         {activeTab === 'groceries' && <GroceriesScreen />}
@@ -73,17 +70,6 @@ function makeStyles(colors: any) {
       paddingTop: 12,
       paddingBottom: 4,
     },
-    pillButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 9,
-      paddingHorizontal: 16,
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     content: { flex: 1 },
   });
 }
