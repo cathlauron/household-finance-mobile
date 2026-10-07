@@ -32,6 +32,7 @@ import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -567,19 +568,11 @@ export default function TravelScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveTrip(); }}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
+                <Button label="Save" onPress={handleSaveTrip} />
 
-                {editingId && (
-                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteTrip}>
-                    <Text style={styles.deleteButtonText}>Delete trip</Text>
-                  </TouchableOpacity>
-                )}
+                {editingId && <Button label="Delete trip" variant="destructive" onPress={handleDeleteTrip} />}
 
-                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
+                <Button label="Cancel" variant="quiet" onPress={closeModal} />
               </ScrollView>
             </Pressable>
           </KeyboardAvoidingView>
@@ -683,18 +676,6 @@ function makeStyles(colors: any) {
       marginBottom: 16,
     },
     addItemButtonText: { fontSize: 12.5, fontWeight: '600', color: colors.gold },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: radii.pill,
-      paddingVertical: spacing[12],
-      alignItems: 'center',
-      marginBottom: spacing[10],
-    },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
-    deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
-    cancelButton: { alignItems: 'center', paddingVertical: 8 },
-    cancelButtonText: { fontSize: 13, color: colors.inkDim },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     modalOverlay: {
       flex: 1,

@@ -60,6 +60,7 @@ import { makeId } from '../utils';
 import * as Clipboard from 'expo-clipboard';
 import { DOW_LABELS } from '../income';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -1820,19 +1821,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSave(); }}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
+        <Button label="Save" onPress={handleSave} />
 
-        {editingId && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteCategory}>
-            <Text style={styles.deleteButtonText}>Delete this category</Text>
-          </TouchableOpacity>
-        )}
+        {editingId && <Button label="Delete this category" variant="destructive" onPress={handleDeleteCategory} />}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+        <Button label="Cancel" variant="quiet" onPress={closeModal} />
       </BottomSheet>
 
       <BottomSheet
@@ -1860,19 +1853,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSavePayee(); }}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
+        <Button label="Save" onPress={handleSavePayee} />
 
-        {editingPayeeId && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePayee}>
-            <Text style={styles.deleteButtonText}>Delete this payee</Text>
-          </TouchableOpacity>
-        )}
+        {editingPayeeId && <Button label="Delete this payee" variant="destructive" onPress={handleDeletePayee} />}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={closePayeeModal}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+        <Button label="Cancel" variant="quiet" onPress={closePayeeModal} />
       </BottomSheet>
 
       <BottomSheet
@@ -1921,19 +1906,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
 
-        <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveRule(); }}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
+        <Button label="Save" onPress={handleSaveRule} />
 
-        {editingRuleId && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteRule}>
-            <Text style={styles.deleteButtonText}>Delete this rule</Text>
-          </TouchableOpacity>
-        )}
+        {editingRuleId && <Button label="Delete this rule" variant="destructive" onPress={handleDeleteRule} />}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={closeRuleModal}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+        <Button label="Cancel" variant="quiet" onPress={closeRuleModal} />
       </BottomSheet>
 
       {/* Fingerprint password Modal */}

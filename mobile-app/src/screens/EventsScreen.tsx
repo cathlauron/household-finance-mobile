@@ -27,6 +27,7 @@ import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
@@ -566,19 +567,11 @@ export default function EventsScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveEvent(); }}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
+                <Button label="Save" onPress={handleSaveEvent} />
 
-                {editingId && (
-                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteEvent}>
-                    <Text style={styles.deleteButtonText}>Delete event</Text>
-                  </TouchableOpacity>
-                )}
+                {editingId && <Button label="Delete event" variant="destructive" onPress={handleDeleteEvent} />}
 
-                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
+                <Button label="Cancel" variant="quiet" onPress={closeModal} />
               </ScrollView>
             </Pressable>
           </KeyboardAvoidingView>
@@ -658,18 +651,6 @@ function makeStyles(colors: any) {
     completedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
     completedToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     completedToggleTextActive: { color: '#10b981' },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: radii.pill,
-      paddingVertical: spacing[12],
-      alignItems: 'center',
-      marginBottom: spacing[10],
-    },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
-    deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
-    cancelButton: { alignItems: 'center', paddingVertical: 8 },
-    cancelButtonText: { fontSize: 13, color: colors.inkDim },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     modalOverlay: {
       flex: 1,

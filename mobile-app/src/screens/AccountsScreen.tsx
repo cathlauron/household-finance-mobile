@@ -26,6 +26,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -398,27 +399,11 @@ export default function AccountsScreen() {
 
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                        <TouchableOpacity
-                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={() => { hapticLight(); handleSave(); }}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color={colors.gold} size="small" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  )}
-                </TouchableOpacity>
+        <Button label="Save" onPress={handleSave} loading={saving} />
 
-        {editingId && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Remove account</Text>
-          </TouchableOpacity>
-        )}
+        {editingId && <Button label="Remove account" variant="destructive" onPress={handleDelete} />}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+        <Button label="Cancel" variant="quiet" onPress={closeModal} />
       </BottomSheet>
     </SafeAreaView>
   );
@@ -576,36 +561,6 @@ function makeStyles(colors: any) {
       fontSize: 12,
       color: '#e5484d',
       marginBottom: 10,
-    },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: radii.pill,
-      paddingVertical: spacing[12],
-      alignItems: 'center',
-      marginBottom: spacing[10],
-    },
-    saveButtonText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.navy2,
-    },
-    deleteButton: {
-      alignItems: 'center',
-      paddingVertical: 10,
-      marginBottom: 4,
-    },
-    deleteButtonText: {
-      fontSize: 13,
-      color: '#e5484d',
-      fontWeight: '600',
-    },
-    cancelButton: {
-      alignItems: 'center',
-      paddingVertical: 8,
-    },
-    cancelButtonText: {
-      fontSize: 13,
-      color: colors.inkDim,
     },
   });
 }

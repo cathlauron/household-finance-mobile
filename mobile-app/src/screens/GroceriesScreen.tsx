@@ -25,6 +25,7 @@ import Pill from '../components/Pill';
 import { makeId } from '../utils';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 function plannedTotal(items: GroceryItem[]): number {
   return items.reduce((sum, g) => sum + (typeof g.plannedAmount === 'number' ? g.plannedAmount : 0), 0);
@@ -452,19 +453,11 @@ export default function GroceriesScreen() {
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveItem(); }}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
+                <Button label="Save" onPress={handleSaveItem} />
 
-                {editingId && (
-                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteItem}>
-                    <Text style={styles.deleteButtonText}>Delete item</Text>
-                  </TouchableOpacity>
-                )}
+                {editingId && <Button label="Delete item" variant="destructive" onPress={handleDeleteItem} />}
 
-                <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
+                <Button label="Cancel" variant="quiet" onPress={closeModal} />
               </ScrollView>
             </Pressable>
           </KeyboardAvoidingView>

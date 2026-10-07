@@ -26,6 +26,7 @@ import Pill from '../components/Pill';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 function todayISO(): string {
   const d = new Date();
@@ -1037,19 +1038,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity style={styles.saveButton} onPress={() => { hapticLight(); handleSaveGoal(); }}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
+                <Button label="Save" onPress={handleSaveGoal} />
 
-                {editingId && (
-                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteGoal}>
-                    <Text style={styles.deleteButtonText}>Delete goal</Text>
-                  </TouchableOpacity>
-                )}
+                {editingId && <Button label="Delete goal" variant="destructive" onPress={handleDeleteGoal} />}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+                <Button label="Cancel" variant="quiet" onPress={closeModal} />
       </BottomSheet>
 
       <BottomSheet

@@ -32,6 +32,7 @@ import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
+import Button from '../components/Button';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -655,27 +656,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
                 {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <TouchableOpacity
-                  style={[styles.saveButton, saving && { opacity: 0.6 }]}
-                  onPress={() => { hapticLight(); handleSave(); }}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color={colors.gold} size="small" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  )}
-                </TouchableOpacity>
+                <Button label="Save" onPress={handleSave} loading={saving} />
 
-                {editingId && (
-                  <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                    <Text style={styles.deleteButtonText}>Delete income source</Text>
-                  </TouchableOpacity>
-                )}
+                {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+                <Button label="Cancel" variant="quiet" onPress={closeModal} />
       </BottomSheet>
     </SafeAreaView>
   );
@@ -734,18 +719,6 @@ function makeStyles(colors: any) {
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
     hintText: { fontSize: 12, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: radii.pill,
-      paddingVertical: spacing[12],
-      alignItems: 'center',
-      marginBottom: spacing[10],
-    },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
-    deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
-    cancelButton: { alignItems: 'center', paddingVertical: 8 },
-    cancelButtonText: { fontSize: 13, color: colors.inkDim },
     paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
     paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
     paymentLogAmountInput: { flex: 1, marginBottom: 0 },
