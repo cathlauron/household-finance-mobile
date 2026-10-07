@@ -22,6 +22,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
@@ -588,28 +589,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pillRow}>
-        <TouchableOpacity
-          style={[styles.pillButton, activeTab === 'goals' && styles.pillButtonActive]}
-          onPress={() => setActiveTab('goals')}
-        >
-          <Text style={[styles.pillButtonText, activeTab === 'goals' && styles.pillButtonTextActive]}>Goals</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.pillButton, activeTab === 'ef' && styles.pillButtonActive]}
-          onPress={() => setActiveTab('ef')}
-        >
-          <Text style={[styles.pillButtonText, activeTab === 'ef' && styles.pillButtonTextActive]}>
-            Emergency Fund
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.pillButton, activeTab === 'fi' && styles.pillButtonActive]}
-          onPress={() => setActiveTab('fi')}
-        >
-          <Text style={[styles.pillButtonText, activeTab === 'fi' && styles.pillButtonTextActive]}>
-            FI Calculator
-          </Text>
-        </TouchableOpacity>
+        <Pill label="Goals" fill compact active={activeTab === 'goals'} onPress={() => setActiveTab('goals')} />
+        <Pill label="Emergency Fund" fill compact active={activeTab === 'ef'} onPress={() => setActiveTab('ef')} />
+        <Pill label="FI Calculator" fill compact active={activeTab === 'fi'} onPress={() => setActiveTab('fi')} />
       </View>
 
       {activeTab === 'goals' && (
@@ -872,44 +854,26 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           <Text style={styles.inputLabel}>Safe withdrawal rate</Text>
           <View style={styles.swrPillRow}>
             {FI_SWR_PRESETS.map((preset) => (
-              <TouchableOpacity
+              <Pill
                 key={preset}
-                style={[
-                  styles.swrPillButton,
-                  fiSwrDisplay === preset && !fiSwrCustomOpen ? styles.swrPillButtonActive : null,
-                ]}
+                label={preset + '%'}
+                fill
+                compact
+                active={fiSwrDisplay === preset && !fiSwrCustomOpen}
                 onPress={() => {
-        setFiSwrCustomOpen(false);
-        setFiSwrInput(preset);
-        handleSaveFi({ swr: preset });
-      }}
-              >
-                <Text
-                  style={[
-                    styles.swrPillButtonText,
-                    fiSwrDisplay === preset && !fiSwrCustomOpen ? styles.swrPillButtonTextActive : null,
-                  ]}
-                >
-                  {preset}%
-                </Text>
-              </TouchableOpacity>
+                  setFiSwrCustomOpen(false);
+                  setFiSwrInput(preset);
+                  handleSaveFi({ swr: preset });
+                }}
+              />
             ))}
-            <TouchableOpacity
-              style={[
-                styles.swrPillButton,
-                fiSwrCustomOpen || !fiSwrIsPreset ? styles.swrPillButtonActive : null,
-              ]}
+            <Pill
+              label="Custom"
+              fill
+              compact
+              active={fiSwrCustomOpen || !fiSwrIsPreset}
               onPress={() => setFiSwrCustomOpen(true)}
-            >
-              <Text
-                style={[
-                  styles.swrPillButtonText,
-                  fiSwrCustomOpen || !fiSwrIsPreset ? styles.swrPillButtonTextActive : null,
-                ]}
-              >
-                Custom
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
           {(fiSwrCustomOpen || !fiSwrIsPreset) && (
             <TextInput
@@ -1153,16 +1117,6 @@ function makeStyles(colors: any) {
       paddingBottom: 4,
       backgroundColor: colors.navy2,
     },
-    pillButton: {
-      flex: 1,
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 9,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 11.5, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     balanceBanner: {
       backgroundColor: colors.navy3,
       borderRadius: 12,
@@ -1234,16 +1188,6 @@ function makeStyles(colors: any) {
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
 swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
-swrPillButton: {
-  flex: 1,
-  backgroundColor: colors.navy3,
-  borderRadius: 999,
-  paddingVertical: 8,
-  alignItems: 'center',
-},
-swrPillButtonActive: { backgroundColor: colors.gold },
-swrPillButtonText: { fontSize: 11, fontWeight: '600', color: colors.inkDim },
-swrPillButtonTextActive: { color: colors.navy2 },
 resultSecondaryLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
 resultSecondary: { fontSize: 15, fontWeight: '700', color: colors.ink },
 toggleLink: { alignSelf: 'center', marginTop: 8 },

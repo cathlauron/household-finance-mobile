@@ -21,6 +21,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
+import Pill from '../components/Pill';
 import { makeId } from '../utils';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
@@ -277,22 +278,8 @@ export default function GroceriesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.pillRow}>
-        <TouchableOpacity
-          style={[styles.pillButton, activeTab === 'list' && styles.pillButtonActive]}
-          onPress={() => setActiveTab('list')}
-        >
-          <Text style={[styles.pillButtonText, activeTab === 'list' && styles.pillButtonTextActive]}>
-            Grocery List
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.pillButton, activeTab === 'calculator' && styles.pillButtonActive]}
-          onPress={() => setActiveTab('calculator')}
-        >
-          <Text style={[styles.pillButtonText, activeTab === 'calculator' && styles.pillButtonTextActive]}>
-            Calculator
-          </Text>
-        </TouchableOpacity>
+        <Pill label="Grocery List" fill active={activeTab === 'list'} onPress={() => setActiveTab('list')} />
+        <Pill label="Calculator" fill active={activeTab === 'calculator'} onPress={() => setActiveTab('calculator')} />
       </View>
 
       {activeTab === 'list' && (
@@ -503,16 +490,6 @@ function makeStyles(colors: any) {
       paddingBottom: 4,
       backgroundColor: colors.navy2,
     },
-    pillButton: {
-      flex: 1,
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 9,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 11.5, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     balanceBanner: {
       backgroundColor: colors.navy3,
       borderRadius: 12,

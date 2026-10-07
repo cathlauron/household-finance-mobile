@@ -55,6 +55,7 @@ import {
   type DeviceSession,
 } from '../sessions';
 import PasswordField from '../components/PasswordField';
+import Pill from '../components/Pill';
 import { makeId } from '../utils';
 import * as Clipboard from 'expo-clipboard';
 import { DOW_LABELS } from '../income';
@@ -1141,20 +1142,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   Light, Dark, or match your phone's own setting.
 </Text>
         <View style={styles.modeRow}>
-          {MODE_OPTIONS.map((opt) => {
-            const active = mode === opt.id;
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                style={[styles.modeButton, active && styles.modeButtonActive]}
-                onPress={() => setMode(opt.id)}
-              >
-                <Text style={[styles.modeButtonText, active && styles.modeButtonTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {MODE_OPTIONS.map((opt) => (
+            <Pill
+              key={opt.id}
+              label={opt.label}
+              fill
+              active={mode === opt.id}
+              onPress={() => setMode(opt.id)}
+            />
+          ))}
         </View>
 
         </>
@@ -1166,22 +1162,18 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   Swipe left to delete, or tap the row open and delete from inside.
 </Text>
         <View style={styles.modeRow}>
-          <TouchableOpacity
-            style={[styles.modeButton, model.settings.swipeToDeleteEnabled && styles.modeButtonActive]}
+          <Pill
+            label="Swipe to delete"
+            fill
+            active={!!model.settings.swipeToDeleteEnabled}
             onPress={() => handleSetSwipeToDelete(true)}
-          >
-            <Text style={[styles.modeButtonText, model.settings.swipeToDeleteEnabled && styles.modeButtonTextActive]}>
-              Swipe to delete
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeButton, !model.settings.swipeToDeleteEnabled && styles.modeButtonActive]}
+          />
+          <Pill
+            label="Tap to open"
+            fill
+            active={!model.settings.swipeToDeleteEnabled}
             onPress={() => handleSetSwipeToDelete(false)}
-          >
-            <Text style={[styles.modeButtonText, !model.settings.swipeToDeleteEnabled && styles.modeButtonTextActive]}>
-              Tap to open
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
         <RowInteractionPreview mode={model.settings.swipeToDeleteEnabled ? 'swipe' : 'tap'} />
 
@@ -1267,24 +1259,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <>
             <View style={styles.pillRow}>
               {DOW_LABELS.map((label, idx) => (
-                <TouchableOpacity
+                <Pill
                   key={label}
-                  style={[
-                    styles.pillButtonSmall,
-                    (model.settings.weeklyRecapDay ?? 0) === idx && styles.pillButtonActive,
-                  ]}
+                  label={label}
+                  compact
+                  minWidth={42}
+                  active={(model.settings.weeklyRecapDay ?? 0) === idx}
                   onPress={() => setWeeklyRecapDay(idx)}
-                >
-                  <Text
-                    style={
-                      (model.settings.weeklyRecapDay ?? 0) === idx
-                        ? styles.pillButtonTextActive
-                        : styles.pillButtonText
-                    }
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
             <View style={styles.row}>
@@ -1669,20 +1651,16 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   How long before the app locks itself when untouched (needs a PIN or password set up).
 </Text>
         <View style={styles.modeRow}>
-          {AUTO_LOCK_OPTIONS.map((opt) => {
-            const active = autoLockMinutes === opt.minutes;
-            return (
-              <TouchableOpacity
-                key={opt.minutes}
-                style={[styles.modeButton, active && styles.modeButtonActive]}
-                onPress={() => handleChangeAutoLock(opt.minutes)}
-              >
-                <Text style={[styles.modeButtonText, active && styles.modeButtonTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {AUTO_LOCK_OPTIONS.map((opt) => (
+            <Pill
+              key={opt.minutes}
+              label={opt.label}
+              fill
+              compact
+              active={autoLockMinutes === opt.minutes}
+              onPress={() => handleChangeAutoLock(opt.minutes)}
+            />
+          ))}
         </View>
 
         </>
@@ -2194,28 +2172,7 @@ function makeStyles(colors: any) {
     sectionSub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 17 },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
     modeRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
-    modeButton: {
-      flex: 1,
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-    },
-    modeButtonActive: { backgroundColor: colors.gold },
-    modeButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    modeButtonTextActive: { color: colors.navy2 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    pillButtonSmall: {
-      minWidth: 42,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     row: {
       backgroundColor: colors.navy3,
       borderRadius: 10,

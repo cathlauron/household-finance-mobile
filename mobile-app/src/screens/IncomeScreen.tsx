@@ -29,6 +29,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -527,20 +528,15 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                 <Text style={styles.inputLabel}>Frequency</Text>
                 <View style={styles.pillRow}>
                   {FREQUENCIES.map((f) => (
-                    <TouchableOpacity
+                    <Pill
                       key={f}
-                      style={[styles.pillButton, frequencyInput === f && styles.pillButtonActive]}
+                      label={frequencyLabel(f)}
+                      tone="sheet"
+                      fill
+                      minWidth={80}
+                      active={frequencyInput === f}
                       onPress={() => setFrequencyInput(f)}
-                    >
-                      <Text
-                        style={[
-                          styles.pillButtonText,
-                          frequencyInput === f && styles.pillButtonTextActive,
-                        ]}
-                      >
-                        {frequencyLabel(f)}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -590,20 +586,15 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                     <Text style={styles.inputLabel}>Pay day</Text>
                     <View style={styles.pillRow}>
                       {DOW_LABELS.map((label, idx) => (
-                        <TouchableOpacity
+                        <Pill
                           key={label}
-                          style={[styles.pillButtonSmall, weeklyDowInput === idx && styles.pillButtonActive]}
+                          label={label}
+                          tone="sheet"
+                          compact
+                          minWidth={42}
+                          active={weeklyDowInput === idx}
                           onPress={() => setWeeklyDowInput(idx)}
-                        >
-                          <Text
-                            style={[
-                              styles.pillButtonText,
-                              weeklyDowInput === idx && styles.pillButtonTextActive,
-                            ]}
-                          >
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
+                        />
                       ))}
                     </View>
                   </>
@@ -741,25 +732,6 @@ function makeStyles(colors: any) {
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    pillButton: {
-      flex: 1,
-      minWidth: 80,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-    },
-    pillButtonSmall: {
-      minWidth: 42,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     hintText: { fontSize: 12, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {

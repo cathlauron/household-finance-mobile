@@ -16,6 +16,8 @@ type Props = {
   fill?: boolean;
   // Optional minimum width so a wrapping row breaks onto a new line instead of squeezing.
   minWidth?: number;
+  // true = less side padding, for rows with long labels or many options.
+  compact?: boolean;
   testID?: string;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -30,6 +32,7 @@ export default function Pill({
   tone = 'page',
   fill = false,
   minWidth,
+  compact = false,
   testID,
   accessibilityLabel,
   style,
@@ -48,6 +51,7 @@ export default function Pill({
         styles.base,
         { backgroundColor: active ? colors.gold : inactiveBg },
         fill && styles.fill,
+        compact && styles.compact,
         minWidth !== undefined && { minWidth },
         style,
       ]}
@@ -55,7 +59,12 @@ export default function Pill({
       {icon ? (
         <Ionicons name={icon} size={16} color={textColor} style={styles.icon} />
       ) : null}
-      <Text numberOfLines={1} style={[styles.text, { color: textColor }]}>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={[styles.text, { color: textColor }]}
+      >
         {label}
       </Text>
     </TouchableOpacity>
@@ -72,6 +81,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   fill: { flex: 1 },
+  compact: { paddingHorizontal: spacing[8] },
   icon: { marginRight: spacing[6] },
   text: { fontSize: 13, fontWeight: '600' },
 });

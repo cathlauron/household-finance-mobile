@@ -39,6 +39,7 @@ import { makeId } from '../utils';
 import { CollapsibleRow } from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -569,22 +570,20 @@ export default function TransactionsScreen() {
         )}
 
         <View style={styles.pillRow}>
-          <TouchableOpacity
-            style={[styles.pillButton, sortOrder === 'newest' && styles.pillButtonActive]}
+          <Pill
+            label="Newest first"
+            fill
+            minWidth={80}
+            active={sortOrder === 'newest'}
             onPress={() => setSortOrder('newest')}
-          >
-            <Text style={[styles.pillButtonText, sortOrder === 'newest' && styles.pillButtonTextActive]}>
-              Newest first
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.pillButton, sortOrder === 'oldest' && styles.pillButtonActive]}
+          />
+          <Pill
+            label="Oldest first"
+            fill
+            minWidth={80}
+            active={sortOrder === 'oldest'}
             onPress={() => setSortOrder('oldest')}
-          >
-            <Text style={[styles.pillButtonText, sortOrder === 'oldest' && styles.pillButtonTextActive]}>
-              Oldest first
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {transactions.length === 0 && (
@@ -781,15 +780,15 @@ export default function TransactionsScreen() {
                 <Text style={styles.inputLabel}>Type</Text>
                 <View style={styles.pillRow}>
                   {DIRECTIONS.map((d) => (
-                    <TouchableOpacity
+                    <Pill
                       key={d}
-                      style={[styles.pillButton, directionInput === d && styles.pillButtonActive]}
+                      label={DIRECTION_LABELS[d]}
+                      tone="sheet"
+                      fill
+                      minWidth={80}
+                      active={directionInput === d}
                       onPress={() => setDirectionInput(d)}
-                    >
-                      <Text style={[styles.pillButtonText, directionInput === d && styles.pillButtonTextActive]}>
-                        {DIRECTION_LABELS[d]}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -977,17 +976,6 @@ function makeStyles(colors: any) {
     netLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim },
     netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
-    pillButton: {
-      flex: 1,
-      minWidth: 80,
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 9,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6, marginBottom: 12 },
     txnCollapsedRow: {
       flexDirection: 'row',

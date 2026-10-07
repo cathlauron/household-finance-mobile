@@ -10,7 +10,8 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import Pill from '../../components/Pill';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { computeRunningBalances, formatPeso } from '../../balanceProjection';
@@ -93,13 +94,13 @@ export default function CashFlowForecastReport() {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.pillRow}>
         {DAY_OPTIONS.map((opt) => (
-          <TouchableOpacity
+          <Pill
             key={opt}
-            style={[styles.pill, days === opt && styles.pillActive]}
+            label={`${opt} days`}
+            fill
+            active={days === opt}
             onPress={() => setDays(opt)}
-          >
-            <Text style={[styles.pillText, days === opt && styles.pillTextActive]}>{opt} days</Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
@@ -163,10 +164,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    pill: { flex: 1, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.navy3, alignItems: 'center' },
-    pillActive: { backgroundColor: colors.gold },
-    pillText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    pillTextActive: { color: colors.navy1 },
     statGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
     statCard: { flex: 1, backgroundColor: colors.navy3, borderRadius: 10, padding: 14 },
     statCardLabel: {
