@@ -24,6 +24,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -451,46 +452,33 @@ export default function EventsScreen() {
                 <Text style={styles.inputLabel}>Type</Text>
                 <View style={styles.pillRow}>
                   {EVENT_TYPES.map((t) => (
-                    <TouchableOpacity
+                    <Pill
                       key={t.id}
-                      style={[styles.smallPill, typeInput === t.id && styles.smallPillActive]}
+                      label={t.label}
+                      tone="sheet"
+                      fill
+                      active={typeInput === t.id}
                       onPress={() => setTypeInput(t.id)}
-                    >
-                      <Text style={[styles.smallPillText, typeInput === t.id && styles.smallPillTextActive]}>
-                        {t.label}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
                 <Text style={styles.inputLabel}>Recurs</Text>
                 <View style={styles.pillRow}>
-                  <TouchableOpacity
-                    style={[styles.smallPill, recurrenceInput === 'annual' && styles.smallPillActive]}
+                  <Pill
+                    label="Annual"
+                    tone="sheet"
+                    fill
+                    active={recurrenceInput === 'annual'}
                     onPress={() => setRecurrenceInput('annual')}
-                  >
-                    <Text
-                      style={[
-                        styles.smallPillText,
-                        recurrenceInput === 'annual' && styles.smallPillTextActive,
-                      ]}
-                    >
-                      Annual
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.smallPill, recurrenceInput === 'onetime' && styles.smallPillActive]}
+                  />
+                  <Pill
+                    label="One-time"
+                    tone="sheet"
+                    fill
+                    active={recurrenceInput === 'onetime'}
                     onPress={() => setRecurrenceInput('onetime')}
-                  >
-                    <Text
-                      style={[
-                        styles.smallPillText,
-                        recurrenceInput === 'onetime' && styles.smallPillTextActive,
-                      ]}
-                    >
-                      One-time
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 </View>
 
                 {recurrenceInput === 'annual' ? (
@@ -646,16 +634,6 @@ function makeStyles(colors: any) {
     rowTwoCol: { flexDirection: 'row', gap: 10 },
     rowTwoColItem: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    smallPill: {
-      flex: 1,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 9,
-      alignItems: 'center',
-    },
-    smallPillActive: { backgroundColor: colors.gold },
-    smallPillText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    smallPillTextActive: { color: colors.navy2 },
     trackSavingsToggle: {
       flexDirection: 'row',
       backgroundColor: colors.navy2,
