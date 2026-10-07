@@ -27,6 +27,7 @@ import BottomSheet from '../components/BottomSheet';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import Card from '../components/Card';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -231,7 +232,7 @@ export default function AccountsScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled" refreshing={refreshing} onRefresh={onRefresh}
       >
-        <View style={styles.balanceBanner}>
+        <Card variant="banner" row style={{ marginBottom: 18 }}>
           <View>
             <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
@@ -258,7 +259,7 @@ export default function AccountsScreen() {
     />
   </View>
           </View>
-        </View>
+        </Card>
 
         {GROUPS.map((group) => {
           const accounts = model.balanceAccounts[group];
@@ -423,16 +424,6 @@ function makeStyles(colors: any) {
       paddingHorizontal: 12,
       paddingTop: 16,
       paddingBottom: 40,
-    },
-    balanceBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 18,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
     },
     viewToggleWrap: {
       flexDirection: 'row',

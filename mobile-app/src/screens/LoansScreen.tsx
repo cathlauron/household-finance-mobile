@@ -29,6 +29,7 @@ import Pill from '../components/Pill';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import Card from '../components/Card';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {
@@ -466,7 +467,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={[styles.balanceBanner, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+        <Card variant="banner" row style={{ marginBottom: 12 }}>
           <View>
             <Text style={styles.balanceBannerLabel}>OWED (BORROWED)</Text>
             <Text style={[styles.balanceBannerAmount, { color: colors.orange }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
@@ -477,7 +478,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
               {formatPeso(Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0)))}
             </Text>
           </View>
-        </View>
+        </Card>
 
         {simLoans.length > 0 && (
           <TouchableOpacity style={styles.simulatorButton} onPress={() => setSimulatorOpen(true)}>
@@ -835,13 +836,6 @@ function makeStyles(colors: any) {
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 12,
-    },
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     simulatorButton: {

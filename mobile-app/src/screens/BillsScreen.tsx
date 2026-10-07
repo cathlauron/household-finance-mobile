@@ -28,6 +28,7 @@ import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import Card from '../components/Card';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
@@ -368,10 +369,10 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={styles.balanceBanner}>
+        <Card variant="banner" style={{ marginBottom: 18 }}>
           <Text style={styles.balanceBannerLabel}>TOTAL BILLS</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalDue)}</Text>
-        </View>
+        </Card>
 
         {bills.length === 0 && (
           <Text style={styles.emptyText}>No bills yet.</Text>
@@ -707,13 +708,6 @@ function makeStyles(colors: any) {
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 18,
-    },
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },

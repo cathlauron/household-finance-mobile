@@ -27,6 +27,7 @@ import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import Card from '../components/Card';
 
 function todayISO(): string {
   const d = new Date();
@@ -597,10 +598,10 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
       {activeTab === 'goals' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
-          <View style={styles.balanceBanner}>
+          <Card variant="banner" style={{ marginBottom: 12 }}>
             <Text style={styles.balanceBannerLabel}>TOTAL SAVED</Text>
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalSaved)}</Text>
-          </View>
+          </Card>
 
           {goals.length === 0 && (
             <Text style={styles.emptyText}>No savings goals yet.</Text>
@@ -1109,13 +1110,6 @@ function makeStyles(colors: any) {
       paddingTop: 12,
       paddingBottom: 4,
       backgroundColor: colors.navy2,
-    },
-    balanceBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 12,
     },
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },

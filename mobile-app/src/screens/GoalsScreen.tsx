@@ -26,6 +26,7 @@ import DateField from '../components/DateField'
 import Pill from '../components/Pill';
 import Button from '../components/Button';
 import { hapticSelection } from '../haptics';
+import Card from '../components/Card';
 
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
@@ -217,12 +218,12 @@ export default function GoalsScreen() {
   return (
     <View style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={styles.yearBanner}>
+        <Card variant="banner" style={{ marginBottom: 16 }}>
           <Text style={styles.yearBannerLabel}>THIS YEAR'S PROGRESS</Text>
           <Text style={styles.yearBannerAmount}>
             {goals.length > 0 ? `${doneCount} of ${goals.length} reached` : 'No goals set'}
           </Text>
-        </View>
+        </Card>
 
         {goals.length === 0 && (
           <Text style={styles.emptyText}>No goals yet.</Text>
@@ -397,13 +398,6 @@ function makeStyles(colors: any) {
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    yearBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 16,
-    },
     yearBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     yearBannerAmount: { fontSize: 18, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },

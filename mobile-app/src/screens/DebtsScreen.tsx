@@ -27,6 +27,7 @@ import Pill from '../components/Pill';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import Card from '../components/Card';
 
 function debtAmount(debt: Debt): number {
   const first = debt.cycles && debt.cycles[0];
@@ -368,10 +369,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={styles.balanceBanner}>
+        <Card variant="banner" style={{ marginBottom: 18 }}>
           <Text style={styles.balanceBannerLabel}>TOTAL DEBT LOGGED</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
-        </View>
+        </Card>
 
         {debts.length === 0 && (
           <Text style={styles.emptyText}>No debts yet.</Text>
@@ -630,13 +631,6 @@ function makeStyles(colors: any) {
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 18,
-    },
     balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.orange },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },

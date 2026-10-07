@@ -15,6 +15,7 @@ import {
   setCalendarNavMode,
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
+import Card from '../components/Card';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -384,10 +385,10 @@ export default function CalendarScreen() {
           <Text style={styles.sheetDone}>Done</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.balanceBanner}>
+      <Card variant="banner" style={{ marginBottom: 14 }}>
         <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
         <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
-      </View>
+      </Card>
 
       <View style={styles.toolbarRow}>
         <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.menuButton}>
@@ -614,13 +615,6 @@ function makeStyles(colors: any) {
       fontSize: 16,
       fontWeight: '600',
       color: colors.gold,
-    },
-    balanceBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 14,
     },
     balanceBannerLabel: {
       fontSize: 10,

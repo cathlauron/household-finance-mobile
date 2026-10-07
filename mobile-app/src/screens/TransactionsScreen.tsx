@@ -43,6 +43,7 @@ import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import Card from '../components/Card';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -539,10 +540,10 @@ export default function TransactionsScreen() {
             </View>
           </View>
         )}
-        <View style={styles.netBanner}>
+        <Card variant="banner" row style={{ marginBottom: 16 }}>
           <Text style={styles.netLabel}>NET (CASH IN HAND)</Text>
           <Text style={styles.netAmount}>{formatPeso(totals.net)}</Text>
-        </View>
+        </Card>
 
         {categoryFilter && (
           <TouchableOpacity
@@ -948,16 +949,6 @@ function makeStyles(colors: any) {
     },
     statLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     statAmount: { fontSize: 17, fontWeight: '700' },
-    netBanner: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      marginBottom: 16,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
     netLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim },
     netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
