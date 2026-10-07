@@ -24,6 +24,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
+import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -569,15 +570,14 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                 <Text style={styles.inputLabel}>Repeats</Text>
                 <View style={styles.pillRow}>
                   {RECUR_TYPES.map((rt) => (
-                    <TouchableOpacity
+                    <Pill
                       key={rt}
-                      style={[styles.pillButton, recurTypeInput === rt && styles.pillButtonActive]}
+                      label={recurringTypeLabel(rt)}
+                      tone="sheet"
+                      fill
+                      active={recurTypeInput === rt}
                       onPress={() => setRecurTypeInput(rt)}
-                    >
-                      <Text style={[styles.pillButtonText, recurTypeInput === rt && styles.pillButtonTextActive]}>
-                        {recurringTypeLabel(rt)}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -636,15 +636,14 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                 <Text style={styles.inputLabel}>Priority (optional)</Text>
                 <View style={styles.pillRow}>
                   {PRIORITIES.map((p) => (
-                    <TouchableOpacity
+                    <Pill
                       key={p}
-                      style={[styles.pillButton, priorityInput === p && styles.pillButtonActive]}
+                      label={p.charAt(0).toUpperCase() + p.slice(1)}
+                      tone="sheet"
+                      fill
+                      active={priorityInput === p}
                       onPress={() => setPriorityInput(priorityInput === p ? '' : p)}
-                    >
-                      <Text style={[styles.pillButtonText, priorityInput === p && styles.pillButtonTextActive]}>
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
 
@@ -822,17 +821,6 @@ function makeStyles(colors: any) {
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    pillButton: {
-      flex: 1,
-      minWidth: 80,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-    },
-    pillButtonActive: { backgroundColor: colors.gold },
-    pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
     errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
