@@ -1516,7 +1516,77 @@ the mint page.
   BillsScreen, DebtsScreen, LoansScreen, IncomeScreen, TransactionsScreen, SettingsScreen,
   SavingsScreen, GroceriesScreen, reports/CashFlowForecastReport (all in src/screens/)
 
+✅ V.4b-1 to V.4b-3: shared Button, adopted in 11 form footers. DONE, tsc clean,
+device-tested in light and dark ("as described"), pushed. Worked as Antigravity
+investigates (read-only), Claude reviews, Cath pastes by hand.
+- New src/components/Button.tsx. Props: label, onPress, variant ('primary' = green pill
+  Save; 'destructive' = red text link Delete; 'quiet' = grey text link Cancel), loading,
+  disabled, testID, accessibilityLabel, style. Primary fires hapticLight() itself. Text
+  colors: primary colors.navy2, destructive colors.error, quiet colors.inkDim. Minimum
+  height 36.
+- Goals was swapped first as the test case, then the rest in one batch.
+- Full swap (Save, Delete, Cancel, and the six old footer styles deleted): AccountsScreen,
+  BillsScreen, DebtsScreen, EventsScreen, IncomeScreen, LoansScreen, TransactionsScreen,
+  TravelScreen (GoalsScreen too, from V.4b-2).
+- Standard sheet footer swapped ONLY (old styles kept because other buttons still use
+  them): GroceriesScreen (item modal), SavingsScreen (Goal sheet), SettingsScreen
+  (Categories, Payees and Rules sheets).
+- Visual changes, intended: Delete text now uses theme colors.error instead of hardcoded
+  #e5484d; the Save spinner is now colors.navy2 (it was colors.gold on a gold button, so
+  invisible); Delete and Cancel links are slightly taller (36pt tap target).
+
+✅ V.4b-4: shared Card, adopted on 9 balance/year/net banners. DONE, tsc clean, device-
+tested ("as described"), pushed.
+- New src/components/Card.tsx. Props: children, variant ('card' = radius 10, padding 16,
+  marginBottom 12; 'banner' = radius 12, paddingVertical 14, paddingHorizontal 16, NO
+  margin), row (flexDirection row, space-between, centered), testID, style. Background is
+  colors.navy3.
+- Banner marginBottom is passed per screen via style so nothing moved: Accounts 18 (row),
+  Bills 18, Calendar 14, Debts 18, Goals 16 (yearBanner), Groceries 12, Loans 12 (row),
+  Savings 12, Transactions 16 (row, was netBanner). Old banner styles deleted in those
+  files.
+
+📌 V.4b decisions
+- Button: only three variants. dangerButton (SettingsScreen, ProfileScreen) and
+  deviceSignOutBtn stay OUT: a solid colors.error fill with white text fails contrast in
+  dark mode (the V.2 rule). They belong to V.7.
+- ProfileScreen's footer was left alone (its approval modal has custom disabled/opacity
+  behaviour and its deletes use dangerButton).
+- Left as-is on purpose: Grocery calculator "Add", Savings Emergency Fund and FI Save,
+  the account-picker "Done" link, Settings biometric and recovery-key modals,
+  primaryFullButton ("Change password"), SignIn's primaryBtn.
+- Card: stat cards, row cards (radius 10 vs 12 vs 14 differ), modal cards, bottom sheets,
+  the Home gradient card, Dashboard cards and AccountSwitcher/Profile cards are NOT merged
+  because merging would change how they look. IncomeScreen's inline banner was skipped
+  (padding 16, not 14/16, so a merge shifts it 2px).
+- Header: no shared Header component. 11 screens already use native React Navigation
+  headers; Home, Calendar and BottomSheet are custom on purpose. A tiny later item: the
+  tab headers (To-Pay, Transactions, More) lack the bold title the stack headers have;
+  fix by one shared screenOptions object, not a new component.
+- Antigravity's line numbers were unreliable again (off by 6 to 12 lines). Always use
+  Ctrl+F on real code, never the numbers.
+- Unused imports (hapticLight, radii, spacing) left in the 11 footer files on purpose; a
+  later single tidy pass. They do not fail tsc.
+
+⏳ V.4b-5 (IN PROGRESS): adopt Card on the 9 report cards (CashFlowForecast,
+MerchantSpending, MonthlyCloseOut, PaymentMethods, PersonSpending, SubscriptionAudit,
+TaxSummary, WeeklyDigest, YearInReview; every `card` style is identical: navy3, radius
+10, padding 16, marginBottom 12; about 22 usages). NOT written yet: each usage's
+closing </View> must become </Card>, so a read-only Antigravity prompt was issued to get
+the full opening-to-closing blocks, key props, line endings and Card.tsx's contents.
+Waiting on its result.
+
+📁 V.4b files
+- New: src/components/Button.tsx, src/components/Card.tsx
+- Edited: GoalsScreen, AccountsScreen, BillsScreen, DebtsScreen, EventsScreen,
+  IncomeScreen, LoansScreen, TransactionsScreen, TravelScreen, GroceriesScreen,
+  SavingsScreen, SettingsScreen, CalendarScreen (all in src/screens/)
+
 ⚠️ V-series known issues / still to do
+- (V.4b) Button/Card adoption is not yet on Profile, Settings' danger/cancel-inline
+  buttons, Grocery calculator Add, Savings EF/FI Save, IncomeScreen's inline banner, or
+  any stat/row/modal cards. Dark mode has not been rechecked on the 9 banners beyond the
+  device pass.
 UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other input was found directly on the mint page.
 - Double back link on Settings sub-pages: FIXED in V.2. Check whether any Maestro/e2e test
   references the removed testID settings-back-button, and whether Ionicons is still used in
@@ -1569,7 +1639,7 @@ commit, one on-device check)
   each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
   and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
   behind). Also the SignIn recovery-modal near-black button.
-- V.3: DONE. V.4a (shared Pill): DONE (see the V.4a section). V.4b (Card, Button, Header) is next.
+- V.3: DONE. V.4a (shared Pill): DONE. V.4b: Button DONE, Card DONE on 9 banners, Card on the 9 report cards IN PROGRESS (V.4b-5), no Header component (decision above).
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
   screen; move hardcoded colors onto the theme.
 (Pill done in V.4a; Card, Button and Header remain.)
@@ -1593,15 +1663,17 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series. V.0 through V.4a (shared Pill) are done and device-tested.
-  Next is V.4b: shared Card, Button and Header. Start with an Antigravity investigation of
-  the repeated card styles (balanceBanner, row cards, modalCard), the Save/Cancel/Delete
-  button styles (D.5b already tokenised saveButton in 12 files, SettingsScreen's
-  primaryFullButton and SignIn's styles are separate), and the screen headers. Then V.5
-  (account card tints), V.6 (tiny fonts, Calendar balances only on active days, number
-  formatting) and V.7 (quieter destructive buttons). Optional follow-up: convert the
-  leftover pill-like items listed under V.4a decisions. Confirm with `git status` that
-  everything is pushed.
+- ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-4 (Button, Card on
+  banners) are done and device-tested. Next is V.4b-5: paste Antigravity's read-only
+  report on the 9 report cards, have Claude check it against real code, then apply one
+  labelled section per file (Card import, <Card> / </Card> swaps, delete the `card:`
+  style), one tsc, one device check of the 9 report screens, one commit. After that: the
+  small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
+  fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
+  destructive buttons, including dangerButton and deviceSignOutBtn). Optional: tidy
+  unused hapticLight/radii/spacing imports in the 11 footer files; check that
+  src/tokens.ts line 21 reads `16: 16,`. Confirm with `git status` that everything is
+  pushed.
 - Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.
