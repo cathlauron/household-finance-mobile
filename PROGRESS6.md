@@ -1458,6 +1458,64 @@ Step B (given): colors.inkFaint -> colors.decor on decorative-only items:
 - Not verified: other uses of the hardcoded #22c55e, if any (the grep ran but its result
   was not shown).
 
+✅ V.3: Active badge, leaf opacity, bordered Settings inputs, decor chevrons, DONE and
+device-tested (details in the V.3 entry; empty-checkbox borders and interactive icons
+deliberately stayed on inkFaint).
+
+✅ V.4a: ONE shared Pill component, adopted across the app. DONE, tsc clean, device-tested
+in light and dark mode screen by screen ("as described"), all pushed.
+
+New file src/components/Pill.tsx (the only full-file paste of the pass). Props: label,
+active, onPress, icon (Ionicons name, 16px), tone ('page' = inactive fill navy3, for pills on
+the mint page; 'sheet' = inactive fill navy2, for pills inside white sheets/cards), fill
+(flex:1, segmented control), minWidth (so a wrapping row breaks to a new line), compact
+(8px side padding for long labels / many options), testID, accessibilityLabel, style.
+Look: active = colors.gold fill with colors.navy2 text; minHeight 36; fontSize 13 / 600;
+radii.pill; text uses adjustsFontSizeToFit with minimumFontScale 0.8 and numberOfLines 1.
+
+Screens swapped, in order: Insights (Dashboard/Reports), To-Pay (Bills/Debts/Loans, with
+icons), Planning (4 icon pills inside a horizontal ScrollView), Goals (Mode), Events (Type,
+Recurs), Bills (Repeats, Priority; Priority keeps tap-again-to-clear), Debts (Repeats),
+Loans (Direction, Repeats with 4 options, Frequency with 5 options; its pillRow gained
+flexWrap: 'wrap'), Income (Frequency, Pay day with compact 42px minWidth), Transactions
+(Sort on the page, Direction inside the sheet), Settings (Appearance, List Rows, Auto-lock,
+weekly-recap day), Savings (3 sub-tabs, 4 SWR presets, both compact), Groceries (2 sub-tabs),
+CashFlowForecastReport (30/60/90 days).
+Old per-screen pill styles (pillButton*, smallPill*, modeButton*, pillButtonSmall,
+swrPillButton*, pill/pillActive/pillText in CashFlow) were deleted; each screen's own
+pillRow / modeRow / swrPillRow container style stays.
+
+Two existing bugs fixed on the way: Transactions' Direction pills were white on a white
+sheet (Sort and Direction shared one style); Settings' weekly-recap day buttons were mint on
+the mint page.
+
+📌 V.4a decisions
+- Active text is always colors.navy2 (four places used navy1 before). Pills are at least
+  36pt tall and 13px text (earlier 11 to 12px, about 34pt).
+- Pill has NO `variant` prop. Antigravity kept proposing variant="subtle"/"card", which would
+  fail tsc; always use tone / fill / minWidth / compact instead.
+- Deliberately NOT converted (not toggle-style pills, or custom layout): Premium billing
+  switch (track around the pills, testIDs premium-billing-monthly / -yearly), Reports tag
+  chips (bordered, inkFaint text), Reports icon-only pills and Accounts view toggle
+  (IconLabelHint), Transactions clear-filter chip and people/category chips, Income chips,
+  Home date pill (testID home-calendar-shortcut, translucent on the green card), Calendar
+  "Today" button, Profile's successor-selection rows (rows with a New Owner badge), and the
+  hardcoded #10b981 checkmark toggles (Events, Goals, Groceries, Travel).
+
+⚠️ V.4a notes
+- The earlier "SAVE 17%" claim in notes was wrong; Premium's badge says "Save 20%".
+- src/tokens.ts: an Antigravity printout showed line 21 as `22: 16,`. Believed a
+  transcription slip (AccountCard uses radii[16] and compiles), but never confirmed by
+  opening the file. Check that line 21 reads `16: 16,`.
+- A few Pill rows (Loans Repeats, Savings) were sized by estimate, not measured; the device
+  tests passed, but re-check with Android's large font setting on.
+
+📁 V.4a files
+- New: src/components/Pill.tsx
+- Edited: InsightsScreen, ToPayScreen, PlanningScreen, GoalsScreen, EventsScreen,
+  BillsScreen, DebtsScreen, LoansScreen, IncomeScreen, TransactionsScreen, SettingsScreen,
+  SavingsScreen, GroceriesScreen, reports/CashFlowForecastReport (all in src/screens/)
+
 ⚠️ V-series known issues / still to do
 UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other input was found directly on the mint page.
 - Double back link on Settings sub-pages: FIXED in V.2. Check whether any Maestro/e2e test
@@ -1511,9 +1569,10 @@ commit, one on-device check)
   each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
   and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
   behind). Also the SignIn recovery-modal near-black button.
-- V.3: DONE and device-tested (see the V.3 section).
+- V.3: DONE. V.4a (shared Pill): DONE (see the V.4a section). V.4b (Card, Button, Header) is next.
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
   screen; move hardcoded colors onto the theme.
+(Pill done in V.4a; Card, Button and Header remain.)
 - V.5: account card tints and a visible name/balance strip when stacked.
 - V.6: tiny fonts and the type scale; Calendar balances only on days with activity;
   number-field formatting.
@@ -1534,13 +1593,15 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series. V.0 through V.3 are done and device-tested. Next is V.4:
-  build shared Pill, Card, Button and Header components, then adopt them screen by screen
-  and move hardcoded colors onto the theme. Start with an Antigravity investigation of the
-  three existing pill styles (sub-tab pills, segmented controls, filter chips) so one Pill
-  can replace them. After V.4 come V.5 (account card tints), V.6 (tiny fonts, Calendar
-  balances only on active days, number formatting) and V.7 (quieter destructive buttons).
-  Confirm with `git status` that everything is pushed.
+- ACTIVE RIGHT NOW: the V series. V.0 through V.4a (shared Pill) are done and device-tested.
+  Next is V.4b: shared Card, Button and Header. Start with an Antigravity investigation of
+  the repeated card styles (balanceBanner, row cards, modalCard), the Save/Cancel/Delete
+  button styles (D.5b already tokenised saveButton in 12 files, SettingsScreen's
+  primaryFullButton and SignIn's styles are separate), and the screen headers. Then V.5
+  (account card tints), V.6 (tiny fonts, Calendar balances only on active days, number
+  formatting) and V.7 (quieter destructive buttons). Optional follow-up: convert the
+  leftover pill-like items listed under V.4a decisions. Confirm with `git status` that
+  everything is pushed.
 - Earlier (still true) next steps from the bell/Home work follow below.
 - The bell inbox is finished (3a, 3b-1, 3b-2). Remaining: one optional device check of the
   recovery row with a second device, and the fresh-launch bell tap-through.
