@@ -9,8 +9,9 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import Pill from '../components/Pill';
 import DashboardScreen from './DashboardScreen';
 import ReportsScreen from './ReportsScreen';
 
@@ -24,22 +25,8 @@ export default function InsightsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.pillRow}>
-        <TouchableOpacity
-          style={[styles.pill, activeTab === 'dashboard' && styles.pillActive]}
-          onPress={() => setActiveTab('dashboard')}
-        >
-          <Text style={[styles.pillText, activeTab === 'dashboard' && styles.pillTextActive]}>
-            Dashboard
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.pill, activeTab === 'reports' && styles.pillActive]}
-          onPress={() => setActiveTab('reports')}
-        >
-          <Text style={[styles.pillText, activeTab === 'reports' && styles.pillTextActive]}>
-            Reports
-          </Text>
-        </TouchableOpacity>
+        <Pill label="Dashboard" active={activeTab === 'dashboard'} onPress={() => setActiveTab('dashboard')} />
+        <Pill label="Reports" active={activeTab === 'reports'} onPress={() => setActiveTab('reports')} />
       </View>
       {activeTab === 'dashboard' ? <DashboardScreen /> : <ReportsScreen />}
     </View>
@@ -58,23 +45,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       paddingHorizontal: 14,
       paddingTop: 12,
       paddingBottom: 4,
-    },
-    pill: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: colors.navy3,
-    },
-    pillActive: {
-      backgroundColor: colors.gold,
-    },
-    pillText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    pillTextActive: {
-      color: colors.navy1,
     },
   });
 }
