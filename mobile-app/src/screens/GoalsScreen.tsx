@@ -23,6 +23,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField'
+import Pill from '../components/Pill';
 import { hapticLight, hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -307,26 +308,20 @@ export default function GoalsScreen() {
 
                 <Text style={styles.inputLabel}>Mode</Text>
                 <View style={styles.pillRow}>
-                  <TouchableOpacity
-                    style={[styles.smallPill, modeInput === 'progress' && styles.smallPillActive]}
+                  <Pill
+                    label="Track progress"
+                    tone="sheet"
+                    fill
+                    active={modeInput === 'progress'}
                     onPress={() => setModeInput('progress')}
-                  >
-                    <Text
-                      style={[styles.smallPillText, modeInput === 'progress' && styles.smallPillTextActive]}
-                    >
-                      Track progress
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.smallPill, modeInput === 'checklist' && styles.smallPillActive]}
+                  />
+                  <Pill
+                    label="Simple checklist"
+                    tone="sheet"
+                    fill
+                    active={modeInput === 'checklist'}
                     onPress={() => setModeInput('checklist')}
-                  >
-                    <Text
-                      style={[styles.smallPillText, modeInput === 'checklist' && styles.smallPillTextActive]}
-                    >
-                      Simple checklist
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 </View>
 
                 <DateField
@@ -463,16 +458,6 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    smallPill: {
-      flex: 1,
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 9,
-      alignItems: 'center',
-    },
-    smallPillActive: { backgroundColor: colors.gold },
-    smallPillText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    smallPillTextActive: { color: colors.navy2 },
     completedToggle: {
       flexDirection: 'row',
       backgroundColor: colors.navy2,
