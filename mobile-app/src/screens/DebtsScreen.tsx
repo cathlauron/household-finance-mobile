@@ -24,8 +24,6 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import Pill from '../components/Pill';
-import { hapticLight } from '../haptics';
-import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';
 

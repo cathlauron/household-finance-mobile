@@ -1,4 +1,4 @@
-import { hapticLight, hapticSelection } from '../haptics';
+import { hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';

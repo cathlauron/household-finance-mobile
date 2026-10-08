@@ -12,6 +12,7 @@ import InsightsScreen from '../screens/InsightsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import { useTheme } from '../ThemeContext';
+import { getSharedHeaderOptions } from './headerOptions';
 
 export type RootStackParamList = {
   Main: { openBillId?: string } | undefined;
@@ -43,9 +44,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       id={undefined}
       screenOptions={{
         contentStyle: { backgroundColor: 'transparent' },
-        headerStyle: { backgroundColor: colors.navy3 },
-        headerTintColor: colors.ink,
-        headerTitleStyle: { fontWeight: '700' },
+        ...getSharedHeaderOptions(colors),
       }}
     >
       <Stack.Screen

@@ -23,7 +23,7 @@ import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import Pill from '../components/Pill';
 import { makeId } from '../utils';
-import { hapticLight, hapticSelection } from '../haptics';
+import { hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';

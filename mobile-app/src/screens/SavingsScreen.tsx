@@ -17,7 +17,7 @@ import { useData } from '../DataContext';
 import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
-import type { SavingsGoal, SavingsContribution, HouseholdModel, Bill, IncomeSource } from '../types';
+import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';

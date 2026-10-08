@@ -13,7 +13,6 @@ import {
   UIManager,
 } from 'react-native';
 import { Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -24,8 +23,6 @@ import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
-import { hapticLight } from '../haptics';
-import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';
 
@@ -318,7 +315,7 @@ export default function AccountsScreen() {
                   if (expandedIndex !== -1 && index === expandedIndex + 1) {
                     marginTop = 14;
                   } else {
-                    marginTop = -80;
+                    marginTop = -72;
                   }
                 }
 

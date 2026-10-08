@@ -30,8 +30,7 @@ import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import { hapticLight, hapticSelection } from '../haptics';
-import { radii, spacing } from '../tokens';
+import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 
 function tripChecklistTotal(trip: TravelTrip): number {

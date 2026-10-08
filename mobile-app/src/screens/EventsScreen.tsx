@@ -25,8 +25,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import Pill from '../components/Pill';
-import { hapticLight, hapticSelection } from '../haptics';
-import { radii, spacing } from '../tokens';
+import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [

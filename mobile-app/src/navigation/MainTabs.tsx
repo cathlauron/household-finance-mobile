@@ -7,6 +7,8 @@ import TransactionsScreen from '../screens/TransactionsScreen';
 import ToPayScreen from '../screens/ToPayScreen';
 import MoreScreen from '../screens/MoreScreen';
 import { useTheme } from '../ThemeContext';
+import { getSharedHeaderOptions } from './headerOptions';
+
 const Tab = createBottomTabNavigator();
 function TabIcon({
   focused,
@@ -57,9 +59,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
       screenOptions={{
         sceneStyle: { backgroundColor: 'transparent' },
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.navy3 },
-        headerTintColor: colors.ink,
+        ...getSharedHeaderOptions(colors),
         tabBarStyle: { backgroundColor: colors.navy3, borderTopColor: colors.navy4 },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarActiveTintColor: colors.gold,
