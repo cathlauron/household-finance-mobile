@@ -53,6 +53,7 @@ import {
   type PeerRecoveryRequestDoc,
 } from '../recovery';
 import { hapticLight } from '../haptics';
+import Button from '../components/Button';
 
 export function getInitials(name: string): string {
   if (!name) return '?';
@@ -827,15 +828,15 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                               )}
                             </View>
                             {isOwner && !isMe && (
-                              <TouchableOpacity
-                                style={[styles.dangerOutlineButton, { paddingVertical: 4, paddingHorizontal: 10, marginVertical: 0, marginBottom: 0 }]}
+                              <Button
+                                variant="outlineDanger"
+                                size="compact"
+                                label="Remove"
                                 onPress={() => {
                                   setRemoveMemberMsg('');
                                   setMemberToRemove(m);
                                 }}
-                              >
-                                <Text style={[styles.dangerOutlineButtonText, { fontSize: 12 }]}>Remove</Text>
-                              </TouchableOpacity>
+                              />
                             )}
                           </View>
                         );
@@ -929,24 +930,21 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
     Remove {memberToRemove.username} from the household? They'll keep a personal copy of everything.
   </Text>
   <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity
-                          style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
-                          onPress={handleRemoveMember}
-                          disabled={removeMemberBusy}
-                        >
-                          {removeMemberBusy ? (
-                            <ActivityIndicator color="#fff" />
-                          ) : (
-                            <Text style={styles.dangerButtonText}>Yes, remove</Text>
-                          )}
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.cancelInlineButton, { flex: 1 }]}
-                          onPress={() => setMemberToRemove(null)}
-                          disabled={removeMemberBusy}
-                        >
-                          <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
+                          <Button
+                            variant="solidDanger"
+                            label="Yes, remove"
+                            onPress={handleRemoveMember}
+                            loading={removeMemberBusy}
+                            disabled={removeMemberBusy}
+                            style={{ flex: 1 }}
+                          />
+                          <Button
+                            variant="secondary"
+                            label="Cancel"
+                            onPress={() => setMemberToRemove(null)}
+                            disabled={removeMemberBusy}
+                            style={{ flex: 1 }}
+                          />
                       </View>
                       {!!removeMemberMsg && <Text style={[styles.errorText, { marginTop: 6 }]}>{removeMemberMsg}</Text>}
                     </View>
@@ -977,22 +975,22 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
                   {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
-                  <TouchableOpacity
-                    style={[styles.dangerOutlineButton, { marginTop: 12, alignSelf: 'stretch' }]}
-                    onPress={() => {
-                      const currentUid = getCurrentFirebaseUser()?.uid;
-                      const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
-                      if (isOwner && otherMembers.length > 1) {
-                        setSelectedSuccessorUid(otherMembers[0].uid);
-                        setTransferMsg('');
-                        setTransferOwnerModalOpen(true);
-                      } else {
-                        setUnlinkConfirmOpen(true);
-                      }
-                    }}
-                  >
-                    <Text style={styles.dangerOutlineButtonText}>Unlink this device</Text>
-                  </TouchableOpacity>
+                    <Button
+                      variant="outlineDanger"
+                      label="Unlink this device"
+                      onPress={() => {
+                        const currentUid = getCurrentFirebaseUser()?.uid;
+                        const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
+                        if (isOwner && otherMembers.length > 1) {
+                          setSelectedSuccessorUid(otherMembers[0].uid);
+                          setTransferMsg('');
+                          setTransferOwnerModalOpen(true);
+                        } else {
+                          setUnlinkConfirmOpen(true);
+                        }
+                      }}
+                      style={{ marginTop: 12, marginBottom: 8, alignSelf: 'stretch' }}
+                    />
                 </View>
               ) : transferOwnerModalOpen ? (
                 <View style={styles.dangerConfirmBox}>
@@ -1045,48 +1043,42 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   {!!transferMsg && <Text style={styles.errorText}>{transferMsg}</Text>}
 
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                    <TouchableOpacity
-                      style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
-                      onPress={handleTransferAndUnlink}
-                      disabled={transferBusy || !selectedSuccessorUid}
-                    >
-                      {transferBusy ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.dangerButtonText}>Transfer &amp; Leave</Text>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.cancelInlineButton, { flex: 1 }]}
-                      onPress={() => setTransferOwnerModalOpen(false)}
-                      disabled={transferBusy}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
+                      <Button
+                        variant="solidDanger"
+                        label="Transfer & Leave"
+                        onPress={handleTransferAndUnlink}
+                        loading={transferBusy}
+                        disabled={transferBusy || !selectedSuccessorUid}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        variant="secondary"
+                        label="Cancel"
+                        onPress={() => setTransferOwnerModalOpen(false)}
+                        disabled={transferBusy}
+                        style={{ flex: 1 }}
+                      />
                   </View>
                 </View>
               ) : (
                 <View style={styles.dangerConfirmBox}>
                   <Text style={styles.dangerConfirmText}>{unlinkConfirmText}</Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity
-                      style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
-                      onPress={handleUnlinkHousehold}
-                      disabled={unlinkBusy}
-                    >
-                      {unlinkBusy ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.dangerButtonText}>Yes, unlink this device</Text>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.cancelInlineButton, { flex: 1 }]}
-                      onPress={() => setUnlinkConfirmOpen(false)}
-                      disabled={unlinkBusy}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
+                      <Button
+                        variant="solidDanger"
+                        label="Yes, unlink this device"
+                        onPress={handleUnlinkHousehold}
+                        loading={unlinkBusy}
+                        disabled={unlinkBusy}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        variant="secondary"
+                        label="Cancel"
+                        onPress={() => setUnlinkConfirmOpen(false)}
+                        disabled={unlinkBusy}
+                        style={{ flex: 1 }}
+                      />
                   </View>
                   {!!unlinkMsg && <Text style={styles.errorText}>{unlinkMsg}</Text>}
                 </View>
@@ -1324,28 +1316,19 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
             {!!approvalErrorMsg && <Text style={styles.errorText}>{approvalErrorMsg}</Text>}
 
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                (approvalCodeInput.trim().length !== 6 || approvalBusy) && { opacity: 0.4 },
-              ]}
-              disabled={approvalCodeInput.trim().length !== 6 || approvalBusy}
-              onPress={() => { hapticLight(); handleApprovePeerRecovery(); }}
-            >
-              {approvalBusy ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveButtonText}>Approve &amp; Send Key</Text>
-              )}
-            </TouchableOpacity>
+              <Button
+                label="Approve & Send Key"
+                onPress={handleApprovePeerRecovery}
+                loading={approvalBusy}
+                disabled={approvalCodeInput.trim().length !== 6 || approvalBusy}
+              />
 
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setApprovalModalOpen(false)}
-              disabled={approvalBusy}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+              <Button
+                variant="quiet"
+                label="Cancel"
+                onPress={() => setApprovalModalOpen(false)}
+                disabled={approvalBusy}
+              />
           </Pressable>
         </Pressable>
       </Modal>
@@ -1523,14 +1506,6 @@ function makeStyles(colors: any) {
     },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: 999,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     hintText: { fontSize: 11.5, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
@@ -1557,24 +1532,6 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 8,
     },
-    dangerButton: {
-      backgroundColor: '#C81E43',
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    dangerButtonText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-    dangerOutlineButton: {
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderColor: colors.error,
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    dangerOutlineButtonText: { fontSize: 14, fontWeight: '600', color: colors.error },
     dangerConfirmBox: {
       backgroundColor: 'rgba(229,72,77,0.08)',
       borderRadius: 10,
