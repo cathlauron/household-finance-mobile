@@ -23,6 +23,7 @@ import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList } from '../../transactions';
 import type { TransactionEntry } from '../../transactions';
 import type { Person } from '../../types';
+import Card from '../../components/Card';
 
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
 
@@ -87,15 +88,15 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {groups.length === 0 || grandTotal === 0 ? (
-        <View style={styles.card}>
+        <Card>
           <Text style={styles.emptyText}>No expenses logged yet.</Text>
-        </View>
+        </Card>
       ) : (
         groups.map((g) => {
           const pct = grandTotal > 0 ? Math.round((g.total / grandTotal) * 100) : 0;
           const maxCategoryAmount = g.categories.length > 0 ? g.categories[0].amount : 0;
           return (
-            <View key={g.id} style={styles.card}>
+            <Card key={g.id}>
               <View style={styles.personHeaderRow}>
                 <Text style={styles.personName}>{g.name}</Text>
                 <Text style={styles.personTotal}>{formatPeso(g.total)}</Text>
@@ -129,7 +130,7 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
                   })}
                 </View>
               )}
-            </View>
+            </Card>
           );
         })
       )}
@@ -149,7 +150,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     personHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     personName: { fontSize: 15, fontWeight: '700', color: colors.ink },
     personTotal: { fontSize: 15, fontWeight: '700', color: colors.ink },

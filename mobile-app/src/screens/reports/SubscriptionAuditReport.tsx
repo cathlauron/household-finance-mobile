@@ -22,6 +22,7 @@ import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import type { Bill } from '../../types';
+import Card from '../../components/Card';
 
 type AuditRow = {
   bill: Bill;
@@ -88,7 +89,7 @@ export default function SubscriptionAuditReport() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Subscription Audit</Text>
         <Text style={styles.subLabel}>
           Recurring bills ranked by monthly-equivalent cost.
@@ -103,9 +104,9 @@ export default function SubscriptionAuditReport() {
             <Text style={[styles.statValue, { color: colors.orange }]}>{formatPeso(totalAnnual)}</Text>
           </View>
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Recurring bills ({rows.length})</Text>
         {rows.length === 0 ? (
           <Text style={styles.emptyText}>
@@ -137,7 +138,7 @@ export default function SubscriptionAuditReport() {
             );
           })
         )}
-      </View>
+      </Card>
     </ScrollView>
   );
 }
@@ -150,7 +151,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',

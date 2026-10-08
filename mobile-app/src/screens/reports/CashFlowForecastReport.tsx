@@ -17,6 +17,7 @@ import { useTheme } from '../../ThemeContext';
 import { computeRunningBalances, formatPeso } from '../../balanceProjection';
 import { stripTime } from '../../recurrence';
 import type { HouseholdModel } from '../../types';
+import Card from '../../components/Card';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_OPTIONS = [30, 60, 90];
@@ -125,7 +126,7 @@ export default function CashFlowForecastReport() {
         </View>
       )}
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Projected Balance</Text>
         <Text style={styles.cardSub}>Next {days} days</Text>
         <View style={styles.chartRow}>
@@ -146,7 +147,7 @@ export default function CashFlowForecastReport() {
             </View>
           ))}
         </View>
-      </View>
+      </Card>
 
       <Text style={styles.footerNote}>
         Projection based on expected income, bills, debts, and savings. Keep your Calendar balance current.
@@ -183,7 +184,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       marginBottom: 12,
     },
     warningText: { fontSize: 12, color: colors.error, lineHeight: 17 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',

@@ -12,6 +12,7 @@ import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../../transactions';
+import Card from '../../components/Card';
 
 type CategoryTotal = {
   category: string;
@@ -57,7 +58,7 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Monthly Close-out — {monthLabel}</Text>
         <View style={styles.statRow}>
           <View style={styles.statBox}>
@@ -75,9 +76,9 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
             </Text>
           </View>
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Spending by Category</Text>
         {categoryTotals.length === 0 ? (
           <Text style={styles.emptyText}>No expenses logged this month yet.</Text>
@@ -99,7 +100,7 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
             );
           })
         )}
-      </View>
+      </Card>
     </ScrollView>
   );
 }
@@ -112,7 +113,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',

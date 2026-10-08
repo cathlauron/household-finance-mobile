@@ -21,6 +21,7 @@ import { buildTransactionsList, transactionTotals } from '../../transactions';
 import type { TransactionEntry } from '../../transactions';
 import type { HouseholdModel } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+import Card from '../../components/Card';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
@@ -123,7 +124,7 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
         </View>
       </View>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Income vs. Expenses, Month by Month</Text>
         <View style={styles.chartRow}>
           {monthlyData.map((d) => (
@@ -156,9 +157,9 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
             <Text style={styles.legendText}>Expenses</Text>
           </View>
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Top Categories This Year</Text>
         {topCategories.length === 0 ? (
           <Text style={styles.emptyText}>No spending logged this year.</Text>
@@ -181,7 +182,7 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
             );
           })
         )}
-      </View>
+      </Card>
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
@@ -232,7 +233,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     statCardAmount: { fontSize: 17, fontWeight: '700', color: colors.ink },
     statCardNote: { fontSize: 11, color: colors.inkFaint, marginTop: 4 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',

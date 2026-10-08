@@ -22,6 +22,7 @@ import { buildTransactionsList, transactionTotals } from '../../transactions';
 import type { TransactionEntry } from '../../transactions';
 import type { HouseholdModel } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+import Card from '../../components/Card';
 
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
 
@@ -141,7 +142,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
         </View>
       </View>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Interest &amp; Fees Paid</Text>
         <View style={styles.feesBanner}>
           <View>
@@ -153,9 +154,9 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
         <Text style={styles.footerNote}>
           Loan late fees and logged debt fees only.
         </Text>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Expenses by Category</Text>
         {categories.length === 0 ? (
           <Text style={styles.emptyText}>No spending logged this year.</Text>
@@ -178,7 +179,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
             );
           })
         )}
-      </View>
+      </Card>
     </ScrollView>
   );
 }
@@ -213,7 +214,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       letterSpacing: 0.5,
     },
     statCardAmount: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',

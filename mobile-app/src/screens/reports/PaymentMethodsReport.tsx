@@ -21,6 +21,7 @@ import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import type { PaymentMethod, BalanceAccountEntry } from '../../types';
+import Card from '../../components/Card';
 
 type MethodTotal = {
   key: string;
@@ -118,27 +119,27 @@ export default function PaymentMethodsReport() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Payment Methods</Text>
         <Text style={styles.subLabel}>
           {methods.length === 0
             ? 'No expenses logged yet.'
             : `${formatPeso(grandTotal)} total across ${methods.length} method${methods.length === 1 ? '' : 's'}`}
         </Text>
-      </View>
+      </Card>
 
       {methods.length === 0 ? (
-        <View style={styles.card}>
+        <Card>
           <Text style={styles.emptyText}>
             No payments with a payment method set yet.
           </Text>
-        </View>
+        </Card>
       ) : (
         methods.map((m) => {
           const pct = maxAmount > 0 && m.key !== 'unset' ? (m.total / maxAmount) * 100 : 0;
           const pctOfTotal = grandTotal > 0 ? (m.total / grandTotal) * 100 : 0;
           return (
-            <View key={m.key} style={styles.card}>
+            <Card key={m.key}>
               <View style={styles.methodHeaderRow}>
                 <Text
                   style={[styles.methodName, m.key === 'unset' && styles.methodNameMuted]}
@@ -159,7 +160,7 @@ export default function PaymentMethodsReport() {
               <Text style={styles.methodMeta}>
                 {m.count} payment{m.count === 1 ? '' : 's'} · {pctOfTotal.toFixed(0)}% of total
               </Text>
-            </View>
+            </Card>
           );
         })
       )}
@@ -181,7 +182,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',

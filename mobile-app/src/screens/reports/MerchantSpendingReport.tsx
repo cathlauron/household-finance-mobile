@@ -14,6 +14,7 @@ import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList } from '../../transactions';
+import Card from '../../components/Card';
 
 type MerchantTotal = {
   label: string;
@@ -66,24 +67,24 @@ export default function MerchantSpendingReport({ activeTag }: Props = {}) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardLabel}>Merchant Spending</Text>
         <Text style={styles.subLabel}>
           {merchants.length === 0
             ? 'No expenses logged yet.'
             : `${merchants.length} merchant${merchants.length === 1 ? '' : 's'} · ${formatPeso(grandTotal)} total`}
         </Text>
-      </View>
+      </Card>
 
       {merchants.length === 0 ? (
-        <View style={styles.card}>
+        <Card>
           <Text style={styles.emptyText}>No merchant spending logged yet.</Text>
-        </View>
+        </Card>
       ) : (
         merchants.map((m) => {
           const pct = maxAmount > 0 ? (m.total / maxAmount) * 100 : 0;
           return (
-            <View key={m.label} style={styles.card}>
+            <Card key={m.label}>
               <View style={styles.merchantHeaderRow}>
                 <Text style={styles.merchantName} numberOfLines={1}>
                   {m.label}
@@ -96,7 +97,7 @@ export default function MerchantSpendingReport({ activeTag }: Props = {}) {
               <Text style={styles.merchantMeta}>
                 {m.count} transaction{m.count === 1 ? '' : 's'} · avg {formatPeso(m.average)}
               </Text>
-            </View>
+            </Card>
           );
         })
       )}
@@ -112,7 +113,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    card: { backgroundColor: colors.navy3, borderRadius: 10, padding: 16, marginBottom: 12 },
     cardLabel: {
       fontSize: 11,
       fontWeight: '700',
