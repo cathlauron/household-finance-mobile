@@ -1642,7 +1642,7 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
   - V.6c-4: LoanPayoffSimulatorModal extra payment, GroceriesScreen, TravelScreen, EventsScreen, GoalsScreen, SavingsFiComparisonModal, Settings category watch limit and rule min/max.
   - Leave as plain inputs: due day / month fields, interest rate % and similar percent fields.
 
-🔧 V.6c-3: AmountInput on Bills, Income and Transactions money fields. CODE GIVEN, NOT YET CONFIRMED APPLIED / tsc / DEVICE-TESTED / COMMITTED (change this status to DONE once it is). Worked as Antigravity investigates (read-only, all three screens in one pass), Claude reviews, Cath pastes by hand.
+🔧 V.6c-3: AmountInput on Bills, Income and Transactions money fields. Code applied and tsc clean (no errors in these files in the later full tsc run); NOT YET CONFIRMED DEVICE-TESTED (change this status to DONE once it is). Worked as Antigravity investigates (read-only, all three screens in one pass), Claude reviews, Cath pastes by hand.
 - Investigation findings (real code viewed): 5 money fields in total, no negatives needed, no onBlur / ref / testID that AmountInput would drop, none in a repeating row except Income's payday log. Inside each BottomSheet the screen's own `input` style is navy2 on a navy3 sheet, so each screen needs `amountInput: { backgroundColor: colors.navy2 }` (same lesson as V.6c-2).
 - BillsScreen: "Amount" (amountInput). State is now number | ''. openEditModal sets billAmount(bill) directly (no String()). handleSave: `let parsedAmount = amountInput === '' ? 0 : amountInput;` (kept as `let` so it still compiles if reassigned later). Name, category, day, month and notes stay TextInput. There is no "amount paid" field in Bills; payment is a card-tap toggle.
 - TransactionsScreen: "Amount" and "Expected refund". Both states are number | ''. handleSave checks `amountInput === '' || amountInput <= 0` ("Enter an amount greater than 0.") and the refund uses `typeof refundAmountInput === 'number' && refundAmountInput > 0`. Label, person, category, notes and tags stay TextInput.
@@ -1656,7 +1656,19 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
 - Device checks per screen: Add and Edit show the right values; typing 1250.50 saves ₱1,250.50; field is blank after Add. Transactions: a label that matches a rule still fills the category, and amount-range rules only apply once an amount is typed. Income: add and remove a payday row; a row with a date but no amount shows "Each entry requires both date and amount."
 - 📌 Lesson: Antigravity's reply was too long to paste whole, so the investigation prompt was written for all three screens in one go but can be answered screen by screen. Always give the person find/replace blocks, not a description of changes.
 
-▶️ Next: confirm V.6c-3 (apply, tsc, device test, commit), then V.6c-4, the remaining small fonts, then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
+✅ V.6c-4: AmountInput on Events, Goals, Groceries and Settings (category watch limit, rule min/max), plus the SavingsFiComparisonModal type fix. DONE, tsc clean (after the 14-error fix below), device-tested ("as described"), pushed. Worked as Antigravity investigates (read-only), Claude reviews, Cath pastes by hand.
+- The AmountInput swaps themselves had already been pasted, but the `npx tsc --noEmit` run showed 14 errors in 5 files. Three causes, all fixed:
+  - Missing `import AmountInput from '../components/AmountInput';` in EventsScreen, GoalsScreen and SettingsScreen (7 of the 14 errors). GroceriesScreen and SavingsFiComparisonModal already had it.
+  - Leftover `String(...)` calls in the edit-modal loaders. The states were already number | '' and AmountInput returns numbers, so the loaders now pass numbers: EventsScreen setBudgetInput; GoalsScreen setTargetAmountInput and setCurrentAmountInput; GroceriesScreen setPlannedInput and setActualInput; SettingsScreen setRuleMinInput and setRuleMaxInput (the Settings ones use `typeof rule.amountMin === 'number' ? rule.amountMin : ''`).
+  - SavingsFiComparisonModal.tsx: `useMemo((): FiCalculatorInputs => ...` was a typo. FiCalculatorInputs does not exist anywhere; the real type is FiScenarioInputs (src/fiScenario.ts), already imported in that file.
+- 📌 Decision: pass numbers into the setters (Option 1), do NOT change the state types back to string. Reasons: every save handler already assigns the state straight into the model (no parseFloat), the model types are already number | '', and every other converted screen (Accounts, Bills, Debts, Loans, Transactions, Travel) works this way.
+- 📌 Pattern to keep: `typeof x === 'number' ? x : ''`, never `x ? x : ''`, so a saved 0 stays 0 and empty/undefined becomes ''.
+- Antigravity confirmed no other screen passes String(...) into a number | '' setter. The remaining String(...) calls are the month/day fields (typed string) and the interest-rate % fields (plain TextInput), which is correct.
+- Device-tested: edit an event with a budget, a progress goal with target and current amounts, a grocery item with planned and actual amounts, a categorization rule with min or max, and a category watchlist limit. All show their saved amounts and save correctly; an item with an empty amount shows the placeholder.
+- ⚠️ Not verified: whether CsvImportModal or LoanPayoffSimulatorModal have any money inputs still on plain TextInput (AmountInput is already imported in LoanPayoffSimulatorModal, but its fields were not itemised); the Settings watchlist field at line ~1350 was only checked by tsc and the on-device test.
+- 📁 V.6c-4 files edited: src/screens/EventsScreen.tsx, GoalsScreen.tsx, GroceriesScreen.tsx, SettingsScreen.tsx, SavingsFiComparisonModal.tsx
+
+▶️ Next: confirm V.6c-3 on-device (Bills, Transactions, Income payday rows) and mark it DONE, then the remaining small-font items from the V.6a-1 entry, then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1704,7 +1716,7 @@ UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other
   MainTabs 94, TravelScreen 312, and about 33 occurrences at 10px.
 - (FIXED in V.6b) Calendar days show the same balance under every date; plan to show a balance only on days
   with activity.
-- (PARTLY FIXED in V.6c-1 and V.6c-2: FI Calculator, Savings, Accounts, Loans and Debts peso fields done; Bills, Income and Transactions code given in V.6c-3 and pending confirmation; the V.6c-4 list remains) Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
+- (MOSTLY FIXED in V.6c-1 to V.6c-4: AmountInput now on the FI Calculator, Savings, Accounts, Loans, Debts, Events, Goals, Groceries and Settings peso fields; Bills, Income and Transactions are applied but awaiting device confirmation; CsvImportModal and LoanPayoffSimulatorModal not checked) Number fields (e.g. FI Calculator) used to show raw "37200" with no peso sign or commas.
 - Sub-tab pills, segmented controls and filter chips are three different pill styles; plan
   one shared Pill component.
 - Destructive actions: "Clear all data" is a full-width red button right under "Save a
@@ -1749,7 +1761,7 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days) and V.6c-1 (AmountInput in the FI Calculator peso fields) are done, device-tested and pushed. Next, in order: (1) V.6c-3 (AmountInput on Bills, Income, Transactions; the investigation is done and the find/replace code was given with corrections, see the V.6c-3 entry; what is left is applying it screen by screen, tsc, device test and commit; V.6c-2 Savings, Accounts, Loans and Debts are done and pushed), (2) V.6c-4, (3) the remaining small-font items listed in the V.6a-1 entry, (4) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
+- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days), V.6c-1, V.6c-2 and V.6c-4 (AmountInput on the FI Calculator, Savings, Accounts, Loans, Debts, Events, Goals, Groceries and Settings money fields) are done, device-tested and pushed. V.6c-3 (Bills, Income, Transactions) is code-applied and tsc clean but its device test is not yet confirmed. Next, in order: (1) confirm V.6c-3 on-device, (2) the remaining small-font items listed in the V.6a-1 entry, (3) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
 - ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
