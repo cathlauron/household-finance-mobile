@@ -552,10 +552,10 @@ function makeStyles(colors: any) {
     clearButton: { alignItems: 'center', paddingVertical: 8, marginBottom: 4 },
     clearButtonText: { fontSize: 13, color: colors.inkDim },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
+    deleteButtonText: { fontSize: 13, color: colors.error, fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',

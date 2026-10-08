@@ -89,10 +89,10 @@ const SOURCE_LABELS: Record<string, string> = { bill: 'Bill', debt: 'Debt', loan
 const DIRECTIONS: Array<'out' | 'in' | 'saving'> = ['out', 'in', 'saving'];
 const DIRECTION_LABELS: Record<string, string> = { out: 'Money out', in: 'Money in', saving: 'Savings' };
 
-function amountColor(direction: string): string {
-  if (direction === 'in') return '#2f9e44';
-  if (direction === 'saving') return '#c2410c';
-  return '#e5484d';
+function amountColor(direction: string, colors: { ok: string; orange: string; error: string }): string {
+  if (direction === 'in') return colors.ok;
+  if (direction === 'saving') return colors.orange;
+  return colors.error;
 }
 
 // Bill-sourced TransactionEntry ids are built as 'bill-' + cycle.id
@@ -676,7 +676,7 @@ export default function TransactionsScreen() {
                       {isRefundReceived ? ' · Refunded' : ''}
                     </Text>
                   </View>
-                  <Text style={[styles.txnAmount, { color: amountColor(t.direction) }]}>
+                  <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
                     {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
                   </Text>
                 </View>
@@ -806,7 +806,7 @@ export default function TransactionsScreen() {
               onPress={() => { hapticSelection(); setRefundTrackingEnabled((prev) => !prev); }}
             >
               {refundTrackingEnabled && (
-                <Ionicons name="checkmark" size={15} color="#fff" style={{ marginRight: 6 }} />
+                <Ionicons name="checkmark" size={15} color={colors.navy2} style={{ marginRight: 6 }} />
               )}
               <Text style={[styles.refundToggleText, refundTrackingEnabled && styles.refundToggleTextActive]}>
                 {refundTrackingEnabled ? 'Expecting a refund' : 'Expecting a refund?'}
@@ -1010,8 +1010,8 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     receiptRemoveButton: { alignSelf: 'flex-start' },
-    receiptRemoveButtonText: { fontSize: 12, color: '#e5484d', fontWeight: '600' },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    receiptRemoveButtonText: { fontSize: 12, color: colors.error, fontWeight: '600' },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
 
     refundToggle: {
       backgroundColor: colors.navy3,
@@ -1025,7 +1025,7 @@ function makeStyles(colors: any) {
     },
     refundToggleActive: { backgroundColor: colors.orange },
     refundToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    refundToggleTextActive: { color: '#fff' },
+    refundToggleTextActive: { color: colors.navy2 },
     refundBadge: {
       alignSelf: 'flex-start',
       backgroundColor: colors.orange,
@@ -1035,7 +1035,7 @@ function makeStyles(colors: any) {
       marginTop: 6,
     },
     refundBadgeReceived: { backgroundColor: colors.ok },
-    refundBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+    refundBadgeText: { fontSize: 11, fontWeight: '700', color: colors.navy2 },
     refundActionButton: {
       marginTop: 10,
       alignSelf: 'flex-start',

@@ -52,6 +52,7 @@ export default function SignInScreen({
 }: Props) {
   const { colors } = useTheme();
   const ms = makeMainStyles(colors);
+  const styles = makeStyles(colors);
   const [usernameInput, setUsernameInput] = useState(autoSignIn?.username ?? initialUsername ?? '');
   const [emailInput, setEmailInput] = useState(autoSignIn?.email ?? '');
   const [password, setPassword] = useState(autoSignIn?.password ?? '');
@@ -762,11 +763,11 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <Text style={ms.sub}>Sign in to your financial journey.</Text>
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-          <Ionicons name="warning-outline" size={16} color="#991B1B" style={{ marginRight: 6 }} />
+          <Ionicons name="warning-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
           <Text style={[styles.revokedBannerText, { flex: 1 }]}>{remoteRevokeNotice}</Text>
           {!!onClearRemoteRevokeNotice && (
             <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={16} color="#991B1B" style={{ paddingLeft: 8 }} />
+              <Ionicons name="close" size={16} color={colors.error} style={{ paddingLeft: 8 }} />
             </TouchableOpacity>
           )}
         </View>
@@ -829,7 +830,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <TouchableOpacity testID="sign-in-button" style={ms.primaryBtn} onPress={() => { hapticLight(); handleSignIn(); }} disabled={busy}>
         {busy ? (
           <View style={styles.busyRow}>
-            <ActivityIndicator color="#FFFFFF" style={styles.spinner} />
+            <ActivityIndicator color={colors.navy2} style={styles.spinner} />
             <Text style={ms.primaryBtnText}>
               {isMigrating
                 ? 'Setting up sign-in...'
@@ -841,7 +842,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         ) : (
           <View style={styles.busyRow}>
             <Text style={ms.primaryBtnText}>Sign in</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+            <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />
           </View>
         )}
       </TouchableOpacity>
@@ -896,6 +897,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                   value={recoveryKeyInput}
                   onChangeText={setRecoveryKeyInput}
                   placeholder="e.g. 4B9X-7M2K-W8Q3-P1Z6"
+                  placeholderTextColor={colors.inkFaint}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   editable={!recoveryBusy && !peerBusy}
@@ -929,14 +931,14 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                       disabled={peerBusy || recoveryBusy}
                     >
                       {peerBusy ? (
-                        <ActivityIndicator color="#1C1917" />
+                        <ActivityIndicator color={colors.ink} />
                       ) : (
                         <Text style={styles.secondaryBtnText}>Request Member Approval</Text>
                       )}
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.peerWaitingCard}>
-                      <ActivityIndicator color="#D97706" style={{ marginBottom: 8 }} />
+                      <ActivityIndicator color={colors.orange} style={{ marginBottom: 8 }} />
                       <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
                       <Text style={styles.peerWaitingDesc}>
                         Ask another household member to open Settings &gt; Household and enter this code:
@@ -983,78 +985,78 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF9', padding: 24, paddingTop: 80 },
-  eyebrow: { fontSize: 11, letterSpacing: 2, color: '#78716C', textAlign: 'center', marginBottom: 8 },
-  title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: '#1C1917', marginBottom: 8 },
-  sub: { fontSize: 14, color: '#57534E', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-  label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#57534E', marginBottom: 6, marginTop: 14 },
-  input: {
-    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#E7E5E4',
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917',
-  },
-  error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: radii[8], paddingVertical: spacing[14], marginTop: spacing[14] },
-  primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
-  secondaryBtn: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D6D3D1', borderRadius: 8,
-    paddingVertical: 12, marginTop: 10,
-  },
-  secondaryBtnText: { color: '#1C1917', textAlign: 'center', fontWeight: '600', fontSize: 14 },
-  btnDisabled: { opacity: 0.4 },
-  busyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  spinner: { marginRight: 8 },
-  slowHint: { color: '#78716C', fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 8 },
-  ghostBtn: { paddingVertical: 14, marginTop: 8 },
-  ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modalCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%' },
-  modalEyebrow: { fontSize: 11, letterSpacing: 2, color: '#D97706', textAlign: 'center', fontWeight: '700', marginBottom: 6 },
-  modalTitle: { fontSize: 19, fontWeight: '700', textAlign: 'center', color: '#1C1917', marginBottom: 6 },
-  modalSub: { fontSize: 13, color: '#57534E', textAlign: 'center', lineHeight: 18, marginBottom: 16 },
-  recoverySection: { backgroundColor: '#FAFAF9', borderRadius: 10, borderWidth: 1, borderColor: '#E7E5E4', padding: 14 },
-  sectionHeading: { fontSize: 14, fontWeight: '700', color: '#1C1917', marginBottom: 4 },
-  sectionDesc: { fontSize: 12, color: '#78716C', lineHeight: 16, marginBottom: 10 },
-  recoveryInput: {
-    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#D6D3D1',
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1C1917',
-    fontFamily: 'monospace', letterSpacing: 1,
-  },
-  errorText: { color: '#E11D48', fontSize: 12, marginTop: 6, textAlign: 'center' },
-  peerWaitingCard: {
-    backgroundColor: '#FFFBEB', borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A',
-    padding: 14, alignItems: 'center', marginTop: 10,
-  },
-  peerWaitingTitle: { fontSize: 14, fontWeight: '700', color: '#92400E', marginBottom: 4 },
-  peerWaitingDesc: { fontSize: 12, color: '#78350F', textAlign: 'center', lineHeight: 16, marginBottom: 10 },
-  transferCodeBox: {
-    backgroundColor: '#FFFFFF', borderRadius: 6, borderWidth: 1, borderColor: '#F59E0B',
-    paddingVertical: 8, paddingHorizontal: 16, marginBottom: 10,
-  },
-  transferCodeText: { fontSize: 20, fontWeight: '700', color: '#B45309', letterSpacing: 3, fontFamily: 'monospace' },
-  cancelInlineBtn: { paddingVertical: 6, paddingHorizontal: 12 },
-  cancelInlineBtnText: { fontSize: 12, color: '#78716C', textDecorationLine: 'underline' },
-  deadEndSection: { backgroundColor: '#F5F5F4', borderRadius: 8, padding: 12, marginTop: 16 },
-  deadEndTitle: { fontSize: 12, fontWeight: '700', color: '#57534E', marginBottom: 4 },
-  deadEndDesc: { fontSize: 11, color: '#78716C', lineHeight: 15 },
-  revokedBanner: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 14,
-    marginBottom: 4,
-  },
-  revokedBannerText: {
-    color: '#991B1B',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-});
+function makeStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.navy2, padding: 24, paddingTop: 80 },
+    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
+    title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+    label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
+    input: {
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink,
+    },
+    error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
+    secondaryBtn: {
+      backgroundColor: colors.navy3, borderWidth: 1, borderColor: colors.navy4, borderRadius: radii.pill,
+      paddingVertical: 12, marginTop: 10,
+    },
+    secondaryBtnText: { color: colors.ink, textAlign: 'center', fontWeight: '600', fontSize: 14 },
+    btnDisabled: { opacity: 0.4 },
+    busyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+    spinner: { marginRight: 8 },
+    slowHint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 8 },
+    ghostBtn: { paddingVertical: 14, marginTop: 8 },
+    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+    modalCard: { backgroundColor: colors.navy3, borderRadius: 14, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%' },
+    modalEyebrow: { fontSize: 11, letterSpacing: 2, color: colors.orange, textAlign: 'center', fontWeight: '700', marginBottom: 6 },
+    modalTitle: { fontSize: 19, fontWeight: '700', textAlign: 'center', color: colors.ink, marginBottom: 6 },
+    modalSub: { fontSize: 13, color: colors.inkDim, textAlign: 'center', lineHeight: 18, marginBottom: 16 },
+    recoverySection: { backgroundColor: colors.navy2, borderRadius: 10, borderWidth: 1, borderColor: colors.navy4, padding: 14 },
+    sectionHeading: { fontSize: 14, fontWeight: '700', color: colors.ink, marginBottom: 4 },
+    sectionDesc: { fontSize: 12, color: colors.inkDim, lineHeight: 16, marginBottom: 10 },
+    recoveryInput: {
+      backgroundColor: colors.navy3, borderRadius: 8, borderWidth: 1, borderColor: colors.navy4,
+      paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.ink,
+      fontFamily: 'monospace', letterSpacing: 1,
+    },
+    errorText: { color: colors.error, fontSize: 12, marginTop: 6, textAlign: 'center' },
+    peerWaitingCard: {
+      backgroundColor: colors.navy3, borderRadius: 8, borderWidth: 1, borderColor: colors.orange,
+      padding: 14, alignItems: 'center', marginTop: 10,
+    },
+    peerWaitingTitle: { fontSize: 14, fontWeight: '700', color: colors.orange, marginBottom: 4 },
+    peerWaitingDesc: { fontSize: 12, color: colors.inkDim, textAlign: 'center', lineHeight: 16, marginBottom: 10 },
+    transferCodeBox: {
+      backgroundColor: colors.navy2, borderRadius: 6, borderWidth: 1, borderColor: colors.orange,
+      paddingVertical: 8, paddingHorizontal: 16, marginBottom: 10,
+    },
+    transferCodeText: { fontSize: 20, fontWeight: '700', color: colors.orange, letterSpacing: 3, fontFamily: 'monospace' },
+    cancelInlineBtn: { paddingVertical: 6, paddingHorizontal: 12 },
+    cancelInlineBtnText: { fontSize: 12, color: colors.inkDim, textDecorationLine: 'underline' },
+    deadEndSection: { backgroundColor: colors.navy2, borderRadius: 8, padding: 12, marginTop: 16 },
+    deadEndTitle: { fontSize: 12, fontWeight: '700', color: colors.inkDim, marginBottom: 4 },
+    deadEndDesc: { fontSize: 11, color: colors.inkDim, lineHeight: 15 },
+    revokedBanner: {
+      backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.error,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginTop: 14,
+      marginBottom: 4,
+    },
+    revokedBannerText: {
+      color: colors.error,
+      fontSize: 13,
+      fontWeight: '600',
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+  });
+}
 function makeMainStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },

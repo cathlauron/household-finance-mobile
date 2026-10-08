@@ -457,7 +457,7 @@ function makeStyles(colors: any) {
       marginTop: 16,
     },
     primaryBtnText: {
-      color: '#FFFFFF',
+      color: colors.navy2,
       textAlign: 'center',
       fontWeight: '600',
       fontSize: 15,

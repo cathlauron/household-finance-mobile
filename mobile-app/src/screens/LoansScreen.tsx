@@ -917,6 +917,6 @@ function makeStyles(colors: any) {
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
   });
 }

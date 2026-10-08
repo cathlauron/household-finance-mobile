@@ -628,7 +628,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                       style={styles.paymentLogRemoveBtn}
                       onPress={() => removePaymentLogEntry(entry.id)}
                     >
-                      <Ionicons name="close" size={18} color="#e5484d" />
+                      color={colors.error}
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -704,12 +704,12 @@ function makeStyles(colors: any) {
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
     hintText: { fontSize: 12, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
     paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
     paymentLogAmountInput: { flex: 1, marginBottom: 0 },
     paymentLogRemoveBtn: { paddingHorizontal: 8, paddingVertical: 6 },
-    paymentLogRemoveText: { fontSize: 18, color: '#e5484d', fontWeight: '600' },
+    paymentLogRemoveText: { fontSize: 18, color: colors.error, fontWeight: '600' },
     addPaymentLogButton: {
       alignSelf: 'flex-start',
       paddingVertical: 8,

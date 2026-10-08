@@ -124,6 +124,8 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     billingTextActive: { color: colors.navy2 },
     saveBadge: {
       backgroundColor: colors.okBg,
+      borderWidth: 1,
+      borderColor: colors.ok,
       borderRadius: 999,
       paddingHorizontal: 8,
       paddingVertical: 2,

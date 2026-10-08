@@ -430,7 +430,7 @@ function makeStyles(colors: any) {
     completedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
     completedToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     completedToggleTextActive: { color: '#10b981' },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',

@@ -26,7 +26,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   loadProfilesIndex,
   loadEncryptedProfileData,
@@ -92,6 +92,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
 export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const {
     model,
     saveModel,
@@ -143,6 +144,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       headerBackTitle: page ? 'Settings' : 'More',
     });
   }, [navigation, page]);
+
+  // Open a specific page when another screen (e.g. Profile) asks for one.
+  useEffect(() => {
+    const target = route.params?.page;
+    if (target && PAGE_TITLES[target]) {
+      setPage(target);
+      navigation.setParams({ page: undefined });
+    }
+  }, [route.params?.page]);
 
   // Retroactive recovery key setup state
   const [retroactiveModalOpen, setRetroactiveModalOpen] = useState(false);
@@ -2249,7 +2259,7 @@ function makeStyles(colors: any) {
     swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
     swatch: { width: 30, height: 30, borderRadius: 15 },
     swatchActive: { borderWidth: 3, borderColor: colors.ink },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
@@ -2315,7 +2325,7 @@ function makeStyles(colors: any) {
       padding: 14,
       marginBottom: 8,
     },
-    dangerConfirmText: { fontSize: 12.5, color: '#e5484d', lineHeight: 17, marginBottom: 12 },
+    dangerConfirmText: { fontSize: 12.5, color: colors.error, lineHeight: 17, marginBottom: 12 },
     cancelInlineButton: {
       backgroundColor: colors.navy3,
       borderRadius: 10,
@@ -2323,7 +2333,7 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: '#e5484d', fontWeight: '600' },
+    deleteButtonText: { fontSize: 13, color: colors.error, fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     deviceItemRow: {

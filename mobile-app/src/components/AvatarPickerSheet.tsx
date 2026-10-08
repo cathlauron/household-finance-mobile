@@ -172,6 +172,6 @@ function makeStyles(colors: any) {
     buttonText: { fontSize: 14, fontWeight: '600', color: colors.gold },
     ghostButton: { alignItems: 'center', paddingVertical: 10 },
     ghostButtonText: { fontSize: 13, color: colors.inkDim },
-    errorText: { fontSize: 12, color: '#e5484d', textAlign: 'center', marginTop: 6 },
+    errorText: { fontSize: 12, color: colors.error, textAlign: 'center', marginTop: 6 },
   });
 }

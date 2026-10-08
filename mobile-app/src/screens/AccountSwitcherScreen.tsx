@@ -265,7 +265,7 @@ export default function AccountSwitcherScreen({
                   onPress={handlePinUnlock}
                   disabled={busy || pin.length < 4}
                 >
-                  {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryBtnText}>Unlock</Text>}
+                  {busy ? <ActivityIndicator color={colors.navy2} /> : <Text style={s.primaryBtnText}>Unlock</Text>}
                 </TouchableOpacity>
                 {!!selectedPresence && selectedPresence.fingerprint && (
                   <TouchableOpacity style={s.ghostBtn} onPress={switchToFingerprint}>
@@ -368,7 +368,7 @@ function makeStyles(colors: any) {
       justifyContent: 'center',
       marginTop: spacing[20],
     },
-    primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     ghostBtn: { paddingVertical: 14, marginTop: 4, alignItems: 'center' },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },

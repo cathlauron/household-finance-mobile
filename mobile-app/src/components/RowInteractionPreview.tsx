@@ -92,7 +92,7 @@ function makeStyles(colors: any) {
     label: { fontSize: 11, fontWeight: '600', color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
     stage: { backgroundColor: colors.navy2, borderRadius: 12, padding: 12, overflow: 'hidden' },
     swipeStage: { position: 'relative' },
-    deleteBehind: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 76, backgroundColor: colors.error, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    deleteBehind: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 76, backgroundColor: '#C81E43', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
     previewRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.navy3, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14 },
     rowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold, marginRight: 10 },
     rowTitle: { fontSize: 13, fontWeight: '600', color: colors.ink },

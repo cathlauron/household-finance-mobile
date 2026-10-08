@@ -400,7 +400,7 @@ function makeStyles(colors: any) {
     pickButtonText: { fontSize: 13.5, fontWeight: '600', color: colors.gold },
     loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     loadingText: { fontSize: 12.5, color: colors.inkDim },
-    errorText: { fontSize: 12.5, color: '#e5484d', marginBottom: 12, lineHeight: 17 },
+    errorText: { fontSize: 12.5, color: colors.error, marginBottom: 12, lineHeight: 17 },
     doneText: { fontSize: 13.5, color: '#2f9e44', fontWeight: '600', marginBottom: 12 },
     summaryText: { fontSize: 12.5, color: colors.inkDim, marginBottom: 10, lineHeight: 17 },
     mappingRow: {
@@ -462,7 +462,7 @@ function makeStyles(colors: any) {
       padding: 10,
     },
     invalidTitle: { fontSize: 11.5, color: colors.inkDim, fontWeight: '700', marginBottom: 4 },
-    invalidLine: { fontSize: 11.5, color: '#e5484d', marginTop: 2 },
+    invalidLine: { fontSize: 11.5, color: colors.error, marginTop: 2 },
     importConfirmButton: {
       backgroundColor: colors.gold,
       borderRadius: 10,

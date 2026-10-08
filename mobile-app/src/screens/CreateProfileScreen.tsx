@@ -225,7 +225,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
         <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
           <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
-          {!busy && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />}
+          {!busy && <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.linkBtn} onPress={onGoToSignIn}>
@@ -327,7 +327,7 @@ function makeStyles(colors: any) {
       backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     },
-    primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     btnDisabled: { opacity: 0.4 },
     linkBtn: { paddingVertical: 14, marginTop: 10 },
     linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },

@@ -55,7 +55,7 @@ export default function Avatar({ initials, config, size, variant = 'outlined' }:
           fontSize: Math.round(size * 0.36),
           fontWeight: '700',
           letterSpacing: size >= 60 ? 1 : 0,
-          color: filled ? '#FFFFFF' : colors.gold,
+          color: filled ? colors.navy2 : colors.gold,
         }}
       >
         {initials}

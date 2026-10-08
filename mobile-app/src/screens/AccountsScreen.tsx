@@ -544,7 +544,7 @@ function makeStyles(colors: any) {
     },
     errorText: {
       fontSize: 12,
-      color: '#e5484d',
+      color: colors.error,
       marginBottom: 10,
     },
   });

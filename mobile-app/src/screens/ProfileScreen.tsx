@@ -679,7 +679,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           <TouchableOpacity
             style={styles.shortcutItem}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() => navigation.navigate('Settings', { page: 'security' })}
           >
             <View style={styles.shortcutIconBubble}>
               <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
@@ -696,7 +696,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           <TouchableOpacity
             style={styles.shortcutItem}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() => navigation.navigate('Settings', { page: 'security' })}
           >
             <View style={styles.shortcutIconBubble}>
               <Ionicons name="phone-portrait-outline" size={18} color={colors.gold} />
@@ -1521,7 +1521,7 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
-    errorText: { fontSize: 12, color: '#e5484d', marginBottom: 10 },
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.gold,
@@ -1581,7 +1581,7 @@ function makeStyles(colors: any) {
       padding: 14,
       marginBottom: 8,
     },
-    dangerConfirmText: { fontSize: 12.5, color: '#e5484d', lineHeight: 17, marginBottom: 12 },
+    dangerConfirmText: { fontSize: 12.5, color: colors.error, lineHeight: 17, marginBottom: 12 },
     cancelInlineButton: {
       backgroundColor: colors.navy3,
       borderRadius: 10,

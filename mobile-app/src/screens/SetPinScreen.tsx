@@ -16,6 +16,7 @@ import { savePinCopy } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
+import { useTheme } from '../ThemeContext';
 
 type Props = {
   username: string;
@@ -27,6 +28,8 @@ type Props = {
 
 export default function SetPinScreen({ username, email, onDone, onCancel }: Props) {
   const { verifyPassword } = useData();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [password, setPassword] = useState('');
   const [pin1, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
@@ -124,24 +127,26 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FAFAF9' },
-  container: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 120 },
-  eyebrow: { fontSize: 11, letterSpacing: 2, color: '#78716C', textAlign: 'center', marginBottom: 8 },
-  title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: '#1C1917', marginBottom: 8 },
-  sub: { fontSize: 14, color: '#57534E', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-  label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#57534E', marginBottom: 6, marginTop: 14 },
-  input: {
-    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#E7E5E4',
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917', textAlign: 'center', letterSpacing: 6,
-  },
-  passwordInput: {
-    backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#E7E5E4',
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1C1917',
-  },
-  error: { color: '#E11D48', fontSize: 13, textAlign: 'center', marginTop: 16 },
-  primaryBtn: { backgroundColor: '#1C1917', borderRadius: radii[8], paddingVertical: spacing[14], marginTop: spacing[24] },
-  primaryBtnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '600', fontSize: 15 },
-  ghostBtn: { paddingVertical: 14, marginTop: 4 },
-  ghostBtnText: { color: '#57534E', textAlign: 'center', fontSize: 13 },
-});
+function makeStyles(colors: any) {
+  return StyleSheet.create({
+    flex: { flex: 1, backgroundColor: colors.navy2 },
+    container: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 120 },
+    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
+    title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+    label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
+    input: {
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, textAlign: 'center', letterSpacing: 6,
+    },
+    passwordInput: {
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink,
+    },
+    error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
+    primaryBtn: { backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[24] },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    ghostBtn: { paddingVertical: 14, marginTop: 4 },
+    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
+  });
+}

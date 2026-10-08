@@ -1670,7 +1670,7 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
 
 ✅ V.6c-3 was confirmed on-device ("as described") and is DONE.
 
-🔧 V.6a-2 + V.7 + dark-mode cleanup (Part 3): CODE APPLIED, tsc CLEAN (0 errors), NOT YET DEVICE-TESTED, NOT YET COMMITTED unless the git commands from the session wrap were run. Worked as Antigravity investigates (read-only, two passes), Claude reviews, Cath pastes by hand.
+✅ V.6a-2 + V.7 + dark-mode cleanup (Part 3): DONE, tsc clean, device-tested in light and dark mode ("as described"). Commit status: confirm with git status. Worked as Antigravity investigates (read-only, two passes), Claude reviews, Cath pastes by hand.
 
 V.6a-2 (small fonts raised to 11, one-number edits, Antigravity confirmed none can break a layout):
 - LoansScreen direction pill (9); BillsScreen priorityBadgeText and the CANCELLED and SUB inline labels (10); SettingsScreen thisDeviceBadgeText, statusBadgeTextSignedOut, statusBadgeTextRevoked (10); CsvImportModal badge (9); DashboardScreen owedPillLabel (10.5); LoanPayoffSimulatorModal and SavingsFiComparisonModal statLabel (10) and statNote (10.5); SubscriptionAuditReport billAmountSub (10); DateField dowText (10); AccountsScreen and CalendarScreen balanceBannerLabel (10); CalendarScreen dowText (10); statCardLabel in CashFlowForecastReport, TaxSummaryReport, YearInReviewReport (10); TransactionsScreen statLabel and netLabel (10, "TOTAL OUT" is about 72px in a 142px card so no wrap).
@@ -1689,12 +1689,61 @@ Dark-mode cleanup (Part 3, safe items only):
 
 📌 Mistake and lesson (do not repeat): Antigravity's report for ProfileScreen described a device "Remove" flow (setDevToRemove, dev) that does not exist in the real file. The real "Remove" button is the household-MEMBERS list (isOwner && !isMe, inside a .map where each person is `m`), and its real onPress is setRemoveMemberMsg('') then setMemberToRemove(m). Pasting from the report broke it (2 tsc errors). Fixed by restoring the original onPress from git diff. From now on, never write Profile (or any) find/replace blocks from an Antigravity summary alone; use text Cath has pasted from the real file.
 
-⚠️ STILL OPEN from the investigation (the next batch):
-- White text/icons still on status backgrounds, which fail contrast in dark mode (fix is colors.navy2): TransactionsScreen refundToggleTextActive, refundBadgeText and the checkmark Ionicons (on colors.orange / colors.ok); RowInteractionPreview trash icon on colors.error; Avatar.tsx filled badge text '#FFFFFF' on colors.gold; primaryBtnText '#FFFFFF' in AccountSwitcherScreen, CreateProfileScreen, OnboardingScreen. (The V.2 log said some of these were already fixed; the real code shows they were not.) SwipeableRow and the Home bell badge are fine (fixed #C81E43).
-- ~30 hardcoded '#e5484d' uses remain (mostly errorText styles; plus dangerConfirmText in Profile and Settings, deleteButtonText, IncomeScreen payday remove icon). CalendarScreen TYPE_COLORS.bill is module-level, where colors is not in scope, so it needs its own pass. TransactionsScreen's amountColor() also needs a colors-aware rewrite.
-- Not yet looked at: SetPinScreen legacy colors; PinField / PasswordField internals.
+(The "STILL OPEN" list and next-step plan that used to sit here were all worked through in V.8 below. Part 3 was device-tested "as described".)
 
-▶️ Next: (1) device-test this whole batch in light AND dark mode: tab and badge text readable, Calendar still fits, Settings Data and Active Devices pages, Profile household Remove button still removes (open the confirm), Transactions stat colors; (2) the white-on-status batch above; (3) the #e5484d sweep and amountColor rewrite; (4) optional: shared src/typography.ts type scale.
+=====================================================================
+✅ V.8: White-on-status text, #e5484d sweep, SetPin/SignIn theming, Premium pill, Profile shortcuts (Batches 1-5)
+=====================================================================
+
+Why: finish the V-series list left over from the Part 3 investigation. Worked as Antigravity investigates (one combined read-only pass of real code), Claude reviews, Cath pastes by hand in five batches, each with its own tsc. Batches 1-4 were device-tested in light and dark mode ("as described"). Batch 5 is tsc clean; device test pending (see below).
+
+✅ Batch 1: white text/icons on status colors -> colors.navy2 (DONE, device-tested)
+- TransactionsScreen: refundToggleTextActive, refundBadgeText and the checkmark Ionicons now use colors.navy2.
+- RowInteractionPreview: deleteBehind background colors.error -> '#C81E43' (now matches the real SwipeableRow delete; the white trash icon stays).
+- Avatar.tsx: filled badge text '#FFFFFF' -> colors.navy2.
+- AccountSwitcherScreen, CreateProfileScreen, OnboardingScreen: primaryBtnText -> colors.navy2 (V.2 had logged these as fixed, but the real code showed they were not). AccountSwitcher's unlock spinner and CreateProfile's arrow icon also -> colors.navy2.
+- SignInScreen main Sign in button: spinner and arrow icon -> colors.navy2.
+- ProfileScreen and SettingsScreen dangerButton: confirmed '#C81E43' (changed wherever it still said colors.error; V.7 had not fully landed).
+
+✅ Batch 2: '#e5484d' sweep and the money color table (DONE, device-tested)
+- '#e5484d' / '#E5484D' -> colors.error in AvatarPickerSheet, AccountsScreen, BillsScreen, CsvImportModal, DebtsScreen, EventsScreen, GoalsScreen, GroceriesScreen, LoansScreen, ProfileScreen, SavingsScreen, SettingsScreen, TravelScreen, IncomeScreen (style entries plus the payday remove icon in JSX, color={colors.error}) and TransactionsScreen (receiptRemoveButtonText and errorText only). All of these sit inside makeStyles(colors) or a component, so colors is in scope.
+- TransactionsScreen amountColor() rewritten as amountColor(direction, colors) returning colors.ok (in), colors.orange (saving), colors.error (out). The single call site passes colors. Replace-all was NOT used on this file because the old function was module-level.
+- 📌 Decision: CalendarScreen EVENT_DOT_COLORS (it was called TYPE_COLORS in older notes) keeps '#e5484d' for bill. It only colors small dots and bars, never text (about 3.9:1 on white is fine for non-text). Change only if a theme-aware bill dot is wanted.
+
+✅ Batch 3: SetPinScreen themed, SignIn dead styles removed (DONE, device-tested)
+- SetPinScreen.tsx: imports useTheme, builds styles with makeStyles(colors) (module-level StyleSheet removed). Rounded 12px navy3 inputs with navy4 border, primary button colors.gold + colors.navy2 text with radii.pill, error colors.error.
+- SignInScreen.tsx: deleted the unused module-level primaryBtn and primaryBtnText (confirmed unused).
+
+✅ Batch 4: Premium pill and Profile shortcuts (DONE, device-tested)
+- PremiumScreen saveBadge: added borderWidth 1 and borderColor colors.ok so the "Save 20%" pill is visible on white.
+- ProfileScreen shortcut rows: Password & Encryption Key -> navigation.navigate('Settings', { page: 'security' }); Active Devices -> { page: 'devices' }; All settings still opens the hub.
+- SettingsScreen: useRoute added to the @react-navigation/native import, const route = useRoute<any>(), and a useEffect that reads route.params?.page, calls setPage(target) when it is a key in PAGE_TITLES, then navigation.setParams({ page: undefined }) so the same shortcut works a second time. Confirmed on-device: shortcut opens the page, back returns to the hub, and the repeat tap works.
+
+🔧 Batch 5: SignInScreen module-level styles themed (CODE APPLIED, tsc CLEAN, DEVICE TEST PENDING)
+- Investigation: the module-level styles object is read ONLY inside SignInScreen (34 references, all in its JSX), which already has const { colors } = useTheme(). No references outside any component.
+- Added const styles = makeStyles(colors); right after const ms = makeMainStyles(colors);. The module-level const styles = StyleSheet.create({...}) became function makeStyles(colors: any) { return StyleSheet.create({...}); }. makeMainStyles untouched.
+- Recovery modal, peer-waiting card, dead-end note and revoked banner now follow the theme: modal card navy3; section navy2 with navy4 border; peer card navy3 with colors.orange border and text; revoked banner navy3 with colors.error border and text.
+- secondaryBtn radius changed 8 -> radii.pill to match the other buttons (use borderRadius: 8 to revert).
+- JSX leftovers: the two revoked-banner icons color="#991B1B" -> color={colors.error}; the "Request Member Approval" spinner '#1C1917' -> colors.ink; the peer-waiting spinner '#D97706' -> colors.orange; optional placeholderTextColor={colors.inkFaint} on the recovery-key TextInput (confirm whether it was added).
+- To check on-device (light and dark): normal sign-in screen unchanged; the revoked banner (sign a device out remotely) has a red outline and red text with a visible X; the recovery modal (only appears when the password is accepted but the data is locked) is readable, its key input has a border and visible placeholder, and tapping "Request Member Approval" shows the orange-outlined waiting card with a readable Cancel Request. If the modal is hard to trigger, tsc plus an unchanged normal sign-in screen is the minimum.
+
+📌 V.8 findings that close old open items
+- PinField.tsx and PasswordField.tsx: reviewed, zero hardcoded colors (both use useTheme and colors.inkFaint). Closed.
+- tokens.ts: real file shows 16: 16 in radii. The earlier "22: 16" was a transcription slip. Closed.
+- testID settings-back-button: zero references anywhere in src or flows. Closed.
+- CsvImportModal has no TextInputs; LoanPayoffSimulatorModal's only money field (extra payment) already uses AmountInput. Closed.
+- LoansScreen LENT/BORROWED badge: already 11px, styled inline (no named style). Closed.
+- The Profile "Yes, unlink this device" button uses dangerButton (solid on purpose; it is the final confirm step).
+
+⚠️ V.8 known issues / still optional
+- CalendarScreen tiny fonts (pillText 8, pillMore 7.5, dayBalanceText 7.5), chart month labels (8 and 9) and HomeScreen bellBadgeText still need a layout redesign, not a one-number change.
+- Shared src/typography.ts type scale: optional, not created.
+- Settings sub-pages reported as looking cream or solid on-device: all 15 are transparent in code; cause never found. Ask which pages if seen again.
+- Not verified: dark-mode leaf opacity, iOS card shadow, the iPhone 'modal' Calendar look.
+- PinUnlockScreen still has five unused accountChip styles; harmless, can be deleted later.
+- Metro warning: SafeAreaView imported from 'react-native' should eventually come from 'react-native-safe-area-context'.
+
+📁 V.8 files edited: TransactionsScreen, SignInScreen, SetPinScreen, PremiumScreen, ProfileScreen, SettingsScreen, AccountSwitcherScreen, CreateProfileScreen, OnboardingScreen, AvatarPickerSheet, AccountsScreen, BillsScreen, CsvImportModal, DebtsScreen, EventsScreen, GoalsScreen, GroceriesScreen, IncomeScreen, LoansScreen, SavingsScreen, TravelScreen (all in src/screens/ or src/components/), plus src/components/Avatar.tsx and src/components/RowInteractionPreview.tsx.
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1731,10 +1780,10 @@ UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other
   toggle and badges, and the four primary buttons. The search only looked a few lines
   around each backgroundColor, so more white-on-colored pairs may exist; run a broader
   grep later.
-- darkTheme.cardTealStart/End (#164E44 / #0D332D) are still blue-teal; suggested #1A3B2B /
+- (FIXED in V.6a-2 Part 3: #1A3B2B / #0F261B and inkFaint #9E9892) darkTheme.cardTealStart/End (#164E44 / #0D332D) were blue-teal; suggested #1A3B2B /
   #0F261B to match the new forest green. darkTheme.inkFaint (#8C857F) is borderline 4.35:1;
   suggested #9E9892.
-- TransactionsScreen hardcoded money colors, the SignIn recovery button (#1C1917), the
+- (FIXED in V.8) TransactionsScreen hardcoded money colors, the SignIn recovery button (#1C1917), the
   19 hardcoded SignIn colors and the #E5484D uses in 16 files still need to move onto the
   theme.
 - (PARTLY FIXED in V.6a-1; remaining list is in that entry) Tiny fonts (<11px): CalendarScreen 327/334 (7.5 and 8px), CashFlowForecastReport 219/203,
@@ -1747,10 +1796,10 @@ UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other
   one shared Pill component.
 - Destructive actions: "Clear all data" is a full-width red button right under "Save a
   backup"; screen 11 has seven red "Sign out" buttons in a row.
-- Profile's three shortcut rows (Password & Encryption Key, Active Devices, All settings)
+- (FIXED in V.8 Batch 4) Profile's three shortcut rows (Password & Encryption Key, Active Devices, All settings)
   all call navigation.navigate('Settings') and open the Settings hub, not their own pages.
   Fixing needs a route param plus a useEffect in SettingsScreen (it does not read params).
-- PremiumScreen's "SAVE 17%" pill uses okBg (#ECFDF5), about 1.05:1 on a white card, so it
+- (FIXED in V.8 Batch 4: border added) PremiumScreen's "SAVE 17%" pill uses okBg (#ECFDF5), about 1.05:1 on a white card, so it
   is nearly invisible. LoansScreen's LENT/BORROWED badge text is 9px with a 12% tint.
   Both are left for V.4 (shared Pill) and V.6 (fonts).
 
@@ -1787,8 +1836,8 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (V.6/V.7): V.6c-3 confirmed DONE. V.6a-2 (small fonts), V.7 (outlined destructive buttons) and the safe dark-mode items are applied and tsc clean but NOT yet device-tested. See the "V.6a-2 + V.7 + dark-mode cleanup" entry for the exact list and the next batch (white-on-status text, the #e5484d sweep). The older bullets below are still true where not superseded.
-- ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
+- LATEST (V.8): the V series is code-complete. Batches 1-4 are device-tested; Batch 5 (SignInScreen styles themed) is tsc clean and needs its device check (see the Batch 5 entry). Then, optionally: Calendar tiny-font redesign, the shared src/typography.ts type scale, and the PinUnlockScreen dead-style tidy. After that, decide between (a) returning to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in, or (b) making a new EAS build first, since react-native-svg (H series and mint restyle) is not in the installed build. Confirm with Cath before starting.
+- (OLDER, superseded by the LATEST bullet above) ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
   destructive buttons, including dangerButton and deviceSignOutBtn). Optional: tidy
