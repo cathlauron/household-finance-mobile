@@ -205,38 +205,29 @@ export default function DashboardScreen({
         activeOpacity={0.7}
         onPress={() => navigation.navigate('To-Pay')}
       >
-        <View style={styles.rowCard}>
+        <View style={[styles.rowCard, { marginBottom: 6 }]}>
           <View style={[styles.iconBubbleQuiet, { backgroundColor: colors.peachBubble }]}>
             <Ionicons name="receipt-outline" size={16} color={colors.orange} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardLabel}>Amount Owed</Text>
-            <Text style={[styles.bigAmount, { fontSize: 22, color: colors.orange }]}>
-              {formatPeso(totalOwed)}
-            </Text>
+            <Text style={[styles.cardLabel, { marginBottom: 0 }]}>Amount Owed</Text>
           </View>
         </View>
+        <Text style={[styles.bigAmount, { fontSize: 22, color: colors.orange, marginBottom: 4 }]}>
+          {formatPeso(totalOwed)}
+        </Text>
         <View style={styles.owedBreakdownRow}>
           <TouchableOpacity style={styles.owedPill} onPress={() => goToPay('bills')} activeOpacity={0.7}>
-            <View style={styles.owedPillTextWrap}>
-              <Text style={styles.owedPillLabel}>Bills</Text>
-              <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(billsOwed)}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={11} color={colors.orange} />
+            <Text style={styles.owedPillLabel}>Bills</Text>
+            <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(billsOwed)}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.owedPill} onPress={() => goToPay('debts')} activeOpacity={0.7}>
-            <View style={styles.owedPillTextWrap}>
-              <Text style={styles.owedPillLabel}>Debts</Text>
-              <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(debtsOwed)}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={11} color={colors.orange} />
+            <Text style={styles.owedPillLabel}>Debts</Text>
+            <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(debtsOwed)}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.owedPill} onPress={() => goToPay('loans')} activeOpacity={0.7}>
-            <View style={styles.owedPillTextWrap}>
-              <Text style={styles.owedPillLabel}>Loans</Text>
-              <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(loansOwed)}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={11} color={colors.orange} />
+            <Text style={styles.owedPillLabel}>Loans</Text>
+            <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(loansOwed)}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -449,14 +440,10 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     owedPill: {
       flex: 1,
       minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 4,
       backgroundColor: colors.navy3,
       borderWidth: 1,
       borderColor: colors.navy4,
-      paddingHorizontal: 9,
+      paddingHorizontal: 10,
       paddingVertical: 7,
       borderRadius: 14,
     },
@@ -468,6 +455,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       fontSize: 11,
       fontWeight: '600',
       color: colors.inkDim,
+      marginBottom: 2,
     },
     owedPillAmount: {
       fontSize: 12,

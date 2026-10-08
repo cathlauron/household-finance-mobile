@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
@@ -25,13 +25,27 @@ const MONTHS = [
 
 // One color per kind of item, used for the small dots on each day and the
 // dot next to each row in the day popup.
-const EVENT_DOT_COLORS: Record<CalendarEvent['type'], string> = {
-  bill: '#e5484d',
-  debt: '#f5a524',
-  loan: '#8b5cf6',
-  income: '#22c55e',
-  saving: '#f59e0b',
-  manual: '#94a3b8',
+function getEventDotColors(colors: any): Record<CalendarEvent['type'], string> {
+  return {
+    bill: colors.error,
+    debt: colors.orange,
+    loan: colors.indigo,
+    income: colors.ok,
+    saving: colors.gold,
+    manual: colors.decor,
+  };
+}
+
+const VIEW_MODE_ICONS: Record<CalendarViewMode, keyof typeof Ionicons.glyphMap> = {
+  compact: 'grid-outline',
+  stacked: 'layers-outline',
+  details: 'reader-outline',
+  list: 'list-outline',
+};
+
+const NAV_MODE_ICONS: Record<CalendarNavMode, keyof typeof Ionicons.glyphMap> = {
+  swipe: 'swap-horizontal-outline',
+  scroll: 'swap-vertical-outline',
 };
 
 // Swipe mode lets you page 24 months back and 24 months forward from today.
@@ -68,6 +82,7 @@ const MonthView = React.memo(function MonthView({
   const { model } = useData();
   const today = new Date();
   const styles = makeStyles(colors);
+  const EVENT_DOT_COLORS = getEventDotColors(colors);
 
   const monthEvents = useMemo(() => {
     if (!model) return {} as Record<number, CalendarEvent[]>;
@@ -79,15 +94,33 @@ const MonthView = React.memo(function MonthView({
     return computeRunningBalances(model, year, month);
   }, [model, year, month]);
 
+  type GridCell = { day: number; month: number; year: number; isCurrentMonth: boolean };
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
   const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday
-  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+  const isCurrentYearMonth = year === today.getFullYear() && month === today.getMonth();
 
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const prevYear = month === 0 ? year - 1 : year;
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  const nextMonth = month === 11 ? 0 : month + 1;
 
-  const rows: (number | null)[][] = [];
+  const cells: GridCell[] = [];
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    cells.push({ day: prevMonthDays - i, month: prevMonth, year: prevYear, isCurrentMonth: false });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, month, year, isCurrentMonth: true });
+  }
+  const remainder = cells.length % 7;
+  if (remainder > 0) {
+    for (let d = 1; d <= 7 - remainder; d++) {
+      cells.push({ day: d, month: nextMonth, year: nextYear, isCurrentMonth: false });
+    }
+  }
+
+  const rows: GridCell[][] = [];
   for (let i = 0; i < cells.length; i += 7) {
     rows.push(cells.slice(i, i + 7));
   }
@@ -96,65 +129,76 @@ const MonthView = React.memo(function MonthView({
     <View>
       {rows.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.weekRow}>
-          {row.map((day, colIndex) => {
-            const isToday = isCurrentMonth && day === today.getDate();
+          {row.map((cell, colIndex) => {
+            const isToday = isCurrentYearMonth && cell.isCurrentMonth && cell.day === today.getDate();
+            const isSelected =
+              viewMode === 'list' && cell.isCurrentMonth && cell.day === effectivePreviewDay && !isToday;
+            const evs = cell.isCurrentMonth ? monthEvents[cell.day] : undefined;
+            const hasEvs = !!evs && evs.length > 0;
             return (
               <TouchableOpacity
                 key={colIndex}
-                disabled={day === null}
-                onPress={() => day !== null && onDayPress(day, year, month)}
+                disabled={!cell.isCurrentMonth}
+                onPress={() => onDayPress(cell.day, cell.year, cell.month)}
                 activeOpacity={0.6}
                 style={[
                   styles.dayCell,
                   viewMode === 'details' ? styles.dayCellDetails : viewMode === 'list' ? styles.dayCellList : styles.dayCellSquare,
-                  day === null && styles.dayCellEmpty,
+                  !cell.isCurrentMonth && styles.dayCellOutOfMonth,
                   isToday && styles.dayCellToday,
-                  viewMode === 'list' && day !== null && day === effectivePreviewDay && !isToday && styles.dayCellSelected,
+                  isSelected && styles.dayCellSelected,
                 ]}
               >
-                {day !== null && (
-                  <>
-                    <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
-                      {day}
-                    </Text>
-                    {viewMode === 'stacked' && monthEvents[day] && monthEvents[day].length > 0 && (
-                      <View style={styles.stackWrap}>
-                        {monthEvents[day].slice(0, 3).map((ev, i) => (
-                          <View
-                            key={i}
-                            style={[styles.stackBar, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
-                          />
-                        ))}
+                <Text
+                  style={[
+                    styles.dayText,
+                    !cell.isCurrentMonth && styles.dayTextOutOfMonth,
+                    isToday && styles.dayTextToday,
+                  ]}
+                >
+                  {cell.day}
+                </Text>
+                {hasEvs && viewMode === 'stacked' && (
+                  <View style={styles.stackWrap}>
+                    {evs!.slice(0, 3).map((ev, i) => (
+                      <View
+                        key={i}
+                        style={[styles.stackBar, { backgroundColor: isToday ? '#FFFFFF' : EVENT_DOT_COLORS[ev.type] }]}
+                      />
+                    ))}
+                  </View>
+                )}
+                {hasEvs && viewMode === 'details' && (
+                  <View style={styles.pillWrap}>
+                    {evs!.slice(0, 2).map((ev, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.pill,
+                          { backgroundColor: isToday ? 'rgba(255,255,255,0.25)' : EVENT_DOT_COLORS[ev.type] + '26' },
+                        ]}
+                      >
+                        <Text style={[styles.pillText, isToday && { color: '#FFFFFF' }]} numberOfLines={1}>
+                          {ev.label}
+                        </Text>
                       </View>
+                    ))}
+                    {evs!.length > 2 && (
+                      <Text style={[styles.pillMore, isToday && { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
+                        +{evs!.length - 2}
+                      </Text>
                     )}
-                    {viewMode === 'details' && monthEvents[day] && monthEvents[day].length > 0 && (
-                      <View style={styles.pillWrap}>
-                        {monthEvents[day].slice(0, 2).map((ev, i) => (
-                          <View
-                            key={i}
-                            style={[styles.pill, { backgroundColor: EVENT_DOT_COLORS[ev.type] + '33' }]}
-                          >
-                            <Text style={styles.pillText} numberOfLines={1}>
-                              {ev.label}
-                            </Text>
-                          </View>
-                        ))}
-                        {monthEvents[day].length > 2 && (
-                          <Text style={styles.pillMore} numberOfLines={1}>+{monthEvents[day].length - 2}</Text>
-                        )}
-                      </View>
-                    )}
-                    {viewMode !== 'stacked' && viewMode !== 'details' && monthEvents[day] && monthEvents[day].length > 0 && (
-                      <View style={styles.dotRow}>
-                        {monthEvents[day].slice(0, 4).map((ev, i) => (
-                          <View
-                            key={i}
-                            style={[styles.dot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </>
+                  </View>
+                )}
+                {hasEvs && viewMode !== 'stacked' && viewMode !== 'details' && (
+                  <View style={styles.dotRow}>
+                    {evs!.slice(0, 4).map((ev, i) => (
+                      <View
+                        key={i}
+                        style={[styles.dot, { backgroundColor: isToday ? '#FFFFFF' : EVENT_DOT_COLORS[ev.type] }]}
+                      />
+                    ))}
+                  </View>
                 )}
               </TouchableOpacity>
             );
@@ -261,6 +305,7 @@ export default function CalendarScreen() {
   }, [model, selectedDate]);
 
   const styles = makeStyles(colors);
+  const EVENT_DOT_COLORS = getEventDotColors(colors);
 
   // Data hasn't finished loading into memory yet (this is usually near-instant, right
   // after signing in or unlocking) — show a spinner instead of a blank/broken calendar.
@@ -374,13 +419,17 @@ export default function CalendarScreen() {
       <View style={styles.sheetHeader}>
         <View style={styles.sheetHeaderSide} />
         <Text style={styles.sheetTitle}>Calendar</Text>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.sheetHeaderSide, { alignItems: 'flex-end' }]}
-          accessibilityLabel="Close calendar"
-        >
-          <Text style={styles.sheetDone}>Done</Text>
-        </TouchableOpacity>
+        <View style={[styles.sheetHeaderSide, { alignItems: 'flex-end' }]}>
+          {Platform.OS === 'android' && (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.closeBtnCircle}
+              accessibilityLabel="Close calendar"
+            >
+              <Ionicons name="close" size={18} color={colors.ink} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       <Card variant="banner" style={{ marginBottom: 14 }}>
         <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
@@ -515,26 +564,29 @@ export default function CalendarScreen() {
           <Pressable style={styles.menuCard} onPress={() => {}}>
             {(['compact', 'stacked', 'details'] as CalendarViewMode[]).map((m) => (
               <TouchableOpacity key={m} style={styles.menuRow} onPress={() => chooseViewMode(m)}>
-                <View style={styles.menuCheckSlot}>
-                  {viewMode === m && <Ionicons name="checkmark" size={18} color={colors.ink} />}
-                </View>
+                <Ionicons name={VIEW_MODE_ICONS[m]} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
                 <Text style={styles.menuRowText}>{m.charAt(0).toUpperCase() + m.slice(1)}</Text>
+                <View style={styles.menuCheckSlot}>
+                  {viewMode === m && <Ionicons name="checkmark" size={18} color={colors.gold} />}
+                </View>
               </TouchableOpacity>
             ))}
             <View style={styles.menuDivider} />
             <TouchableOpacity style={styles.menuRow} onPress={() => chooseViewMode('list')}>
-              <View style={styles.menuCheckSlot}>
-                {viewMode === 'list' && <Ionicons name="checkmark" size={18} color={colors.ink} />}
-              </View>
+              <Ionicons name={VIEW_MODE_ICONS.list} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
               <Text style={styles.menuRowText}>List</Text>
+              <View style={styles.menuCheckSlot}>
+                {viewMode === 'list' && <Ionicons name="checkmark" size={18} color={colors.gold} />}
+              </View>
             </TouchableOpacity>
             <View style={styles.menuDivider} />
             {(['swipe', 'scroll'] as CalendarNavMode[]).map((n) => (
               <TouchableOpacity key={n} style={styles.menuRow} onPress={() => chooseNavMode(n)}>
-                <View style={styles.menuCheckSlot}>
-                  {navMode === n && <Ionicons name="checkmark" size={18} color={colors.ink} />}
-                </View>
+                <Ionicons name={NAV_MODE_ICONS[n]} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
                 <Text style={styles.menuRowText}>{n === 'swipe' ? 'Swipe months' : 'Scroll months'}</Text>
+                <View style={styles.menuCheckSlot}>
+                  {navMode === n && <Ionicons name="checkmark" size={18} color={colors.gold} />}
+                </View>
               </TouchableOpacity>
             ))}
           </Pressable>
@@ -586,7 +638,7 @@ function makeStyles(colors: any) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.navy3,
+      backgroundColor: colors.navy2,
       paddingHorizontal: 12,
       paddingTop: 16,
     },
@@ -601,17 +653,22 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     sheetHeaderSide: {
-      width: 60,
+      width: 44,
     },
     sheetTitle: {
       fontSize: 17,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.ink,
     },
-    sheetDone: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.gold,
+    closeBtnCircle: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.navy3,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.navy4,
     },
     balanceBannerLabel: {
       fontSize: 11,
@@ -631,23 +688,21 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     navButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    navButtonText: {
-      fontSize: 20,
-      color: colors.ink,
-    },
     monthLabel: {
       fontSize: 18,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.ink,
     },
-        inlineMonthTitle: {
+    inlineMonthTitle: {
       fontSize: 15,
       fontWeight: '700',
       color: colors.ink,
@@ -657,6 +712,8 @@ function makeStyles(colors: any) {
     todayButton: {
       alignSelf: 'center',
       backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       paddingHorizontal: 14,
       paddingVertical: 6,
       borderRadius: 999,
@@ -664,9 +721,10 @@ function makeStyles(colors: any) {
     },
     todayButtonText: {
       fontSize: 12,
+      fontWeight: '600',
       color: colors.inkDim,
     },
-        toolbarRow: {
+    toolbarRow: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
       marginBottom: 4,
@@ -676,80 +734,111 @@ function makeStyles(colors: any) {
     },
     menuOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.25)',
+      backgroundColor: 'rgba(0,0,0,0.3)',
       alignItems: 'flex-end',
       paddingTop: 110,
       paddingRight: 16,
     },
     menuCard: {
-      width: 240,
+      width: 230,
       backgroundColor: colors.navy3,
       borderRadius: 14,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.navy4,
     },
     menuRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 13,
-      paddingHorizontal: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
     },
-    menuCheckSlot: {
-      width: 26,
-      alignItems: 'center',
+    menuItemIcon: {
+      marginRight: 12,
     },
     menuRowText: {
-      fontSize: 16,
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
       color: colors.ink,
     },
+    menuCheckSlot: {
+      width: 22,
+      alignItems: 'flex-end',
+    },
     menuDivider: {
-      height: 8,
-      backgroundColor: colors.navy2,
+      height: 1,
+      backgroundColor: colors.navy4,
+      marginHorizontal: 10,
     },
     dowRow: {
       flexDirection: 'row',
-      marginBottom: 4,
+      marginBottom: 6,
     },
     dowCell: {
       flex: 1,
       alignItems: 'center',
-      paddingBottom: 6,
+      paddingBottom: 4,
     },
     dowText: {
       fontSize: 11,
+      fontWeight: '700',
       color: colors.inkFaint,
       textTransform: 'uppercase',
     },
     weekRow: {
       flexDirection: 'row',
-      marginBottom: 6,
+      marginBottom: 5,
     },
     dayCell: {
       flex: 1,
       margin: 2,
       borderRadius: 10,
       backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    dayCellEmpty: {
+    dayCellOutOfMonth: {
       backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      opacity: 0.35,
     },
-        dayCellSquare: {
+    dayCellSquare: {
       aspectRatio: 1,
     },
-        dayCellList: {
+    dayCellList: {
       height: 44,
     },
+    dayCellToday: {
+      backgroundColor: colors.gold,
+      borderColor: colors.gold,
+    },
     dayCellSelected: {
-      borderWidth: 1.5,
-      borderColor: colors.inkDim,
+      borderWidth: 2,
+      borderColor: colors.gold,
+    },
+    dayText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    dayTextOutOfMonth: {
+      color: colors.inkFaint,
+    },
+    dayTextToday: {
+      color: '#FFFFFF',
+      fontWeight: '700',
     },
     previewPanel: {
       flex: 1,
       marginTop: 10,
       marginBottom: 8,
       backgroundColor: colors.navy3,
-      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.navy4,
+      borderRadius: 14,
       padding: 14,
     },
     previewTitle: {
@@ -795,27 +884,16 @@ function makeStyles(colors: any) {
       paddingVertical: 1,
     },
     pillText: {
-      fontSize: 11,
+      fontSize: 10.5,
+      fontWeight: '500',
       color: colors.ink,
     },
     pillMore: {
-      fontSize: 11,
+      fontSize: 10.5,
       color: colors.inkDim,
       paddingLeft: 2,
     },
-    dayCellToday: {
-      borderWidth: 2,
-      borderColor: colors.gold,
-    },
-    dayText: {
-      fontSize: 13,
-      color: colors.ink,
-    },
-    dayTextToday: {
-      color: colors.gold,
-      fontWeight: '700',
-    },
-        dotRow: {
+    dotRow: {
       flexDirection: 'row',
       gap: 3,
       marginTop: 2,
@@ -838,6 +916,8 @@ function makeStyles(colors: any) {
       width: '100%',
       maxWidth: 360,
       backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
       borderRadius: 14,
       padding: 20,
     },
@@ -859,7 +939,7 @@ function makeStyles(colors: any) {
       lineHeight: 19,
       marginBottom: 18,
     },
-        modalEventList: {
+    modalEventList: {
       maxHeight: 220,
       marginBottom: 14,
     },
@@ -868,7 +948,7 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       paddingVertical: 7,
       borderBottomWidth: 1,
-      borderBottomColor: colors.navy2,
+      borderBottomColor: colors.navy4,
     },
     modalEventDot: {
       width: 7,
@@ -895,8 +975,8 @@ function makeStyles(colors: any) {
     },
     modalCloseButtonText: {
       fontSize: 13,
-      fontWeight: '600',
-      color: colors.navy2,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
   });
 }

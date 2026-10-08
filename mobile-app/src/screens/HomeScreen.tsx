@@ -84,18 +84,18 @@ export default function HomeScreen({ username }: Props) {
     <View style={{ flex: 1, backgroundColor: 'transparent', paddingTop: insets.top }}>
       <View style={hs.headerRow}>
         <TouchableOpacity
-          style={hs.headerLeft}
+          style={hs.profilePill}
+          activeOpacity={0.7}
           onPress={() => navigation.navigate('Profile')}
           accessibilityLabel="Open profile"
         >
           <Avatar
             initials={getInitials(username || '')}
             config={model?.avatars?.[username || '']}
-            size={36}
+            size={30}
             variant="filled"
           />
           <Text style={hs.greeting} numberOfLines={1}>Hi, {username}</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
         </TouchableOpacity>
 
         <View style={hs.headerRight}>
@@ -212,8 +212,21 @@ function makeHomeStyles(colors: any) {
       paddingBottom: 8,
     },
     headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
+    profilePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.navy3,
+      borderWidth: 1,
+      borderColor: colors.navy4,
+      paddingVertical: 4,
+      paddingLeft: 4,
+      paddingRight: 14,
+      borderRadius: 999,
+      maxWidth: '75%',
+    },
     headerRight: { alignItems: 'flex-end' },
-    greeting: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+    greeting: { color: colors.ink, fontSize: 14, fontWeight: '700' },
     bellBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
     bellDot: { position: 'absolute', top: 6, right: 7, width: 8, height: 8, borderRadius: 4 },
     bellBadge: { position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
