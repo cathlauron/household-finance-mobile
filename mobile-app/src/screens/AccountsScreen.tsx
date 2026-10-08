@@ -25,6 +25,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -63,7 +64,7 @@ export default function AccountsScreen() {
   // The id of the account being edited, or null if this is a brand-new account.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
-  const [amountInput, setAmountInput] = useState('');
+  const [amountInput, setAmountInput] = useState<number | ''>('');
   const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
@@ -89,7 +90,7 @@ export default function AccountsScreen() {
     setActiveGroup(group);
     setEditingId(account.id);
     setNameInput(account.name);
-    setAmountInput(account.amount === '' ? '' : String(account.amount));
+    setAmountInput(account.amount);
     setColorInput(account.color || DEFAULT_GROUP_COLORS[group]);
     setErrorMsg('');
   }
@@ -128,11 +129,7 @@ export default function AccountsScreen() {
       setErrorMsg('Enter an account name.');
       return;
     }
-    const parsedAmount = amountInput.trim() === '' ? 0 : parseFloat(amountInput);
-    if (isNaN(parsedAmount)) {
-      setErrorMsg('Enter a valid amount.');
-      return;
-    }
+    const parsedAmount = amountInput === '' ? 0 : amountInput;
 
     const updated: HouseholdModel = {
       ...model,
@@ -367,13 +364,10 @@ export default function AccountsScreen() {
         />
 
         <Text style={styles.inputLabel}>Balance</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="0.00"
-          placeholderTextColor={colors.inkFaint}
-          keyboardType="decimal-pad"
+        <AmountInput
+          style={styles.amountInput}
           value={amountInput}
-          onChangeText={setAmountInput}
+          onChangeAmount={setAmountInput}
         />
 
         <Text style={styles.inputLabel}>Card color</Text>
@@ -528,6 +522,9 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
     },
     swatchRow: {
       flexDirection: 'row',
