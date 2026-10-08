@@ -1762,32 +1762,32 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {!!exportMsg && <Text style={styles.errorText}>{exportMsg}</Text>}
 
         {!clearConfirmOpen ? (
-          <TouchableOpacity style={styles.dangerOutlineButton} onPress={() => setClearConfirmOpen(true)}>
-            <Text style={styles.dangerOutlineButtonText}>Clear all data &amp; start fresh</Text>
-          </TouchableOpacity>
+            <Button
+              variant="outlineDanger"
+              label="Clear all data & start fresh"
+              onPress={() => setClearConfirmOpen(true)}
+              style={{ marginBottom: 8 }}
+            />
         ) : (
           <View style={styles.dangerConfirmBox}>
             <Text style={styles.dangerConfirmText}>
       This clears every entry for this profile — bills, debts, loans, income, savings, accounts, everything. Your username and password stay the same. This can't be undone.
     </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
-                onPress={handleClearAllData}
-                disabled={clearBusy}
-              >
-                {clearBusy ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.dangerButtonText}>Yes, clear everything</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.cancelInlineButton, { flex: 1 }]}
-                onPress={() => setClearConfirmOpen(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+                <Button
+                  variant="solidDanger"
+                  label="Yes, clear everything"
+                  onPress={handleClearAllData}
+                  loading={clearBusy}
+                  disabled={clearBusy}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  variant="secondary"
+                  label="Cancel"
+                  onPress={() => setClearConfirmOpen(false)}
+                  style={{ flex: 1 }}
+                />
             </View>
           </View>
         )}
@@ -2073,24 +2073,21 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   </Text>
             {!!revokeError && <Text style={styles.errorText}>{revokeError}</Text>}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity
-                style={[styles.dangerButton, { flex: 1, marginBottom: 0 }]}
-                onPress={handleConfirmRevoke}
-                disabled={revokeBusy}
-              >
-                {revokeBusy ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.dangerButtonText}>Sign out device</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.cancelInlineButton, { flex: 1 }]}
-                onPress={() => setDeviceToRevoke(null)}
-                disabled={revokeBusy}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+                <Button
+                  variant="solidDanger"
+                  label="Sign out device"
+                  onPress={handleConfirmRevoke}
+                  loading={revokeBusy}
+                  disabled={revokeBusy}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  variant="secondary"
+                  label="Cancel"
+                  onPress={() => setDeviceToRevoke(null)}
+                  disabled={revokeBusy}
+                  style={{ flex: 1 }}
+                />
             </View>
           </Pressable>
         </Pressable>
