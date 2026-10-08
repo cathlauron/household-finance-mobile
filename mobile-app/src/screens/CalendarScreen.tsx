@@ -273,6 +273,7 @@ export default function CalendarScreen() {
   }
 
   function goPrevMonth() {
+    if (pageIndex <= 0) return;
     if (month === 0) {
       setMonth(11);
       setYear(year - 1);
@@ -282,6 +283,7 @@ export default function CalendarScreen() {
   }
 
   function goNextMonth() {
+    if (pageIndex >= monthPages.length - 1) return;
     if (month === 11) {
       setMonth(0);
       setYear(year + 1);
@@ -392,7 +394,7 @@ export default function CalendarScreen() {
       </View>
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={goPrevMonth} style={styles.navButton}>
+        <TouchableOpacity onPress={goPrevMonth} style={[styles.navButton, pageIndex <= 0 && { opacity: 0.35 }]}>
           <Ionicons name="chevron-back" size={20} color={colors.ink} />
         </TouchableOpacity>
 
@@ -400,7 +402,7 @@ export default function CalendarScreen() {
           {MONTHS[month]} {year}
         </Text>
 
-        <TouchableOpacity onPress={goNextMonth} style={styles.navButton}>
+        <TouchableOpacity onPress={goNextMonth} style={[styles.navButton, pageIndex >= monthPages.length - 1 && { opacity: 0.35 }]}>
           <Ionicons name="chevron-forward" size={20} color={colors.ink} />
         </TouchableOpacity>
       </View>
