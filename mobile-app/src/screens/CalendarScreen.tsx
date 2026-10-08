@@ -140,7 +140,7 @@ const MonthView = React.memo(function MonthView({
                           </View>
                         ))}
                         {monthEvents[day].length > 2 && (
-                          <Text style={styles.pillMore}>+{monthEvents[day].length - 2} more</Text>
+                          <Text style={styles.pillMore} numberOfLines={1}>+{monthEvents[day].length - 2}</Text>
                         )}
                       </View>
                     )}
@@ -153,17 +153,6 @@ const MonthView = React.memo(function MonthView({
                           />
                         ))}
                       </View>
-                    )}
-                    {viewMode !== 'details' && viewMode !== 'list' && (
-                      <Text
-                        style={[
-                          styles.dayBalanceText,
-                          !((monthEvents[day] && monthEvents[day].length > 0) || isToday) && { opacity: 0 },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {formatPeso(projectedBalances[day] ?? 0)}
-                      </Text>
                     )}
                   </>
                 )}
@@ -804,12 +793,12 @@ function makeStyles(colors: any) {
       paddingVertical: 1,
     },
     pillText: {
-      fontSize: 8,
+      fontSize: 11,
       color: colors.ink,
     },
     pillMore: {
-      fontSize: 7.5,
-      color: colors.inkFaint,
+      fontSize: 11,
+      color: colors.inkDim,
       paddingLeft: 2,
     },
     dayCellToday: {
@@ -823,11 +812,6 @@ function makeStyles(colors: any) {
     dayTextToday: {
       color: colors.gold,
       fontWeight: '700',
-    },
-    dayBalanceText: {
-      fontSize: 7.5,
-      color: colors.inkFaint,
-      marginTop: 1,
     },
         dotRow: {
       flexDirection: 'row',
