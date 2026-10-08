@@ -1642,7 +1642,21 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
   - V.6c-4: LoanPayoffSimulatorModal extra payment, GroceriesScreen, TravelScreen, EventsScreen, GoalsScreen, SavingsFiComparisonModal, Settings category watch limit and rule min/max.
   - Leave as plain inputs: due day / month fields, interest rate % and similar percent fields.
 
-▶️ Next: V.6c-3 (AmountInput on Bills, Income, Transactions), then V.6c-4, the remaining small fonts, then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
+🔧 V.6c-3: AmountInput on Bills, Income and Transactions money fields. CODE GIVEN, NOT YET CONFIRMED APPLIED / tsc / DEVICE-TESTED / COMMITTED (change this status to DONE once it is). Worked as Antigravity investigates (read-only, all three screens in one pass), Claude reviews, Cath pastes by hand.
+- Investigation findings (real code viewed): 5 money fields in total, no negatives needed, no onBlur / ref / testID that AmountInput would drop, none in a repeating row except Income's payday log. Inside each BottomSheet the screen's own `input` style is navy2 on a navy3 sheet, so each screen needs `amountInput: { backgroundColor: colors.navy2 }` (same lesson as V.6c-2).
+- BillsScreen: "Amount" (amountInput). State is now number | ''. openEditModal sets billAmount(bill) directly (no String()). handleSave: `let parsedAmount = amountInput === '' ? 0 : amountInput;` (kept as `let` so it still compiles if reassigned later). Name, category, day, month and notes stay TextInput. There is no "amount paid" field in Bills; payment is a card-tap toggle.
+- TransactionsScreen: "Amount" and "Expected refund". Both states are number | ''. handleSave checks `amountInput === '' || amountInput <= 0` ("Enter an amount greater than 0.") and the refund uses `typeof refundAmountInput === 'number' && refundAmountInput > 0`. Label, person, category, notes and tags stay TextInput.
+- IncomeScreen: "Expected amount" and the payday log rows. PaymentLogFormEntry changed from { amountText: string } to { amount: number | '' }, and updatePaymentLogAmount now takes number | ''. The save loop uses `hasAmt = typeof entry.amount === 'number' && !isNaN(entry.amount)`; the old parseFloat/isNaN branch is gone. Person, category, source name and the day fields stay TextInput.
+- 📌 Corrections made to Antigravity's proposal (do not undo):
+  - Transactions auto-category: a blank amount must stay NaN when passed to computeAutoCategory (`typeof amountInput === 'number' ? amountInput : NaN`, and `val === '' ? NaN : val` in handleAmountChange). Antigravity passed 0, which would make "max amount" rules match before any amount is typed. handleAmountChange also no longer returns early on '' so the category can still auto-fill from the label.
+  - Income `amountInput` style also needs `marginBottom: 10` (the screen's own input style used 10; AmountInput defaults to 14, so the field would otherwise sit 4px lower). Payday log rows are unaffected because paymentLogAmountInput comes later in the style array and sets marginBottom: 0.
+  - Bills `parsedAmount` kept as `let`, not `const`.
+- ⚠️ Not verified: (a) AmountInput's prop names (onChangeAmount, style, placeholder) were taken from the V.6c-2 screens, since this investigation never re-showed AmountInput.tsx; (b) the Income payday rows pass placeholder="Amount", and if tsc rejects it, delete that line; (c) billAmount(bill) is assumed to return a number (tsc will confirm); (d) CsvImportModal was not checked for its own inputs; (e) the Income payday-row layout (AmountInput with flex: 1 next to the date field) is the likeliest place for a visual wobble, so check it on-device; (f) the Bills amount used to clear after "Add"; check it still does (resetForm sets ''), and that editing a bill shows its saved amount.
+- Planned apply order, one screen at a time with its own tsc, device check and commit: Bills, then Transactions, then Income (last, because its row state changes shape).
+- Device checks per screen: Add and Edit show the right values; typing 1250.50 saves ₱1,250.50; field is blank after Add. Transactions: a label that matches a rule still fills the category, and amount-range rules only apply once an amount is typed. Income: add and remove a payday row; a row with a date but no amount shows "Each entry requires both date and amount."
+- 📌 Lesson: Antigravity's reply was too long to paste whole, so the investigation prompt was written for all three screens in one go but can be answered screen by screen. Always give the person find/replace blocks, not a description of changes.
+
+▶️ Next: confirm V.6c-3 (apply, tsc, device test, commit), then V.6c-4, the remaining small fonts, then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1690,7 +1704,7 @@ UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other
   MainTabs 94, TravelScreen 312, and about 33 occurrences at 10px.
 - (FIXED in V.6b) Calendar days show the same balance under every date; plan to show a balance only on days
   with activity.
-- (PARTLY FIXED in V.6c-1 and V.6c-2: FI Calculator, Savings, Accounts, Loans and Debts peso fields done; Bills, Income, Transactions and the V.6c-4 list remain) Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
+- (PARTLY FIXED in V.6c-1 and V.6c-2: FI Calculator, Savings, Accounts, Loans and Debts peso fields done; Bills, Income and Transactions code given in V.6c-3 and pending confirmation; the V.6c-4 list remains) Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
 - Sub-tab pills, segmented controls and filter chips are three different pill styles; plan
   one shared Pill component.
 - Destructive actions: "Clear all data" is a full-width red button right under "Save a
@@ -1735,7 +1749,7 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days) and V.6c-1 (AmountInput in the FI Calculator peso fields) are done, device-tested and pushed. Next, in order: (1) V.6c-3 (AmountInput on Bills, Income, Transactions; ask Antigravity for the exact current code first; V.6c-2 Savings, Accounts, Loans and Debts are done and pushed), (2) V.6c-4, (3) the remaining small-font items listed in the V.6a-1 entry, (4) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
+- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days) and V.6c-1 (AmountInput in the FI Calculator peso fields) are done, device-tested and pushed. Next, in order: (1) V.6c-3 (AmountInput on Bills, Income, Transactions; the investigation is done and the find/replace code was given with corrections, see the V.6c-3 entry; what is left is applying it screen by screen, tsc, device test and commit; V.6c-2 Savings, Accounts, Loans and Debts are done and pushed), (2) V.6c-4, (3) the remaining small-font items listed in the V.6a-1 entry, (4) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
 - ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter

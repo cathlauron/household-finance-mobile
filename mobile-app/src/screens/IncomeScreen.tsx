@@ -31,11 +31,13 @@ import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import Button from '../components/Button';
+import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
 // doesn't get mangled, and is only parsed/validated on Save.
-type PaymentLogFormEntry = { id: string; date: string; amountText: string };
+type PaymentLogFormEntry = { id: string; date: string; amount: number | '' };
 
 const CATEGORY_SUGGESTIONS = ['Salary', 'Freelance / Side gig', 'Business income', 'Rental income', 'Other'];
 
@@ -103,7 +105,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   const [personInput, setPersonInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [sourceNameInput, setSourceNameInput] = useState('');
-  const [amountInput, setAmountInput] = useState('');
+  const [amountInput, setAmountInput] = useState<number | ''>('');
   const [frequencyInput, setFrequencyInput] = useState<Frequency>('monthly');
   const [monthlyDayInput, setMonthlyDayInput] = useState('');
   const [semiDay1Input, setSemiDay1Input] = useState('');
@@ -151,7 +153,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     setCategoryInput(source.category || '');
     setSourceNameInput(source.sourceName || '');
     setAmountInput(
-      typeof source.expectedAmount === 'number' ? String(source.expectedAmount) : ''
+      typeof source.expectedAmount === 'number' ? source.expectedAmount : ''
     );
     const freq = (source.frequency as Frequency) || 'monthly';
     setFrequencyInput(freq);
@@ -166,7 +168,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
       (source.paymentLog || []).map((e) => ({
         id: e.id,
         date: e.date,
-        amountText: typeof e.amount === 'number' ? String(e.amount) : '',
+        amount: typeof e.amount === 'number' ? e.amount : '',
       }))
     );
     setErrorMsg('');
@@ -180,15 +182,15 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   }
 
   function addPaymentLogEntry() {
-    setPaymentLogEntries((prev) => [{ id: makeId('paylog'), date: '', amountText: '' }, ...prev]);
+    setPaymentLogEntries((prev) => [{ id: makeId('paylog'), date: '', amount: '' }, ...prev]);
   }
 
   function updatePaymentLogDate(id: string, date: string) {
     setPaymentLogEntries((prev) => prev.map((e) => (e.id === id ? { ...e, date } : e)));
   }
 
-  function updatePaymentLogAmount(id: string, amountText: string) {
-    setPaymentLogEntries((prev) => prev.map((e) => (e.id === id ? { ...e, amountText } : e)));
+  function updatePaymentLogAmount(id: string, amount: number | '') {
+    setPaymentLogEntries((prev) => prev.map((e) => (e.id === id ? { ...e, amount } : e)));
   }
 
   function removePaymentLogEntry(id: string) {
@@ -198,15 +200,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   async function handleSave() {
     if (!model) return;
 
-    let parsedAmount: number | '' = '';
-    if (amountInput.trim() !== '') {
-      const n = parseFloat(amountInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid amount.');
-        return;
-      }
-      parsedAmount = n;
-    }
+    const parsedAmount: number | '' = amountInput === '' ? '' : amountInput;
 
     let payDates: string[] = [];
     if (frequencyInput === 'monthly') {
@@ -251,9 +245,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     const validPaymentLog: PaymentLogEntry[] = [];
     for (const entry of paymentLogEntries) {
       const dateTrim = entry.date.trim();
-      const amtTrim = entry.amountText.trim();
-      if (!dateTrim && !amtTrim) continue; // fully blank row — quietly dropped
-      if (!dateTrim || !amtTrim) {
+      const hasAmt = typeof entry.amount === 'number' && !isNaN(entry.amount);
+      if (!dateTrim && !hasAmt) continue; // fully blank row — quietly dropped
+      if (!dateTrim || !hasAmt) {
         setErrorMsg('Each entry requires both date and amount.');
         return;
       }
@@ -261,12 +255,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
-      const amtNum = parseFloat(amtTrim);
-      if (isNaN(amtNum)) {
-        setErrorMsg('Enter a valid payment amount.');
-        return;
-      }
-      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: amtNum });
+      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: entry.amount as number });
     }
 
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
@@ -515,13 +504,10 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                 />
 
                 <Text style={styles.inputLabel}>Expected amount</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={amountInput}
-                  onChangeText={setAmountInput}
+                  onChangeAmount={setAmountInput}
                 />
 
                 <Text style={styles.inputLabel}>Frequency</Text>
@@ -632,13 +618,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                       onChange={(v) => updatePaymentLogDate(entry.id, v)}
                       placeholder="YYYY-MM-DD"
                     />
-                    <TextInput
-                      style={[styles.input, styles.paymentLogAmountInput]}
+                    <AmountInput
+                      style={[styles.amountInput, styles.paymentLogAmountInput]}
                       placeholder="Amount"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="decimal-pad"
-                      value={entry.amountText}
-                      onChangeText={(v) => updatePaymentLogAmount(entry.id, v)}
+                      value={entry.amount}
+                      onChangeAmount={(v) => updatePaymentLogAmount(entry.id, v)}
                     />
                     <TouchableOpacity
                       style={styles.paymentLogRemoveBtn}
@@ -702,6 +686,10 @@ function makeStyles(colors: any) {
       paddingVertical: 10,
       fontSize: 15,
       color: colors.ink,
+      marginBottom: 10,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
       marginBottom: 10,
     },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },

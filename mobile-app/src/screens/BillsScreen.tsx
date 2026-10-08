@@ -28,6 +28,7 @@ import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
@@ -122,9 +123,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
-  const [amountInput, setAmountInput] = useState('');
-const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
-const [subscriptionInput, setSubscriptionInput] = useState(false);
+  const [amountInput, setAmountInput] = useState<number | ''>('');
+  const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
+  const [subscriptionInput, setSubscriptionInput] = useState(false);
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
@@ -167,7 +168,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
     setEditingId(bill.id);
     setNameInput(bill.name);
     setCategoryInput(bill.category || '');
-    setAmountInput(billAmount(bill) === 0 ? '' : String(billAmount(bill)));
+    setAmountInput(billAmount(bill) === 0 ? '' : billAmount(bill));
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
     setSubscriptionInput(!!bill.isSubscription);
@@ -209,15 +210,7 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
       return;
     }
 
-    let parsedAmount = 0;
-    if (amountInput.trim() !== '') {
-      const n = parseFloat(amountInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid amount.');
-        return;
-      }
-      parsedAmount = n;
-    }
+    let parsedAmount = amountInput === '' ? 0 : amountInput;
 
     let dueDate: Record<string, any> = {};
     if (recurTypeInput === 'onetime') {
@@ -559,13 +552,10 @@ const [subscriptionInput, setSubscriptionInput] = useState(false);
                 />
 
                 <Text style={styles.inputLabel}>Amount</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={amountInput}
-                  onChangeText={setAmountInput}
+                  onChangeAmount={setAmountInput}
                 />
 
                 <Text style={styles.inputLabel}>Repeats</Text>
@@ -794,6 +784,9 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
     },
     notesInput: { minHeight: 60, textAlignVertical: 'top' },
     row2: { flexDirection: 'row', gap: 10 },

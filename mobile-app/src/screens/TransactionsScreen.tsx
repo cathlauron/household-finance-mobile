@@ -43,6 +43,7 @@ import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -156,11 +157,11 @@ export default function TransactionsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [labelInput, setLabelInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
-  const [amountInput, setAmountInput] = useState('');
+  const [amountInput, setAmountInput] = useState<number | ''>('');
   const [dateInput, setDateInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
   const [refundTrackingEnabled, setRefundTrackingEnabled] = useState(false);
-  const [refundAmountInput, setRefundAmountInput] = useState('');
+  const [refundAmountInput, setRefundAmountInput] = useState<number | ''>('');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [personInput, setPersonInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
@@ -236,11 +237,11 @@ export default function TransactionsScreen() {
     setPersonInput(personName(model?.people || [], raw.owner || ''));
     setNotesInput(raw.notes || '');
     setTagsInput((raw.tags || []).join(', '));
-    setAmountInput(typeof raw.amount === 'number' ? String(raw.amount) : '');
+    setAmountInput(typeof raw.amount === 'number' ? raw.amount : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
     setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
-    setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? String(raw.refundExpectedAmount) : '');
+    setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
     setReceiptPhoto(raw.receiptPhoto || null);
     setPaymentMethodInput(raw.paymentMethod);
     setErrorMsg('');
@@ -260,16 +261,15 @@ export default function TransactionsScreen() {
   function handleLabelChange(text: string) {
     setLabelInput(text);
     if (!model || categoryInput.trim()) return;
-    const amt = parseFloat(amountInput);
+    const amt = typeof amountInput === 'number' ? amountInput : NaN;
     const auto = computeAutoCategory(model, text, amt);
     if (auto) setCategoryInput(auto);
   }
 
-  function handleAmountChange(text: string) {
-    setAmountInput(text);
+  function handleAmountChange(val: number | '') {
+    setAmountInput(val);
     if (!model || categoryInput.trim()) return;
-    const amt = parseFloat(text);
-    const auto = computeAutoCategory(model, labelInput, amt);
+    const auto = computeAutoCategory(model, labelInput, val === '' ? NaN : val);
     if (auto) setCategoryInput(auto);
   }
 
@@ -318,16 +318,15 @@ export default function TransactionsScreen() {
       setErrorMsg('Enter date as YYYY-MM-DD.');
       return;
     }
-    const parsedAmount = parseFloat(amountInput);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (amountInput === '' || amountInput <= 0) {
       setErrorMsg('Enter an amount greater than 0.');
       return;
     }
+    const parsedAmount = amountInput;
 
-    const parsedRefundAmount = parseFloat(refundAmountInput);
     const refundAmountToSave =
-      directionInput === 'out' && refundTrackingEnabled && !isNaN(parsedRefundAmount) && parsedRefundAmount > 0
-        ? parsedRefundAmount
+      directionInput === 'out' && refundTrackingEnabled && typeof refundAmountInput === 'number' && refundAmountInput > 0
+        ? refundAmountInput
         : undefined;
 
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
@@ -794,13 +793,10 @@ export default function TransactionsScreen() {
                 </View>
 
         <Text style={styles.inputLabel}>Amount</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="0.00"
-          placeholderTextColor={colors.inkFaint}
-          keyboardType="decimal-pad"
+        <AmountInput
+          style={styles.amountInput}
           value={amountInput}
-          onChangeText={handleAmountChange}
+          onChangeAmount={handleAmountChange}
         />
 
         {directionInput === 'out' && !alreadyRefunded && (
@@ -819,13 +815,10 @@ export default function TransactionsScreen() {
             {refundTrackingEnabled && (
               <>
                 <Text style={styles.inputLabel}>Expected refund</Text>
-                <TextInput
-                  style={[styles.input, { marginBottom: 16 }]}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={[styles.amountInput, { marginBottom: 16 }]}
                   value={refundAmountInput}
-                  onChangeText={setRefundAmountInput}
+                  onChangeAmount={setRefundAmountInput}
                 />
               </>
             )}
@@ -986,6 +979,9 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
     },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
     chip: {
