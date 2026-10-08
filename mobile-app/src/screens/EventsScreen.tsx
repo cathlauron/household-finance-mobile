@@ -27,6 +27,7 @@ import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
+import AmountInput from '../components/AmountInput';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
@@ -156,7 +157,7 @@ export default function EventsScreen() {
   const [monthInput, setMonthInput] = useState('');
   const [dayInput, setDayInput] = useState('');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
-  const [budgetInput, setBudgetInput] = useState('');
+  const [budgetInput, setBudgetInput] = useState<number | ''>('');
   const [completedInput, setCompletedInput] = useState(false);
   const [trackInSavingsInput, setTrackInSavingsInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -194,7 +195,7 @@ export default function EventsScreen() {
     setMonthInput(typeof ev.month === 'number' ? String(ev.month) : '');
     setDayInput(typeof ev.day === 'number' ? String(ev.day) : '');
     setOnetimeDateInput(ev.onetimeDate ?? '');
-    setBudgetInput(typeof ev.budget === 'number' ? String(ev.budget) : '');
+    setBudgetInput(typeof ev.budget === 'number' ? ev.budget : '');
     setCompletedInput(!!ev.completed);
     setTrackInSavingsInput(!!ev.trackInSavings);
     setErrorMsg('');
@@ -244,15 +245,7 @@ export default function EventsScreen() {
       onetimeDate = onetimeDateInput.trim();
     }
 
-    let budget: number | '' = '';
-    if (budgetInput.trim() !== '') {
-      const n = parseFloat(budgetInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid budget.');
-        return;
-      }
-      budget = n;
-    }
+    const budget: number | '' = budgetInput;
 
     const currentList = model.events ?? [];
     const existingEvent = editingId ? currentList.find((ev) => ev.id === editingId) : undefined;
@@ -518,14 +511,7 @@ export default function EventsScreen() {
                   )}
 
                 <Text style={styles.inputLabel}>Budget (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={budgetInput}
-                  onChangeText={setBudgetInput}
-                />
+                <AmountInput style={styles.amountInput} value={budgetInput} onChangeAmount={setBudgetInput} />
 
                 <TouchableOpacity
                   style={[
@@ -614,6 +600,7 @@ function makeStyles(colors: any) {
       marginBottom: 6,
       marginTop: 6,
     },
+        amountInput: { backgroundColor: colors.navy2 },
     input: {
       backgroundColor: colors.navy2,
       borderRadius: 8,

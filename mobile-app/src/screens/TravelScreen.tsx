@@ -32,6 +32,7 @@ import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
+import AmountInput from '../components/AmountInput';
 
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -180,7 +181,7 @@ export default function TravelScreen() {
   const [endDateInput, setEndDateInput] = useState('');
   const [checklist, setChecklist] = useState<TravelChecklistItem[]>([]);
   const [itemTitleInput, setItemTitleInput] = useState('');
-  const [itemCostInput, setItemCostInput] = useState('');
+  const [itemCostInput, setItemCostInput] = useState<number | ''>('');
   const [errorMsg, setErrorMsg] = useState('');
   const [trackInSavings, setTrackInSavings] = useState(false);
 
@@ -232,15 +233,7 @@ export default function TravelScreen() {
       setErrorMsg('Enter an item title.');
       return;
     }
-    let cost: number | '' = '';
-    if (itemCostInput.trim() !== '') {
-      const n = parseFloat(itemCostInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid cost.');
-        return;
-      }
-      cost = n;
-    }
+    const cost: number | '' = itemCostInput;
     const newItem: TravelChecklistItem = {
       id: makeId('travelitem'),
       title,
@@ -553,14 +546,7 @@ export default function TravelScreen() {
                   onChangeText={setItemTitleInput}
                 />
                 <Text style={styles.inputLabel}>Cost (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={itemCostInput}
-                  onChangeText={setItemCostInput}
-                />
+                <AmountInput style={styles.amountInput} value={itemCostInput} onChangeAmount={setItemCostInput} />
                 <TouchableOpacity style={styles.addItemButton} onPress={handleAddChecklistItem}>
                   <Text style={styles.addItemButtonText}>+ Add item</Text>
                 </TouchableOpacity>
@@ -622,6 +608,9 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
     },
     budgetBanner: {
       backgroundColor: colors.navy2,

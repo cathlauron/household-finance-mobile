@@ -27,6 +27,7 @@ import Pill from '../components/Pill';
 import Button from '../components/Button';
 import { hapticSelection } from '../haptics';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
@@ -51,8 +52,8 @@ export default function GoalsScreen() {
   const [titleInput, setTitleInput] = useState('');
   const [descriptionInput, setDescriptionInput] = useState('');
   const [modeInput, setModeInput] = useState<YearlyGoal['mode']>('progress');
-  const [targetAmountInput, setTargetAmountInput] = useState('');
-  const [currentAmountInput, setCurrentAmountInput] = useState('');
+  const [targetAmountInput, setTargetAmountInput] = useState<number | ''>('');
+  const [currentAmountInput, setCurrentAmountInput] = useState<number | ''>('');
   const [targetDateInput, setTargetDateInput] = useState('');
   const [completedInput, setCompletedInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -85,8 +86,8 @@ export default function GoalsScreen() {
     setTitleInput(g.title);
     setDescriptionInput(g.description ?? '');
     setModeInput(g.mode);
-    setTargetAmountInput(typeof g.targetAmount === 'number' ? String(g.targetAmount) : '');
-    setCurrentAmountInput(typeof g.currentAmount === 'number' ? String(g.currentAmount) : '');
+    setTargetAmountInput(typeof g.targetAmount === 'number' ? g.targetAmount : '');
+    setCurrentAmountInput(typeof g.currentAmount === 'number' ? g.currentAmount : '');
     setTargetDateInput(g.targetDate ?? '');
     setCompletedInput(!!g.completed);
     setErrorMsg('');
@@ -114,22 +115,8 @@ export default function GoalsScreen() {
     let targetAmount: number | '' = '';
     let currentAmount: number | '' = '';
     if (modeInput === 'progress') {
-      if (targetAmountInput.trim() !== '') {
-        const n = parseFloat(targetAmountInput);
-        if (isNaN(n)) {
-          setErrorMsg('Enter a valid target amount.');
-          return;
-        }
-        targetAmount = n;
-      }
-      if (currentAmountInput.trim() !== '') {
-        const n = parseFloat(currentAmountInput);
-        if (isNaN(n)) {
-          setErrorMsg('Enter a valid current amount.');
-          return;
-        }
-        currentAmount = n;
-      }
+      targetAmount = targetAmountInput;
+      currentAmount = currentAmountInput;
     }
 
     const currentList = model.yearlyGoals ?? [];
@@ -337,23 +324,9 @@ export default function GoalsScreen() {
                 {modeInput === 'progress' ? (
                   <>
                     <Text style={styles.inputLabel}>Target amount (optional)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="decimal-pad"
-                      value={targetAmountInput}
-                      onChangeText={setTargetAmountInput}
-                    />
+                    <AmountInput style={styles.amountInput} value={targetAmountInput} onChangeAmount={setTargetAmountInput} />
                     <Text style={styles.inputLabel}>Current amount (optional)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="decimal-pad"
-                      value={currentAmountInput}
-                      onChangeText={setCurrentAmountInput}
-                    />
+                    <AmountInput style={styles.amountInput} value={currentAmountInput} onChangeAmount={setCurrentAmountInput} />
                   </>
                 ) : (
                   <TouchableOpacity
@@ -434,6 +407,7 @@ function makeStyles(colors: any) {
       marginBottom: 6,
       marginTop: 6,
     },
+    amountInput: { backgroundColor: colors.navy2 },
     input: {
       backgroundColor: colors.navy2,
       borderRadius: 8,

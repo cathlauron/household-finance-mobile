@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { formatPeso } from '../balanceProjection';
 import { computeFiScenario, FiScenarioInputs } from '../fiScenario';
+import AmountInput from '../components/AmountInput';
 
 type Props = {
   visible: boolean;
@@ -32,27 +33,30 @@ type Props = {
 };
 
 export default function SavingsFiComparisonModal({ visible, onClose, colors, baseInputs }: Props) {
-  const [expensesInput, setExpensesInput] = useState('');
-  const [guaranteedIncomeInput, setGuaranteedIncomeInput] = useState('');
-  const [savingsInput, setSavingsInput] = useState('');
+  const [expensesInput, setExpensesInput] = useState<number | ''>('');
+  const [guaranteedIncomeInput, setGuaranteedIncomeInput] = useState<number | ''>('');
+  const [savingsInput, setSavingsInput] = useState<number | ''>('');
   const [swrInput, setSwrInput] = useState('');
   const [returnInput, setReturnInput] = useState('');
-  const [monthlySavingsInput, setMonthlySavingsInput] = useState('');
+  const [monthlySavingsInput, setMonthlySavingsInput] = useState<number | ''>('');
   const styles = makeStyles(colors);
 
-  const whatIfInputs: FiScenarioInputs = useMemo(() => {
-    const parsed = (raw: string, fallback: number) => {
-      if (raw.trim() === '') return fallback;
-      const n = parseFloat(raw);
+  const whatIfInputs = useMemo((): FiScenarioInputs => {
+    function parsedNum(v: number | '', fallback: number): number {
+      return v === '' ? fallback : v;
+    }
+    function parsedStr(str: string, fallback: number): number {
+      if (str.trim() === '') return fallback;
+      const n = parseFloat(str);
       return isNaN(n) ? fallback : n;
-    };
+    }
     return {
-      annualExpenses: parsed(expensesInput, baseInputs.annualExpenses),
-      guaranteedAnnualIncome: parsed(guaranteedIncomeInput, baseInputs.guaranteedAnnualIncome),
-      currentSavings: parsed(savingsInput, baseInputs.currentSavings),
-      swrPct: parsed(swrInput, baseInputs.swrPct),
-      expectedReturnPct: parsed(returnInput, baseInputs.expectedReturnPct),
-      monthlySavings: parsed(monthlySavingsInput, baseInputs.monthlySavings),
+      annualExpenses: parsedNum(expensesInput, baseInputs.annualExpenses),
+      guaranteedAnnualIncome: parsedNum(guaranteedIncomeInput, baseInputs.guaranteedAnnualIncome),
+      currentSavings: parsedNum(savingsInput, baseInputs.currentSavings),
+      swrPct: parsedStr(swrInput, baseInputs.swrPct),
+      expectedReturnPct: parsedStr(returnInput, baseInputs.expectedReturnPct),
+      monthlySavings: parsedNum(monthlySavingsInput, baseInputs.monthlySavings),
     };
   }, [expensesInput, guaranteedIncomeInput, savingsInput, swrInput, returnInput, monthlySavingsInput, baseInputs]);
 
@@ -119,33 +123,27 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
             <Text style={styles.sectionTitle}>What-If Plan inputs</Text>
 
             <Text style={styles.inputLabel}>Annual expenses</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={!isNaN(baseInputs.annualExpenses) ? String(baseInputs.annualExpenses) : 'e.g. 600000'}
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
-              value={expensesInput}
-              onChangeText={setExpensesInput}
+            <AmountInput
+             style={styles.amountInput}
+             placeholder={!isNaN(baseInputs.annualExpenses) ? String(baseInputs.annualExpenses) : 'e.g. 600000'}
+             value={expensesInput}
+             onChangeAmount={setExpensesInput}
             />
 
             <Text style={styles.inputLabel}>Pension / Social Security (optional)</Text>
-            <TextInput
-              style={styles.input}
+            <AmountInput
+              style={styles.amountInput}
               placeholder={String(baseInputs.guaranteedAnnualIncome || 0)}
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
               value={guaranteedIncomeInput}
-              onChangeText={setGuaranteedIncomeInput}
+              onChangeAmount={setGuaranteedIncomeInput}
             />
 
             <Text style={styles.inputLabel}>Current savings / investments</Text>
-            <TextInput
-              style={styles.input}
+            <AmountInput
+              style={styles.amountInput}
               placeholder={String(baseInputs.currentSavings || 0)}
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
               value={savingsInput}
-              onChangeText={setSavingsInput}
+              onChangeAmount={setSavingsInput}
             />
 
             <Text style={styles.inputLabel}>Safe withdrawal rate (%)</Text>
@@ -169,13 +167,11 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
             />
 
             <Text style={styles.inputLabel}>Monthly savings toward FI</Text>
-            <TextInput
-              style={styles.input}
+            <AmountInput
+              style={styles.amountInput}
               placeholder={!isNaN(baseInputs.monthlySavings) ? String(baseInputs.monthlySavings) : '0.00'}
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
               value={monthlySavingsInput}
-              onChangeText={setMonthlySavingsInput}
+              onChangeAmount={setMonthlySavingsInput}
             />
 
             <TouchableOpacity style={styles.resetButton} onPress={resetWhatIf}>
@@ -233,6 +229,7 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
       marginBottom: 6,
     },
+    amountInput: { backgroundColor: colors.navy2, marginBottom: 12 },
     input: {
       backgroundColor: colors.navy2,
       borderRadius: 8,

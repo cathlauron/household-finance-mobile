@@ -61,6 +61,7 @@ import * as Clipboard from 'expo-clipboard';
 import { DOW_LABELS } from '../income';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
+import AmountInput from '../components/AmountInput';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -293,7 +294,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   // Category Watchlist (Checkpoint B.8) state
   const [watchCategoryInput, setWatchCategoryInput] = useState('');
-  const [watchLimitInput, setWatchLimitInput] = useState('');
+  const [watchLimitInput, setWatchLimitInput] = useState<number | ''>('');
   const [watchErrorMsg, setWatchErrorMsg] = useState('');
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
@@ -320,8 +321,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [ruleContainsInput, setRuleContainsInput] = useState('');
-  const [ruleMinInput, setRuleMinInput] = useState('');
-  const [ruleMaxInput, setRuleMaxInput] = useState('');
+  const [ruleMinInput, setRuleMinInput] = useState<number | ''>('');
+  const [ruleMaxInput, setRuleMaxInput] = useState<number | ''>('');
   const [ruleCategoryInput, setRuleCategoryInput] = useState('');
   const [ruleErrorMsg, setRuleErrorMsg] = useState('');
 
@@ -602,7 +603,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   async function handleAddWatchedCategory() {
     if (!model) return;
     const trimmed = watchCategoryInput.trim();
-    const limitNum = parseFloat(watchLimitInput);
+    const limitNum = watchLimitInput === '' ? NaN : watchLimitInput;
     if (!trimmed) {
       setWatchErrorMsg('Give it a category name.');
       return;
@@ -751,8 +752,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   function openEditRuleModal(rule: CategorizationRule) {
     setEditingRuleId(rule.id);
     setRuleContainsInput(rule.labelContains);
-    setRuleMinInput(rule.amountMin === '' || rule.amountMin === undefined ? '' : String(rule.amountMin));
-    setRuleMaxInput(rule.amountMax === '' || rule.amountMax === undefined ? '' : String(rule.amountMax));
+    setRuleMinInput(typeof rule.amountMin === 'number' ? rule.amountMin : '');
+    setRuleMaxInput(typeof rule.amountMax === 'number' ? rule.amountMax : '');
     setRuleCategoryInput(rule.category);
     setRuleErrorMsg('');
     setRuleModalOpen(true);
@@ -776,8 +777,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setRuleErrorMsg('Choose a category to set when this rule matches.');
       return;
     }
-    const minVal: number | '' = ruleMinInput.trim() === '' ? '' : parseFloat(ruleMinInput);
-    const maxVal: number | '' = ruleMaxInput.trim() === '' ? '' : parseFloat(ruleMaxInput);
+    const minVal: number | '' = ruleMinInput;
+    const maxVal: number | '' = ruleMaxInput;
     if (minVal !== '' && isNaN(minVal)) {
       setRuleErrorMsg('Minimum amount must be a number.');
       return;
@@ -1347,13 +1348,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           value={watchCategoryInput}
           onChangeText={setWatchCategoryInput}
         />
-        <TextInput
-          style={styles.input}
+        <AmountInput
+          style={styles.amountInput}
           placeholder="Monthly limit (e.g. 5000)"
-          placeholderTextColor={colors.inkDim}
           value={watchLimitInput}
-          onChangeText={setWatchLimitInput}
-          keyboardType="numeric"
+          onChangeAmount={setWatchLimitInput}
         />
         {watchErrorMsg !== '' && (
           <Text style={{ color: colors.error, fontSize: 13, marginBottom: 8 }}>{watchErrorMsg}</Text>
@@ -1876,24 +1875,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         />
 
         <Text style={styles.inputLabel}>Minimum amount (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="No minimum"
-          placeholderTextColor={colors.inkFaint}
-          keyboardType="decimal-pad"
-          value={ruleMinInput}
-          onChangeText={setRuleMinInput}
-        />
+        <AmountInput style={styles.amountInput} placeholder="No minimum" value={ruleMinInput} onChangeAmount={setRuleMinInput} />
 
         <Text style={styles.inputLabel}>Maximum amount (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="No maximum"
-          placeholderTextColor={colors.inkFaint}
-          keyboardType="decimal-pad"
-          value={ruleMaxInput}
-          onChangeText={setRuleMaxInput}
-        />
+        <AmountInput style={styles.amountInput} placeholder="No maximum" value={ruleMaxInput} onChangeAmount={setRuleMaxInput} />
 
         <Text style={styles.inputLabel}>Set category to</Text>
         <TextInput
@@ -2249,6 +2234,7 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
       marginBottom: 6,
     },
+    amountInput: { backgroundColor: colors.navy3, borderWidth: 1, borderColor: colors.navy4 },
     input: {
       backgroundColor: colors.navy3,
       borderWidth: 1,

@@ -29,6 +29,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { formatPeso } from '../balanceProjection';
+import AmountInput from '../components/AmountInput';
 
 export type SimLoanInput = {
   id: string;
@@ -128,12 +129,11 @@ type Props = {
 
 export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colors }: Props) {
   const [strategy, setStrategy] = useState<Strategy>('avalanche');
-  const [extraInput, setExtraInput] = useState('');
+  const [extraInput, setExtraInput] = useState<number | ''>('');
   const styles = makeStyles(colors);
 
   const extraMonthly = useMemo(() => {
-    const n = parseFloat(extraInput);
-    return isNaN(n) ? 0 : n;
+    return typeof extraInput === 'number' ? extraInput : 0;
   }, [extraInput]);
 
   const snowball = useMemo(() => simulate(loans, 'snowball', extraMonthly), [loans, extraMonthly]);
@@ -166,13 +166,10 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
                 </Text>
 
                 <Text style={styles.inputLabel}>Extra monthly payment (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={extraInput}
-                  onChangeText={setExtraInput}
+                  onChangeAmount={setExtraInput}
                 />
 
                 {usedFallback && (
@@ -248,6 +245,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    amountInput: { backgroundColor: colors.navy2, marginBottom: 10 },
     overlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',

@@ -27,6 +27,7 @@ import { hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function plannedTotal(items: GroceryItem[]): number {
   return items.reduce((sum, g) => sum + (typeof g.plannedAmount === 'number' ? g.plannedAmount : 0), 0);
@@ -56,14 +57,14 @@ export default function GroceriesScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [itemNameInput, setItemNameInput] = useState('');
-  const [plannedInput, setPlannedInput] = useState('');
-  const [actualInput, setActualInput] = useState('');
+  const [plannedInput, setPlannedInput] = useState<number | ''>('');
+  const [actualInput, setActualInput] = useState<number | ''>('');
   const [purchasedInput, setPurchasedInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   // ---- Calculator add-entry inputs ----
   const [calcLabelInput, setCalcLabelInput] = useState('');
-  const [calcAmountInput, setCalcAmountInput] = useState('');
+  const [calcAmountInput, setCalcAmountInput] = useState<number | ''>('');
   const [calcErrorMsg, setCalcErrorMsg] = useState('');
 
   if (!model) {
@@ -90,8 +91,8 @@ export default function GroceriesScreen() {
   function openEditModal(g: GroceryItem) {
     setEditingId(g.id);
     setItemNameInput(g.item);
-    setPlannedInput(typeof g.plannedAmount === 'number' ? String(g.plannedAmount) : '');
-    setActualInput(typeof g.actualAmount === 'number' ? String(g.actualAmount) : '');
+    setPlannedInput(typeof g.plannedAmount === 'number' ? g.plannedAmount : '');
+    setActualInput(typeof g.actualAmount === 'number' ? g.actualAmount : '');
     setPurchasedInput(!!g.purchased);
     setErrorMsg('');
     setModalOpen(true);
@@ -110,24 +111,8 @@ export default function GroceriesScreen() {
       setErrorMsg('Enter an item name.');
       return;
     }
-    let planned: number | '' = '';
-    if (plannedInput.trim() !== '') {
-      const n = parseFloat(plannedInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid planned amount.');
-        return;
-      }
-      planned = n;
-    }
-    let actual: number | '' = '';
-    if (actualInput.trim() !== '') {
-      const n = parseFloat(actualInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid actual amount.');
-        return;
-      }
-      actual = n;
-    }
+    const planned: number | '' = plannedInput;
+    const actual: number | '' = actualInput;
 
     const currentList = model.groceries ?? [];
     let updatedList: GroceryItem[];
@@ -198,16 +183,11 @@ export default function GroceriesScreen() {
   async function handleAddCalcEntry() {
     if (!model) return;
     setCalcErrorMsg('');
-    const amountTrimmed = calcAmountInput.trim();
-    if (amountTrimmed === '') {
-      setCalcErrorMsg('Enter an amount.');
-      return;
-    }
-    const n = parseFloat(amountTrimmed);
-    if (isNaN(n) || n <= 0) {
+    if (calcAmountInput === '' || calcAmountInput <= 0) {
       setCalcErrorMsg('Enter an amount greater than 0.');
       return;
     }
+    const n = calcAmountInput;
     const newEntry: GroceryCalcEntry = {
       id: makeId('calc'),
       label: calcLabelInput.trim() || 'Item',
@@ -370,14 +350,7 @@ export default function GroceriesScreen() {
             onChangeText={setCalcLabelInput}
           />
           <Text style={styles.inputLabel}>Amount</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={calcAmountInput}
-            onChangeText={setCalcAmountInput}
-          />
+          <AmountInput value={calcAmountInput} onChangeAmount={setCalcAmountInput} />
           {!!calcErrorMsg && <Text style={styles.errorText}>{calcErrorMsg}</Text>}
           <TouchableOpacity style={styles.saveButton} onPress={handleAddCalcEntry}>
             <Text style={styles.saveButtonText}>Add</Text>
@@ -416,24 +389,10 @@ export default function GroceriesScreen() {
                 />
 
                 <Text style={styles.inputLabel}>Planned amount</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={plannedInput}
-                  onChangeText={setPlannedInput}
-                />
+                <AmountInput value={plannedInput} onChangeAmount={setPlannedInput} />
 
                 <Text style={styles.inputLabel}>Actual amount</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={actualInput}
-                  onChangeText={setActualInput}
-                />
+                <AmountInput value={actualInput} onChangeAmount={setActualInput} />
 
                 <TouchableOpacity
                   style={[styles.purchasedToggle, purchasedInput && styles.purchasedToggleActive]}
