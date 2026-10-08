@@ -1583,6 +1583,16 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
 - V.4b-5: report cards use <Card> with the default variant ('card'), so no variant prop is
   passed. All 9 report files use CRLF line endings; keep them that way when editing.
 
+✅ V.4c: shared header options (src/navigation/headerOptions.ts, used by MainTabs and RootStack, so tab headers now have the same bold title as stack headers) + unused import tidy (hapticLight, radii, spacing, Ionicons, Bill type). DONE, tsc clean, device-tested, pushed.
+
+✅ V.5a: AccountCard redesigned. DONE, device-tested, pushed.
+- All text uses colors.ink / colors.inkDim. The user-chosen colour appears only as a 8% tint layer, a 25% border, and a dot in the type badge (never as text), so contrast holds for all 15 COLOR_PALETTE colours in light and dark.
+- Stacked strip now shows type badge + name + balance on one row; AccountsScreen stacked marginTop -80 -> -72.
+- Rejected from Antigravity's proposal: accent-coloured badge text (fails contrast on saffron/sandy), unused tintBg, overflow:hidden (clips iOS shadow), isDark from useTheme (never verified).
+- Not verified: iOS shadow look (no iPhone).
+
+▶️ Next: V.6 (tiny fonts, Calendar balance only on days with activity, number-field formatting), then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
+
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
 - Edited: GoalsScreen, AccountsScreen, BillsScreen, DebtsScreen, EventsScreen,
