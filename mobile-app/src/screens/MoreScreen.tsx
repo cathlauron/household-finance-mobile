@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 
 type MoreDestination = {
-  key: 'Accounts' | 'Income' | 'Savings' | 'Planning' | 'Insights' | 'Settings';
+  key: 'Accounts' | 'Income' | 'Savings' | 'Planning' | 'Reports' | 'Settings';
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -17,7 +17,7 @@ const DESTINATIONS: MoreDestination[] = [
   { key: 'Income', title: 'Income', subtitle: 'Paychecks & other sources', icon: 'trending-up-outline', testID: 'more-income-row' },
   { key: 'Savings', title: 'Savings', subtitle: 'Goals, Emergency Fund & FI Calculator', icon: 'cash-outline', testID: 'more-savings-row' },
   { key: 'Planning', title: 'Planning', subtitle: 'Groceries, Travel, Events & Goals', icon: 'clipboard-outline', testID: 'more-planning-row' },
-  { key: 'Insights', title: 'Insights', subtitle: 'Dashboard & Reports', icon: 'bar-chart-outline', testID: 'more-insights-row' },
+  { key: 'Reports', title: 'Reports', subtitle: 'Monthly close-out, trends & audits', icon: 'bar-chart-outline', testID: 'more-reports-row' },
   { key: 'Settings', title: 'Settings', subtitle: 'Preferences, categories & data', icon: 'settings-outline', testID: 'more-settings-row' },
 ];
 

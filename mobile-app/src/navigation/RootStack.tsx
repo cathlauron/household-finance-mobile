@@ -8,7 +8,7 @@ import AccountsScreen from '../screens/AccountsScreen';
 import IncomeScreen from '../screens/IncomeScreen';
 import SavingsScreen from '../screens/SavingsScreen';
 import PlanningScreen from '../screens/PlanningScreen';
-import InsightsScreen from '../screens/InsightsScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import { useTheme } from '../ThemeContext';
@@ -22,7 +22,7 @@ export type RootStackParamList = {
   Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
   Planning: undefined;
-  Insights: undefined;
+  Reports: undefined;
   Settings: undefined;
   Premium: undefined;
 };
@@ -114,9 +114,9 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         options={{ title: 'Planning', headerBackTitle: 'More' }}
       />
       <Stack.Screen
-        name="Insights"
-        component={InsightsScreen}
-        options={{ title: 'Insights', headerBackTitle: 'More' }}
+        name="Reports"
+        component={ReportsScreen}
+        options={{ title: 'Reports', headerBackTitle: 'More' }}
       />
       <Stack.Screen
         name="Settings"

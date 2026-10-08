@@ -214,7 +214,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
               style={styles.primaryBtn}
               onPress={handleFinish}
             >
-              <Text style={styles.primaryBtnText}>Go to Dashboard</Text>
+              <Text style={styles.primaryBtnText}>Go to Home</Text>
             </TouchableOpacity>
           </View>
         )}

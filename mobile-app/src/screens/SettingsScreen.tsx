@@ -1333,7 +1333,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
 <Text style={styles.sectionSub}>
-  Set a monthly limit per category — flagged on the Dashboard when you get close.
+  Set a monthly limit per category — flagged on Home when you get close.
 </Text>
 
         {model.categoryBudgets.length === 0 && (
