@@ -80,6 +80,14 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+const TX_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function formatTxMonthLabel(ym: string): string {
+  const [y, m] = ym.split('-');
+  const name = TX_MONTH_NAMES[parseInt(m, 10) - 1];
+  return name ? name + ' ' + y : ym;
+}
+
 function todayISO(): string {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -142,14 +150,23 @@ export default function TransactionsScreen() {
     const { refreshing, onRefresh } = useRefresh();
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const [categoryFilter, setCategoryFilter] = useState<{ category: string; month: string } | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [monthFilter, setMonthFilter] = useState<string>('all');
+  const [monthSheetOpen, setMonthSheetOpen] = useState(false);
   const filterNonce = route.params?.filterNonce;
   useEffect(() => {
     const p = route.params;
     if (p?.categoryFilter && p?.monthFilter) {
-      setCategoryFilter({ category: p.categoryFilter, month: p.monthFilter });
+      setCategoryFilter(p.categoryFilter);
+      setMonthFilter(p.monthFilter);
     }
   }, [filterNonce]);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setCategoryFilter(null);
+    });
+    return unsubscribe;
+  }, [navigation]);
   const styles = makeStyles(colors);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
@@ -182,16 +199,25 @@ export default function TransactionsScreen() {
   const transactions = useMemo(() => {
     if (!model) return [];
     let list = buildTransactionsList(model);
+    if (monthFilter !== 'all') {
+      list = list.filter((t) => t.date.startsWith(monthFilter));
+    }
     if (categoryFilter) {
-      list = list.filter(
-        (t) =>
-          t.direction === 'out' &&
-          t.category === categoryFilter.category &&
-          t.date.startsWith(categoryFilter.month)
-      );
+      list = list.filter((t) => t.direction === 'out' && t.category === categoryFilter);
     }
     return sortTransactions(list, sortOrder);
-  }, [model, sortOrder, categoryFilter]);
+  }, [model, sortOrder, categoryFilter, monthFilter]);
+
+  const monthOptions = useMemo(() => {
+    const months = new Set<string>();
+    if (model) {
+      for (const t of buildTransactionsList(model)) {
+        if (t.date && t.date.length >= 7) months.add(t.date.slice(0, 7));
+      }
+    }
+    if (monthFilter !== 'all') months.add(monthFilter);
+    return Array.from(months).sort().reverse();
+  }, [model, monthFilter]);
 
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
@@ -562,12 +588,23 @@ export default function TransactionsScreen() {
             }}
           >
             <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.ink }}>
-              {categoryFilter.category} · {categoryFilter.month}
+              {categoryFilter}
             </Text>
             <Ionicons name="close-circle" size={16} color={colors.inkDim} />
             <Text style={{ fontSize: 12, color: colors.inkDim }}>Clear filter</Text>
           </TouchableOpacity>
         )}
+
+        <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+          <Pill
+            label={monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
+            icon="calendar-outline"
+            minWidth={140}
+            active={monthFilter !== 'all'}
+            onPress={() => setMonthSheetOpen(true)}
+            testID="transactions-month-filter"
+          />
+        </View>
 
         <View style={styles.pillRow}>
           <Pill
@@ -585,6 +622,49 @@ export default function TransactionsScreen() {
             onPress={() => setSortOrder('oldest')}
           />
         </View>
+
+
+        <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Filter by month">
+          <TouchableOpacity
+            onPress={() => {
+              hapticSelection();
+              setMonthFilter('all');
+              setMonthSheetOpen(false);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.navy4,
+            }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>All time</Text>
+            {monthFilter === 'all' && <Ionicons name="checkmark" size={20} color={colors.gold} />}
+          </TouchableOpacity>
+          {monthOptions.map((ym) => (
+            <TouchableOpacity
+              key={ym}
+              onPress={() => {
+                hapticSelection();
+                setMonthFilter(ym);
+                setMonthSheetOpen(false);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 14,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.navy4,
+              }}
+            >
+              <Text style={{ fontSize: 15, color: colors.ink }}>{formatTxMonthLabel(ym)}</Text>
+              {monthFilter === ym && <Ionicons name="checkmark" size={20} color={colors.gold} />}
+            </TouchableOpacity>
+          ))}
+        </BottomSheet>
 
         {transactions.length === 0 && (
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
