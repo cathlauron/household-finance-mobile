@@ -1668,7 +1668,33 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
 - ⚠️ Not verified: whether CsvImportModal or LoanPayoffSimulatorModal have any money inputs still on plain TextInput (AmountInput is already imported in LoanPayoffSimulatorModal, but its fields were not itemised); the Settings watchlist field at line ~1350 was only checked by tsc and the on-device test.
 - 📁 V.6c-4 files edited: src/screens/EventsScreen.tsx, GoalsScreen.tsx, GroceriesScreen.tsx, SettingsScreen.tsx, SavingsFiComparisonModal.tsx
 
-▶️ Next: confirm V.6c-3 on-device (Bills, Transactions, Income payday rows) and mark it DONE, then the remaining small-font items from the V.6a-1 entry, then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
+✅ V.6c-3 was confirmed on-device ("as described") and is DONE.
+
+🔧 V.6a-2 + V.7 + dark-mode cleanup (Part 3): CODE APPLIED, tsc CLEAN (0 errors), NOT YET DEVICE-TESTED, NOT YET COMMITTED unless the git commands from the session wrap were run. Worked as Antigravity investigates (read-only, two passes), Claude reviews, Cath pastes by hand.
+
+V.6a-2 (small fonts raised to 11, one-number edits, Antigravity confirmed none can break a layout):
+- LoansScreen direction pill (9); BillsScreen priorityBadgeText and the CANCELLED and SUB inline labels (10); SettingsScreen thisDeviceBadgeText, statusBadgeTextSignedOut, statusBadgeTextRevoked (10); CsvImportModal badge (9); DashboardScreen owedPillLabel (10.5); LoanPayoffSimulatorModal and SavingsFiComparisonModal statLabel (10) and statNote (10.5); SubscriptionAuditReport billAmountSub (10); DateField dowText (10); AccountsScreen and CalendarScreen balanceBannerLabel (10); CalendarScreen dowText (10); statCardLabel in CashFlowForecastReport, TaxSummaryReport, YearInReviewReport (10); TransactionsScreen statLabel and netLabel (10, "TOTAL OUT" is about 72px in a 142px card so no wrap).
+- DELIBERATELY NOT CHANGED (would overflow): CalendarScreen pillText (8), pillMore (7.5), dayBalanceText (7.5) in the ~46px square day cells; chartColLabel in CashFlowForecastReport (8) and YearInReviewReport (9) (12-14 bars across the screen). CsvImportModal checkboxMark (10) is unused dead code (the JSX uses an Ionicons checkmark), so it was left alone.
+
+V.7 (quieter destructive actions):
+- SettingsScreen and ProfileScreen: dangerButton backgroundColor '#e5484d' -> '#C81E43' (white text now passes contrast in both modes). New styles dangerOutlineButton / dangerOutlineButtonText (transparent, 1.5 border and text in colors.error) added to both files.
+- Outlined triggers: Settings "Clear all data & start fresh"; Settings deviceSignOutBtn (row "Sign out", now transparent with colors.error border and text); Profile "Unlink this device"; Profile household-member "Remove" button.
+- The "Yes, ..." confirm buttons stay SOLID on dangerButton (the final step). Settings confirms: "Yes, clear everything", "Sign out device". Profile "Yes, unlink this device" is assumed to be the same; not verified from real code.
+- Existing "Log out" buttons were already outlined; untouched.
+
+Dark-mode cleanup (Part 3, safe items only):
+- TransactionsScreen: the three stat amounts now use colors.ok (TOTAL IN), colors.error (TOTAL OUT), colors.orange (SAVED). The amountColor() function at the top of the file is STILL hardcoded (#2f9e44 / #c2410c / #e5484d) because it sits outside the component and has no access to colors.
+- DateField: dayTextSelected '#ffffff' -> colors.navy2 (white on pale-mint colors.accent failed in dark mode).
+- theme.ts darkTheme only: inkFaint '#8C857F' -> '#9E9892' (decor left at #8C857F); cardTealStart '#164E44' -> '#1A3B2B'; cardTealEnd '#0D332D' -> '#0F261B' (dark Left to Spend card now matches the forest green).
+
+📌 Mistake and lesson (do not repeat): Antigravity's report for ProfileScreen described a device "Remove" flow (setDevToRemove, dev) that does not exist in the real file. The real "Remove" button is the household-MEMBERS list (isOwner && !isMe, inside a .map where each person is `m`), and its real onPress is setRemoveMemberMsg('') then setMemberToRemove(m). Pasting from the report broke it (2 tsc errors). Fixed by restoring the original onPress from git diff. From now on, never write Profile (or any) find/replace blocks from an Antigravity summary alone; use text Cath has pasted from the real file.
+
+⚠️ STILL OPEN from the investigation (the next batch):
+- White text/icons still on status backgrounds, which fail contrast in dark mode (fix is colors.navy2): TransactionsScreen refundToggleTextActive, refundBadgeText and the checkmark Ionicons (on colors.orange / colors.ok); RowInteractionPreview trash icon on colors.error; Avatar.tsx filled badge text '#FFFFFF' on colors.gold; primaryBtnText '#FFFFFF' in AccountSwitcherScreen, CreateProfileScreen, OnboardingScreen. (The V.2 log said some of these were already fixed; the real code shows they were not.) SwipeableRow and the Home bell badge are fine (fixed #C81E43).
+- ~30 hardcoded '#e5484d' uses remain (mostly errorText styles; plus dangerConfirmText in Profile and Settings, deleteButtonText, IncomeScreen payday remove icon). CalendarScreen TYPE_COLORS.bill is module-level, where colors is not in scope, so it needs its own pass. TransactionsScreen's amountColor() also needs a colors-aware rewrite.
+- Not yet looked at: SetPinScreen legacy colors; PinField / PasswordField internals.
+
+▶️ Next: (1) device-test this whole batch in light AND dark mode: tab and badge text readable, Calendar still fits, Settings Data and Active Devices pages, Profile household Remove button still removes (open the confirm), Transactions stat colors; (2) the white-on-status batch above; (3) the #e5484d sweep and amountColor rewrite; (4) optional: shared src/typography.ts type scale.
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1761,7 +1787,7 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days), V.6c-1, V.6c-2 and V.6c-4 (AmountInput on the FI Calculator, Savings, Accounts, Loans, Debts, Events, Goals, Groceries and Settings money fields) are done, device-tested and pushed. V.6c-3 (Bills, Income, Transactions) is code-applied and tsc clean but its device test is not yet confirmed. Next, in order: (1) confirm V.6c-3 on-device, (2) the remaining small-font items listed in the V.6a-1 entry, (3) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
+- LATEST (V.6/V.7): V.6c-3 confirmed DONE. V.6a-2 (small fonts), V.7 (outlined destructive buttons) and the safe dark-mode items are applied and tsc clean but NOT yet device-tested. See the "V.6a-2 + V.7 + dark-mode cleanup" entry for the exact list and the next batch (white-on-status text, the #e5484d sweep). The older bullets below are still true where not superseded.
 - ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter

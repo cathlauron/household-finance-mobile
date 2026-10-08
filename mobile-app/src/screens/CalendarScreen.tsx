@@ -623,7 +623,7 @@ function makeStyles(colors: any) {
       color: colors.gold,
     },
     balanceBannerLabel: {
-      fontSize: 10,
+      fontSize: 11,
       letterSpacing: 1,
       color: colors.inkDim,
       marginBottom: 4,
@@ -724,7 +724,7 @@ function makeStyles(colors: any) {
       paddingBottom: 6,
     },
     dowText: {
-      fontSize: 10,
+      fontSize: 11,
       color: colors.inkFaint,
       textTransform: 'uppercase',
     },

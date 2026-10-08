@@ -523,18 +523,18 @@ export default function TransactionsScreen() {
         <View style={styles.statRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>TOTAL IN</Text>
-            <Text style={[styles.statAmount, { color: '#2f9e44' }]}>{formatPeso(totals.totalIn)}</Text>
+            <Text style={[styles.statAmount, { color: colors.ok }]}>{formatPeso(totals.totalIn)}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>TOTAL OUT</Text>
-            <Text style={[styles.statAmount, { color: '#e5484d' }]}>{formatPeso(totals.totalOut)}</Text>
+            <Text style={[styles.statAmount, { color: colors.error }]}>{formatPeso(totals.totalOut)}</Text>
           </View>
         </View>
         {totals.totalSaving > 0 && (
           <View style={styles.statRow}>
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>SAVED</Text>
-              <Text style={[styles.statAmount, { color: '#c2410c' }]}>{formatPeso(totals.totalSaving)}</Text>
+              <Text style={[styles.statAmount, { color: colors.orange }]}>{formatPeso(totals.totalSaving)}</Text>
             </View>
           </View>
         )}
@@ -939,9 +939,9 @@ function makeStyles(colors: any) {
       paddingVertical: 14,
       paddingHorizontal: 14,
     },
-    statLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     statAmount: { fontSize: 17, fontWeight: '700' },
-    netLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim },
+    netLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim },
     netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
     emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6, marginBottom: 12 },

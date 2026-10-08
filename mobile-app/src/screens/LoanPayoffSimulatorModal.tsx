@@ -291,9 +291,9 @@ function makeStyles(colors: any) {
       borderColor: 'transparent',
     },
     statCardActive: { borderColor: colors.gold },
-    statLabel: { fontSize: 10, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 11, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
     statValue: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statNote: { fontSize: 10.5, color: colors.inkFaint, marginTop: 3 },
+    statNote: { fontSize: 11, color: colors.inkFaint, marginTop: 3 },
     orderTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 16, marginBottom: 8 },
     orderRow: {
       flexDirection: 'row',

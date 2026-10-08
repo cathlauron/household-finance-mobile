@@ -828,13 +828,13 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                             </View>
                             {isOwner && !isMe && (
                               <TouchableOpacity
-                                style={[styles.dangerButton, { paddingVertical: 4, paddingHorizontal: 10, marginVertical: 0 }]}
+                                style={[styles.dangerOutlineButton, { paddingVertical: 4, paddingHorizontal: 10, marginVertical: 0, marginBottom: 0 }]}
                                 onPress={() => {
                                   setRemoveMemberMsg('');
                                   setMemberToRemove(m);
                                 }}
                               >
-                                <Text style={[styles.dangerButtonText, { fontSize: 12 }]}>Remove</Text>
+                                <Text style={[styles.dangerOutlineButtonText, { fontSize: 12 }]}>Remove</Text>
                               </TouchableOpacity>
                             )}
                           </View>
@@ -978,7 +978,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
 
                   <TouchableOpacity
-                    style={[styles.dangerButton, { marginTop: 12, alignSelf: 'stretch' }]}
+                    style={[styles.dangerOutlineButton, { marginTop: 12, alignSelf: 'stretch' }]}
                     onPress={() => {
                       const currentUid = getCurrentFirebaseUser()?.uid;
                       const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
@@ -991,7 +991,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                       }
                     }}
                   >
-                    <Text style={styles.dangerButtonText}>Unlink this device</Text>
+                    <Text style={styles.dangerOutlineButtonText}>Unlink this device</Text>
                   </TouchableOpacity>
                 </View>
               ) : transferOwnerModalOpen ? (
@@ -1558,13 +1558,23 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     dangerButton: {
-      backgroundColor: '#e5484d',
+      backgroundColor: '#C81E43',
       borderRadius: 10,
       paddingVertical: 12,
       alignItems: 'center',
       marginBottom: 8,
     },
     dangerButtonText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+    dangerOutlineButton: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: colors.error,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    dangerOutlineButtonText: { fontSize: 14, fontWeight: '600', color: colors.error },
     dangerConfirmBox: {
       backgroundColor: 'rgba(229,72,77,0.08)',
       borderRadius: 10,

@@ -1756,8 +1756,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {!!exportMsg && <Text style={styles.errorText}>{exportMsg}</Text>}
 
         {!clearConfirmOpen ? (
-          <TouchableOpacity style={styles.dangerButton} onPress={() => setClearConfirmOpen(true)}>
-            <Text style={styles.dangerButtonText}>Clear all data &amp; start fresh</Text>
+          <TouchableOpacity style={styles.dangerOutlineButton} onPress={() => setClearConfirmOpen(true)}>
+            <Text style={styles.dangerOutlineButtonText}>Clear all data &amp; start fresh</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.dangerConfirmBox}>
@@ -2292,13 +2292,23 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     dangerButton: {
-      backgroundColor: '#e5484d',
+      backgroundColor: '#C81E43',
       borderRadius: 10,
       paddingVertical: 12,
       alignItems: 'center',
       marginBottom: 8,
     },
     dangerButtonText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+    dangerOutlineButton: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: colors.error,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    dangerOutlineButtonText: { fontSize: 14, fontWeight: '600', color: colors.error },
     dangerConfirmBox: {
       backgroundColor: 'rgba(229,72,77,0.08)',
       borderRadius: 10,
@@ -2342,7 +2352,7 @@ function makeStyles(colors: any) {
       paddingVertical: 2,
     },
     thisDeviceBadgeText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '700',
       color: colors.navy1,
     },
@@ -2366,7 +2376,7 @@ function makeStyles(colors: any) {
       paddingVertical: 1.5,
     },
     statusBadgeTextSignedOut: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
       color: colors.inkDim,
     },
@@ -2379,7 +2389,7 @@ function makeStyles(colors: any) {
       paddingVertical: 1.5,
     },
     statusBadgeTextRevoked: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '700',
       color: colors.error,
     },
@@ -2389,13 +2399,15 @@ function makeStyles(colors: any) {
       marginTop: 2,
     },
     deviceSignOutBtn: {
-      backgroundColor: '#e5484d',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: colors.error,
       borderRadius: 6,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
     deviceSignOutBtnText: {
-      color: '#fff',
+      color: colors.error,
       fontSize: 12,
       fontWeight: '600',
     },

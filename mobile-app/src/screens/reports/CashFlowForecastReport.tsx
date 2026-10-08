@@ -168,7 +168,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     statGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
     statCard: { flex: 1, backgroundColor: colors.navy3, borderRadius: 10, padding: 14 },
     statCardLabel: {
-      fontSize: 10,
+      fontSize: 11,
       color: colors.inkFaint,
       marginBottom: 4,
       textTransform: 'uppercase',

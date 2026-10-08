@@ -170,7 +170,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     billName: { fontSize: 13, color: colors.ink, fontWeight: '600' },
     billMeta: { fontSize: 11, color: colors.inkFaint, marginTop: 1 },
     billAmount: { fontSize: 13, color: colors.ink, fontWeight: '700' },
-    billAmountSub: { fontSize: 10, color: colors.inkFaint, marginTop: 1 },
+    billAmountSub: { fontSize: 11, color: colors.inkFaint, marginTop: 1 },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
     progressFill: { height: '100%', backgroundColor: colors.orange, borderRadius: 999 },
   });

@@ -505,7 +505,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                           {loan.name || 'Untitled loan'}
                         </Text>
                         <View style={{ backgroundColor: (loan.direction === 'lent' ? colors.ok : colors.orange) + '20', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '700', color: loan.direction === 'lent' ? colors.ok : colors.orange }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: loan.direction === 'lent' ? colors.ok : colors.orange }}>
                             {loan.direction === 'lent' ? 'LENT' : 'BORROWED'}
                           </Text>
                         </View>

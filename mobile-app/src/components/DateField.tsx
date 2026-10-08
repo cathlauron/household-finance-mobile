@@ -368,7 +368,7 @@ function makeStyles(colors: any) {
       paddingVertical: 2,
     },
     dowText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
       color: colors.inkFaint,
       textTransform: 'uppercase',
@@ -408,7 +408,7 @@ function makeStyles(colors: any) {
       fontWeight: '700',
     },
     dayTextSelected: {
-      color: '#ffffff',
+      color: colors.navy2,
       fontWeight: '700',
     },
     dayTextDisabled: {

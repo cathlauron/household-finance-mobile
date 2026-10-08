@@ -462,7 +462,7 @@ function makeStyles(colors: any) {
       color: colors.gold,
     },
     balanceBannerLabel: {
-      fontSize: 10,
+      fontSize: 11,
       letterSpacing: 1,
       color: colors.inkDim,
       marginBottom: 4,

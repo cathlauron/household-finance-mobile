@@ -405,7 +405,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                             borderColor: colors.decor,
                           }}
                         >
-                          <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.inkFaint }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: colors.inkFaint }}>
                             CANCELLED
                           </Text>
                         </View>
@@ -421,7 +421,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                             borderColor: colors.gold,
                           }}
                         >
-                          <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.gold }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: colors.gold }}>
                             SUB
                           </Text>
                         </View>
@@ -745,7 +745,7 @@ function makeStyles(colors: any) {
       borderRadius: 4,
     },
     priorityBadgeText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '700',
       letterSpacing: 0.5,
     },

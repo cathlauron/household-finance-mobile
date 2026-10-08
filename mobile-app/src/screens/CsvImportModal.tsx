@@ -437,7 +437,7 @@ function makeStyles(colors: any) {
     previewLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.ink },
     previewSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
     previewAmount: { fontSize: 13, fontWeight: '700', color: colors.ink },
-    badge: { fontSize: 9, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
+    badge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
     badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e' },
     badgeMuted: { backgroundColor: colors.navy1, color: colors.inkDim },
     checkboxRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },

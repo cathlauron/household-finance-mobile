@@ -217,9 +217,9 @@ function makeStyles(colors: any) {
       borderColor: 'transparent',
     },
     statCardActive: { borderColor: colors.gold },
-    statLabel: { fontSize: 10, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 11, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
     statValue: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statNote: { fontSize: 10.5, color: colors.inkFaint, marginTop: 3 },
+    statNote: { fontSize: 11, color: colors.inkFaint, marginTop: 3 },
     hintText: { fontSize: 11.5, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
     sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 6, marginBottom: 10 },
     inputLabel: {

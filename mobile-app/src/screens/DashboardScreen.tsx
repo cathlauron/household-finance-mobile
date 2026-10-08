@@ -469,7 +469,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       minWidth: 0,
     },
     owedPillLabel: {
-      fontSize: 10.5,
+      fontSize: 11,
       fontWeight: '600',
       color: colors.inkDim,
     },
