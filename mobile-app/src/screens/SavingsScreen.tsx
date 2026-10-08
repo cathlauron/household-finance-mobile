@@ -736,26 +736,12 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     )}
   </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-                    saving && { opacity: 0.6 },
-                  ]}
-                  onPress={() => { hapticLight(); handleSaveEf(); }}
+                <Button
+                  label={efSaved ? '✓ Saved' : 'Save'}
+                  onPress={handleSaveEf}
+                  loading={saving}
                   disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color={colors.gold} size="small" />
-                  ) : (
-                    <>
-                      {efSaved && (
-                        <Ionicons name="checkmark" size={16} color={colors.navy2} style={{ marginRight: 6 }} />
-                      )}
-                      <Text style={styles.saveButtonText}>{efSaved ? 'Saved' : 'Save'}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                />
         </ScrollView>
       )}
 
@@ -938,13 +924,10 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             <Text style={styles.compareButtonText}>Compare Scenarios</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.saveButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
-            onPress={() => { hapticLight(); handleSaveFi(); }}
-          >
-            {fiSaved && <Ionicons name="checkmark" size={16} color={colors.navy2} style={{ marginRight: 6 }} />}
-            <Text style={styles.saveButtonText}>{fiSaved ? 'Saved' : 'Save'}</Text>
-          </TouchableOpacity>
+          <Button
+            label={fiSaved ? '✓ Saved' : 'Save'}
+            onPress={handleSaveFi}
+          />
         </ScrollView>
       )}
 
@@ -1135,14 +1118,6 @@ function makeStyles(colors: any) {
     resultLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 6 },
     resultAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     resultSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 8 },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: radii.pill,
-      paddingVertical: spacing[12],
-      alignItems: 'center',
-      marginBottom: spacing[10],
-    },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
 swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
 resultSecondaryLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
 resultSecondary: { fontSize: 15, fontWeight: '700', color: colors.ink },

@@ -350,9 +350,7 @@ export default function GroceriesScreen() {
           <Text style={styles.inputLabel}>Amount</Text>
           <AmountInput value={calcAmountInput} onChangeAmount={setCalcAmountInput} />
           {!!calcErrorMsg && <Text style={styles.errorText}>{calcErrorMsg}</Text>}
-          <TouchableOpacity style={styles.saveButton} onPress={handleAddCalcEntry}>
-            <Text style={styles.saveButtonText}>Add</Text>
-          </TouchableOpacity>
+          <Button label="Add" onPress={handleAddCalcEntry} />
 
           {calcEntries.length > 0 && (
             <>
@@ -531,14 +529,6 @@ function makeStyles(colors: any) {
     purchasedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
     purchasedToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     purchasedToggleTextActive: { color: '#10b981' },
-    saveButton: {
-      backgroundColor: colors.gold,
-      borderRadius: radii.pill,
-      paddingVertical: spacing[12],
-      alignItems: 'center',
-      marginBottom: spacing[10],
-    },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
     addToListButton: {
       backgroundColor: 'rgba(16,185,129,0.15)',
       borderRadius: 999,
