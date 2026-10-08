@@ -28,6 +28,7 @@ import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function todayISO(): string {
   const d = new Date();
@@ -775,13 +776,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </Text>
 
           <Text style={styles.inputLabel}>Annual expenses</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={fiExpensesDisplay}
-            onChangeText={setFiExpensesInput}
+          <AmountInput
+            value={fiExpensesDisplay === '' ? '' : parseFloat(fiExpensesDisplay)}
+            onChangeAmount={(v) => setFiExpensesInput(v === '' ? '' : String(v))}
             onBlur={() => handleSaveFi()}
           />
           {suggestedAnnualExpenses > 0 && (
@@ -804,13 +801,10 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           )}
 
           <Text style={styles.inputLabel}>Pension / Social Security (optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 120000"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={fiGuaranteedIncomeDisplay}
-            onChangeText={setFiGuaranteedIncomeInput}
+          <AmountInput
+            placeholder="e.g. 120,000"
+            value={fiGuaranteedIncomeDisplay === '' ? '' : parseFloat(fiGuaranteedIncomeDisplay)}
+            onChangeAmount={(v) => setFiGuaranteedIncomeInput(v === '' ? '' : String(v))}
             onBlur={() => handleSaveFi()}
           />
           <View style={styles.suggestionRow}>
@@ -821,13 +815,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </View>
 
           <Text style={styles.inputLabel}>Current savings / investments</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={fiSavingsDisplay}
-            onChangeText={setFiSavingsInput}
+          <AmountInput
+            value={fiSavingsDisplay === '' ? '' : parseFloat(fiSavingsDisplay)}
+            onChangeAmount={(v) => setFiSavingsInput(v === '' ? '' : String(v))}
             onBlur={() => handleSaveFi()}
           />
           {suggestedNetWorth > 0 && (
@@ -901,13 +891,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           />
 
           <Text style={styles.inputLabel}>Monthly savings toward FI (optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={fiMonthlySavingsDisplay}
-            onChangeText={setFiMonthlySavingsInput}
+          <AmountInput
+            value={fiMonthlySavingsDisplay === '' ? '' : parseFloat(fiMonthlySavingsDisplay)}
+            onChangeAmount={(v) => setFiMonthlySavingsInput(v === '' ? '' : String(v))}
             onBlur={() => handleSaveFi()}
           />
           {suggestedMonthlySavings > 0 && (
