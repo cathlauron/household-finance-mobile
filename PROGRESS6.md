@@ -406,7 +406,7 @@ spell out SignInScreen.tsx's two separate button styles):
   and a theme-aware one for the main Sign In button — both were confirmed and updated).
   Same token substitution pattern (`radii.pill` or `radii[8]`, `spacing[N]`) applied to
   each.
-- 📌 Decision: SettingsScreen.tsx's separate `primaryFullButton` style (used only by the
+- (UPDATE, Batch D2: "Change password" now uses the shared <Button>, and the primaryFullButton style is no longer needed there.) 📌 Decision: SettingsScreen.tsx's separate `primaryFullButton` style (used only by the
   "Change password" button) was deliberately left untouched — it was never part of this
   checkpoint's scope, and no assumption was made that it should be included.
 - 📌 Decision (from the investigation step): every file was confirmed to use its
@@ -551,7 +551,7 @@ via AccessibilityInfo (the app has no reduce-motion setting of its own).
 - Leaves only show around cards, in gaps and at edges, since the cards are solid. Tuning
   values: LeafBackground.tsx (o = 0.07, sizes, positions) and LeafTransitionOverlay.tsx
   (PEAK_OPACITY 0.25, DURATION_MS 750). Dark mode's brighter green may want lower opacity.
-- App.tsx: the two leaf imports (LeafTransitionOverlay, triggerLeafTransition) were placed
+- (RESOLVED in Batch A: all three leaf imports now sit in the top import block) App.tsx: the two leaf imports (LeafTransitionOverlay, triggerLeafTransition) were placed
   just above function AppContent(), which is valid but untidy; could be moved into the
   top import block later.
 - A tab that keeps a nested screen open might not report a new route name, so it could
@@ -1078,10 +1078,10 @@ pushed.
 - If tsc complains about unused refreshing / onRefresh, paste the error.
 - Antigravity's proposed bell used `new Date().toISOString()` for "today" (UTC bug), only
   checked bills, and used unverified screen names and BottomSheet props. All corrected.
-- Transactions is a tab that stays mounted, so a Watched Categories filter stays until the
+- (RESOLVED in Batch B: the category filter resets when you leave the tab; the month choice stays) Transactions is a tab that stays mounted, so a Watched Categories filter stays until the
   user taps "Clear filter", even after leaving and returning. The chip is always visible.
   If it should reset on leaving the tab, that is a small follow-up.
-- Transactions still has no general month filter; only the category drill-down sets one.
+- (RESOLVED in Batch B: a Month pill and sheet filter any month) Transactions still has no general month filter; only the category drill-down sets one.
 - (RESOLVED) The bell used to be inert. It now opens the inbox (3a/3b-1/3b-2).
 - Rubber band on Android 12+ is a stretch, subtler than iPhone. Cath reports it works as
   described; revisit only if it is raised again.
@@ -1695,7 +1695,7 @@ Dark-mode cleanup (Part 3, safe items only):
 ✅ V.8: White-on-status text, #e5484d sweep, SetPin/SignIn theming, Premium pill, Profile shortcuts (Batches 1-5)
 =====================================================================
 
-Why: finish the V-series list left over from the Part 3 investigation. Worked as Antigravity investigates (one combined read-only pass of real code), Claude reviews, Cath pastes by hand in five batches, each with its own tsc. Batches 1-4 were device-tested in light and dark mode ("as described"). Batch 5 is tsc clean; device test pending (see below).
+Why: finish the V-series list left over from the Part 3 investigation. Worked as Antigravity investigates (one combined read-only pass of real code), Claude reviews, Cath pastes by hand in five batches, each with its own tsc. Batches 1-4 were device-tested in light and dark mode ("as described"). Batch 5 was tsc clean and then device-tested in light and dark mode ("as described"), pushed.
 
 ✅ Batch 1: white text/icons on status colors -> colors.navy2 (DONE, device-tested)
 - TransactionsScreen: refundToggleTextActive, refundBadgeText and the checkmark Ionicons now use colors.navy2.
@@ -1719,7 +1719,7 @@ Why: finish the V-series list left over from the Part 3 investigation. Worked as
 - ProfileScreen shortcut rows: Password & Encryption Key -> navigation.navigate('Settings', { page: 'security' }); Active Devices -> { page: 'devices' }; All settings still opens the hub.
 - SettingsScreen: useRoute added to the @react-navigation/native import, const route = useRoute<any>(), and a useEffect that reads route.params?.page, calls setPage(target) when it is a key in PAGE_TITLES, then navigation.setParams({ page: undefined }) so the same shortcut works a second time. Confirmed on-device: shortcut opens the page, back returns to the hub, and the repeat tap works.
 
-🔧 Batch 5: SignInScreen module-level styles themed (CODE APPLIED, tsc CLEAN, DEVICE TEST PENDING)
+✅ Batch 5: SignInScreen module-level styles themed (DONE, tsc clean, device-tested in light and dark mode "as described", pushed)
 - Investigation: the module-level styles object is read ONLY inside SignInScreen (34 references, all in its JSX), which already has const { colors } = useTheme(). No references outside any component.
 - Added const styles = makeStyles(colors); right after const ms = makeMainStyles(colors);. The module-level const styles = StyleSheet.create({...}) became function makeStyles(colors: any) { return StyleSheet.create({...}); }. makeMainStyles untouched.
 - Recovery modal, peer-waiting card, dead-end note and revoked banner now follow the theme: modal card navy3; section navy2 with navy4 border; peer card navy3 with colors.orange border and text; revoked banner navy3 with colors.error border and text.
@@ -1736,14 +1736,79 @@ Why: finish the V-series list left over from the Part 3 investigation. Worked as
 - The Profile "Yes, unlink this device" button uses dangerButton (solid on purpose; it is the final confirm step).
 
 ⚠️ V.8 known issues / still optional
-- CalendarScreen tiny fonts (pillText 8, pillMore 7.5, dayBalanceText 7.5), chart month labels (8 and 9) and HomeScreen bellBadgeText still need a layout redesign, not a one-number change.
-- Shared src/typography.ts type scale: optional, not created.
+- (RESOLVED in Batches E1/E2, see the "Cleanup Batches A-F" section) CalendarScreen tiny fonts (pillText 8, pillMore 7.5, dayBalanceText 7.5), chart month labels (8 and 9) and HomeScreen bellBadgeText still need a layout redesign, not a one-number change.
+- (RESOLVED in Batch A: src/typography.ts created, built from real usage counts) Shared src/typography.ts type scale: optional, not created.
 - Settings sub-pages reported as looking cream or solid on-device: all 15 are transparent in code; cause never found. Ask which pages if seen again.
 - Not verified: dark-mode leaf opacity, iOS card shadow, the iPhone 'modal' Calendar look.
-- PinUnlockScreen still has five unused accountChip styles; harmless, can be deleted later.
-- Metro warning: SafeAreaView imported from 'react-native' should eventually come from 'react-native-safe-area-context'.
+- (RESOLVED: the five accountChip styles were already deleted in the V.2d commit c6308c2, so this note was stale; the one genuinely unused style, noPinHint, was removed in Batch A) PinUnlockScreen still has five unused accountChip styles; harmless, can be deleted later.
+- (DELIBERATE WON'T-FIX FOR NOW, see Batch A) Metro warning: SafeAreaView imported from 'react-native' should eventually come from 'react-native-safe-area-context'.
 
 📁 V.8 files edited: TransactionsScreen, SignInScreen, SetPinScreen, PremiumScreen, ProfileScreen, SettingsScreen, AccountSwitcherScreen, CreateProfileScreen, OnboardingScreen, AvatarPickerSheet, AccountsScreen, BillsScreen, CsvImportModal, DebtsScreen, EventsScreen, GoalsScreen, GroceriesScreen, IncomeScreen, LoansScreen, SavingsScreen, TravelScreen (all in src/screens/ or src/components/), plus src/components/Avatar.tsx and src/components/RowInteractionPreview.tsx.
+=====================================================================
+🧹 CLEANUP BATCHES A-F (after V.8): optional leftovers, all DONE, tsc clean, device-tested "as described", pushed
+=====================================================================
+
+Why: the optional V-series leftovers were worked through as six batches instead of one giant paste, each with its own Antigravity read-only investigation, Claude review, hand paste, tsc and device check. Claude overrode or corrected Antigravity's proposals where noted.
+
+✅ Batch A: tidy
+- PinUnlockScreen.tsx: removed the unused noPinHint style. The five accountChip styles were ALREADY gone (deleted in V.2d, commit c6308c2); the old note saying they remained was stale.
+- App.tsx: the three leaf imports (LeafTransitionOverlay, LeafBackground, triggerLeafTransition) moved from just under `type Screen` into the top import block, after the RootStack import.
+- src/typography.ts CREATED: MIN_READABLE_FONT_SIZE = 11 and typography { caption 11, captionLarge 12, bodySmall 13, body 14, bodyLarge 15, subhead 17, title 18, display 22 }. Built from a real audit of src/ (11 x117, 13 x110, 12 x83, 14 x71, 15 x49, 17 x19, 22 x14, 18 x13, 16 x6; half sizes 12.5 x38, 11.5 x31, 13.5 x18). This SUPERSEDES the earlier proposed scale in V.6a-1 (captionSmall 11 ... subhead 16), which did not match real usage. Nothing imports it yet; use it for NEW code only, old screens are not migrated.
+- 📌 Decision: the SafeAreaView import was NOT changed. 14 files import SafeAreaView from 'react-native' (App.tsx, BottomSheet, AccountsScreen, BillsScreen, CalendarScreen, DebtsScreen, IncomeScreen, LoansScreen, PlanningScreen, ProfileScreen, SavingsScreen, SettingsScreen, ToPayScreen, TransactionsScreen). Swapping App.tsx to react-native-safe-area-context would add status-bar padding on Android and DOUBLE it on IntroSlidesScreen and OnboardingScreen (both already use useSafeAreaInsets), and would shift PinUnlockScreen (hardcoded paddingTop 80). If ever wanted: give each wrapper explicit `edges`, or remove the wrappers around screens that handle their own insets. Cost of leaving it: only the Metro deprecation warning.
+
+✅ Batch B: Transactions month filter + category reset (TransactionsScreen.tsx)
+- State: categoryFilter is now `string | null` (was { category, month }); new monthFilter `string` ('all' or 'YYYY-MM', default 'all' so today's behaviour is unchanged) and monthSheetOpen.
+- The route-params effect (keyed on filterNonce) sets BOTH categoryFilter and monthFilter, so the Home Watched Categories drill-down still lands on category + that month and still adds up to the card.
+- A navigation 'blur' listener resets ONLY the category when the user leaves the tab. The month choice stays (tapping a transaction can jump to To-Pay, and losing the month each time would annoy).
+- List: month filter applies to all directions; category filter applies direction 'out' + exact category. Totals still derive from the filtered list.
+- monthOptions memo: distinct YYYY-MM from buildTransactionsList, newest first, plus the selected month so a drill-down into an empty month still shows as selected.
+- UI: a Month <Pill> (icon calendar-outline, minWidth 140, testID transactions-month-filter, green when a month is chosen) above the Sort pills opens a <BottomSheet title="Filter by month"> listing "All time" and each month with a checkmark; each row fires hapticSelection(). The "Clear filter" chip now shows the category only and clears only the category.
+- Helpers added above todayISO: TX_MONTH_NAMES and formatTxMonthLabel (month names written by hand on purpose; no new Date() parsing, which can shift a day around midnight in the Philippines).
+- Lesson: the first paste included the locator line `function todayISO(): string {` twice, giving TS1005 "'}' expected". Locator lines shown in a snippet are not part of what gets pasted.
+- Not verified: the month BottomSheet is placed inside the scroll content, not next to the file's other sheets; it worked on-device.
+
+✅ Batch C: dead pull-to-refresh code removed
+- Removed `import { useRefresh }`, `const { refreshing, onRefresh } = useRefresh();` and the refreshing/onRefresh props from <PullToRefreshScrollView> in all 12 screens (Accounts, Bills, Dashboard, Debts, Events, Goals, Groceries, Income, Loans, Savings, Transactions, Travel). PullToRefreshScrollView's Props type no longer has refreshing/onRefresh.
+- 📌 Decision: src/useRefresh.tsx and refreshModel() in DataContext.tsx were KEPT. refreshModel (cloud re-sync with alerts: 'Could not refresh', 'Backup is locked', 'Not refreshed', 'Backed up') is now not called from anywhere.
+- ⚠️ Known gap: there is NO manual "sync now" trigger anywhere in the app (pull-to-refresh was the only one and was removed in Home round 2). If wanted, a "Sync now" button in Settings could reuse useRefresh/refreshModel (own small checkpoint).
+
+✅ Batch D: shared Button and Card adoption (D1, D2, D3, D3a, D3b)
+- D1: IncomeScreen "TOTAL MONTHLY INCOME" is now <Card variant="banner" style={{ marginBottom: 16 }}> (about 4px shorter: padding 16 -> 14 vertical). GroceriesScreen calculator "Add" is now <Button label="Add"> (now gives a light haptic). SavingsScreen Emergency Fund and FI "Save" are now <Button> with label '✓ Saved' / 'Save' (EF also has loading + disabled; the spinner is now visible dark instead of gold-on-gold; the inline hapticLight() was REMOVED because Button fires it itself, otherwise a double buzz; the small checkmark icon became text).
+- D2 (SettingsScreen): "Change password" -> <Button> primary (style marginTop 6, loading/disabled on passChangeBusy, testID change-password-button kept); biometrics "Cancel" (testID biometric-password-cancel-button) and Secret Recovery Key "Close" -> <Button variant="quiet">.
+- D3: src/components/Button.tsx now has variants primary | destructive | quiet | solidDanger | outlineDanger | secondary and size standard | compact. solidDanger = FIXED '#C81E43' fill (NOT colors.error, which is a pastel in dark mode and fails with white text), white text, radii[10], fires hapticMedium(). outlineDanger = transparent, 1.5 border and text in colors.error, radii[10]. secondary = colors.navy3 block, inkDim text, radii[10] (the paired Cancel). compact = minHeight 26, padding 4/10, font 12 (for list rows). Imports hapticLight and hapticMedium.
+- D3a (SettingsScreen): "Clear all data & start fresh" opener -> outlineDanger; "Yes, clear everything" + Cancel -> solidDanger + secondary (flex 1); "Sign out device" + Cancel -> solidDanger + secondary.
+- D3b (ProfileScreen): member roster "Remove" -> outlineDanger compact; "Yes, remove" + Cancel; "Unlink this device" opener -> outlineDanger (marginTop 12, marginBottom 8, alignSelf stretch); "Transfer & Leave" + Cancel; "Yes, unlink this device" + Cancel (all solidDanger + secondary). Peer-recovery modal: "Approve & Send Key" -> <Button> primary (disabled until the code is 6 digits or while busy; inline hapticLight() removed; dimmed state 0.4 -> 0.6; spinner now dark), its Cancel -> quiet. There is NO "Decline" button in that modal.
+- 📌 Deliberately NOT converted: Settings device-row "Sign out" (deviceSignOutBtn, radius 6, compact size would not match); biometrics "Turn on" and "Generate Key" (saveButton); Profile "Cancel invite / generate new code" and "Code expired?" (cancelInlineButton blocks); the person-picker Confirm/Cancel (gold dataButton); Lock App, Switch Account and Log out (pill-shaped outlines); stat/row/modal cards (radii 10/12/14 differ; merging would change how they look).
+- Now probably unused styles (optional cleanup, Ctrl+F each name first): dangerButton, dangerButtonText, dangerOutlineButton, dangerOutlineButtonText, cancelInlineButton, primaryFullButton in Settings; dangerButton, dangerOutlineButton and saveButton in Profile where no users remain. cancelButtonText is still used.
+
+✅ Batch E: layout redesign leftovers
+- E1: HomeScreen bell badge enlarged: minWidth/height 16 -> 18, borderRadius 9, text 10 -> 11 (position top 2 / right 2 unchanged). Antigravity's idea of swapping '#C81E43' for colors.error was REJECTED (pastel in dark mode). CashFlowForecastReport: all 15 bars stay (sampleSeries(series, 15); Antigravity's "reduce to 10" was rejected as throwing away data); only the first, middle and last bars get a label, using fontSize 11, width 44, centered. YearInReviewReport: month labels are now single letters (J F M A M J J A S O N D) at 11px.
+- E2: CalendarScreen: decision B, the projected-balance text was REMOVED from every Compact and Stacked day cell (the day popup and List-mode preview still show the projected balance). Details mode: pillText 8 -> 11, pillMore 7.5 -> 11 in colors.inkDim, and "+N more" became "+N". The dayBalanceText style is now unused (optional delete). Detail cells are min 78dp; with 11px pills a 6-week month was device-tested and fit.
+- E3: CalendarScreen goPrevMonth returns early when pageIndex <= 0 and goNextMonth when pageIndex >= monthPages.length - 1, so the header title can no longer drift away from the grid at the ends of the 49-month list. The optional paste that dims the chevrons (opacity 0.35) at the ends goes with this. 📌 Decision: range stays +/-24 months (PAGES_EACH_SIDE = 24); +/-60 was NOT adopted (Scroll mode has no fixed item height and a 121-month list would make jump-to-month more fragile).
+
+✅ Batch F: dark-mode contrast audit + negative amounts
+- F1: a full grep of every white literal ('#fff', '#FFFFFF', 'white', rgba(255...)) found exactly FIVE real failures, all white on colors.gold (a light emerald #10B981 in dark mode). Fixed to colors.navy2: the "view" icon in SwipeableRow, the fingerprint icon in AccountSwitcherScreen, the checkmark in CreateProfileScreen, and the two spinners in SettingsScreen (biometrics "Turn on" and "Generate Key"). Everything else white is on a fixed dark background ('#C81E43', the 12 avatar preset colours, the '#3E7A5C' currency badge) and is safe. The white toggle thumb on the coloured Settings track is left (normal switch pattern).
+- F2: AmountInput.tsx gained an `allowNegative` prop (default false). When true it shows a small ± button at the left of the field that flips the sign, and typing a leading "-" is kept. It is ON only for the AccountsScreen Balance field (credit cards carrying a balance, overdrafts). Why: the web app allows negative balances, but AmountInput stripped "-" so retyping a negative balance silently made it positive, and decimal-pad keyboards have no minus key, so a "leading minus" fix alone would not have worked. Checked: formatPeso already handles negatives (-₱1,234.56); csvImport rejects amount <= 0 on purpose (transactions use direction, not sign); every other money field is correctly positive-only.
+- Not verified: AccountsScreen's handleSave was never shown to the investigation; it worked in the device test.
+
+📌 Lessons from this round (do not repeat)
+- Locator lines in a snippet ("existing code above/below") must not be pasted twice; this caused the TS1005 error in Batch B.
+- Antigravity's progress/notes can be stale (the accountChip styles) or invent fixes that are wrong for dark mode (colors.error for red buttons and badges). Always check proposals against the V.2 rule: never white text on a pastel status colour; use colors.navy2 or the fixed '#C81E43'.
+- Do the screens first and the shared component's props last (Batch C), otherwise tsc floods with errors.
+- When Button gains a haptic, remove any inline hapticLight() from the old handler (double buzz).
+
+⚠️ Still open after Batches A-F
+- Phone checklist, no code: dark-mode leaf opacity (0.05, same in dark); Android large-font setting on tab labels, Pill rows and the new Month pill; bell fresh-launch tap-through (close app, tap a bell item before opening To-Pay); bell recovery row with a second device; which Settings sub-pages looked cream/solid (code says all 15 are transparent).
+- Parked, needs an iPhone or iOS build: iOS card shadow (AccountCard), iPhone 'modal' Calendar look, iOS faceIDPermission entry.
+- Known gap: no manual "Sync now" trigger (see Batch C).
+- Optional: delete now-unused styles listed in Batch D and E; set Transactions default month to "this month" (one-word change) if wanted; tidy other unused imports.
+- Still required: a NEW EAS build (react-native-svg is not in the installed build, so Home would crash on it).
+- Paused in PROGRESS5.md (unchanged): Quick Unlock Step 6 checklist, PC.3 real social sign-in, 5a-2 offline-unlock loading indicator, Maestro flows, notification loose ends, Firestore rules hardening, Phase C publishing, the small stray items.
+
+📁 Batches A-F files
+- New: src/typography.ts
+- Edited: App.tsx, src/screens/PinUnlockScreen.tsx, TransactionsScreen.tsx, CalendarScreen.tsx, HomeScreen.tsx, IncomeScreen.tsx, GroceriesScreen.tsx, SavingsScreen.tsx, SettingsScreen.tsx, ProfileScreen.tsx, AccountsScreen.tsx, AccountSwitcherScreen.tsx, CreateProfileScreen.tsx; the 12 screens in Batch C (Accounts, Bills, Dashboard, Debts, Events, Goals, Groceries, Income, Loans, Savings, Transactions, Travel); src/screens/reports/CashFlowForecastReport.tsx and YearInReviewReport.tsx; src/PullToRefreshScrollView.tsx; src/components/Button.tsx, SwipeableRow.tsx, AmountInput.tsx
+- Kept on purpose, now unused: src/useRefresh.tsx (and refreshModel in DataContext.tsx)
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1756,7 +1821,7 @@ Why: finish the V-series list left over from the Part 3 investigation. Worked as
   YearInReviewReport)
 
 ⚠️ V-series known issues / still to do
-- (V.4b) Button/Card adoption is not yet on Profile, Settings' danger/cancel-inline
+- (PARTLY FIXED in Batch D: Income banner, Grocery Add, Savings EF/FI Save, Settings and Profile red/grey buttons now use Card/Button; stat/row/modal cards deliberately stay as they are) (V.4b) Button/Card adoption is not yet on Profile, Settings' danger/cancel-inline
   buttons, Grocery calculator Add, Savings EF/FI Save, IncomeScreen's inline banner, or
   any stat/row/modal cards. Dark mode has not been rechecked on the 9 banners beyond the
   device pass. The 9 report cards (V.4b-5) were checked in the device pass only, not dark mode specifically.
@@ -1836,7 +1901,8 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (V.8): the V series is code-complete. Batches 1-4 are device-tested; Batch 5 (SignInScreen styles themed) is tsc clean and needs its device check (see the Batch 5 entry). Then, optionally: Calendar tiny-font redesign, the shared src/typography.ts type scale, and the PinUnlockScreen dead-style tidy. After that, decide between (a) returning to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in, or (b) making a new EAS build first, since react-native-svg (H series and mint restyle) is not in the installed build. Confirm with Cath before starting.
+- LATEST (Batches A-F, all done, device-tested and pushed): the V series AND its optional leftovers are finished. Next, confirm with Cath which to do first: (a) run the short phone checklist (see "Still open after Batches A-F"); (b) make a NEW EAS build, which is required before the H series, mint restyle and Home leaves work on an installed app (react-native-svg is a native module), and which can double as the Quick Unlock Step 6 test build; (c) return to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in on that build. Optional small items: a "Sync now" button in Settings, delete the now-unused styles, set Transactions' default month.
+- (OLDER, superseded by the bullet above) V.8: the V series is code-complete. Batches 1-4 are device-tested; Batch 5 (SignInScreen styles themed) is tsc clean and needs its device check (see the Batch 5 entry). Then, optionally: Calendar tiny-font redesign, the shared src/typography.ts type scale, and the PinUnlockScreen dead-style tidy. After that, decide between (a) returning to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in, or (b) making a new EAS build first, since react-native-svg (H series and mint restyle) is not in the installed build. Confirm with Cath before starting.
 - (OLDER, superseded by the LATEST bullet above) ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
