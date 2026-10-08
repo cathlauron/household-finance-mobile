@@ -1503,18 +1503,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           </Text>
         )}
 
-        <TouchableOpacity
-          testID="change-password-button"
-          style={styles.primaryFullButton}
-          onPress={handleChangePassword}
-          disabled={passChangeBusy}
-        >
-          {passChangeBusy ? (
-            <ActivityIndicator color={colors.navy2} />
-          ) : (
-            <Text style={styles.saveButtonText}>Change password</Text>
-          )}
-        </TouchableOpacity>
+          <Button
+            testID="change-password-button"
+            label="Change password"
+            onPress={handleChangePassword}
+            loading={passChangeBusy}
+            disabled={passChangeBusy}
+            style={{ marginTop: 6 }}
+          />
         <View style={[styles.linkCodeBox, { marginTop: 16 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
             <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
@@ -1943,14 +1939,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                 <Text style={styles.saveButtonText}>Turn on</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity
-              testID="biometric-password-cancel-button"
-              style={[styles.cancelButton, biometricPasswordBusy && { opacity: 0.4 }]}
-              disabled={biometricPasswordBusy}
-              onPress={() => setBiometricPasswordModalOpen(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+              <Button
+                testID="biometric-password-cancel-button"
+                variant="quiet"
+                label="Cancel"
+                disabled={biometricPasswordBusy}
+                onPress={() => setBiometricPasswordModalOpen(false)}
+              />
           </Pressable>
         </Pressable>
       </Modal>
@@ -2047,12 +2042,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               </>
             )}
 
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setRetroactiveModalOpen(false)}
-            >
-              <Text style={styles.cancelButtonText}>Close</Text>
-            </TouchableOpacity>
+              <Button
+                variant="quiet"
+                label="Close"
+                onPress={() => setRetroactiveModalOpen(false)}
+              />
           </Pressable>
         </Pressable>
       </Modal>
@@ -2334,7 +2328,6 @@ function makeStyles(colors: any) {
     },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
     deleteButtonText: { fontSize: 13, color: colors.error, fontWeight: '600' },
-    cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     deviceItemRow: {
       flexDirection: 'row',
