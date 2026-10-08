@@ -626,6 +626,7 @@ What shipped:
   loadingContainer. When a snippet says "add after X", check the file for what is
   already there before pasting.
 - Home's date pill still has the same tap target; only Calendar's presentation changed.
+- SUPERSEDED (Parts 1-3): the "Done" button described above was removed. Android now shows a small X; iOS shows nothing.
 
 📁 D.7 files edited
 - mobile-app/src/navigation/RootStack.tsx
@@ -821,6 +822,7 @@ line changed; the existing paddingHorizontal: 12 and paddingTop: 16 in the same 
 as they were. Calendar deliberately does NOT get the shared mint background: on iOS it
 opens as a native 'modal' and on Android as a 'formSheet', both outside the shared
 background, so it keeps its own solid colour. Confirmed on-device (Android).
+SUPERSEDED (Part 2): the Calendar page is now colors.navy2 (soft mint); its cells stay navy3 with a navy4 border.
 
 📌 Decisions for this restyle
 - Layout is unchanged. The mockup was a colour/background reference only.
@@ -848,7 +850,7 @@ background, so it keeps its own solid colour. Confirmed on-device (Android).
 - Because navy3 is now white in light mode, headers, the tab bar and bottom sheets are
   white too. If they should stay cream, give them their own colour instead of navy3.
 - Calendar's own cells and cards also use navy3; on the now-white Calendar page they may
-  look flat. If so, consider a mint or navy2 tint for the page or the cells.
+  RESOLVED (Part 2): the page is navy2 and the cells have a navy4 border, so they read clearly.
 - The iOS-only 'modal' presentation for Calendar is still untested (no iPhone).
 - Push/pop screen slides now show the shared background through the gap between cards
   during the ~300ms slide. Not observed as a problem. If it is, set animation: 'fade' or
@@ -1709,6 +1711,7 @@ Why: finish the V-series list left over from the Part 3 investigation. Worked as
 - '#e5484d' / '#E5484D' -> colors.error in AvatarPickerSheet, AccountsScreen, BillsScreen, CsvImportModal, DebtsScreen, EventsScreen, GoalsScreen, GroceriesScreen, LoansScreen, ProfileScreen, SavingsScreen, SettingsScreen, TravelScreen, IncomeScreen (style entries plus the payday remove icon in JSX, color={colors.error}) and TransactionsScreen (receiptRemoveButtonText and errorText only). All of these sit inside makeStyles(colors) or a component, so colors is in scope.
 - TransactionsScreen amountColor() rewritten as amountColor(direction, colors) returning colors.ok (in), colors.orange (saving), colors.error (out). The single call site passes colors. Replace-all was NOT used on this file because the old function was module-level.
 - 📌 Decision: CalendarScreen EVENT_DOT_COLORS (it was called TYPE_COLORS in older notes) keeps '#e5484d' for bill. It only colors small dots and bars, never text (about 3.9:1 on white is fine for non-text). Change only if a theme-aware bill dot is wanted.
+SUPERSEDED (Part 2): bill dots now use colors.error via getEventDotColors(colors).
 
 ✅ Batch 3: SetPinScreen themed, SignIn dead styles removed (DONE, device-tested)
 - SetPinScreen.tsx: imports useTheme, builds styles with makeStyles(colors) (module-level StyleSheet removed). Rounded 12px navy3 inputs with navy4 border, primary button colors.gold + colors.navy2 text with radii.pill, error colors.error.
@@ -1810,6 +1813,50 @@ Why: the optional V-series leftovers were worked through as six batches instead 
 - Edited: App.tsx, src/screens/PinUnlockScreen.tsx, TransactionsScreen.tsx, CalendarScreen.tsx, HomeScreen.tsx, IncomeScreen.tsx, GroceriesScreen.tsx, SavingsScreen.tsx, SettingsScreen.tsx, ProfileScreen.tsx, AccountsScreen.tsx, AccountSwitcherScreen.tsx, CreateProfileScreen.tsx; the 12 screens in Batch C (Accounts, Bills, Dashboard, Debts, Events, Goals, Groceries, Income, Loans, Savings, Transactions, Travel); src/screens/reports/CashFlowForecastReport.tsx and YearInReviewReport.tsx; src/PullToRefreshScrollView.tsx; src/components/Button.tsx, SwipeableRow.tsx, AmountInput.tsx
 - Kept on purpose, now unused: src/useRefresh.tsx (and refreshModel in DataContext.tsx)
 
+=====================================================================
+🧼 HOME + CALENDAR POLISH, AND INSIGHTS REMOVED (Parts 1-3): DONE, tsc clean, device-tested "as described", pushed
+=====================================================================
+
+Why: Cath reviewed Home and Calendar screenshots and asked for edits. Dashboard info already lives on Home, so the Dashboard tab was removed. Worked as Antigravity investigates (3 read-only passes plus a 4th for navigation), Claude reviews, Cath pastes by hand.
+
+✅ Part 1: Home tweaks
+- HomeScreen.tsx: the profile row is now a tappable pill (style profilePill: navy3 fill, navy4 border, radii pill, maxWidth 75%, avatar size 30, greeting fontSize 14). The chevron-forward was removed. activeOpacity 0.7 gives press feedback.
+- DashboardScreen.tsx Amount Owed card: the receipt icon row now holds only the icon + "AMOUNT OWED" label (marginBottom 0), so the icon centres on the label. The big amount sits below it, flush left.
+- DashboardScreen.tsx Bills / Debts / Loans chips: the chevrons were removed. Each chip stacks label over amount (owedPill no longer a row; paddingHorizontal 10; owedPillLabel marginBottom 2). flex:1 keeps them equal width.
+
+✅ Part 2: Calendar (CalendarScreen.tsx)
+- Uneven last row FIXED. Cause: the last week had fewer than 7 cells and flex:1 stretched them. MonthView now builds GridCell objects (day, month, year, isCurrentMonth), filling with previous-month and next-month days so every row has 7 equal cells. Out-of-month days are grayed (opacity 0.35, transparent) and DISABLED: tapping them does nothing (deliberate; a month jump would fight Swipe/Scroll).
+- Cell style: pale rounded cell (navy3 fill, navy4 border). Today = solid colors.gold fill. List-mode selected day = 2px gold border. Events dots/bars/pills on today use white.
+- Event colours now follow the theme via getEventDotColors(colors): bill error, debt orange, loan indigo, income ok, saving gold, manual decor.
+- "Done" removed. On Android only, a small round X (closeBtnCircle) calls navigation.goBack(); iOS shows nothing there (swipe the sheet down). Platform added to the react-native import.
+- Menu icons added (VIEW_MODE_ICONS / NAV_MODE_ICONS): Compact grid-outline, Stacked layers-outline, Details reader-outline, List list-outline, Swipe swap-horizontal-outline, Scroll swap-vertical-outline. Icon on the left, checkmark (colors.gold) on the right, 1px dividers.
+- Page background is now colors.navy2 (soft mint) instead of navy3 (white).
+- Unused styles removed: dayCellEmpty, sheetDone, navButtonText.
+
+✅ Part 3: Insights removed, More opens Reports directly
+- Finding: HomeScreen mounts DashboardScreen.tsx as its OWN body, and useBellInbox imports getUpcomingDue from it. So DashboardScreen.tsx was KEPT. Only the Insights wrapper (Dashboard/Reports pills) went away.
+- RootStack.tsx: route Insights renamed Reports (RootStackParamList, Stack.Screen with title 'Reports', headerBackTitle 'More'), now rendering ReportsScreen directly. InsightsScreen import removed.
+- MoreScreen.tsx: key union and row changed to { key: 'Reports', title: 'Reports', subtitle: 'Monthly close-out, trends & audits', testID 'more-reports-row' }. MoreScreen uses useNavigation<any>(), so TypeScript does NOT catch a route-name mismatch; both files must change together.
+- InsightsScreen.tsx deleted (git rm).
+- Wording: OnboardingScreen "Go to Dashboard" -> "Go to Home"; SettingsScreen watchlist help "flagged on the Dashboard" -> "flagged on Home".
+- Checked and clean: no deep links, saved nav state, AsyncStorage keys or tests reference 'Insights'. ReportsScreen's empty-state already uses visibleTabs.length === 0 (my suspicion that it was inverted was wrong).
+
+📌 Decisions
+- Out-of-month Calendar days are display-only (disabled).
+- iOS gets no close button; Android gets the X (see open issue below).
+- DashboardScreen.tsx keeps its name for now. Renaming it (e.g. HomeContent) is optional later work.
+
+⚠️ Open / not verified
+- Android swipe-down dismissal of the Calendar sheet was claimed NOT to work by Antigravity but never tested. If it does work on Cath's phone, remove the Android X block.
+- DARK MODE: dayTextToday and the white dots/bars/pills on the today cell use '#FFFFFF' on colors.gold (a light emerald in dark mode). This breaks the V.2 rule (never white on a pastel status colour). Fix: use colors.navy2 instead of '#FFFFFF' in dayTextToday and the isToday dot/bar/pill colours. Not yet applied.
+- Dark-mode look of the new Calendar cells and menu was not itemised in the device test.
+- iPhone look of the Calendar sheet and the missing X on iOS are untested (no iPhone).
+- mobile-app/EMULATOR-TESTING-CHECKLIST.md still has "## 14. Insights: Dashboard" and "## 15. Insights: Reports". Update it (Dashboard now lives on Home; Reports is reached from More > Reports, test ID more-reports-row).
+
+📁 Part 1-3 files
+- Edited: src/screens/HomeScreen.tsx, DashboardScreen.tsx, CalendarScreen.tsx, MoreScreen.tsx, OnboardingScreen.tsx, SettingsScreen.tsx, src/navigation/RootStack.tsx
+- Deleted: src/screens/InsightsScreen.tsx
+
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
 - Edited: GoalsScreen, AccountsScreen, BillsScreen, DebtsScreen, EventsScreen,
@@ -1901,7 +1948,8 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (Batches A-F, all done, device-tested and pushed): the V series AND its optional leftovers are finished. Next, confirm with Cath which to do first: (a) run the short phone checklist (see "Still open after Batches A-F"); (b) make a NEW EAS build, which is required before the H series, mint restyle and Home leaves work on an installed app (react-native-svg is a native module), and which can double as the Quick Unlock Step 6 test build; (c) return to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in on that build. Optional small items: a "Sync now" button in Settings, delete the now-unused styles, set Transactions' default month.
+- NEWEST (Parts 1-3, done and pushed): Home/Calendar polish and the Insights removal are finished. Small follow-ups: (1) fix white-on-gold in the Calendar "today" cell for dark mode (see open issue in the Part 1-3 section); (2) test whether swiping the Calendar sheet down works on Android, then remove the X if it does; (3) update EMULATOR-TESTING-CHECKLIST.md sections 14-15. Then continue with the bullet below.
+- PREVIOUS (Batches A-F, all done, device-tested and pushed): the V series AND its optional leftovers are finished. Next, confirm with Cath which to do first: (a) run the short phone checklist (see "Still open after Batches A-F"); (b) make a NEW EAS build, which is required before the H series, mint restyle and Home leaves work on an installed app (react-native-svg is a native module), and which can double as the Quick Unlock Step 6 test build; (c) return to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in on that build. Optional small items: a "Sync now" button in Settings, delete the now-unused styles, set Transactions' default month.
 - (OLDER, superseded by the bullet above) V.8: the V series is code-complete. Batches 1-4 are device-tested; Batch 5 (SignInScreen styles themed) is tsc clean and needs its device check (see the Batch 5 entry). Then, optionally: Calendar tiny-font redesign, the shared src/typography.ts type scale, and the PinUnlockScreen dead-style tidy. After that, decide between (a) returning to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in, or (b) making a new EAS build first, since react-native-svg (H series and mint restyle) is not in the installed build. Confirm with Cath before starting.
 - (OLDER, superseded by the LATEST bullet above) ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
