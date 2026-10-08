@@ -1568,25 +1568,36 @@ tested ("as described"), pushed.
 - Unused imports (hapticLight, radii, spacing) left in the 11 footer files on purpose; a
   later single tidy pass. They do not fail tsc.
 
-⏳ V.4b-5 (IN PROGRESS): adopt Card on the 9 report cards (CashFlowForecast,
-MerchantSpending, MonthlyCloseOut, PaymentMethods, PersonSpending, SubscriptionAudit,
-TaxSummary, WeeklyDigest, YearInReview; every `card` style is identical: navy3, radius
-10, padding 16, marginBottom 12; about 22 usages). NOT written yet: each usage's
-closing </View> must become </Card>, so a read-only Antigravity prompt was issued to get
-the full opening-to-closing blocks, key props, line endings and Card.tsx's contents.
-Waiting on its result.
+✅ V.4b-5: Card adopted on the 9 report screens. DONE, tsc clean, grep for styles.card in
+the reports folder returned nothing, device-tested ("as described"), pushed.
+- Replaced all 20 <View style={styles.card}> usages across CashFlowForecast,
+  MerchantSpending, MonthlyCloseOut, PaymentMethods, PersonSpending, SubscriptionAudit,
+  TaxSummary, WeeklyDigest and YearInReview with <Card>. The earlier estimate of about 22
+  was wrong; Antigravity's real count was 20.
+- 3 usages keep a key prop: MerchantSpending key={m.label}, PaymentMethods key={m.key},
+  PersonSpending key={g.id}.
+- Each file got `import Card from '../../components/Card';` and had its now-unused `card:`
+  style entry deleted. View stays imported in all 9 files (still used for stat rows,
+  progress bars, chart columns and loading containers).
+
+- V.4b-5: report cards use <Card> with the default variant ('card'), so no variant prop is
+  passed. All 9 report files use CRLF line endings; keep them that way when editing.
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
 - Edited: GoalsScreen, AccountsScreen, BillsScreen, DebtsScreen, EventsScreen,
   IncomeScreen, LoansScreen, TransactionsScreen, TravelScreen, GroceriesScreen,
   SavingsScreen, SettingsScreen, CalendarScreen (all in src/screens/)
+- V.4b-5 edited: all 9 files in src/screens/reports/ (CashFlowForecastReport,
+  MerchantSpendingReport, MonthlyCloseOutReport, PaymentMethodsReport,
+  PersonSpendingReport, SubscriptionAuditReport, TaxSummaryReport, WeeklyDigestReport,
+  YearInReviewReport)
 
 ⚠️ V-series known issues / still to do
 - (V.4b) Button/Card adoption is not yet on Profile, Settings' danger/cancel-inline
   buttons, Grocery calculator Add, Savings EF/FI Save, IncomeScreen's inline banner, or
   any stat/row/modal cards. Dark mode has not been rechecked on the 9 banners beyond the
-  device pass.
+  device pass. The 9 report cards (V.4b-5) were checked in the device pass only, not dark mode specifically.
 UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other input was found directly on the mint page.
 - Double back link on Settings sub-pages: FIXED in V.2. Check whether any Maestro/e2e test
   references the removed testID settings-back-button, and whether Ionicons is still used in
@@ -1639,7 +1650,7 @@ commit, one on-device check)
   each looks like on mint, and what it takes to show LeafBackground behind them (wrapper
   and each screen's container backgroundColor navy2 -> 'transparent', LeafBackground placed
   behind). Also the SignIn recovery-modal near-black button.
-- V.3: DONE. V.4a (shared Pill): DONE. V.4b: Button DONE, Card DONE on 9 banners, Card on the 9 report cards IN PROGRESS (V.4b-5), no Header component (decision above).
+- V.3: DONE. V.4a (shared Pill): DONE. V.4b: Button DONE, Card DONE on 9 banners, Card on the 9 report cards DONE (V.4b-5), no Header component (decision above).
 - V.4: build shared Pill, Card, Button and Header components, then adopt them screen by
   screen; move hardcoded colors onto the theme.
 (Pill done in V.4a; Card, Button and Header remain.)
@@ -1663,11 +1674,7 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-4 (Button, Card on
-  banners) are done and device-tested. Next is V.4b-5: paste Antigravity's read-only
-  report on the 9 report cards, have Claude check it against real code, then apply one
-  labelled section per file (Card import, <Card> / </Card> swaps, delete the `card:`
-  style), one tsc, one device check of the 9 report screens, one commit. After that: the
+- ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
   destructive buttons, including dangerButton and deviceSignOutBtn). Optional: tidy
