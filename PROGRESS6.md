@@ -1624,9 +1624,25 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
   - V.6c-2: Savings Emergency Fund fields (efExpensesDisplay, efSavingsDisplay), Savings Goals (targetAmount, contribAmount), then AccountsScreen, LoansScreen (totalAmount, new payment), DebtsScreen (balance, minPayment, creditLimit).
   - V.6c-3: BillsScreen (amount due), IncomeScreen (expected amount, logged payday), TransactionsScreen (amount, refund amount).
   - V.6c-4: LoanPayoffSimulatorModal extra payment, GroceriesScreen, TravelScreen, EventsScreen, GoalsScreen, SavingsFiComparisonModal, Settings category watch limit and rule min/max.
-  - Leave as plain number inputs: due day / month fields (number-pad), interest rate % and similar percent fields.
+- Leave as plain number inputs: due day / month fields (number-pad), interest rate % and similar percent fields.
 
-▶️ Next: V.6 continues (remaining fonts per the list in V.6a-1; V.6c-2 onward AmountInput adoption), then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
+✅ V.6c-2: AmountInput adopted on Savings, Accounts, Loans and Debts money fields. DONE, tsc clean (after one fix, below), device-tested ("as described"), pushed. Worked as Antigravity investigates (read-only), Claude reviews, Cath pastes by hand.
+- SavingsScreen: 4 more fields. Emergency Fund "Monthly essential expenses" and "Current savings" (both keep onBlur={() => handleSaveEf()}), Savings Goal sheet "Target amount", and the contribution-row amounts (style={styles.contribAmountInput} keeps the date / amount / remove layout). Same string-state wrapper as the FI fields: value={x === '' ? '' : parseFloat(x)}, onChangeAmount={(v) => setX(v === '' ? '' : String(v))}. Percent fields (SWR, expected return) and the goal name stay plain TextInput. No new import needed.
+- AccountsScreen: only the Balance field in the add/edit sheet (the transfer, fee, withdrawal, credit-limit and override fields do not exist in the mobile app). State is now useState<number | ''>(''), the edit loader sets account.amount directly, handleSave uses amountInput === '' ? 0 : amountInput and the isNaN check is gone. Account name stays TextInput.
+- LoansScreen: Total loan amount, Expected payment and the payment-log "Amount paid" field. State for all three is now number | ''. handleSave builds parsedTotal / parsedExpected directly from state; handleAddPayment checks newPaymentAmount === '' || newPaymentAmount <= 0 and stores actual: newPaymentAmount. Name, type, day, month, occurrences and interest rate stay TextInput.
+- DebtsScreen: Amount owed, Minimum payment and Fees portion (keeps its custom placeholder "e.g. late fee or interest charged"). State is number | ''; the edit loader and handleSave (both the edit and create branches for feesPortion) no longer parse strings. Names, category, day, month, interest rate and notes stay TextInput.
+- 📌 Decisions / lessons:
+  - On every screen where inputs sit inside a BottomSheet (navy3), the screen's own `input` style uses navy2 so fields stand out. AmountInput defaults to navy3 and would blend into the sheet, so Accounts, Loans and Debts each got `amountInput: { backgroundColor: colors.navy2 }` and pass style={styles.amountInput}. Savings did not need it (its input style is already navy3).
+  - Antigravity prompts should say "find what is actually in the file", not list fields that might exist. The first Accounts prompt sent it hunting for fields the mobile app does not have.
+  - A one-line find was missed on LoansScreen (setTotalAmountInput(loanTotal(loan) === 0 ? '' : String(loanTotal(loan)))), which gave one tsc error (TS2345, string not assignable to number | ''). Fixed by removing the String(...) wrapper. Lesson: after pasting several small swaps, run tsc and expect it to catch any missed one.
+  - The Loans "Amount paid" field clears after Add; confirmed on-device, so no AmountInput change was needed.
+- Known limits / not verified: AmountInput strips minus signs, so an account carried over from the web app with a negative balance would lose its sign if retyped (check real data); LoanPayoffSimulatorModal was not checked for its own inputs; Savings "suggested monthly expenses" chip not checked; contribution rows at 320pt or narrower not checked; keyboard focus order between date, text and amount fields on a real device was not itemised.
+- Remaining AmountInput adoption (each gets an Antigravity pass first):
+  - V.6c-3: BillsScreen (amount due), IncomeScreen (expected amount, logged payday), TransactionsScreen (amount, refund amount).
+  - V.6c-4: LoanPayoffSimulatorModal extra payment, GroceriesScreen, TravelScreen, EventsScreen, GoalsScreen, SavingsFiComparisonModal, Settings category watch limit and rule min/max.
+  - Leave as plain inputs: due day / month fields, interest rate % and similar percent fields.
+
+▶️ Next: V.6c-3 (AmountInput on Bills, Income, Transactions), then V.6c-4, the remaining small fonts, then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1674,7 +1690,7 @@ UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other
   MainTabs 94, TravelScreen 312, and about 33 occurrences at 10px.
 - (FIXED in V.6b) Calendar days show the same balance under every date; plan to show a balance only on days
   with activity.
-- (PARTLY FIXED in V.6c-1: FI Calculator peso fields only; plan in that entry) Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
+- (PARTLY FIXED in V.6c-1 and V.6c-2: FI Calculator, Savings, Accounts, Loans and Debts peso fields done; Bills, Income, Transactions and the V.6c-4 list remain) Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
 - Sub-tab pills, segmented controls and filter chips are three different pill styles; plan
   one shared Pill component.
 - Destructive actions: "Clear all data" is a full-width red button right under "Save a
@@ -1719,7 +1735,7 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
-- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days) and V.6c-1 (AmountInput in the FI Calculator peso fields) are done, device-tested and pushed. Next, in order: (1) V.6c-2 (more AmountInput adoption; ask Antigravity for the exact current code of those fields first), (2) the remaining small-font items listed in the V.6a-1 entry, (3) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
+- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days) and V.6c-1 (AmountInput in the FI Calculator peso fields) are done, device-tested and pushed. Next, in order: (1) V.6c-3 (AmountInput on Bills, Income, Transactions; ask Antigravity for the exact current code first; V.6c-2 Savings, Accounts, Loans and Debts are done and pushed), (2) V.6c-4, (3) the remaining small-font items listed in the V.6a-1 entry, (4) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
 - ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
