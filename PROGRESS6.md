@@ -1591,7 +1591,42 @@ the reports folder returned nothing, device-tested ("as described"), pushed.
 - Rejected from Antigravity's proposal: accent-coloured badge text (fails contrast on saffron/sandy), unused tintBg, overflow:hidden (clips iOS shadow), isDark from useTheme (never verified).
 - Not verified: iOS shadow look (no iPhone).
 
-▶️ Next: V.6 (tiny fonts, Calendar balance only on days with activity, number-field formatting), then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
+✅ V.6a-1: banner/label fonts raised to 11px. DONE, tsc clean, device-tested ("as described"), pushed. Worked as Antigravity investigates (read-only grep of every fontSize below 11 across src and App.tsx), Claude reviews, Cath pastes by hand.
+- Changed (all via exact one-line find/replace, no layout change expected):
+  - balanceBannerLabel 10 -> 11 in BillsScreen, DebtsScreen, GroceriesScreen, LoansScreen, SavingsScreen.
+  - GoalsScreen yearBannerLabel 10 -> 11.
+  - TravelScreen budgetBannerLabel 9.5 -> 11.
+  - IncomeScreen inline "TOTAL MONTHLY INCOME" label 10 -> 11.
+  - GroceriesScreen and SavingsScreen resultLabel 10 -> 11; SavingsScreen resultSecondaryLabel 10 -> 11.
+- 📌 Decision: a small shared type scale (src/typography.ts: captionSmall 11, caption 12, body 14, subhead 16, title 18, display 22, plus MIN_READABLE_FONT_SIZE = 11) was PROPOSED by Antigravity but NOT created yet. Add it once a few screens actually use it.
+- Deliberately NOT changed yet (still open):
+  - AccountsScreen, CalendarScreen and the report stat labels (statCardLabel in CashFlowForecast, TaxSummary, YearInReview): multi-line styles whose surrounding code was not shown, so no safe exact paste. Next fonts step, after a quick look.
+  - TransactionsScreen statLabel and netLabel (10): stat cards sit side by side, so 11px uppercase might wrap. Check on device first.
+  - Pills and badges (safe to raise to 11): LoansScreen direction pill (9), BillsScreen priorityBadgeText (10) and the two inline frequency labels (10), SettingsScreen device badges (10, three styles), CsvImportModal badge (9) and checkboxMark (10), DashboardScreen owedPillLabel (10.5), LoanPayoffSimulatorModal and SavingsFiComparisonModal statLabel (10) / statNote (10.5), SubscriptionAuditReport billAmountSub (10).
+  - DateField dowText (10): safe to raise to 11.
+  - RISKY, leave alone unless redesigned: CalendarScreen pillText (8), pillMore (7.5), dayBalanceText (7.5) in a ~44px square cell; HomeScreen bellBadgeText (10) in a fixed 16px circle (would need the badge enlarged first); chart month labels in CashFlowForecastReport (8) and YearInReviewReport (9) (12 bars across the screen; use single letters or keep small).
+
+✅ V.6b: Calendar day balance only on days with activity (and today). DONE, tsc clean, device-tested ("as described"), pushed.
+- CalendarScreen.tsx MonthView: the dayBalanceText in Compact and Stacked modes now gets `opacity: 0` unless that day has at least one event or is today. It is HIDDEN, not removed, so the date number keeps the same height on active and quiet days (cells centre their content; not rendering it would make dates jump).
+- Details and List grids are unchanged (they never showed the balance in the cell). List mode's preview panel and the day popup still show "Projected balance" for days with no events; checked in the real code.
+- Font size of dayBalanceText was NOT raised (formatPeso always shows decimals, e.g. ₱14,500.00, and already barely fits at 7.5).
+
+✅ V.6c-1: shared AmountInput component, adopted in the FI Calculator peso fields. DONE, tsc clean, device-tested ("as described"), pushed. Worked as Antigravity investigates (two read-only passes), Claude reviews, Cath pastes by hand.
+- New file src/components/AmountInput.tsx. Props: value (number | '' | undefined), onChangeAmount((number | '') => void), onBlur, placeholder (default '0.00'), allowDecimals (default true; false uses number-pad), prefix (default '₱', null for none), suffix (default null), style, inputStyle.
+- Behaviour: while focused it shows RAW digits (no commas) so the cursor never jumps and a trailing "." survives; when not focused it shows thousands commas (en-US grouping, max 2 decimals). Typing strips everything except digits and one decimal point, limits to 2 decimals, and returns '' when empty. Visuals match SavingsScreen's existing `input` style (navy3, radii[8], spacing[12]/[10]/[14] margin, fontSize 15).
+- SavingsScreen.tsx: new `import AmountInput from '../components/AmountInput';`. The four peso FI fields now use it: Annual expenses, Pension / Social Security (placeholder "e.g. 120,000"), Current savings / investments, Monthly savings. Each does `value={xDisplay === '' ? '' : parseFloat(xDisplay)}` and `onChangeAmount={(v) => setXInput(v === '' ? '' : String(v))}`, so the existing string state and handleSaveFi (parses strings, stores number | '') are unchanged.
+- 📌 Decisions:
+  - The two PERCENT fields (Safe withdrawal rate fiSwrDisplay, Expected annual return fiReturnDisplay) are NOT money and were left as plain TextInputs. AmountInput supports prefix={null} / suffix="%" if they are ever converted.
+  - The peso symbol is a prop default. The app has a Settings.currency field in the model (default 'PHP') but NO currency picker, no CURRENCIES list, and formatPeso hardcodes '₱' (en-PH). If a currency setting is ever built, pass the symbol into AmountInput and formatPeso.
+  - Tokens verified: radii[8], radii[10], spacing[4], [6], [10], [12], [14] all exist; useTheme imports from '../ThemeContext'.
+- Known limits: no negative amounts (decimal pad has no minus key); not tested with third-party keyboards or hardware keyboards; not tested on very low-end Android.
+- Remaining adoption plan (about 24 numeric inputs found; each checkpoint gets its own tsc and device check, and an Antigravity pass first to get the exact current code):
+  - V.6c-2: Savings Emergency Fund fields (efExpensesDisplay, efSavingsDisplay), Savings Goals (targetAmount, contribAmount), then AccountsScreen, LoansScreen (totalAmount, new payment), DebtsScreen (balance, minPayment, creditLimit).
+  - V.6c-3: BillsScreen (amount due), IncomeScreen (expected amount, logged payday), TransactionsScreen (amount, refund amount).
+  - V.6c-4: LoanPayoffSimulatorModal extra payment, GroceriesScreen, TravelScreen, EventsScreen, GoalsScreen, SavingsFiComparisonModal, Settings category watch limit and rule min/max.
+  - Leave as plain number inputs: due day / month fields (number-pad), interest rate % and similar percent fields.
+
+▶️ Next: V.6 continues (remaining fonts per the list in V.6a-1; V.6c-2 onward AmountInput adoption), then V.7 (quieter destructive buttons incl. dangerButton / deviceSignOutBtn).
 
 📁 V.4b files
 - New: src/components/Button.tsx, src/components/Card.tsx
@@ -1634,12 +1669,12 @@ UPDATE V.3 Step A: the Settings styles.input edit above completes this; no other
 - TransactionsScreen hardcoded money colors, the SignIn recovery button (#1C1917), the
   19 hardcoded SignIn colors and the #E5484D uses in 16 files still need to move onto the
   theme.
-- Tiny fonts (<11px): CalendarScreen 327/334 (7.5 and 8px), CashFlowForecastReport 219/203,
+- (PARTLY FIXED in V.6a-1; remaining list is in that entry) Tiny fonts (<11px): CalendarScreen 327/334 (7.5 and 8px), CashFlowForecastReport 219/203,
   YearInReviewReport 238/248, CsvImportModal 415, LoansScreen 278, AccountCard 188,
   MainTabs 94, TravelScreen 312, and about 33 occurrences at 10px.
-- Calendar days show the same balance under every date; plan to show a balance only on days
+- (FIXED in V.6b) Calendar days show the same balance under every date; plan to show a balance only on days
   with activity.
-- Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
+- (PARTLY FIXED in V.6c-1: FI Calculator peso fields only; plan in that entry) Number fields (e.g. FI Calculator) show raw "37200" with no peso sign or commas.
 - Sub-tab pills, segmented controls and filter chips are three different pill styles; plan
   one shared Pill component.
 - Destructive actions: "Clear all data" is a full-width red button right under "Save a
@@ -1684,6 +1719,7 @@ commit, one on-device check)
   git push
 
 ▶️ Next step
+- LATEST (V.6): V.6a-1 (banner fonts), V.6b (Calendar balance only on active days) and V.6c-1 (AmountInput in the FI Calculator peso fields) are done, device-tested and pushed. Next, in order: (1) V.6c-2 (more AmountInput adoption; ask Antigravity for the exact current code of those fields first), (2) the remaining small-font items listed in the V.6a-1 entry, (3) V.7 (quieter destructive buttons, including dangerButton and deviceSignOutBtn). The older bullets below are still true where not superseded.
 - ACTIVE RIGHT NOW: the V series. V.0 through V.4a and V.4b-1 to V.4b-5 (Button, Card on banners and report cards) are done and device-tested. V.4b-5 (Card on the 9 report cards) is done. Next: the
   small shared tab-header screenOptions item, then V.5 (account card tints), V.6 (tiny
   fonts, Calendar balances only on active days, number formatting) and V.7 (quieter
