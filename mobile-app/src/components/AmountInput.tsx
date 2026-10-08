@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
 
@@ -9,6 +9,8 @@ type Props = {
   onBlur?: () => void;
   placeholder?: string;
   allowDecimals?: boolean;
+  // true = shows a +/- button so the amount can be negative (e.g. credit card balance, overdraft)
+  allowNegative?: boolean;
   prefix?: string | null;
   suffix?: string | null;
   style?: StyleProp<ViewStyle>;
@@ -29,6 +31,7 @@ export default function AmountInput({
   onBlur,
   placeholder = '0.00',
   allowDecimals = true,
+  allowNegative = false,
   prefix = '₱',
   suffix = null,
   style,
@@ -50,6 +53,7 @@ export default function AmountInput({
   }, [value, isFocused, allowDecimals]);
 
   function handleChangeText(text: string) {
+    const neg = allowNegative && /^\s*-/.test(text);
     let cleaned = text.replace(/[^0-9.]/g, '');
     if (!allowDecimals) {
       cleaned = cleaned.replace(/\./g, '');
@@ -59,13 +63,19 @@ export default function AmountInput({
       const p2 = cleaned.split('.');
       if (p2[1] && p2[1].length > 2) cleaned = p2[0] + '.' + p2[1].slice(0, 2);
     }
-    setTextBuffer(cleaned);
+    const signed = neg ? '-' + cleaned : cleaned;
+    setTextBuffer(signed);
     if (cleaned === '' || cleaned === '.') {
       onChangeAmount('');
     } else {
-      const parsed = parseFloat(cleaned);
+      const parsed = parseFloat(signed);
       onChangeAmount(isNaN(parsed) ? '' : parsed);
     }
+  }
+
+  function toggleSign() {
+    const isNeg = textBuffer.trim().startsWith('-');
+    handleChangeText(isNeg ? textBuffer.replace('-', '') : '-' + textBuffer);
   }
 
   function handleFocus() {
@@ -87,6 +97,15 @@ export default function AmountInput({
 
   return (
     <View style={[styles.container, style]}>
+      {allowNegative ? (
+        <TouchableOpacity
+          onPress={toggleSign}
+          accessibilityLabel="Switch between positive and negative"
+          style={styles.signToggle}
+        >
+          <Text style={styles.signToggleText}>±</Text>
+        </TouchableOpacity>
+      ) : null}
       {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
       <TextInput
         style={[styles.input, inputStyle]}
@@ -118,6 +137,18 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.inkDim,
       marginHorizontal: spacing[4],
+    },
+    signToggle: {
+      paddingHorizontal: spacing[8],
+      paddingVertical: spacing[4],
+      borderRadius: radii[8],
+      backgroundColor: colors.navy4,
+      marginRight: spacing[4],
+    },
+    signToggleText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.ink,
     },
     input: {
       flex: 1,

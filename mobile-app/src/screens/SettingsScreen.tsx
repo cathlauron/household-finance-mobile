@@ -1934,7 +1934,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               onPress={handleConfirmBiometricPassword}
             >
               {biometricPasswordBusy ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.navy2} />
               ) : (
                 <Text style={styles.saveButtonText}>Turn on</Text>
               )}
@@ -1984,7 +1984,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                   onPress={handleGenerateRetroactiveRecoveryKey}
                 >
                   {retroactiveBusy ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.navy2} />
                   ) : (
                     <Text style={styles.saveButtonText}>Generate Key</Text>
                   )}

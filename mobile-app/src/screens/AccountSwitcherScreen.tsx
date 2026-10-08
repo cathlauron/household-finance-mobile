@@ -237,7 +237,7 @@ export default function AccountSwitcherScreen({
                   onPress={() => runFingerprint(selectedAccount.username)}
                 >
                   <View style={s.btnRow}>
-                    <Ionicons name="finger-print" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Ionicons name="finger-print" size={20} color={colors.navy2} style={{ marginRight: 8 }} />
                     <Text style={s.primaryBtnText}>Use fingerprint</Text>
                   </View>
                 </TouchableOpacity>

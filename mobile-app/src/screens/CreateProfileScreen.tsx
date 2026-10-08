@@ -276,7 +276,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 onPress={() => setSavedAcknowledged((prev) => !prev)}
               >
                 <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
-                  {savedAcknowledged && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                  {savedAcknowledged && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
                 </View>
                 <Text style={styles.checkLabel}>
                   I have written down or saved this recovery key in a safe place.

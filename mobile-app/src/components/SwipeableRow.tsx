@@ -49,7 +49,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
           accessibilityLabel={viewAction.label}
         >
           <Animated.View style={{ transform: [{ scale }] }}>
-            <Ionicons name={viewAction.icon} size={20} color="#fff" />
+            <Ionicons name={viewAction.icon} size={20} color={colors.navy2} />
           </Animated.View>
         </TouchableOpacity>
       );

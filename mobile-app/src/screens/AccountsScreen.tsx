@@ -362,11 +362,12 @@ export default function AccountsScreen() {
         />
 
         <Text style={styles.inputLabel}>Balance</Text>
-        <AmountInput
-          style={styles.amountInput}
-          value={amountInput}
-          onChangeAmount={setAmountInput}
-        />
+          <AmountInput
+            style={styles.amountInput}
+            value={amountInput}
+            onChangeAmount={setAmountInput}
+            allowNegative
+          />
 
         <Text style={styles.inputLabel}>Card color</Text>
         <ScrollView
