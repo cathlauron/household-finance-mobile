@@ -26,6 +26,7 @@ import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function debtAmount(debt: Debt): number {
   const first = debt.cycles && debt.cycles[0];
@@ -106,10 +107,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   }, [model, openDebtId, openDebtNonce]);
   const [creditorInput, setCreditorInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
-  const [amountInput, setAmountInput] = useState('');
+  const [amountInput, setAmountInput] = useState<number | ''>('');
   const [interestRateInput, setInterestRateInput] = useState('');
-  const [minPaymentInput, setMinPaymentInput] = useState('');
-  const [feesPortionInput, setFeesPortionInput] = useState('');
+  const [minPaymentInput, setMinPaymentInput] = useState<number | ''>('');
+  const [feesPortionInput, setFeesPortionInput] = useState<number | ''>('');
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
@@ -153,16 +154,16 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setEditingId(debt.id);
     setCreditorInput(debt.creditorOrPerson);
     setCategoryInput(debt.category || '');
-    setAmountInput(debtAmount(debt) === 0 ? '' : String(debtAmount(debt)));
+    setAmountInput(debtAmount(debt) === 0 ? '' : debtAmount(debt));
     setInterestRateInput(
       typeof debt.interestRate === 'number' ? String(debt.interestRate) : ''
     );
     setMinPaymentInput(
-      typeof debt.minPayment === 'number' ? String(debt.minPayment) : ''
+      typeof debt.minPayment === 'number' ? debt.minPayment : ''
     );
     setNotesInput(debt.notes || '');
         setPaymentMethodInput(debt.cycles && debt.cycles[0] ? debt.cycles[0].paymentMethod : undefined);
-    setFeesPortionInput(debt.cycles && debt.cycles[0] && debt.cycles[0].feesPortion !== undefined && debt.cycles[0].feesPortion !== '' ? String(debt.cycles[0].feesPortion) : '');
+    setFeesPortionInput(debt.cycles && debt.cycles[0] && debt.cycles[0].feesPortion !== undefined && debt.cycles[0].feesPortion !== '' ? debt.cycles[0].feesPortion : '');
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = debt.dueDate || {};
@@ -186,11 +187,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       setErrorMsg('Enter who this debt is owed to.');
       return;
     }
-    const parsedAmount = amountInput.trim() === '' ? 0 : parseFloat(amountInput);
-    if (isNaN(parsedAmount)) {
-      setErrorMsg('Enter a valid amount.');
-      return;
-    }
+    const parsedAmount = amountInput === '' ? 0 : amountInput;
 
     let dueDate: Record<string, any> = {};
     if (recurTypeInput === 'onetime') {
@@ -230,15 +227,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       }
       parsedInterest = n;
     }
-    let parsedMinPayment: number | '' = '';
-    if (minPaymentInput.trim() !== '') {
-      const n = parseFloat(minPaymentInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid minimum payment.');
-        return;
-      }
-      parsedMinPayment = n;
-    }
+    const parsedMinPayment: number | '' = minPaymentInput === '' ? '' : minPaymentInput;
 
     const nextDue = getNextDueDate(recurTypeInput, dueDate);
     const nextDueISO = nextDue
@@ -250,7 +239,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (editingId) {
       updated.debts = updated.debts.map((d) => {
         if (d.id !== editingId) return d;
-        const parsedFeesPortion = feesPortionInput.trim() === '' ? ('' as const) : parseFloat(feesPortionInput);
+        const parsedFeesPortion = feesPortionInput === '' ? ('' as const) : feesPortionInput;
         const existingCycle = d.cycles && d.cycles[0];
         const cycle = existingCycle
           ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }
@@ -283,7 +272,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
             paidDate: '',
             notes: '',
             paymentMethod: paymentMethodInput,
-            feesPortion: feesPortionInput.trim() === '' ? '' : parseFloat(feesPortionInput),
+            feesPortion: feesPortionInput === '' ? '' : feesPortionInput,
           },
         ],
         notes: notesInput,
@@ -486,13 +475,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
                 />
 
                 <Text style={styles.inputLabel}>Amount owed</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={amountInput}
-                  onChangeText={setAmountInput}
+                  onChangeAmount={setAmountInput}
                 />
 
                 <Text style={styles.inputLabel}>Repeats</Text>
@@ -573,23 +559,18 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
                 />
 
                 <Text style={styles.inputLabel}>Minimum payment (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={minPaymentInput}
-                  onChangeText={setMinPaymentInput}
+                  onChangeAmount={setMinPaymentInput}
                 />
 
                 <Text style={styles.inputLabel}>Fees portion (optional)</Text>
-                <TextInput
-                  style={styles.input}
+                <AmountInput
+                  style={styles.amountInput}
                   placeholder="e.g. late fee or interest charged"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
                   value={feesPortionInput}
-                  onChangeText={setFeesPortionInput}
+                  onChangeAmount={setFeesPortionInput}
                 />
 
                 <PaymentMethodPicker
@@ -688,6 +669,9 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
     },
     notesInput: { minHeight: 60, textAlignVertical: 'top' },
     row2: { flexDirection: 'row', gap: 10 },

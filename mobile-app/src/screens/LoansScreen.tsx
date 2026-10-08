@@ -28,6 +28,7 @@ import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import AmountInput from '../components/AmountInput';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {
@@ -135,8 +136,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const [nameInput, setNameInput] = useState('');
   const [loanTypeInput, setLoanTypeInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'borrowed' | 'lent'>('borrowed');
-  const [totalAmountInput, setTotalAmountInput] = useState('');
-  const [expectedPaymentInput, setExpectedPaymentInput] = useState('');
+  const [totalAmountInput, setTotalAmountInput] = useState<number | ''>('');
+  const [expectedPaymentInput, setExpectedPaymentInput] = useState<number | ''>('');
   const [interestRateInput, setInterestRateInput] = useState('');
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
@@ -149,7 +150,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [paymentsInput, setPaymentsInput] = useState<LoanPayment[]>([]);
   const [newPaymentDate, setNewPaymentDate] = useState('');
-  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentAmount, setNewPaymentAmount] = useState<number | ''>('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethod | undefined>(undefined);
   const [paymentError, setPaymentError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -191,9 +192,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     setNameInput(loan.name);
     setLoanTypeInput(loan.loanType || '');
     setDirectionInput(loan.direction === 'lent' ? 'lent' : 'borrowed');
-    setTotalAmountInput(loanTotal(loan) === 0 ? '' : String(loanTotal(loan)));
+    setTotalAmountInput(loanTotal(loan) === 0 ? '' : loanTotal(loan));
     setExpectedPaymentInput(
-      typeof loan.expectedPayment === 'number' ? String(loan.expectedPayment) : ''
+      typeof loan.expectedPayment === 'number' ? loan.expectedPayment : ''
     );
     setInterestRateInput(typeof loan.interestRate === 'number' ? String(loan.interestRate) : '');
     const rt = (loan.recurringType as RecurringType) || 'onetime';
@@ -228,15 +229,14 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
       setPaymentError('Enter date as YYYY-MM-DD.');
       return;
     }
-    const parsedAmount = parseFloat(newPaymentAmount);
-    if (newPaymentAmount.trim() === '' || isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (newPaymentAmount === '' || newPaymentAmount <= 0) {
       setPaymentError('Enter a valid amount paid.');
       return;
     }
     const newPayment: LoanPayment = {
       id: makeId('lpay'),
       date: trimmedDate,
-      actual: parsedAmount,
+      actual: newPaymentAmount,
       paymentMethod: newPaymentMethod,
     };
     setPaymentsInput([newPayment, ...paymentsInput]);
@@ -257,24 +257,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
       setErrorMsg('Enter a name for this loan.');
       return;
     }
-    let parsedTotal: number | '' = '';
-    if (totalAmountInput.trim() !== '') {
-      const n = parseFloat(totalAmountInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid total amount.');
-        return;
-      }
-      parsedTotal = n;
-    }
-    let parsedExpected: number | '' = '';
-    if (expectedPaymentInput.trim() !== '') {
-      const n = parseFloat(expectedPaymentInput);
-      if (isNaN(n)) {
-        setErrorMsg('Enter a valid expected payment.');
-        return;
-      }
-      parsedExpected = n;
-    }
+    const parsedTotal: number | '' = totalAmountInput === '' ? '' : totalAmountInput;
+    const parsedExpected: number | '' = expectedPaymentInput === '' ? '' : expectedPaymentInput;
     let parsedRate: number | '' = '';
     if (interestRateInput.trim() !== '') {
       const n = parseFloat(interestRateInput);
@@ -612,23 +596,17 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                 </View>
 
                 <Text style={styles.inputLabel}>Total loan amount</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={totalAmountInput}
-                  onChangeText={setTotalAmountInput}
+                  onChangeAmount={setTotalAmountInput}
                 />
 
                 <Text style={styles.inputLabel}>Expected payment (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
+                <AmountInput
+                  style={styles.amountInput}
                   value={expectedPaymentInput}
-                  onChangeText={setExpectedPaymentInput}
+                  onChangeAmount={setExpectedPaymentInput}
                 />
 
                 <Text style={styles.inputLabel}>Repeats</Text>
@@ -781,14 +759,11 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                         testID="loan-payment-date-field"
                       />
                       <Text style={styles.inputLabel}>Amount paid</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="0.00"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="decimal-pad"
-                        value={newPaymentAmount}
-                        onChangeText={setNewPaymentAmount}
-                      />
+                        <AmountInput
+                          style={styles.amountInput}
+                          value={newPaymentAmount}
+                          onChangeAmount={setNewPaymentAmount}
+                        />
                       <PaymentMethodPicker
                         value={newPaymentMethod}
                         onChange={setNewPaymentMethod}
@@ -898,6 +873,9 @@ function makeStyles(colors: any) {
       fontSize: 15,
       color: colors.ink,
       marginBottom: 14,
+    },
+    amountInput: {
+      backgroundColor: colors.navy2,
     },
     fieldHint: { fontSize: 11, color: colors.inkFaint, marginTop: -10, marginBottom: 14, lineHeight: 15 },
     paymentLogSection: {
