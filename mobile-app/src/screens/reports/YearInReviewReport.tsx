@@ -143,7 +143,7 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
                   ]}
                 />
               </View>
-              <Text style={styles.chartColLabel}>{d.label}</Text>
+              <Text style={styles.chartColLabel}>{d.label.charAt(0)}</Text>
             </View>
           ))}
         </View>
@@ -245,7 +245,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     chartCol: { flex: 1, alignItems: 'center' },
     chartBarsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 2 },
     chartBar: { width: 5, borderRadius: 2, minHeight: 2 },
-    chartColLabel: { fontSize: 9, color: colors.inkFaint, marginTop: 6 },
+    chartColLabel: { fontSize: 11, color: colors.inkFaint, marginTop: 6 },
     legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 12 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     legendSwatch: { width: 10, height: 10, borderRadius: 3 },

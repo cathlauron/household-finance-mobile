@@ -143,7 +143,11 @@ export default function CashFlowForecastReport() {
                   ]}
                 />
               </View>
-              <Text style={styles.chartColLabel}>{p.day === 0 ? 'Today' : `+${p.day}d`}</Text>
+              <Text style={styles.chartColLabel} numberOfLines={1}>
+                {idx === 0 || idx === Math.floor((sampled.length - 1) / 2) || idx === sampled.length - 1
+                  ? (p.day === 0 ? 'Today' : `+${p.day}d`)
+                  : ' '}
+              </Text>
             </View>
           ))}
         </View>
@@ -197,7 +201,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     chartCol: { flex: 1, alignItems: 'center' },
     chartBarsWrap: { height: 100, justifyContent: 'flex-end', width: '100%', alignItems: 'center' },
     forecastBar: { width: 6, borderRadius: 2, minHeight: 2 },
-    chartColLabel: { fontSize: 8, color: colors.inkFaint, marginTop: 6 },
+    chartColLabel: { fontSize: 11, color: colors.inkFaint, marginTop: 6, width: 44, textAlign: 'center' },
     footerNote: { fontSize: 11, color: colors.inkFaint, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
   });
 }
