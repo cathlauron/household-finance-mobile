@@ -16,7 +16,6 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import type { YearlyGoal, HouseholdModel } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
@@ -44,7 +43,6 @@ function goalPct(g: YearlyGoal): number {
 export default function GoalsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -204,7 +202,7 @@ export default function GoalsScreen() {
 
   return (
     <View style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" style={{ marginBottom: 16 }}>
           <Text style={styles.yearBannerLabel}>THIS YEAR'S PROGRESS</Text>
           <Text style={styles.yearBannerAmount}>

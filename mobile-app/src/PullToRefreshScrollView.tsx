@@ -2,17 +2,14 @@
 import { Platform, ScrollView as RNScrollView, ScrollViewProps } from 'react-native';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 
-// No longer a pull-to-refresh: the refresh props are accepted (so existing
-// screens still compile) but ignored. This now just gives every screen the
+// Not a pull-to-refresh any more. This just gives every screen the
 // platform's elastic overscroll.
 type Props = ScrollViewProps & {
-  refreshing?: boolean;
-  onRefresh?: () => void;
   children?: React.ReactNode;
 };
 
 export const PullToRefreshScrollView = React.forwardRef<any, Props>(function PullToRefreshScrollView(
-  { refreshing, onRefresh, children, ...rest },
+  { children, ...rest },
   ref
 ) {
   if (Platform.OS === 'android') {

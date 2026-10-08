@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import {
@@ -84,7 +83,6 @@ type IncomeScreenProps = {
 export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -376,7 +374,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={{ backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 16 }}>
           <Text style={{ fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>

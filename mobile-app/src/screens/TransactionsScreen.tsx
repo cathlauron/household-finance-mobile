@@ -17,7 +17,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
@@ -147,7 +146,6 @@ function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
   const { model, saveModel, username } = useData();
-    const { refreshing, onRefresh } = useRefresh();
   const navigation = useNavigation();
   const route = useRoute<any>();
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -545,7 +543,7 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.statRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>TOTAL IN</Text>

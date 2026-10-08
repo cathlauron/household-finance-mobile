@@ -13,7 +13,6 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
@@ -115,7 +114,6 @@ type LoansScreenProps = {
 export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
@@ -448,7 +446,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" row style={{ marginBottom: 12 }}>
           <View>
             <Text style={styles.balanceBannerLabel}>OWED (BORROWED)</Text>

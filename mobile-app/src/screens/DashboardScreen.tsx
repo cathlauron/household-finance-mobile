@@ -13,7 +13,6 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
@@ -87,7 +86,6 @@ export default function DashboardScreen({
   onScrollY,
 }: { header?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
   const { model, loading } = useData();
-  const { refreshing, onRefresh } = useRefresh();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const navigation = useNavigation<any>();
@@ -141,10 +139,8 @@ export default function DashboardScreen({
     <>
     <PullToRefreshScrollView
       style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      onScroll={onScrollY ? (e: any) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+        contentContainerStyle={styles.contentContainer}
+        onScroll={onScrollY ? (e: any) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
       scrollEventThrottle={16}
     >
       {header}

@@ -12,7 +12,6 @@ import {
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
@@ -87,7 +86,6 @@ type DebtsScreenProps = {
 export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null);
@@ -355,7 +353,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" style={{ marginBottom: 18 }}>
           <Text style={styles.balanceBannerLabel}>TOTAL DEBT LOGGED</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>

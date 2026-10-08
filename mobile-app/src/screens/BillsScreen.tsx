@@ -13,7 +13,6 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
@@ -94,7 +93,6 @@ type BillsScreenProps = {
 export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
   // reached via the subscription-reminder deep link, or via a swipe-to-
@@ -360,7 +358,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" style={{ marginBottom: 18 }}>
           <Text style={styles.balanceBannerLabel}>TOTAL BILLS</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalDue)}</Text>

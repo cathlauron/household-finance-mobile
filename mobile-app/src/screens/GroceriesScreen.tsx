@@ -16,7 +16,6 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
@@ -48,7 +47,6 @@ type PillTab = 'list' | 'calculator';
 export default function GroceriesScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   const [activeTab, setActiveTab] = useState<PillTab>('list');
@@ -265,7 +263,7 @@ export default function GroceriesScreen() {
       </View>
 
       {activeTab === 'list' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <Card variant="banner" style={{ marginBottom: 12 }}>
             <Text style={styles.balanceBannerLabel}>BUDGET VS ACTUAL</Text>
             <Text style={styles.balanceBannerAmount}>

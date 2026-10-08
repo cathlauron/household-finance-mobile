@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource } from '../types';
@@ -122,7 +121,6 @@ type SavingsScreenProps = {
 export default function SavingsScreen({ openSavingsId, openSavingsNonce }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
 
   const openedSavingsRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -598,7 +596,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       </View>
 
       {activeTab === 'goals' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
+        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <Card variant="banner" style={{ marginBottom: 12 }}>
             <Text style={styles.balanceBannerLabel}>TOTAL SAVED</Text>
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalSaved)}</Text>

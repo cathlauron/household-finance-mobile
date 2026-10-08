@@ -16,7 +16,6 @@ import { Alert } from 'react-native';
 import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { useRefresh } from '../useRefresh';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { totalLiquidBalance, formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
@@ -51,7 +50,6 @@ function makeId(): string {
 export default function AccountsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const { refreshing, onRefresh } = useRefresh();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
@@ -224,7 +222,7 @@ export default function AccountsScreen() {
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled" refreshing={refreshing} onRefresh={onRefresh}
+        keyboardShouldPersistTaps="handled"
       >
         <Card variant="banner" row style={{ marginBottom: 18 }}>
           <View>
