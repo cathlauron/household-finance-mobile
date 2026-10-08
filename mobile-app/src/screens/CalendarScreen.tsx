@@ -155,7 +155,13 @@ const MonthView = React.memo(function MonthView({
                       </View>
                     )}
                     {viewMode !== 'details' && viewMode !== 'list' && (
-                      <Text style={styles.dayBalanceText} numberOfLines={1}>
+                      <Text
+                        style={[
+                          styles.dayBalanceText,
+                          !((monthEvents[day] && monthEvents[day].length > 0) || isToday) && { opacity: 0 },
+                        ]}
+                        numberOfLines={1}
+                      >
                         {formatPeso(projectedBalances[day] ?? 0)}
                       </Text>
                     )}

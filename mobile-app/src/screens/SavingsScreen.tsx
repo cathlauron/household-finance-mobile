@@ -1175,7 +1175,7 @@ function makeStyles(colors: any) {
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
 swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
-resultSecondaryLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
+resultSecondaryLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
 resultSecondary: { fontSize: 15, fontWeight: '700', color: colors.ink },
 toggleLink: { alignSelf: 'center', marginTop: 8 },
 toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },

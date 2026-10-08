@@ -389,7 +389,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={{ backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-          <Text style={{ fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
+          <Text style={{ fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
         </View>
         {sources.length === 0 && (

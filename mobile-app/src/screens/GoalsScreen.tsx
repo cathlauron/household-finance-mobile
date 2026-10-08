@@ -398,7 +398,7 @@ function makeStyles(colors: any) {
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    yearBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
+    yearBannerLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
     yearBannerAmount: { fontSize: 18, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
     goalRow: {

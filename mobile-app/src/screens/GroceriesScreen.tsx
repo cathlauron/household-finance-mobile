@@ -522,7 +522,7 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       marginBottom: 16,
     },
-    resultLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 6 },
+    resultLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 6 },
     resultAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     calcRow: {
       flexDirection: 'row',

@@ -630,7 +630,7 @@ function makeStyles(colors: any) {
       paddingHorizontal: 14,
       marginBottom: 16,
     },
-    budgetBannerLabel: { fontSize: 9.5, letterSpacing: 0.8, color: colors.inkDim, marginBottom: 4 },
+    budgetBannerLabel: { fontSize: 11, letterSpacing: 0.8, color: colors.inkDim, marginBottom: 4 },
     budgetBannerAmount: { fontSize: 18, fontWeight: '700', color: colors.ink },
     checklistHeading: { fontSize: 13, fontWeight: '700', color: colors.ink, marginBottom: 8 },
     checklistRow: {
