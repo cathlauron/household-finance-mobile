@@ -693,13 +693,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </Text>
 
           <Text style={styles.inputLabel}>Monthly essential expenses</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={efExpensesDisplay}
-            onChangeText={setEfExpensesInput}
+          <AmountInput
+            value={efExpensesDisplay === '' ? '' : parseFloat(efExpensesDisplay)}
+            onChangeAmount={(v) => setEfExpensesInput(v === '' ? '' : String(v))}
             onBlur={() => handleSaveEf()}
           />
           {suggestedMonthlyExpenses > 0 && (
@@ -724,13 +720,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           )}
 
           <Text style={styles.inputLabel}>Current savings</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={efSavingsDisplay}
-            onChangeText={setEfSavingsInput}
+          <AmountInput
+            value={efSavingsDisplay === '' ? '' : parseFloat(efSavingsDisplay)}
+            onChangeAmount={(v) => setEfSavingsInput(v === '' ? '' : String(v))}
             onBlur={() => handleSaveEf()}
           />
 
@@ -973,13 +965,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 />
 
                 <Text style={styles.inputLabel}>Target amount (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={targetAmountInput}
-                  onChangeText={setTargetAmountInput}
+                <AmountInput
+                  value={targetAmountInput === '' ? '' : parseFloat(targetAmountInput)}
+                  onChangeAmount={(v) => setTargetAmountInput(v === '' ? '' : String(v))}
                 />
 
                 <DateField
@@ -1003,13 +991,10 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                       onChange={(v) => updateContribDate(row.id, v)}
                       placeholder="YYYY-MM-DD"
                     />
-                    <TextInput
-                      style={[styles.input, styles.contribAmountInput]}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="decimal-pad"
-                      value={row.amountInput}
-                      onChangeText={(v) => updateContribAmount(row.id, v)}
+                    <AmountInput
+                      style={styles.contribAmountInput}
+                      value={row.amountInput === '' ? '' : parseFloat(row.amountInput)}
+                      onChangeAmount={(v) => updateContribAmount(row.id, v === '' ? '' : String(v))}
                     />
                     <TouchableOpacity
                       style={styles.contribRemoveButton}
