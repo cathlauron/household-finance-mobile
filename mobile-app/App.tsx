@@ -19,6 +19,9 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
 import IntroSlidesScreen from './src/screens/IntroSlidesScreen';
 import RootStack from './src/navigation/RootStack';
+import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
+import LeafBackground from './src/components/LeafBackground';
+import { triggerLeafTransition } from './src/leafTransition';
 import { loadProfilesIndex, loadEncryptedProfileData } from './src/storage';
 import type { ProfileIndexEntry } from './src/storage';
 import { hasPinSetUp } from './src/pin';
@@ -40,10 +43,6 @@ import {
 } from './src/sessions';
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
-
-import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
-import LeafBackground from './src/components/LeafBackground';
-import { triggerLeafTransition } from './src/leafTransition';
 
 // Each top-level screen fades in on its own Animated value that starts at 0
 // from its very first frame, so the new screen never flashes at full opacity

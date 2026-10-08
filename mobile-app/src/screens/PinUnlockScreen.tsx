@@ -233,7 +233,6 @@ function makeStyles(colors: any) {
       paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, textAlign: 'center', letterSpacing: 6,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    noPinHint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 16 },
     primaryBtn: { backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 14, marginTop: 24 },
     primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     retryBiometricBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center' },
