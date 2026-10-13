@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -27,7 +28,7 @@ export default function MoreScreen() {
   const styles = makeStyles(colors);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.content}>
       {DESTINATIONS.map((dest) => (
         <TouchableOpacity
           key={dest.key}
@@ -46,7 +47,7 @@ export default function MoreScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
       ))}
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

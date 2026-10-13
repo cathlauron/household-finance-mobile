@@ -14,7 +14,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
@@ -23,6 +23,7 @@ import type { TransactionEntry } from '../../transactions';
 import type { HouseholdModel } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
 
@@ -112,7 +113,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
   const maxCategoryAmount = categories.length > 0 ? categories[0].amount : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.yearNavRow}>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year - 1)}>
           <Ionicons name="chevron-back" size={18} color={colors.ink} />
@@ -180,7 +181,7 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
           })
         )}
       </Card>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

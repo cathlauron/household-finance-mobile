@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 
@@ -21,7 +22,7 @@ export default function PremiumScreen() {
   const isMonthly = billing === 'monthly';
 
   return (
-    <ScrollView
+    <PullToRefreshScrollView
       testID="premium-screen-container"
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -75,9 +76,7 @@ export default function PremiumScreen() {
           <Text style={styles.disabledButtonText}>Coming soon</Text>
         </View>
       </View>
-
-      <Text style={styles.footerText}>Not available yet. Nothing will be charged.</Text>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

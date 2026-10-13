@@ -7,12 +7,13 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../../transactions';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 type CategoryTotal = {
   category: string;
@@ -57,7 +58,7 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
   const maxCategoryAmount = categoryTotals.length > 0 ? categoryTotals[0].amount : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Card>
         <Text style={styles.cardLabel}>Monthly Close-out — {monthLabel}</Text>
         <View style={styles.statRow}>
@@ -101,7 +102,7 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
           })
         )}
       </Card>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

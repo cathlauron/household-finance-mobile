@@ -9,12 +9,13 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList } from '../../transactions';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 type MerchantTotal = {
   label: string;
@@ -66,7 +67,7 @@ export default function MerchantSpendingReport({ activeTag }: Props = {}) {
   const maxAmount = merchants.length > 0 ? merchants[0].total : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Card>
         <Text style={styles.cardLabel}>Merchant Spending</Text>
         <Text style={styles.subLabel}>
@@ -101,7 +102,7 @@ export default function MerchantSpendingReport({ activeTag }: Props = {}) {
           );
         })
       )}
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

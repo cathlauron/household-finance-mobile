@@ -16,12 +16,13 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import type { PaymentMethod, BalanceAccountEntry } from '../../types';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 type MethodTotal = {
   key: string;
@@ -118,7 +119,7 @@ export default function PaymentMethodsReport() {
   const maxAmount = methods.reduce((m, x) => (x.key === 'unset' ? m : Math.max(m, x.total)), 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Card>
         <Text style={styles.cardLabel}>Payment Methods</Text>
         <Text style={styles.subLabel}>
@@ -170,7 +171,7 @@ export default function PaymentMethodsReport() {
           "Not set" covers payments without a chosen payment method.
         </Text>
       )}
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

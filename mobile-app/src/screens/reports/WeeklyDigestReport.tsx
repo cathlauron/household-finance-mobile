@@ -9,13 +9,14 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../../transactions';
 import type { TransactionEntry } from '../../transactions';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 type CategoryTotal = {
   category: string;
@@ -80,7 +81,7 @@ export default function WeeklyDigestReport({ activeTag }: Props = {}) {
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Card>
         <Text style={styles.cardLabel}>Weekly Digest — {rangeLabel}</Text>
         <View style={styles.statRow}>
@@ -153,7 +154,7 @@ export default function WeeklyDigestReport({ activeTag }: Props = {}) {
           ))
         )}
       </Card>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

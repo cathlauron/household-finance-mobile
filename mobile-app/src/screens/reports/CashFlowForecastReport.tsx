@@ -10,7 +10,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import Pill from '../../components/Pill';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
@@ -18,6 +18,7 @@ import { computeRunningBalances, formatPeso } from '../../balanceProjection';
 import { stripTime } from '../../recurrence';
 import type { HouseholdModel } from '../../types';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_OPTIONS = [30, 60, 90];
@@ -92,7 +93,7 @@ export default function CashFlowForecastReport() {
   const sampled = sampleSeries(series, 15);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.pillRow}>
         {DAY_OPTIONS.map((opt) => (
           <Pill
@@ -156,7 +157,7 @@ export default function CashFlowForecastReport() {
       <Text style={styles.footerNote}>
         Projection based on expected income, bills, debts, and savings. Keep your Calendar balance current.
       </Text>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

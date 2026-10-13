@@ -685,7 +685,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       )}
 
       {activeTab === 'ef' && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.calcIntro}>
             Estimates how many months of essential expenses your savings cover. 3–6 months is standard.
           </Text>
@@ -742,11 +742,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                   loading={saving}
                   disabled={saving}
                 />
-        </ScrollView>
+        </PullToRefreshScrollView>
       )}
 
       {activeTab === 'fi' && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.calcIntro}>
             Estimated invested savings needed to cover expenses without a paycheck. Not financial advice.
           </Text>
@@ -928,7 +928,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             label={fiSaved ? '✓ Saved' : 'Save'}
             onPress={handleSaveFi}
           />
-        </ScrollView>
+        </PullToRefreshScrollView>
       )}
 
       <BottomSheet

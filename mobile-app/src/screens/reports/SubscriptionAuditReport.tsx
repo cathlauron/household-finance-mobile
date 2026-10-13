@@ -17,12 +17,13 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import type { Bill } from '../../types';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 type AuditRow = {
   bill: Bill;
@@ -88,7 +89,7 @@ export default function SubscriptionAuditReport() {
   const maxMonthly = rows.length > 0 ? rows[0].monthlyCost : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Card>
         <Text style={styles.cardLabel}>Subscription Audit</Text>
         <Text style={styles.subLabel}>
@@ -139,7 +140,7 @@ export default function SubscriptionAuditReport() {
           })
         )}
       </Card>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

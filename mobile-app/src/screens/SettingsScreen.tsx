@@ -62,6 +62,7 @@ import { DOW_LABELS } from '../income';
 import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
+import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -1020,7 +1021,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
         {page === null && (
         <>
         {/* Profile Card */}
@@ -1793,7 +1794,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         )}
       </>
         )}
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       <BottomSheet
         visible={modalOpen}

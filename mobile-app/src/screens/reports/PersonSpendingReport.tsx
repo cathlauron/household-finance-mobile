@@ -15,7 +15,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useData } from '../../DataContext';
 import { getMyPersonId, subscribeToMyPersonId } from '../../myPerson';
 import { useTheme } from '../../ThemeContext';
@@ -24,6 +24,7 @@ import { buildTransactionsList } from '../../transactions';
 import type { TransactionEntry } from '../../transactions';
 import type { Person } from '../../types';
 import Card from '../../components/Card';
+import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
 
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
 
@@ -86,7 +87,7 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
   const grandTotal = groups.reduce((s, g) => s + g.total, 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       {groups.length === 0 || grandTotal === 0 ? (
         <Card>
           <Text style={styles.emptyText}>No expenses logged yet.</Text>
@@ -138,7 +139,7 @@ export default function PersonSpendingReport({ activeTag }: Props = {}) {
       <Text style={styles.footerNote}>
         "Shared" covers bills, debts, loans, and unassigned transactions.
       </Text>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 
