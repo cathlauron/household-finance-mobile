@@ -283,6 +283,10 @@ export type YearlyGoal = {
   targetDate: string;
   completed: boolean;
   createdAt?: number;
+  // Redesign: a progress goal can follow a savings pot (saved so far) or a debt/loan
+  // (how much of it is paid off); and when a checklist goal was ticked off.
+  linkedTo?: { kind: 'pot' | 'debt' | 'loan'; id: string };
+  completedDate?: string;
 };
 
 // Redesign (Move money): one move between two of your accounts. The balances are

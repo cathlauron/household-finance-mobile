@@ -33,7 +33,7 @@ const GROUPS: Group[] = [
     header: 'Money set aside',
     rows: [
       { title: 'Savings', subtitle: 'Pots, emergency fund and FI', icon: 'leaf-outline', testID: 'more-savings-row', go: (n) => n.navigate('Savings') },
-      { title: 'Goals', subtitle: 'What you are working toward this year', icon: 'flag-outline', testID: 'plan-goals-row', go: (n) => n.navigate('YearlyGoals') },
+      { title: 'Yearly Goals', subtitle: `What you want to achieve in ${new Date().getFullYear()}`, icon: 'flag-outline', testID: 'plan-goals-row', go: (n) => n.navigate('YearlyGoals') },
     ],
   },
   {
