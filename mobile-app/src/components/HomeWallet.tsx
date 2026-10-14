@@ -11,7 +11,7 @@ import { formatPeso, totalLiquidBalance } from '../balanceProjection';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect } from 'react-native-svg';
 
 // Redesign: the Wallet on Home, an interactive card stack like Apple Wallet.
 //  - Every card shows its name, a CASH / DEBIT / CREDIT tag and its balance.
@@ -23,6 +23,12 @@ import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 //  - Each card has a faint border in its own colour.
 //  - Tap a card to open its page.
 // The order is saved with your household data (walletOrder), so it stays put.
+
+// Offsets with an S-curve ease (smoothstep), used for the card gradients.
+const EASE_STOPS: [number, number][] = Array.from({ length: 13 }, (_, i) => {
+  const o = i / 12;
+  return [Math.round(o * 1000) / 1000, o * o * (3 - 2 * o)];
+});
 
 const PEEK = 52; // how much of each card behind the front one shows
 const CARD_HEIGHT = 176;
@@ -362,16 +368,20 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     return (
                       <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
                         <Defs>
+                          {/* Eased (S-curve) steps, so the colour starts and stops changing
+                              gently and there's no visible edge where it shifts. */}
                           <LinearGradient id={`wg_${gid}`} x1="0" y1="0" x2="1" y2="0.35">
-                            {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-                              <Stop key={t} offset={String(t)} stopColor={cardShade(tint, t)} />
+                            {EASE_STOPS.map(([o, t]) => (
+                              <Stop key={o} offset={String(o)} stopColor={cardShade(tint, t)} />
                             ))}
                           </LinearGradient>
-                          <LinearGradient id={`ws_${gid}`} x1="0" y1="0" x2="0.7" y2="1">
-                            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? 0.05 : 0.3} />
-                            <Stop offset="0.35" stopColor="#FFFFFF" stopOpacity={isDark ? 0.02 : 0.12} />
-                            <Stop offset="0.75" stopColor="#FFFFFF" stopOpacity={0} />
-                          </LinearGradient>
+                          {/* A soft round glow from the top-left corner that fades out
+                              gradually in every direction. */}
+                          <RadialGradient id={`ws_${gid}`} cx="0.05" cy="0" rx="0.9" ry="1.4" fx="0.05" fy="0">
+                            {EASE_STOPS.map(([o, t]) => (
+                              <Stop key={o} offset={String(o)} stopColor="#FFFFFF" stopOpacity={(1 - t) * (isDark ? 0.05 : 0.28)} />
+                            ))}
+                          </RadialGradient>
                         </Defs>
                         <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#wg_${gid})`} />
                         <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#ws_${gid})`} />
