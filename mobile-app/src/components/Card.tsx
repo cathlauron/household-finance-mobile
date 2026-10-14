@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 type Props = {
   children?: React.ReactNode;
@@ -26,6 +27,12 @@ export default function Card({ children, variant = 'card', row = false, testID, 
         style,
       ]}
     >
+      <GradientFill match={[
+        { backgroundColor: colors.navy3 },
+        variant === 'card' ? styles.card : styles.banner,
+        row && styles.row,
+        style,
+      ]} />
       {children}
     </View>
   );

@@ -10,6 +10,7 @@ import { accountLabel } from '../transactionActions';
 import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
 import type { Bill } from '../types';
+import GradientFill from '../components/GradientFill';
 
 // Redesign: Subscriptions, from the Finance Flow mockup (To-Pay > Subscriptions).
 // What you spend a month and a year, then:
@@ -105,6 +106,7 @@ export default function SubscriptionsScreen() {
         accessibilityHint={kind !== 'cancelled' ? 'Long-press for cancel options' : undefined}
       >
         <View style={[styles.avatar, { backgroundColor: colors.accentTint }]}>
+          <GradientFill match={[styles.avatar, { backgroundColor: colors.accentTint }]} />
           <Text style={[styles.avatarText, { color: colors.gold }]}>{(b.name || '?').trim().charAt(0).toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1, marginRight: 8 }}>
@@ -117,6 +119,7 @@ export default function SubscriptionsScreen() {
             onPress={() => update(b.id, { subscriptionStatus: 'active', cancelledOn: undefined })}
             accessibilityRole="button"
           >
+            <GradientFill match={[styles.pill, { backgroundColor: colors.accentTint }]} />
             <Text style={[styles.pillText, { color: colors.gold }]}>Restart</Text>
           </TouchableOpacity>
         ) : (
@@ -136,6 +139,7 @@ export default function SubscriptionsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={[styles.group, { padding: 16 }]}>
+        <GradientFill match={[styles.group, { padding: 16 }]} />
         <Text style={styles.meta}>You spend</Text>
         <Text style={styles.big}>
           {formatPeso(perMonth).replace('.00', '')} <Text style={styles.bigSuffix}>a month</Text>
@@ -149,6 +153,7 @@ export default function SubscriptionsScreen() {
         <>
           <Text style={styles.header}>Needs a look</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {needsLook.map((b, i) => <Row key={b.id} b={b} i={i} kind="look" />)}
           </View>
         </>
@@ -159,6 +164,7 @@ export default function SubscriptionsScreen() {
         <>
           <Text style={styles.header}>Active</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {rest.map((b, i) => <Row key={b.id} b={b} i={i} kind="active" />)}
           </View>
         </>
@@ -168,6 +174,7 @@ export default function SubscriptionsScreen() {
         <>
           <Text style={styles.header}>Cancelled</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {cancelled.map((b, i) => <Row key={b.id} b={b} i={i} kind="cancelled" />)}
           </View>
         </>

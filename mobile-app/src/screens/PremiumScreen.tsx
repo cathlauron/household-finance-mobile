@@ -4,6 +4,7 @@ import { Text } from '../components/AppText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import GradientFill from '../components/GradientFill';
 
 // Static placeholder screen. No payment, paywall or subscription state exists.
 const PESO = '\u20B1';
@@ -29,6 +30,7 @@ export default function PremiumScreen() {
       contentContainerStyle={styles.content}
     >
       <View style={styles.heroCard}>
+        <GradientFill match={styles.heroCard} />
         <MaterialCommunityIcons name="crown" size={44} color={colors.premium} />
         <Text style={styles.heroTitle}>Upgrade to Premium</Text>
         <Text style={styles.heroSub}>
@@ -37,12 +39,14 @@ export default function PremiumScreen() {
       </View>
 
       <View style={styles.toggleRow}>
+        <GradientFill match={styles.toggleRow} />
         <TouchableOpacity
           testID="premium-billing-monthly"
           activeOpacity={0.8}
           onPress={() => setBilling('monthly')}
           style={[styles.billingPill, isMonthly && styles.billingPillActive]}
         >
+          <GradientFill match={[styles.billingPill, isMonthly && styles.billingPillActive]} />
           <Text style={[styles.billingText, isMonthly && styles.billingTextActive]}>Monthly</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -51,6 +55,7 @@ export default function PremiumScreen() {
           onPress={() => setBilling('yearly')}
           style={[styles.billingPill, !isMonthly && styles.billingPillActive]}
         >
+          <GradientFill match={[styles.billingPill, !isMonthly && styles.billingPillActive]} />
           <Text style={[styles.billingText, !isMonthly && styles.billingTextActive]}>Yearly</Text>
           <View style={styles.saveBadge}>
             <Text style={styles.saveBadgeText}>Save 20%</Text>
@@ -59,6 +64,7 @@ export default function PremiumScreen() {
       </View>
 
       <View style={styles.card}>
+        <GradientFill match={styles.card} />
         {BENEFITS.map((b) => (
           <View key={b} style={styles.benefitRow}>
             <Ionicons name="checkmark" size={16} color={colors.gold} />
@@ -68,6 +74,7 @@ export default function PremiumScreen() {
       </View>
 
       <View style={styles.card}>
+        <GradientFill match={styles.card} />
         <Text style={styles.planLabel}>Premium Plan</Text>
         <View style={styles.priceRow}>
           <Text style={styles.priceText}>{isMonthly ? PESO + '99.00' : PESO + '950.40'}</Text>

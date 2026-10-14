@@ -9,6 +9,7 @@ import { useTheme } from '../ThemeContext';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { AVATAR_PRESETS, makeAvatarDataUri } from '../avatars';
 import type { AvatarConfig } from '../types';
+import GradientFill from './GradientFill';
 
 // onSave(null) means "go back to plain initials".
 type Props = {
@@ -90,6 +91,7 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
               accessibilityLabel={`Use the ${p.id} icon`}
               style={[styles.presetRing, { borderColor: selected ? colors.gold : 'transparent' }]}
             >
+              <GradientFill match={[styles.presetRing, { borderColor: selected ? colors.gold : 'transparent' }]} />
               <View style={[styles.presetInner, { backgroundColor: p.bg }]}>
                 <Ionicons name={p.icon} size={24} color="#FFFFFF" />
               </View>

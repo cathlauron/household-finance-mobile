@@ -17,6 +17,7 @@ import {
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
 import Card from '../components/Card';
+import GradientFill from '../components/GradientFill';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -150,6 +151,13 @@ const MonthView = React.memo(function MonthView({
                   isSelected && styles.dayCellSelected,
                 ]}
               >
+                <GradientFill match={[
+                  styles.dayCell,
+                  viewMode === 'details' ? styles.dayCellDetails : viewMode === 'list' ? styles.dayCellList : styles.dayCellSquare,
+                  !cell.isCurrentMonth && styles.dayCellOutOfMonth,
+                  isToday && styles.dayCellToday,
+                  isSelected && styles.dayCellSelected,
+                ]} />
                 <Text
                   style={[
                     styles.dayText,
@@ -427,6 +435,7 @@ export default function CalendarScreen() {
               style={styles.closeBtnCircle}
               accessibilityLabel="Close calendar"
             >
+              <GradientFill match={styles.closeBtnCircle} />
               <Ionicons name="close" size={18} color={colors.ink} />
             </TouchableOpacity>
           )}
@@ -445,6 +454,7 @@ export default function CalendarScreen() {
 
       <View style={styles.header}>
         <TouchableOpacity onPress={goPrevMonth} style={[styles.navButton, pageIndex <= 0 && { opacity: 0.35 }]}>
+          <GradientFill match={[styles.navButton, pageIndex <= 0 && { opacity: 0.35 }]} />
           <Ionicons name="chevron-back" size={20} color={colors.ink} />
         </TouchableOpacity>
 
@@ -453,11 +463,13 @@ export default function CalendarScreen() {
         </Text>
 
         <TouchableOpacity onPress={goNextMonth} style={[styles.navButton, pageIndex >= monthPages.length - 1 && { opacity: 0.35 }]}>
+          <GradientFill match={[styles.navButton, pageIndex >= monthPages.length - 1 && { opacity: 0.35 }]} />
           <Ionicons name="chevron-forward" size={20} color={colors.ink} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity onPress={goToday} style={styles.todayButton}>
+        <GradientFill match={styles.todayButton} />
         <Text style={styles.todayButtonText}>Today</Text>
       </TouchableOpacity>
 
@@ -529,6 +541,7 @@ export default function CalendarScreen() {
 
       {viewMode === 'list' && (
         <View style={styles.previewPanel}>
+          <GradientFill match={styles.previewPanel} />
           <Text style={styles.previewTitle}>{previewDateLabel}</Text>
           {previewBalance !== null && (
             <Text style={styles.previewBalance}>
@@ -563,6 +576,7 @@ export default function CalendarScreen() {
       >
         <Pressable style={styles.menuOverlay} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuCard} onPress={() => {}}>
+            <GradientFill match={styles.menuCard} />
             {(['compact', 'stacked', 'details'] as CalendarViewMode[]).map((m) => (
               <TouchableOpacity key={m} style={styles.menuRow} onPress={() => chooseViewMode(m)}>
                 <Ionicons name={VIEW_MODE_ICONS[m]} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
@@ -602,6 +616,7 @@ export default function CalendarScreen() {
       >
         <Pressable style={styles.modalOverlay} onPress={closeDayModal}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
+            <GradientFill match={styles.modalCard} />
             <Text style={styles.modalTitle}>{selectedDateLabel}</Text>
             {selectedDayBalance !== null && (
               <Text style={styles.modalBalanceLine}>
@@ -626,6 +641,7 @@ export default function CalendarScreen() {
               <Text style={styles.modalSubtitle}>Nothing due on this date.</Text>
             )}
             <TouchableOpacity onPress={closeDayModal} style={styles.modalCloseButton}>
+              <GradientFill match={styles.modalCloseButton} />
               <Text style={styles.modalCloseButtonText}>Close</Text>
             </TouchableOpacity>
           </Pressable>

@@ -25,6 +25,7 @@ import { getOverdueItems } from '../overdue';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, paidCycles } from '../billPayments';
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
+import GradientFill from '../components/GradientFill';
 
 function billAmount(bill: Bill): number {
   // Redesign: the amount of the cycle that's due next (paid cycles are history).
@@ -394,6 +395,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryCard]}>
+          <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(stillToPay)}</Text>
           <Text style={styles.summarySub}>
@@ -403,7 +405,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
 
         {subs.length > 0 && (
           <TouchableOpacity style={[styles.group, styles.subsRow]} onPress={() => navigation.navigate('Subscriptions')} accessibilityRole="button" testID="topay-subscriptions">
+            <GradientFill match={[styles.group, styles.subsRow]} />
             <View style={styles.tile}>
+              <GradientFill match={styles.tile} />
               <Ionicons name="repeat" size={17} color={colors.gold} />
             </View>
             <View style={{ flex: 1 }}>
@@ -422,6 +426,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           <View key={sec.title} style={styles.section}>
             <Text style={[styles.sectionHeader, sec.title === 'Overdue' && { color: colors.negative }]}>{sec.title}</Text>
             <View style={styles.group}>
+              <GradientFill match={styles.group} />
               {sec.items.map((bill, rowIndex) => {
                 const due = billDue(bill);
                 const days = daysUntil(due);
@@ -457,6 +462,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>Paid this month</Text>
             <View style={styles.group}>
+              <GradientFill match={styles.group} />
               {paidThisMonth.map((bill, rowIndex) => (
                 <PayRow
                   key={bill.id}
@@ -603,6 +609,17 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                       marginRight: 10,
                     }}
                   >
+                    <GradientFill match={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      borderWidth: 2,
+                      borderColor: subscriptionInput ? colors.gold : colors.inkFaint,
+                      backgroundColor: subscriptionInput ? colors.gold : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 10,
+                    }} />
                     {subscriptionInput && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
                   </View>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>Subscription</Text>

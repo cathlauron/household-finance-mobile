@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import type { PaymentMethod, BalanceAccountEntry } from '../types';
+import GradientFill from './GradientFill';
 
 // ---- Checkpoint 10.2b: reusable Cash/Debit/Credit picker ----
 // Used anywhere a payment gets logged — Bill cycles, Debt cycles, Loan payments, and the
@@ -51,6 +52,7 @@ export default function PaymentMethodPicker({ value, onChange, debitAccounts, cr
             style={[styles.pillButton, value?.type === t.key && styles.pillButtonActive]}
             onPress={() => selectType(t.key)}
           >
+            <GradientFill match={[styles.pillButton, value?.type === t.key && styles.pillButtonActive]} />
             <Text style={[styles.pillButtonText, value?.type === t.key && styles.pillButtonTextActive]}>
               {t.label}
             </Text>
@@ -67,6 +69,7 @@ export default function PaymentMethodPicker({ value, onChange, debitAccounts, cr
                 style={[styles.pillButton, value.accountId === acct.id && styles.pillButtonActive]}
                 onPress={() => selectAccount(acct.id)}
               >
+                <GradientFill match={[styles.pillButton, value.accountId === acct.id && styles.pillButtonActive]} />
                 <Text
                   style={[styles.pillButtonText, value.accountId === acct.id && styles.pillButtonTextActive]}
                   numberOfLines={1}

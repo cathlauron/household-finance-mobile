@@ -16,6 +16,7 @@ import Button from '../components/Button';
 import { hapticSelection } from '../haptics';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
@@ -193,6 +194,7 @@ export default function GoalsScreen() {
     <View style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.summaryCard}>
+          <GradientFill match={styles.summaryCard} />
           <Text style={styles.yearBannerLabel}>This year's progress</Text>
           <Text style={styles.yearBannerAmount}>
             {goals.length > 0 ? `${doneCount} of ${goals.length} reached` : 'No goals set'}
@@ -204,6 +206,7 @@ export default function GoalsScreen() {
         )}
 
         <View style={styles.listGroup}>
+          <GradientFill match={styles.listGroup} />
         {goals.map((g, rowIndex) => {
           const isProgress = g.mode === 'progress';
           const pct = goalPct(g);
@@ -223,6 +226,7 @@ export default function GoalsScreen() {
               activeOpacity={0.7}
               onPress={() => openEditModal(g)}
             >
+              <GradientFill match={[styles.goalRow, rowIndex > 0 && styles.rowDivider]} />
               <View style={styles.goalRowMain}>
                 <View style={styles.goalTitleRow}>
                   <Text style={[styles.goalTitle, reached && styles.goalTitleDone]} numberOfLines={1}>
@@ -263,6 +267,7 @@ export default function GoalsScreen() {
             style={styles.modalKeyboardWrap}
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
+              <GradientFill match={styles.modalCard} />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit goal' : 'New goal'}</Text>
 

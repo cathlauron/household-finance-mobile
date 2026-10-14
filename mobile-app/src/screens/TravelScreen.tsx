@@ -21,6 +21,7 @@ import DateField from '../components/DateField';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -391,6 +392,7 @@ export default function TravelScreen() {
         )}
 
         <View style={styles.listGroup}>
+          <GradientFill match={styles.listGroup} />
         {trips.map((trip, rowIndex) => {
           const total = tripChecklistTotal(trip);
           const checklistCount = (trip.checklist ?? []).length;
@@ -408,6 +410,7 @@ export default function TravelScreen() {
               activeOpacity={0.7}
               onPress={() => openEditModal(trip)}
             >
+              <GradientFill match={[styles.tripRow, rowIndex > 0 && styles.rowDivider]} />
               <View style={styles.tripRowMain}>
                 <Text style={styles.tripName} numberOfLines={1}>
                   {trip.name || 'Untitled trip'}
@@ -436,6 +439,7 @@ export default function TravelScreen() {
             style={styles.modalKeyboardWrap}
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
+              <GradientFill match={styles.modalCard} />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit trip' : 'New trip'}</Text>
 
@@ -477,6 +481,7 @@ export default function TravelScreen() {
                   style={[styles.trackToggle, trackInSavings && styles.trackToggleActive]}
                   onPress={() => { hapticSelection(); setTrackInSavings((prev) => !prev); }}
                 >
+                  <GradientFill match={[styles.trackToggle, trackInSavings && styles.trackToggleActive]} />
                   {trackInSavings && (
                     <Ionicons
                       name="checkmark"
@@ -505,6 +510,7 @@ export default function TravelScreen() {
                       style={[styles.checkbox, item.checked && styles.checkboxChecked]}
                       onPress={() => handleToggleChecklistItem(item.id)}
                     >
+                      <GradientFill match={[styles.checkbox, item.checked && styles.checkboxChecked]} />
                       {item.checked && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
                     </TouchableOpacity>
                     <View style={styles.checklistRowMain}>
@@ -522,6 +528,7 @@ export default function TravelScreen() {
                       style={styles.removeItemButton}
                       onPress={() => handleRemoveChecklistItem(item.id)}
                     >
+                      <GradientFill match={styles.removeItemButton} />
                       <Ionicons name="close" size={14} color={colors.inkDim} />
                     </TouchableOpacity>
                   </View>

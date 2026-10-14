@@ -21,6 +21,7 @@ import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 function todayISO(): string {
   const d = new Date();
@@ -598,6 +599,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       {activeTab === 'goals' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.summaryCard}>
+            <GradientFill match={styles.summaryCard} />
             <Text style={styles.balanceBannerLabel}>Total saved</Text>
             <Text style={[styles.balanceBannerAmount, { color: colors.saving }]}>{formatPeso(totalSaved)}</Text>
           </View>
@@ -607,6 +609,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           )}
 
           <View style={styles.listGroup}>
+            <GradientFill match={styles.listGroup} />
           {goals.map((goal, rowIndex) => {
             const saved = contributionsTotal(goal);
             const target = goalTarget(goal);
@@ -730,6 +733,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           />
 
           <View style={styles.resultCard}>
+            <GradientFill match={styles.resultCard} />
     <Text style={styles.resultLabel}>MONTHS COVERED</Text>
     <Text style={[styles.resultAmount, { color: getEfStatus(efMonthsCovered, colors).color }]}>
       {efMonthsCovered !== null ? efMonthsCovered.toFixed(1) + ' months' : '—'}
@@ -893,6 +897,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           )}
 
           <View style={styles.resultCard}>
+            <GradientFill match={styles.resultCard} />
             <Text style={styles.resultLabel}>YOUR FI NUMBER</Text>
             <Text style={styles.resultAmount}>{fiNumber !== null ? formatPeso(fiNumber) : '—'}</Text>
             {fiProgressPct !== null && (
@@ -925,6 +930,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </View>
 
           <TouchableOpacity style={styles.compareButton} onPress={() => setFiCompareOpen(true)}>
+            <GradientFill match={styles.compareButton} />
             <Ionicons name="stats-chart-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
             <Text style={styles.compareButtonText}>Compare Scenarios</Text>
           </TouchableOpacity>
@@ -1025,6 +1031,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 <Text style={styles.accountPickerRowGroup}>{account.group}</Text>
               </View>
               <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                <GradientFill match={[styles.checkbox, checked && styles.checkboxChecked]} />
                 {checked && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
               </View>
             </TouchableOpacity>

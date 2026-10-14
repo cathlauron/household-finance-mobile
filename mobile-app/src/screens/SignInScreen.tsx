@@ -28,6 +28,7 @@ import PasswordField from '../components/PasswordField';
 import { withTimeout } from '../DataContext';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   onSignedIn: (
@@ -764,6 +765,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <Text style={ms.sub}>Sign in to your financial journey.</Text>
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+          <GradientFill match={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]} />
           <Ionicons name="warning-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
           <Text style={[styles.revokedBannerText, { flex: 1 }]}>{remoteRevokeNotice}</Text>
           {!!onClearRemoteRevokeNotice && (
@@ -880,6 +882,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <Modal visible={!!recoveryContext} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
+            <GradientFill match={styles.modalCard} />
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalEyebrow}>ACCOUNT RECOVERY</Text>
               <Text style={styles.modalTitle}>Password Accepted, But Data Locked</Text>
@@ -931,6 +934,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                       onPress={handleStartPeerRecovery}
                       disabled={peerBusy || recoveryBusy}
                     >
+                      <GradientFill match={[styles.secondaryBtn, peerBusy && styles.btnDisabled]} />
                       {peerBusy ? (
                         <ActivityIndicator color={colors.ink} />
                       ) : (
@@ -939,6 +943,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.peerWaitingCard}>
+                      <GradientFill match={styles.peerWaitingCard} />
                       <ActivityIndicator color={colors.orange} style={{ marginBottom: 8 }} />
                       <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
                       <Text style={styles.peerWaitingDesc}>

@@ -13,6 +13,7 @@ import ToPayScreen from '../screens/ToPayScreen';
 import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
+import GradientFill from '../components/GradientFill';
 
 const Tab = createBottomTabNavigator();
 function TabIcon({
@@ -69,6 +70,7 @@ function AddFab({ bottom, activeTab }: { bottom: number; activeTab: string }) {
         },
       ]}
     >
+      <GradientFill kind="tint" color={colors.accentTint} radius={30} />
       <Ionicons name="add" size={32} color={colors.gold} />
     </Pressable>
   );
@@ -138,6 +140,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
           }),
         },
         tabBarItemStyle: { borderRadius: 26 },
+        tabBarBackground: () => <GradientFill kind="surface" color={colors.navy3} radius={34} />,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.inkDim,

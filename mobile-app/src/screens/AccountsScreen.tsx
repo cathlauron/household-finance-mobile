@@ -15,6 +15,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import { todayISO } from '../dateUtils';
+import GradientFill from '../components/GradientFill';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -233,6 +234,7 @@ export default function AccountsScreen() {
           </View>
           <View style={styles.viewToggleWrap}>
   <View style={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]}>
+    <GradientFill match={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]} />
     <IconLabelHint
       name="albums"
       label="Stacked card view"
@@ -243,6 +245,7 @@ export default function AccountsScreen() {
     />
   </View>
   <View style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}>
+    <GradientFill match={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]} />
     <IconLabelHint
       name="reorder-three"
       label="List card view"

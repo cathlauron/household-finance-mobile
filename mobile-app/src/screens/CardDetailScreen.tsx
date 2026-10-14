@@ -10,6 +10,7 @@ import { buildTransactionsList } from '../transactions';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from '../components/AccountCard';
 import type { ThemeColors } from '../theme';
 import type { HouseholdModel, PaymentMethod } from '../types';
+import GradientFill from '../components/GradientFill';
 
 // Redesign: the Card page from the Finance Flow mockup, opened by tapping a card in
 // Home's Wallet. Shows the card with its balance, how much was spent from it this
@@ -104,6 +105,7 @@ export default function CardDetailScreen() {
       </View>
 
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
+        <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
         <Text style={styles.meta}>This week</Text>
         <Text style={styles.week}>{formatPeso(data.week)}</Text>
         <Text style={styles.meta}>spent from this card</Text>
@@ -134,6 +136,7 @@ export default function CardDetailScreen() {
         )}
       </View>
       <View style={styles.group}>
+        <GradientFill match={styles.group} />
         {data.list.length === 0 ? (
           <Text style={[styles.meta, { padding: 16 }]}>Nothing paid from this card yet. Pick it as the account when you add a transaction.</Text>
         ) : (
@@ -167,6 +170,7 @@ export default function CardDetailScreen() {
       </View>
 
       <TouchableOpacity style={[styles.group, styles.action]} onPress={() => navigation.navigate('Accounts')} accessibilityRole="button">
+        <GradientFill match={[styles.group, styles.action]} />
         <Text style={[styles.actionText, { color: colors.gold }]}>Edit card</Text>
       </TouchableOpacity>
     </ScrollView>

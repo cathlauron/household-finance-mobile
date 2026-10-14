@@ -16,6 +16,7 @@ import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
@@ -374,6 +375,7 @@ export default function EventsScreen() {
         )}
 
         <View style={styles.listGroup}>
+          <GradientFill match={styles.listGroup} />
         {events.map((ev, rowIndex) => (
           <SwipeableRow
             key={ev.id}
@@ -387,6 +389,7 @@ export default function EventsScreen() {
             activeOpacity={0.7}
             onPress={() => openEditModal(ev)}
           >
+            <GradientFill match={[styles.eventRow, rowIndex > 0 && styles.rowDivider]} />
             <View style={styles.eventRowMain}>
               <View style={styles.eventTitleRow}>
                 <Text style={styles.eventName} numberOfLines={1}>
@@ -420,6 +423,7 @@ export default function EventsScreen() {
             style={styles.modalKeyboardWrap}
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
+              <GradientFill match={styles.modalCard} />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit event' : 'New event'}</Text>
 

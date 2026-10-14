@@ -23,6 +23,7 @@ import Pill from '../components/Pill';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 function debtAmount(debt: Debt): number {
   // Redesign: the amount of the cycle that's due next (paid cycles are history).
@@ -356,6 +357,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryCard]}>
+          <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
         </View>
@@ -366,6 +368,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
         {debts.length > 0 && (
         <View style={[styles.group, styles.section]}>
+          <GradientFill match={[styles.group, styles.section]} />
         {debts.map((debt, rowIndex) => {
           const nextDue = getNextDueDate(debt.recurringType, debt.dueDate);
           const firstCycle = debt.cycles && debt.cycles[0];

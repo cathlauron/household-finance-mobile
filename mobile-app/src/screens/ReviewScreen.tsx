@@ -60,6 +60,7 @@ export default function ReviewScreen() {
     return (
       <View style={styles.done}>
         <View style={styles.doneIcon}>
+          <GradientFill match={styles.doneIcon} />
           <Ionicons name="checkmark" size={32} color={colors.gold} />
         </View>
         <Text style={styles.doneTitle}>All caught up</Text>
@@ -73,6 +74,7 @@ export default function ReviewScreen() {
       <Text style={styles.intro}>Check the category on new spending. One tap if it's right.</Text>
       {items.map((t) => (
         <View key={t.id} style={styles.card}>
+          <GradientFill match={styles.card} />
           <View style={styles.top}>
             <View style={{ flex: 1 }}>
               <Text style={styles.name} numberOfLines={1}>{t.label}</Text>
@@ -100,6 +102,7 @@ export default function ReviewScreen() {
               onPress={() => navigation.navigate('Main', { screen: 'Transactions', params: { editId: t.id, editNonce: Date.now() } })}
               accessibilityRole="button"
             >
+              <GradientFill match={[styles.btn, { backgroundColor: colors.accentTint }]} />
               <Text style={[styles.btnText, { color: colors.gold }]}>Change</Text>
             </TouchableOpacity>
           </View>

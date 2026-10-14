@@ -24,6 +24,7 @@ import type { HouseholdModel } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
+import GradientFill from '../../components/GradientFill';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
@@ -103,24 +104,29 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
     <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.yearNavRow}>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year - 1)}>
+          <GradientFill match={styles.yearNavBtn} />
           <Ionicons name="chevron-back" size={18} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.yearNavLabel}>{year}</Text>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year + 1)}>
+          <GradientFill match={styles.yearNavBtn} />
           <Ionicons name="chevron-forward" size={18} color={colors.ink} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Income</Text>
           <Text style={[styles.statCardAmount, { color: colors.ok }]}>{formatPeso(yearTotals.totalIn)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Expenses</Text>
           <Text style={[styles.statCardAmount, { color: colors.error }]}>{formatPeso(yearTotals.totalOut)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Saved</Text>
           <Text style={styles.statCardAmount}>{formatPeso(totalSaved)}</Text>
         </View>
@@ -188,11 +194,13 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Debt Paid Down</Text>
           <Text style={[styles.statCardAmount, { color: colors.orange }]}>{formatPeso(debtPaid)}</Text>
           <Text style={styles.statCardNote}>Logged debt payments this year</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Savings Goals Reached</Text>
           <Text style={styles.statCardAmount}>{goalsReached}</Text>
           <Text style={styles.statCardNote}>

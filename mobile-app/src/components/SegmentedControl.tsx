@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { hapticSelection } from '../haptics';
+import GradientFill from './GradientFill';
 
 // Redesign: iPhone-style segmented control (a grey track with the chosen option on a
 // raised white piece), as used in the Finance Flow mockups for Bills / Debts / Loans
@@ -43,6 +44,7 @@ export default function SegmentedControl<T extends string>({ options, value, onC
             }}
             style={[styles.segment, on && [styles.segmentOn, { backgroundColor: isDark ? '#636366' : colors.navy3 }]]}
           >
+            <GradientFill match={[styles.segment, on && [styles.segmentOn, { backgroundColor: isDark ? '#636366' : colors.navy3 }]]} />
             <Text
               numberOfLines={1}
               adjustsFontSizeToFit

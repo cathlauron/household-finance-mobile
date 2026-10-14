@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import type { AvatarConfig } from '../types';
 import { findAvatarPreset } from '../avatars';
+import GradientFill from './GradientFill';
 
 // One avatar for the whole app. The caller passes the initials (from
 // getInitials) so this file never imports a screen.
@@ -51,6 +52,7 @@ export default function Avatar({ initials, config, size, variant = 'outlined' }:
   const filled = variant === 'filled';
   return (
     <View style={[base, { backgroundColor: filled ? colors.gold : colors.navy2 }]}>
+      <GradientFill match={[base, { backgroundColor: filled ? colors.gold : colors.navy2 }]} />
       <Text
         style={{
           fontSize: Math.round(size * 0.36),

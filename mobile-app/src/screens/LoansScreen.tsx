@@ -23,6 +23,7 @@ import Pill from '../components/Pill';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 function loanPaidTotal(loan: Loan): number {
   return loan.actualPayments.reduce((sum, p) => {
@@ -446,6 +447,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryRow]}>
+          <GradientFill match={[styles.group, styles.summaryRow]} />
           <View style={styles.summaryCell}>
             <Text style={styles.balanceBannerLabel}>You owe (borrowed)</Text>
             <Text style={[styles.balanceBannerAmount, { color: colors.negative }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
@@ -460,6 +462,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
 
         {simLoans.length > 0 && (
           <TouchableOpacity style={styles.simulatorButton} onPress={() => setSimulatorOpen(true)}>
+            <GradientFill match={styles.simulatorButton} />
             <Ionicons name="stats-chart-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
             <Text style={styles.simulatorButtonText}>View Payoff Simulator</Text>
           </TouchableOpacity>
@@ -469,6 +472,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
           <Text style={styles.emptyText}>No loans yet.</Text>
         ) : (
           <View style={[styles.group, styles.section]}>
+            <GradientFill match={[styles.group, styles.section]} />
           {loans.map((loan, rowIndex) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
             const isExpanded = expandedLoanId === loan.id;
@@ -725,6 +729,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                       />
                       {!!paymentError && <Text style={styles.errorText}>{paymentError}</Text>}
                       <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>
+                        <GradientFill match={styles.paymentAddButton} />
                         <Text style={styles.paymentAddButtonText}>+ Add payment</Text>
                       </TouchableOpacity>
                     </View>

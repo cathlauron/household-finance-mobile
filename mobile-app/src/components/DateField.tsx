@@ -4,6 +4,7 @@ import { Text } from './AppText';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 export type DateFieldProps = {
   value: string; // 'YYYY-MM-DD' or ''
@@ -155,6 +156,7 @@ export default function DateField({
       {/* Android: In-app themed inline calendar card */}
       {showPicker && Platform.OS === 'android' && (
         <View style={styles.androidPickerCard}>
+          <GradientFill match={styles.androidPickerCard} />
           <View style={styles.androidPickerHeader}>
             <TouchableOpacity
               onPress={goPrevMonth}
@@ -237,6 +239,7 @@ export default function DateField({
       {/* iOS: Native inline DateTimePicker inside card (unchanged) */}
       {showPicker && Platform.OS === 'ios' && (
         <View style={styles.iosPickerCard}>
+          <GradientFill match={styles.iosPickerCard} />
           <View style={styles.iosPickerHeader}>
             <TouchableOpacity onPress={() => setShowPicker(false)} style={styles.iosDoneButton}>
               <Text style={styles.iosDoneText}>Done</Text>

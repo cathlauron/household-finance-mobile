@@ -3,6 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 export type RowInteractionPreviewProps = {
   mode: 'swipe' | 'tap';
@@ -57,6 +58,7 @@ export function RowInteractionPreview({ mode }: RowInteractionPreviewProps) {
               <Ionicons name="trash" size={18} color="#fff" />
             </View>
             <Animated.View style={[styles.previewRow, { transform: [{ translateX }] }]}>
+              <GradientFill match={[styles.previewRow, { transform: [{ translateX }] }]} />
               <View style={styles.rowDot} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>Sample bill</Text>
@@ -68,6 +70,7 @@ export function RowInteractionPreview({ mode }: RowInteractionPreviewProps) {
         ) : (
           <View>
             <View style={styles.previewRow}>
+              <GradientFill match={styles.previewRow} />
               <View style={styles.rowDot} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>Sample bill</Text>
@@ -76,6 +79,7 @@ export function RowInteractionPreview({ mode }: RowInteractionPreviewProps) {
               <Text style={styles.rowAmount}>₱500</Text>
             </View>
             <Animated.View style={[styles.expandedDemo, { height: expandedHeight }]}>
+              <GradientFill match={[styles.expandedDemo, { height: expandedHeight }]} />
               <Text style={styles.expandedDemoText}>Delete this bill</Text>
             </Animated.View>
           </View>

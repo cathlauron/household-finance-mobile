@@ -100,7 +100,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
       style={[styles.card, { backgroundColor: cardColor }, mood === 'good' && !isDark && styles.shadow]}
       onLayout={onLayout}
     >
-      <GradientFill color={cardColor} strength={0.26} radius={20} />
+      <GradientFill kind="solid" color={cardColor} strength={0.26} radius={20} />
       {width > 0 && (
         <ScrollView
           horizontal

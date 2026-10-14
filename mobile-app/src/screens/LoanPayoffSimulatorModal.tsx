@@ -22,6 +22,7 @@ import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from
 import { Text, TextInput } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 export type SimLoanInput = {
   id: string;
@@ -144,6 +145,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
+          <GradientFill match={styles.card} />
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Loan Payoff Simulator</Text>
 

@@ -1,28 +1,38 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, StyleSheet, LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect } from 'react-native-svg';
+import { useTheme } from '../ThemeContext';
 
 // Redesign: a soft gradient that fills its parent, used instead of flat colour fills.
-// Put it as the FIRST child of a View/button (the parent should have overflow: 'hidden'
-// or pass the parent's corner `radius`). It measures itself so the gradient always covers
-// the whole shape.
+// Put it as the FIRST child of a View or button. It measures itself so the gradient
+// always covers the whole shape, and clips itself to the parent's rounded corners.
 //
-// kind="solid" (Left to Spend, filled buttons): the colour runs from a lighter version
-//   at the top-left, through the colour itself, to a deeper version at the bottom-right.
-//   `strength` is how far the ends move away from the colour (0.2 = 20%).
+// Two ways to use it:
+// - Explicit: <GradientFill color=... kind=... radius=... /> (Left to Spend, Wallet cards).
+// - Matching: <GradientFill match={sameStyleAsTheParent} />. It reads the parent's
+//   background colour and corners from that style and picks the right look by itself
+//   (and draws nothing for colours it doesn't handle, or for tiny shapes like dots):
+//     white/grey boxes (navy3)       -> "surface": white fading to a faint tint
+//     light green fills (accentTint) -> "tint": lighter top-left, a touch deeper bottom-right
+//     filled buttons (buttonFill/gold)-> "solid": lighter top-left, deeper bottom-right
+//
 // kind="card" (Wallet cards): a light wash of `color` over `surface`, deepening from
 //   left to right, with a soft white glow from the top-left corner.
 
+type Kind = 'solid' | 'card' | 'surface' | 'tint';
+
 type Props = {
-  color: string;
-  kind?: 'solid' | 'card';
+  color?: string;
+  kind?: Kind;
   strength?: number;
   radius?: number;
   surface?: string;
   isDark?: boolean;
+  match?: StyleProp<ViewStyle>;
 };
 
 function parse(h: string): number[] | null {
+  if (typeof h !== 'string' || !h.startsWith('#')) return null;
   const v = h.replace('#', '');
   const full = v.length === 3 ? v.split('').map((x) => x + x).join('') : v.slice(0, 6);
   const rgb = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
@@ -43,34 +53,72 @@ const STOPS = Array.from({ length: 13 }, (_, i) => {
   return { o, s: o * o * (3 - 2 * o) };
 });
 
+// Three colours blended smoothly: a at the start, b in the middle, c at the end.
+function three(a: string, b: string, c: string) {
+  return STOPS.map(({ o, s }) => ({ o, c: s < 0.5 ? mixHex(b, a, s * 2) : mixHex(c, b, (s - 0.5) * 2) }));
+}
+
 let counter = 0;
 
-export default function GradientFill({ color, kind = 'solid', strength = 0.2, radius = 0, surface = '#FFFFFF', isDark = false }: Props) {
+export default function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: isDarkProp, match }: Props) {
+  const theme = useTheme();
+  const colors = theme.colors;
+  const isDark = isDarkProp ?? theme.isDark;
   const [size, setSize] = useState({ w: 0, h: 0 });
   const id = useRef(`gf${++counter}`).current;
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (Math.abs(width - size.w) > 0.5 || Math.abs(height - size.h) > 0.5) setSize({ w: width, h: height });
   };
-  const { w, h } = size;
 
-  let stops: { o: number; c: string; a?: number }[];
+  const flat = (match ? StyleSheet.flatten(match) : {}) as ViewStyle;
+  const bg = (color ?? (flat.backgroundColor as string | undefined)) || '';
+  let k: Kind | null = kind ?? null;
+  if (!k) {
+    if (bg === colors.navy3) k = 'surface';
+    else if (bg === colors.accentTint) k = 'tint';
+    else if (bg === colors.buttonFill || bg === colors.gold || bg === (colors as any).cardTealEnd) k = 'solid';
+  }
+  if (!k || !parse(bg)) return null;
+
+  // The parent's corners (inside its border), so the gradient never pokes out.
+  const bw = typeof flat.borderWidth === 'number' ? flat.borderWidth : 0;
+  const r0 = radius ?? (typeof flat.borderRadius === 'number' ? flat.borderRadius : 0);
+  const corner = (v: unknown) => Math.max(0, (typeof v === 'number' ? v : r0) - (radius !== undefined ? 0 : bw));
+  const clip: ViewStyle = {
+    borderTopLeftRadius: corner(flat.borderTopLeftRadius),
+    borderTopRightRadius: corner(flat.borderTopRightRadius),
+    borderBottomLeftRadius: corner(flat.borderBottomLeftRadius),
+    borderBottomRightRadius: corner(flat.borderBottomRightRadius),
+    overflow: 'hidden',
+  };
+
+  const { w, h } = size;
+  // Too small to show a gradient (dots, checkboxes, thin progress bars): leave it flat.
+  const tiny = w > 0 && (w < 28 || h < 14);
+
+  let stops: { o: number; c: string }[];
   let x2 = w;
   let y2 = h;
-  if (kind === 'card') {
+  if (k === 'card') {
+    const base = surface ?? colors.navy3;
     const from = isDark ? 0.14 : 0.06;
     const to = isDark ? 0.26 : 0.16;
-    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(color, surface, from + (to - from) * s) }));
+    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(bg, base, from + (to - from) * s) }));
     y2 = w * 0.36; // mostly left to right
+  } else if (k === 'surface') {
+    const end = mixHex(colors.accentTint, bg, 0.45);
+    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(end, bg, s) }));
+    x2 = h * 0.36; // mostly top to bottom
+  } else if (k === 'tint') {
+    stops = three(mixHex(bg, colors.navy3, 0.7), bg, mixHex(bg, colors.gold, 0.9));
   } else {
-    const light = mixHex('#FFFFFF', color, strength);
-    const dark = mixHex('#000000', color, strength);
-    stops = STOPS.map(({ o, s }) => ({ o, c: s < 0.5 ? mixHex(color, light, s * 2) : mixHex(dark, color, (s - 0.5) * 2) }));
+    stops = three(mixHex('#FFFFFF', bg, strength), bg, mixHex('#000000', bg, strength));
   }
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]} onLayout={onLayout}>
-      {w > 0 && h > 0 && (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, clip]} onLayout={onLayout}>
+      {w > 0 && h > 0 && !tiny && (
         <Svg width={w} height={h}>
           <Defs>
             <LinearGradient id={`${id}l`} gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={x2} y2={y2}>
@@ -78,7 +126,7 @@ export default function GradientFill({ color, kind = 'solid', strength = 0.2, ra
                 <Stop key={st.o} offset={st.o} stopColor={st.c} />
               ))}
             </LinearGradient>
-            {kind === 'card' && (
+            {k === 'card' && (
               <RadialGradient id={`${id}r`} gradientUnits="userSpaceOnUse" cx={0} cy={0} fx={0} fy={0} rx={w * 1.2} ry={h * 1.4}>
                 {[
                   ...STOPS.map(({ o, s }) => (
@@ -89,8 +137,8 @@ export default function GradientFill({ color, kind = 'solid', strength = 0.2, ra
               </RadialGradient>
             )}
           </Defs>
-          <Rect x={0} y={0} width={w} height={h} rx={radius} ry={radius} fill={`url(#${id}l)`} />
-          {kind === 'card' && <Rect x={0} y={0} width={w} height={h} rx={radius} ry={radius} fill={`url(#${id}r)`} />}
+          <Rect x={0} y={0} width={w} height={h} fill={`url(#${id}l)`} />
+          {k === 'card' && <Rect x={0} y={0} width={w} height={h} fill={`url(#${id}r)`} />}
         </Svg>
       )}
     </View>

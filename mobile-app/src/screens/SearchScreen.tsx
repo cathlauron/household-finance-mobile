@@ -11,6 +11,7 @@ import { formatPeso } from '../balanceProjection';
 import { buildTransactionsList, TransactionEntry } from '../transactions';
 import { accountLabel } from '../transactionActions';
 import type { ThemeColors } from '../theme';
+import GradientFill from '../components/GradientFill';
 
 // Redesign: Search, from the Finance Flow mockup. Type to find transactions by name,
 // category or note; narrow with the period, account and amount chips. Matching
@@ -134,17 +135,20 @@ export default function SearchScreen() {
 
       <View style={styles.chips}>
         <TouchableOpacity style={[styles.chip, period === 'month' && styles.chipOn]} onPress={() => setPeriod(period === 'month' ? 'all' : 'month')}>
+          <GradientFill match={[styles.chip, period === 'month' && styles.chipOn]} />
           <Text style={[styles.chipText, period === 'month' && styles.chipTextOn]}>{period === 'month' ? 'This month' : 'All time'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.chip, accountIdx >= 0 && styles.chipOn]}
           onPress={() => setAccountIdx(accounts.length ? (accountIdx + 2) % (accounts.length + 1) - 1 : -1)}
         >
+          <GradientFill match={[styles.chip, accountIdx >= 0 && styles.chipOn]} />
           <Text style={[styles.chipText, accountIdx >= 0 && styles.chipTextOn]} numberOfLines={1}>
             {accountIdx >= 0 ? accounts[accountIdx]?.label : 'Any account'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.chip, amount !== 'any' && styles.chipOn]} onPress={() => setAmount(NEXT_AMOUNT[amount])}>
+          <GradientFill match={[styles.chip, amount !== 'any' && styles.chipOn]} />
           <Text style={[styles.chipText, amount !== 'any' && styles.chipTextOn]}>{AMOUNT_LABEL[amount]}</Text>
         </TouchableOpacity>
       </View>
@@ -154,6 +158,7 @@ export default function SearchScreen() {
           <>
             <Text style={styles.header}>Categories</Text>
             <View style={styles.group}>
+              <GradientFill match={styles.group} />
               {categories.map((c, i) => (
                 <TouchableOpacity
                   key={c.name}
@@ -172,6 +177,7 @@ export default function SearchScreen() {
                   }}
                 >
                   <View style={styles.tile}>
+                    <GradientFill match={styles.tile} />
                     <Ionicons name="pricetag-outline" size={17} color={colors.gold} />
                   </View>
                   <Text style={styles.rowTitle}>{c.name}</Text>
@@ -190,6 +196,7 @@ export default function SearchScreen() {
               <Text style={styles.empty}>No matches.</Text>
             ) : (
               <View style={styles.group}>
+                <GradientFill match={styles.group} />
                 {shown.map((t, i) => {
                   const raw = t.rawId ? (model?.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
                   const acct = raw && model ? accountLabel(model, raw.paymentMethod) : null;
@@ -231,6 +238,7 @@ export default function SearchScreen() {
           <>
             <Text style={styles.header}>Recent searches</Text>
             <View style={styles.group}>
+              <GradientFill match={styles.group} />
               {recent.map((r, i) => (
                 <TouchableOpacity key={r} style={[styles.row, i > 0 && styles.line]} onPress={() => setQuery(r)}>
                   <Ionicons name="time-outline" size={18} color={colors.inkDim} style={{ marginRight: 12 }} />

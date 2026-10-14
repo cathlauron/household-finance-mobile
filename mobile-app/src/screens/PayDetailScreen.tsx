@@ -137,7 +137,9 @@ export default function PayDetailScreen() {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={[styles.group, styles.hero]}>
+        <GradientFill match={[styles.group, styles.hero]} />
         <View style={styles.bigTile}>
+          <GradientFill match={styles.bigTile} />
           <Ionicons name={icon as any} size={26} color={colors.gold} />
         </View>
         <Text style={styles.name}>{name}</Text>
@@ -175,12 +177,14 @@ export default function PayDetailScreen() {
             }}
             accessibilityRole="button"
           >
+            <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint }]} />
             <Text style={[styles.primaryText, { color: colors.gold }]}>Undo</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
+        <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
         <View style={styles.barsHead}>
           <Text style={styles.headline}>Last 6 months</Text>
           {average > 0 && <Text style={styles.meta}>Average {formatPeso(average).replace('.00', '')}</Text>}
@@ -196,6 +200,7 @@ export default function PayDetailScreen() {
       </View>
 
       <View style={[styles.group, { marginTop: 20 }]}>
+        <GradientFill match={[styles.group, { marginTop: 20 }]} />
         <Row styles={styles} label="Repeats" value={scheduleText(rec)} />
         <Row styles={styles} label="Pay from" value={accountLabel(model, cur?.paymentMethod) ?? 'Not set'} />
         <Row styles={styles} label="Category" value={rec.category || 'Uncategorized'} />
@@ -206,6 +211,7 @@ export default function PayDetailScreen() {
         <>
           <Text style={styles.header}>History</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {history.slice(0, 12).map((c, i) => {
               const late = c.dueDate && c.paidDate ? daysBetween(c.dueDate, c.paidDate) : 0;
               const d = new Date((c.dueDate || c.paidDate) + 'T00:00:00');
@@ -275,6 +281,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
 
       {overdueItem && (
         <View style={[styles.group, { marginTop: 16 }]}>
+          <GradientFill match={[styles.group, { marginTop: 16 }]} />
           <View style={[styles.alert, { backgroundColor: `${colors.negative}14` }]}>
             <Text style={[styles.badge, { marginTop: 0, color: colors.negative, backgroundColor: colors.errorBg }]}>Overdue</Text>
             <View style={{ flex: 1 }}>
@@ -294,11 +301,13 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
       )}
       {paidToday && (
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} onPress={undoPayment} accessibilityRole="button">
+          <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} />
           <Text style={[styles.primaryText, { color: colors.gold }]}>Undo today's payment</Text>
         </TouchableOpacity>
       )}
 
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
+        <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
         <Text style={styles.meta}>{lent ? 'Still to get back' : 'Still to pay'}</Text>
         <Text style={[styles.amount, { color: lent ? colors.positive : colors.negative, fontSize: 34, lineHeight: 40 }]}>{formatPeso(left)}</Text>
         <View style={styles.track}>
@@ -329,6 +338,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
         <>
           <Text style={styles.header}>Payments</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {payments.map((p, i) => {
               const d = new Date(p.date + 'T00:00:00');
               return (

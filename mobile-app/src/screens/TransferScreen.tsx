@@ -12,6 +12,7 @@ import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
 import type { HouseholdModel, ManualTransaction, PaymentMethod } from '../types';
+import GradientFill from '../components/GradientFill';
 
 // Redesign: Move money, from the Finance Flow mockup. Moves money between two of your
 // own accounts (e.g. BPI Savings to Cash at an ATM). It isn't spending, so Left to
@@ -99,6 +100,7 @@ export default function TransferScreen() {
       <View style={styles.pickChips}>
         {accounts.filter((a) => a.key !== exclude).map((a) => (
           <TouchableOpacity key={a.key} style={[styles.pickChip, value === a.key && styles.pickChipOn]} onPress={() => onPick(a.key)} accessibilityRole="button" accessibilityState={{ selected: value === a.key }}>
+            <GradientFill match={[styles.pickChip, value === a.key && styles.pickChipOn]} />
             <Text style={[styles.pickChipText, value === a.key && { color: colors.gold, fontWeight: '600' }]} numberOfLines={1}>{a.name}</Text>
             <Text style={styles.pickChipAmt}>{formatPeso(a.amount).replace('.00', '')}</Text>
           </TouchableOpacity>
@@ -125,11 +127,13 @@ export default function TransferScreen() {
           <>
             <AmountInput style={styles.bigWrap} inputStyle={styles.bigInput} value={amount} onChangeAmount={setAmount} />
             <View style={styles.group}>
+              <GradientFill match={styles.group} />
               <Picker label="From" value={fromKey} onPick={(k) => { setFromKey(k); if (k === toKey) setToKey(accounts.find((a) => a.key !== k)?.key); }} />
               <View style={styles.line} />
               <Picker label="To" value={toKey} onPick={setToKey} exclude={fromKey} />
             </View>
             <View style={[styles.group, { marginTop: 20 }]}>
+              <GradientFill match={[styles.group, { marginTop: 20 }]} />
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Note</Text>
                 <TextInput style={styles.rowInput} value={note} onChangeText={setNote} placeholder="Optional" placeholderTextColor={colors.inkFaint} />

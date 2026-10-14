@@ -35,6 +35,7 @@ import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { requestToPayTab, ToPayTab } from '../openToPayTabRequest';
+import GradientFill from '../components/GradientFill';
 
 type DueItem = {
   date: Date;
@@ -200,6 +201,7 @@ export default function DashboardScreen({
           )}
         </View>
         <View style={styles.group}>
+          <GradientFill match={styles.group} />
           {dueSoon.length === 0 ? (
             <View style={styles.groupRow}>
               <Text style={styles.emptyText}>Nothing due in the next 14 days.</Text>
@@ -219,6 +221,7 @@ export default function DashboardScreen({
                   accessibilityLabel={`${item.label}, ${formatPeso(item.amount)}, ${item.overdue ? 'Overdue' : relativeDue(days)}`}
                 >
                   <View style={styles.tile}>
+                    <GradientFill match={styles.tile} />
                     <Ionicons name={DUE_ICON[item.type]} size={18} color={colors.gold} />
                   </View>
                   <View style={[styles.groupRowBody, idx > 0 && styles.divider]}>
@@ -252,6 +255,7 @@ export default function DashboardScreen({
           <Text style={styles.sectionHead}>Insights</Text>
         </View>
         <View style={styles.group}>
+          <GradientFill match={styles.group} />
           {(model.categoryBudgets || []).map((cb, idx) => {
             const budget = typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0;
             const spent = computeCategorySpend(model, cb.category, monthPrefix);
@@ -271,6 +275,7 @@ export default function DashboardScreen({
                 accessibilityRole="button"
               >
                 <View style={[styles.tile, { backgroundColor: pctOf(spent, budget) >= 80 ? colors.warnBg : colors.accentTint }]}>
+                  <GradientFill match={[styles.tile, { backgroundColor: pctOf(spent, budget) >= 80 ? colors.warnBg : colors.accentTint }]} />
                   <Ionicons name={pctOf(spent, budget) >= 80 ? 'warning-outline' : 'pricetag-outline'} size={18} color={pctOf(spent, budget) >= 80 ? colors.orange : colors.gold} />
                 </View>
                 <View style={[styles.groupRowBody, idx > 0 && styles.divider]}>
@@ -294,6 +299,7 @@ export default function DashboardScreen({
             accessibilityRole="button"
           >
             <View style={styles.tile}>
+              <GradientFill match={styles.tile} />
               <Ionicons name="bar-chart-outline" size={18} color={colors.gold} />
             </View>
             <View style={[styles.groupRowBody, (model.categoryBudgets || []).length > 0 && styles.divider]}>

@@ -10,6 +10,7 @@ import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { getBiometricState, getBiometricLabel } from '../biometrics';
 import { markOnboardingCompleted } from '../onboarding';
 import PinField from '../components/PinField';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   username: string;
@@ -113,6 +114,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
 
             {biometricsAvailable ? (
               <View style={styles.biometricActiveCard}>
+                <GradientFill match={styles.biometricActiveCard} />
                 <Ionicons name="scan-outline" size={24} color={colors.accent} style={{ marginRight: 12, marginTop: 2 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.biometricActiveTitle}>{biometricLabel} Enabled</Text>
@@ -123,6 +125,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
               </View>
             ) : (
               <View style={styles.comingSoonBanner}>
+                <GradientFill match={styles.comingSoonBanner} />
                 <Ionicons name="information-circle-outline" size={20} color={colors.inkDim} style={{ marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.comingSoonSub}>Biometrics aren't available on this device. Set a PIN below for quick access.</Text>
@@ -155,6 +158,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
                 onPress={handleSavePin}
                 disabled={busy}
               >
+                <GradientFill match={styles.primaryBtn} />
                 <Text style={styles.primaryBtnText}>{busy ? 'Saving PIN…' : 'Save PIN & Continue'}</Text>
               </TouchableOpacity>
 
@@ -185,12 +189,14 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {biometricsAvailable && (
                 <View style={styles.pinConfirmedBadge}>
+                  <GradientFill match={styles.pinConfirmedBadge} />
                   <Ionicons name="scan-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
                   <Text style={styles.pinConfirmedText}>{biometricLabel} enabled</Text>
                 </View>
               )}
               {pinSaved && (
                 <View style={styles.pinConfirmedBadge}>
+                  <GradientFill match={styles.pinConfirmedBadge} />
                   <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
                   <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
                 </View>
@@ -198,6 +204,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
             </View>
 
             <View style={styles.tipCard}>
+              <GradientFill match={styles.tipCard} />
               <Ionicons name="information-circle-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
               <Text style={styles.tipText}>
                 Tip: Add your accounts, log recurring bills, or explore Settings to customize preferences.
@@ -209,6 +216,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
               style={styles.primaryBtn}
               onPress={handleFinish}
             >
+              <GradientFill match={styles.primaryBtn} />
               <Text style={styles.primaryBtnText}>Go to Home</Text>
             </TouchableOpacity>
           </View>

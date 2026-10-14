@@ -20,6 +20,7 @@ import { stripTime } from '../../recurrence';
 import type { HouseholdModel } from '../../types';
 import Card from '../../components/Card';
 import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
+import GradientFill from '../../components/GradientFill';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_OPTIONS = [30, 60, 90];
@@ -109,10 +110,12 @@ export default function CashFlowForecastReport() {
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Today</Text>
           <Text style={styles.statCardAmount}>{formatPeso(startBalance)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>In {days} Days</Text>
           <Text style={[styles.statCardAmount, { color: endBalance < 0 ? colors.error : colors.ink }]}>
             {formatPeso(endBalance)}
@@ -122,6 +125,7 @@ export default function CashFlowForecastReport() {
 
       {lowestPoint.balance < 0 && (
         <View style={styles.warningCard}>
+          <GradientFill match={styles.warningCard} />
           <Text style={styles.warningText}>
             Balance dips to {formatPeso(lowestPoint.balance)} around {shortDate(lowestPoint.date)}.
           </Text>

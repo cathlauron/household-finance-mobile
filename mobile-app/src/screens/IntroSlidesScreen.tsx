@@ -4,6 +4,7 @@ import { Text } from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   onDone: () => void;
@@ -106,6 +107,7 @@ export default function IntroSlidesScreen({ onDone, onBack }: Props) {
       </View>
 
       <TouchableOpacity testID="intro-next-button" style={styles.button} onPress={handleNext}>
+        <GradientFill match={styles.button} />
         <Text style={styles.buttonText}>{isLast ? 'Get Started' : 'Next'}</Text>
         <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />
       </TouchableOpacity>

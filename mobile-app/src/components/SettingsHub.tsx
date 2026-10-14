@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -32,6 +33,11 @@ export function SettingsGroup({ label, children }: { label: string; children: Re
           overflow: 'hidden',
         }}
       >
+        <GradientFill match={{
+          backgroundColor: colors.navy3,
+          borderRadius: 12,
+          overflow: 'hidden',
+        }} />
         {items.map((child, i) => (
           <React.Fragment key={i}>
             {i > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4, marginLeft: 60 }} />}
@@ -77,6 +83,15 @@ export function SettingsRow({
           marginRight: 12,
         }}
       >
+        <GradientFill match={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: colors.accentTint,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }} />
         <Ionicons name={icon} size={18} color={colors.gold} />
       </View>
       <Text numberOfLines={1} style={{ flex: 1, fontSize: 17, color: colors.ink }}>{title}</Text>

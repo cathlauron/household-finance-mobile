@@ -25,6 +25,7 @@ import type { HouseholdModel } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
+import GradientFill from '../../components/GradientFill';
 
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
 
@@ -117,10 +118,12 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
     <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.yearNavRow}>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year - 1)}>
+          <GradientFill match={styles.yearNavBtn} />
           <Ionicons name="chevron-back" size={18} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.yearNavLabel}>{year}</Text>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year + 1)}>
+          <GradientFill match={styles.yearNavBtn} />
           <Ionicons name="chevron-forward" size={18} color={colors.ink} />
         </TouchableOpacity>
       </View>
@@ -131,14 +134,17 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Income</Text>
           <Text style={[styles.statCardAmount, { color: colors.ok }]}>{formatPeso(yearTotals.totalIn)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Expenses</Text>
           <Text style={[styles.statCardAmount, { color: colors.error }]}>{formatPeso(yearTotals.totalOut)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Saved</Text>
           <Text style={styles.statCardAmount}>{formatPeso(totalSaved)}</Text>
         </View>

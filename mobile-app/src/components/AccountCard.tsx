@@ -6,6 +6,7 @@ import { formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry } from '../types';
 import { radii, spacing } from '../tokens';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 export type AccountGroup = 'cash' | 'debit' | 'credit';
 
@@ -67,6 +68,12 @@ export default function AccountCard({ account, group, onPress, style, testID, is
         style,
       ]}
     >
+      <GradientFill match={[
+        styles.card,
+        { backgroundColor: colors.navy3, borderColor },
+        isExpanded && [styles.cardExpanded, { borderColor: accentColor }],
+        style,
+      ]} />
       <View pointerEvents="none" style={[styles.tintLayer, { backgroundColor: tintLayer }]} />
 
       <View style={styles.topRow}>

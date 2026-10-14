@@ -44,6 +44,7 @@ import {
 } from '../recovery';
 import { hapticLight } from '../haptics';
 import Button from '../components/Button';
+import GradientFill from '../components/GradientFill';
 
 export function getInitials(name: string): string {
   if (!name) return '?';
@@ -651,6 +652,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
         {!!memberSinceText && (
           <View style={styles.memberSinceCard}>
+            <GradientFill match={styles.memberSinceCard} />
             <View style={styles.memberSinceIcon}>
               <Ionicons name="calendar-outline" size={18} color={colors.gold} />
             </View>
@@ -667,6 +669,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           Manage credentials, encryption keys, and device sessions.
         </Text>
         <View style={styles.shortcutCard}>
+          <GradientFill match={styles.shortcutCard} />
           <TouchableOpacity
             style={styles.shortcutItem}
             activeOpacity={0.7}
@@ -727,6 +730,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
         {!!linkNoticeMsg && (
           <View style={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy2, marginBottom: 14 }]}>
+            <GradientFill match={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy2, marginBottom: 14 }]} />
             <Text style={[styles.hintText, { color: colors.ink, fontWeight: '600', marginBottom: 8 }]}>
               {linkNoticeMsg}
             </Text>
@@ -734,6 +738,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               style={[styles.dataButton, { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 12 }]}
               onPress={clearLinkNoticeMsg}
             >
+              <GradientFill match={[styles.dataButton, { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 12 }]} />
               <Text style={styles.dataButtonText}>OK</Text>
             </TouchableOpacity>
           </View>
@@ -741,6 +746,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
         {!!pendingRecovery && (
           <View style={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy3, marginBottom: 14 }]}>
+            <GradientFill match={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy3, marginBottom: 14 }]} />
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
               <Ionicons name="warning-outline" size={15} color={colors.gold} style={{ marginRight: 6 }} />
               <Text style={[styles.hintText, { color: colors.gold, fontWeight: '700', marginBottom: 0 }]}>
@@ -758,6 +764,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                 setApprovalModalOpen(true);
               }}
             >
+              <GradientFill match={[styles.dataButton, { alignSelf: 'flex-start' }]} />
               <Text style={styles.dataButtonText}>Review &amp; Approve</Text>
             </TouchableOpacity>
           </View>
@@ -768,6 +775,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             {!linkCode ? (
               !unlinkConfirmOpen && !transferOwnerModalOpen ? (
                 <View style={styles.linkCodeBox}>
+                  <GradientFill match={styles.linkCodeBox} />
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Ionicons name="checkmark" size={13} color={colors.inkDim} style={{ marginRight: 4 }} />
@@ -891,6 +899,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                                 }
                               }}
                             >
+                              <GradientFill match={[styles.dataButton, { flex: 1, marginBottom: 0 }]} />
                               {myPersonBusy ? (
                                 <ActivityIndicator color={colors.gold} />
                               ) : (
@@ -905,6 +914,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                                 setMyPersonMsg('');
                               }}
                             >
+                              <GradientFill match={[styles.cancelInlineButton, { flex: 1 }]} />
                               <Text style={styles.cancelButtonText}>Cancel</Text>
                             </TouchableOpacity>
                           </View>
@@ -946,6 +956,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                       onPress={handleStartHouseholdInvite}
                       disabled={linkBusy}
                     >
+                      <GradientFill match={[styles.dataButton, { marginTop: 14, alignSelf: 'stretch' }]} />
                       {linkBusy ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                           <ActivityIndicator color={colors.gold} />
@@ -1013,6 +1024,11 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                                 ]}
                                 onPress={() => setSelectedSuccessorUid(m.uid)}
                               >
+                                <GradientFill match={[
+                                  styles.modeButton,
+                                  isSelected && styles.modeButtonActive,
+                                  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12 }
+                                ]} />
                                 <Text style={[styles.modeButtonText, isSelected && styles.modeButtonTextActive]}>
                                   {m.username}
                                 </Text>
@@ -1075,6 +1091,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
               )
             ) : (
               <View style={styles.linkCodeBox}>
+                <GradientFill match={styles.linkCodeBox} />
                 <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
                 <Text style={styles.linkCodeText}>{linkCode}</Text>
                 <Text style={styles.hintText}>
@@ -1082,6 +1099,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                 </Text>
 
                 <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
+                  <GradientFill match={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]} />
                   {hostFinishBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
@@ -1100,6 +1118,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   onPress={handleStartOverLinking}
                   disabled={linkBusy || cooldownActive}
                 >
+                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]} />
                   {linkBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
@@ -1121,6 +1140,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   onPress={handleStartLinking}
                   disabled={linkBusy}
                 >
+                  <GradientFill match={styles.dataButton} />
                   {linkBusy ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <ActivityIndicator color={colors.gold} />
@@ -1147,6 +1167,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   onPress={handleJoinWithCode}
                   disabled={joinBusy}
                 >
+                  <GradientFill match={styles.dataButton} />
                   {joinBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
@@ -1159,6 +1180,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
             {!!linkCode && (
               <View style={styles.linkCodeBox}>
+                <GradientFill match={styles.linkCodeBox} />
                 <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
                 <Text style={styles.linkCodeText}>{linkCode}</Text>
                 <Text style={styles.hintText}>
@@ -1167,6 +1189,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                 </Text>
 
                 <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
+                  <GradientFill match={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]} />
                   {hostFinishBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
@@ -1185,6 +1208,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   onPress={handleStartOverLinking}
                   disabled={linkBusy || cooldownActive}
                 >
+                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]} />
                   {linkBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
@@ -1199,6 +1223,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
             {!!joinResult && model && (
               <View style={styles.linkCodeBox}>
+                <GradientFill match={styles.linkCodeBox} />
                 <Text style={styles.linkCodeLabel}>Found their data</Text>
                 <Text style={styles.hintText}>You: {summarizeModel(model)}</Text>
                 <Text style={styles.hintText}>
@@ -1214,6 +1239,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                     onPress={() => handleJoinChoice('mine')}
                     disabled={joinChoiceBusy}
                   >
+                    <GradientFill match={styles.dataButton} />
                     <Text style={styles.dataButtonText}>Keep mine</Text>
                   </TouchableOpacity>
                 )}
@@ -1222,6 +1248,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   onPress={() => handleJoinChoice('theirs')}
                   disabled={joinChoiceBusy}
                 >
+                  <GradientFill match={styles.dataButton} />
                   <Text style={styles.dataButtonText}>
                     {joinResult.isInvite ? 'Keep household data' : 'Keep theirs'}
                   </Text>
@@ -1231,6 +1258,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   onPress={() => handleJoinChoice('merge')}
                   disabled={joinChoiceBusy}
                 >
+                  <GradientFill match={styles.dataButton} />
                   <Text style={styles.dataButtonText}>
                     {joinResult.isInvite ? 'Merge mine in' : 'Merge both'}
                   </Text>
@@ -1288,6 +1316,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
       >
         <Pressable style={styles.modalOverlay} onPress={() => setApprovalModalOpen(false)}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
+            <GradientFill match={styles.modalCard} />
             <Text style={styles.modalTitle}>Approve Account Recovery</Text>
             <Text style={styles.sectionSub}>
               Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify them and transfer the household key.

@@ -37,6 +37,7 @@ import AmountInput from '../components/AmountInput';
 import { reviewCount } from './ReviewScreen';
 import { idsForAccount } from './CardDetailScreen';
 import SegmentedControl from '../components/SegmentedControl';
+import GradientFill from '../components/GradientFill';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -636,6 +637,7 @@ export default function TransactionsScreen() {
             onPress={() => setMonthSheetOpen(true)}
             accessibilityRole="button"
           >
+            <GradientFill match={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]} />
             <Text style={[styles.filterChipText, monthFilter !== 'all' && styles.filterChipTextOn]}>
               {monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
             </Text>
@@ -648,6 +650,7 @@ export default function TransactionsScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Sorted ${sortOrder} first. Tap to switch.`}
           >
+            <GradientFill match={styles.filterChip} />
             <Text style={styles.filterChipText}>{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
             <Ionicons name="swap-vertical" size={14} color={colors.inkDim} />
           </TouchableOpacity>
@@ -658,6 +661,7 @@ export default function TransactionsScreen() {
               accessibilityRole="button"
               accessibilityLabel={`Showing ${accountFilter.name} only. Tap to clear.`}
             >
+              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
               <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{accountFilter.name}</Text>
               <Ionicons name="close-circle" size={15} color={colors.gold} />
             </TouchableOpacity>
@@ -669,6 +673,7 @@ export default function TransactionsScreen() {
               accessibilityRole="button"
               accessibilityLabel={`Showing ${categoryFilter} only. Tap to clear.`}
             >
+              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
               <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{categoryFilter}</Text>
               <Ionicons name="close-circle" size={15} color={colors.gold} />
             </TouchableOpacity>
@@ -683,7 +688,9 @@ export default function TransactionsScreen() {
             onPress={() => (navigation as any).navigate('Review')}
             accessibilityRole="button"
           >
+            <GradientFill match={[styles.group, styles.reviewCard]} />
             <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+              <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
               <Ionicons name="checkmark-done-outline" size={17} color={colors.gold} />
             </View>
             <View style={{ flex: 1 }}>
@@ -698,6 +705,7 @@ export default function TransactionsScreen() {
 
         {/* Redesign: In / Out summary. "In" opens Income (its new home). */}
         <View style={[styles.group, styles.summary]}>
+          <GradientFill match={[styles.group, styles.summary]} />
           <TouchableOpacity
             testID="transactions-income-link"
             style={styles.summaryCell}
@@ -764,6 +772,7 @@ export default function TransactionsScreen() {
         <View key={day.date} style={styles.daySection}>
         <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
         <View style={styles.group}>
+          <GradientFill match={styles.group} />
         {day.items.map((t: TransactionEntry, rowIndex: number) => {
           const isManual = t.source === 'manual';
           const isExpanded = expandedTxnId === t.id;
@@ -843,6 +852,7 @@ export default function TransactionsScreen() {
               accessibilityRole="button"
               accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
             >
+              <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
               <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
                 <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
               </View>

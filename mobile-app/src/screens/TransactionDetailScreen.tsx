@@ -12,6 +12,7 @@ import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import type { ThemeColors } from '../theme';
+import GradientFill from '../components/GradientFill';
 
 // Redesign: the Transaction page from the Finance Flow mockup. Tapping a transaction
 // opens this full page (it used to expand in the list): big name and amount, then
@@ -168,6 +169,7 @@ export default function TransactionDetailScreen() {
       </View>
 
       <View style={styles.group}>
+        <GradientFill match={styles.group} />
         <Row label="Category" value={entry.category || 'Uncategorized'} onPress={isManual ? openEdit : undefined} />
         <Row label="Account" value={account ?? (isManual ? 'Not set' : '—')} onPress={isManual ? openEdit : undefined} />
         <Row label="Paid by" value={paidBy} onPress={isManual ? openEdit : undefined} last={!isManual} />
@@ -178,6 +180,7 @@ export default function TransactionDetailScreen() {
         <>
           <Text style={styles.header}>Receipt</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {raw?.receiptPhoto ? (
               <TouchableOpacity onPress={openEdit} accessibilityLabel="Receipt photo. Tap to change">
                 <Image source={{ uri: raw.receiptPhoto }} style={styles.receipt} resizeMode="cover" />
@@ -192,6 +195,7 @@ export default function TransactionDetailScreen() {
           <Text style={styles.footer}>Take a photo or pick one. Only your household can see it.</Text>
 
           <View style={[styles.group, { marginTop: 24 }]}>
+            <GradientFill match={[styles.group, { marginTop: 24 }]} />
             <Row label="Split with others" value="Shared Expenses" onPress={() => comingSoon('Shared Expenses')} />
             <Row label="Make it repeat" value="Never" onPress={() => comingSoon('Repeating transactions')} />
             <Row
@@ -207,11 +211,13 @@ export default function TransactionDetailScreen() {
               onPress={() => save(refundReceived ? undoRefund(model, raw!.id) : markRefundReceived(model, raw!.id))}
               accessibilityRole="button"
             >
+              <GradientFill match={[styles.group, styles.action]} />
               <Text style={[styles.actionText, { color: colors.gold }]}>{refundReceived ? 'Undo refund received' : 'Mark refund as received'}</Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity testID="txn-detail-delete" style={[styles.group, styles.action, { marginTop: 24 }]} onPress={confirmDelete} accessibilityRole="button">
+            <GradientFill match={[styles.group, styles.action, { marginTop: 24 }]} />
             <Text style={[styles.actionText, { color: colors.negative }]}>Delete transaction</Text>
           </TouchableOpacity>
         </>
@@ -222,6 +228,7 @@ export default function TransactionDetailScreen() {
           <Text style={styles.footer}>This comes from a {SOURCE_NAME[entry.source]?.toLowerCase() ?? 'record'}. Change it there.</Text>
           {linkedOpen && (
             <TouchableOpacity style={[styles.group, styles.action, { marginTop: 16 }]} onPress={linkedOpen} accessibilityRole="button">
+              <GradientFill match={[styles.group, styles.action, { marginTop: 16 }]} />
               <Text style={[styles.actionText, { color: colors.gold }]}>Open {SOURCE_NAME[entry.source]}</Text>
             </TouchableOpacity>
           )}

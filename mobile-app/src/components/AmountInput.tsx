@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } f
 import { Text, TextInput } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
+import GradientFill from './GradientFill';
 
 type Props = {
   value: number | '' | undefined;
@@ -98,6 +99,7 @@ export default function AmountInput({
 
   return (
     <View style={[styles.container, style]}>
+      <GradientFill match={[styles.container, style]} />
       {allowNegative ? (
         <TouchableOpacity
           onPress={toggleSign}

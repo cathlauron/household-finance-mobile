@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 // Redesign: one row in the To-Pay lists (Finance Flow mockup): icon tile, name,
 // "Due Fri, Oct 16" underneath, and the amount with an optional tag on the right.
@@ -40,7 +41,9 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       accessibilityLabel={`${title}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}`}
       style={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}
     >
+      <GradientFill match={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]} />
       <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+        <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
         <Ionicons name={icon} size={17} color={colors.gold} />
       </View>
       <View style={styles.main}>

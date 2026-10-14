@@ -4,6 +4,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { hapticMedium, hapticSelection } from '../haptics';
+import GradientFill from './GradientFill';
 
 export type SwipeableRowProps = {
   children: React.ReactNode;
@@ -50,6 +51,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, 
           accessibilityRole="button"
           accessibilityLabel={viewAction.label}
         >
+          <GradientFill match={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: colors.buttonFill }]} />
           <Animated.View style={{ transform: [{ scale }] }}>
             <Ionicons name={viewAction.icon} size={20} color={colors.navy2} />
           </Animated.View>

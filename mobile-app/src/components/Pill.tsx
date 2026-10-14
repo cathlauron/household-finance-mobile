@@ -4,6 +4,7 @@ import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
+import GradientFill from './GradientFill';
 
 type Props = {
   label: string;
@@ -57,6 +58,14 @@ export default function Pill({
         style,
       ]}
     >
+      <GradientFill match={[
+        styles.base,
+        { backgroundColor: active ? colors.buttonFill : inactiveBg },
+        fill && styles.fill,
+        compact && styles.compact,
+        minWidth !== undefined && { minWidth },
+        style,
+      ]} />
       {icon ? (
         <Ionicons name={icon} size={16} color={textColor} style={styles.icon} />
       ) : null}

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import IconLabelHint from './IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
+import GradientFill from './GradientFill';
 
 // Enable LayoutAnimation for Android devices if not already enabled
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -54,6 +55,9 @@ export function CollapsibleRow({
           : [styles.container, isExpanded && styles.containerExpanded]
       }
     >
+      <GradientFill match={flat
+          ? [styles.flatContainer, showDivider && styles.flatDivider]
+          : [styles.container, isExpanded && styles.containerExpanded]} />
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={handleToggle}
@@ -76,6 +80,7 @@ export function CollapsibleRow({
 
       {isExpanded && (
         <View style={styles.expandedDrawer}>
+          <GradientFill match={styles.expandedDrawer} />
           <View style={styles.drawerDivider} />
           <View style={styles.drawerContent}>
             {expandedContent}

@@ -53,6 +53,7 @@ import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useFabSide, setFabSide } from '../fabSide';
+import GradientFill from '../components/GradientFill';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -1022,6 +1023,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           activeOpacity={0.7}
           onPress={() => navigation.navigate('Profile')}
         >
+          <GradientFill match={styles.profileCard} />
           <View style={{ marginRight: 12 }}>
             <Avatar
               initials={getInitials(username || '')}
@@ -1084,6 +1086,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             marginBottom: 12,
           }}
         >
+          <GradientFill match={{
+            borderRadius: 12,
+            backgroundColor: colors.navy3,
+            minHeight: 52,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 4,
+            marginBottom: 12,
+          }} />
           <Text style={{ fontSize: 17, color: colors.gold }}>Switch account</Text>
         </TouchableOpacity>
         )}
@@ -1110,6 +1121,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             marginBottom: 8,
           }}
         >
+          <GradientFill match={{
+            borderRadius: 12,
+            backgroundColor: colors.navy3,
+            minHeight: 52,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 8,
+          }} />
           <Text style={{ fontSize: 17, color: colors.negative }}>Log out</Text>
         </TouchableOpacity>
         )}
@@ -1118,6 +1137,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Language</Text>
         <Text style={styles.sectionSub}>More languages are coming later.</Text>
         <View style={styles.row}>
+          <GradientFill match={styles.row} />
           <Text style={styles.rowName}>English</Text>
           <Ionicons name="checkmark" size={18} color={colors.gold} />
         </View>
@@ -1196,6 +1216,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
 <View style={styles.row}>
+  <GradientFill match={styles.row} />
           <Text style={styles.rowName}>Alert me</Text>
           <TextInput
             style={styles.notifyInput}
@@ -1217,6 +1238,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   "Left to Spend" on Home turns orange once your balance drops below this % of your typical monthly bills, debts & loans.
 </Text>
         <View style={styles.row}>
+          <GradientFill match={styles.row} />
           <Text style={styles.rowName}>Caution below</Text>
           <TextInput
             style={styles.notifyInput}
@@ -1234,6 +1256,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {page === 'notifications' && (
         <>
         <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={togglePushNotifications}>
+          <GradientFill match={styles.row} />
           <Text style={styles.rowName}>Notify me on this phone</Text>
           <View
             style={[
@@ -1241,6 +1264,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               model.settings.pushNotificationsEnabled && styles.toggleTrackActive,
             ]}
           >
+            <GradientFill match={[
+              styles.toggleTrack,
+              model.settings.pushNotificationsEnabled && styles.toggleTrackActive,
+            ]} />
             <View
               style={[
                 styles.toggleThumb,
@@ -1252,6 +1279,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {!!notifStatusMsg && <Text style={styles.notifStatusText}>{notifStatusMsg}</Text>}
 
         <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={toggleWeeklyRecap}>
+          <GradientFill match={styles.row} />
           <Text style={styles.rowName}>Weekly spending recap</Text>
           <View
             style={[
@@ -1259,6 +1287,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               model.settings.weeklyRecapEnabled && styles.toggleTrackActive,
             ]}
           >
+            <GradientFill match={[
+              styles.toggleTrack,
+              model.settings.weeklyRecapEnabled && styles.toggleTrackActive,
+            ]} />
             <View
               style={[
                 styles.toggleThumb,
@@ -1283,6 +1315,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               ))}
             </View>
             <View style={styles.row}>
+              <GradientFill match={styles.row} />
               <Text style={styles.rowName}>At</Text>
               <TextInput
                 style={styles.notifyInput}
@@ -1317,6 +1350,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             activeOpacity={0.7}
             onPress={() => openEditModal(cat)}
           >
+            <GradientFill match={styles.row} />
             <View style={[styles.colorDot, { backgroundColor: cat.color }]} />
             <Text style={styles.rowName} numberOfLines={1}>
               {cat.name}
@@ -1343,6 +1377,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {model.categoryBudgets.map((cb) => (
           <View key={cb.id} style={styles.row}>
+            <GradientFill match={styles.row} />
             <Text style={styles.rowName} numberOfLines={1}>
               {cb.category} — {formatPeso(typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0)}/mo
             </Text>
@@ -1392,6 +1427,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             activeOpacity={0.7}
             onPress={() => openEditPayeeModal(payee)}
           >
+            <GradientFill match={styles.row} />
             <Text style={styles.rowName} numberOfLines={1}>
               {payee.name}
             </Text>
@@ -1422,6 +1458,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {rules.map((rule, idx) => (
           <View key={rule.id} style={styles.ruleRow}>
+            <GradientFill match={styles.ruleRow} />
             <View style={styles.reorderCol}>
               <TouchableOpacity
                 onPress={() => moveRule(rule.id, 'up')}
@@ -1513,6 +1550,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             style={{ marginTop: 6 }}
           />
         <View style={[styles.linkCodeBox, { marginTop: 16 }]}>
+          <GradientFill match={[styles.linkCodeBox, { marginTop: 16 }]} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
             <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
             {hasRecoveryKey === false && (
@@ -1543,6 +1581,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               setRetroactiveModalOpen(true);
             }}
           >
+            <GradientFill match={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]} />
             <Text style={styles.dataButtonText}>Generate / Reset Recovery Key</Text>
           </TouchableOpacity>
         </View>
@@ -1559,6 +1598,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {biometricState === 'UNAVAILABLE' ? (
           <View style={styles.row}>
+            <GradientFill match={styles.row} />
             <Text style={[styles.rowName, { color: colors.inkFaint }]}>
               Biometric unlock isn't available on this device
             </Text>
@@ -1566,8 +1606,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         ) : (
           <>
               <TouchableOpacity testID="biometric-toggle" style={styles.row} activeOpacity={0.7} onPress={handleToggleBiometrics}>
+                <GradientFill match={styles.row} />
               <Text style={styles.rowName}>{biometricLabel} Unlock</Text>
               <View style={[styles.toggleTrack, biometricState === 'ENABLED' && styles.toggleTrackActive]}>
+                <GradientFill match={[styles.toggleTrack, biometricState === 'ENABLED' && styles.toggleTrackActive]} />
                 <View style={[styles.toggleThumb, biometricState === 'ENABLED' && styles.toggleThumbActive]} />
               </View>
             </TouchableOpacity>
@@ -1576,6 +1618,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         )}
 
         <View style={[styles.row, { marginTop: 8 }]}>
+          <GradientFill match={[styles.row, { marginTop: 8 }]} />
           <View style={{ flex: 1 }}>
             <Text style={styles.rowName}>Quick PIN</Text>
             <Text style={styles.hintText}>{pinIsSet ? 'Active as fallback' : 'Not configured'}</Text>
@@ -1619,6 +1662,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               }}
             >
               <View style={[styles.toggleTrack, pinIsSet && styles.toggleTrackActive]}>
+                <GradientFill match={[styles.toggleTrack, pinIsSet && styles.toggleTrackActive]} />
                 <View style={[styles.toggleThumb, pinIsSet && styles.toggleThumbActive]} />
               </View>
             </TouchableOpacity>
@@ -1627,6 +1671,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         {pinIsSet && (
           <View style={[styles.row, { marginTop: 4 }]}>
+            <GradientFill match={[styles.row, { marginTop: 4 }]} />
             <View style={{ flex: 1 }} />
               <TouchableOpacity
     testID="change-pin-button"
@@ -1634,6 +1679,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     disabled={pinBusy}
     onPress={() => setShowSetPinModal(true)}
   >
+                <GradientFill match={[styles.dataButton, { alignSelf: 'center' }]} />
     <Text style={styles.dataButtonText}>Change PIN</Text>
   </TouchableOpacity>
           </View>
@@ -1696,6 +1742,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               key={dev.deviceId}
               style={[styles.deviceItemRow, isThisDevice && styles.deviceItemRowCurrent]}
             >
+              <GradientFill match={[styles.deviceItemRow, isThisDevice && styles.deviceItemRowCurrent]} />
               <View style={{ flex: 1, marginRight: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                   <Text style={styles.deviceNameText}>{dev.deviceName}</Text>
@@ -1716,6 +1763,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                   )}
                   {isThisDevice && (
                     <View style={styles.thisDeviceBadge}>
+                      <GradientFill match={styles.thisDeviceBadge} />
                       <Text style={styles.thisDeviceBadgeText}>This device</Text>
                     </View>
                   )}
@@ -1754,6 +1802,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 </Text>
 
         <TouchableOpacity style={styles.dataButton} onPress={handleExportBackup} disabled={exportBusy}>
+          <GradientFill match={styles.dataButton} />
           {exportBusy ? (
             <ActivityIndicator color={colors.gold} />
           ) : (
@@ -1917,6 +1966,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onPress={() => { if (!biometricPasswordBusy) setBiometricPasswordModalOpen(false); }}
         >
           <Pressable style={styles.modalCard} onPress={() => {}}>
+            <GradientFill match={styles.modalCard} />
             <Text style={styles.modalTitle}>Turn on {biometricLabel}</Text>
             <Text style={styles.sectionSub}>Enter your account password.</Text>
             <Text style={styles.inputLabel}>Password</Text>
@@ -1934,6 +1984,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               disabled={!biometricPassword || biometricPasswordBusy}
               onPress={handleConfirmBiometricPassword}
             >
+              <GradientFill match={[styles.saveButton, (!biometricPassword || biometricPasswordBusy) && { opacity: 0.4 }]} />
               {biometricPasswordBusy ? (
                 <ActivityIndicator color={colors.navy2} />
               ) : (
@@ -1960,6 +2011,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       >
         <Pressable style={styles.modalOverlay} onPress={() => setRetroactiveModalOpen(false)}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
+            <GradientFill match={styles.modalCard} />
             <Text style={styles.modalTitle}>Secret Recovery Key</Text>
 
             {!retroactiveSuccessCode ? (
@@ -1984,6 +2036,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                   disabled={!retroactiveVerifyPass || retroactiveBusy}
                   onPress={handleGenerateRetroactiveRecoveryKey}
                 >
+                  <GradientFill match={[
+                    styles.saveButton,
+                    (!retroactiveVerifyPass || retroactiveBusy) && { opacity: 0.4 },
+                  ]} />
                   {retroactiveBusy ? (
                     <ActivityIndicator color={colors.navy2} />
                   ) : (
@@ -2006,6 +2062,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                     alignItems: 'center',
                   }}
                 >
+                  <GradientFill match={{
+                    backgroundColor: colors.navy3,
+                    borderRadius: 8,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    marginVertical: 12,
+                    alignItems: 'center',
+                  }} />
                   <Text
                     selectable
                     style={{
@@ -2030,6 +2094,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                     setTimeout(() => setRecoveryCopied(false), 2000);
                   }}
                 >
+                                  <GradientFill match={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} />
                   <Ionicons
                     name={recoveryCopied ? 'checkmark' : 'copy-outline'}
                     size={16}
@@ -2068,6 +2133,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           }}
         >
           <Pressable style={styles.modalCard} onPress={() => {}}>
+            <GradientFill match={styles.modalCard} />
             <Text style={styles.modalTitle}>Sign Out Device</Text>
             <Text style={styles.sectionSub}>
     Sign out {deviceToRevoke?.deviceName}? It'll be disconnected right away and need to sign in again.

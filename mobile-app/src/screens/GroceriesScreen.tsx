@@ -17,6 +17,7 @@ import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 function plannedTotal(items: GroceryItem[]): number {
   return items.reduce((sum, g) => sum + (typeof g.plannedAmount === 'number' ? g.plannedAmount : 0), 0);
@@ -262,6 +263,7 @@ export default function GroceriesScreen() {
       {activeTab === 'list' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.summaryCard}>
+            <GradientFill match={styles.summaryCard} />
             <Text style={styles.balanceBannerLabel}>Bought vs planned</Text>
             <Text style={styles.balanceBannerAmount}>
               {formatPeso(actual)} <Text style={styles.balanceBannerSub}>/ {formatPeso(planned)}</Text>
@@ -274,6 +276,7 @@ export default function GroceriesScreen() {
           )}
 
           <View style={styles.listGroup}>
+            <GradientFill match={styles.listGroup} />
           {groceries.map((g, rowIndex) => (
             <SwipeableRow
               key={g.id}
@@ -287,6 +290,7 @@ export default function GroceriesScreen() {
               activeOpacity={0.7}
               onPress={() => openEditModal(g)}
             >
+              <GradientFill match={[styles.groceryRow, rowIndex > 0 && styles.rowDivider]} />
               <View style={styles.groceryRowMain}>
                 <Text style={[styles.groceryName, g.purchased && styles.groceryNamePurchased]} numberOfLines={1}>
                   {g.item || 'Untitled item'}
@@ -297,6 +301,7 @@ export default function GroceriesScreen() {
                 </Text>
               </View>
               <View style={[styles.purchasedPill, g.purchased && styles.purchasedPillActive]}>
+                <GradientFill match={[styles.purchasedPill, g.purchased && styles.purchasedPillActive]} />
                 <Text style={[styles.purchasedPillText, g.purchased && styles.purchasedPillTextActive]}>
                   {g.purchased ? 'Bought' : 'Planned'}
                 </Text>
@@ -319,6 +324,7 @@ export default function GroceriesScreen() {
           </Text>
 
           <View style={styles.resultCard}>
+            <GradientFill match={styles.resultCard} />
             <Text style={styles.resultLabel}>RUNNING TOTAL</Text>
             <Text style={styles.resultAmount}>{formatPeso(runningTotal)}</Text>
           </View>
@@ -329,6 +335,7 @@ export default function GroceriesScreen() {
 
           {calcEntries.map((e) => (
             <View key={e.id} style={styles.calcRow}>
+              <GradientFill match={styles.calcRow} />
               <Text style={styles.calcRowLabel} numberOfLines={1}>
                 {e.label}
               </Text>
@@ -372,6 +379,7 @@ export default function GroceriesScreen() {
             style={styles.modalKeyboardWrap}
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
+              <GradientFill match={styles.modalCard} />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit item' : 'New item'}</Text>
 

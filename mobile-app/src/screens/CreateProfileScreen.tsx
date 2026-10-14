@@ -243,6 +243,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         <Modal visible={!!recoveryCode} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
+              <GradientFill match={styles.modalCard} />
               <Text style={styles.eyebrow}>CRITICAL SECURITY STEP</Text>
               <Text style={styles.modalTitle}>Secret Recovery Key</Text>
               <Text style={styles.modalSub}>
@@ -279,6 +280,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 onPress={() => setSavedAcknowledged((prev) => !prev)}
               >
                 <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
+                  <GradientFill match={[styles.checkbox, savedAcknowledged && styles.checkboxActive]} />
                   {savedAcknowledged && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
                 </View>
                 <Text style={styles.checkLabel}>

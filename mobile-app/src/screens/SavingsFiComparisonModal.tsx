@@ -16,6 +16,7 @@ import { Text, TextInput } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import { computeFiScenario, FiScenarioInputs } from '../fiScenario';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   visible: boolean;
@@ -75,6 +76,7 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
+          <GradientFill match={styles.card} />
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Compare Scenarios</Text>
             <Text style={styles.sub}>

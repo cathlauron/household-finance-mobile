@@ -17,6 +17,7 @@ import IconLabelHint from '../components/IconLabelHint';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { getHiddenReportIds, setHiddenReportIds } from '../reportVisibility';
+import GradientFill from '../components/GradientFill';
 
 type ReportTab = 'monthly' | 'yearly' | 'forecast' | 'person' | 'weekly' | 'merchant' | 'subscription' | 'tax' | 'paymentMethod';
 
@@ -108,6 +109,7 @@ export default function ReportsScreen() {
             const isActive = activeReport === tab.id;
             return (
               <View key={tab.id} style={[styles.pill, isActive && styles.pillActive]}>
+                <GradientFill match={[styles.pill, isActive && styles.pillActive]} />
                 <IconLabelHint
                   name={tab.icon}
                   label={tab.label}
@@ -121,6 +123,7 @@ export default function ReportsScreen() {
           })}
         </ScrollView>
         <View style={styles.pill}>
+          <GradientFill match={styles.pill} />
           <IconLabelHint
             name="options-outline"
             label="Customize"
@@ -149,6 +152,7 @@ export default function ReportsScreen() {
             style={[styles.tagPill, activeTag === undefined && styles.tagPillActive]}
             onPress={() => setActiveTag(undefined)}
           >
+            <GradientFill match={[styles.tagPill, activeTag === undefined && styles.tagPillActive]} />
             <Text style={[styles.tagPillText, activeTag === undefined && styles.tagPillTextActive]}>All</Text>
           </TouchableOpacity>
           {distinctTags.map((tag) => (
@@ -157,6 +161,7 @@ export default function ReportsScreen() {
               style={[styles.tagPill, activeTag === tag && styles.tagPillActive]}
               onPress={() => setActiveTag(tag)}
             >
+              <GradientFill match={[styles.tagPill, activeTag === tag && styles.tagPillActive]} />
               <Text style={[styles.tagPillText, activeTag === tag && styles.tagPillTextActive]}>{tag}</Text>
             </TouchableOpacity>
           ))}
@@ -190,6 +195,7 @@ export default function ReportsScreen() {
                 <Text style={styles.customizeRowLabel}>{tab.label}</Text>
               </View>
               <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                <GradientFill match={[styles.checkbox, checked && styles.checkboxChecked]} />
                 {checked && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
               </View>
             </TouchableOpacity>

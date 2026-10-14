@@ -7,6 +7,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useTheme } from '../ThemeContext';
 import type { ThemeColors } from '../theme';
 import type { PlanningTab } from './PlanningScreen';
+import GradientFill from '../components/GradientFill';
 
 // Redesign: the Plan tab. It replaces the old More tab and follows the Finance Flow
 // Plan mockup: money set aside (Savings, Goals) and things coming up (Groceries,
@@ -56,6 +57,7 @@ export default function PlanScreen() {
         <View key={group.header} style={styles.section}>
           <Text style={styles.groupHeader}>{group.header}</Text>
           <View style={styles.group}>
+            <GradientFill match={styles.group} />
             {group.rows.map((row, i) => (
               <TouchableOpacity
                 key={row.testID}
@@ -67,6 +69,7 @@ export default function PlanScreen() {
                 accessibilityLabel={`${row.title}. ${row.subtitle}`}
               >
                 <View style={styles.tile}>
+                  <GradientFill match={styles.tile} />
                   <Ionicons name={row.icon} size={18} color={colors.gold} />
                 </View>
                 <View style={[styles.rowBody, i > 0 && styles.rowDivider]}>
