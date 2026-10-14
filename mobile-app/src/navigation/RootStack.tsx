@@ -8,7 +8,8 @@ import AccountsScreen from '../screens/AccountsScreen';
 import IncomeScreen from '../screens/IncomeScreen';
 import SavingsScreen from '../screens/SavingsScreen';
 import PlanningScreen from '../screens/PlanningScreen';
-import ReportsScreen from '../screens/ReportsScreen';
+import InsightsScreen from '../screens/InsightsScreen';
+import ReportDetailScreen, { MoreReportsScreen } from '../screens/ReportDetailScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
@@ -36,6 +37,8 @@ export type RootStackParamList = {
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
   Planning: { tab?: PlanningTab } | undefined;
   Reports: undefined;
+  Report: { id: string; backTitle?: string };
+  MoreReports: undefined;
   Settings: undefined;
   Premium: undefined;
   TransactionDetail: { id: string };
@@ -140,8 +143,8 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       />
       <Stack.Screen
         name="Reports"
-        component={ReportsScreen}
-        options={{ title: 'Reports', headerBackTitle: 'Home' }}
+        component={InsightsScreen}
+        options={{ title: 'Insights', headerBackTitle: 'Home' }}
       />
       <Stack.Screen
         name="Settings"
@@ -153,6 +156,8 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
+      <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: '', headerBackTitle: 'Insights' }} />
+      <Stack.Screen name="MoreReports" component={MoreReportsScreen} options={{ title: 'More reports', headerBackTitle: 'Insights' }} />
       <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: '', headerBackTitle: 'Savings' }} />
       {/* Redesign: each Plan section is its own page, as in the mockup. */}
       <Stack.Screen name="Groceries" component={GroceriesScreen} options={{ title: 'Groceries', headerBackTitle: 'Plan' }} />
