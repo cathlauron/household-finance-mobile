@@ -137,8 +137,8 @@ function makeStyles(colors: any) {
       paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    primaryBtn: { backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[24] },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtn: { backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[24] },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     ghostBtn: { paddingVertical: 14, marginTop: 4 },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
   });

@@ -176,7 +176,7 @@ function makeStyles(colors: any) {
     },
     dotActive: {
       width: 22,
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
     },
     button: {
       flexDirection: 'row',
@@ -186,12 +186,12 @@ function makeStyles(colors: any) {
       marginHorizontal: 24,
       marginBottom: 28,
       borderRadius: 999,
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
     },
     buttonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.navy2,
+      color: colors.onButton,
     },
   });
 }

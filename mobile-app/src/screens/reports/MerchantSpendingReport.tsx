@@ -129,7 +129,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     merchantName: { fontSize: 15, fontWeight: '600', color: colors.ink, flex: 1, marginRight: 8 },
     merchantTotal: { fontSize: 15, fontWeight: '700', color: colors.ink },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
-    progressFill: { height: '100%', backgroundColor: colors.gold, borderRadius: 999 },
+    progressFill: { height: '100%', backgroundColor: colors.buttonFill, borderRadius: 999 },
     merchantMeta: { fontSize: 13, color: colors.inkFaint, marginTop: 8 },
   });
 }

@@ -40,7 +40,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, 
     if (viewAction) {
       return (
         <TouchableOpacity
-          style={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: colors.gold }]}
+          style={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: colors.buttonFill }]}
           activeOpacity={0.8}
           onPress={() => {
             hapticSelection();

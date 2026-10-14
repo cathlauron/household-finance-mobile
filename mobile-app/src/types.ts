@@ -22,6 +22,11 @@ export type Settings = {
   weeklyRecapDay: number;
   weeklyRecapHour: number;
   swipeToDeleteEnabled: boolean;
+  // Redesign: buttons, links, tabs and background leaves follow the Left to Spend mood
+  // (green / burnt orange / red). Missing means on.
+  moodColorsEnabled?: boolean;
+  // Redesign: slowly drifting background leaves. Missing means on.
+  fallingLeavesEnabled?: boolean;
 };
 
 export type Person = {

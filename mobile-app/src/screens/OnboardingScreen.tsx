@@ -446,13 +446,13 @@ function makeStyles(colors: any) {
     },
     primaryBtn: {
       width: '100%',
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: 8,
       paddingVertical: 14,
       marginTop: 16,
     },
     primaryBtnText: {
-      color: colors.navy2,
+      color: colors.onButton,
       textAlign: 'center',
       fontWeight: '600',
       fontSize: 15,

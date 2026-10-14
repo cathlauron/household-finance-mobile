@@ -42,7 +42,7 @@ export default function Button({
   const isSecondary = variant === 'secondary';
   const compact = size === 'compact';
   let textColor = colors.inkDim;
-  if (isPrimary) textColor = colors.navy2;
+  if (isPrimary) textColor = colors.onButton;
   else if (isSolidDanger) textColor = '#FFFFFF';
   else if (variant === 'destructive' || isOutlineDanger) textColor = colors.error;
   const inactive = disabled || loading;
@@ -59,7 +59,7 @@ export default function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       style={[
         styles.base,
-        isPrimary && { backgroundColor: colors.gold },
+        isPrimary && { backgroundColor: colors.buttonFill },
         isPrimary && styles.primary,
         variant === 'destructive' && styles.destructive,
         variant === 'quiet' && styles.quiet,

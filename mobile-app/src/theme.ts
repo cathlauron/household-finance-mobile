@@ -41,6 +41,11 @@ export type ThemeColors = {
   planned: string;
   // Text or icon colour that sits on top of a filled accent (green) button.
   onAccent: string;
+  // Redesign: pale accent tint (icon tiles, selected chips, the + button) and the fill /
+  // text colours of primary buttons. All three follow the mood (see src/mood.tsx).
+  accentTint: string;
+  buttonFill: string;
+  onButton: string;
 };
 
 export const lightTheme: ThemeColors = {
@@ -79,6 +84,9 @@ export const lightTheme: ThemeColors = {
   saving: '#C2510A',
   planned: '#1D63B8',
   onAccent: '#FFFFFF',
+  accentTint: '#E6F0EA',
+  buttonFill: '#2E6B47',
+  onButton: '#F2F2F7',
 };
 
 export const darkTheme: ThemeColors = {
@@ -117,4 +125,7 @@ export const darkTheme: ThemeColors = {
   saving: '#FFB27A',
   planned: '#6FA8FF',
   onAccent: '#0B1F14',
+  accentTint: '#15291D',
+  buttonFill: '#5FC48A',
+  onButton: '#000000',
 };

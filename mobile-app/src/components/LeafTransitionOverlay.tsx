@@ -5,6 +5,9 @@ import { useTheme } from '../ThemeContext';
 import { subscribeToLeafTransition } from '../leafTransition';
 import { RIGHT_LEAF, LEFT_LEAF, LEAF_VIEWBOX } from './LeafBackground';
 
+const NEW_LEAF = 'M 62 8 C 86 34, 99 92, 88 136 C 81 160, 66 170, 52 172 C 36 170, 14 158, 10 122 C 6 84, 30 36, 62 8 Z';
+const NEW_LEAF_STEM = 'M 52 172 C 50 182, 47 191, 44 198';
+
 // A few faint leaves drift up and to the right, then fade out, each time
 // the person moves to a different screen or tab. Touches pass straight
 // through, and navigation itself is never delayed.
@@ -78,8 +81,10 @@ export default function LeafTransitionOverlay() {
               transform: [{ translateX }, { translateY }, { rotate }],
             }}
           >
-            <Svg width={leaf.size} height={leaf.size * 1.05} viewBox={LEAF_VIEWBOX}>
-              <Path d={leaf.d} fill={colors.gold} />
+            {/* Redesign: the new pointed leaf shape with a stem (100 x 205 box). */}
+            <Svg width={leaf.size * 0.55} height={leaf.size * 1.13} viewBox="0 0 100 205">
+              <Path d={NEW_LEAF_STEM} fill="none" stroke={colors.gold} strokeWidth={4} strokeLinecap="round" />
+              <Path d={NEW_LEAF} fill={colors.gold} />
             </Svg>
           </Animated.View>
         );

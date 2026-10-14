@@ -63,8 +63,8 @@ function AddFab({ bottom, activeTab }: { bottom: number; activeTab: string }) {
         side === 'left' ? { left: 18 } : { right: 18 },
         {
           bottom,
-          backgroundColor: colors.okBg,
-          borderColor: isDark ? 'rgba(95,196,138,0.30)' : 'rgba(46,107,71,0.22)',
+          backgroundColor: colors.accentTint,
+          borderColor: `${colors.gold}40`,
           transform: [{ scale: pressed ? 0.94 : 1 }],
         },
       ]}

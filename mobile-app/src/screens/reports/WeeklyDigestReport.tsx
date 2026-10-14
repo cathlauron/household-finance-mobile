@@ -185,7 +185,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     categoryName: { fontSize: 13, color: colors.ink, flex: 1, marginRight: 8 },
     categoryAmount: { fontSize: 13, color: colors.inkDim },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
-    progressFill: { height: '100%', backgroundColor: colors.gold, borderRadius: 999 },
+    progressFill: { height: '100%', backgroundColor: colors.buttonFill, borderRadius: 999 },
     txnRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',

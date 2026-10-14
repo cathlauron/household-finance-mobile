@@ -325,10 +325,10 @@ function makeStyles(colors: any) {
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
     primaryBtn: {
-      backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
+      backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     btnDisabled: { opacity: 0.4 },
     linkBtn: { paddingVertical: 14, marginTop: 10 },
     linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },
@@ -359,7 +359,7 @@ function makeStyles(colors: any) {
       width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.inkDim,
       alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy3,
     },
-    checkboxActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+    checkboxActive: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
     checkLabel: { flex: 1, fontSize: 13, color: colors.ink, lineHeight: 18 },
   });
 }

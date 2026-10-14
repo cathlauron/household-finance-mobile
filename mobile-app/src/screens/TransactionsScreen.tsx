@@ -1040,7 +1040,7 @@ function makeStyles(colors: any) {
     // Redesign styles
     filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
     filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.navy3 },
-    filterChipOn: { backgroundColor: colors.okBg },
+    filterChipOn: { backgroundColor: colors.accentTint },
     filterChipText: { fontSize: 15, fontWeight: '500', color: colors.ink },
     filterChipTextOn: { color: colors.gold, fontWeight: '600' },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
@@ -1149,7 +1149,7 @@ function makeStyles(colors: any) {
     },
     refundToggleActive: { backgroundColor: colors.orange },
     refundToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    refundToggleTextActive: { color: colors.navy2 },
+    refundToggleTextActive: { color: colors.onButton },
     refundBadge: {
       alignSelf: 'flex-start',
       backgroundColor: colors.orange,
@@ -1159,7 +1159,7 @@ function makeStyles(colors: any) {
       marginTop: 6,
     },
     refundBadgeReceived: { backgroundColor: colors.ok },
-    refundBadgeText: { fontSize: 11, fontWeight: '700', color: colors.navy2 },
+    refundBadgeText: { fontSize: 11, fontWeight: '700', color: colors.onButton },
     refundActionButton: {
       marginTop: 10,
       alignSelf: 'flex-start',

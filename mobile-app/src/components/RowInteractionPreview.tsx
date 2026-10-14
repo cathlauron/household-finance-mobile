@@ -95,7 +95,7 @@ function makeStyles(colors: any) {
     swipeStage: { position: 'relative' },
     deleteBehind: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 76, backgroundColor: '#C81E43', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
     previewRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.navy3, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14 },
-    rowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold, marginRight: 10 },
+    rowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.buttonFill, marginRight: 10 },
     rowTitle: { fontSize: 13, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 11, color: colors.inkDim, marginTop: 2 },
     rowAmount: { fontSize: 13, fontWeight: '700', color: colors.ink, marginLeft: 8 },

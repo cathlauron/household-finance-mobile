@@ -2196,7 +2196,7 @@ function makeStyles(colors: any) {
       padding: 3,
       justifyContent: 'center',
     },
-    toggleTrackActive: { backgroundColor: colors.gold },
+    toggleTrackActive: { backgroundColor: colors.buttonFill },
     toggleThumb: {
       width: 20,
       height: 20,
@@ -2252,15 +2252,15 @@ function makeStyles(colors: any) {
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
     successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
     saveButton: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: radii.pill,
       paddingVertical: spacing[12],
       alignItems: 'center',
       marginBottom: spacing[10],
     },
-    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.navy2 },
+    saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.onButton },
     primaryFullButton: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: 999,
       paddingVertical: 12,
       alignItems: 'center',
@@ -2345,7 +2345,7 @@ function makeStyles(colors: any) {
       color: colors.ink,
     },
     thisDeviceBadge: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: 4,
       paddingHorizontal: 6,
       paddingVertical: 2,

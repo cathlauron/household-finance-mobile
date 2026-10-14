@@ -813,7 +813,7 @@ function makeStyles(colors: any) {
       height: 44,
     },
     dayCellToday: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderColor: colors.gold,
     },
     dayCellSelected: {
@@ -969,7 +969,7 @@ function makeStyles(colors: any) {
     },
     modalCloseButton: {
       alignSelf: 'flex-end',
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       paddingHorizontal: 18,
       paddingVertical: 9,
       borderRadius: 999,

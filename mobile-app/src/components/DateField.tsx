@@ -402,7 +402,7 @@ function makeStyles(colors: any) {
       fontWeight: '700',
     },
     dayTextSelected: {
-      color: colors.navy2,
+      color: colors.onButton,
       fontWeight: '700',
     },
     dayTextDisabled: {

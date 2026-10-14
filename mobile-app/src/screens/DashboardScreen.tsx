@@ -584,7 +584,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     groupRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16, minHeight: 60 },
     groupRowBody: { flex: 1, flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', paddingVertical: 10, paddingRight: 16, gap: 8 },
     divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.okBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     rowTitle: { fontSize: 17, fontWeight: '500', color: colors.ink },
     rowSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     badge: { fontSize: 12, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: 'hidden' },

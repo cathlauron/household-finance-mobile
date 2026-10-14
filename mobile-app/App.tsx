@@ -43,6 +43,7 @@ import { getBiometricState } from './src/biometrics';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
+import { MoodThemeProvider } from './src/mood';
 import { DataProvider, useData } from './src/DataContext';
 import { getCurrentFirebaseUser, signOutFirebase, signInWithFirebase } from './src/authFirebase';
 import { rescheduleBillNotifications } from './src/pushNotifications';
@@ -741,7 +742,9 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
           <DataProvider>
-            <AppContent />
+            <MoodThemeProvider>
+              <AppContent />
+            </MoodThemeProvider>
           </DataProvider>
         </ThemeProvider>
       </GestureHandlerRootView>

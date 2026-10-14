@@ -106,7 +106,7 @@ function makeStyles(colors: ThemeColors) {
       width: 32,
       height: 32,
       borderRadius: 8,
-      backgroundColor: colors.okBg,
+      backgroundColor: colors.accentTint,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,

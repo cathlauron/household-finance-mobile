@@ -432,7 +432,7 @@ function makeStyles(colors: any) {
       borderRadius: 999,
     },
     toggleBtnActive: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
     },
     toggleBtnText: {
       fontSize: 13,
@@ -440,7 +440,7 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
     },
     toggleBtnTextActive: {
-      color: colors.navy2,
+      color: colors.onButton,
       fontWeight: '700',
     },
     sectionHeaderRight: {

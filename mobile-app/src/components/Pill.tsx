@@ -39,7 +39,7 @@ export default function Pill({
   style,
 }: Props) {
   const { colors } = useTheme();
-  const textColor = active ? colors.navy2 : colors.inkDim;
+  const textColor = active ? colors.onButton : colors.inkDim;
   const inactiveBg = tone === 'page' ? colors.navy3 : colors.navy2;
   return (
     <TouchableOpacity
@@ -50,7 +50,7 @@ export default function Pill({
       accessibilityLabel={accessibilityLabel ?? label}
       style={[
         styles.base,
-        { backgroundColor: active ? colors.gold : inactiveBg },
+        { backgroundColor: active ? colors.buttonFill : inactiveBg },
         fill && styles.fill,
         compact && styles.compact,
         minWidth !== undefined && { minWidth },

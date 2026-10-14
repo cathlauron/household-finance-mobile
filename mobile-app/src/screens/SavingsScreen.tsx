@@ -1175,7 +1175,7 @@ toggleLinkText: { fontSize: 13, color: colors.gold, fontWeight: '600' },
       alignItems: 'center',
       justifyContent: 'center',
     },
-    checkboxChecked: { backgroundColor: colors.gold, borderColor: colors.gold },
+    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
     compareButton: {
       backgroundColor: colors.navy3,
       borderRadius: 10,

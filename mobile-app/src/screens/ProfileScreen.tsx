@@ -1543,9 +1543,9 @@ function makeStyles(colors: any) {
       paddingVertical: 10,
       alignItems: 'center',
     },
-    modeButtonActive: { backgroundColor: colors.gold },
+    modeButtonActive: { backgroundColor: colors.buttonFill },
     modeButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    modeButtonTextActive: { color: colors.navy2 },
+    modeButtonTextActive: { color: colors.onButton },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',

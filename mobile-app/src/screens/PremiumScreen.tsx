@@ -119,9 +119,9 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       paddingVertical: 11,
       borderRadius: 999,
     },
-    billingPillActive: { backgroundColor: colors.gold },
+    billingPillActive: { backgroundColor: colors.buttonFill },
     billingText: { fontSize: 14, fontWeight: '600', color: colors.inkDim },
-    billingTextActive: { color: colors.navy2 },
+    billingTextActive: { color: colors.onButton },
     saveBadge: {
       backgroundColor: colors.okBg,
       borderWidth: 1,

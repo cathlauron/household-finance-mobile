@@ -813,7 +813,7 @@ function makeStyles(colors: any) {
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
     summaryCard: { padding: 16, marginBottom: 20 },
     section: { marginBottom: 20 },
-    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.okBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     summaryRow: { flexDirection: 'row', marginBottom: 12 },
     summaryCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 16 },
     summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },

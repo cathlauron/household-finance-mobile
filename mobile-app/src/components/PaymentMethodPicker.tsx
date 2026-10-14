@@ -105,9 +105,9 @@ function makeStyles(colors: any) {
       paddingHorizontal: 10,
       alignItems: 'center',
     },
-    pillButtonActive: { backgroundColor: colors.gold },
+    pillButtonActive: { backgroundColor: colors.buttonFill },
     pillButtonText: { fontSize: 12, fontWeight: '600', color: colors.inkDim },
-    pillButtonTextActive: { color: colors.navy2 },
+    pillButtonTextActive: { color: colors.onButton },
     emptyHint: {
       fontSize: 11.5,
       color: colors.inkFaint,

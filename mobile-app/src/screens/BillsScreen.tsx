@@ -729,7 +729,7 @@ function makeStyles(colors: any) {
     summarySub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
     section: { marginBottom: 20 },
     sectionHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
-    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.okBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     overdueBadge: { marginTop: 3, fontSize: 12, fontWeight: '600', color: colors.negative, backgroundColor: colors.errorBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' },
     balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
