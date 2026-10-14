@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import CardGradient from '../components/CardGradient';
+import HomeHero from '../components/HomeHero';
 import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -130,37 +131,17 @@ export default function HomeScreen({ username }: Props) {
           onScrollY={(y) => setShowSlimBar(y > 150)}
           header={
             leftToSpend && leftToSpendStatus ? (
-              <View style={[hs.leftCard, { overflow: 'hidden', backgroundColor: moodCard.start }, mood === 'good' && hs.leftCardShadow]}>
-                <CardGradient start={moodCard.start} end={moodCard.end} />
-                <View style={hs.leftCardTop}>
-                  <Text style={[hs.leftLabel, { marginBottom: 0, color: moodCard.dim }]}>Left to spend</Text>
-                  <TouchableOpacity
-                    testID="home-calendar-shortcut"
-                    onPress={() => navigation.navigate('Calendar')}
-                    style={hs.calBtn}
-                    accessibilityLabel={`Open calendar. Today is ${fullDate}`}
-                  >
-                    <Ionicons name="calendar-outline" size={18} color={colors.cardTealText} />
-                  </TouchableOpacity>
-                </View>
-                <Text style={hs.leftAmount}>{formatPeso(leftToSpend.amount)}</Text>
-                <View style={hs.statusRow}>
-                  <View style={hs.statusDot} />
-                  <Text style={[hs.statusText, { color: moodCard.dim }]}>
-                    {leftToSpendStatus.label} ·{' '}
-                    {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
-                  </Text>
-                </View>
-                <View style={[hs.pctTrack, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                  <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: moodCard.fill }]} />
-                </View>
-                <View style={hs.pctLabelRow}>
-                  <Text style={[hs.pctLabelText, { color: moodCard.dim }]}>
-                    {formatPeso(leftToSpend.amount)} left of {formatPeso(totalBalanceToday)}
-                  </Text>
-                  <Text style={[hs.pctLabelText, { color: moodCard.dim }]}>{Math.round(pctUsed)}% used</Text>
-                </View>
-              </View>
+              <HomeHero
+                model={model!}
+                amount={leftToSpend.amount}
+                statusLabel={leftToSpendStatus.label}
+                basis={leftToSpend.basis}
+                mood={mood}
+                total={totalBalanceToday}
+                pctUsed={pctUsed}
+                isDark={isDark}
+                fullDate={fullDate}
+              />
             ) : undefined
           }
         />

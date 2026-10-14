@@ -15,6 +15,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text } from '../components/AppText';
 import HomeWallet from '../components/HomeWallet';
+import { getOverdueItems } from '../overdue';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
@@ -85,6 +86,10 @@ const DUE_ICON: Record<DueItem['type'], keyof typeof Ionicons.glyphMap> = {
   loan: 'business-outline',
 };
 
+function pctOf(spent: number, budget: number): number {
+  return budget > 0 ? Math.round((spent / budget) * 100) : 0;
+}
+
 function daysFromToday(d: Date): number {
   const today = stripTime(new Date());
   return Math.round((stripTime(d).getTime() - today.getTime()) / 86400000);
@@ -146,7 +151,17 @@ export default function DashboardScreen({
     .reduce((sum, l) => sum + loanOutstandingBalance(l), 0);
   const totalOwed = billsOwed + debtsOwed + loansOwed;
 
-  const dueSoon = getUpcomingDue(model, 14);
+  // Redesign: Due soon on Home shows overdue items first (red "Overdue" tag), then
+  // what's coming up in the next 14 days, like the mockup.
+  const overdueDue: (DueItem & { overdue?: boolean })[] = getOverdueItems(model).map((o) => ({
+    date: new Date(o.dueDate + 'T00:00:00'),
+    label: o.name,
+    amount: o.amountOwed,
+    type: o.kind,
+    id: o.id,
+    overdue: true,
+  }));
+  const dueSoon: (DueItem & { overdue?: boolean })[] = [...overdueDue, ...getUpcomingDue(model, 14)];
 
   const goals = model.savingsGoals || [];
   const totalSaved = goals.reduce((sum, g) => sum + (typeof g.currentAmount === 'number' ? g.currentAmount : 0), 0);
@@ -185,9 +200,10 @@ export default function DashboardScreen({
               <Text style={styles.emptyText}>Nothing due in the next 14 days.</Text>
             </View>
           ) : (
-            dueSoon.slice(0, 3).map((item, idx) => {
+            dueSoon.slice(0, 2).map((item, idx) => {
               const days = daysFromToday(item.date);
               const urgent = days <= 3;
+              const isOverdue = !!item.overdue;
               return (
                 <TouchableOpacity
                   key={idx}
@@ -195,7 +211,7 @@ export default function DashboardScreen({
                   activeOpacity={0.6}
                   onPress={() => openDueItem(item)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${item.label}, ${formatPeso(item.amount)}, ${relativeDue(days)}`}
+                  accessibilityLabel={`${item.label}, ${formatPeso(item.amount)}, ${item.overdue ? 'Overdue' : relativeDue(days)}`}
                 >
                   <View style={styles.tile}>
                     <Ionicons name={DUE_ICON[item.type]} size={18} color={colors.gold} />
@@ -208,12 +224,14 @@ export default function DashboardScreen({
                     <Text
                       style={[
                         styles.badge,
-                        urgent
+                        isOverdue
+                          ? { color: colors.negative, backgroundColor: colors.errorBg }
+                          : urgent
                           ? { color: colors.orange, backgroundColor: colors.warnBg }
                           : { color: colors.inkDim, backgroundColor: colors.navy1 },
                       ]}
                     >
-                      {relativeDue(days)}
+                      {isOverdue ? 'Overdue' : relativeDue(days)}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -221,96 +239,6 @@ export default function DashboardScreen({
             })
           )}
         </View>
-      </View>
-
-      {/* This month */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeadRow}>
-          <Text style={styles.sectionHead}>{monthLabel}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Transactions')} accessibilityRole="button">
-            <Text style={styles.sectionLink}>Transactions</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.group, styles.statRow]}>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>In</Text>
-            <Text style={[styles.statValue, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(monthTotals.totalIn)}</Text>
-          </View>
-          <View style={[styles.statBox, styles.statBoxDivider]}>
-            <Text style={styles.statLabel}>Out</Text>
-            <Text style={[styles.statValue, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(monthTotals.totalOut)}</Text>
-          </View>
-          <View style={[styles.statBox, styles.statBoxDivider]}>
-            <Text style={styles.statLabel}>Net</Text>
-            <Text style={[styles.statValue, { color: monthTotals.net >= 0 ? colors.positive : colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(monthTotals.net)}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Amount owed */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeadRow}>
-          <Text style={styles.sectionHead}>Amount owed</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('To-Pay')} accessibilityRole="button">
-            <Text style={styles.sectionLink}>To-Pay</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.group, { padding: 16 }]}>
-          <Text style={[styles.bigAmount, { color: colors.negative }]}>{formatPeso(totalOwed)}</Text>
-          <View style={styles.owedBreakdownRow}>
-            {([
-              ['bills', 'Bills', billsOwed],
-              ['debts', 'Debts', debtsOwed],
-              ['loans', 'Loans', loansOwed],
-            ] as [ToPayTab, string, number][]).map(([tab, label, amt]) => (
-              <TouchableOpacity key={tab} style={styles.owedPill} onPress={() => goToPay(tab)} activeOpacity={0.7} accessibilityRole="button">
-                <Text style={styles.owedPillLabel}>{label}</Text>
-                <Text style={styles.owedPillAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(amt)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* Savings goals */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeadRow}>
-          <Text style={styles.sectionHead}>Savings</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Savings')} accessibilityRole="button">
-            <Text style={styles.sectionLink}>See all</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={[styles.group, { padding: 16 }]} activeOpacity={0.7} onPress={() => navigation.navigate('Savings')}>
-          {goals.length === 0 ? (
-            <Text style={styles.emptyText}>No savings goals yet.</Text>
-          ) : (
-            <>
-              <Text style={styles.cardNote}>
-                <Text style={{ color: colors.saving, fontWeight: '700' }}>{formatPeso(totalSaved)}</Text> of {formatPeso(totalTarget)} saved
-              </Text>
-              {goals.map((g) => {
-                const target = typeof g.targetAmount === 'number' ? g.targetAmount : 0;
-                const current = typeof g.currentAmount === 'number' ? g.currentAmount : 0;
-                const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
-                return (
-                  <View key={g.id} style={styles.goalRow}>
-                    <View style={styles.goalHeaderRow}>
-                      <Text style={styles.goalName} numberOfLines={1}>
-                        {g.name || 'Untitled goal'}
-                      </Text>
-                      <Text style={styles.goalAmount}>
-                        <Text style={{ color: colors.saving, fontWeight: '600' }}>{formatPeso(current)}</Text> / {formatPeso(target)}
-                      </Text>
-                    </View>
-                    <View style={styles.progressTrack}>
-                      <View style={[styles.progressFill, { width: `${pct}%` }]} />
-                    </View>
-                  </View>
-                );
-              })}
-            </>
-          )}
-        </TouchableOpacity>
       </View>
 
       {/* Redesign: Insights (watched categories + Reports, which now lives here) */}
@@ -337,14 +265,15 @@ export default function DashboardScreen({
                 }
                 accessibilityRole="button"
               >
-                <View style={[styles.tile, { backgroundColor: colors.navy1 }]}>
-                  <Ionicons name="pricetag-outline" size={18} color={status.color} />
+                <View style={[styles.tile, { backgroundColor: pctOf(spent, budget) >= 80 ? colors.warnBg : colors.accentTint }]}>
+                  <Ionicons name={pctOf(spent, budget) >= 80 ? 'warning-outline' : 'pricetag-outline'} size={18} color={pctOf(spent, budget) >= 80 ? colors.orange : colors.gold} />
                 </View>
                 <View style={[styles.groupRowBody, idx > 0 && styles.divider]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle} numberOfLines={1}>{cb.category}</Text>
+                    <Text style={styles.rowTitle} numberOfLines={1}>{cb.category} is at {pctOf(spent, budget)}%</Text>
                     <Text style={styles.rowSub}>
-                      <Text style={{ color: status.color, fontWeight: '600' }}>{status.label}</Text> · {formatPeso(spent)} of {formatPeso(budget)}
+                      {formatPeso(spent)} of your {formatPeso(budget)} limit
+                      {status.label ? <Text style={{ color: status.color, fontWeight: '600' }}> · {status.label}</Text> : null}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
@@ -365,7 +294,7 @@ export default function DashboardScreen({
             <View style={[styles.groupRowBody, (model.categoryBudgets || []).length > 0 && styles.divider]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>Reports</Text>
-                <Text style={styles.rowSub}>Monthly close-out, trends & audits</Text>
+                <Text style={styles.rowSub}>Close-outs, trends and audits</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
             </View>
