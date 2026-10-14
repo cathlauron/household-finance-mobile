@@ -304,7 +304,8 @@ export type ManualTransaction = {
   // When this transaction was first saved (milliseconds since 1970). Lets Left to Spend
   // tell whether spending logged on the same day as a balance update came before or
   // after that update. Older transactions don't have it and are treated as "before".
-  createdAt?: number;  // Redesign ("To review"): set when the category wasn't chosen by hand — filled in by
+  createdAt?: number;
+  // Redesign ("To review"): set when the category wasn't chosen by hand — filled in by
   // a rule, or imported from a spreadsheet — so the person can check it with one tap.
   // reviewWhy says why, e.g. 'Filled in by your rule' or 'Imported from a spreadsheet'.
   needsReview?: boolean;
