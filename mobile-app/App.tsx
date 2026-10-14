@@ -282,7 +282,9 @@ function AppContent() {
 
   useEffect(() => {
     (async () => {
-      const minDelay = new Promise((resolve) => setTimeout(resolve, 1600));
+      // Redesign: long enough for the opening animation (logo draws, bar fills once
+      // and fades) to finish before moving on.
+      const minDelay = new Promise((resolve) => setTimeout(resolve, 3100));
       const [profiles, recents] = await Promise.all([loadProfilesIndex(), loadRecentAccounts(), minDelay]);
       if (!profiles.length) {
         setScreen('intro');
