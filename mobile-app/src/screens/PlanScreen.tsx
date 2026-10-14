@@ -12,10 +12,8 @@ import type { PlanningTab } from './PlanningScreen';
 // Plan mockup: money set aside (Savings, Goals) and things coming up (Groceries,
 // Travel, Events), each opening the screen that already exists for it.
 //
-// "Everything else" is TEMPORARY: Accounts, Income, Reports and Settings used to live
-// in More. They stay reachable here until their redesigned homes are built (Accounts
-// is done: Home's Wallet; Reports is done: Home's Insights. Income is done: Transactions' In link. Still to move: Settings, from
-// the profile photo on Home). Remove that group once each one has its new home.
+// The old More items now live elsewhere: Accounts in Home's Wallet, Reports in Home's
+// Insights, Income behind Transactions' "In", and Settings behind the photo on Home.
 
 type Row = {
   title: string;
@@ -43,13 +41,6 @@ const GROUPS: Group[] = [
       { title: 'Groceries', subtitle: 'Lists and what you plan to spend', icon: 'cart-outline', testID: 'more-planning-row', go: openPlanning('groceries') },
       { title: 'Travel', subtitle: 'Trips and their budgets', icon: 'airplane-outline', testID: 'plan-travel-row', go: openPlanning('travel') },
       { title: 'Events', subtitle: 'Birthdays, holidays and celebrations', icon: 'balloon-outline', testID: 'plan-events-row', go: openPlanning('events') },
-    ],
-  },
-  {
-    header: 'Everything else',
-    footer: 'These will move to their new places as the redesign continues.',
-    rows: [
-      { title: 'Settings', subtitle: 'Preferences, categories & data', icon: 'settings-outline', testID: 'more-settings-row', go: (n) => n.navigate('Settings') },
     ],
   },
 ];

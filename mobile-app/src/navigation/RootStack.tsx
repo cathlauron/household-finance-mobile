@@ -121,7 +121,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       />
       <Stack.Screen
         name="Settings"
-        options={{ title: 'Settings', headerBackTitle: 'Plan' }}
+        options={{ title: 'Settings', headerBackTitle: 'Home' }}
       >
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>

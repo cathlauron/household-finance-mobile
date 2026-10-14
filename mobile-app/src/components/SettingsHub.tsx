@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -10,15 +10,17 @@ export function SettingsGroup({ label, children }: { label: string; children: Re
   const { colors } = useTheme();
   const items = React.Children.toArray(children);
   return (
-    <View style={{ marginBottom: 18 }}>
+    <View style={{ marginBottom: 24 }}>
+      {/* Redesign: iPhone Settings-style grouped list */}
       <Text
         style={{
-          fontSize: 11,
-          letterSpacing: 0.8,
+          fontSize: 13,
+          fontWeight: '600',
+          letterSpacing: 0.3,
           textTransform: 'uppercase',
           color: colors.inkDim,
           marginBottom: 6,
-          marginLeft: 4,
+          marginLeft: 16,
         }}
       >
         {label}
@@ -27,14 +29,12 @@ export function SettingsGroup({ label, children }: { label: string; children: Re
         style={{
           backgroundColor: colors.navy3,
           borderRadius: 12,
-          borderWidth: 1,
-          borderColor: colors.navy4,
           overflow: 'hidden',
         }}
       >
         {items.map((child, i) => (
           <React.Fragment key={i}>
-            {i > 0 && <View style={{ height: 1, backgroundColor: colors.navy4, marginLeft: 62 }} />}
+            {i > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4, marginLeft: 60 }} />}
             {child}
           </React.Fragment>
         ))}
@@ -62,14 +62,16 @@ export function SettingsRow({
       testID={testID}
       activeOpacity={0.7}
       onPress={onPress}
-      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14 }}
+      style={{ flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingVertical: 10, paddingHorizontal: 16 }}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${title}, ${value}` : title}
     >
       <View
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: colors.navy2,
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: colors.okBg,
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: 12,
@@ -77,9 +79,9 @@ export function SettingsRow({
       >
         <Ionicons name={icon} size={18} color={colors.gold} />
       </View>
-      <Text numberOfLines={1} style={{ flex: 1, fontSize: 14.5, fontWeight: '600', color: colors.ink }}>{title}</Text>
-      {!!value && <Text numberOfLines={1} style={{ fontSize: 13, color: colors.inkDim, marginRight: 6, flexShrink: 1 }}>{value}</Text>}
-      <Ionicons name="chevron-forward" size={18} color={colors.decor} />
+      <Text numberOfLines={1} style={{ flex: 1, fontSize: 17, color: colors.ink }}>{title}</Text>
+      {!!value && <Text numberOfLines={1} style={{ fontSize: 17, color: colors.inkDim, marginRight: 6, flexShrink: 1 }}>{value}</Text>}
+      <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
     </TouchableOpacity>
   );
 }

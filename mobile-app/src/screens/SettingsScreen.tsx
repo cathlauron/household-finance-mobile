@@ -133,7 +133,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   useEffect(() => {
     navigation.setOptions({
       title: page ? (PAGE_TITLES[page] ?? 'Settings') : 'Settings',
-      headerBackTitle: page ? 'Settings' : 'Back',
+      headerBackTitle: page ? 'Settings' : 'Home',
     });
   }, [navigation, page]);
 
@@ -1026,13 +1026,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             <Avatar
               initials={getInitials(username || '')}
               config={model?.avatars?.[username || '']}
-              size={44}
+              size={60}
+              variant="filled"
             />
           </View>
           <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.profileUsernameText}>@{username || 'user'}</Text>
+            <Text style={styles.profileUsernameText}>{username || 'user'}</Text>
             <Text style={styles.profileVaultText}>
-              {isLinked ? 'Shared Household Vault' : 'Solo Vault (Personal)'}
+              {isLinked ? 'Shared household' : 'Just you'} · Profile, photo and sign-in
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
@@ -1074,16 +1075,16 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           activeOpacity={0.7}
           onPress={onSwitchAccount}
           style={{
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: colors.navy4,
-            paddingVertical: 13,
+            borderRadius: 12,
+            backgroundColor: colors.navy3,
+            minHeight: 52,
+            justifyContent: 'center',
             alignItems: 'center',
             marginTop: 4,
-            marginBottom: 10,
+            marginBottom: 12,
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.inkDim }}>Switch Account</Text>
+          <Text style={{ fontSize: 17, color: colors.gold }}>Switch account</Text>
         </TouchableOpacity>
         )}
         {page === null && (
@@ -1101,16 +1102,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             );
           }}
           style={{
-            borderRadius: 999,
-            borderWidth: 1.5,
-            borderColor: colors.error,
-            paddingVertical: 13,
+            borderRadius: 12,
+            backgroundColor: colors.navy3,
+            minHeight: 52,
+            justifyContent: 'center',
             alignItems: 'center',
-            marginTop: 4,
             marginBottom: 8,
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.error }}>Log out</Text>
+          <Text style={{ fontSize: 17, color: colors.negative }}>Log out</Text>
         </TouchableOpacity>
         )}
         {page === 'language' && (
@@ -2110,31 +2110,28 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       backgroundColor: colors.navy3,
       borderRadius: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 16,
-      borderWidth: 1,
-      borderColor: colors.navy4,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      marginBottom: 24,
     },
     profileUsernameText: {
-      fontSize: 15,
+      fontSize: 20,
       fontWeight: '700',
       color: colors.ink,
       marginBottom: 2,
     },
     profileVaultText: {
-      fontSize: 12,
-      color: colors.gold,
-      fontWeight: '500',
+      fontSize: 13,
+      color: colors.inkDim,
     },
     profileChevron: {
       fontSize: 22,
       color: colors.inkDim,
       fontWeight: '600',
     },
-    sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 4 },
-    sectionSub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 17 },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 4 },
+    sectionSub: { fontSize: 15, color: colors.inkDim, marginBottom: 16, lineHeight: 20 },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12 },
     modeRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
     row: {

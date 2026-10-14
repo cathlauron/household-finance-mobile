@@ -95,10 +95,11 @@ export default function HomeScreen({ username }: Props) {
     <View style={{ flex: 1, backgroundColor: 'transparent', paddingTop: insets.top }}>
       <View style={hs.headerRow}>
         <TouchableOpacity
+          testID="home-settings-button"
           style={hs.profilePill}
           activeOpacity={0.7}
-          onPress={() => navigation.navigate('Profile')}
-          accessibilityLabel={`Hi, ${username}. ${greeting}. Open profile`}
+          onPress={() => navigation.navigate('Settings')}
+          accessibilityLabel={`Hi, ${username}. ${greeting}. Open settings`}
         >
           <Avatar
             initials={getInitials(username || '')}
