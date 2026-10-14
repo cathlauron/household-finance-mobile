@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,11 +58,18 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   useEffect(() => setOrder(saved.map((c) => c.key)), [saved.map((c) => c.key).join('|')]);
   const cards = order.map((k) => saved.find((c) => c.key === k)).filter(Boolean) as WalletCard[];
 
-  // One animated "top" per card, so cards slide when the order changes.
+  // Per card: an animated "top" (slides when the order changes), a sideways offset and
+  // an opacity (for the smooth swipe), so each card can move on its own.
   const tops = useRef(new Map<string, Animated.Value>()).current;
+  const xs = useRef(new Map<string, Animated.Value>()).current;
+  const fades = useRef(new Map<string, Animated.Value>()).current;
   cards.forEach((c, i) => {
     if (!tops.has(c.key)) tops.set(c.key, new Animated.Value(i * PEEK));
+    if (!xs.has(c.key)) xs.set(c.key, new Animated.Value(0));
+    if (!fades.has(c.key)) fades.set(c.key, new Animated.Value(1));
   });
+  const { width: screenW } = useWindowDimensions();
+  const busy = useRef(false);
   const dragY = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
   const [dragging, setDragging] = useState<string | null>(null);
@@ -71,12 +78,14 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
 
   // Slides cards to their places. While dragging, `others` leaves an empty slot at
   // `gap` so you can see where the card will go.
-  function layout(keys: string[], gap = -1) {
-    keys.forEach((k, i) => {
-      const v = tops.get(k);
+  function slide(keys: string[], gap = -1, duration = 180) {
+    return keys.map((k, i) => {
       const slot = gap >= 0 && i >= gap ? i + 1 : i;
-      if (v) Animated.timing(v, { toValue: slot * PEEK, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
+      return Animated.timing(tops.get(k) as Animated.Value, { toValue: slot * PEEK, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false });
     });
+  }
+  function layout(keys: string[], gap = -1) {
+    Animated.parallel(slide(keys, gap)).start();
   }
   useEffect(() => {
     if (!dragging) layout(order);
@@ -87,18 +96,52 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
     saveModel({ ...model, walletOrder: keys }).catch(() => {});
   }
 
-  // Swipe right: the front card goes to the back, so the next one comes forward.
-  // Swipe left: the card at the back comes to the front.
-  function cycle(dir: 'left' | 'right') {
-    if (cards.length < 2) return;
+  // Swipe right: the front card glides off to the right while the cards behind move
+  // down a step; it then fades back in at the back of the stack.
+  // Swipe left: the card at the back fades away, the others move up a step, and it
+  // glides in from the left as the new front card.
+  const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
+  function cycle(dir: 'left' | 'right', fromX = 0) {
+    if (cards.length < 2 || busy.current) return;
+    busy.current = true;
     hapticSelection();
     const keys = [...order];
-    if (dir === 'right') keys.unshift(keys.pop() as string);
-    else keys.push(keys.shift() as string);
-    Animated.timing(swipeX, { toValue: dir === 'left' ? -60 : 60, duration: 120, useNativeDriver: false }).start(() => {
-      swipeX.setValue(0);
-      persist(keys);
-    });
+    if (dir === 'right') {
+      const front = keys.pop() as string;
+      const next = [front, ...keys];
+      const x = xs.get(front) as Animated.Value;
+      const f = fades.get(front) as Animated.Value;
+      x.setValue(fromX);
+      Animated.parallel([
+        Animated.timing(x, { toValue: screenW, duration: 260, easing: EASE, useNativeDriver: false }),
+        Animated.timing(f, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }),
+        ...slide(keys, 0, 280),
+      ]).start(() => {
+        (tops.get(front) as Animated.Value).setValue(0);
+        x.setValue(0);
+        persist(next);
+        Animated.timing(f, { toValue: 1, duration: 220, easing: EASE, useNativeDriver: false }).start(() => (busy.current = false));
+      });
+    } else {
+      const back = keys.shift() as string;
+      const next = [...keys, back];
+      const x = xs.get(back) as Animated.Value;
+      const f = fades.get(back) as Animated.Value;
+      const frontX = xs.get(order[order.length - 1]) as Animated.Value;
+      Animated.parallel([
+        Animated.timing(f, { toValue: 0, duration: 160, easing: EASE, useNativeDriver: false }),
+        Animated.timing(frontX, { toValue: 0, duration: 200, easing: EASE, useNativeDriver: false }),
+        ...slide(keys, -1, 260),
+      ]).start(() => {
+        (tops.get(back) as Animated.Value).setValue((next.length - 1) * PEEK);
+        x.setValue(-screenW * 0.6);
+        persist(next);
+        Animated.parallel([
+          Animated.timing(x, { toValue: 0, duration: 280, easing: EASE, useNativeDriver: false }),
+          Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }),
+        ]).start(() => (busy.current = false));
+      });
+    }
   }
 
   const total = totalLiquidBalance(model);
@@ -116,10 +159,14 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       .runOnJS(true)
       .activeOffsetX([-18, 18])
       .failOffsetY([-12, 12])
-      .onUpdate((e) => swipeX.setValue(e.translationX * 0.4))
+      // The front card follows your finger, then finishes the move smoothly.
+      .onUpdate((e) => {
+        if (!busy.current) (xs.get(order[order.length - 1]) as Animated.Value).setValue(e.translationX * 0.8);
+      })
       .onEnd((e) => {
-        if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) cycle(e.translationX < 0 ? 'left' : 'right');
-        else Animated.spring(swipeX, { toValue: 0, useNativeDriver: false }).start();
+        const frontX = xs.get(order[order.length - 1]) as Animated.Value;
+        if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) cycle(e.translationX < 0 ? 'left' : 'right', e.translationX * 0.8);
+        else Animated.spring(frontX, { toValue: 0, friction: 7, useNativeDriver: false }).start();
       });
     const drag = Gesture.Pan()
       .runOnJS(true)
@@ -190,7 +237,21 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                   backgroundColor: colors.accentTint,
                 },
               ]}
-            />
+            >
+              {/* A faint preview of the held card's bottom (its balance), since that's
+                  the part that slides into the gap first. */}
+              {(() => {
+                const held = cards.find((x) => x.key === dragging);
+                if (!held) return null;
+                const amt = typeof held.account.amount === 'number' ? held.account.amount : 0;
+                return (
+                  <View style={styles.ghost}>
+                    <Text style={styles.ghostLabel}>Balance</Text>
+                    <Text style={[styles.ghostAmount, { color: amountColor(amt) }]}>{formatPeso(amt)}</Text>
+                  </View>
+                );
+              })()}
+            </View>
           )}
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
@@ -211,10 +272,14 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       top: lifted ? Animated.add(top, dragY) : top,
                       zIndex: lifted ? 100 : i,
                       elevation: lifted ? 12 : 2 + i,
-                      opacity: lifted ? 0.92 : 1,
+                      opacity: lifted ? 0.92 : (fades.get(c.key) as Animated.Value),
                       // A faint border in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
-                      transform: [{ translateX: isFront && !dragging ? swipeX : 0 }, { scale: lifted ? 0.94 : 1 }],
+                      transform: [
+                        { translateX: xs.get(c.key) as Animated.Value },
+                        { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 400], outputRange: ['-6deg', '0deg', '6deg'] }) },
+                        { scale: lifted ? 0.94 : 1 },
+                      ],
                     },
                     lifted && styles.lifted,
                   ]}
@@ -275,7 +340,10 @@ function makeStyles(colors: ThemeColors) {
       shadowRadius: 6,
       shadowOffset: { width: 0, height: -1 },
     },
-    slot: { position: 'absolute', left: 6, right: 6, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', opacity: 0.8 },
+    slot: { position: 'absolute', left: 6, right: 6, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', opacity: 0.85, justifyContent: 'flex-end', paddingHorizontal: 14, paddingBottom: 8, overflow: 'hidden' },
+    ghost: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', opacity: 0.55 },
+    ghostLabel: { fontSize: 13, color: colors.inkDim },
+    ghostAmount: { fontSize: 20, fontWeight: '700' },
     lifted: { shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
     cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28, gap: 8 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
