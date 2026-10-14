@@ -2,7 +2,7 @@ import { hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,7 +69,7 @@ const COLOR_PALETTE = [
 const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
   { id: 'light', label: 'Light' },
   { id: 'dark', label: 'Dark' },
-  { id: 'device', label: 'Device' },
+  { id: 'device', label: 'Automatic' },
 ];
 
 function amountRangeLabel(rule: CategorizationRule): string {
@@ -81,7 +81,19 @@ function amountRangeLabel(rule: CategorizationRule): string {
   return '';
 }
 
-export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void }) {
+// Redesign: the Settings list has eight sections (as in the Finance Flow mockup); each
+// opens a page made of the existing settings blocks that belong to it.
+const SECTIONS: Record<string, { title: string; parts: string[] }> = {
+  sec: { title: 'Account & Security', parts: ['security', 'quickunlock', 'devices'] },
+  look: { title: 'Appearance', parts: ['appearance', 'listrows', 'language'] },
+  notify: { title: 'Notifications', parts: ['notifications'] },
+  budget: { title: 'Budgeting', parts: ['leftspend', 'watchlist'] },
+  cats: { title: 'Categories & Rules', parts: ['categories', 'payees', 'rules'] },
+  backup: { title: 'Backup & Data', parts: ['data'] },
+  helpabout: { title: 'About & Help', parts: ['help', 'about'] },
+};
+
+export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: { onSignOut?: () => void; onSwitchAccount?: () => void; onLock?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const fabSide = useFabSide();
   const navigation = useNavigation<any>();
@@ -101,6 +113,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   // Which page is open. null = the hub (the grouped list of rows).
   const [page, setPage] = useState<string | null>(null);
+  const inPage = (key: string) => page === key || !!(page && SECTIONS[page]?.parts.includes(key));
   const scrollRef = useRef<ScrollView>(null);
 
   // Back (header, swipe or Android) closes an open page first instead of leaving Settings.
@@ -133,7 +146,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   useEffect(() => {
     navigation.setOptions({
-      title: page ? (PAGE_TITLES[page] ?? 'Settings') : 'Settings',
+      title: page ? (SECTIONS[page]?.title ?? PAGE_TITLES[page] ?? 'Settings') : 'Settings',
       headerBackTitle: page ? 'Settings' : 'Home',
     });
   }, [navigation, page]);
@@ -1041,34 +1054,25 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
 
-        <SettingsGroup label="Membership">
-          <SettingsRow testID="settings-row-premium" icon="sparkles-outline" title="Subscription" value="Coming soon" onPress={() => navigation.navigate('Premium')} />
+        <SettingsGroup label="Household">
+          <SettingsRow testID="settings-row-household" icon="people-outline" title="Household" value={isLinked ? 'Shared' : 'Just you'} onPress={() => navigation.navigate('Profile')} />
         </SettingsGroup>
-        <SettingsGroup label="Account">
-          <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Security" onPress={() => setPage('security')} />
-          <SettingsRow testID="settings-row-quickunlock" icon="keypad-outline" title="Quick Unlock" value={pinIsSet ? 'On' : undefined} onPress={() => setPage('quickunlock')} />
-          <SettingsRow testID="settings-row-devices" icon="phone-portrait-outline" title="Devices" onPress={() => setPage('devices')} />
+        <SettingsGroup label="You">
+          <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Account & Security" value={biometricState === 'ENABLED' ? `${biometricLabel}` : pinIsSet ? 'PIN' : undefined} onPress={() => setPage('sec')} />
+          <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => setPage('look')} />
+          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" value={model.settings.pushNotificationsEnabled ? 'On' : 'Off'} onPress={() => setPage('notify')} />
         </SettingsGroup>
-        <SettingsGroup label="Preferences">
-          <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => setPage('appearance')} />
-          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" value={model.settings.pushNotificationsEnabled ? 'On' : 'Off'} onPress={() => setPage('notifications')} />
-          <SettingsRow testID="settings-row-listrows" icon="list-outline" title="List Rows" onPress={() => setPage('listrows')} />
-          <SettingsRow testID="settings-row-language" icon="language-outline" title="Language" value="English" onPress={() => setPage('language')} />
+        <SettingsGroup label="Money">
+          <SettingsRow testID="settings-row-budgeting" icon="speedometer-outline" title="Budgeting" onPress={() => setPage('budget')} />
+          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories & Rules" onPress={() => setPage('cats')} />
+          <SettingsRow testID="settings-row-data" icon="cloud-outline" title="Backup & Data" value="Synced" onPress={() => setPage('backup')} />
+          <SettingsRow testID="settings-row-help" icon="information-circle-outline" title="About & Help" onPress={() => setPage('helpabout')} />
         </SettingsGroup>
-        <SettingsGroup label="Budgeting">
-          <SettingsRow testID="settings-row-leftspend" icon="speedometer-outline" title="Left to Spend" value={`${model.settings.cautionThresholdPercent ?? 20}%`} onPress={() => setPage('leftspend')} />
-          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories" value={String(model.categories.length)} onPress={() => setPage('categories')} />
-          <SettingsRow testID="settings-row-watchlist" icon="eye-outline" title="Category Watchlist" value={String((model.categoryBudgets ?? []).length)} onPress={() => setPage('watchlist')} />
-          <SettingsRow testID="settings-row-payees" icon="storefront-outline" title="Merchants & Payees" value={String((model.payees ?? []).length)} onPress={() => setPage('payees')} />
-          <SettingsRow testID="settings-row-rules" icon="funnel-outline" title="Categorization Rules" value={String((model.categorizationRules ?? []).length)} onPress={() => setPage('rules')} />
-        </SettingsGroup>
-        <SettingsGroup label="Data">
-          <SettingsRow testID="settings-row-data" icon="download-outline" title="Backup & Data" onPress={() => setPage('data')} />
-        </SettingsGroup>
-        <SettingsGroup label="Support">
-          <SettingsRow testID="settings-row-help" icon="help-circle-outline" title="Help & Support" onPress={() => setPage('help')} />
-          <SettingsRow testID="settings-row-about" icon="information-circle-outline" title="About Us" onPress={() => setPage('about')} />
-        </SettingsGroup>
+        {!!onLock && (
+          <SettingsGroup label="This phone">
+            <SettingsRow testID="settings-row-lock" icon="lock-closed-outline" title="Lock app now" onPress={onLock} />
+          </SettingsGroup>
+        )}
         </>
         )}
         {page === null && (
@@ -1132,7 +1136,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <Text style={{ fontSize: 17, color: colors.negative }}>Log out</Text>
         </TouchableOpacity>
         )}
-        {page === 'language' && (
+        {inPage('language') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Language</Text>
         <Text style={styles.sectionSub}>More languages are coming later.</Text>
@@ -1144,14 +1148,19 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         </>
         )}
 
-        {page === 'help' && (
+        {page === 'helpabout' && (
+          <SettingsGroup label="Membership">
+            <SettingsRow testID="settings-row-premium" icon="sparkles-outline" title="Subscription" value="Coming soon" onPress={() => navigation.navigate('Premium')} />
+          </SettingsGroup>
+        )}
+        {inPage('help') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Help & support</Text>
         <Text style={styles.sectionSub}>Guides and a way to reach us are coming soon.</Text>
         </>
         )}
 
-        {page === 'about' && (
+        {inPage('about') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>About us</Text>
         <Text style={styles.sectionSub}>Finance Flow · Version 1.0.0</Text>
@@ -1159,7 +1168,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         </>
         )}
 
-        {page === 'appearance' && (
+        {inPage('appearance') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
 <Text style={styles.sectionSub}>
@@ -1186,9 +1195,38 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <Pill testID="settings-fab-right" label="Right" fill active={fabSide === 'right'} onPress={() => setFabSide('right')} />
         </View>
 
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Feel</Text>
+        <View style={styles.feelGroup}>
+          <GradientFill match={styles.feelGroup} />
+          <View style={styles.feelRow}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.feelTitle}>Mood colours</Text>
+              <Text style={styles.sectionSub}>Card, buttons and leaves follow Left to Spend</Text>
+            </View>
+            <Switch
+              testID="settings-mood-colors"
+              value={model.settings.moodColorsEnabled !== false}
+              onValueChange={(on) => saveModel({ ...model, settings: { ...model.settings, moodColorsEnabled: on } })}
+              trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
+            />
+          </View>
+          <View style={[styles.feelRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.feelTitle}>Falling leaves</Text>
+              <Text style={styles.sectionSub}>A few leaves drift down as you move between tabs</Text>
+            </View>
+            <Switch
+              testID="settings-falling-leaves"
+              value={model.settings.fallingLeavesEnabled !== false}
+              onValueChange={(on) => saveModel({ ...model, settings: { ...model.settings, fallingLeavesEnabled: on } })}
+              trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
+            />
+          </View>
+        </View>
+
         </>
         )}
-        {page === 'listrows' && (
+        {inPage('listrows') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>List Rows</Text>
 <Text style={styles.sectionSub}>
@@ -1212,7 +1250,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'notifications' && (
+        {inPage('notifications') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
 <View style={styles.row}>
@@ -1231,7 +1269,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'leftspend' && (
+        {inPage('leftspend') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Left to Spend</Text>
 <Text style={styles.sectionSub}>
@@ -1253,7 +1291,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'notifications' && (
+        {inPage('notifications') && (
         <>
         <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={togglePushNotifications}>
           <GradientFill match={styles.row} />
@@ -1332,7 +1370,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'categories' && (
+        {inPage('categories') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
 <Text style={styles.sectionSub}>
@@ -1364,7 +1402,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'watchlist' && (
+        {inPage('watchlist') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
 <Text style={styles.sectionSub}>
@@ -1409,7 +1447,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'payees' && (
+        {inPage('payees') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>
 <Text style={styles.sectionSub}>
@@ -1445,7 +1483,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'rules' && (
+        {inPage('rules') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categorization Rules</Text>
 <Text style={styles.sectionSub}>
@@ -1503,7 +1541,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'security' && (
+        {inPage('security') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Security</Text>
 <Text style={styles.sectionSub}>
@@ -1589,7 +1627,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {/* Quick Unlock & Biometrics */}
         </>
         )}
-        {page === 'quickunlock' && (
+        {inPage('quickunlock') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Quick Unlock</Text>
 <Text style={styles.sectionSub}>
@@ -1718,7 +1756,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'devices' && (
+        {inPage('devices') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Active Devices</Text>
 <Text style={styles.sectionSub}>
@@ -1794,7 +1832,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
         </>
         )}
-        {page === 'data' && (
+        {inPage('data') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
 <Text style={styles.sectionSub}>
@@ -2165,6 +2203,9 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    feelGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginTop: 8 },
+    feelRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, minHeight: 56 },
+    feelTitle: { fontSize: 17, color: colors.ink },
     container: {
       flex: 1,
       backgroundColor: 'transparent',

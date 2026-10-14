@@ -150,7 +150,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Settings"
         options={{ title: 'Settings', headerBackTitle: 'Home' }}
       >
-        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
+        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false, presentation: 'modal' }} />
