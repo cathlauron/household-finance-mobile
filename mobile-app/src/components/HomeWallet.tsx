@@ -134,7 +134,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         // Tuck it in behind the stack while it's invisible, then let the re-ordered
         // stack draw (so it's already behind the others) before it fades back in —
         // that way only its top strip ever shows, sliding down into place.
-        (tops.get(front) as Animated.Value).setValue(-PEEK * 0.6);
+        (tops.get(front) as Animated.Value).setValue(-12);
         x.setValue(0);
         persist(next);
         setTimeout(() => {
