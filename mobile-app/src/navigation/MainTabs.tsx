@@ -1,5 +1,6 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
@@ -23,19 +24,11 @@ function TabIcon({
   on: React.ComponentProps<typeof Ionicons>['name'];
   off: React.ComponentProps<typeof Ionicons>['name'];
 }) {
-  const { colors } = useTheme();
+  // Redesign: the old small underline under the active tab is gone. The floating bar
+  // shows the active tab with a filled icon and the accent colour instead.
   return (
     <View style={{ alignItems: 'center' }}>
-      <Ionicons name={focused ? on : off} size={size} color={color} />
-      <View
-        style={{
-          width: 14,
-          height: 2,
-          borderRadius: 1,
-          marginTop: 3,
-          backgroundColor: focused ? colors.gold : 'transparent',
-        }}
-      />
+      <Ionicons name={focused ? on : off} size={size + 2} color={color} />
     </View>
   );
 }
@@ -46,7 +39,8 @@ type MainTabsProps = {
   initialOpenBillId?: string;
 };
 export default function MainTabs({ username, onSignOut, initialOpenBillId }: MainTabsProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       id={undefined}
@@ -60,7 +54,26 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       screenOptions={{
         sceneStyle: { backgroundColor: 'transparent' },
         ...getSharedHeaderOptions(colors),
-        tabBarStyle: { backgroundColor: colors.navy3, borderTopColor: colors.navy4 },
+        // Redesign: a rounded bar that floats a little above the bottom edge, like the
+        // Finance Flow mockups. It stays part of the layout (not drawn over the screen),
+        // so no screen's content ends up hidden behind it.
+        tabBarStyle: {
+          backgroundColor: colors.navy3,
+          borderTopWidth: isDark ? 1 : 0,
+          marginHorizontal: 10,
+          marginBottom: Math.max(insets.bottom, 12),
+          height: 68,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderRadius: 34,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: colors.navy4,
+          ...Platform.select({
+            ios: { shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } },
+            default: { elevation: 8 },
+          }),
+        },
+        tabBarItemStyle: { borderRadius: 26 },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.inkDim,

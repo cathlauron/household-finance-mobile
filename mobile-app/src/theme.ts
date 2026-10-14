@@ -1,4 +1,6 @@
-// Color palette ported from the web app's "Ink & Emerald" (Classic) theme.
+// Color palette. Originally ported from the web app's "Ink & Emerald" (Classic) theme;
+// retuned in the 2026 redesign to match the Finance Flow design system (iPhone-style
+// greys, forest green accent). Key names are unchanged so every screen picks this up.
 // See household-finance-app-spec-and-scale.md section 4 for the full theming system this is based on.
 
 export type ThemeColors = {
@@ -31,68 +33,88 @@ export type ThemeColors = {
   pageGradEnd: string;
   peachCard: string;
   peachBubble: string;
+  // Redesign: money colours. positive = money in, negative = money out,
+  // saving = money set aside, planned = amounts not spent yet (Plan tab).
+  positive: string;
+  negative: string;
+  saving: string;
+  planned: string;
+  // Text or icon colour that sits on top of a filled accent (green) button.
+  onAccent: string;
 };
 
 export const lightTheme: ThemeColors = {
-  ink: '#22281F',
-  inkDim: '#586152',
-  inkFaint: '#5F6657',
-  decor: '#A0A597',
-  navy1: '#DDEDE3',
-  navy2: '#EAF5EE',
+  ink: '#111111',
+  inkDim: '#636366',
+  inkFaint: '#6C6C70',
+  decor: '#C7C7CC',
+  navy1: '#E5E5EA',
+  navy2: '#F2F2F7',
   navy3: '#FFFFFF',
-  navy4: '#DCE8E0',
-  gold: '#2E5D3A',
-  goldDim: '#234A2E',
-  accent: '#3F7A50',
-  error: '#C81E43',
+  navy4: '#D1D1D6',
+  gold: '#2E6B47',
+  goldDim: '#1B3F30',
+  accent: '#2E6B47',
+  error: '#D70015',
   errorBg: '#FFF1F2',
-  ok: '#0B7A4B',
-  okBg: '#ECFDF5',
-  orange: '#C2410C',
+  ok: '#1E7B3E',
+  okBg: '#E6F0EA',
+  orange: '#B83200',
   warnBg: '#FFF7ED',
   premium: '#E08A2C',
   indigo: '#4F46E5',
   indigoBg: '#EEF2FF',
-  cardTealStart: '#2E5D3A',
-  cardTealEnd: '#173D2B',
+  cardTealStart: '#24563D',
+  cardTealEnd: '#1B3F30',
   cardTealText: '#FFFFFF',
-  cardTealTextDim: '#A7F3D0',
+  cardTealTextDim: '#BFD3C8',
   mintAccent: '#34D399',
-  pageGradStart: '#EAF5EE',
-  pageGradEnd: '#FFFFFF',
+  pageGradStart: '#F2F2F7',
+  pageGradEnd: '#F2F2F7',
   peachCard: '#FFF6ED',
   peachBubble: '#FFEDD5',
+  // Redesign (Finance Flow design system): money colours.
+  positive: '#1E7B3E',
+  negative: '#D70015',
+  saving: '#C2510A',
+  planned: '#1D63B8',
+  onAccent: '#FFFFFF',
 };
 
 export const darkTheme: ThemeColors = {
-  ink: '#F1F0EF',
-  inkDim: '#C7C2BE',
-  inkFaint: '#9E9892',
-  decor: '#8C857F',
-  navy1: '#161412',
-  navy2: '#1C1917',
-  navy3: '#242020',
-  navy4: '#3A3532',
-  gold: '#10B981',
-  goldDim: '#059669',
-  accent: '#34D399',
-  error: '#FB7185',
+  ink: '#FFFFFF',
+  inkDim: '#AEAEB2',
+  inkFaint: '#98989D',
+  decor: '#636366',
+  navy1: '#2C2C2E',
+  navy2: '#000000',
+  navy3: '#1C1C1E',
+  navy4: '#38383A',
+  gold: '#5FC48A',
+  goldDim: '#4CAF78',
+  accent: '#5FC48A',
+  error: '#FF6961',
   errorBg: '#3F1725',
-  ok: '#34D399',
-  okBg: '#0F2A20',
-  orange: '#FB923C',
+  ok: '#4CD07D',
+  okBg: '#15291D',
+  orange: '#FFB340',
   warnBg: '#3A2412',
   premium: '#E08A2C',
   indigo: '#818CF8',
   indigoBg: '#1E1B4B',
-  cardTealStart: '#1A3B2B',
-  cardTealEnd: '#0F261B',
+  cardTealStart: '#24553F',
+  cardTealEnd: '#1E4A37',
   cardTealText: '#F1F0EF',
-  cardTealTextDim: '#A7F3D0',
+  cardTealTextDim: '#BFD3C8',
   mintAccent: '#34D399',
-  pageGradStart: '#0E1B15',
-  pageGradEnd: '#161412',
+  pageGradStart: '#000000',
+  pageGradEnd: '#000000',
   peachCard: '#281D17',
   peachBubble: '#3E271B',
+  // Redesign (Finance Flow design system): money colours.
+  positive: '#4CD07D',
+  negative: '#FF6961',
+  saving: '#FFB27A',
+  planned: '#6FA8FF',
+  onAccent: '#0B1F14',
 };
