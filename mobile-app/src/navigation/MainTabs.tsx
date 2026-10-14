@@ -49,6 +49,8 @@ function AddFab({ bottom, activeTab }: { bottom: number; activeTab: string }) {
   const toPaySub = useToPaySub();
   const navigation = useNavigation<any>();
   const onToPay = activeTab === 'To-Pay';
+  // Plan has its own + on each page, so the floating + isn't shown there.
+  if (activeTab === 'Plan') return null;
   return (
     <Pressable
       testID="add-transaction-fab"
