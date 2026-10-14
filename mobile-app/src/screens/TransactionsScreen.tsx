@@ -34,6 +34,7 @@ import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import { reviewCount } from './ReviewScreen';
 import SegmentedControl from '../components/SegmentedControl';
 
 function personName(people: Person[], id: string): string {
@@ -446,6 +447,9 @@ export default function TransactionsScreen() {
             tags: parsedTags.length > 0 ? parsedTags : undefined,
             paymentMethod: paymentMethodInput,
           };
+        // Saving an edit counts as checking it.
+        delete next.needsReview;
+        delete next.reviewWhy;
         if (receiptPhoto) {
           next.receiptPhoto = receiptPhoto;
         } else {
@@ -474,6 +478,7 @@ export default function TransactionsScreen() {
           paymentMethod: paymentMethodInput,
           ...(receiptPhoto ? { receiptPhoto } : {}),
           ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
+          ...(ruleFilled && categoryInput.trim() ? { needsReview: true, reviewWhy: 'Filled in by your rule' } : {}),
         };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
     }
@@ -645,6 +650,27 @@ export default function TransactionsScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Redesign: "To review" card (spending whose category wasn't picked by hand). */}
+        {reviewCount(model) > 0 && (
+          <TouchableOpacity
+            testID="transactions-review"
+            style={[styles.group, styles.reviewCard]}
+            onPress={() => (navigation as any).navigate('Review')}
+            accessibilityRole="button"
+          >
+            <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+              <Ionicons name="checkmark-done-outline" size={17} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.txnLabel}>To review</Text>
+              <Text style={styles.txnSub}>
+                {reviewCount(model)} {reviewCount(model) === 1 ? 'needs' : 'need'} a quick look
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+          </TouchableOpacity>
+        )}
 
         {/* Redesign: In / Out summary. "In" opens Income (its new home). */}
         <View style={[styles.group, styles.summary]}>
@@ -1052,6 +1078,7 @@ function makeStyles(colors: any) {
     detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
     txnMain: { flex: 1, marginRight: 10 },
+    reviewCard: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 12 },
     // Quick-add sheet
     sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
     sheetBarBtn: { fontSize: 17, color: colors.gold },

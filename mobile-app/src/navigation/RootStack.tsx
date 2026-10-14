@@ -13,6 +13,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
+import ReviewScreen from '../screens/ReviewScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import type { PlanningTab } from '../screens/PlanningScreen';
@@ -30,6 +31,7 @@ export type RootStackParamList = {
   Premium: undefined;
   TransactionDetail: { id: string };
   Search: undefined;
+  Review: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -129,6 +131,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       >
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>
+      <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false, animation: 'fade' }} />
       <Stack.Screen
         name="TransactionDetail"

@@ -177,6 +177,8 @@ export default function CsvImportModal({ visible, onClose }: Props) {
         direction: r.direction,
         owner: 'shared',
         category: 'Imported',
+        needsReview: true,
+        reviewWhy: 'Imported from a spreadsheet',
       }));
       const updated: HouseholdModel = {
         ...model,
