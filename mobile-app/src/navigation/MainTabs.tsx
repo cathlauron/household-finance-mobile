@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Platform, Pressable, StyleSheet, Easing } from 'react-native';
+import { View, Platform, Pressable, StyleSheet, Easing, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
 import { useToPaySub, requestToPayAdd } from '../fabActions';
@@ -7,26 +7,30 @@ import { hapticLight } from '../haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 
-// Redesign (Finance Flow "Motion"): switching tabs, the old tab fades out and the new
-// one fades in while lifting a few pixels, quickly (170ms) so taps feel instant, so the falling leaves
-// behind feel like a layer further back. Screens are see-through over the leaves, so
-// the old tab is gone before the new one appears (no double image).
-const tabSceneFadeLift: BottomTabNavigationOptions['sceneStyleInterpolator'] = ({ current }) => ({
-  sceneStyle: {
-    opacity: current.progress.interpolate({
-      inputRange: [-1, -0.6, 0, 0.6, 1],
-      outputRange: [0, 0, 1, 0, 0],
-    }),
-    transform: [
-      {
-        translateY: current.progress.interpolate({
-          inputRange: [-1, 0, 1],
-          outputRange: [10, 0, 10],
-        }),
-      },
-    ],
-  },
-});
+// Switching tabs slides like moving between pages laid out left to right: going to a
+// tab on the right, the new screen slides in from the right and the old one leaves to
+// the left; going to a tab on the left, the other way round. Tabs you skip over don't
+// move. Both screens slide together, so nothing overlaps.
+function makeTabSlide(width: number): BottomTabNavigationOptions['sceneStyleInterpolator'] {
+  return ({ current }) => ({
+    sceneStyle: {
+      transform: [
+        {
+          translateX: current.progress.interpolate({
+            inputRange: [-1, 0, 1],
+            outputRange: [-width, 0, width],
+          }),
+        },
+      ],
+    },
+  });
+}
+
+// A quick start and a long, gentle settle, so the slide feels smooth rather than linear.
+const TAB_SLIDE_SPEC: BottomTabNavigationOptions['transitionSpec'] = {
+  animation: 'timing',
+  config: { duration: 320, easing: Easing.bezier(0.22, 1, 0.36, 1) },
+};
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
@@ -123,6 +127,8 @@ type MainTabsProps = {
 };
 export default function MainTabs({ username, onSignOut, initialOpenBillId }: MainTabsProps) {
   const { colors, isDark } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const tabSlide = React.useMemo(() => makeTabSlide(screenWidth), [screenWidth]);
   const insets = useSafeAreaInsets();
   const tabBarBottom = Math.max(insets.bottom, 12);
   const [activeTab, setActiveTab] = React.useState<string>(initialOpenBillId ? 'To-Pay' : 'Home');
@@ -142,9 +148,9 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       })}
       screenOptions={{
         sceneStyle: { backgroundColor: 'transparent' },
-        animation: 'fade',
-        sceneStyleInterpolator: tabSceneFadeLift,
-        transitionSpec: { animation: 'timing', config: { duration: 170, easing: Easing.out(Easing.cubic) } },
+        animation: 'shift',
+        sceneStyleInterpolator: tabSlide,
+        transitionSpec: TAB_SLIDE_SPEC,
         ...getSharedHeaderOptions(colors),
         // Redesign: a rounded bar that floats a little above the bottom edge, like the
         // Finance Flow mockups. It stays part of the layout (not drawn over the screen),

@@ -72,6 +72,9 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       id={undefined}
       screenOptions={{
         contentStyle: { backgroundColor: 'transparent' },
+        // Every page slides in from the right, and slides back out to the right when you
+        // go back (the iPhone-style push, on Android too).
+        animation: Platform.OS === 'android' ? 'ios_from_right' : 'default',
         ...getSharedHeaderOptions(colors),
       }}
     >
@@ -165,7 +168,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
-      <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false, animation: 'fade' }} />
+      <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="TransactionDetail"
         component={TransactionDetailScreen}
