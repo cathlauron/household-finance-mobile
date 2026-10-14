@@ -13,6 +13,7 @@ import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import { useFabSide, setFabSide } from '../fabSide';
 import type { BalanceAccountEntry } from '../types';
+import { useLeafGustOnStep } from '../leafTransition';
 
 // Redesign: the 3 onboarding steps from the Finance Flow mockups, shown after a new
 // profile is created (and after the Quick Unlock step):
@@ -35,6 +36,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
   const side = useFabSide();
   const styles = makeStyles(colors);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  useLeafGustOnStep(step);
   const [sheet, setSheet] = useState<null | { name: string; group: Group }>(null);
   const [acctAmount, setAcctAmount] = useState<number | ''>('');
   const [budget, setBudget] = useState<number | ''>(model?.settings.monthlySpendingBudget ?? '');

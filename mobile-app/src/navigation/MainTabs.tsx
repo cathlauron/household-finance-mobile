@@ -1,11 +1,32 @@
 import React from 'react';
-import { View, Platform, Pressable, StyleSheet } from 'react-native';
+import { View, Platform, Pressable, StyleSheet, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
 import { useToPaySub, requestToPayAdd } from '../fabActions';
 import { hapticLight } from '../haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+
+// Redesign (Finance Flow "Motion"): switching tabs, the old tab fades out and the new
+// one fades in while lifting a few pixels, over about 260ms, so the falling leaves
+// behind feel like a layer further back. Screens are see-through over the leaves, so
+// the old tab is gone before the new one appears (no double image).
+const tabSceneFadeLift: BottomTabNavigationOptions['sceneStyleInterpolator'] = ({ current }) => ({
+  sceneStyle: {
+    opacity: current.progress.interpolate({
+      inputRange: [-1, -0.5, 0, 0.5, 1],
+      outputRange: [0, 0, 1, 0, 0],
+    }),
+    transform: [
+      {
+        translateY: current.progress.interpolate({
+          inputRange: [-1, 0, 1],
+          outputRange: [10, 0, 10],
+        }),
+      },
+    ],
+  },
+});
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
@@ -121,6 +142,9 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       })}
       screenOptions={{
         sceneStyle: { backgroundColor: 'transparent' },
+        animation: 'fade',
+        sceneStyleInterpolator: tabSceneFadeLift,
+        transitionSpec: { animation: 'timing', config: { duration: 260, easing: Easing.out(Easing.cubic) } },
         ...getSharedHeaderOptions(colors),
         // Redesign: a rounded bar that floats a little above the bottom edge, like the
         // Finance Flow mockups. It stays part of the layout (not drawn over the screen),

@@ -12,6 +12,7 @@ import { markOnboardingCompleted } from '../onboarding';
 import PinField from '../components/PinField';
 import GradientFill from '../components/GradientFill';
 import OnboardSetup from '../components/OnboardSetup';
+import { useLeafGustOnStep } from '../leafTransition';
 
 type Props = {
   username: string;
@@ -27,6 +28,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<2 | 3>(2);
+  useLeafGustOnStep(step);
 
   // Step 2 PIN state
   const [pin1, setPin1] = useState('');

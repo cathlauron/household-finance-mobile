@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Defs, Filter, FeGaussianBlur, G, Path } from 'react-native-svg';
 import { subscribeToLeafTransition } from '../leafTransition';
 import { LEAF_OUTLINE, LEAF_STEM, LEAF_VEINS } from './leafShape';
 
@@ -20,17 +20,23 @@ type Depth = {
   swayPeriod: [number, number]; // seconds per full sway
   strength: [number, number]; // share of the leaf colour's opacity
   wind: [number, number]; // how far a gust pushes it, times the base push
+  blur: number; // soft focus in px (near leaves only)
 };
 
 const DEPTHS: Depth[] = [
-  { count: 12, size: [16, 30], fall: [40, 56], sway: [5, 10], swayPeriod: [6, 9], strength: [0.5, 0.65], wind: [0.4, 0.6] },
-  { count: 11, size: [38, 74], fall: [22, 32], sway: [12, 24], swayPeriod: [4, 7], strength: [0.8, 1], wind: [0.85, 1.15] },
-  { count: 4, size: [110, 170], fall: [12, 17], sway: [26, 42], swayPeriod: [3, 5], strength: [0.9, 1], wind: [1.45, 1.75] },
+  { count: 12, size: [16, 30], fall: [40, 56], sway: [5, 10], swayPeriod: [6, 9], strength: [0.5, 0.65], wind: [0.4, 0.6], blur: 0 },
+  { count: 11, size: [38, 74], fall: [22, 32], sway: [12, 24], swayPeriod: [4, 7], strength: [0.8, 1], wind: [0.85, 1.15], blur: 0 },
+  { count: 4, size: [110, 170], fall: [12, 17], sway: [26, 42], swayPeriod: [3, 5], strength: [0.9, 1], wind: [1.45, 1.75], blur: 1.4 },
 ];
 
 // Leaves can drift this far past either side before wrapping round to the other side,
 // so the wrap always happens off screen.
 const SIDE_MARGIN = 200;
+// The leaf is drawn in a 100 x 205 box; a little room is added round it so a blurred
+// edge is not cut off.
+const PAD = 8;
+const BOX_W = 100 + PAD * 2;
+const BOX_H = 205 + PAD * 2;
 const TILT_DEG = 22;
 
 type LeafSpec = {
@@ -45,6 +51,8 @@ type LeafSpec = {
   wind: number;
   angle: number; // resting angle in degrees
   gustDelay: number; // ms, 0..260
+  blur: number;
+  blurId: number;
 };
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
@@ -65,6 +73,8 @@ function makeLeaves(): LeafSpec[] {
         wind: rand(d.wind[0], d.wind[1]),
         angle: rand(-60, 60),
         gustDelay: rand(0, 260),
+        blur: d.blur,
+        blurId: out.length,
       });
     }
   });
@@ -178,7 +188,11 @@ function FallingLeaf({
     });
   }, [wind, tilt, leaf]);
 
-  const w = leaf.size * (100 / 205);
+  // Drawn size including the padding, so the leaf itself is leaf.size tall.
+  const unit = leaf.size / 205;
+  const w = BOX_W * unit;
+  const h = BOX_H * unit;
+  const filterId = `leafBlur${leaf.blurId}`;
   const span = screenW + SIDE_MARGIN * 2;
   // Horizontal spot: starting x + wind + sway, wrapped round so blown leaves come back
   // in from the other side.
@@ -191,7 +205,7 @@ function FallingLeaf({
   );
   const translateY = fall.interpolate({
     inputRange: [0, 1],
-    outputRange: [-leaf.size - 40, screenH + 40],
+    outputRange: [-h - 40, screenH + 40],
   });
   const rotate = Animated.add(Animated.add(Animated.multiply(sway, TILT_DEG), tilt), leaf.angle).interpolate({
     inputRange: [-720, 720],
@@ -200,9 +214,18 @@ function FallingLeaf({
 
   return (
     <Animated.View
-      style={[styles.leaf, { width: w, height: leaf.size, transform: [{ translateX }, { translateY }, { rotate }] }]}
+      style={[styles.leaf, { width: w, height: h, transform: [{ translateX }, { translateY }, { rotate }] }]}
     >
-      <Svg width={w} height={leaf.size} viewBox="0 0 100 205">
+      <Svg width={w} height={h} viewBox={`${-PAD} ${-PAD} ${BOX_W} ${BOX_H}`}>
+        {leaf.blur > 0 && (
+          <Defs>
+            <Filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
+              {/* blur is in screen px; the drawing is scaled by `unit`, so divide. */}
+              <FeGaussianBlur stdDeviation={leaf.blur / unit} />
+            </Filter>
+          </Defs>
+        )}
+        <G filter={leaf.blur > 0 ? `url(#${filterId})` : undefined}>
         <Path
           d={LEAF_STEM}
           fill="none"
@@ -213,6 +236,7 @@ function FallingLeaf({
         />
         <Path d={LEAF_OUTLINE} fill={color} fillOpacity={opacity * leaf.strength} />
         <Path d={LEAF_VEINS} fill="none" stroke={veinColor} strokeWidth={2.3} strokeLinecap="round" />
+        </G>
       </Svg>
     </Animated.View>
   );
