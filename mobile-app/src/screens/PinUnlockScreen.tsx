@@ -40,6 +40,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
   const inFlightRef = useRef(false);
 
+  const [unlockedTick, setUnlockedTick] = useState(false);
+
   async function runBiometricAuth(isManual = false) {
     if (inFlightRef.current) return;
     if (isLockedOut) return;
@@ -51,7 +53,9 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
       const result = await attemptBiometricAuth('Unlock Finance Flow');
       if (result.success) {
         await resetPinFailures(username);
-        onUnlocked();
+        // Redesign: a quick tick to show it worked, then straight into the app.
+        setUnlockedTick(true);
+        setTimeout(onUnlocked, 450);
       } else {
         const msg = biometricErrorMessage(result.error, biometricLabel);
         if (msg) setError(msg);
@@ -138,6 +142,14 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
         <LogoMark width={72} />
       </View>
       <Text style={styles.title}>Welcome back, {selectedUsername}</Text>
+      {unlockedTick && (
+        <View style={{ alignItems: 'center', marginVertical: 24 }} accessibilityLiveRegion="polite" accessibilityLabel="Unlocked">
+          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="checkmark" size={48} color={colors.gold} />
+          </View>
+          <Text style={[styles.sub, { marginTop: 12 }]}>Unlocked</Text>
+        </View>
+      )}
 
       {usePasswordMode && (
         <>
