@@ -142,7 +142,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   useEffect(() => {
     navigation.setOptions({
       title: page ? (PAGE_TITLES[page] ?? 'Settings') : 'Settings',
-      headerBackTitle: page ? 'Settings' : 'More',
+      headerBackTitle: page ? 'Settings' : 'Back',
     });
   }, [navigation, page]);
 

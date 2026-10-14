@@ -13,6 +13,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
+import type { PlanningTab } from '../screens/PlanningScreen';
 
 export type RootStackParamList = {
   Main: { openBillId?: string } | undefined;
@@ -21,7 +22,7 @@ export type RootStackParamList = {
   Accounts: undefined;
   Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
-  Planning: undefined;
+  Planning: { tab?: PlanningTab } | undefined;
   Reports: undefined;
   Settings: undefined;
   Premium: undefined;
@@ -84,11 +85,11 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen
         name="Accounts"
         component={AccountsScreen}
-        options={{ title: 'Accounts', headerBackTitle: 'More' }}
+        options={{ title: 'Accounts', headerBackTitle: 'Plan' }}
       />
       <Stack.Screen
         name="Income"
-        options={{ title: 'Income', headerBackTitle: 'More' }}
+        options={{ title: 'Income', headerBackTitle: 'Plan' }}
       >
         {({ route }) => (
           <IncomeScreen
@@ -99,7 +100,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       </Stack.Screen>
       <Stack.Screen
         name="Savings"
-        options={{ title: 'Savings', headerBackTitle: 'More' }}
+        options={{ title: 'Savings', headerBackTitle: 'Plan' }}
       >
         {({ route }) => (
           <SavingsScreen
@@ -111,16 +112,16 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen
         name="Planning"
         component={PlanningScreen}
-        options={{ title: 'Planning', headerBackTitle: 'More' }}
+        options={{ title: 'Planning', headerBackTitle: 'Plan' }}
       />
       <Stack.Screen
         name="Reports"
         component={ReportsScreen}
-        options={{ title: 'Reports', headerBackTitle: 'More' }}
+        options={{ title: 'Reports', headerBackTitle: 'Plan' }}
       />
       <Stack.Screen
         name="Settings"
-        options={{ title: 'Settings', headerBackTitle: 'More' }}
+        options={{ title: 'Settings', headerBackTitle: 'Plan' }}
       >
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>

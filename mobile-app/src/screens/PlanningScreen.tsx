@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { View, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import Pill from '../components/Pill';
@@ -13,11 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 // pattern as Savings and To-Pay. Pills are wrapped in a horizontal ScrollView since
 // four labels ("Groceries"/"Travel"/"Events"/"Goals") are snugger than the two-pill
 // row this started as.
-type PlanningTab = 'groceries' | 'travel' | 'events' | 'goals';
+export type PlanningTab = 'groceries' | 'travel' | 'events' | 'goals';
 
 export default function PlanningScreen() {
   const { colors } = useTheme();
-  const [activeTab, setActiveTab] = useState<PlanningTab>('groceries');
+  // Redesign: the Plan tab opens this screen on a chosen section (route param `tab`).
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
+  const [activeTab, setActiveTab] = useState<PlanningTab>(route.params?.tab ?? 'groceries');
   const styles = makeStyles(colors);
 
   const tabs: { id: PlanningTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -26,6 +30,12 @@ export default function PlanningScreen() {
     { id: 'events', label: 'Events', icon: 'balloon-outline' },
     { id: 'goals', label: 'Goals', icon: 'flag-outline' },
   ];
+
+  // Keep the header title in step with the section showing (Groceries, Travel, ...).
+  useEffect(() => {
+    const label = tabs.find((t) => t.id === activeTab)?.label ?? 'Planning';
+    navigation.setOptions({ title: label });
+  }, [activeTab, navigation]);
 
   return (
     <SafeAreaView style={styles.container}>

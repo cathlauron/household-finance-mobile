@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import ToPayScreen from '../screens/ToPayScreen';
-import MoreScreen from '../screens/MoreScreen';
+import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 
@@ -90,6 +90,13 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         {() => <HomeScreen username={username} />}
       </Tab.Screen>
       <Tab.Screen
+        name="Transactions"
+        component={TransactionsScreen}
+        options={{
+          tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="list" off="list-outline" />,
+        }}
+      />
+      <Tab.Screen
         name="To-Pay"
         options={{
           tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="receipt" off="receipt-outline" />,
@@ -97,19 +104,13 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       >
         {() => <ToPayScreen initialOpenBillId={initialOpenBillId} />}
       </Tab.Screen>
+      {/* Redesign: Plan replaces the old More tab (see PlanScreen.tsx). */}
       <Tab.Screen
-        name="Transactions"
-        component={TransactionsScreen}
+        name="Plan"
+        component={PlanScreen}
         options={{
-          tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="swap-horizontal" off="swap-horizontal-outline" />,
-        }}
-      />
-      <Tab.Screen
-        name="More"
-        component={MoreScreen}
-        options={{
-          tabBarButtonTestID: 'more-tab',
-          tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="ellipsis-horizontal" off="ellipsis-horizontal-outline" />,
+          tabBarButtonTestID: 'plan-tab',
+          tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="clipboard" off="clipboard-outline" />,
         }}
       />
     </Tab.Navigator>
