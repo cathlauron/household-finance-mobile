@@ -24,6 +24,7 @@
 // ============================================================
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
+import { lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
 
@@ -291,14 +292,20 @@ export function computeMonthEvents(
 
   model.bills.forEach((bill) => {
     const amount = Math.max(0, outstandingBalance(bill));
+    // Redesign: once a bill is marked paid, its occurrences up to that paid due date
+    // are done — don't count them again (the payment itself shows as a transaction).
+    const paidUpTo = lastPaidDueDate(bill);
     nextOccurrenceInMonth(bill, year, monthIndex).forEach((day) => {
+      if (paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo) return;
       push(day, { type: 'bill', label: bill.name || 'Bill', amount, id: bill.id });
     });
   });
 
   model.debts.forEach((debt) => {
     const amount = Math.max(0, outstandingBalance(debt));
+    const paidUpTo = lastPaidDueDate(debt);
     nextOccurrenceInMonth(debt, year, monthIndex).forEach((day) => {
+      if (paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo) return;
       push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount, id: debt.id });
     });
   });
@@ -316,6 +323,18 @@ export function computeMonthEvents(
     const amount = toNumber(source.expectedAmount);
     incomeOccurrencesInMonth(source, year, monthIndex).forEach((day) => {
       push(day, { type: 'income', label: source.sourceName || source.category || 'Income', amount });
+    });
+  });
+
+  // Redesign: bill and debt payments marked paid in the app take money out on the day
+  // they were paid (only cycles stamped with paidAt, i.e. paid through "Mark as paid").
+  [...model.bills, ...model.debts].forEach((rec) => {
+    (rec.cycles || []).forEach((c) => {
+      if (!c.paidAt || !c.paidDate) return;
+      const dt = parseISO(c.paidDate);
+      if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
+      const label = 'name' in rec ? rec.name || 'Bill' : rec.creditorOrPerson || 'Debt';
+      push(dt.getDate(), { type: 'manual', label: `${label} payment`, amount: toNumber(c.amountPaid), direction: 'out' });
     });
   });
 
@@ -373,7 +392,11 @@ export function computeRunningBalances(
     asOfAt && model.balanceAccounts.asOfDate
       ? model.manualTransactions
           .filter((t) => t.date === asOfISO && (t.createdAt ?? 0) > asOfAt)
-          .reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0)
+          .reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0) -
+        [...model.bills, ...model.debts]
+          .flatMap((r) => r.cycles || [])
+          .filter((c) => c.paidDate === asOfISO && (c.paidAt ?? 0) > asOfAt)
+          .reduce((sum, c) => sum + toNumber(c.amountPaid), 0)
       : 0;
   const totalStart = totalLiquidBalance(model) + loggedAfterUpdate;
 

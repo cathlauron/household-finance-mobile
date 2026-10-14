@@ -74,6 +74,8 @@ export type BillCycle = {
   notes: string;
   paymentMethod?: PaymentMethod;
   feesPortion?: number | '';
+  // Redesign: the exact moment it was marked paid (for Left to Spend's same-day check).
+  paidAt?: number;
 };
 
 export type Bill = {
@@ -97,6 +99,10 @@ export type Bill = {
   // 'cancelled' = person tapped Cancel; bill stays in the list (for
   // history/reports) but stops generating future reminders.
   subscriptionStatus?: 'active' | 'cancelled';
+  // Redesign (Subscriptions page): when it was cancelled (YYYY-MM-DD), and an optional
+  // "cancel by" date the person wants to be reminded of.
+  cancelledOn?: string;
+  cancelBy?: string;
 };
 
 export type Debt = {

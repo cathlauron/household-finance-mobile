@@ -122,6 +122,11 @@ export default function DashboardScreen({
   }
 
   function openDueItem(item: DueItem) {
+    // Redesign: open the full Bill / Debt / Loan page.
+    if (item.id) {
+      navigation.navigate('PayDetail', { kind: item.type, id: item.id, backTitle: 'Home' });
+      return;
+    }
     if (item.type === 'bill' && item.id) requestOpenBill(item.id);
     else if (item.type === 'debt' && item.id) requestOpenDebt(item.id);
     else if (item.type === 'loan' && item.id) requestOpenLoan(item.id);

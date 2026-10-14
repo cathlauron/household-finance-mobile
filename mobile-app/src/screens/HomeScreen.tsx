@@ -69,6 +69,12 @@ export default function HomeScreen({ username }: Props) {
       navigation.navigate('Profile');
       return;
     }
+    // Redesign: open the full Bill / Debt / Loan page.
+    const target = item.group === 'overdue' ? { kind: item.overdue.kind, id: item.overdue.id } : item.due.id ? { kind: item.due.type, id: item.due.id } : null;
+    if (target) {
+      (navigation as any).navigate('PayDetail', { ...target, backTitle: 'Home' });
+      return;
+    }
     if (item.group === 'overdue') {
       const o = item.overdue;
       if (o.kind === 'bill') requestOpenBill(o.id);

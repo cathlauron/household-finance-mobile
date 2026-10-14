@@ -5,6 +5,8 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
+import PayRow from '../components/PayRow';
+import { useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -107,6 +109,7 @@ type LoansScreenProps = {
 export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenProps = {}) {
   // Redesign: the floating + adds a loan while this list is showing.
   useToPayAddRequest('loans', () => openAddModal());
+  const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
@@ -486,65 +489,15 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                 testID={`loan-swipe-${loan.id}`}
                 flat
               >
-              <CollapsibleRow
+              <PayRow
                 testID={`loan-row-${loan.id}`}
-                flat
-                showDivider={rowIndex > 0}
-                leading={
-                  <View style={[styles.tile, loan.direction === 'lent' && { backgroundColor: colors.okBg }]}>
-                    <Ionicons name={loan.direction === 'lent' ? 'arrow-redo-outline' : 'business-outline'} size={17} color={colors.gold} />
-                  </View>
-                }
-                isExpanded={isExpanded}
-                onToggle={() => setExpandedLoanId((prev) => (prev === loan.id ? null : loan.id))}
-                onEdit={() => openEditModal(loan)}
-                collapsedContent={
-                  <View style={styles.loanCollapsedWrap}>
-                    <View style={styles.loanRowTop}>
-                    <View style={styles.loanRowMain}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.loanName} numberOfLines={1}>
-                          {loan.name || 'Untitled loan'}
-                        </Text>
-                        <View style={{ backgroundColor: (loan.direction === 'lent' ? colors.ok : colors.orange) + '20', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: loan.direction === 'lent' ? colors.ok : colors.orange }}>
-                            {loan.direction === 'lent' ? 'LENT' : 'BORROWED'}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={styles.loanSub} numberOfLines={1}>
-                        {(loan.loanType || 'Other')} · {recurringTypeLabel(loanRecurType)}{loanNextDue ? ` · ${formatShortDate(loanNextDue)}` : ''}
-                        {typeof loan.interestRate === 'number' && loan.interestRate > 0 ? ` · ${loan.interestRate}% APR` : ''}
-                      </Text>
-                    </View>
-                    <Text style={[styles.loanAmount, { color: loan.direction === 'lent' ? colors.positive : colors.negative }]}>
-                      {loan.direction === 'lent' ? '+' : '−'}{formatPeso(remaining)}
-                    </Text>
-                    </View>
-                  </View>
-                }
-                expandedContent={
-                  <View style={styles.detailContainer}>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Schedule</Text>
-                      <Text style={styles.detailValue}>{fullRecurrenceDetail(loan)}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Total Amount</Text>
-                      <Text style={styles.detailValue}>{formatPeso(loanTotal(loan))}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Paid So Far</Text>
-                      <Text style={styles.detailValue}>{formatPeso(loanPaidTotal(loan))}</Text>
-                    </View>
-                    {typeof loan.interestRate === 'number' && loan.interestRate > 0 && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Interest Rate</Text>
-                        <Text style={styles.detailValue}>{loan.interestRate}% APR</Text>
-                      </View>
-                    )}
-                  </View>
-                }
+                icon={loan.direction === 'lent' ? 'arrow-redo-outline' : 'business-outline'}
+                title={loan.name || 'Untitled loan'}
+                sub={`${loan.direction === 'lent' ? 'You lent' : 'You borrowed'}${loanNextDue ? ` · next ${loanNextDue.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`}
+                amount={formatPeso(remaining)}
+                amountColor={loan.direction === 'lent' ? colors.positive : colors.negative}
+                divider={rowIndex > 0}
+                onPress={() => navigation.navigate('PayDetail', { kind: 'loan', id: loan.id })}
               />
               </SwipeableRow>
             );

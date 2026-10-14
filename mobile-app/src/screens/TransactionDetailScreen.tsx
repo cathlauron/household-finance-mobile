@@ -124,19 +124,15 @@ export default function TransactionDetailScreen() {
   const linkedOpen =
     entry.source === 'bill' || entry.source === 'debt' || entry.source === 'loan'
       ? () => {
+          // Redesign: open the full Bill / Debt / Loan page.
           const realId = entry.id.replace(/^(bill|debt|loan)-/, '');
-          // Bill/debt/loan entries are named after a payment cycle; To-Pay finds the record.
-          if (entry.source === 'bill') {
-            const bill = model.bills.find((b) => b.cycles.some((c) => c.id === realId));
-            if (bill) requestOpenBill(bill.id);
-          } else if (entry.source === 'debt') {
-            const debt = model.debts.find((d) => (d.cycles || []).some((c) => c.id === realId));
-            if (debt) requestOpenDebt(debt.id);
-          } else {
-            const loan = (model.loans || []).find((l) => (l.actualPayments || []).some((p) => p.id === realId));
-            if (loan) requestOpenLoan(loan.id);
-          }
-          navigation.navigate('Main', { screen: 'To-Pay' });
+          const target =
+            entry.source === 'bill'
+              ? model.bills.find((b) => b.cycles.some((c) => c.id === realId))?.id
+              : entry.source === 'debt'
+              ? model.debts.find((d) => (d.cycles || []).some((c) => c.id === realId))?.id
+              : (model.loans || []).find((l) => (l.actualPayments || []).some((p) => p.id === realId))?.id;
+          if (target) navigation.navigate('PayDetail', { kind: entry.source, id: target, backTitle: 'Transaction' });
         }
       : entry.source === 'income'
       ? () => {

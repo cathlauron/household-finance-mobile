@@ -22,9 +22,13 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import { getOverdueItems } from '../overdue';
+import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, paidCycles } from '../billPayments';
+import PayRow from '../components/PayRow';
+import { useNavigation } from '@react-navigation/native';
 
 function billAmount(bill: Bill): number {
-  const c = bill.cycles && bill.cycles[0];
+  // Redesign: the amount of the cycle that's due next (paid cycles are history).
+  const c = currentCycle(bill);
   return c && typeof c.amountDue === 'number' ? c.amountDue : 0;
 }
 
@@ -87,6 +91,7 @@ type BillsScreenProps = {
 export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
   // Redesign: the floating + adds a bill while this list is showing.
   useToPayAddRequest('bills', () => openAddModal());
+  const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
 
@@ -166,7 +171,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
     setSubscriptionInput(!!bill.isSubscription);
-    setPaymentMethodInput(bill.cycles && bill.cycles[0] ? bill.cycles[0].paymentMethod : undefined);
+    setPaymentMethodInput(currentCycle(bill)?.paymentMethod);
     const rt = (bill.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = bill.dueDate || {};
@@ -245,10 +250,10 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     if (editingId) {
       updated.bills = updated.bills.map((b) => {
         if (b.id !== editingId) return b;
-        const existingCycle = b.cycles && b.cycles[0];
-        const cycle: BillCycle = existingCycle
-          ? { ...existingCycle, amountDue: parsedAmount, dueDate: nextDueISO, paymentMethod: paymentMethodInput }
-          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '', paymentMethod: paymentMethodInput };
+        // Redesign: keep paid history; only the current cycle changes, and its due date
+        // only moves if the schedule changed.
+        const scheduleChanged = b.recurringType !== recurTypeInput || JSON.stringify(b.dueDate || {}) !== JSON.stringify(dueDate);
+        const cycles: BillCycle[] = withEditedCurrentCycle(b.cycles, { amountDue: parsedAmount, paymentMethod: paymentMethodInput }, nextDueISO, scheduleChanged);
         return {
           ...b,
           name: trimmedName,
@@ -257,7 +262,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           notes: notesInput,
           recurringType: recurTypeInput,
           dueDate,
-          cycles: [cycle],
+          cycles,
           isSubscription: subscriptionInput,
           // Only stamp a default status when the toggle is turned ON and it
           // never had one before. Keep/Cancel/Reactivate are the only thing
@@ -349,208 +354,125 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       ]
     );
   }
-  const bills = sortByNextDue(model.bills);
-  const totalDue = bills.reduce((sum, b) => sum + billAmount(b), 0);
-
-  // Redesign: bills are grouped like the Finance Flow mockup: Overdue, Due this week,
-  // then Later. Overdue uses the same rule as the bell (an unpaid cycle past its date).
+  // Redesign: To-Pay > Bills from the Finance Flow mockup. Each bill is due on its
+  // current (unpaid) cycle; paid cycles are history. Grouped Overdue / This week /
+  // Later this month / Coming up, with a "still to pay this month" card on top.
+  const billDue = (b: Bill): Date | null => {
+    const cur = currentCycle(b);
+    if (cur?.dueDate && !isCyclePaid(cur)) return new Date(cur.dueDate + 'T00:00:00');
+    return cur && isCyclePaid(cur) ? null : getNextDueDate(b.recurringType, b.dueDate);
+  };
+  const bills = [...model.bills].sort((a, b) => {
+    const da = billDue(a);
+    const db = billDue(b);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return da.getTime() - db.getTime();
+  });
   const overdueIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'bill').map((o) => o.id));
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const monthEnd = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
   const daysUntil = (d: Date | null) => (d ? Math.round((d.getTime() - todayStart.getTime()) / 86400000) : Infinity);
+  const unpaid = bills.filter((b) => billDue(b) !== null);
   const sections: { title: string; items: Bill[] }[] = [
-    { title: 'Overdue', items: bills.filter((b) => overdueIds.has(b.id)) },
-    { title: 'Due this week', items: bills.filter((b) => !overdueIds.has(b.id) && daysUntil(getNextDueDate(b.recurringType, b.dueDate)) <= 7) },
-    { title: 'Later', items: bills.filter((b) => !overdueIds.has(b.id) && daysUntil(getNextDueDate(b.recurringType, b.dueDate)) > 7) },
+    { title: 'Overdue', items: unpaid.filter((b) => overdueIds.has(b.id)) },
+    { title: 'This week', items: unpaid.filter((b) => !overdueIds.has(b.id) && daysUntil(billDue(b)) <= 7) },
+    { title: 'Later this month', items: unpaid.filter((b) => !overdueIds.has(b.id) && daysUntil(billDue(b)) > 7 && (billDue(b) as Date) <= monthEnd) },
+    { title: 'Coming up', items: unpaid.filter((b) => !overdueIds.has(b.id) && (billDue(b) as Date) > monthEnd && daysUntil(billDue(b)) > 7) },
   ];
+  const paidThisMonth = bills.filter((b) => wasPaidThisMonth(b));
+  const dueThisMonth = unpaid.filter((b) => overdueIds.has(b.id) || (billDue(b) as Date) <= monthEnd);
+  const stillToPay = dueThisMonth.reduce((sum, b) => sum + billAmount(b), 0);
+  const subs = bills.filter((b) => b.isSubscription);
+  const subsActive = subs.filter((b) => b.subscriptionStatus !== 'cancelled').length;
+  const fmtDue = (d: Date | null) => (d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'No date set');
+  const openBill = (b: Bill) => navigation.navigate('PayDetail', { kind: 'bill', id: b.id });
 
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryCard]}>
-          <Text style={styles.balanceBannerLabel}>Total bills</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalDue)}</Text>
+          <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
+          <Text style={styles.balanceBannerAmount}>{formatPeso(stillToPay)}</Text>
           <Text style={styles.summarySub}>
-            {bills.length} {bills.length === 1 ? 'bill' : 'bills'}
-            {overdueIds.size > 0 ? ` · ${overdueIds.size} overdue` : ''}
+            {paidThisMonth.length} of {paidThisMonth.length + dueThisMonth.length} {paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid
           </Text>
         </View>
 
+        {subs.length > 0 && (
+          <TouchableOpacity style={[styles.group, styles.subsRow]} onPress={() => navigation.navigate('Subscriptions')} accessibilityRole="button" testID="topay-subscriptions">
+            <View style={styles.tile}>
+              <Ionicons name="repeat" size={17} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.billName}>Subscriptions</Text>
+              <Text style={styles.billSub}>{subsActive} active · {formatPeso(subs.filter((b) => b.subscriptionStatus !== 'cancelled').reduce((s2, b) => s2 + billAmount(b), 0)).replace('.00', '')} a month</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+          </TouchableOpacity>
+        )}
+
         {bills.length === 0 && (
-          <Text style={styles.emptyText}>No bills yet.</Text>
+          <Text style={styles.emptyText}>No bills yet. Tap + to add one.</Text>
         )}
 
         {sections.map((sec) => sec.items.length === 0 ? null : (
-        <View key={sec.title} style={styles.section}>
-        <Text style={[styles.sectionHeader, sec.title === 'Overdue' && { color: colors.negative }]}>{sec.title}</Text>
-        <View style={styles.group}>
-        {sec.items.map((bill, rowIndex) => {
-          const isOverdue = overdueIds.has(bill.id);
-          const nextDue = getNextDueDate(bill.recurringType, bill.dueDate);
-          const pm = bill.cycles && bill.cycles[0] ? bill.cycles[0].paymentMethod : undefined;
-          const isExpanded = expandedBillId === bill.id;
-
-          return (
-            <SwipeableRow
-              key={bill.id}
-              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
-              onDelete={() => handleSwipeDelete(bill)}
-              testID={`bill-swipe-${bill.id}`}
-              flat
-            >
-            <CollapsibleRow
-              testID={`bill-row-${bill.id}`}
-              flat
-              showDivider={rowIndex > 0}
-              leading={
-                <View style={styles.tile}>
-                  <Ionicons name={bill.isSubscription ? 'repeat' : 'flash-outline'} size={17} color={colors.gold} />
-                </View>
-              }
-              isExpanded={isExpanded}
-              onToggle={() => setExpandedBillId((prev) => (prev === bill.id ? null : bill.id))}
-              onEdit={() => openEditModal(bill)}
-              collapsedContent={
-                <View style={styles.billCollapsedRow}>
-                  <View style={styles.billRowMain}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={styles.billName} numberOfLines={1}>
-                        {bill.name || 'Untitled bill'}
-                      </Text>
-                      {bill.isSubscription && bill.subscriptionStatus === 'cancelled' && (
-                        <View
-                          style={{
-                            marginLeft: 6,
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                            borderWidth: 1,
-                            borderColor: colors.decor,
-                          }}
-                        >
-                          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: colors.inkFaint }}>
-                            CANCELLED
-                          </Text>
-                        </View>
-                      )}
-                      {bill.isSubscription && bill.subscriptionStatus !== 'cancelled' && (
-                        <View
-                          style={{
-                            marginLeft: 6,
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                            borderWidth: 1,
-                            borderColor: colors.gold,
-                          }}
-                        >
-                          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: colors.gold }}>
-                            SUB
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.billSub} numberOfLines={1}>
-                      {(bill.category || 'Uncategorized')} · {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
-                    {isOverdue && <Text style={styles.overdueBadge}>Overdue</Text>}
-                  </View>
-                </View>
-              }
-              expandedContent={
-                <View style={styles.detailContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Schedule</Text>
-                    <Text style={styles.detailValue}>{fullRecurrenceDetail(bill)}</Text>
-                  </View>
-
-                  {pm && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Payment Method</Text>
-                      <Text style={styles.detailValue}>{paymentMethodLabel(pm, model)}</Text>
-                    </View>
-                  )}
-
-                  {!!bill.priority && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Priority</Text>
-                      <View
-                        style={[
-                          styles.priorityBadge,
-                          bill.priority === 'high'
-                            ? styles.priorityHigh
-                            : bill.priority === 'medium'
-                            ? styles.priorityMedium
-                            : styles.priorityLow,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.priorityBadgeText,
-                            bill.priority === 'high'
-                              ? styles.priorityHighText
-                              : bill.priority === 'medium'
-                              ? styles.priorityMediumText
-                              : styles.priorityLowText,
-                          ]}
-                        >
-                          {bill.priority.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {!!bill.notes?.trim() && (
-                    <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
-                      <Text style={styles.detailLabel}>Notes</Text>
-                      <Text style={styles.detailNotesText}>{bill.notes.trim()}</Text>
-                    </View>
-                  )}
-
-                  {bill.isSubscription && (
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                      {bill.subscriptionStatus === 'cancelled' ? (
-                        <TouchableOpacity
-                          style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
-                          onPress={() => handleSetSubscriptionStatus(bill.id, 'active')}
-                        >
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.gold }}>Reactivate</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <>
-                          <TouchableOpacity
-                            style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
-                            onPress={() => handleSetSubscriptionStatus(bill.id, 'active')}
-                          >
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>Keep</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={{ flex: 1, backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
-                            onPress={() =>
-                              Alert.alert('Cancel subscription?', `Stop reminders for ${bill.name || 'this subscription'}. Reactivate anytime.`, [
-                                { text: 'Never mind', style: 'cancel' },
-                                { text: 'Cancel it', style: 'destructive', onPress: () => handleSetSubscriptionStatus(bill.id, 'cancelled') },
-                              ])
-                            }
-                          >
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.orange }}>Cancel</Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </View>
-                  )}
-                </View>
-              }
-            />
-            </SwipeableRow>
-          );
-        })}
-        </View>
-        </View>
+          <View key={sec.title} style={styles.section}>
+            <Text style={[styles.sectionHeader, sec.title === 'Overdue' && { color: colors.negative }]}>{sec.title}</Text>
+            <View style={styles.group}>
+              {sec.items.map((bill, rowIndex) => {
+                const due = billDue(bill);
+                const days = daysUntil(due);
+                const isOverdue = overdueIds.has(bill.id);
+                const cancelled = bill.isSubscription && bill.subscriptionStatus === 'cancelled';
+                return (
+                  <SwipeableRow
+                    key={bill.id}
+                    enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                    onDelete={() => handleSwipeDelete(bill)}
+                    testID={`bill-swipe-${bill.id}`}
+                    flat
+                  >
+                    <PayRow
+                      testID={`bill-row-${bill.id}`}
+                      icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
+                      title={bill.name || 'Untitled bill'}
+                      sub={`${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
+                      amount={formatPeso(billAmount(bill))}
+                      amountColor={colors.negative}
+                      badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
+                      divider={rowIndex > 0}
+                      onPress={() => openBill(bill)}
+                    />
+                  </SwipeableRow>
+                );
+              })}
+            </View>
+          </View>
         ))}
+
+        {paidThisMonth.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>Paid this month</Text>
+            <View style={styles.group}>
+              {paidThisMonth.map((bill, rowIndex) => (
+                <PayRow
+                  key={bill.id}
+                  icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
+                  title={bill.name || 'Untitled bill'}
+                  sub={`Paid ${paidCycles(bill)[0]?.paidDate ?? ''}`}
+                  amount={formatPeso(Number(paidCycles(bill)[0]?.amountPaid) || 0)}
+                  amountColor={colors.inkDim}
+                  badge={{ text: 'Paid', tone: 'paid' }}
+                  divider={rowIndex > 0}
+                  onPress={() => openBill(bill)}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
       </PullToRefreshScrollView>
 
@@ -730,6 +652,7 @@ function makeStyles(colors: any) {
     section: { marginBottom: 20 },
     sectionHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
     tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    subsRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 20 },
     overdueBadge: { marginTop: 3, fontSize: 12, fontWeight: '600', color: colors.negative, backgroundColor: colors.errorBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' },
     balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },

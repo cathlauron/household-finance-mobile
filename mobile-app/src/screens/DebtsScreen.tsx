@@ -5,6 +5,9 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
+import PayRow from '../components/PayRow';
+import { useNavigation } from '@react-navigation/native';
+import { currentCycle, withEditedCurrentCycle } from '../billPayments';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -22,7 +25,8 @@ import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 
 function debtAmount(debt: Debt): number {
-  const first = debt.cycles && debt.cycles[0];
+  // Redesign: the amount of the cycle that's due next (paid cycles are history).
+  const first = currentCycle(debt);
   return first && typeof first.amountDue === 'number' ? first.amountDue : 0;
 }
 
@@ -80,6 +84,7 @@ type DebtsScreenProps = {
 export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
   // Redesign: the floating + adds a debt while this list is showing.
   useToPayAddRequest('debts', () => openAddModal());
+  const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
@@ -156,8 +161,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       typeof debt.minPayment === 'number' ? debt.minPayment : ''
     );
     setNotesInput(debt.notes || '');
-        setPaymentMethodInput(debt.cycles && debt.cycles[0] ? debt.cycles[0].paymentMethod : undefined);
-    setFeesPortionInput(debt.cycles && debt.cycles[0] && debt.cycles[0].feesPortion !== undefined && debt.cycles[0].feesPortion !== '' ? debt.cycles[0].feesPortion : '');
+    const cur = currentCycle(debt);
+    setPaymentMethodInput(cur?.paymentMethod);
+    setFeesPortionInput(cur && cur.feesPortion !== undefined && cur.feesPortion !== '' ? cur.feesPortion : '');
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = debt.dueDate || {};
@@ -234,10 +240,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       updated.debts = updated.debts.map((d) => {
         if (d.id !== editingId) return d;
         const parsedFeesPortion = feesPortionInput === '' ? ('' as const) : feesPortionInput;
-        const existingCycle = d.cycles && d.cycles[0];
-        const cycle = existingCycle
-          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }
-          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '', paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion };
+        // Redesign: keep paid history; only the current cycle changes.
+        const scheduleChanged = d.recurringType !== recurTypeInput || JSON.stringify(d.dueDate || {}) !== JSON.stringify(dueDate);
+        const cycles = withEditedCurrentCycle(d.cycles, { amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }, nextDueISO, scheduleChanged);
         return {
           ...d,
           creditorOrPerson: trimmedCreditor,
@@ -247,7 +252,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           minPayment: parsedMinPayment,
           recurringType: recurTypeInput,
           dueDate,
-          cycles: [cycle],
+          cycles,
         };
       });
     } else {
@@ -376,75 +381,19 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
               testID={`debt-swipe-${debt.id}`}
               flat
             >
-            <CollapsibleRow
+            <PayRow
               testID={`debt-row-${debt.id}`}
-              flat
-              showDivider={rowIndex > 0}
-              leading={
-                <View style={styles.tile}>
-                  <Ionicons name="people-outline" size={17} color={colors.gold} />
-                </View>
-              }
-              isExpanded={isExpanded}
-              onToggle={() => setExpandedDebtId((prev) => (prev === debt.id ? null : debt.id))}
-              onEdit={() => openEditModal(debt)}
-              collapsedContent={
-                <View style={styles.debtCollapsedRow}>
-                  <View style={styles.debtRowMain}>
-                    <Text style={styles.debtName} numberOfLines={1}>
-                      {debt.creditorOrPerson || 'Untitled debt'}
-                    </Text>
-                    <Text style={styles.debtSub} numberOfLines={1}>
-                      {(debt.category || 'Uncategorized')} · {recurringTypeLabel(debt.recurringType)} · {formatShortDate(nextDue)}
-                      {typeof debt.interestRate === 'number' ? ' · ' + debt.interestRate + '% APR' : ''}
-                    </Text>
-                  </View>
-                  <Text style={styles.debtAmount}>{formatPeso(debtAmount(debt))}</Text>
-                </View>
-              }
-              expandedContent={
-                <View style={styles.detailContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Schedule</Text>
-                    <Text style={styles.detailValue}>{fullRecurrenceDetail(debt)}</Text>
-                  </View>
-
-                  {typeof debt.minPayment === 'number' && debt.minPayment > 0 && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Min Payment</Text>
-                      <Text style={styles.detailValue}>{formatPeso(debt.minPayment)}</Text>
-                    </View>
-                  )}
-
-                  {typeof debt.interestRate === 'number' && debt.interestRate > 0 && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Interest Rate</Text>
-                      <Text style={styles.detailValue}>{debt.interestRate}% APR</Text>
-                    </View>
-                  )}
-
-                  {typeof fees === 'number' && fees > 0 && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Fees Portion</Text>
-                      <Text style={styles.detailValue}>{formatPeso(fees)}</Text>
-                    </View>
-                  )}
-
-                  {pm && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Payment Method</Text>
-                      <Text style={styles.detailValue}>{paymentMethodLabel(pm, model)}</Text>
-                    </View>
-                  )}
-
-                  {!!debt.notes?.trim() && (
-                    <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
-                      <Text style={styles.detailLabel}>Notes</Text>
-                      <Text style={styles.detailNotesText}>{debt.notes.trim()}</Text>
-                    </View>
-                  )}
-                </View>
-              }
+              icon="people-outline"
+              title={debt.creditorOrPerson || 'Debt'}
+              sub={(() => {
+                const cur = currentCycle(debt);
+                const d = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : nextDue;
+                return d ? `Due ${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'No date set';
+              })()}
+              amount={formatPeso(debtAmount(debt))}
+              amountColor={colors.negative}
+              divider={rowIndex > 0}
+              onPress={() => navigation.navigate('PayDetail', { kind: 'debt', id: debt.id })}
             />
             </SwipeableRow>
           );

@@ -17,6 +17,7 @@
 // ============================================================
 
 import * as Notifications from 'expo-notifications';
+import { currentCycle } from './billPayments';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { HouseholdModel, Bill } from './types';
@@ -71,7 +72,7 @@ function nextWeeklyOccurrence(weekday: number, hour: number, now: Date): Date {
 }
 
 function billOutstanding(bill: Bill): number {
-  const c = bill.cycles && bill.cycles[0];
+  const c = currentCycle(bill);
   if (!c) return 0;
   const due = typeof c.amountDue === 'number' ? c.amountDue : 0;
   const paid = typeof c.amountPaid === 'number' ? c.amountPaid : 0;
