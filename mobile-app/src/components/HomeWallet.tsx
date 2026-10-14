@@ -219,8 +219,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const cardFill = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.2 : 0.1);
   // Like a real bank card: the colour deepens from the top-left corner to the
   // bottom-right, with a faint sheen across the top. Still kept soft.
-  const cardFillFrom = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.12 : 0.05);
-  const cardFillTo = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.34 : 0.22);
+  // A gentle range with in-between steps so it blends evenly (no dark edge).
+  const cardShade = (hex: string, t: number) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.14 + t * 0.12 : 0.06 + t * 0.1);
 
   const total = totalLiquidBalance(model);
   const openAccounts = () => navigation.navigate('Accounts');
@@ -340,7 +340,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       opacity: lifted ? 0.7 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
-                      backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
+                      backgroundColor: cardShade(c.account.color || DEFAULT_GROUP_COLORS[c.group], 0.5),
                       transform: [
                         { translateY: held ? Animated.add(Animated.add(top, dragY), liftUp) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
@@ -362,13 +362,15 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     return (
                       <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
                         <Defs>
-                          <LinearGradient id={`wg_${gid}`} x1="0" y1="0" x2="1" y2="1">
-                            <Stop offset="0" stopColor={cardFillFrom(tint)} />
-                            <Stop offset="1" stopColor={cardFillTo(tint)} />
+                          <LinearGradient id={`wg_${gid}`} x1="0" y1="0" x2="1" y2="0.35">
+                            {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+                              <Stop key={t} offset={String(t)} stopColor={cardShade(tint, t)} />
+                            ))}
                           </LinearGradient>
-                          <LinearGradient id={`ws_${gid}`} x1="0" y1="0" x2="0.6" y2="1">
-                            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? 0.07 : 0.45} />
-                            <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity={0} />
+                          <LinearGradient id={`ws_${gid}`} x1="0" y1="0" x2="0.7" y2="1">
+                            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? 0.05 : 0.3} />
+                            <Stop offset="0.35" stopColor="#FFFFFF" stopOpacity={isDark ? 0.02 : 0.12} />
+                            <Stop offset="0.75" stopColor="#FFFFFF" stopOpacity={0} />
                           </LinearGradient>
                         </Defs>
                         <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#wg_${gid})`} />
