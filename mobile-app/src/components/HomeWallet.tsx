@@ -93,6 +93,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // looks already slid in between the cards where it will land.
   const LIFT = 22;
   const liftUp = useRef(new Animated.Value(0)).current;
+  // The card that was just dropped, while it settles (so its lift and slant ease out).
+  const [settling, setSettling] = useState<string | null>(null);
+  // The same slant as a swipe: bottom-left corner up, growing with the lift.
+  const liftTilt = liftUp.interpolate({ inputRange: [-LIFT, 0], outputRange: ['5deg', '0deg'], extrapolate: 'clamp' });
   const swipeX = useRef(new Animated.Value(0)).current;
   const [dragging, setDragging] = useState<string | null>(null);
   const [gapAt, setGapAt] = useState<number>(-1); // where the lifted card will land
@@ -267,14 +271,17 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         keys.splice(target, 0, c.key);
         const v = tops.get(c.key);
         // Settle the lifted card into its new slot, then save the order.
-        // It drops from where you held it and slides into the slot.
-        v?.setValue(index * PEEK + (dragY as any)._value - LIFT);
+        // It drops from where you held it, levelling out as it slides into the slot.
+        v?.setValue(index * PEEK + (dragY as any)._value);
         dragY.setValue(0);
-        liftUp.setValue(0);
         dragTarget.current = -1;
         setDragging(null);
         setGapAt(-1);
-        if (v) Animated.timing(v, { toValue: target * PEEK, duration: 160, useNativeDriver: true }).start();
+        setSettling(c.key);
+        Animated.parallel([
+          ...(v ? [Animated.timing(v, { toValue: target * PEEK, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true })] : []),
+          Animated.timing(liftUp, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]).start(() => setSettling((k) => (k === c.key ? null : k)));
         if (keys.join('|') !== order.join('|')) persist(keys);
       });
     return Gesture.Race(drag, swipe, tap);
@@ -300,6 +307,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
+            const held = lifted || settling === c.key;
             // While dragging, the held card slots into the stack's layering at the gap:
             // above the cards behind it, below the cards in front (which hide its lower part).
             const others = dragging ? order.filter((k) => k !== dragging) : order;
@@ -328,13 +336,15 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
-                        { translateY: lifted ? Animated.add(Animated.add(top, dragY), liftUp) : top },
+                        { translateY: held ? Animated.add(Animated.add(top, dragY), liftUp) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
                         // The lift: as a card moves to the right, its bottom-left corner (A)
                         // rises above its bottom-right corner (B), mostly in the first few
                         // pixels of movement. Coming back in, it levels out until A and B
                         // line up again as it settles.
                         { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 30, 400], outputRange: ['-3deg', '0deg', '5deg', '9deg'], extrapolate: 'clamp' }) },
+                        // Held cards get the same slant, as if picked up by a corner.
+                        { rotate: held ? liftTilt : '0deg' },
                       ],
                     },
                     lifted && styles.lifted,
