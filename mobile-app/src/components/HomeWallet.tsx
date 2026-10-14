@@ -11,6 +11,7 @@ import { formatPeso, totalLiquidBalance } from '../balanceProjection';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 // Redesign: the Wallet on Home, an interactive card stack like Apple Wallet.
 //  - Every card shows its name, a CASH / DEBIT / CREDIT tag and its balance.
@@ -88,9 +89,9 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const { width: screenW } = useWindowDimensions();
   const busy = useRef(false);
   const dragY = useRef(new Animated.Value(0)).current;
-  // While held, only the card's top half rides on your finger; it rises by half a
-  // card so its bottom edge meets the gap, where the bottom half shows as already
-  // tucked in between the cards.
+  // While held, the card rises by half a card so its middle sits at the gap. Its top
+  // half stays solid; its bottom half fades out, as if already tucked in between the
+  // cards where it will land.
   const HALF = CARD_HEIGHT / 2;
   const liftUp = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
@@ -267,7 +268,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         keys.splice(target, 0, c.key);
         const v = tops.get(c.key);
         // Settle the lifted card into its new slot, then save the order.
-        // The full card comes back at the held half's spot, then slides into the slot.
+        // It drops from where you held it and slides into the slot.
         v?.setValue(index * PEEK + (dragY as any)._value - HALF);
         dragY.setValue(0);
         liftUp.setValue(0);
@@ -297,41 +298,6 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         </TouchableOpacity>
       ) : (
         <View style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0) }}>
-          {/* The held card's bottom half, already slid halfway into the gap where it
-              will land (the cards in front of it cover the rest, like a card being
-              inserted). Its top half is the part you're holding, just above. */}
-          {dragging && gapAt >= 0 && (() => {
-            const held = cards.find((x) => x.key === dragging);
-            if (!held) return null;
-            const amt = typeof held.account.amount === 'number' ? held.account.amount : 0;
-            const tint = held.account.color || DEFAULT_GROUP_COLORS[held.group];
-            const atFront = gapAt === cards.length - 1;
-            return (
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.slot,
-                  {
-                    top: gapAt * PEEK,
-                    height: HALF,
-                    borderColor: `${tint}4D`,
-                    backgroundColor: cardFill(tint),
-                    // At the front the whole bottom half shows, balance at the bottom;
-                    // between cards only the strip above the next card shows, so the
-                    // balance sits at the top of the strip.
-                    justifyContent: atFront ? 'flex-end' : 'flex-start',
-                    paddingTop: atFront ? 0 : 12,
-                    paddingBottom: atFront ? 12 : 0,
-                  },
-                ]}
-              >
-                <View style={styles.ghost}>
-                  <Text style={styles.ghostLabel}>Balance</Text>
-                  <Text style={[styles.ghostAmount, { color: amountColor(amt) }]}>{formatPeso(amt)}</Text>
-                </View>
-              </View>
-            );
-          })()}
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
@@ -355,8 +321,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       elevation: lifted ? 6 : 1 + i * 0.5,
                       opacity: lifted ? 1 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
-                      borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
-                      backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
+                      borderColor: lifted ? 'transparent' : `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
+                      backgroundColor: lifted ? 'transparent' : cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
                         { translateY: lifted ? Animated.add(Animated.add(top, dragY), liftUp) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
@@ -368,9 +334,21 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       ],
                     },
                     lifted && styles.lifted,
-                    lifted && styles.heldHalf,
                   ]}
                 >
+                  {lifted && (
+                    // Solid on top, fading through the bottom half.
+                    <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                      <Defs>
+                        <LinearGradient id={`held-${c.key}`} x1="0" y1="0" x2="0" y2="1">
+                          <Stop offset="0" stopColor={cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group])} stopOpacity={1} />
+                          <Stop offset="0.45" stopColor={cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group])} stopOpacity={1} />
+                          <Stop offset="1" stopColor={cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group])} stopOpacity={0.2} />
+                        </LinearGradient>
+                      </Defs>
+                      <Rect x="0" y="0" width="100%" height="100%" rx={16} ry={16} fill={`url(#held-${c.key})`} />
+                    </Svg>
+                  )}
                   <View style={styles.cardHead}>
                     <View style={styles.nameRow}>
                       <View style={[styles.chip, { backgroundColor: c.account.color || DEFAULT_GROUP_COLORS[c.group] }]} />
@@ -383,7 +361,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>}
                   </View>
                   {isFront && (
-                    <View style={styles.front}>
+                    <View style={[styles.front, lifted && { opacity: 0.3 }]}>
                       <Text style={styles.frontLabel}>Balance</Text>
                       <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>
                     </View>
@@ -428,14 +406,6 @@ function makeStyles(colors: ThemeColors) {
       shadowRadius: 4,
       shadowOffset: { width: 0, height: 1 },
     },
-    // The bottom half of the held card, sitting in the gap: square top corners and no
-    // top border so it reads as the continuation of the half you're holding.
-    slot: { position: 'absolute', left: 0, right: 0, borderWidth: 1, borderTopWidth: 0, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, paddingHorizontal: 16, overflow: 'hidden' },
-    // The held card shows only its top half (square bottom, no bottom border).
-    heldHalf: { height: CARD_HEIGHT / 2, overflow: 'hidden', borderBottomWidth: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-    ghost: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-    ghostLabel: { fontSize: 13, color: colors.inkDim },
-    ghostAmount: { fontSize: 20, fontWeight: '700' },
     lifted: { shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
     cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28, gap: 8 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
