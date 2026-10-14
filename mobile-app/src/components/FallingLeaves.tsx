@@ -39,6 +39,14 @@ const BOX_W = 100 + PAD * 2;
 const BOX_H = 205 + PAD * 2;
 const TILT_DEG = 22;
 
+// Cath's tuning (slower and calmer than the design system's numbers): every fall and
+// sway takes this many times longer, and a gust pushes and tilts leaves this much.
+// Raise SLOWDOWN for slower leaves; raise WIND_STRENGTH for a stronger gust.
+const FALL_SLOWDOWN = 2.5;
+const SWAY_SLOWDOWN = 1.6;
+const WIND_STRENGTH = 0.3;
+const GUST_TILT_DEG = 6;
+
 type LeafSpec = {
   x: number; // 0..1 across the screen
   size: number;
@@ -64,10 +72,10 @@ function makeLeaves(): LeafSpec[] {
       out.push({
         x: Math.random(),
         size: rand(d.size[0], d.size[1]),
-        fallMs: rand(d.fall[0], d.fall[1]) * 1000,
+        fallMs: rand(d.fall[0], d.fall[1]) * 1000 * FALL_SLOWDOWN,
         phase: Math.random(),
         sway: rand(d.sway[0], d.sway[1]),
-        swayMs: rand(d.swayPeriod[0], d.swayPeriod[1]) * 1000,
+        swayMs: rand(d.swayPeriod[0], d.swayPeriod[1]) * 1000 * SWAY_SLOWDOWN,
         swayStart: rand(-1, 1),
         strength: rand(d.strength[0], d.strength[1]),
         wind: rand(d.wind[0], d.wind[1]),
@@ -166,11 +174,11 @@ function FallingLeaf({
   // the way it is pushed, then it carries on falling.
   useEffect(() => {
     return subscribeToLeafTransition((push) => {
-      const dx = push * leaf.wind;
+      const dx = push * leaf.wind * WIND_STRENGTH;
       windTarget.current += dx;
       Animated.timing(wind, {
         toValue: windTarget.current,
-        duration: 1300,
+        duration: 1600,
         delay: leaf.gustDelay,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
@@ -178,7 +186,7 @@ function FallingLeaf({
       Animated.sequence([
         Animated.delay(leaf.gustDelay),
         Animated.timing(tilt, {
-          toValue: dx > 0 ? 18 : -18,
+          toValue: dx > 0 ? GUST_TILT_DEG : -GUST_TILT_DEG,
           duration: 300,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
