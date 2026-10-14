@@ -1,5 +1,8 @@
 import React from 'react';
-import { View, Platform } from 'react-native';
+import { View, Platform, Pressable, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useFabSide } from '../fabSide';
+import { hapticLight } from '../haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +35,55 @@ function TabIcon({
     </View>
   );
 }
+// Redesign: the floating + button. It sits just above the tab bar, near the thumb
+// (right by default, left if chosen in Settings › Appearance), on every tab. Tapping it
+// opens Transactions with the "New transaction" sheet already up.
+const TAB_BAR_HEIGHT = 68;
+function AddFab({ bottom }: { bottom: number }) {
+  const { colors, isDark } = useTheme();
+  const side = useFabSide();
+  const navigation = useNavigation<any>();
+  return (
+    <Pressable
+      testID="add-transaction-fab"
+      accessibilityRole="button"
+      accessibilityLabel="Add a transaction"
+      onPress={() => {
+        hapticLight();
+        navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
+      }}
+      style={({ pressed }) => [
+        fabStyles.fab,
+        side === 'left' ? { left: 18 } : { right: 18 },
+        {
+          bottom,
+          backgroundColor: colors.okBg,
+          borderColor: isDark ? 'rgba(95,196,138,0.30)' : 'rgba(46,107,71,0.22)',
+          transform: [{ scale: pressed ? 0.94 : 1 }],
+        },
+      ]}
+    >
+      <Ionicons name="add" size={32} color={colors.gold} />
+    </Pressable>
+  );
+}
+
+const fabStyles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+      default: { elevation: 6 },
+    }),
+  },
+});
+
 type MainTabsProps = {
   username: string;
   onLock: () => void;
@@ -41,7 +93,9 @@ type MainTabsProps = {
 export default function MainTabs({ username, onSignOut, initialOpenBillId }: MainTabsProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabBarBottom = Math.max(insets.bottom, 12);
   return (
+    <View style={{ flex: 1 }}>
     <Tab.Navigator
       id={undefined}
       // B.14 fix: force the whole tab navigator to remount — and therefore
@@ -61,8 +115,8 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
           backgroundColor: colors.navy3,
           borderTopWidth: isDark ? 1 : 0,
           marginHorizontal: 10,
-          marginBottom: Math.max(insets.bottom, 12),
-          height: 68,
+          marginBottom: tabBarBottom,
+          height: TAB_BAR_HEIGHT,
           paddingTop: 8,
           paddingBottom: 8,
           borderRadius: 34,
@@ -114,5 +168,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         }}
       />
     </Tab.Navigator>
+    <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} />
+    </View>
   );
 }

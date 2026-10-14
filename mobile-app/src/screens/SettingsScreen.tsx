@@ -52,6 +52,7 @@ import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
+import { useFabSide, setFabSide } from '../fabSide';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -81,6 +82,7 @@ function amountRangeLabel(rule: CategorizationRule): string {
 
 export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void }) {
   const { colors, mode, setMode } = useTheme();
+  const fabSide = useFabSide();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const {
@@ -1153,6 +1155,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               onPress={() => setMode(opt.id)}
             />
           ))}
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>+ button side</Text>
+<Text style={styles.sectionSub}>
+  Which thumb taps +? The button sits on that side, just above the tabs.
+</Text>
+        <View style={styles.modeRow}>
+          <Pill testID="settings-fab-left" label="Left" fill active={fabSide === 'left'} onPress={() => setFabSide('left')} />
+          <Pill testID="settings-fab-right" label="Right" fill active={fabSide === 'right'} onPress={() => setFabSide('right')} />
         </View>
 
         </>

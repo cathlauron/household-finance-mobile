@@ -149,6 +149,12 @@ export default function TransactionsScreen() {
       setMonthFilter(p.monthFilter);
     }
   }, [filterNonce]);
+  // Redesign: the floating + button opens this tab with { addNonce } to show the
+  // "New transaction" sheet straight away.
+  const addNonce = route.params?.addNonce;
+  useEffect(() => {
+    if (addNonce) openAddModal();
+  }, [addNonce]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setCategoryFilter(null);
