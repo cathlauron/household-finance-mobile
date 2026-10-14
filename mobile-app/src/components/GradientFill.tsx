@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { View, StyleSheet, LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Defs, LinearGradient as LinearGradient2, RadialGradient, Stop, Rect } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../ThemeContext';
 
 // Redesign: a soft gradient that fills its parent, used instead of flat colour fills.
-// Put it as the FIRST child of a View or button. It measures itself so the gradient
-// always covers the whole shape, and clips itself to the parent's rounded corners.
+// Put it as the FIRST child of a View or button. It fills the parent and clips itself
+// to the parent's rounded corners. Drawn with expo-linear-gradient (one native view);
+// Wallet cards use react-native-svg for their extra glow.
 //
 // Two ways to use it:
 // - Explicit: <GradientFill color=... kind=... radius=... /> (Left to Spend, Wallet cards).
@@ -64,12 +66,6 @@ function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: is
   const theme = useTheme();
   const colors = theme.colors;
   const isDark = isDarkProp ?? theme.isDark;
-  const [size, setSize] = useState({ w: 0, h: 0 });
-  const id = useRef(`gf${++counter}`).current;
-  const onLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    if (Math.abs(width - size.w) > 0.5 || Math.abs(height - size.h) > 0.5) setSize({ w: width, h: height });
-  };
 
   const flat = (match ? StyleSheet.flatten(match) : {}) as ViewStyle;
   const bg = (color ?? (flat.backgroundColor as string | undefined)) || '';
@@ -93,52 +89,73 @@ function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: is
     overflow: 'hidden',
   };
 
-  const { w, h } = size;
-  // Too small to show a gradient (dots, checkboxes, thin progress bars): leave it flat.
-  const tiny = w > 0 && (w < 28 || h < 14);
-
-  let stops: { o: number; c: string }[];
-  let x2 = w;
-  let y2 = h;
+  // Wallet cards (only a handful) keep the SVG version, which also draws a soft glow.
   if (k === 'card') {
-    const base = surface ?? colors.navy3;
-    const from = isDark ? 0.14 : 0.06;
-    const to = isDark ? 0.26 : 0.16;
-    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(bg, base, from + (to - from) * s) }));
-    y2 = w * 0.36; // mostly left to right
-  } else if (k === 'surface') {
-    const end = mixHex(colors.accentTint, bg, 0.45);
-    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(end, bg, s) }));
-    x2 = h * 0.36; // mostly top to bottom
+    return <CardGradient bg={bg} base={surface ?? colors.navy3} isDark={isDark} clip={clip} />;
+  }
+
+  // Everything else is one native gradient view: it fills its parent by itself, so there
+  // is no measuring step and no SVG to build. This is what keeps screens quick to open.
+  let stops: { o: number; c: string }[];
+  let end = { x: 1, y: 1 }; // top-left to bottom-right
+  if (k === 'surface') {
+    const tintEnd = mixHex(colors.accentTint, bg, 0.45);
+    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(tintEnd, bg, s) }));
+    end = { x: 0.25, y: 1 }; // mostly top to bottom
   } else if (k === 'tint') {
     stops = three(mixHex(bg, colors.navy3, 0.7), bg, mixHex(bg, colors.gold, 0.9));
   } else {
     stops = three(mixHex('#FFFFFF', bg, strength), bg, mixHex('#000000', bg, strength));
   }
+  const gradColors = stops.map((st) => st.c) as unknown as readonly [string, string, ...string[]];
+  const locations = stops.map((st) => st.o) as unknown as readonly [number, number, ...number[]];
 
   return (
+    <LinearGradient
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, clip]}
+      colors={gradColors}
+      locations={locations}
+      start={{ x: 0, y: 0 }}
+      end={end}
+    />
+  );
+}
+
+// Wallet card wash: a light tint of the card's colour over the surface, deepening left
+// to right, plus a soft white glow from the top-left corner.
+function CardGradient({ bg, base, isDark, clip }: { bg: string; base: string; isDark: boolean; clip: ViewStyle }) {
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const id = useRef(`gf${++counter}`).current;
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (Math.abs(width - size.w) > 0.5 || Math.abs(height - size.h) > 0.5) setSize({ w: width, h: height });
+  };
+  const { w, h } = size;
+  const from = isDark ? 0.14 : 0.06;
+  const to = isDark ? 0.26 : 0.16;
+  const stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(bg, base, from + (to - from) * s) }));
+  return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, clip]} onLayout={onLayout}>
-      {w > 0 && h > 0 && !tiny && (
+      {w > 0 && h > 0 && (
         <Svg width={w} height={h}>
           <Defs>
-            <LinearGradient id={`${id}l`} gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={x2} y2={y2}>
+            <LinearGradient2 id={`${id}l`} gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={w} y2={w * 0.36}>
               {stops.map((st) => (
                 <Stop key={st.o} offset={st.o} stopColor={st.c} />
               ))}
-            </LinearGradient>
-            {k === 'card' && (
-              <RadialGradient id={`${id}r`} gradientUnits="userSpaceOnUse" cx={0} cy={0} fx={0} fy={0} rx={w * 1.2} ry={h * 1.4}>
-                {[
-                  ...STOPS.map(({ o, s }) => (
-                    <Stop key={o} offset={o * 0.6} stopColor="#FFFFFF" stopOpacity={(1 - s) * (isDark ? 0.05 : 0.35)} />
-                  )),
-                  <Stop key="end" offset={1} stopColor="#FFFFFF" stopOpacity={0} />,
-                ]}
-              </RadialGradient>
-            )}
+            </LinearGradient2>
+            <RadialGradient id={`${id}r`} gradientUnits="userSpaceOnUse" cx={0} cy={0} fx={0} fy={0} rx={w * 1.2} ry={h * 1.4}>
+              {[
+                ...STOPS.map(({ o, s }) => (
+                  <Stop key={o} offset={o * 0.6} stopColor="#FFFFFF" stopOpacity={(1 - s) * (isDark ? 0.05 : 0.35)} />
+                )),
+                <Stop key="end" offset={1} stopColor="#FFFFFF" stopOpacity={0} />,
+              ]}
+            </RadialGradient>
           </Defs>
           <Rect x={0} y={0} width={w} height={h} fill={`url(#${id}l)`} />
-          {k === 'card' && <Rect x={0} y={0} width={w} height={h} fill={`url(#${id}r)`} />}
+          <Rect x={0} y={0} width={w} height={h} fill={`url(#${id}r)`} />
         </Svg>
       )}
     </View>

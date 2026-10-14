@@ -68,7 +68,30 @@ function TabIcon({
 const TAB_BAR_HEIGHT = 68;
 // On To-Pay it adds whatever is showing there (bill, debt or loan) instead.
 const TOPAY_ADD_LABEL = { bills: 'Add a bill', debts: 'Add a debt', loans: 'Add a loan' } as const;
-function AddFab({ bottom, activeTab }: { bottom: number; activeTab: string }) {
+// Which tab is showing, kept outside MainTabs. If MainTabs itself re-rendered on every
+// tab change, the tab navigator would restart its slide halfway and the old screen would
+// vanish instantly (the "pop"). Only the + button listens to this.
+let currentTab = 'Home';
+const tabListeners = new Set<() => void>();
+function setCurrentTab(name: string) {
+  if (name === currentTab) return;
+  currentTab = name;
+  tabListeners.forEach((l) => l());
+}
+function useCurrentTab(): string {
+  return React.useSyncExternalStore(
+    (l) => {
+      tabListeners.add(l);
+      return () => {
+        tabListeners.delete(l);
+      };
+    },
+    () => currentTab
+  );
+}
+
+function AddFab({ bottom }: { bottom: number }) {
+  const activeTab = useCurrentTab();
   const { colors, isDark } = useTheme();
   const side = useFabSide();
   const toPaySub = useToPaySub();
@@ -131,22 +154,20 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
   const tabSlide = React.useMemo(() => makeTabSlide(screenWidth), [screenWidth]);
   const insets = useSafeAreaInsets();
   const tabBarBottom = Math.max(insets.bottom, 12);
-  const [activeTab, setActiveTab] = React.useState<string>(initialOpenBillId ? 'To-Pay' : 'Home');
-  return (
-    <View style={{ flex: 1 }}>
-    <Tab.Navigator
-      id={undefined}
-      // B.14 fix: force the whole tab navigator to remount — and therefore
-      // pick up initialRouteName fresh — every time a subscription reminder
-      // hands us a new openBillId. Without this, tapping a reminder while
-      // sitting on a different tab left the bottom tab bar stuck on
-      // whatever tab was already showing.
-      key={initialOpenBillId ? `open-bill-${initialOpenBillId}` : 'default'}
-      initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
-      screenListeners={({ route }) => ({
-        focus: () => setActiveTab(route.name),
-      })}
-      screenOptions={{
+  // Set before the first draw so the + button knows the starting tab.
+  const startTab = initialOpenBillId ? 'To-Pay' : 'Home';
+  const startedRef = React.useRef(false);
+  if (!startedRef.current) {
+    startedRef.current = true;
+    currentTab = startTab;
+  }
+  const screenListeners = React.useCallback(
+    ({ route }: { route: { name: string } }) => ({ focus: () => setCurrentTab(route.name) }),
+    []
+  );
+  // Built once (until the theme or screen size changes), so switching tabs doesn't hand
+  // the navigator a brand-new set of options and redraw every tab.
+  const screenOptions = React.useMemo<BottomTabNavigationOptions>(() => ({
         sceneStyle: { backgroundColor: 'transparent' },
         animation: 'shift',
         sceneStyleInterpolator: tabSlide,
@@ -176,7 +197,20 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.inkDim,
-      }}
+  }), [colors, isDark, tabSlide, tabBarBottom]);
+  return (
+    <View style={{ flex: 1 }}>
+    <Tab.Navigator
+      id={undefined}
+      // B.14 fix: force the whole tab navigator to remount — and therefore
+      // pick up initialRouteName fresh — every time a subscription reminder
+      // hands us a new openBillId. Without this, tapping a reminder while
+      // sitting on a different tab left the bottom tab bar stuck on
+      // whatever tab was already showing.
+      key={initialOpenBillId ? `open-bill-${initialOpenBillId}` : 'default'}
+      initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
+      screenListeners={screenListeners}
+      screenOptions={screenOptions}
     >
       <Tab.Screen
         name="Home"
@@ -213,7 +247,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         }}
       />
     </Tab.Navigator>
-    <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} activeTab={activeTab} />
+    <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} />
     </View>
   );
 }
