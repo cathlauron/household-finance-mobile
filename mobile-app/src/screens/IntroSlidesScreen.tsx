@@ -153,7 +153,7 @@ function makeStyles(colors: any) {
       lineHeight: 39,
       color: colors.ink,
       marginBottom: 12,
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+      fontWeight: '700',
     },
     body: {
       fontSize: 16,

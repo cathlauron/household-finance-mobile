@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import Avatar from '../components/Avatar';
@@ -179,8 +180,7 @@ export default function AccountSwitcherScreen({
     >
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.brandWrap}>
-          <Image source={require('../../assets/logo.png')} style={s.brandLogo} resizeMode="contain" />
-          <Text style={s.brandName}>FINANCE FLOW</Text>
+          <LogoMark width={84} />
         </View>
 
         {presence === null && <ActivityIndicator color={colors.gold} style={{ marginTop: 24 }} />}
@@ -322,10 +322,10 @@ function makeStyles(colors: any) {
     bigAvatarWrap: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
     title: {
       fontSize: 28,
+      fontWeight: '700',
       color: colors.ink,
       marginBottom: 6,
       textAlign: 'center',
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
     },
     sub: { fontSize: 14, color: colors.inkDim, marginBottom: 20, lineHeight: 20, textAlign: 'center' },
     row: {

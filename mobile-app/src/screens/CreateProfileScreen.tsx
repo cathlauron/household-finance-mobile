@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Image, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -153,8 +154,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.brandWrap}>
-          <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
-          <Text style={styles.brandName}>FINANCE FLOW</Text>
+          <LogoMark width={84} />
         </View>
         <Text style={styles.title}>Create your account</Text>
         <Text style={styles.sub}>Start your financial journey.</Text>
@@ -313,7 +313,7 @@ function makeStyles(colors: any) {
     eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
     title: {
       fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+      fontWeight: '700',
     },
     sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 12, lineHeight: 20 },
     label: { fontSize: 12, fontWeight: '600', color: colors.ink, marginBottom: 6, marginTop: 14 },
@@ -340,7 +340,7 @@ function makeStyles(colors: any) {
     },
     modalTitle: {
       fontSize: 24, textAlign: 'center', color: colors.ink, marginBottom: 8,
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+      fontWeight: '700',
     },
     modalSub: { fontSize: 13, color: colors.inkDim, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
     codeBox: {

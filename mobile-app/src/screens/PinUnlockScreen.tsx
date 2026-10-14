@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
 import { verifyPin, hasPinSetUp } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
@@ -132,7 +133,9 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
   return (
     <View style={styles.container}>
-      <Text style={styles.eyebrow}>LOCKED</Text>
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <LogoMark width={72} />
+      </View>
       <Text style={styles.title}>Welcome back, {selectedUsername}</Text>
 
       {usePasswordMode && (
@@ -224,21 +227,21 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 80 },
+    container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 64 },
     eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
-    title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-    label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
+    title: { fontSize: 26, fontWeight: '700', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    sub: { fontSize: 15, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+    label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     input: {
-      backgroundColor: colors.navy3, borderRadius: 8, borderWidth: 1, borderColor: colors.navy4,
-      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, textAlign: 'center', letterSpacing: 6,
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12, minHeight: 50, fontSize: 20, color: colors.ink, textAlign: 'center', letterSpacing: 6,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    primaryBtn: { backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 14, marginTop: 24 },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtn: { backgroundColor: colors.gold, borderRadius: 14, height: 52, justifyContent: 'center', marginTop: 24 },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 17 },
     retryBiometricBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center' },
-    retryBiometricText: { color: colors.ink, fontWeight: '600', fontSize: 14 },
+    retryBiometricText: { color: colors.gold, fontWeight: '600', fontSize: 15 },
     ghostBtn: { paddingVertical: 14, marginTop: 4 },
-    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
+    ghostBtnText: { color: colors.gold, textAlign: 'center', fontSize: 15 },
   });
 }

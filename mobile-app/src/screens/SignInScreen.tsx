@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, Image, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
@@ -757,8 +758,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
   return (
     <View style={ms.container}>
       <View style={ms.brandWrap}>
-        <Image source={require('../../assets/logo.png')} style={ms.brandLogo} resizeMode="contain" />
-        <Text style={ms.brandName}>FINANCE FLOW</Text>
+        <LogoMark width={84} />
       </View>
       <Text style={ms.title}>Welcome back</Text>
       <Text style={ms.sub}>Sign in to your financial journey.</Text>
@@ -868,7 +868,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
             disabled={busy}
             onPress={() => Alert.alert('Coming soon', 'Social sign-in will be available in a later update.')}
           >
-            <Ionicons name={icon} size={22} color={colors.ink} />
+            <Ionicons name={icon} size={24} color={colors.ink} />
           </TouchableOpacity>
         ))}
       </View>
@@ -1061,34 +1061,31 @@ function makeStyles(colors: any) {
 function makeMainStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },
-    brandWrap: { alignItems: 'center', marginBottom: 20 },
+    brandWrap: { alignItems: 'center', marginBottom: 28 },
     brandLogo: { width: 64, height: 64 },
     brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
-    title: {
-      fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
-    },
-    sub: { fontSize: 14, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
-    label: { fontSize: 12, fontWeight: '600', color: colors.ink, marginBottom: 6, marginTop: 14 },
+    title: { fontSize: 28, fontWeight: '700', color: colors.ink, marginBottom: 6, textAlign: 'center' },
+    sub: { fontSize: 15, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
+    label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     fieldWrap: { position: 'relative', justifyContent: 'center' },
     leftIcon: { position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
     input: {
-      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
-      paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4,
+      paddingLeft: 42, paddingRight: 14, minHeight: 50, paddingVertical: 13, fontSize: 17, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
-    primaryBtn: { backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[20] },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtn: { backgroundColor: colors.gold, borderRadius: 14, height: 52, justifyContent: 'center', marginTop: spacing[20] },
+    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 17 },
     hint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 18 },
     dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 16 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: colors.navy4 },
-    dividerText: { marginHorizontal: 12, fontSize: 12, color: colors.inkDim },
+    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4 },
+    dividerText: { marginHorizontal: 12, fontSize: 13, color: colors.inkDim },
     socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
     socialBtn: {
-      width: 48, height: 48, borderRadius: 24, backgroundColor: colors.navy3,
-      borderWidth: 1, borderColor: colors.navy4, alignItems: 'center', justifyContent: 'center',
+      width: 56, height: 56, borderRadius: 28, backgroundColor: colors.navy3,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4, alignItems: 'center', justifyContent: 'center',
     },
     linkBtn: { paddingVertical: 14, marginTop: 10 },
-    linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },
+    linkText: { color: colors.gold, textAlign: 'center', fontSize: 15, fontWeight: '600' },
   });
 }
