@@ -11,7 +11,6 @@ import { formatPeso, totalLiquidBalance } from '../balanceProjection';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 // Redesign: the Wallet on Home, an interactive card stack like Apple Wallet.
 //  - Every card shows its name, a CASH / DEBIT / CREDIT tag and its balance.
@@ -89,9 +88,9 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const { width: screenW } = useWindowDimensions();
   const busy = useRef(false);
   const dragY = useRef(new Animated.Value(0)).current;
-  // While held, the card rises by half a card so its middle sits at the gap. Its top
-  // half stays solid; its bottom half fades out, as if already tucked in between the
-  // cards where it will land.
+  // While held, the card rises by half a card so its middle sits at the gap, its
+  // bottom half tucked in under the (see-through) cards in front, as if already
+  // halfway inserted where it will land.
   const HALF = CARD_HEIGHT / 2;
   const liftUp = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
@@ -301,6 +300,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
+            // While dragging, the held card slots into the stack's layering at the gap:
+            // above the cards behind it, below the cards in front. Those front cards go
+            // see-through so you can make out the held card already tucked in under them.
+            const others = dragging ? order.filter((k) => k !== dragging) : order;
+            const j = others.indexOf(c.key);
+            const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
+            const inFront = !!dragging && !lifted && layer > gapAt;
             const amount = typeof c.account.amount === 'number' ? c.account.amount : 0;
             const top = tops.get(c.key) as Animated.Value;
             return (
@@ -317,12 +323,12 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       // Positions move with transforms so the phone's graphics engine animates
                       // them directly (smooth even while the app is busy).
                       top: 0,
-                      zIndex: lifted ? 100 : i,
-                      elevation: lifted ? 6 : 1 + i * 0.5,
-                      opacity: lifted ? 1 : (fades.get(c.key) as Animated.Value),
+                      zIndex: layer,
+                      elevation: (lifted ? 3 : 1) + layer * 0.5,
+                      opacity: lifted ? 1 : inFront ? 0.55 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
-                      borderColor: lifted ? 'transparent' : `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
-                      backgroundColor: lifted ? 'transparent' : cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
+                      borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
+                      backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
                         { translateY: lifted ? Animated.add(Animated.add(top, dragY), liftUp) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
@@ -336,19 +342,6 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     lifted && styles.lifted,
                   ]}
                 >
-                  {lifted && (
-                    // Solid on top, fading through the bottom half.
-                    <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-                      <Defs>
-                        <LinearGradient id={`held-${c.key}`} x1="0" y1="0" x2="0" y2="1">
-                          <Stop offset="0" stopColor={cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group])} stopOpacity={1} />
-                          <Stop offset="0.45" stopColor={cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group])} stopOpacity={1} />
-                          <Stop offset="1" stopColor={cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group])} stopOpacity={0.2} />
-                        </LinearGradient>
-                      </Defs>
-                      <Rect x="0" y="0" width="100%" height="100%" rx={16} ry={16} fill={`url(#held-${c.key})`} />
-                    </Svg>
-                  )}
                   <View style={styles.cardHead}>
                     <View style={styles.nameRow}>
                       <View style={[styles.chip, { backgroundColor: c.account.color || DEFAULT_GROUP_COLORS[c.group] }]} />
@@ -361,7 +354,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>}
                   </View>
                   {isFront && (
-                    <View style={[styles.front, lifted && { opacity: 0.3 }]}>
+                    <View style={styles.front}>
                       <Text style={styles.frontLabel}>Balance</Text>
                       <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>
                     </View>
