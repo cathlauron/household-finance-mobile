@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { Switch } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import SegmentedControl from '../components/SegmentedControl';
+import { todayISO } from '../dateUtils';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -132,6 +136,45 @@ function reconcileEventTransaction(
   return { transactionId: priorTransactionId, transactions: txns };
 }
 
+// ---- Redesign helpers ----
+function isoOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// The next date this event happens (today counts), or null if it has no date.
+function nextDate(ev: EventItem, today: string): string | null {
+  if (ev.recurrence === 'onetime') return ev.onetimeDate || null;
+  if (typeof ev.month !== 'number' || typeof ev.day !== 'number') return null;
+  const y = Number(today.slice(0, 4));
+  const thisYear = isoOf(new Date(y, ev.month - 1, ev.day));
+  return thisYear >= today ? thisYear : isoOf(new Date(y + 1, ev.month - 1, ev.day));
+}
+function daysBetween(a: string, b: string): number {
+  return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
+}
+function eventBudget(ev: EventItem): number {
+  if (ev.items && ev.items.length) return ev.items.reduce((s, i) => s + (typeof i.cost === 'number' ? i.cost : 0), 0);
+  return typeof ev.budget === 'number' ? ev.budget : 0;
+}
+// An event that repeats every year goes back to Upcoming 30 days after it was done,
+// keeping a note of that year in its history.
+function rollOverAnnualEvents(events: EventItem[], txns: ManualTransaction[], today: string): EventItem[] | null {
+  let changed = false;
+  const next = events.map((ev) => {
+    if (ev.recurrence !== 'annual' || !ev.completed || !ev.completedDate) return ev;
+    if (daysBetween(ev.completedDate, today) <= 30) return ev;
+    changed = true;
+    const spent = txns.find((t) => t.id === ev.expenseTransactionId)?.amount ?? eventBudget(ev);
+    return {
+      ...ev,
+      completed: false,
+      completedDate: undefined,
+      expenseTransactionId: undefined,
+      history: [...(ev.history || []), { date: ev.completedDate, budget: eventBudget(ev), spent }],
+    };
+  });
+  return changed ? next : null;
+}
+
 export default function EventsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -149,6 +192,27 @@ export default function EventsScreen() {
   const [completedInput, setCompletedInput] = useState(false);
   const [trackInSavingsInput, setTrackInSavingsInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [itemsInput, setItemsInput] = useState<{ id: string; name: string; cost: number | '' }[]>([]);
+  const [view, setView] = useState<'up' | 'done'>('up');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const navigation = useNavigation<any>();
+
+  // Redesign: + in the top bar adds an event.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add an event" testID="events-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="add" size={28} color={colors.gold} />
+        </TouchableOpacity>
+      ),
+    });
+  });
+
+  useEffect(() => {
+    if (!model) return;
+    const rolled = rollOverAnnualEvents(model.events ?? [], model.manualTransactions ?? [], todayISO());
+    if (rolled) saveModel({ ...model, events: rolled });
+  }, [model, saveModel]);
 
   if (!model) {
     return (
@@ -159,6 +223,65 @@ export default function EventsScreen() {
   }
 
   const events: EventItem[] = model.events ?? [];
+  const today = todayISO();
+  const upcoming = events
+    .filter((ev) => !ev.completed)
+    .map((ev) => {
+      const date = nextDate(ev, today);
+      return { ev, date, days: date ? daysBetween(today, date) : null };
+    })
+    .filter((x) => x.days === null || x.days >= 0 || x.ev.recurrence === 'annual')
+    .sort((a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : 1);
+  const toSpend = upcoming.reduce((s2, x) => s2 + eventBudget(x.ev), 0);
+  const spentFor = (ev: EventItem) => (model.manualTransactions || []).find((t) => t.id === ev.expenseTransactionId)?.amount ?? eventBudget(ev);
+  const doneRows = [
+    ...events
+      .filter((ev) => ev.completed)
+      .map((ev) => ({ key: ev.id, ev, current: true, name: ev.name, date: ev.completedDate || ev.onetimeDate || null, budget: eventBudget(ev), spent: spentFor(ev) })),
+    ...events.flatMap((ev) =>
+      (ev.history || []).map((h, i) => ({ key: `${ev.id}-h${i}`, ev, current: false, name: ev.name, date: h.date as string | null, budget: h.budget, spent: h.spent }))
+    ),
+    // One-time events whose day has passed without being marked done.
+    ...events
+      .filter((ev) => !ev.completed && ev.recurrence === 'onetime' && ev.onetimeDate && ev.onetimeDate < today)
+      .map((ev) => ({ key: ev.id + '-past', ev, current: false, name: ev.name, date: ev.onetimeDate || null, budget: eventBudget(ev), spent: 0 })),
+  ].sort((a, b) => ((a.date || '') < (b.date || '') ? 1 : -1));
+
+  function dateTile(date: string | null, muted: boolean) {
+    const d = date ? new Date(date + 'T00:00:00') : null;
+    const ok = d && !isNaN(d.getTime());
+    return (
+      <View style={[styles.dateTile, { backgroundColor: muted ? colors.navy1 : colors.accentTint }]}>
+        {!muted && <GradientFill kind="tint" color={colors.accentTint} radius={10} />}
+        <Text style={[styles.dateTileM, { color: muted ? colors.inkDim : colors.gold }]}>{ok ? d!.toLocaleDateString('en-US', { month: 'short' }) : '—'}</Text>
+        <Text style={[styles.dateTileD, { color: muted ? colors.inkDim : colors.gold }]}>{ok ? d!.getDate() : ''}</Text>
+      </View>
+    );
+  }
+
+  // Mark done / not done right from the list (logs or removes the event's expense).
+  async function markDone(ev: EventItem, done: boolean) {
+    if (!model) return;
+    hapticSelection();
+    const completedDate = done ? todayISO() : undefined;
+    const { transactionId, transactions } = reconcileEventTransaction(!!ev.completed, ev.expenseTransactionId, done, eventBudget(ev) || '', model.manualTransactions ?? [], ev.name, completedDate);
+    await saveModel({
+      ...model,
+      events: events.map((e) => (e.id === ev.id ? { ...e, completed: done, completedDate, expenseTransactionId: transactionId } : e)),
+      manualTransactions: transactions,
+    });
+    setOpenId(null);
+  }
+
+  async function setTrack(ev: EventItem, on: boolean) {
+    if (!model) return;
+    const sync = syncEventSavingsGoal({ name: ev.name, savingsGoalId: ev.savingsGoalId, onetimeDate: nextDate(ev, todayISO()) || '' }, on, eventBudget(ev) || '', model.savingsGoals ?? []);
+    await saveModel({
+      ...model,
+      events: events.map((e) => (e.id === ev.id ? { ...e, trackInSavings: on, savingsGoalId: sync.savingsGoalId } : e)),
+      savingsGoals: sync.goals,
+    });
+  }
 
   function openAddModal() {
     setEditingId(null);
@@ -171,6 +294,7 @@ export default function EventsScreen() {
     setBudgetInput('');
     setCompletedInput(false);
     setTrackInSavingsInput(false);
+    setItemsInput([]);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -186,6 +310,7 @@ export default function EventsScreen() {
     setBudgetInput(typeof ev.budget === 'number' ? ev.budget : '');
     setCompletedInput(!!ev.completed);
     setTrackInSavingsInput(!!ev.trackInSavings);
+    setItemsInput(ev.items ? ev.items.map((i) => ({ ...i })) : []);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -233,7 +358,8 @@ export default function EventsScreen() {
       onetimeDate = onetimeDateInput.trim();
     }
 
-    const budget: number | '' = budgetInput;
+    const items = itemsInput.filter((i) => i.name.trim()).map((i) => ({ ...i, name: i.name.trim() }));
+    const budget: number | '' = items.length ? items.reduce((s2, i) => s2 + (typeof i.cost === 'number' ? i.cost : 0), 0) : budgetInput;
 
     const currentList = model.events ?? [];
     const existingEvent = editingId ? currentList.find((ev) => ev.id === editingId) : undefined;
@@ -274,6 +400,7 @@ export default function EventsScreen() {
               trackInSavings: trackInSavingsInput,
               savingsGoalId: sync.savingsGoalId,
               expenseTransactionId: transactionId,
+              items,
             }
           : ev
       );
@@ -292,6 +419,7 @@ export default function EventsScreen() {
         trackInSavings: trackInSavingsInput,
         savingsGoalId: sync.savingsGoalId,
         expenseTransactionId: transactionId,
+        items,
         createdAt: Date.now(),
       };
       updatedList = [...currentList, newEvent];
@@ -365,55 +493,130 @@ export default function EventsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+        <SegmentedControl<'up' | 'done'>
+          accessibilityLabel="Events view"
+          options={[
+            { id: 'up', label: 'Upcoming' },
+            { id: 'done', label: 'Done' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionIntro}>
-          Track recurring annual dates or one-time events.
-        </Text>
+        {view === 'up' && (
+          <>
+            <View style={[styles.listGroup, styles.upSummary]}>
+              <GradientFill match={styles.listGroup} />
+              <View>
+                <Text style={styles.eventSub}>Coming up</Text>
+                <Text style={styles.headline}>{upcoming.length} {upcoming.length === 1 ? 'event' : 'events'}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.eventSub}>To spend</Text>
+                <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(toSpend)}</Text>
+              </View>
+            </View>
 
-        {events.length === 0 && (
-          <Text style={styles.emptyText}>No events yet.</Text>
+            {upcoming.length === 0 ? (
+              <Text style={styles.emptyText}>Nothing coming up. Tap + to add a birthday, holiday or celebration.</Text>
+            ) : (
+              <View style={styles.listGroup}>
+                <GradientFill match={styles.listGroup} />
+                {upcoming.map(({ ev, date, days }, rowIndex) => {
+                  const open = openId === ev.id;
+                  const budget = eventBudget(ev);
+                  const extra = ev.items && ev.items.length ? `${ev.items.length} ${ev.items.length === 1 ? 'item' : 'items'}` : budget > 0 ? 'flat budget' : 'no budget';
+                  const when = days === null ? 'no date' : days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+                  return (
+                    <SwipeableRow key={ev.id} enabled={Boolean(model.settings.swipeToDeleteEnabled)} onDelete={() => handleSwipeDeleteEvent(ev)} testID={`event-swipe-${ev.id}`} flat>
+                      <View style={[styles.eventRow, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 0, paddingHorizontal: 0 }, rowIndex > 0 && styles.rowDivider]}>
+                        <GradientFill match={styles.eventRow} />
+                        <TouchableOpacity style={styles.evHead} onPress={() => setOpenId(open ? null : ev.id)} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+                          {dateTile(date, false)}
+                          <View style={styles.eventRowMain}>
+                            <Text style={styles.eventName} numberOfLines={1}>{ev.name || 'Untitled event'}</Text>
+                            <Text style={styles.eventSub} numberOfLines={1}>
+                              {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}
+                            </Text>
+                          </View>
+                          <Text style={[styles.eventAmount, { color: colors.planned }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>
+                        </TouchableOpacity>
+                        {open && (
+                          <View style={styles.evMore}>
+                            {(ev.items || []).map((it) => (
+                              <View key={it.id} style={styles.subLine}>
+                                <Text style={styles.subLineText}>{it.name}</Text>
+                                <Text style={[styles.subLineText, { color: colors.planned }]}>{typeof it.cost === 'number' ? formatPeso(it.cost) : ''}</Text>
+                              </View>
+                            ))}
+                            <View style={[styles.subLine, { alignItems: 'center', marginTop: 4 }]}>
+                              <Text style={styles.subLineText}>Save for this in Savings</Text>
+                              <Switch
+                                value={!!ev.trackInSavings}
+                                onValueChange={(on) => setTrack(ev, on)}
+                                disabled={budget <= 0}
+                                trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
+                                accessibilityLabel={`Save for ${ev.name} in Savings`}
+                              />
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                              <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.buttonFill }]} onPress={() => markDone(ev, true)} accessibilityRole="button">
+                                <GradientFill color={colors.buttonFill} strength={0.18} />
+                                <Text style={[styles.smallBtnText, { color: colors.onButton }]}>Mark as done</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.accentTint }]} onPress={() => openEditModal(ev)} accessibilityRole="button">
+                                <GradientFill kind="tint" color={colors.accentTint} />
+                                <Text style={[styles.smallBtnText, { color: colors.gold }]}>Edit</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    </SwipeableRow>
+                  );
+                })}
+              </View>
+            )}
+            <Text style={styles.groupFooter}>With "Save for this" on, money is set aside in Savings until the day, then counted as spending.</Text>
+          </>
         )}
 
-        <View style={styles.listGroup}>
-          <GradientFill match={styles.listGroup} />
-        {events.map((ev, rowIndex) => (
-          <SwipeableRow
-            key={ev.id}
-            enabled={Boolean(model.settings.swipeToDeleteEnabled)}
-            onDelete={() => handleSwipeDeleteEvent(ev)}
-            testID={`event-swipe-${ev.id}`}
-            flat
-          >
-          <TouchableOpacity
-            style={[styles.eventRow, rowIndex > 0 && styles.rowDivider]}
-            activeOpacity={0.7}
-            onPress={() => openEditModal(ev)}
-          >
-            <GradientFill match={[styles.eventRow, rowIndex > 0 && styles.rowDivider]} />
-            <View style={styles.eventRowMain}>
-              <View style={styles.eventTitleRow}>
-                <Text style={styles.eventName} numberOfLines={1}>
-                  {ev.name || 'Untitled event'}
-                </Text>
-                {ev.completed && (
-                  <Ionicons name="checkmark-circle" size={15} color="#10b981" style={{ marginLeft: 6 }} />
-                )}
+        {view === 'done' && (
+          <>
+            {doneRows.length === 0 ? (
+              <Text style={styles.emptyText}>Nothing done yet. Open an event and tap Mark as done.</Text>
+            ) : (
+              <View style={styles.listGroup}>
+                <GradientFill match={styles.listGroup} />
+                {doneRows.map((r, rowIndex) => {
+                  const diff = r.budget - r.spent;
+                  return (
+                    <TouchableOpacity
+                      key={r.key}
+                      style={[styles.evHead, rowIndex > 0 && styles.rowDivider]}
+                      onPress={() => (r.ev && r.current ? Alert.alert(r.name, 'Move this back to Upcoming?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Not done yet', onPress: () => markDone(r.ev!, false) },
+                      ]) : undefined)}
+                      disabled={!r.current}
+                      accessibilityRole="button"
+                    >
+                      {dateTile(r.date, true)}
+                      <View style={styles.eventRowMain}>
+                        <Text style={styles.eventName} numberOfLines={1}>{r.name}</Text>
+                        <Text style={styles.eventSub}>{r.budget > 0 ? (diff >= 0 ? `${formatPeso(diff)} under budget` : `${formatPeso(-diff)} over budget`) : 'No budget'}</Text>
+                      </View>
+                      <Text style={[styles.eventAmount, { color: colors.negative }]}>{formatPeso(r.spent)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-              <Text style={styles.eventSub}>
-                {typeLabel(ev.type)} · {eventDateLabel(ev)}
-              </Text>
-            </View>
-            {typeof ev.budget === 'number' && (
-              <Text style={styles.eventAmount}>{formatPeso(ev.budget)}</Text>
             )}
-          </TouchableOpacity>
-          </SwipeableRow>
-        ))}
-        </View>
-
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add event</Text>
-        </TouchableOpacity>
+            <Text style={styles.groupFooter}>Events that repeat every year come back to Upcoming on their own.</Text>
+          </>
+        )}
       </PullToRefreshScrollView>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
@@ -504,8 +707,38 @@ export default function EventsScreen() {
                     />
                   )}
 
-                <Text style={styles.inputLabel}>Budget (optional)</Text>
-                <AmountInput style={styles.amountInput} value={budgetInput} onChangeAmount={setBudgetInput} />
+                <Text style={styles.inputLabel}>What it will cost (optional)</Text>
+                {itemsInput.map((it, i) => (
+                  <View key={it.id} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                    <TextInput
+                      style={[styles.input, { flex: 3, marginBottom: 0 }]}
+                      placeholder={i === 0 ? 'e.g. Cake' : 'Item'}
+                      placeholderTextColor={colors.inkFaint}
+                      value={it.name}
+                      onChangeText={(t) => setItemsInput((rows) => rows.map((r) => (r.id === it.id ? { ...r, name: t } : r)))}
+                    />
+                    <View style={{ flex: 2 }}>
+                      <AmountInput value={it.cost} onChangeAmount={(v) => setItemsInput((rows) => rows.map((r) => (r.id === it.id ? { ...r, cost: v } : r)))} placeholder="0" />
+                    </View>
+                    <TouchableOpacity onPress={() => setItemsInput((rows) => rows.filter((r) => r.id !== it.id))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close-circle" size={20} color={colors.inkDim} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity onPress={() => setItemsInput((rows) => [...rows, { id: makeId('evitem'), name: '', cost: '' }])} accessibilityRole="button" style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.gold }}>+ Add an item (cake, gift…)</Text>
+                </TouchableOpacity>
+
+                {itemsInput.length === 0 ? (
+                  <>
+                    <Text style={styles.inputLabel}>Or one budget for the whole event</Text>
+                    <AmountInput style={styles.amountInput} value={budgetInput} onChangeAmount={setBudgetInput} />
+                  </>
+                ) : (
+                  <Text style={[styles.inputLabel, { marginBottom: 12 }]}>
+                    Budget: {formatPeso(itemsInput.reduce((s2, i) => s2 + (typeof i.cost === 'number' ? i.cost : 0), 0))} (the total of the items)
+                  </Text>
+                )}
 
                 <TouchableOpacity
                   style={[
@@ -570,6 +803,18 @@ function makeStyles(colors: any) {
     scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
     // Redesign styles
     listGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+    upSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 14, marginBottom: 20 },
+    headline: { fontSize: 17, fontWeight: '600', color: colors.ink, marginTop: 2 },
+    evHead: { flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingHorizontal: 16, paddingVertical: 10, gap: 12 },
+    evMore: { paddingLeft: 72, paddingRight: 16, paddingBottom: 14, gap: 6 },
+    subLine: { flexDirection: 'row', justifyContent: 'space-between' },
+    subLineText: { fontSize: 15, color: colors.ink },
+    smallBtn: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    smallBtnText: { fontSize: 15, fontWeight: '600' },
+    dateTile: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    dateTileM: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+    dateTileD: { fontSize: 18, fontWeight: '700', lineHeight: 20 },
+    groupFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
     summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
 

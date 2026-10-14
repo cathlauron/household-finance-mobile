@@ -263,6 +263,10 @@ export type EventItem = {
   // ManualTransaction has been logged for it — lets us find and remove that transaction
   // if it gets un-marked.
   expenseTransactionId?: string;
+  // Redesign: what the budget is made of (the budget is their total when there are any),
+  // and past years of an event that repeats every year.
+  items?: { id: string; name: string; cost: number | '' }[];
+  history?: { date: string; budget: number; spent: number }[];
 };
 
 // ---- Checkpoint 8.3: Year-End Goals ----
