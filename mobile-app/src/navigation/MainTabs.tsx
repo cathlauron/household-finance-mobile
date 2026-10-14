@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
+import { useToPaySub, requestToPayAdd } from '../fabActions';
 import { hapticLight } from '../haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -39,18 +40,23 @@ function TabIcon({
 // (right by default, left if chosen in Settings › Appearance), on every tab. Tapping it
 // opens Transactions with the "New transaction" sheet already up.
 const TAB_BAR_HEIGHT = 68;
-function AddFab({ bottom }: { bottom: number }) {
+// On To-Pay it adds whatever is showing there (bill, debt or loan) instead.
+const TOPAY_ADD_LABEL = { bills: 'Add a bill', debts: 'Add a debt', loans: 'Add a loan' } as const;
+function AddFab({ bottom, activeTab }: { bottom: number; activeTab: string }) {
   const { colors, isDark } = useTheme();
   const side = useFabSide();
+  const toPaySub = useToPaySub();
   const navigation = useNavigation<any>();
+  const onToPay = activeTab === 'To-Pay';
   return (
     <Pressable
       testID="add-transaction-fab"
       accessibilityRole="button"
-      accessibilityLabel="Add a transaction"
+      accessibilityLabel={onToPay ? TOPAY_ADD_LABEL[toPaySub] : 'Add a transaction'}
       onPress={() => {
         hapticLight();
-        navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
+        if (onToPay) requestToPayAdd();
+        else navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
       }}
       style={({ pressed }) => [
         fabStyles.fab,
@@ -94,6 +100,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarBottom = Math.max(insets.bottom, 12);
+  const [activeTab, setActiveTab] = React.useState<string>(initialOpenBillId ? 'To-Pay' : 'Home');
   return (
     <View style={{ flex: 1 }}>
     <Tab.Navigator
@@ -105,6 +112,9 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       // whatever tab was already showing.
       key={initialOpenBillId ? `open-bill-${initialOpenBillId}` : 'default'}
       initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
+      screenListeners={({ route }) => ({
+        focus: () => setActiveTab(route.name),
+      })}
       screenOptions={{
         sceneStyle: { backgroundColor: 'transparent' },
         ...getSharedHeaderOptions(colors),
@@ -168,7 +178,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         }}
       />
     </Tab.Navigator>
-    <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} />
+    <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} activeTab={activeTab} />
     </View>
   );
 }

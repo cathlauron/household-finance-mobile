@@ -4,6 +4,7 @@ import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import { useToPayAddRequest } from '../fabActions';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -84,6 +85,8 @@ type BillsScreenProps = {
 };
 
 export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
+  // Redesign: the floating + adds a bill while this list is showing.
+  useToPayAddRequest('bills', () => openAddModal());
   const { colors } = useTheme();
   const { model, saveModel } = useData();
 
@@ -549,9 +552,6 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         </View>
         ))}
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add bill</Text>
-        </TouchableOpacity>
       </PullToRefreshScrollView>
 
       <BottomSheet

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
+import { setToPaySub } from '../fabActions';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
@@ -74,6 +75,10 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
     if (pending) showTab(pending);
     return subscribeToToPayTabRequest(showTab);
   }, []);
+  // Redesign: tell the floating + which list is showing, so it adds the right thing.
+  useEffect(() => {
+    setToPaySub(activeSubTab);
+  }, [activeSubTab]);
   const styles = makeStyles(colors);
   return (
     <SafeAreaView style={styles.container}>

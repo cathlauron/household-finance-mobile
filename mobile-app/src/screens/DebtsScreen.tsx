@@ -4,6 +4,7 @@ import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import { useToPayAddRequest } from '../fabActions';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -77,6 +78,8 @@ type DebtsScreenProps = {
 };
 
 export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
+  // Redesign: the floating + adds a debt while this list is showing.
+  useToPayAddRequest('debts', () => openAddModal());
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
@@ -449,9 +452,6 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         </View>
         )}
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add debt</Text>
-        </TouchableOpacity>
       </PullToRefreshScrollView>
 
       <BottomSheet
