@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, loanOutstandingBalance } from '../balanceProjection';
@@ -161,6 +162,7 @@ export default function PayDetailScreen() {
             }}
             accessibilityRole="button"
           >
+            <GradientFill color={colors.buttonFill} strength={0.18} />
             <Text style={[styles.primaryText, { color: colors.onButton }]}>Mark as paid</Text>
           </TouchableOpacity>
         )}
@@ -286,6 +288,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
 
       {!paidToday && left > 0 && (
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill, alignSelf: 'stretch', marginTop: 16 }]} onPress={logPayment} accessibilityRole="button">
+          <GradientFill color={colors.buttonFill} strength={0.18} />
           <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(Math.min(monthly, left))}` : ''}</Text>
         </TouchableOpacity>
       )}
@@ -361,7 +364,7 @@ function makeStyles(colors: ThemeColors) {
     amount: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -0.5 },
     badge: { marginTop: 6, fontSize: 13, fontWeight: '600', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: 'hidden' },
     nextDue: { fontSize: 13, color: colors.inkDim, marginTop: 6 },
-    primary: { alignSelf: 'stretch', minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+    primary: { overflow: 'hidden', alignSelf: 'stretch', minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
     primaryText: { fontSize: 17, fontWeight: '600' },
     barsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
     headline: { fontSize: 17, fontWeight: '600', color: colors.ink },

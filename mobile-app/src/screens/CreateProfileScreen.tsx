@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Image, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
 import LogoMark from '../components/LogoMark';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -225,6 +226,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
+          <GradientFill color={colors.buttonFill} strength={0.18} />
           <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
           {!busy && <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
@@ -293,6 +295,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                   }
                 }}
               >
+                <GradientFill color={colors.buttonFill} strength={0.18} />
                 <Text style={styles.primaryBtnText}>Continue</Text>
               </TouchableOpacity>
             </View>
@@ -324,7 +327,7 @@ function makeStyles(colors: any) {
       paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
-    primaryBtn: {
+    primaryBtn: { overflow: 'hidden',
       backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     },

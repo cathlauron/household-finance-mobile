@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { TouchableOpacity, ActivityIndicator, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { Text } from './AppText';
+import GradientFill from './GradientFill';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
 import { hapticLight, hapticMedium } from '../haptics';
@@ -61,6 +62,7 @@ export default function Button({
         styles.base,
         isPrimary && { backgroundColor: colors.buttonFill },
         isPrimary && styles.primary,
+        isPrimary && { overflow: 'hidden' },
         variant === 'destructive' && styles.destructive,
         variant === 'quiet' && styles.quiet,
         isSolidDanger && styles.solidDanger,
@@ -71,6 +73,7 @@ export default function Button({
         style,
       ]}
     >
+      {isPrimary && <GradientFill color={colors.buttonFill} strength={0.18} />}
       {loading ? (
         <ActivityIndicator size="small" color={textColor} />
       ) : (

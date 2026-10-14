@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
 import { isValidPinFormat, savePin } from '../pin';
 import PinField from '../components/PinField';
 import PasswordField from '../components/PasswordField';
@@ -109,6 +110,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity testID="save-pin-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleSave(); }} disabled={busy}>
+          <GradientFill color={colors.buttonFill} strength={0.18} />
           <Text style={styles.primaryBtnText}>{busy ? 'Saving…' : 'Save PIN'}</Text>
         </TouchableOpacity>
 
@@ -137,7 +139,7 @@ function makeStyles(colors: any) {
       paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    primaryBtn: { backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[24] },
+    primaryBtn: { overflow: 'hidden', backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[24] },
     primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     ghostBtn: { paddingVertical: 14, marginTop: 4 },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },

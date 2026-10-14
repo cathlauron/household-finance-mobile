@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import GradientFill from './GradientFill';
 import { View, ScrollView, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,6 +100,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
       style={[styles.card, { backgroundColor: cardColor }, mood === 'good' && !isDark && styles.shadow]}
       onLayout={onLayout}
     >
+      <GradientFill color={cardColor} strength={0.26} radius={20} />
       {width > 0 && (
         <ScrollView
           horizontal

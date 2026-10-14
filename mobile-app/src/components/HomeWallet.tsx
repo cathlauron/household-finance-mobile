@@ -11,7 +11,7 @@ import { formatPeso, totalLiquidBalance } from '../balanceProjection';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
-import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect } from 'react-native-svg';
+import GradientFill from './GradientFill';
 
 // Redesign: the Wallet on Home, an interactive card stack like Apple Wallet.
 //  - Every card shows its name, a CASH / DEBIT / CREDIT tag and its balance.
@@ -23,12 +23,6 @@ import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect } from 'react-nat
 //  - Each card has a faint border in its own colour.
 //  - Tap a card to open its page.
 // The order is saved with your household data (walletOrder), so it stays put.
-
-// Offsets with an S-curve ease (smoothstep), used for the card gradients.
-const EASE_STOPS: [number, number][] = Array.from({ length: 13 }, (_, i) => {
-  const o = i / 12;
-  return [Math.round(o * 1000) / 1000, o * o * (3 - 2 * o)];
-});
 
 const PEEK = 52; // how much of each card behind the front one shows
 const CARD_HEIGHT = 176;
@@ -362,32 +356,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     lifted && styles.lifted,
                   ]}
                 >
-                  {(() => {
-                    const tint = c.account.color || DEFAULT_GROUP_COLORS[c.group];
-                    const gid = c.key.replace(/[^A-Za-z0-9]/g, '_');
-                    return (
-                      <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-                        <Defs>
-                          {/* Eased (S-curve) steps, so the colour starts and stops changing
-                              gently and there's no visible edge where it shifts. */}
-                          <LinearGradient id={`wg_${gid}`} x1="0" y1="0" x2="1" y2="0.35">
-                            {EASE_STOPS.map(([o, t]) => (
-                              <Stop key={o} offset={String(o)} stopColor={cardShade(tint, t)} />
-                            ))}
-                          </LinearGradient>
-                          {/* A soft round glow from the top-left corner that fades out
-                              gradually in every direction. */}
-                          <RadialGradient id={`ws_${gid}`} cx="0.05" cy="0" rx="0.9" ry="1.4" fx="0.05" fy="0">
-                            {EASE_STOPS.map(([o, t]) => (
-                              <Stop key={o} offset={String(o)} stopColor="#FFFFFF" stopOpacity={(1 - t) * (isDark ? 0.05 : 0.28)} />
-                            ))}
-                          </RadialGradient>
-                        </Defs>
-                        <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#wg_${gid})`} />
-                        <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#ws_${gid})`} />
-                      </Svg>
-                    );
-                  })()}
+                  <GradientFill
+                    kind="card"
+                    color={c.account.color || DEFAULT_GROUP_COLORS[c.group]}
+                    surface={isDark ? '#1C1C1E' : '#FFFFFF'}
+                    isDark={isDark}
+                    radius={15}
+                  />
                   <View style={styles.cardHead}>
                     <View style={styles.nameRow}>
                       <View style={[styles.chip, { backgroundColor: c.account.color || DEFAULT_GROUP_COLORS[c.group] }]} />

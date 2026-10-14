@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -91,6 +92,7 @@ export default function ReviewScreen() {
           {!!t.reviewWhy && <Text style={styles.why}>{t.reviewWhy}</Text>}
           <View style={styles.buttons}>
             <TouchableOpacity style={[styles.btn, { backgroundColor: colors.buttonFill }]} onPress={() => approve([t.id])} accessibilityRole="button">
+              <GradientFill color={colors.buttonFill} strength={0.18} />
               <Text style={[styles.btnText, { color: colors.onButton }]}>Looks right</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -121,7 +123,7 @@ function makeStyles(colors: ThemeColors) {
     catValue: { fontSize: 15, fontWeight: '600', color: colors.ink },
     why: { fontSize: 13, color: colors.inkDim, marginTop: 4 },
     buttons: { flexDirection: 'row', gap: 10, marginTop: 14 },
-    btn: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    btn: { overflow: 'hidden', flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     btnText: { fontSize: 15, fontWeight: '600' },
     done: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, paddingBottom: 120 },
     doneIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },

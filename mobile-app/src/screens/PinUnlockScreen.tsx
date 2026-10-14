@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
 import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
 import { verifyPin, hasPinSetUp } from '../pin';
@@ -155,6 +156,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             onPress={handlePasswordUnlock}
             disabled={busy || !passwordInput}
           >
+            <GradientFill color={colors.buttonFill} strength={0.18} />
             {busy ? <ActivityIndicator color={colors.navy2} /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
           </TouchableOpacity>
           {!isLockedOut && (
@@ -199,12 +201,14 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
               onPress={handleUnlock}
               disabled={busy || pin.length < 4}
             >
+              <GradientFill color={colors.buttonFill} strength={0.18} />
               <Text style={styles.primaryBtnText}>Unlock</Text>
             </TouchableOpacity>
           )}
 
           {biometricState === 'ENABLED' && hasPin === false && (
             <TouchableOpacity testID="retry-biometrics-button" style={styles.primaryBtn} onPress={() => runBiometricAuth(true)}>
+              <GradientFill color={colors.buttonFill} strength={0.18} />
               <Text style={styles.primaryBtnText}>Unlock with {biometricLabel}</Text>
             </TouchableOpacity>
           )}
@@ -237,7 +241,7 @@ function makeStyles(colors: any) {
       paddingHorizontal: 14, paddingVertical: 12, minHeight: 50, fontSize: 20, color: colors.ink, textAlign: 'center', letterSpacing: 6,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    primaryBtn: { backgroundColor: colors.buttonFill, borderRadius: 14, height: 52, justifyContent: 'center', marginTop: 24 },
+    primaryBtn: { overflow: 'hidden', backgroundColor: colors.buttonFill, borderRadius: 14, height: 52, justifyContent: 'center', marginTop: 24 },
     primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 17 },
     retryBiometricBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center' },
     retryBiometricText: { color: colors.gold, fontWeight: '600', fontSize: 15 },
