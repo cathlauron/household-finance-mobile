@@ -11,6 +11,7 @@ import { getBiometricState, getBiometricLabel } from '../biometrics';
 import { markOnboardingCompleted } from '../onboarding';
 import PinField from '../components/PinField';
 import GradientFill from '../components/GradientFill';
+import OnboardSetup from '../components/OnboardSetup';
 
 type Props = {
   username: string;
@@ -49,9 +50,9 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
 
   const styles = makeStyles(colors);
 
+  // Skipping Quick Unlock moves on to the setup steps (it doesn't end onboarding).
   async function handleSkip() {
-    await markOnboardingCompleted(username);
-    onFinish();
+    setStep(3);
   }
 
   async function handleSavePin() {
@@ -88,11 +89,20 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
     onFinish();
   }
 
+  // Redesign: after Quick Unlock come the three setup steps from the mockups.
+  if (step === 3) {
+    return (
+      <View style={styles.container}>
+        <OnboardSetup onDone={handleFinish} topInset={insets.top} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Top Header Row with Progress and Skip */}
       <View style={[styles.headerRow, { paddingTop: 16 + insets.top }]}>
-        <Text style={styles.stepBadge}>STEP {step - 1} OF 2</Text>
+        <Text style={styles.stepBadge}>BEFORE WE START</Text>
         {step < 3 ? (
           <TouchableOpacity testID="onboarding-skip-button" onPress={handleSkip} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={styles.skipText}>Skip</Text>
@@ -176,51 +186,6 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
           </View>
         )}
 
-        {/* STEP 3: READY */}
-        {step === 3 && (
-          <View style={styles.stepContainer}>
-            <View style={styles.readyIconFrame}>
-              <Ionicons name="checkmark-circle-outline" size={64} color={colors.accent} />
-            </View>
-
-            <Text style={styles.title}>You're all set!</Text>
-            <Text style={styles.sub}>Your profile is ready to go.</Text>
-
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-              {biometricsAvailable && (
-                <View style={styles.pinConfirmedBadge}>
-                  <GradientFill match={styles.pinConfirmedBadge} />
-                  <Ionicons name="scan-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.pinConfirmedText}>{biometricLabel} enabled</Text>
-                </View>
-              )}
-              {pinSaved && (
-                <View style={styles.pinConfirmedBadge}>
-                  <GradientFill match={styles.pinConfirmedBadge} />
-                  <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.tipCard}>
-              <GradientFill match={styles.tipCard} />
-              <Ionicons name="information-circle-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
-              <Text style={styles.tipText}>
-                Tip: Add your accounts, log recurring bills, or explore Settings to customize preferences.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              testID="onboarding-finish-button"
-              style={styles.primaryBtn}
-              onPress={handleFinish}
-            >
-              <GradientFill match={styles.primaryBtn} />
-              <Text style={styles.primaryBtnText}>Go to Home</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </ScrollView>
     </View>
   );

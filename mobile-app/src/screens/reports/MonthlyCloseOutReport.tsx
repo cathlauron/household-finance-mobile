@@ -53,7 +53,10 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
   const spending = totals.totalOut - bills;
 
   const budgets = (model.categoryBudgets || []).filter((b) => typeof b.monthlyBudget === 'number' && b.monthlyBudget > 0);
-  const budgetTotal = budgets.reduce((sum, b) => sum + (b.monthlyBudget as number), 0);
+  // Category budgets if there are any, otherwise the monthly spending target from setup.
+  const catBudgets = budgets.reduce((sum, b) => sum + (b.monthlyBudget as number), 0);
+  const target = typeof model.settings.monthlySpendingBudget === 'number' ? model.settings.monthlySpendingBudget : 0;
+  const budgetTotal = catBudgets > 0 ? catBudgets : target;
   const left = budgetTotal - spending;
 
   const byCat = (list: typeof all) => {

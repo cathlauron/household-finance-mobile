@@ -1,199 +1,78 @@
-import React, { useRef, useState } from 'react';
-import { View, Image, ScrollView, TouchableOpacity, StyleSheet, Platform, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
-import { Text } from '../components/AppText';
+import React from 'react';
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../ThemeContext';
+import { Text } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import GradientFill from '../components/GradientFill';
+import { useTheme } from '../ThemeContext';
+
+// Redesign: the Welcome screen from the Finance Flow mockups (it replaces the three
+// intro slides). Get started creates a profile; "I already have an account" signs in.
 
 type Props = {
   onDone: () => void;
   onBack?: () => void;
+  onSignIn?: () => void;
 };
 
-const SLIDES = [
-  {
-    key: 'track',
-    image: require('../../assets/intro-track.png'),
-    title: 'Track your finances easily',
-    body: 'See your income, expenses, and balance in one place.',
-  },
-  {
-    key: 'goals',
-    image: require('../../assets/intro-goals.png'),
-    title: 'Set your goals',
-    body: 'Save for what matters — from everyday needs to your big dreams.',
-  },
-  {
-    key: 'private',
-    image: require('../../assets/intro-private.png'),
-    title: 'Your data stays yours',
-    body: 'Everything is encrypted with your password — only you hold the keys.',
-  },
+const POINTS: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
+  { icon: 'speedometer-outline', title: "Know what's left to spend", body: 'One number that updates as you go.' },
+  { icon: 'receipt-outline', title: 'Never miss a bill', body: 'Reminders before anything is due.' },
+  { icon: 'shield-checkmark-outline', title: 'Private by design', body: 'Encrypted, and shared only with your household.' },
 ];
 
-export default function IntroSlidesScreen({ onDone, onBack }: Props) {
+export default function IntroSlidesScreen({ onDone, onBack, onSignIn }: Props) {
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
-  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
-  const [index, setIndex] = useState(0);
-  const isLast = index === SLIDES.length - 1;
-
-  function handleScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
-  }
-
-  function handleNext() {
-    if (isLast) {
-      onDone();
-      return;
-    }
-    const next = index + 1;
-    setIndex(next);
-    scrollRef.current?.scrollTo({ x: next * width, animated: true });
-  }
+  const styles = makeStyles(colors);
+  const signIn = onSignIn ?? onBack;
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.topRow, { height: 44 + insets.top, paddingTop: insets.top }]}>
-        {onBack ? (
-          <TouchableOpacity
-            testID="intro-back-button"
-            onPress={onBack}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.skipText}>Back</Text>
-          </TouchableOpacity>
-        ) : (
-          <View />
-        )}
-        {!isLast && (
-          <TouchableOpacity
-            testID="intro-skip-button"
-            onPress={onDone}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        bounces={false}
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScrollEnd}
-        style={styles.pager}
-      >
-        {SLIDES.map((slide) => (
-          <View key={slide.key} style={[styles.slide, { width }]}>
-            <View style={[styles.illustrationWrap, { height: height * 0.3 }]}>
-              <Image source={slide.image} style={styles.illustration} resizeMode="contain" />
+    <View style={[styles.container, { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24 }} bounces={false}>
+        <View style={{ alignItems: 'center' }}>
+          <LogoMark width={112} />
+          <Text style={styles.tagline}>Your household's money, in one calm place.</Text>
+        </View>
+        <View style={{ marginTop: 44, gap: 22 }}>
+          {POINTS.map((p) => (
+            <View key={p.title} style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+              <View style={styles.tile}>
+                <GradientFill kind="tint" color={colors.accentTint} radius={8} />
+                <Ionicons name={p.icon} size={20} color={colors.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.headline}>{p.title}</Text>
+                <Text style={styles.sub}>{p.body}</Text>
+              </View>
             </View>
-            <Text style={styles.title}>{slide.title}</Text>
-            <Text style={styles.body}>{slide.body}</Text>
-          </View>
-        ))}
+          ))}
+        </View>
       </ScrollView>
-
-      <View style={styles.dotsRow}>
-        {SLIDES.map((slide, i) => (
-          <View key={slide.key} style={[styles.dot, i === index && styles.dotActive]} />
-        ))}
+      <View style={{ paddingHorizontal: 24, gap: 8 }}>
+        <TouchableOpacity testID="intro-next-button" style={[styles.primary, { backgroundColor: colors.buttonFill }]} onPress={onDone} accessibilityRole="button">
+          <GradientFill color={colors.buttonFill} strength={0.18} />
+          <Text style={[styles.primaryText, { color: colors.onButton }]}>Get started</Text>
+        </TouchableOpacity>
+        {!!signIn && (
+          <TouchableOpacity testID="intro-back-button" onPress={signIn} style={{ alignSelf: 'center', paddingVertical: 10 }} accessibilityRole="button">
+            <Text style={{ fontSize: 17, color: colors.gold }}>I already have an account</Text>
+          </TouchableOpacity>
+        )}
       </View>
-
-      <TouchableOpacity testID="intro-next-button" style={styles.button} onPress={handleNext}>
-        <GradientFill match={styles.button} />
-        <Text style={styles.buttonText}>{isLast ? 'Get Started' : 'Next'}</Text>
-        <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />
-      </TouchableOpacity>
     </View>
   );
 }
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: 'transparent',
-    },
-    topRow: {
-      height: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 24,
-    },
-    skipText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    pager: {
-      flex: 1,
-    },
-    slide: {
-      paddingHorizontal: 24,
-      justifyContent: 'center',
-    },
-    illustrationWrap: {
-      width: '100%',
-      marginBottom: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    illustration: {
-      width: '100%',
-      height: '100%',
-    },
-    title: {
-      fontSize: 32,
-      lineHeight: 39,
-      color: colors.ink,
-      marginBottom: 12,
-      fontWeight: '700',
-    },
-    body: {
-      fontSize: 16,
-      lineHeight: 24,
-      color: colors.inkDim,
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 12,
-      marginBottom: 20,
-    },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.navy4,
-    },
-    dotActive: {
-      width: 22,
-      backgroundColor: colors.buttonFill,
-    },
-    button: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: 54,
-      marginHorizontal: 24,
-      marginBottom: 28,
-      borderRadius: 999,
-      backgroundColor: colors.buttonFill,
-    },
-    buttonText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.onButton,
-    },
+    container: { flex: 1, backgroundColor: 'transparent' },
+    tagline: { fontSize: 17, color: colors.inkDim, textAlign: 'center', marginTop: 18 },
+    tile: { width: 36, height: 36, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    headline: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    sub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
+    primary: { minHeight: 53, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    primaryText: { fontSize: 17, fontWeight: '600' },
   });
 }

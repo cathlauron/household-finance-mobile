@@ -27,6 +27,10 @@ export type Settings = {
   moodColorsEnabled?: boolean;
   // Redesign: slowly drifting background leaves. Missing means on.
   fallingLeavesEnabled?: boolean;
+  // Redesign (onboarding): what you want to spend each month after bills, and a name
+  // for the household's wallet.
+  monthlySpendingBudget?: number | '';
+  walletName?: string;
 };
 
 export type Person = {

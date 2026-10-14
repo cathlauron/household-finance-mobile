@@ -537,6 +537,7 @@ function AppContent() {
         <IntroSlidesScreen
           onDone={() => setScreen('createProfile')}
           onBack={introFromSignIn ? () => { setIntroFromSignIn(false); setScreen('signIn'); } : undefined}
+          onSignIn={() => { setIntroFromSignIn(false); setScreen('signIn'); }}
         />
       </SafeAreaView>
     );
