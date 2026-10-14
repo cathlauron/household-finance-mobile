@@ -34,6 +34,20 @@ const GROUP_ICON: Record<AccountGroup, React.ComponentProps<typeof Ionicons>['na
 
 type WalletCard = { key: string; account: BalanceAccountEntry; group: AccountGroup };
 
+// Blends a colour into a background colour (amount 0..1 of the colour), giving a solid
+// result so cards underneath never show through.
+function mixHex(hex: string, base: string, amount: number): string {
+  const p = (h: string) => {
+    const v = h.replace('#', '');
+    const full = v.length === 3 ? v.split('').map((x) => x + x).join('') : v.slice(0, 6);
+    return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  };
+  const a = p(hex);
+  const b = p(base);
+  if (a.some(isNaN) || b.some(isNaN)) return base;
+  return '#' + a.map((v, i) => Math.round(v * amount + b[i] * (1 - amount)).toString(16).padStart(2, '0')).join('');
+}
+
 function orderedCards(model: HouseholdModel): WalletCard[] {
   const all: WalletCard[] = (['cash', 'credit', 'debit'] as AccountGroup[]).flatMap((group) =>
     (model.balanceAccounts[group] || []).map((account) => ({ key: `${group}:${account.id}`, account, group }))
@@ -117,10 +131,18 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         Animated.timing(f, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }),
         ...slide(keys, 0, 280),
       ]).start(() => {
-        (tops.get(front) as Animated.Value).setValue(0);
+        // Tuck it in behind the stack while it's invisible, then let the re-ordered
+        // stack draw (so it's already behind the others) before it fades back in —
+        // that way only its top strip ever shows, sliding down into place.
+        (tops.get(front) as Animated.Value).setValue(-PEEK * 0.6);
         x.setValue(0);
         persist(next);
-        Animated.timing(f, { toValue: 1, duration: 220, easing: EASE, useNativeDriver: false }).start(() => (busy.current = false));
+        setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }),
+            Animated.timing(tops.get(front) as Animated.Value, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }),
+          ]).start(() => (busy.current = false));
+        }, 60);
       });
     } else {
       const back = keys.shift() as string;
@@ -143,6 +165,11 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       });
     }
   }
+
+  // A soft wash of each card's own colour (mixed into the card background), kept light
+  // so the Left to Spend card and the + button stay the stars of the screen.
+  const { isDark } = useTheme();
+  const cardFill = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.2 : 0.1);
 
   const total = totalLiquidBalance(model);
   const openAccounts = () => navigation.navigate('Accounts');
@@ -273,8 +300,9 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       zIndex: lifted ? 100 : i,
                       elevation: lifted ? 12 : 2 + i,
                       opacity: lifted ? 0.92 : (fades.get(c.key) as Animated.Value),
-                      // A faint border in the card's own colour.
+                      // A faint border and a soft fill in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
+                      backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
                         { translateX: xs.get(c.key) as Animated.Value },
                         { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 400], outputRange: ['-6deg', '0deg', '6deg'] }) },
