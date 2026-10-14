@@ -85,7 +85,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen
         name="Accounts"
         component={AccountsScreen}
-        options={{ title: 'Accounts', headerBackTitle: 'Plan' }}
+        options={{ title: 'Accounts', headerBackTitle: 'Home' }}
       />
       <Stack.Screen
         name="Income"

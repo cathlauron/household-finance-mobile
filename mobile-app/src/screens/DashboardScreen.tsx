@@ -14,6 +14,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text } from '../components/AppText';
+import HomeWallet from '../components/HomeWallet';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
@@ -145,6 +146,9 @@ export default function DashboardScreen({
       scrollEventThrottle={16}
     >
       {header}
+
+      {/* Redesign: the Wallet (Accounts' new home) */}
+      <HomeWallet model={model} />
 
       {/* This month */}
       <TouchableOpacity
