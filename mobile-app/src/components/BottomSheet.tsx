@@ -76,7 +76,7 @@ function makeStyles(colors: any, screenHeight: number) {
   return StyleSheet.create({
     backdropWrap: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
       justifyContent: 'flex-end',
     },
     backdropPressable: {
@@ -88,8 +88,8 @@ function makeStyles(colors: any, screenHeight: number) {
     },
     sheet: {
       backgroundColor: colors.navy3,
-      borderTopLeftRadius: radii[20],
-      borderTopRightRadius: radii[20],
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       borderBottomLeftRadius: 0,
       borderBottomRightRadius: 0,
       maxHeight: Math.round(screenHeight * 0.85),
@@ -99,7 +99,7 @@ function makeStyles(colors: any, screenHeight: number) {
       shadowOpacity: 0.15,
       shadowRadius: 10,
       elevation: 10,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.navy4 || 'rgba(255,255,255,0.06)',
       borderBottomWidth: 0,
     },
@@ -108,17 +108,16 @@ function makeStyles(colors: any, screenHeight: number) {
       paddingTop: spacing[10],
       paddingBottom: spacing[6],
     },
-    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.decor, opacity: 0.5 },
+    handle: { width: 36, height: 5, borderRadius: 3, backgroundColor: colors.inkFaint, opacity: 0.4 },
     header: {
       paddingHorizontal: spacing[20],
       paddingTop: spacing[4],
       paddingBottom: spacing[12],
     },
     title: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: '700',
       color: colors.ink,
-      letterSpacing: 0.2,
     },
     scroll: {
       flexGrow: 0,

@@ -1477,9 +1477,10 @@ function makeStyles(colors: any) {
       color: colors.error,
     },
     inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      // Redesign: sentence-case grey labels, like iPhone forms.
+      fontSize: 13,
+      fontWeight: '600',
+      marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
     },
