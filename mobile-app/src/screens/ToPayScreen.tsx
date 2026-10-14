@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
-import { setToPaySub, requestToPayAdd } from '../fabActions';
-import { useNavigation } from '@react-navigation/native';
-import { TouchableOpacity } from 'react-native';
+import { setToPaySub } from '../fabActions';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
@@ -81,22 +79,6 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   useEffect(() => {
     setToPaySub(activeSubTab);
   }, [activeSubTab]);
-  // Redesign: a + in the title bar too, like the mockup (adds a bill, debt or loan).
-  const navigation = useNavigation<any>();
-  React.useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={requestToPayAdd}
-          accessibilityRole="button"
-          accessibilityLabel={activeSubTab === 'bills' ? 'Add a bill' : activeSubTab === 'debts' ? 'Add a debt' : 'Add a loan'}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="add" size={28} color={colors.gold} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, activeSubTab, colors.gold]);
   const styles = makeStyles(colors);
   return (
     <SafeAreaView style={styles.container}>
