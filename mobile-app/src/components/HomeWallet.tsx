@@ -88,8 +88,9 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const { width: screenW } = useWindowDimensions();
   const busy = useRef(false);
   const dragY = useRef(new Animated.Value(0)).current;
-  // While held, the card rises a little out of the gap and floats above the stack,
-  // whole, with a slight slant.
+  // While held, the card rises a little out of the gap. It stays whole, but it sits
+  // behind the cards in front of the gap, so mostly just its top shows: the rest
+  // looks already slid in between the cards where it will land.
   const LIFT = 22;
   const liftUp = useRef(new Animated.Value(0)).current;
   // The card that was just dropped, while it settles (so its lift and slant ease out).
@@ -307,11 +308,11 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
             const held = lifted || settling === c.key;
-            // While dragging, the held card floats on top of every card, fully visible,
-            // while the others keep their stack order around the gap.
+            // While dragging, the held card slots into the stack's layering at the gap:
+            // above the cards behind it, below the cards in front (which hide its lower part).
             const others = dragging ? order.filter((k) => k !== dragging) : order;
             const j = others.indexOf(c.key);
-            const layer = !dragging ? i : lifted ? cards.length + 1 : j >= gapAt ? j + 1 : j;
+            const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
             const amount = typeof c.account.amount === 'number' ? c.account.amount : 0;
             const top = tops.get(c.key) as Animated.Value;
             return (
