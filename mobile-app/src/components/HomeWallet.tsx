@@ -69,7 +69,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const saved = useMemo(() => orderedCards(model), [model]);
   // Local order so moves feel instant; it follows the saved order when that changes.
   const [order, setOrder] = useState<string[]>(saved.map((c) => c.key));
-  useEffect(() => setOrder(saved.map((c) => c.key)), [saved.map((c) => c.key).join('|')]);
+  useEffect(() => {
+    // Don't snap back to the saved order while a newer order is waiting to be saved.
+    if (!pendingKeys.current) setOrder(saved.map((c) => c.key));
+  }, [saved.map((c) => c.key).join('|')]);
   const cards = order.map((k) => saved.find((c) => c.key === k)).filter(Boolean) as WalletCard[];
 
   // Per card: an animated "top" (slides when the order changes), a sideways offset and
@@ -95,7 +98,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   function slide(keys: string[], gap = -1, duration = 180) {
     return keys.map((k, i) => {
       const slot = gap >= 0 && i >= gap ? i + 1 : i;
-      return Animated.timing(tops.get(k) as Animated.Value, { toValue: slot * PEEK, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false });
+      return Animated.timing(tops.get(k) as Animated.Value, { toValue: slot * PEEK, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true });
     });
   }
   function layout(keys: string[], gap = -1) {
@@ -114,10 +117,27 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
     return () => clearTimeout(t);
   }, [order.join('|'), dragging]);
 
+  // The new order shows straight away; saving it (which encrypts and syncs your data)
+  // waits until you've stopped moving cards, so it never interrupts an animation.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingKeys = useRef<string[] | null>(null);
+  const latestModel = useRef(model);
+  latestModel.current = model;
+  function flush() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    const keys = pendingKeys.current;
+    pendingKeys.current = null;
+    if (keys) saveModel({ ...latestModel.current, walletOrder: keys }).catch(() => {});
+  }
   function persist(keys: string[]) {
     setOrder(keys);
-    saveModel({ ...model, walletOrder: keys }).catch(() => {});
+    pendingKeys.current = keys;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flush, 1200);
   }
+  // Leaving Home before the save happens still saves the order.
+  useEffect(() => () => flush(), []);
 
   // Swipe right: the front card glides off to the right while the cards behind move
   // down a step; it then fades back in at the back of the stack.
@@ -136,8 +156,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       const f = fades.get(front) as Animated.Value;
       x.setValue(fromX);
       Animated.parallel([
-        Animated.timing(x, { toValue: screenW, duration: 260, easing: EASE, useNativeDriver: false }),
-        Animated.timing(f, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }),
+        Animated.timing(x, { toValue: screenW, duration: 260, easing: EASE, useNativeDriver: true }),
+        Animated.timing(f, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: true }),
         ...slide(keys, 0, 280),
       ], { stopTogether: false }).start(() => {
         // Tuck it in behind the stack while it's invisible, then let the re-ordered
@@ -149,8 +169,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         // The fade runs on its own (not grouped with the slide) so nothing else that
         // moves the cards can stop it halfway and leave the card invisible.
         setTimeout(() => {
-          Animated.timing(tops.get(front) as Animated.Value, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }).start();
-          Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }).start(() => {
+          Animated.timing(tops.get(front) as Animated.Value, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: true }).start();
+          Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: true }).start(() => {
             f.setValue(1);
             busy.current = false;
           });
@@ -163,15 +183,15 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       const f = fades.get(back) as Animated.Value;
       const frontX = xs.get(order[order.length - 1]) as Animated.Value;
       Animated.parallel([
-        Animated.timing(f, { toValue: 0, duration: 160, easing: EASE, useNativeDriver: false }),
-        Animated.timing(frontX, { toValue: 0, duration: 200, easing: EASE, useNativeDriver: false }),
+        Animated.timing(f, { toValue: 0, duration: 160, easing: EASE, useNativeDriver: true }),
+        Animated.timing(frontX, { toValue: 0, duration: 200, easing: EASE, useNativeDriver: true }),
         ...slide(keys, -1, 260),
       ], { stopTogether: false }).start(() => {
         (tops.get(back) as Animated.Value).setValue((next.length - 1) * PEEK);
         x.setValue(-screenW * 0.6);
         persist(next);
-        Animated.timing(x, { toValue: 0, duration: 280, easing: EASE, useNativeDriver: false }).start(() => x.setValue(0));
-        Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }).start(() => {
+        Animated.timing(x, { toValue: 0, duration: 280, easing: EASE, useNativeDriver: true }).start(() => x.setValue(0));
+        Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: true }).start(() => {
           f.setValue(1);
           busy.current = false;
         });
@@ -206,7 +226,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       .onEnd((e) => {
         const frontX = xs.get(order[order.length - 1]) as Animated.Value;
         if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) cycle(e.translationX < 0 ? 'left' : 'right', e.translationX * 0.8);
-        else Animated.spring(frontX, { toValue: 0, friction: 7, useNativeDriver: false }).start();
+        else Animated.spring(frontX, { toValue: 0, friction: 7, useNativeDriver: true }).start();
       });
     const drag = Gesture.Pan()
       .runOnJS(true)
@@ -241,7 +261,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         dragTarget.current = -1;
         setDragging(null);
         setGapAt(-1);
-        if (v) Animated.timing(v, { toValue: target * PEEK, duration: 160, useNativeDriver: false }).start();
+        if (v) Animated.timing(v, { toValue: target * PEEK, duration: 160, useNativeDriver: true }).start();
         if (keys.join('|') !== order.join('|')) persist(keys);
       });
     return Gesture.Race(drag, swipe, tap);
@@ -309,7 +329,9 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                   style={[
                     styles.card,
                     {
-                      top: lifted ? Animated.add(top, dragY) : top,
+                      // Positions move with transforms so the phone's graphics engine animates
+                      // them directly (smooth even while the app is busy).
+                      top: 0,
                       zIndex: lifted ? 100 : i,
                       elevation: lifted ? 12 : 2 + i,
                       opacity: lifted ? 0.92 : (fades.get(c.key) as Animated.Value),
@@ -317,6 +339,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
+                        { translateY: lifted ? Animated.add(top, dragY) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
                         { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 400], outputRange: ['-6deg', '0deg', '6deg'] }) },
                         { scale: lifted ? 0.94 : 1 },
