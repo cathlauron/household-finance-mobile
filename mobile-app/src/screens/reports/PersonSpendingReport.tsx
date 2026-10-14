@@ -15,7 +15,8 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
 import { getMyPersonId, subscribeToMyPersonId } from '../../myPerson';
 import { useTheme } from '../../ThemeContext';

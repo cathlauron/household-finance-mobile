@@ -1,5 +1,6 @@
 ﻿import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry } from '../types';

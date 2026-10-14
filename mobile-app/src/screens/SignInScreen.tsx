@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, Image, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, Image, Platform } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';

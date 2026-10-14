@@ -1,5 +1,6 @@
 ﻿import React from 'react';
-import { View, Text, Image, ViewStyle } from 'react-native';
+import { View, Image, ViewStyle } from 'react-native';
+import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import type { AvatarConfig } from '../types';

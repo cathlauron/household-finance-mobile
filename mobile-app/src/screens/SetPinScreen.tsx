@@ -1,13 +1,6 @@
 ﻿import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from '../components/AppText';
 import { isValidPinFormat, savePin } from '../pin';
 import PinField from '../components/PinField';
 import PasswordField from '../components/PasswordField';

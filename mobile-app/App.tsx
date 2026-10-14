@@ -7,6 +7,17 @@ import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  Nunito_300Light,
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+} from '@expo-google-fonts/nunito';
+import { setFontsReady } from './src/components/AppText';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -703,6 +714,26 @@ function AppContent() {
 }
 
 export default function App() {
+  // Redesign: load the rounded font (Nunito) before anything draws. See
+  // src/components/AppText.tsx. If loading fails, the app still opens, in the
+  // phone's normal font, rather than getting stuck.
+  const [fontsLoaded, fontError] = useFonts({
+    Nunito_300Light,
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+    Nunito_900Black,
+  });
+  setFontsReady(fontsLoaded);
+  if (!fontsLoaded && !fontError) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>

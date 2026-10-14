@@ -1,16 +1,6 @@
 import React from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  KeyboardAvoidingView,
-  StyleSheet,
-  Platform,
-  SafeAreaView,
-  useWindowDimensions,
-} from 'react-native';
+import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, Platform, SafeAreaView, useWindowDimensions } from 'react-native';
+import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
 

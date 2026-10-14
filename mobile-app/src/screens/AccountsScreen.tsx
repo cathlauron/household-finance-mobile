@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Platform,
-  LayoutAnimation,
-  UIManager,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, LayoutAnimation, UIManager } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';

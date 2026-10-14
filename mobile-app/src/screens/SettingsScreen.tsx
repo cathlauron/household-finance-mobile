@@ -2,19 +2,8 @@ import { hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Modal,
-  Pressable,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { RowInteractionPreview } from '../components/RowInteractionPreview';

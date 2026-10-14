@@ -18,16 +18,8 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Pressable,
-  TextInput,
-  ScrollView,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import AmountInput from '../components/AmountInput';
 

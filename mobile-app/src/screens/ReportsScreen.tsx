@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import MonthlyCloseOutReport from './reports/MonthlyCloseOutReport';

@@ -12,7 +12,8 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Text } from '../components/AppText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';

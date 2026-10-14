@@ -1,6 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Image, ImageBackground, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Text } from '../components/AppText';
+
+// Redesign: animated text that still uses the rounded font.
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 // This splash matches the native splash's deep green and ignores light/dark
 // mode on purpose, so it always looks the same on launch.
@@ -76,16 +80,16 @@ export default function IntroScreen() {
           resizeMode="contain"
         />
       </Animated.View>
-      <Animated.Text
+      <AnimatedText
         style={[styles.title, { opacity: titleOpacity }]}
         numberOfLines={1}
         adjustsFontSizeToFit
       >
         FINANCE FLOW
-      </Animated.Text>
-      <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
+      </AnimatedText>
+      <AnimatedText style={[styles.tagline, { opacity: taglineOpacity }]}>
         Small steps. Bigger dreams.
-      </Animated.Text>
+      </AnimatedText>
 
       <View style={styles.bottomGroup}>
         <Ionicons name="leaf-outline" size={22} color={SPLASH_CREAM} style={{ opacity: 0.55 }} />

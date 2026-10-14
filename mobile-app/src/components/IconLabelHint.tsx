@@ -1,16 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  Animated,
-  StyleSheet,
-  useWindowDimensions,
-  Insets,
-  StyleProp,
-  ViewStyle,
-} from 'react-native';
+import { View, Modal, Pressable, Animated, StyleSheet, useWindowDimensions, Insets, StyleProp, ViewStyle } from 'react-native';
+import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 
