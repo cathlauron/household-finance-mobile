@@ -35,6 +35,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import { reviewCount } from './ReviewScreen';
+import { idsForAccount } from './CardDetailScreen';
 import SegmentedControl from '../components/SegmentedControl';
 
 function personName(people: Person[], id: string): string {
@@ -182,11 +183,17 @@ export default function TransactionsScreen() {
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [monthSheetOpen, setMonthSheetOpen] = useState(false);
   const filterNonce = route.params?.filterNonce;
+  // Redesign: "See all" on a Card page filters to that card ({ accountFilter }).
+  const [accountFilter, setAccountFilter] = useState<{ key: string; name: string } | null>(null);
   useEffect(() => {
     const p = route.params;
     if (p?.categoryFilter && p?.monthFilter) {
       setCategoryFilter(p.categoryFilter);
       setMonthFilter(p.monthFilter);
+    }
+    if (p?.accountFilter) {
+      setAccountFilter({ key: p.accountFilter, name: p.accountFilterName ?? 'This card' });
+      setMonthFilter('all');
     }
   }, [filterNonce]);
   // Redesign: the floating + button opens this tab with { addNonce } to show the
@@ -222,6 +229,7 @@ export default function TransactionsScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setCategoryFilter(null);
+      setAccountFilter(null);
     });
     return unsubscribe;
   }, [navigation]);
@@ -266,8 +274,13 @@ export default function TransactionsScreen() {
     if (categoryFilter) {
       list = list.filter((t) => t.direction === 'out' && t.category === categoryFilter);
     }
+    if (accountFilter) {
+      const [g, id] = accountFilter.key.split(':');
+      const ids = idsForAccount(model, g as any, id);
+      list = list.filter((t) => ids.has(t.rawId ?? t.id) || ids.has(t.id));
+    }
     return sortTransactions(list, sortOrder);
-  }, [model, sortOrder, categoryFilter, monthFilter]);
+  }, [model, sortOrder, categoryFilter, monthFilter, accountFilter]);
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
@@ -638,6 +651,17 @@ export default function TransactionsScreen() {
             <Text style={styles.filterChipText}>{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
             <Ionicons name="swap-vertical" size={14} color={colors.inkDim} />
           </TouchableOpacity>
+          {accountFilter && (
+            <TouchableOpacity
+              style={[styles.filterChip, styles.filterChipOn]}
+              onPress={() => setAccountFilter(null)}
+              accessibilityRole="button"
+              accessibilityLabel={`Showing ${accountFilter.name} only. Tap to clear.`}
+            >
+              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{accountFilter.name}</Text>
+              <Ionicons name="close-circle" size={15} color={colors.gold} />
+            </TouchableOpacity>
+          )}
           {categoryFilter && (
             <TouchableOpacity
               style={[styles.filterChip, styles.filterChipOn]}

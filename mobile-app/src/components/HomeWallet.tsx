@@ -62,7 +62,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                 key={account.id}
                 testID={`home-wallet-card-${account.id}`}
                 activeOpacity={0.85}
-                onPress={openAccounts}
+                onPress={() => navigation.navigate('CardDetail', { group, id: account.id })}
                 accessibilityRole="button"
                 accessibilityLabel={`${account.name || GROUP_LABEL[group]}, ${GROUP_LABEL[group]}, ${formatPeso(amount)}`}
                 style={[styles.card, { top: i * PEEK }]}

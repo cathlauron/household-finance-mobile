@@ -263,6 +263,18 @@ export type YearlyGoal = {
   createdAt?: number;
 };
 
+// Redesign (Move money): one move between two of your accounts. The balances are
+// changed when it's saved; this keeps a record of it.
+export type Transfer = {
+  id: string;
+  date: string;
+  from: string; // "debit:<accountId>" style key
+  to: string;
+  amount: number;
+  fee?: number;
+  note?: string;
+};
+
 export type BalanceAccountEntry = {
   id: string;
   name: string;
@@ -366,6 +378,8 @@ export type HouseholdModel = {
   savingsGoals: SavingsGoal[];
   balanceAccounts: BalanceAccounts;
   manualTransactions: ManualTransaction[];
+  // Redesign (Move money): money moved between your own accounts. Not spending.
+  transfers?: Transfer[];
   categories: Category[];
   categoryBudgets: CategoryBudget[];
   calculatorInputs?: CalculatorInputs;

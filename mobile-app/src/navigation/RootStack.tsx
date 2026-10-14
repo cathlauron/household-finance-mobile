@@ -16,6 +16,8 @@ import SearchScreen from '../screens/SearchScreen';
 import ReviewScreen from '../screens/ReviewScreen';
 import PayDetailScreen from '../screens/PayDetailScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
+import CardDetailScreen from '../screens/CardDetailScreen';
+import TransferScreen from '../screens/TransferScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import type { PlanningTab } from '../screens/PlanningScreen';
@@ -35,6 +37,8 @@ export type RootStackParamList = {
   Search: undefined;
   Review: undefined;
   Subscriptions: undefined;
+  CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string };
+  Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
 };
 
@@ -135,6 +139,8 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       >
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>
+      <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
+      <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
