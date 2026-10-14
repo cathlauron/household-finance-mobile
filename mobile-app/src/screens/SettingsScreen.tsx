@@ -34,6 +34,7 @@ import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
 import { getBiometricState, getBiometricLabel, setBiometricsDisabled, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
 import SetPinScreen from './SetPinScreen';
+import CsvImportModal from './CsvImportModal';
 import {
   subscribeToUserDevices,
   revokeDeviceSession,
@@ -113,6 +114,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
   // Which page is open. null = the hub (the grouped list of rows).
   const [page, setPage] = useState<string | null>(null);
+  const [csvOpen, setCsvOpen] = useState(false);
   const inPage = (key: string) => page === key || !!(page && SECTIONS[page]?.parts.includes(key));
   const scrollRef = useRef<ScrollView>(null);
 
@@ -1055,7 +1057,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         </TouchableOpacity>
 
         <SettingsGroup label="Household">
-          <SettingsRow testID="settings-row-household" icon="people-outline" title="Household" value={isLinked ? 'Shared' : 'Just you'} onPress={() => navigation.navigate('Profile')} />
+          <SettingsRow testID="settings-row-household" icon="people-outline" title="Household" value={isLinked ? 'Shared' : 'Just you'} onPress={() => navigation.navigate('Profile', { section: 'household' })} />
         </SettingsGroup>
         <SettingsGroup label="You">
           <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Account & Security" value={biometricState === 'ENABLED' ? `${biometricLabel}` : pinIsSet ? 'PIN' : undefined} onPress={() => setPage('sec')} />
@@ -1839,6 +1841,12 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   Back up your data, or clear everything and start fresh.
 </Text>
 
+        {/* Redesign: importing from a spreadsheet lives here now (moved from Transactions). */}
+        <TouchableOpacity style={styles.dataButton} onPress={() => setCsvOpen(true)} testID="settings-import-csv">
+          <GradientFill match={styles.dataButton} />
+          <Text style={styles.dataButtonText}>Import from a spreadsheet (CSV)</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.dataButton} onPress={handleExportBackup} disabled={exportBusy}>
           <GradientFill match={styles.dataButton} />
           {exportBusy ? (
@@ -1882,6 +1890,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       </>
         )}
       </PullToRefreshScrollView>
+      <CsvImportModal visible={csvOpen} onClose={() => setCsvOpen(false)} />
 
       <BottomSheet
         visible={modalOpen}

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -100,6 +100,12 @@ type ProfileScreenProps = {
 export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: ProfileScreenProps) {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  // Redesign: Settings opens this page either as your Profile or as the Household page.
+  const route = useRoute<any>();
+  const section: 'profile' | 'household' = route.params?.section === 'household' ? 'household' : 'profile';
+  React.useLayoutEffect(() => {
+    navigation.setOptions({ title: section === 'household' ? 'Household' : 'Profile', headerBackTitle: 'Settings' });
+  }, [navigation, section]);
   const {
     model,
     saveModel,
@@ -616,6 +622,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {section === 'profile' && (<>
         {/* 1. Identity Header */}
         <View style={styles.identityHeader}>
           <TouchableOpacity
@@ -720,6 +727,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           </TouchableOpacity>
         </View>
 
+        </>)}
+        {section === 'household' && (<>
         {/* 3. Household & Sharing Section */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Household &amp; Sharing</Text>
         <Text style={styles.sectionSub}>
@@ -1274,7 +1283,9 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
           </>
         )}
 
-        {/* 4. Quick Actions (Lock & Sign Out) */}
+        </>)}
+        {/* 4. Quick Actions (Lock & Sign Out) — now at the bottom of Settings. */}
+        {false && (<>
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Session Actions</Text>
         <Text style={styles.sectionSub}>
           Quickly lock the app, or sign out completely.
@@ -1305,6 +1316,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
   >
     <Text style={styles.signOutButtonText}>Log out</Text>
   </TouchableOpacity>
+        </>)}
       </ScrollView>
 
       {/* Peer Recovery Approval Modal */}

@@ -875,12 +875,8 @@ export default function TransactionsScreen() {
         </View>
         ))}
 
-        {/* Redesign: adding is done with the floating + button; Import CSV stays here. */}
-        <View style={styles.addButtonRow}>
-          <TouchableOpacity style={styles.importButton} onPress={() => setCsvModalOpen(true)}>
-            <Text style={styles.importButtonText}>Import CSV</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Redesign: adding is done with the floating + button; importing a spreadsheet
+            moved to Settings › Backup & Data. */}
       </PullToRefreshScrollView>
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
