@@ -104,6 +104,15 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   useEffect(() => {
     if (!dragging) layout(order);
   }, [order.join('|'), dragging]);
+  // Safety net: once things settle, make sure no card is left faded out or pushed aside.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (busy.current || dragging) return;
+      fades.forEach((v) => v.setValue(1));
+      xs.forEach((v) => v.setValue(0));
+    }, 700);
+    return () => clearTimeout(t);
+  }, [order.join('|'), dragging]);
 
   function persist(keys: string[]) {
     setOrder(keys);
@@ -130,18 +139,21 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         Animated.timing(x, { toValue: screenW, duration: 260, easing: EASE, useNativeDriver: false }),
         Animated.timing(f, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }),
         ...slide(keys, 0, 280),
-      ]).start(() => {
+      ], { stopTogether: false }).start(() => {
         // Tuck it in behind the stack while it's invisible, then let the re-ordered
         // stack draw (so it's already behind the others) before it fades back in —
         // that way only its top strip ever shows, sliding down into place.
         (tops.get(front) as Animated.Value).setValue(-12);
         x.setValue(0);
         persist(next);
+        // The fade runs on its own (not grouped with the slide) so nothing else that
+        // moves the cards can stop it halfway and leave the card invisible.
         setTimeout(() => {
-          Animated.parallel([
-            Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }),
-            Animated.timing(tops.get(front) as Animated.Value, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }),
-          ]).start(() => (busy.current = false));
+          Animated.timing(tops.get(front) as Animated.Value, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: false }).start();
+          Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }).start(() => {
+            f.setValue(1);
+            busy.current = false;
+          });
         }, 60);
       });
     } else {
@@ -154,14 +166,15 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         Animated.timing(f, { toValue: 0, duration: 160, easing: EASE, useNativeDriver: false }),
         Animated.timing(frontX, { toValue: 0, duration: 200, easing: EASE, useNativeDriver: false }),
         ...slide(keys, -1, 260),
-      ]).start(() => {
+      ], { stopTogether: false }).start(() => {
         (tops.get(back) as Animated.Value).setValue((next.length - 1) * PEEK);
         x.setValue(-screenW * 0.6);
         persist(next);
-        Animated.parallel([
-          Animated.timing(x, { toValue: 0, duration: 280, easing: EASE, useNativeDriver: false }),
-          Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }),
-        ]).start(() => (busy.current = false));
+        Animated.timing(x, { toValue: 0, duration: 280, easing: EASE, useNativeDriver: false }).start(() => x.setValue(0));
+        Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: false }).start(() => {
+          f.setValue(1);
+          busy.current = false;
+        });
       });
     }
   }
