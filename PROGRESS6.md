@@ -1983,7 +1983,200 @@ Why: Cath wanted the rubber-band overscroll on screens that lacked it. Worked as
 - The method that works: one file at a time, Ctrl+F the tag, change only the tag name, fix the import, run tsc.
 - Remaining files that probably still use a plain ScrollView (not requested yet): ProfileScreen, AccountSwitcherScreen, SignInScreen, CreateProfileScreen, OnboardingScreen, SetPinScreen.
 
+=====================================================================
+🎨 R SERIES: Finance Flow full redesign to match the Claude Design mockups (2026-10-14)
+=====================================================================
+
+Why: Cath wanted every screen to look exactly like her Claude Design mockups, then chose
+"Everything, including features" (bills, loans, cards and transactions get full pages, not
+expanding rows). Unlike the Antigravity rounds, this work was done in a Claude Code session
+with direct repo access: Claude wrote the code, ran npx tsc --noEmit, and committed and
+pushed every step to the `redesign` branch (65 commits, all tsc clean). Cath tested each
+step on her phone in Expo Go and replied "device test is as described" before the next.
+
+🔗 Design references (most up-to-date versions as of this wrap-up)
+- Mockups (Design canvas, 55 artboards, all screens): "Finance Flow Redesign"
+  https://claude.ai/artifact/AszP4RAjsgqkyB4uYXwXgA (version 213, id 1792004732-0aef).
+  Includes this session's changes: soft gradients on every screen (in its shared
+  ds/financeflow/components/bundle.css), an interactive Wallet on Home (swipe with corner
+  lift, hold-to-move with slant and see-through held card, type tags, gradient cards),
+  To-Pay without the top + (the + button adds a bill), Plan without the floating +.
+- Design system: "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ
+  (version 39, id 1792004719-e46a). Updated this session: README gains a Gradients
+  section, the new Settings / Plan / Insights structure and Wallet behaviour; WalletCard
+  and HeroCard guidelines rewritten; components/bundle.css has the gradient rules. The
+  mockup canvas now points at this version.
+- Both are private to Cath's account. Start a new conversation by reading them (Artifact
+  read) rather than relying on older local copies.
+
+🧪 How to test the redesign (it is NOT merged into main yet)
+- From the repo root:  git status; git checkout redesign; git pull; cd mobile-app; npx expo start -c
+- Afterwards:          cd ..; git checkout main
+- PROGRESS6.md lives on main; the redesign code lives on the `redesign` branch.
+
+✅ DONE on `redesign` (code-complete, tsc clean, each step device-tested in Expo Go unless noted)
+- Steps 1-4: Finance Flow colours (theme.ts plus new keys positive, negative, saving,
+  planned, onAccent, accentTint, buttonFill, onButton), floating rounded tab bar (Home,
+  Transactions, To-Pay, Plan; Plan replaces More), Nunito font app-wide (AppText wrapper,
+  all 53 files import Text/TextInput from it), floating + button on the thumb side
+  (fabSide.ts).
+- Step 5: Home greeting header, mood-coloured Left to Spend card (mood.tsx: good / low /
+  over swaps accent colours app-wide; MoodThemeProvider in App.tsx), Wallet, Due soon,
+  Insights. Left to Spend now records when balances were last updated (asOfDate +
+  asOfAt) and counts same-day spending added after that exact moment (createdAt).
+- Steps 6-9: Transactions, To-Pay, Plan, Settings in the new style; Settings opens from
+  the Home photo.
+- Step 10: animated opening screen (IntroScreen: logo draws itself, leaves drift,
+  progress line fills once then fades), new LogoMark on sign-in, switcher, create
+  account, unlock.
+- Steps 11-12: forms and bottom sheets restyled; readable text sizes; large titles via a
+  custom LargeHeader; the 54-leaf background field in the mood colour.
+- Steps 13-16: Home exactly per mockup (two-page HomeHero), Transaction detail page,
+  quick New transaction sheet, Search, To review, To-Pay with full Bill / Debt / Loan
+  pages (PayDetail: Mark as paid / Undo, 6-month bars, history; billPayments.ts keeps
+  paid cycles as history and queues the next one), Subscriptions page, Card page
+  (CardDetail) and Move money (TransferScreen; a `transfers` record).
+- Wallet (HomeWallet.tsx), after many rounds of Cath's feedback:
+  - Cards show a Cash / Debit / Credit tag, a 1px edge in the card colour, minimal
+    shadows, and a soft gradient (GradientFill kind "card").
+  - Swipe right: the bottom-left corner lifts (rotate about 5° to 9°), the card slides off
+    to the right and comes back in from the right to the back of the stack, levelling out.
+    Swipe left (undo): the back card does the same and lands at the front.
+  - Hold about 0.35s then drag: the card lifts 22px with the same 5° slant, goes 70%
+    opaque, sits behind the cards in front of the gap (only its top shows) and a gap opens
+    where it will land. On drop the lift and slant ease out.
+  - Order is saved in model.walletOrder (debounced 1.2s). All animation uses the native
+    driver.
+- Gradients everywhere (new components/GradientFill.tsx):
+  - It measures its parent and clips itself to the parent's corners.
+  - kind "solid": Left to Spend at 26%, filled buttons at 18%.
+  - kind "tint": light green fills such as icon tiles, the + button and selected states.
+  - kind "surface": white boxes fade to a faint accent tint.
+  - kind "card": Wallet cards.
+  - 13 eased stops so no colour lines show.
+  - Given `match={sameStyleAsParent}` it picks the look from the parent's background
+    colour and skips tiny shapes. A script added it to 228 places in 48 files, plus the
+    tab bar and the + button.
+- Step 17, Savings:
+  - Pots / Emergency / FI tabs.
+  - Pots: "Set aside in total", pot rows, and a new PotDetail page with Add money and Move
+    out (with the account), history, target, "Kept in", and "Add ₱X every payday".
+  - savingsPots.ts: payday top-ups catch up when Home opens; tested with a twice-a-month
+    salary.
+  - Money moved out is a negative contribution, so it returns to spending money and shows
+    as money in.
+  - Emergency and FI tabs are tappable rows with one edit sheet. New efTargetMonths
+    setting (3/6/9/12).
+- Step 18, Plan (each section is now its own page with + in the top bar):
+  - Groceries:
+    - List: tick buttons, "Show N more", and Finish trip, which adds one Groceries
+      transaction and clears the ticked items.
+    - Calculator: quantity × price.
+    - Meal ideas: new mealIdeas data, kept on sync.
+  - Travel: the next trip is featured with Budget / Saved or Left / Paid and its checklist
+    ticks on the page; past trips show under or over budget.
+  - Events:
+    - Upcoming / Done tabs.
+    - Expandable rows with item breakdowns and a "Save for this in Savings" switch.
+    - Mark as done logs the expense.
+    - Annual events return to Upcoming 30 days after done, with yearly history.
+  - Yearly Goals: a progress ring; amount goals can follow a savings pot or a debt/loan;
+    checklist goals tick on the page.
+- Step 19, Insights and Reports:
+  - Home › Reports opens Insights: 6-month bars, where this month went, and the Reports
+    list. Each report is its own page (ReportDetailScreen); "More reports" lists the rest.
+  - Close-out: shows last month with month arrows, under/over budget, and where it went
+    against last month.
+  - Cash flow: 30/60/90 days, the lowest point and why, a line chart, and the biggest
+    moves.
+  - Year in review: tiles, totals, and "Share your year" with no amounts.
+- Step 20, Settings:
+  - Profile card, then Household, Account & Security, Appearance, Notifications,
+    Budgeting, Categories & Rules, Backup & Data and About & Help (each a page made of the
+    existing blocks), then Lock app now, Switch account and Log out.
+  - Appearance gains Mood colours and Falling leaves switches; "Device" is now
+    "Automatic".
+  - Profile opens with `section` "profile" or "household". Household linking code is
+    unchanged.
+  - Import from a spreadsheet moved from Transactions to Backup & Data.
+- Step 21, onboarding:
+  - The Welcome screen replaces the intro slides.
+  - After Quick Unlock (unchanged; skipping it now continues) come 3 setup steps
+    (components/OnboardSetup.tsx):
+    1. Where's your money?: add accounts.
+    2. Your month: a new settings.monthlySpendingBudget (used by the close-out when there
+       are no category budgets), plus categories to watch.
+    3. Make it yours: a new settings.walletName, Light / Dark, and which thumb taps +.
+  - Unlock shows a quick tick after fingerprint or face, then goes straight in.
+- Smaller agreed changes: no top-bar + on To-Pay (the floating + adds a bill, debt or loan
+  for the segment showing); no floating + on the Plan tab.
+
+📌 Decisions (R series)
+- Exact-match sweep scope: "Everything, including features"; full pages instead of rows.
+- Wallet: a corner lift (not a curl, not a cut-off card); the held card stays whole and
+  slanted at 70% opacity, tucked behind the cards in front. Cath tried and rejected:
+  cutting the card in half, fading its bottom half, see-through front cards, and floating
+  fully on top.
+- Gradients: wanted everywhere including white boxes, smooth with no visible lines, and
+  clearly visible on the darker fills (Left to Spend, filled buttons).
+- Close-out "Carry ₱X into next month" switch from the mockup was NOT built: Left to
+  Spend comes from real balances, so leftover money already carries over; a switch would
+  count it twice.
+- Forgot password: NOT built for now (Cath chose "Not yet"). Data is encrypted with the
+  password, so a reset would need the existing Recovery Key step afterwards.
+- Unlock: go straight in after a quick tick (not the mockup's "Open Home" button).
+- Onboarding's "Unlock with fingerprint" switch was left out (security setting; it stays
+  in Settings › Account & Security).
+- The old Reports "Customize" (hide reports) sheet was removed with the new Insights page.
+- Left to Spend exact-time device test: Cath asked to revisit it after everything is
+  added (still pending).
+
+⚠️ Known issues / gotchas (R series)
+- Not merged into main. A new EAS build is needed before the native splash change and
+  react-native-svg work show in an installed app; Expo Go is slower than a release build.
+- Falling leaves: the Settings switch is saved but the animation itself is not built yet.
+- Mockup features not built (need features the app lacks): Google/Apple "Ways to sign
+  in" on Profile, "Work offline" and "Sync photos only on Wi-Fi" switches, Text size and
+  Wallet name rows in Appearance (wallet name is set only in onboarding), the
+  Notifications page still has its old layout.
+- Cancel-by reminders do not notify yet; transfer fees are logged as a "Fees" transaction
+  but do not reduce the account balance directly.
+- Rows that sit inside white groups and have their own solid background (needed for
+  swipe-to-delete) carry their own GradientFill, so long lists draw many small gradients.
+  Settings and Profile have the most; watch for slow scrolling.
+- GradientFill matches only these background colours: navy3, accentTint, buttonFill, gold
+  and cardTealEnd. Mood colours such as the HomeHero orange/red need kind="solid" passed
+  explicitly.
+- PROGRESS6.md is now over 2,000 lines; consider archiving older session logs or moving to
+  PROGRESS7.md at the start of the next conversation.
+
+📁 Files (R series, all under mobile-app/src unless noted)
+- New: components/GradientFill.tsx, components/ReportBits.tsx, components/OnboardSetup.tsx,
+  components/HomeWallet.tsx, components/HomeHero.tsx, components/LeafBackground.tsx,
+  components/LogoMark.tsx, components/SegmentedControl.tsx, components/PayRow.tsx,
+  navigation/LargeHeader.tsx, mood.tsx, billPayments.ts, savingsPots.ts, fabSide.ts,
+  fabActions.ts, transactionActions.ts, screens/PotDetailScreen.tsx,
+  screens/InsightsScreen.tsx, screens/ReportDetailScreen.tsx (also MoreReportsScreen),
+  screens/PayDetailScreen.tsx, screens/CardDetailScreen.tsx, screens/TransferScreen.tsx,
+  screens/TransactionDetailScreen.tsx, screens/SearchScreen.tsx, screens/ReviewScreen.tsx,
+  screens/SubscriptionsScreen.tsx, screens/IntroScreen.tsx (opening animation).
+- Heavily changed: theme.ts, types.ts (walletOrder, transfers, mealIdeas, MealIdea,
+  SavingsGoal keptIn/autoAdd/isEmergency, contribution paymentMethod/auto, EventItem
+  items/history, YearlyGoal linkedTo/completedDate, GroceryCalcEntry qty/unitPrice,
+  Settings moodColorsEnabled/fallingLeavesEnabled/monthlySpendingBudget/walletName,
+  CalculatorInputs efTargetMonths), mergeModels.ts, balanceProjection.ts (exported
+  incomeOccurrencesInMonth and eventDelta; negative contributions allowed),
+  transactions.ts, navigation/RootStack.tsx (routes Groceries, Travel, Events,
+  YearlyGoals, PotDetail, Report, MoreReports, PayDetail, CardDetail, Transfer, ...),
+  navigation/MainTabs.tsx, HomeScreen, DashboardScreen, TransactionsScreen, ToPay /
+  Bills / Debts / Loans screens, SavingsScreen, GroceriesScreen (rewritten), TravelScreen,
+  EventsScreen, GoalsScreen, PlanScreen, SettingsScreen, ProfileScreen, OnboardingScreen,
+  IntroSlidesScreen (now the Welcome screen), PinUnlockScreen, the three rewritten
+  reports (MonthlyCloseOut, CashFlowForecast, YearInReview), App.tsx (repo
+  mobile-app/App.tsx).
+
 ▶️ Next step
+- LATEST (R series, 2026-10-14): the redesign is on the `redesign` branch, steps 1-21 done and device-tested. Next, in a NEW conversation: (1) read the two design artifacts listed in the R series section; (2) continue with step 22+: Shared Expenses, Envelope budgets, Recurring / "Make it repeat", the offline banner, the falling-leaves animation, cancel-by reminders; (3) optional mockup leftovers (Notifications page layout, Forgot password once Cath agrees, Profile sign-in methods); (4) run the deferred Left to Spend exact-time device test; (5) when Cath approves, merge `redesign` into main and make a new EAS build. Older bullets below are from before the redesign and still stand.
 - NEWEST (rubber band audit, swaps done): Bills (no bounce at all) and Person Spending report (bounces at the top only) are OPEN PROBLEMS, see the section above. Next: (1) check whether Person Spending actually scrolls and how many cards it shows; (2) try the trimmed-list experiment on Bills; (3) once the cause is found, consider swapping the remaining plain ScrollViews (Profile, AccountSwitcher, SignIn, CreateProfile, Onboarding, SetPin). Confirm with git status that the swaps are pushed.
 - NEWEST (Parts 1-3, done and pushed): Home/Calendar polish and the Insights removal are finished. Small follow-ups: (1) fix white-on-gold in the Calendar "today" cell for dark mode (see open issue in the Part 1-3 section); (2) test whether swiping the Calendar sheet down works on Android, then remove the X if it does; (3) update EMULATOR-TESTING-CHECKLIST.md sections 14-15. Then continue with the bullet below.
 - PREVIOUS (Batches A-F, all done, device-tested and pushed): the V series AND its optional leftovers are finished. Next, confirm with Cath which to do first: (a) run the short phone checklist (see "Still open after Batches A-F"); (b) make a NEW EAS build, which is required before the H series, mint restyle and Home leaves work on an installed app (react-native-svg is a native module), and which can double as the Quick Unlock Step 6 test build; (c) return to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in on that build. Optional small items: a "Sync now" button in Settings, delete the now-unused styles, set Transactions' default month.
