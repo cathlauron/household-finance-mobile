@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -22,6 +23,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth } from '../savingsPots';
 
 function todayISO(): string {
   const d = new Date();
@@ -128,8 +130,20 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     }
   }, [model, openSavingsId, openSavingsNonce]);
   const styles = makeStyles(colors);
+  const navigation = useNavigation<any>();
 
   const [activeTab, setActiveTab] = useState<PillTab>('goals');
+
+  // Redesign: + in the top bar starts a new pot (the mockup's "Add a savings pot").
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a savings pot" testID="savings-add-pot" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="add" size={28} color={colors.gold} />
+        </TouchableOpacity>
+      ),
+    });
+  });
 
   // ---- Goal add/edit modal state ----
   const [modalOpen, setModalOpen] = useState(false);
@@ -284,7 +298,9 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
         }
         amount = n;
       }
-      contributions.push({ id: row.id, date: dateTrimmed, amount });
+      // Keep anything else stored on the contribution (account, added on payday).
+      const orig = editingId ? model.savingsGoals.find((g) => g.id === editingId)?.contributions.find((c) => c.id === row.id) : undefined;
+      contributions.push({ ...(orig || {}), id: row.id, date: dateTrimmed, amount });
     }
     const newCurrentAmount = contributions.reduce(
       (sum, c) => sum + (typeof c.amount === 'number' ? c.amount : 0),
@@ -472,6 +488,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   const goals = sortGoals(model.savingsGoals);
   const totalSaved = goals.reduce((sum, g) => sum + contributionsTotal(g), 0);
+  const thisMonth = addedThisMonth(model);
 
   const suggestedMonthlyExpenses = computeMonthlyObligationsBaseline(
   model.bills,
@@ -587,9 +604,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         <SegmentedControl<PillTab>
           accessibilityLabel="Savings view"
           options={[
-            { id: 'goals', label: 'Goals' },
-            { id: 'ef', label: 'Emergency Fund' },
-            { id: 'fi', label: 'FI Calculator' },
+            { id: 'goals', label: 'Pots' },
+            { id: 'ef', label: 'Emergency' },
+            { id: 'fi', label: 'FI' },
           ]}
           value={activeTab}
           onChange={setActiveTab}
@@ -600,95 +617,68 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.summaryCard}>
             <GradientFill match={styles.summaryCard} />
-            <Text style={styles.balanceBannerLabel}>Total saved</Text>
-            <Text style={[styles.balanceBannerAmount, { color: colors.saving }]}>{formatPeso(totalSaved)}</Text>
+            <Text style={styles.balanceBannerLabel}>Set aside in total</Text>
+            <Text style={[styles.potsTotal, { color: colors.saving }]}>{formatPeso(totalSaved)}</Text>
+            {thisMonth !== 0 && (
+              <Text style={[styles.potsThisMonth, { color: colors.saving }]}>
+                {thisMonth > 0 ? '+' : '−'}
+                {formatPeso(Math.abs(thisMonth))} this month
+              </Text>
+            )}
           </View>
 
-          {goals.length === 0 && (
-            <Text style={styles.emptyText}>No savings goals yet.</Text>
+          {goals.length === 0 ? (
+            <Text style={styles.emptyText}>No pots yet. Tap + to start one, like an emergency fund or a trip.</Text>
+          ) : (
+            <>
+              <Text style={styles.potsHeader}>Pots</Text>
+              <View style={styles.listGroup}>
+                <GradientFill match={styles.listGroup} />
+                {goals.map((goal, rowIndex) => {
+                  const saved = contributionsTotal(goal);
+                  const target = potTarget(goal, model);
+                  const pct = target > 0 ? Math.min(100, Math.max(0, (saved / target) * 100)) : 0;
+                  const covered = isEmergencyPot(goal) ? monthsCovered(goal, model) : null;
+                  const subParts: string[] = [];
+                  if (target > 0) subParts.push('of ' + formatPeso(target));
+                  if (covered !== null) subParts.push(covered.toFixed(1) + ' months covered');
+                  else if (goal.targetDate) subParts.push('by ' + formatShortDateLabel(goal.targetDate));
+                  else if (target > 0) subParts.push('no date');
+                  return (
+                    <SwipeableRow
+                      key={goal.id}
+                      enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                      onDelete={() => handleSwipeDelete(goal)}
+                      testID={`goal-swipe-${goal.id}`}
+                      flat
+                    >
+                      <TouchableOpacity
+                        testID={`goal-row-${goal.id}`}
+                        style={[styles.potRow, rowIndex > 0 && styles.potDivider]}
+                        onPress={() => navigation.navigate('PotDetail', { id: goal.id })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${goal.name || 'Untitled pot'}, ${formatPeso(saved)} saved`}
+                      >
+                        <View style={styles.goalRowTop}>
+                          <Text style={[styles.goalName, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
+                            {goal.name || 'Untitled pot'}
+                          </Text>
+                          <Text style={[styles.potAmount, { color: colors.saving }]}>{formatPeso(saved)}</Text>
+                        </View>
+                        {subParts.length > 0 && <Text style={styles.goalSub} numberOfLines={1}>{subParts.join(' · ')}</Text>}
+                        {target > 0 && (
+                          <View style={styles.progressTrack}>
+                            <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    </SwipeableRow>
+                  );
+                })}
+              </View>
+              <Text style={styles.potsFooter}>Tap a pot to add money or see its history.</Text>
+            </>
           )}
-
-          <View style={styles.listGroup}>
-            <GradientFill match={styles.listGroup} />
-          {goals.map((goal, rowIndex) => {
-            const saved = contributionsTotal(goal);
-            const target = goalTarget(goal);
-            const pct = goalProgressPct(goal);
-            const isExpanded = expandedGoalId === goal.id;
-            const sortedContribs = [...(goal.contributions || [])].sort((a, b) =>
-              a.date < b.date ? 1 : -1
-            );
-            const lastContrib = sortedContribs[0];
-            return (
-              <SwipeableRow
-                key={goal.id}
-                enabled={Boolean(model.settings.swipeToDeleteEnabled)}
-                onDelete={() => handleSwipeDelete(goal)}
-                testID={`goal-swipe-${goal.id}`}
-                flat
-              >
-              <CollapsibleRow
-                testID={`goal-row-${goal.id}`}
-                flat
-                showDivider={rowIndex > 0}
-                isExpanded={isExpanded}
-                onToggle={() => setExpandedGoalId((prev) => (prev === goal.id ? null : goal.id))}
-                onEdit={() => openEditModal(goal)}
-                collapsedContent={
-                  <View style={styles.goalCollapsedWrap}>
-                    <View style={styles.goalRowTop}>
-                      <View style={styles.goalRowMain}>
-                        <Text style={styles.goalName} numberOfLines={1}>
-                          {goal.name || 'Untitled goal'}
-                        </Text>
-                        <Text style={styles.goalSub} numberOfLines={1}>
-                          {formatShortDateLabel(goal.targetDate)}
-                        </Text>
-                      </View>
-                      <Text style={styles.goalAmount}>
-                        {formatPeso(saved)}
-                        {target > 0 ? ' / ' + formatPeso(target) : ''}
-                      </Text>
-                    </View>
-                    {target > 0 && (
-                      <View style={styles.progressTrack}>
-                        <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
-                      </View>
-                    )}
-                  </View>
-                }
-                expandedContent={
-                  <View style={styles.detailContainer}>
-                    {target > 0 && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Remaining</Text>
-                        <Text style={styles.detailValue}>{formatPeso(Math.max(target - saved, 0))}</Text>
-                      </View>
-                    )}
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Contributions</Text>
-                      <Text style={styles.detailValue}>{sortedContribs.length}</Text>
-                    </View>
-                    {lastContrib && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Last Contribution</Text>
-                        <Text style={styles.detailValue}>
-                          {formatShortDateLabel(lastContrib.date)}
-                          {typeof lastContrib.amount === 'number' ? ` · ${formatPeso(lastContrib.amount)}` : ''}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                }
-              />
-              </SwipeableRow>
-            );
-          })}
-          </View>
-
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Text style={styles.addButtonText}>+ Add goal</Text>
-          </TouchableOpacity>
         </PullToRefreshScrollView>
       )}
 
@@ -1070,6 +1060,13 @@ function makeStyles(colors: any) {
     // Redesign styles
     listGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
     summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
+    potsTotal: { fontSize: 34, lineHeight: 40, fontWeight: '700' },
+    potsThisMonth: { fontSize: 15, marginTop: 2 },
+    potsHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginHorizontal: 16 },
+    potsFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
+    potRow: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'transparent' },
+    potDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    potAmount: { fontSize: 17, fontWeight: '600' },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
 
     pillRow: {

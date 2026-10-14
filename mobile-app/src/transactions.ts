@@ -114,15 +114,16 @@ export function buildTransactionsList(model: HouseholdModel): TransactionEntry[]
   (model.savingsGoals || []).forEach((goal) => {
     (goal.contributions || []).forEach((c) => {
       const amt = typeof c.amount === 'number' ? c.amount : 0;
-      if (!c.date || amt <= 0) return;
+      if (!c.date || amt === 0) return;
+      // Redesign: money moved out of a pot comes back in.
       list.push({
         id: 'saving-' + c.id,
         date: c.date,
-        label: (goal.name || 'Savings goal') + ' contribution',
+        label: amt > 0 ? 'To ' + (goal.name || 'Savings') : 'From ' + (goal.name || 'Savings'),
         category: 'Savings',
         source: 'saving',
-        amount: amt,
-        direction: 'saving',
+        amount: Math.abs(amt),
+        direction: amt > 0 ? 'saving' : 'in',
         owner: 'shared',
       });
     });

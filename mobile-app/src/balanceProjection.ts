@@ -228,7 +228,7 @@ function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): nu
 
 
 // ---- Income next-payday resolver ----
-function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex: number): number[] {
+export function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex: number): number[] {
   const daysInMonth = lastDayOfMonth(year, monthIndex);
   const pd = source.payDates || [];
 
@@ -349,7 +349,7 @@ export function computeMonthEvents(
       const dt = parseISO(c.date);
       if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
       const amount = toNumber(c.amount);
-      if (amount <= 0) return;
+      if (amount === 0) return; // negative = moved back out of the pot (adds to spending money)
       push(dt.getDate(), { type: 'saving', label: `${goal.name || 'Savings'} contribution`, amount });
     });
   });

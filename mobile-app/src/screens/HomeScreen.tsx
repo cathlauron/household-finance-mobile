@@ -20,6 +20,7 @@ import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { requestToPayTab } from '../openToPayTabRequest';
+import { applyAutoSavings } from '../savingsPots';
 
 type Props = {
   username: string;
@@ -27,7 +28,13 @@ type Props = {
 
 export default function HomeScreen({ username }: Props) {
   const { colors } = useTheme();
-  const { model } = useData();
+  const { model, saveModel } = useData();
+  // Redesign: savings pots set to "add every payday" catch up when Home opens.
+  React.useEffect(() => {
+    if (!model) return;
+    const next = applyAutoSavings(model);
+    if (next) saveModel(next);
+  }, [model, saveModel]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [showSlimBar, setShowSlimBar] = useState(false);

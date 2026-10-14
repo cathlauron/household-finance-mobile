@@ -150,7 +150,10 @@ export type Loan = {
 export type SavingsContribution = {
   id: string;
   date: string;
+  // Redesign: negative = money moved out of the pot.
   amount: number | '';
+  paymentMethod?: PaymentMethod;
+  auto?: boolean; // added automatically on a payday
 };
 
 export type SavingsGoal = {
@@ -161,11 +164,16 @@ export type SavingsGoal = {
   currentAmount: number;
   contributions: SavingsContribution[];
   createdAt?: number;
+  // Redesign (pots): where the money is kept, and an amount added every payday.
+  keptIn?: PaymentMethod;
+  autoAdd?: { enabled: boolean; amount: number; since: string };
+  isEmergency?: boolean;
 };
 
 export type CalculatorInputs = {
   efMonthlyExpenses: number | '';
   efCurrentSavings: number | '';
+  efTargetMonths?: number;
   fiAnnualExpenses: number | '';
   fiGuaranteedAnnualIncome: number | '';
   fiCurrentSavings: number | '';

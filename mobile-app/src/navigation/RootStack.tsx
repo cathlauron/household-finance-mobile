@@ -17,6 +17,7 @@ import ReviewScreen from '../screens/ReviewScreen';
 import PayDetailScreen from '../screens/PayDetailScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
+import PotDetailScreen from '../screens/PotDetailScreen';
 import TransferScreen from '../screens/TransferScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
@@ -40,6 +41,7 @@ export type RootStackParamList = {
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
+  PotDetail: { id: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -143,6 +145,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
+      <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: '', headerBackTitle: 'Savings' }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false, animation: 'fade' }} />
       <Stack.Screen
