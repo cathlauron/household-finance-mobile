@@ -88,10 +88,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const { width: screenW } = useWindowDimensions();
   const busy = useRef(false);
   const dragY = useRef(new Animated.Value(0)).current;
-  // While held, the card rises by half a card so its middle sits at the gap, its
-  // bottom half tucked in under the (see-through) cards in front, as if already
-  // halfway inserted where it will land.
-  const HALF = CARD_HEIGHT / 2;
+  // While held, the card rises a little out of the gap. It stays whole, but it sits
+  // behind the cards in front of the gap, so mostly just its top shows: the rest
+  // looks already slid in between the cards where it will land.
+  const LIFT = 22;
   const liftUp = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
   const [dragging, setDragging] = useState<string | null>(null);
@@ -244,7 +244,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         hapticMedium();
         dragY.setValue(0);
         liftUp.setValue(0);
-        Animated.timing(liftUp, { toValue: -HALF, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+        Animated.timing(liftUp, { toValue: -LIFT, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
         dragTarget.current = index;
         setDragging(c.key);
         setGapAt(index);
@@ -268,7 +268,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         const v = tops.get(c.key);
         // Settle the lifted card into its new slot, then save the order.
         // It drops from where you held it and slides into the slot.
-        v?.setValue(index * PEEK + (dragY as any)._value - HALF);
+        v?.setValue(index * PEEK + (dragY as any)._value - LIFT);
         dragY.setValue(0);
         liftUp.setValue(0);
         dragTarget.current = -1;
@@ -301,12 +301,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
             // While dragging, the held card slots into the stack's layering at the gap:
-            // above the cards behind it, below the cards in front. Those front cards go
-            // see-through so you can make out the held card already tucked in under them.
+            // above the cards behind it, below the cards in front (which hide its lower part).
             const others = dragging ? order.filter((k) => k !== dragging) : order;
             const j = others.indexOf(c.key);
             const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
-            const inFront = !!dragging && !lifted && layer > gapAt;
             const amount = typeof c.account.amount === 'number' ? c.account.amount : 0;
             const top = tops.get(c.key) as Animated.Value;
             return (
@@ -325,7 +323,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       top: 0,
                       zIndex: layer,
                       elevation: (lifted ? 3 : 1) + layer * 0.5,
-                      opacity: lifted ? 1 : inFront ? 0.55 : (fades.get(c.key) as Animated.Value),
+                      opacity: lifted ? 1 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
