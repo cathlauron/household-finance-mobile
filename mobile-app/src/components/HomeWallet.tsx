@@ -139,62 +139,66 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // Leaving Home before the save happens still saves the order.
   useEffect(() => () => flush(), []);
 
-  // Swipe right: the front card glides off to the right while the cards behind move
-  // down a step; it then fades back in at the back of the stack.
-  // Swipe left: the card at the back fades away, the others move up a step, and it
-  // glides in from the left as the new front card.
+  // Swipe right: the front card curls a little (like a page lifting), then slides off
+  // to the right while the cards behind step down. It then comes back in from the
+  // right into the slot at the back (top), uncurling as it settles — only its top
+  // strip shows, since it's behind the others.
+  // Swipe left (the undo): the card at the back curls and slides out to the right,
+  // the stack steps up, and it comes back in from the right as the new front card,
+  // uncurling as it lands.
   const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
+  const SETTLE = Easing.bezier(0.2, 0.8, 0.2, 1);
+  function curlOff(x: Animated.Value, from: number) {
+    x.setValue(from);
+    return Animated.sequence([
+      // the little curl before it goes
+      Animated.timing(x, { toValue: from + 36, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(x, { toValue: screenW * 1.1, duration: 260, easing: EASE, useNativeDriver: true }),
+    ]);
+  }
+  function curlIn(x: Animated.Value, done: () => void) {
+    x.setValue(screenW * 1.1);
+    Animated.timing(x, { toValue: 0, duration: 380, easing: SETTLE, useNativeDriver: true }).start(() => {
+      x.setValue(0);
+      done();
+    });
+  }
   function cycle(dir: 'left' | 'right', fromX = 0) {
     if (cards.length < 2 || busy.current) return;
     busy.current = true;
     hapticSelection();
     const keys = [...order];
+    const finish = () => {
+      fades.forEach((v) => v.setValue(1));
+      busy.current = false;
+    };
     if (dir === 'right') {
       const front = keys.pop() as string;
       const next = [front, ...keys];
       const x = xs.get(front) as Animated.Value;
-      const f = fades.get(front) as Animated.Value;
-      x.setValue(fromX);
-      Animated.parallel([
-        Animated.timing(x, { toValue: screenW, duration: 260, easing: EASE, useNativeDriver: true }),
-        Animated.timing(f, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: true }),
-        ...slide(keys, 0, 280),
-      ], { stopTogether: false }).start(() => {
-        // Tuck it in behind the stack while it's invisible, then let the re-ordered
-        // stack draw (so it's already behind the others) before it fades back in —
-        // that way only its top strip ever shows, sliding down into place.
-        (tops.get(front) as Animated.Value).setValue(-12);
-        x.setValue(0);
+      Animated.parallel([curlOff(x, fromX), ...slide(keys, 0, 300)], { stopTogether: false }).start(() => {
+        // It's off screen now: move it to the back slot, let the stack redraw so it's
+        // behind the others, then bring it in from the right.
+        (tops.get(front) as Animated.Value).setValue(0);
         persist(next);
-        // The fade runs on its own (not grouped with the slide) so nothing else that
-        // moves the cards can stop it halfway and leave the card invisible.
-        setTimeout(() => {
-          Animated.timing(tops.get(front) as Animated.Value, { toValue: 0, duration: 260, easing: EASE, useNativeDriver: true }).start();
-          Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: true }).start(() => {
-            f.setValue(1);
-            busy.current = false;
-          });
-        }, 60);
+        setTimeout(() => curlIn(x, finish), 40);
       });
     } else {
       const back = keys.shift() as string;
       const next = [...keys, back];
       const x = xs.get(back) as Animated.Value;
-      const f = fades.get(back) as Animated.Value;
       const frontX = xs.get(order[order.length - 1]) as Animated.Value;
-      Animated.parallel([
-        Animated.timing(f, { toValue: 0, duration: 160, easing: EASE, useNativeDriver: true }),
-        Animated.timing(frontX, { toValue: 0, duration: 200, easing: EASE, useNativeDriver: true }),
-        ...slide(keys, -1, 260),
-      ], { stopTogether: false }).start(() => {
+      Animated.parallel(
+        [
+          curlOff(x, 0),
+          Animated.timing(frontX, { toValue: 0, duration: 220, easing: EASE, useNativeDriver: true }),
+          ...slide(keys, -1, 300),
+        ],
+        { stopTogether: false }
+      ).start(() => {
         (tops.get(back) as Animated.Value).setValue((next.length - 1) * PEEK);
-        x.setValue(-screenW * 0.6);
         persist(next);
-        Animated.timing(x, { toValue: 0, duration: 280, easing: EASE, useNativeDriver: true }).start(() => x.setValue(0));
-        Animated.timing(f, { toValue: 1, duration: 240, easing: EASE, useNativeDriver: true }).start(() => {
-          f.setValue(1);
-          busy.current = false;
-        });
+        setTimeout(() => curlIn(x, finish), 40);
       });
     }
   }
@@ -339,9 +343,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
+                        // The curl: a slight 3D turn that grows quickly as the card starts to
+                        // move sideways (perspective makes it look like the edge lifts).
+                        { perspective: 900 },
                         { translateY: lifted ? Animated.add(top, dragY) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
-                        { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 400], outputRange: ['-6deg', '0deg', '6deg'] }) },
+                        { rotateY: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, -40, 0, 40, 400], outputRange: ['22deg', '14deg', '0deg', '-14deg', '-22deg'], extrapolate: 'clamp' }) },
+                        { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 400], outputRange: ['-5deg', '0deg', '5deg'], extrapolate: 'clamp' }) },
                         { scale: lifted ? 0.94 : 1 },
                       ],
                     },
