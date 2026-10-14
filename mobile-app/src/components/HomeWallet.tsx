@@ -139,19 +139,19 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // Leaving Home before the save happens still saves the order.
   useEffect(() => () => flush(), []);
 
-  // Swipe right: the front card curls a little (like a page lifting), then slides off
-  // to the right while the cards behind step down. It then comes back in from the
-  // right into the slot at the back (top), uncurling as it settles — only its top
-  // strip shows, since it's behind the others.
-  // Swipe left (the undo): the card at the back curls and slides out to the right,
+  // Swipe right: the front card's bottom-left corner lifts a little (getting ready),
+  // then it slides off to the right, still tilted, while the cards behind step down.
+  // It comes back in from the right into the slot at the back (top), levelling out
+  // so both bottom corners line up as it settles; only its top strip shows.
+  // Swipe left (the undo): the card at the back lifts and slides out to the right,
   // the stack steps up, and it comes back in from the right as the new front card,
-  // uncurling as it lands.
+  // levelling out as it lands.
   const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
   const SETTLE = Easing.bezier(0.2, 0.8, 0.2, 1);
   function curlOff(x: Animated.Value, from: number) {
     x.setValue(from);
     return Animated.sequence([
-      // the little curl before it goes
+      // the little corner lift before it goes
       Animated.timing(x, { toValue: from + 36, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
       Animated.timing(x, { toValue: screenW * 1.1, duration: 260, easing: EASE, useNativeDriver: true }),
     ]);
@@ -337,19 +337,19 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       // them directly (smooth even while the app is busy).
                       top: 0,
                       zIndex: lifted ? 100 : i,
-                      elevation: lifted ? 12 : 2 + i,
+                      elevation: lifted ? 6 : 1 + i * 0.5,
                       opacity: lifted ? 0.92 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
-                        // The curl: a slight 3D turn that grows quickly as the card starts to
-                        // move sideways (perspective makes it look like the edge lifts).
-                        { perspective: 900 },
                         { translateY: lifted ? Animated.add(top, dragY) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
-                        { rotateY: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, -40, 0, 40, 400], outputRange: ['22deg', '14deg', '0deg', '-14deg', '-22deg'], extrapolate: 'clamp' }) },
-                        { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 400], outputRange: ['-5deg', '0deg', '5deg'], extrapolate: 'clamp' }) },
+                        // The lift: as a card moves to the right, its bottom-left corner (A)
+                        // rises above its bottom-right corner (B), mostly in the first few
+                        // pixels of movement. Coming back in, it levels out until A and B
+                        // line up again as it settles.
+                        { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 30, 400], outputRange: ['-3deg', '0deg', '5deg', '9deg'], extrapolate: 'clamp' }) },
                         { scale: lifted ? 0.94 : 1 },
                       ],
                     },
@@ -407,16 +407,17 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.navy3,
       borderWidth: 1,
       borderColor: colors.navy4,
+      // A minimal shadow, just enough to separate the cards.
       shadowColor: '#000',
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: -1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
     },
     slot: { position: 'absolute', left: 6, right: 6, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', opacity: 0.85, justifyContent: 'flex-end', paddingHorizontal: 14, paddingBottom: 8, overflow: 'hidden' },
     ghost: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', opacity: 0.55 },
     ghostLabel: { fontSize: 13, color: colors.inkDim },
     ghostAmount: { fontSize: 20, fontWeight: '700' },
-    lifted: { shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
+    lifted: { shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
     cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28, gap: 8 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
     chip: { width: 10, height: 10, borderRadius: 3 },
