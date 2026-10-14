@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert, Switch } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +34,7 @@ import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import SegmentedControl from '../components/SegmentedControl';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -236,6 +237,9 @@ export default function TransactionsScreen() {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Redesign: quick-add sheet extras.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [ruleFilled, setRuleFilled] = useState(false);
   const transactions = useMemo(() => {
     if (!model) return [];
     let list = buildTransactionsList(model);
@@ -288,6 +292,8 @@ export default function TransactionsScreen() {
   }
 
   function openAddModal() {
+    setMoreOpen(false);
+    setRuleFilled(false);
     setEditingId(null);
     resetForm();
     setModalOpen(true);
@@ -298,6 +304,8 @@ export default function TransactionsScreen() {
     const raw = (model?.manualTransactions || []).find((m) => m.id === t.rawId);
     if (!raw) return;
     setEditingId(raw.id);
+    setRuleFilled(false);
+    setMoreOpen(!!(raw.tags?.length || raw.receiptPhoto || (raw.owner && raw.owner !== 'shared')));
     setLabelInput(raw.label || '');
     setCategoryInput(raw.category || '');
     setPersonInput(personName(model?.people || [], raw.owner || ''));
@@ -329,14 +337,14 @@ export default function TransactionsScreen() {
     if (!model || categoryInput.trim()) return;
     const amt = typeof amountInput === 'number' ? amountInput : NaN;
     const auto = computeAutoCategory(model, text, amt);
-    if (auto) setCategoryInput(auto);
+    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
   }
 
   function handleAmountChange(val: number | '') {
     setAmountInput(val);
     if (!model || categoryInput.trim()) return;
     const auto = computeAutoCategory(model, labelInput, val === '' ? NaN : val);
-    if (auto) setCategoryInput(auto);
+    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
   }
 
   async function handlePickReceipt() {
@@ -801,72 +809,88 @@ export default function TransactionsScreen() {
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
+      {/* Redesign: the quick "New transaction" sheet from the Finance Flow mockup:
+          Cancel / title / Add bar, Money out-in switch, big amount, then Description,
+          Category, Note, Account, Date and Expecting a refund. Less-used fields
+          (Belongs to, Tags, Receipt) sit under "More details". */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit transaction' : 'New transaction'}
+        header={
+          <View style={styles.sheetBar}>
+            <TouchableOpacity onPress={closeModal} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.sheetBarBtn}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.sheetBarTitle}>{editingId ? 'Edit transaction' : 'New transaction'}</Text>
+            <TouchableOpacity testID="txn-save" onPress={handleSave} disabled={saving} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              {saving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.sheetBarBtn, { fontWeight: '700' }]}>{editingId ? 'Save' : 'Add'}</Text>}
+            </TouchableOpacity>
+          </View>
+        }
       >
-                <Text style={styles.inputLabel}>Label</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Coffee, Cash gift, Market run"
-                  placeholderTextColor={colors.inkFaint}
-                  value={labelInput}
-                  onChangeText={handleLabelChange}
-                />
+        <SegmentedControl<'out' | 'in' | 'saving'>
+          accessibilityLabel="Direction"
+          options={[
+            { id: 'out', label: 'Money out' },
+            { id: 'in', label: 'Money in' },
+            ...(directionInput === 'saving' ? [{ id: 'saving' as const, label: 'Saved' }] : []),
+          ]}
+          value={directionInput}
+          onChange={setDirectionInput}
+        />
 
-                <Text style={styles.inputLabel}>Type</Text>
-                <View style={styles.pillRow}>
-                  {DIRECTIONS.map((d) => (
-                    <Pill
-                      key={d}
-                      label={DIRECTION_LABELS[d]}
-                      tone="sheet"
-                      fill
-                      minWidth={80}
-                      active={directionInput === d}
-                      onPress={() => setDirectionInput(d)}
-                    />
-                  ))}
-                </View>
-
-        <Text style={styles.inputLabel}>Amount</Text>
         <AmountInput
-          style={styles.amountInput}
+          style={styles.bigAmountWrap}
+          inputStyle={[styles.bigAmountInput, { color: amountColor(directionInput, colors) }]}
           value={amountInput}
           onChangeAmount={handleAmountChange}
         />
 
-        {directionInput === 'out' && !alreadyRefunded && (
-          <>
-            <TouchableOpacity
-              style={[styles.refundToggle, refundTrackingEnabled && styles.refundToggleActive]}
-              onPress={() => { hapticSelection(); setRefundTrackingEnabled((prev) => !prev); }}
-            >
-              {refundTrackingEnabled && (
-                <Ionicons name="checkmark" size={15} color={colors.navy2} style={{ marginRight: 6 }} />
-              )}
-              <Text style={[styles.refundToggleText, refundTrackingEnabled && styles.refundToggleTextActive]}>
-                {refundTrackingEnabled ? 'Expecting a refund' : 'Expecting a refund?'}
-              </Text>
-            </TouchableOpacity>
-            {refundTrackingEnabled && (
-              <>
-                <Text style={styles.inputLabel}>Expected refund</Text>
-                <AmountInput
-                  style={[styles.amountInput, { marginBottom: 16 }]}
-                  value={refundAmountInput}
-                  onChangeAmount={setRefundAmountInput}
-                />
-              </>
-            )}
-          </>
+        <View style={styles.formGroup}>
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Description</Text>
+            <TextInput
+              testID="txn-label-input"
+              style={styles.formInput}
+              placeholder="e.g. SM Hypermarket"
+              placeholderTextColor={colors.inkFaint}
+              value={labelInput}
+              onChangeText={handleLabelChange}
+            />
+          </View>
+          <View style={[styles.formRow, styles.formRowLine]}>
+            <Text style={styles.formLabel}>Category</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="e.g. Groceries"
+              placeholderTextColor={colors.inkFaint}
+              value={categoryInput}
+              onChangeText={(t) => { setCategoryInput(t); setRuleFilled(false); }}
+            />
+          </View>
+          <View style={[styles.formRow, styles.formRowLine]}>
+            <Text style={styles.formLabel}>Note</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="Optional"
+              placeholderTextColor={colors.inkFaint}
+              value={notesInput}
+              onChangeText={setNotesInput}
+            />
+          </View>
+        </View>
+        {ruleFilled && !!categoryInput && (
+          <Text style={styles.formFooter}>Category was filled in by one of your rules.</Text>
         )}
-        {directionInput === 'out' && alreadyRefunded && (
-          <Text style={[styles.detailNotesText, { marginBottom: 16 }]}>
-            Already marked as refunded. Undo it in the transaction list to change the amount.
-          </Text>
-        )}
+
+        <View style={{ marginTop: 20 }}>
+          <PaymentMethodPicker
+            value={paymentMethodInput}
+            onChange={setPaymentMethodInput}
+            debitAccounts={model.balanceAccounts.debit}
+            creditAccounts={model.balanceAccounts.credit}
+          />
+        </View>
 
         <DateField
           label="Date"
@@ -875,87 +899,89 @@ export default function TransactionsScreen() {
           testID="txn-date-field"
         />
 
-                <Text style={styles.inputLabel}>Belongs to</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Miguel, Ana"
-                  placeholderTextColor={colors.inkFaint}
-                  value={personInput}
-                  onChangeText={setPersonInput}
+        {directionInput === 'out' && !alreadyRefunded && (
+          <View style={[styles.formGroup, { marginTop: 4 }]}>
+            <View style={styles.formRow}>
+              <Text style={[styles.formLabel, { flex: 1 }]}>Expecting a refund</Text>
+              <Switch
+                value={refundTrackingEnabled}
+                onValueChange={(v) => { hapticSelection(); setRefundTrackingEnabled(v); }}
+                trackColor={{ true: colors.gold, false: colors.navy4 }}
+                accessibilityLabel="Expecting a refund"
+              />
+            </View>
+            {refundTrackingEnabled && (
+              <View style={[styles.formRow, styles.formRowLine]}>
+                <Text style={styles.formLabel}>Amount back</Text>
+                <AmountInput
+                  style={styles.inlineAmount}
+                  value={refundAmountInput}
+                  onChangeAmount={setRefundAmountInput}
                 />
-                {model.people.length > 0 && (
-                  <View style={styles.chipRow}>
-                    {model.people.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.chip}
-                        onPress={() => setPersonInput(p.name)}
-                      >
-                        <Text style={styles.chipText}>{p.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+              </View>
+            )}
+          </View>
+        )}
+        {directionInput === 'out' && alreadyRefunded && (
+          <Text style={styles.formFooter}>Already marked as refunded. Undo it on the transaction's page to change the amount.</Text>
+        )}
 
-        <Text style={styles.inputLabel}>Category (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Groceries, Transportation"
-          placeholderTextColor={colors.inkFaint}
-          value={categoryInput}
-          onChangeText={setCategoryInput}
-        />
-
-        <Text style={styles.inputLabel}>Notes (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Split with Ana, reimbursed later"
-          placeholderTextColor={colors.inkFaint}
-          value={notesInput}
-          onChangeText={setNotesInput}
-        />
-
-        <Text style={styles.inputLabel}>Tags (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. vacation, tax-deductible"
-          placeholderTextColor={colors.inkFaint}
-          value={tagsInput}
-          onChangeText={setTagsInput}
-        />
-        <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: -6, marginBottom: 8 }}>
-          Separate tags with commas.
-        </Text>
-
-                <PaymentMethodPicker
-                  value={paymentMethodInput}
-                  onChange={setPaymentMethodInput}
-                  debitAccounts={model.balanceAccounts.debit}
-                  creditAccounts={model.balanceAccounts.credit}
-                />
-
-                <Text style={styles.inputLabel}>Receipt photo (optional)</Text>
-                {receiptPhoto ? (
-                  <View style={styles.receiptPreviewWrap}>
-                    <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
-                    <TouchableOpacity style={styles.receiptRemoveButton} onPress={handleRemoveReceipt}>
-                      <Text style={styles.receiptRemoveButtonText}>Remove photo</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
-                    <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
-                    <Text style={styles.receiptPickButtonText}>Attach receipt</Text>
+        <TouchableOpacity style={styles.moreToggle} onPress={() => setMoreOpen((v) => !v)} accessibilityRole="button">
+          <Text style={styles.moreToggleText}>More details</Text>
+          <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.gold} />
+        </TouchableOpacity>
+        {moreOpen && (
+          <>
+            <Text style={styles.inputLabel}>Belongs to</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Miguel, Ana"
+              placeholderTextColor={colors.inkFaint}
+              value={personInput}
+              onChangeText={setPersonInput}
+            />
+            {model.people.length > 0 && (
+              <View style={styles.chipRow}>
+                {model.people.map((p) => (
+                  <TouchableOpacity key={p.id} style={styles.chip} onPress={() => setPersonInput(p.name)}>
+                    <Text style={styles.chipText}>{p.name}</Text>
                   </TouchableOpacity>
-                )}
+                ))}
+              </View>
+            )}
+            <Text style={styles.inputLabel}>Tags</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. vacation, tax-deductible"
+              placeholderTextColor={colors.inkFaint}
+              value={tagsInput}
+              onChangeText={setTagsInput}
+            />
+            <Text style={styles.formFooter}>Separate tags with commas.</Text>
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Receipt photo</Text>
+            {receiptPhoto ? (
+              <View style={styles.receiptPreviewWrap}>
+                <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
+                <TouchableOpacity style={styles.receiptRemoveButton} onPress={handleRemoveReceipt}>
+                  <Text style={styles.receiptRemoveButtonText}>Remove photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
+                <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
+                <Text style={styles.receiptPickButtonText}>Attach receipt</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete transaction" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {editingId && (
+          <TouchableOpacity style={[styles.formGroup, styles.deleteRow]} onPress={handleDelete} accessibilityRole="button">
+            <Text style={{ fontSize: 17, color: colors.negative }}>Delete transaction</Text>
+          </TouchableOpacity>
+        )}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -1010,6 +1036,23 @@ function makeStyles(colors: any) {
     detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
     txnMain: { flex: 1, marginRight: 10 },
+    // Quick-add sheet
+    sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
+    sheetBarBtn: { fontSize: 17, color: colors.gold },
+    sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    bigAmountWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 16, marginBottom: 16, minHeight: 64 },
+    bigAmountInput: { fontSize: 40, fontWeight: '700', textAlign: 'center', flex: 0, minWidth: 120 },
+    // Grey groups on the white sheet, matching the other fields (date, account).
+    formGroup: { backgroundColor: colors.navy2, borderRadius: 12, overflow: 'hidden' },
+    formRow: { flexDirection: 'row', alignItems: 'center', minHeight: 50, paddingHorizontal: 16 },
+    formRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    formLabel: { fontSize: 17, color: colors.ink, width: 112 },
+    formInput: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
+    formFooter: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginHorizontal: 16 },
+    inlineAmount: { flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, justifyContent: 'flex-end' },
+    moreToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 12, marginTop: 8 },
+    moreToggleText: { fontSize: 15, fontWeight: '600', color: colors.gold },
+    deleteRow: { minHeight: 50, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
     txnRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.navy3 },
     txnRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     txnLabel: { fontSize: 17, fontWeight: '500', color: colors.ink },

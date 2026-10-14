@@ -10,6 +10,10 @@ export type BottomSheetProps = {
   title?: string;
   children: React.ReactNode;
   testID?: string;
+  // Redesign: a custom top bar (e.g. Cancel / title / Add) instead of a plain title,
+  // and a grey "grouped" background so white form groups stand out, iPhone style.
+  header?: React.ReactNode;
+  grouped?: boolean;
 };
 
 export default function BottomSheet({
@@ -18,6 +22,8 @@ export default function BottomSheet({
   title,
   children,
   testID,
+  header,
+  grouped = false,
 }: BottomSheetProps) {
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
@@ -43,12 +49,13 @@ export default function BottomSheet({
           style={styles.keyboardWrap}
           pointerEvents="box-none"
         >
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, grouped && { backgroundColor: colors.navy2 }]}>
             <View style={styles.handleWrap}>
               <View style={styles.handle} />
             </View>
 
-            {!!title && (
+            {header}
+            {!header && !!title && (
               <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
               </View>
@@ -64,7 +71,7 @@ export default function BottomSheet({
               {children}
             </ScrollView>
 
-            <SafeAreaView style={styles.bottomSafeArea} />
+            <SafeAreaView style={[styles.bottomSafeArea, grouped && { backgroundColor: colors.navy2 }]} />
           </View>
         </KeyboardAvoidingView>
       </View>
