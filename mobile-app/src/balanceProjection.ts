@@ -358,7 +358,7 @@ export function computeMonthEvents(
 }
 
 // How much one event moves the liquid balance: income adds, everything else subtracts.
-function eventDelta(event: CalendarEvent): number {
+export function eventDelta(event: CalendarEvent): number {
   if (event.type === 'income') return event.amount;
   if (event.type === 'manual') return event.direction === 'in' ? event.amount : -event.amount;
   return -event.amount; // bill, debt, loan, saving
