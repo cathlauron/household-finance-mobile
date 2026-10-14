@@ -373,15 +373,17 @@ export default function EventsScreen() {
           <Text style={styles.emptyText}>No events yet.</Text>
         )}
 
-        {events.map((ev) => (
+        <View style={styles.listGroup}>
+        {events.map((ev, rowIndex) => (
           <SwipeableRow
             key={ev.id}
             enabled={Boolean(model.settings.swipeToDeleteEnabled)}
             onDelete={() => handleSwipeDeleteEvent(ev)}
             testID={`event-swipe-${ev.id}`}
+            flat
           >
           <TouchableOpacity
-            style={styles.eventRow}
+            style={[styles.eventRow, rowIndex > 0 && styles.rowDivider]}
             activeOpacity={0.7}
             onPress={() => openEditModal(ev)}
           >
@@ -404,6 +406,7 @@ export default function EventsScreen() {
           </TouchableOpacity>
           </SwipeableRow>
         ))}
+        </View>
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add event</Text>
@@ -560,25 +563,29 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    sectionIntro: { fontSize: 12.5, color: colors.inkDim, lineHeight: 18, marginBottom: 16 },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
+    // Redesign styles
+    listGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+    summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
+    rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+
+    sectionIntro: { fontSize: 15, color: colors.inkDim, lineHeight: 20, marginBottom: 16 },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     eventRow: {
       backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+      minHeight: 60,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
       flexDirection: 'row',
       alignItems: 'center',
     },
     eventRowMain: { flex: 1, marginRight: 10 },
     eventTitleRow: { flexDirection: 'row', alignItems: 'center' },
-    eventName: { fontSize: 14, fontWeight: '600', color: colors.ink, flexShrink: 1 },
-    eventSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    eventAmount: { fontSize: 13.5, fontWeight: '700', color: colors.ink },
+    eventName: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
+    eventSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    eventAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,

@@ -10,6 +10,7 @@ import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import Pill from '../components/Pill';
+import SegmentedControl from '../components/SegmentedControl';
 import { makeId } from '../utils';
 import { hapticSelection } from '../haptics';
 import { radii, spacing } from '../tokens';
@@ -247,33 +248,42 @@ export default function GroceriesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.pillRow}>
-        <Pill label="Grocery List" fill active={activeTab === 'list'} onPress={() => setActiveTab('list')} />
-        <Pill label="Calculator" fill active={activeTab === 'calculator'} onPress={() => setActiveTab('calculator')} />
+        <SegmentedControl<PillTab>
+          accessibilityLabel="Groceries view"
+          options={[
+            { id: 'list', label: 'Grocery List' },
+            { id: 'calculator', label: 'Calculator' },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
       </View>
 
       {activeTab === 'list' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <Card variant="banner" style={{ marginBottom: 12 }}>
-            <Text style={styles.balanceBannerLabel}>BUDGET VS ACTUAL</Text>
+          <View style={styles.summaryCard}>
+            <Text style={styles.balanceBannerLabel}>Bought vs planned</Text>
             <Text style={styles.balanceBannerAmount}>
               {formatPeso(actual)} <Text style={styles.balanceBannerSub}>/ {formatPeso(planned)}</Text>
             </Text>
                         <Text style={styles.balanceBannerHint}>Only counts items marked "Bought"</Text>
-          </Card>
+          </View>
 
           {groceries.length === 0 && (
             <Text style={styles.emptyText}>No items yet.</Text>
           )}
 
-          {groceries.map((g) => (
+          <View style={styles.listGroup}>
+          {groceries.map((g, rowIndex) => (
             <SwipeableRow
               key={g.id}
               enabled={Boolean(model.settings.swipeToDeleteEnabled)}
               onDelete={() => handleSwipeDeleteGrocery(g)}
               testID={`grocery-swipe-${g.id}`}
+              flat
             >
             <TouchableOpacity
-              style={styles.groceryRow}
+              style={[styles.groceryRow, rowIndex > 0 && styles.rowDivider]}
               activeOpacity={0.7}
               onPress={() => openEditModal(g)}
             >
@@ -294,6 +304,7 @@ export default function GroceriesScreen() {
             </TouchableOpacity>
             </SwipeableRow>
           ))}
+          </View>
 
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
             <Text style={styles.addButtonText}>+ Add item</Text>
@@ -419,33 +430,35 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
+    // Redesign styles
+    listGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+    summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
+    rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+
     pillRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 12,
+      paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 4,
       backgroundColor: colors.navy2,
     },
-    balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
-    balanceBannerSub: { fontSize: 14, fontWeight: '400', color: colors.inkDim },
-    balanceBannerHint: { fontSize: 11, color: colors.inkFaint, marginTop: 6 },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
+    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
+    balanceBannerSub: { fontSize: 15, fontWeight: '400', color: colors.planned },
+    balanceBannerHint: { fontSize: 13, color: colors.inkDim, marginTop: 6 },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     groceryRow: {
       backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+      minHeight: 60,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
       flexDirection: 'row',
       alignItems: 'center',
     },
     groceryRowMain: { flex: 1, marginRight: 10 },
-    groceryName: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    groceryName: { fontSize: 17, fontWeight: '500', color: colors.ink },
     groceryNamePurchased: { textDecorationLine: 'line-through', color: colors.inkFaint },
-    grocerySub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
+    grocerySub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     purchasedPill: {
       paddingVertical: 6,
       paddingHorizontal: 12,
@@ -456,7 +469,7 @@ function makeStyles(colors: any) {
     purchasedPillText: { fontSize: 11, fontWeight: '600', color: colors.inkDim },
     purchasedPillTextActive: { color: colors.navy2 },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     calcIntro: { fontSize: 12.5, color: colors.inkDim, lineHeight: 18, marginBottom: 18 },
     resultCard: {
       backgroundColor: colors.navy3,

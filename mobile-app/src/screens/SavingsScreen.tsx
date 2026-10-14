@@ -14,6 +14,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import Pill from '../components/Pill';
+import SegmentedControl from '../components/SegmentedControl';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
@@ -582,23 +583,31 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pillRow}>
-        <Pill label="Goals" fill compact active={activeTab === 'goals'} onPress={() => setActiveTab('goals')} />
-        <Pill label="Emergency Fund" fill compact active={activeTab === 'ef'} onPress={() => setActiveTab('ef')} />
-        <Pill label="FI Calculator" fill compact active={activeTab === 'fi'} onPress={() => setActiveTab('fi')} />
+        <SegmentedControl<PillTab>
+          accessibilityLabel="Savings view"
+          options={[
+            { id: 'goals', label: 'Goals' },
+            { id: 'ef', label: 'Emergency Fund' },
+            { id: 'fi', label: 'FI Calculator' },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
       </View>
 
       {activeTab === 'goals' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <Card variant="banner" style={{ marginBottom: 12 }}>
-            <Text style={styles.balanceBannerLabel}>TOTAL SAVED</Text>
-            <Text style={styles.balanceBannerAmount}>{formatPeso(totalSaved)}</Text>
-          </Card>
+          <View style={styles.summaryCard}>
+            <Text style={styles.balanceBannerLabel}>Total saved</Text>
+            <Text style={[styles.balanceBannerAmount, { color: colors.saving }]}>{formatPeso(totalSaved)}</Text>
+          </View>
 
           {goals.length === 0 && (
             <Text style={styles.emptyText}>No savings goals yet.</Text>
           )}
 
-          {goals.map((goal) => {
+          <View style={styles.listGroup}>
+          {goals.map((goal, rowIndex) => {
             const saved = contributionsTotal(goal);
             const target = goalTarget(goal);
             const pct = goalProgressPct(goal);
@@ -613,9 +622,12 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 enabled={Boolean(model.settings.swipeToDeleteEnabled)}
                 onDelete={() => handleSwipeDelete(goal)}
                 testID={`goal-swipe-${goal.id}`}
+                flat
               >
               <CollapsibleRow
                 testID={`goal-row-${goal.id}`}
+                flat
+                showDivider={rowIndex > 0}
                 isExpanded={isExpanded}
                 onToggle={() => setExpandedGoalId((prev) => (prev === goal.id ? null : goal.id))}
                 onEdit={() => openEditModal(goal)}
@@ -669,6 +681,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
               </SwipeableRow>
             );
           })}
+          </View>
 
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
             <Text style={styles.addButtonText}>+ Add goal</Text>
@@ -1046,18 +1059,21 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
+    // Redesign styles
+    listGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+    summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
+    rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+
     pillRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 12,
+      paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 4,
       backgroundColor: colors.navy2,
     },
-    balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
+    balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     goalCollapsedWrap: {},
     detailContainer: { gap: 8 },
     detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -1065,9 +1081,9 @@ function makeStyles(colors: any) {
     detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     goalRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     goalRowMain: { flex: 1, marginRight: 10 },
-    goalName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    goalSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    goalAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    goalName: { fontSize: 17, fontWeight: '500', color: colors.ink },
+    goalSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    goalAmount: { fontSize: 15, fontWeight: '600', color: colors.saving },
     progressTrack: {
       height: 6,
       borderRadius: 999,
@@ -1075,9 +1091,9 @@ function makeStyles(colors: any) {
       overflow: 'hidden',
       marginTop: 10,
     },
-    progressFill: { height: 6, borderRadius: 999, backgroundColor: colors.gold },
+    progressFill: { height: 6, borderRadius: 999, backgroundColor: colors.saving },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     calcIntro: { fontSize: 12.5, color: colors.inkDim, lineHeight: 18, marginBottom: 18 },
     inputLabel: {
       fontSize: 11,

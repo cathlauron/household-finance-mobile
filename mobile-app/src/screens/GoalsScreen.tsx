@@ -192,18 +192,19 @@ export default function GoalsScreen() {
   return (
     <View style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Card variant="banner" style={{ marginBottom: 16 }}>
-          <Text style={styles.yearBannerLabel}>THIS YEAR'S PROGRESS</Text>
+        <View style={styles.summaryCard}>
+          <Text style={styles.yearBannerLabel}>This year's progress</Text>
           <Text style={styles.yearBannerAmount}>
             {goals.length > 0 ? `${doneCount} of ${goals.length} reached` : 'No goals set'}
           </Text>
-        </Card>
+        </View>
 
         {goals.length === 0 && (
           <Text style={styles.emptyText}>No goals yet.</Text>
         )}
 
-        {goals.map((g) => {
+        <View style={styles.listGroup}>
+        {goals.map((g, rowIndex) => {
           const isProgress = g.mode === 'progress';
           const pct = goalPct(g);
           const reached = isProgress
@@ -215,9 +216,10 @@ export default function GoalsScreen() {
               enabled={Boolean(model.settings.swipeToDeleteEnabled)}
               onDelete={() => handleSwipeDeleteGoal(g)}
               testID={`goal-swipe-${g.id}`}
+              flat
             >
             <TouchableOpacity
-              style={styles.goalRow}
+              style={[styles.goalRow, rowIndex > 0 && styles.rowDivider]}
               activeOpacity={0.7}
               onPress={() => openEditModal(g)}
             >
@@ -247,6 +249,7 @@ export default function GoalsScreen() {
             </SwipeableRow>
           );
         })}
+        </View>
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add goal</Text>
@@ -357,25 +360,29 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    yearBannerLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    yearBannerAmount: { fontSize: 18, fontWeight: '700', color: colors.ink },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
+    // Redesign styles
+    listGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+    summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
+    rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+
+    yearBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
+    yearBannerAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     goalRow: {
       backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
+      minHeight: 60,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
       flexDirection: 'row',
       alignItems: 'center',
     },
     goalRowMain: { flex: 1, marginRight: 10 },
     goalTitleRow: { flexDirection: 'row', alignItems: 'center' },
-    goalTitle: { fontSize: 14, fontWeight: '600', color: colors.ink, flexShrink: 1 },
+    goalTitle: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
     goalTitleDone: { color: '#10b981' },
-    goalSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    goalAmount: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
+    goalSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    goalAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
     progressTrack: {
       height: 6,
       backgroundColor: colors.navy2,
@@ -383,9 +390,9 @@ function makeStyles(colors: any) {
       marginTop: 8,
       overflow: 'hidden',
     },
-    progressFill: { height: '100%', backgroundColor: colors.gold, borderRadius: 999 },
+    progressFill: { height: '100%', backgroundColor: colors.planned, borderRadius: 999 },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,
