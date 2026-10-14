@@ -10,6 +10,7 @@ import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
+import { accountLabel } from '../transactionActions';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { formatPeso } from '../balanceProjection';
@@ -192,6 +193,14 @@ export default function TransactionsScreen() {
   useEffect(() => {
     if (addNonce) openAddModal();
   }, [addNonce]);
+  // Redesign: the Transaction page's "Edit" comes back here with { editId } to open the form.
+  const editNonce = route.params?.editNonce;
+  useEffect(() => {
+    const editId = route.params?.editId;
+    if (!editNonce || !editId || !model) return;
+    const t = buildTransactionsList(model).find((x) => x.rawId === editId && x.source === 'manual');
+    if (t) openEditModal(t);
+  }, [editNonce]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setCategoryFilter(null);
@@ -629,14 +638,7 @@ export default function TransactionsScreen() {
             <Text style={styles.summaryLabel}>Out</Text>
             <Text style={[styles.summaryAmount, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>−{formatPeso(totals.totalOut)}</Text>
           </View>
-          {totals.totalSaving > 0 && (
-            <View style={[styles.summaryCell, styles.summaryDivider]}>
-              <Text style={styles.summaryLabel}>Saved</Text>
-              <Text style={[styles.summaryAmount, { color: colors.saving }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(totals.totalSaving)}</Text>
-            </View>
-          )}
         </View>
-        <Text style={styles.netNote}>Net (cash in hand): {formatPeso(totals.net)}</Text>
 
         <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Filter by month">
           <TouchableOpacity
@@ -759,99 +761,29 @@ export default function TransactionsScreen() {
               testID={`txn-swipe-${t.id}`}
               flat
             >
-            <CollapsibleRow
+            <TouchableOpacity
               testID={`txn-row-${t.id}`}
-              flat
-              showDivider={rowIndex > 0}
-              leading={
-                <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
-                  <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
-                </View>
-              }
-              isExpanded={isExpanded}
-              onToggle={() => setExpandedTxnId((prev) => (prev === t.id ? null : t.id))}
-              onEdit={isManual ? () => openEditModal(t) : undefined}
-              collapsedContent={
-                <View style={styles.txnCollapsedRow}>
-                  <View style={styles.txnMain}>
-                    <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
-                    <Text style={styles.txnSub} numberOfLines={1}>
-                      {t.category}{!isManual ? ` · ${SOURCE_LABELS[t.source]} (linked)` : ''}
-                      {isRefundPending ? ' · Refund pending' : ''}
-                      {isRefundReceived ? ' · Refunded' : ''}
-                    </Text>
-                  </View>
-                  <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
-                    {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
-                  </Text>
-                </View>
-              }
-              expandedContent={
-                <View style={styles.detailContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Full Date</Text>
-                    <Text style={styles.detailValue}>{formatDateLabel(t.date)}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Type</Text>
-                    <Text style={styles.detailValue}>{SOURCE_LABELS[t.source]}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Direction</Text>
-                    <Text style={styles.detailValue}>{DIRECTION_LABELS[t.direction]}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Belongs To</Text>
-                    <Text style={styles.detailValue}>
-                      {ownerLabel(model.people, t.owner, myPersonId)}
-                    </Text>
-                  </View>
-                  {t.source === 'manual' && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Notes</Text>
-                      <Text style={styles.detailValue}>
-                        {(model.manualTransactions || []).find((m) => m.id === t.rawId)?.notes || '—'}
-                      </Text>
-                    </View>
-                  )}
-                  {isRefundPending && (
-                    <View style={{ marginTop: 4 }}>
-                      <View style={styles.refundBadge}>
-                        <Text style={styles.refundBadgeText}>
-                          REFUND PENDING · {formatPeso(refundExpected as number)} expected
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.refundActionButton}
-                        onPress={() => handleMarkRefundReceived(t.rawId as string)}
-                      >
-                        <Text style={styles.refundActionButtonText}>Mark as Received</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {isRefundReceived && (
-                    <View style={{ marginTop: 4 }}>
-                      <View style={[styles.refundBadge, styles.refundBadgeReceived]}>
-                        <Text style={styles.refundBadgeText}>
-                          REFUNDED · {formatPeso(refundExpected as number)}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.refundActionButton}
-                        onPress={() => handleUndoRefund(t.rawId as string)}
-                      >
-                        <Text style={styles.refundActionButtonText}>Undo</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {!isManual && (
-                    <Text style={styles.detailNotesText}>
-                      From another tab — edit it there.
-                    </Text>
-                  )}
-                </View>
-              }
-            />
+              style={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]}
+              activeOpacity={0.6}
+              onPress={() => (navigation as any).navigate('TransactionDetail', { id: t.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
+            >
+              <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
+                <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
+              </View>
+              <View style={styles.txnMain}>
+                <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
+                <Text style={styles.txnSub} numberOfLines={1}>
+                  {[t.category, rawManual ? accountLabel(model, rawManual.paymentMethod) : SOURCE_LABELS[t.source]].filter(Boolean).join(' · ')}
+                  {isRefundPending ? ' · Refund pending' : ''}
+                  {isRefundReceived ? ' · Refunded' : ''}
+                </Text>
+              </View>
+              <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
+                {t.direction === 'in' ? '+' : t.direction === 'saving' ? '' : '−'}{formatPeso(t.amount)}
+              </Text>
+            </TouchableOpacity>
             </SwipeableRow>
           );
         })}
@@ -1044,7 +976,7 @@ function makeStyles(colors: any) {
     filterChipText: { fontSize: 15, fontWeight: '500', color: colors.ink },
     filterChipTextOn: { color: colors.gold, fontWeight: '600' },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
-    summary: { flexDirection: 'row' },
+    summary: { flexDirection: 'row', marginBottom: 20 },
     summaryCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 16 },
     summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
     summaryLabel: { fontSize: 13, color: colors.inkDim },
@@ -1078,6 +1010,8 @@ function makeStyles(colors: any) {
     detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
     txnMain: { flex: 1, marginRight: 10 },
+    txnRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.navy3 },
+    txnRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     txnLabel: { fontSize: 17, fontWeight: '500', color: colors.ink },
     txnSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     txnAmount: { fontSize: 17, fontWeight: '600' },

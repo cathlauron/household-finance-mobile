@@ -51,9 +51,12 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
           ))}
         <View style={styles.right}>{right}</View>
       </View>
-      <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
-        {title}
-      </Text>
+      {/* An empty title (detail pages that show their own big heading) hides the line. */}
+      {title !== '' && (
+        <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
+          {title}
+        </Text>
+      )}
     </View>
   );
 }

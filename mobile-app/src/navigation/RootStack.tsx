@@ -11,6 +11,7 @@ import PlanningScreen from '../screens/PlanningScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
+import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import type { PlanningTab } from '../screens/PlanningScreen';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Reports: undefined;
   Settings: undefined;
   Premium: undefined;
+  TransactionDetail: { id: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -125,6 +127,11 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       >
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
       </Stack.Screen>
+      <Stack.Screen
+        name="TransactionDetail"
+        component={TransactionDetailScreen}
+        options={{ title: '', headerBackTitle: 'Transactions' }}
+      />
       <Stack.Screen
         name="Premium"
         component={PremiumScreen}
