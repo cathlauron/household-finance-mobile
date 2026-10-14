@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabs from './MainTabs';
+import DeferredContent from './DeferredContent';
 import ProfileScreen from '../screens/ProfileScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import AccountsScreen from '../screens/AccountsScreen';
@@ -70,11 +71,18 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
   return (
     <Stack.Navigator
       id={undefined}
+      // Pages build their contents a frame after the slide starts, so opening one feels
+      // instant (the tabs page is left alone).
+      screenLayout={({ children, route }) =>
+        route.name === 'Main' ? children : <DeferredContent>{children}</DeferredContent>
+      }
       screenOptions={{
         contentStyle: { backgroundColor: 'transparent' },
-        // Every page slides in from the right, and slides back out to the right when you
-        // go back (the iPhone-style push, on Android too).
-        animation: Platform.OS === 'android' ? 'ios_from_right' : 'default',
+        // Every page slides in from the right while the page behind slides fully out to
+        // the left, and the reverse on Back. Pages are see-through (the leaves sit behind
+        // the whole app), so the page behind must move fully away rather than the iPhone
+        // default of shifting a third, which left its text showing through.
+        animation: 'slide_from_right',
         ...getSharedHeaderOptions(colors),
       }}
     >

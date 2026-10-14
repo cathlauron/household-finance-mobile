@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Platform, Pressable, StyleSheet, Easing, useWindowDimensions } from 'react-native';
+import { View, Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
 import { useToPaySub, requestToPayAdd } from '../fabActions';
@@ -7,30 +7,6 @@ import { hapticLight } from '../haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 
-// Switching tabs slides like moving between pages laid out left to right: going to a
-// tab on the right, the new screen slides in from the right and the old one leaves to
-// the left; going to a tab on the left, the other way round. Tabs you skip over don't
-// move. Both screens slide together, so nothing overlaps.
-function makeTabSlide(width: number): BottomTabNavigationOptions['sceneStyleInterpolator'] {
-  return ({ current }) => ({
-    sceneStyle: {
-      transform: [
-        {
-          translateX: current.progress.interpolate({
-            inputRange: [-1, 0, 1],
-            outputRange: [-width, 0, width],
-          }),
-        },
-      ],
-    },
-  });
-}
-
-// A quick start and a long, gentle settle, so the slide feels smooth rather than linear.
-const TAB_SLIDE_SPEC: BottomTabNavigationOptions['transitionSpec'] = {
-  animation: 'timing',
-  config: { duration: 320, easing: Easing.bezier(0.22, 1, 0.36, 1) },
-};
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
@@ -38,6 +14,9 @@ import ToPayScreen from '../screens/ToPayScreen';
 import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
+import TabPage from './TabPage';
+
+const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
 import GradientFill from '../components/GradientFill';
 
 const Tab = createBottomTabNavigator();
@@ -150,8 +129,6 @@ type MainTabsProps = {
 };
 export default function MainTabs({ username, onSignOut, initialOpenBillId }: MainTabsProps) {
   const { colors, isDark } = useTheme();
-  const { width: screenWidth } = useWindowDimensions();
-  const tabSlide = React.useMemo(() => makeTabSlide(screenWidth), [screenWidth]);
   const insets = useSafeAreaInsets();
   const tabBarBottom = Math.max(insets.bottom, 12);
   // Set before the first draw so the + button knows the starting tab.
@@ -169,10 +146,10 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
   // the navigator a brand-new set of options and redraw every tab.
   const screenOptions = React.useMemo<BottomTabNavigationOptions>(() => ({
         sceneStyle: { backgroundColor: 'transparent' },
-        animation: 'shift',
-        sceneStyleInterpolator: tabSlide,
-        transitionSpec: TAB_SLIDE_SPEC,
         ...getSharedHeaderOptions(colors),
+        // The tab's large title is drawn by TabPage (so it slides with its page); the
+        // navigator's own header slot stays empty.
+        header: () => null,
         // Redesign: a rounded bar that floats a little above the bottom edge, like the
         // Finance Flow mockups. It stays part of the layout (not drawn over the screen),
         // so no screen's content ends up hidden behind it.
@@ -197,7 +174,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.inkDim,
-  }), [colors, isDark, tabSlide, tabBarBottom]);
+  }), [colors, isDark, tabBarBottom]);
   return (
     <View style={{ flex: 1 }}>
     <Tab.Navigator
@@ -210,6 +187,21 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       key={initialOpenBillId ? `open-bill-${initialOpenBillId}` : 'default'}
       initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
       screenListeners={screenListeners}
+      // Every visited tab stays drawn; TabPage keeps the hidden ones just off screen and
+      // slides them in and out.
+      detachInactiveScreens={false}
+      screenLayout={({ children, route, options, navigation }) => (
+        <TabPage
+          routeName={route.name}
+          routeIndex={TAB_ORDER.indexOf(route.name)}
+          route={route}
+          options={options}
+          navigation={navigation}
+          showHeader={options.headerShown !== false}
+        >
+          {children}
+        </TabPage>
+      )}
       screenOptions={screenOptions}
     >
       <Tab.Screen
