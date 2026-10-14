@@ -60,7 +60,7 @@ function three(a: string, b: string, c: string) {
 
 let counter = 0;
 
-export default function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: isDarkProp, match }: Props) {
+function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: isDarkProp, match }: Props) {
   const theme = useTheme();
   const colors = theme.colors;
   const isDark = isDarkProp ?? theme.isDark;
@@ -144,3 +144,35 @@ export default function GradientFill({ color, kind, strength = 0.2, radius, surf
     </View>
   );
 }
+
+// Responsiveness: there are a few hundred of these across the app, so they only redraw
+// when something they actually use changes. Parents usually pass a fresh `match` array
+// on every redraw, so the comparison looks at the style values inside it.
+const STYLE_KEYS: (keyof ViewStyle)[] = [
+  'backgroundColor',
+  'borderWidth',
+  'borderRadius',
+  'borderTopLeftRadius',
+  'borderTopRightRadius',
+  'borderBottomLeftRadius',
+  'borderBottomRightRadius',
+];
+
+function sameProps(a: Props, b: Props): boolean {
+  if (
+    a.color !== b.color ||
+    a.kind !== b.kind ||
+    a.strength !== b.strength ||
+    a.radius !== b.radius ||
+    a.surface !== b.surface ||
+    a.isDark !== b.isDark
+  ) {
+    return false;
+  }
+  if (a.match === b.match) return true;
+  const fa = (StyleSheet.flatten(a.match) || {}) as ViewStyle;
+  const fb = (StyleSheet.flatten(b.match) || {}) as ViewStyle;
+  return STYLE_KEYS.every((key) => fa[key] === fb[key]);
+}
+
+export default React.memo(GradientFill, sameProps);

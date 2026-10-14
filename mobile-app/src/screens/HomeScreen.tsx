@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../components/AppText';
 import { useNavigation } from '@react-navigation/native';
@@ -39,11 +39,12 @@ export default function HomeScreen({ username }: Props) {
   const insets = useSafeAreaInsets();
   const [showSlimBar, setShowSlimBar] = useState(false);
 
-  const leftToSpend = model ? computeLeftToSpend(model) : null;
+  // Worked out once per data change, not on every redraw (scrolling, the bell, etc.).
+  const leftToSpend = useMemo(() => (model ? computeLeftToSpend(model) : null), [model]);
   const leftToSpendStatus =
     leftToSpend && model ? getLeftToSpendStatus(leftToSpend.amount, model, colors) : null;
 
-  const totalBalanceToday = model ? totalLiquidBalance(model) : 0;
+  const totalBalanceToday = useMemo(() => (model ? totalLiquidBalance(model) : 0), [model]);
   const spentSoFar = leftToSpend ? Math.max(0, totalBalanceToday - leftToSpend.amount) : 0;
   const pctUsed =
     totalBalanceToday > 0 ? Math.min(100, Math.max(0, (spentSoFar / totalBalanceToday) * 100)) : 0;
@@ -65,7 +66,7 @@ export default function HomeScreen({ username }: Props) {
   const greeting =
     hour < 5 ? 'Good to see you' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : hour < 22 ? 'Good evening' : 'Good to see you';
 
-  const hasDueSoon = model ? getUpcomingDue(model, 14).length > 0 : false;
+  const hasDueSoon = useMemo(() => (model ? getUpcomingDue(model, 14).length > 0 : false), [model]);
   const [bellOpen, setBellOpen] = useState(false);
   const { items: bellItems, unreadCount, isRead, markRead } = useBellInbox(username, model);
 

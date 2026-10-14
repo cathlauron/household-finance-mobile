@@ -1,27 +1,28 @@
-﻿import React from 'react';
-import { Platform, ScrollView as RNScrollView, ScrollViewProps } from 'react-native';
-import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
+import React from 'react';
+import { Platform, ScrollView, ScrollViewProps } from 'react-native';
 
-// Not a pull-to-refresh any more. This just gives every screen the
-// platform's elastic overscroll.
+// Not a pull-to-refresh any more. This just gives every screen the platform's elastic
+// overscroll (iPhone bounce, Android stretch).
+// Responsiveness: it is the plain React Native ScrollView on both platforms. (Android
+// used the gesture-handler ScrollView, which sometimes swallowed the first tap on a
+// button inside it.) Taps also go straight through while the keyboard is open, instead
+// of the first tap only closing the keyboard. A screen can still override either prop.
 type Props = ScrollViewProps & {
   children?: React.ReactNode;
 };
 
-export const PullToRefreshScrollView = React.forwardRef<any, Props>(function PullToRefreshScrollView(
+export const PullToRefreshScrollView = React.forwardRef<ScrollView, Props>(function PullToRefreshScrollView(
   { children, ...rest },
   ref
 ) {
-  if (Platform.OS === 'android') {
-    return (
-      <GHScrollView {...(rest as any)} ref={ref} overScrollMode="always">
-        {children}
-      </GHScrollView>
-    );
-  }
   return (
-    <RNScrollView {...rest} ref={ref} bounces alwaysBounceVertical>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      {...rest}
+      ref={ref}
+      {...(Platform.OS === 'android' ? { overScrollMode: 'always' as const } : { bounces: true, alwaysBounceVertical: true })}
+    >
       {children}
-    </RNScrollView>
+    </ScrollView>
   );
 });

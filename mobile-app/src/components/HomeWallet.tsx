@@ -229,7 +229,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   function gestureFor(c: WalletCard, index: number) {
     const tap = Gesture.Tap()
       .runOnJS(true)
-      .maxDuration(300)
+      .maxDuration(340) // just under the 350ms hold that starts a drag
       .onEnd((_e, ok) => {
         if (ok) navigation.navigate('CardDetail', { group: c.group, id: c.account.id });
       });

@@ -8,13 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 
 // Redesign (Finance Flow "Motion"): switching tabs, the old tab fades out and the new
-// one fades in while lifting a few pixels, over about 260ms, so the falling leaves
+// one fades in while lifting a few pixels, quickly (170ms) so taps feel instant, so the falling leaves
 // behind feel like a layer further back. Screens are see-through over the leaves, so
 // the old tab is gone before the new one appears (no double image).
 const tabSceneFadeLift: BottomTabNavigationOptions['sceneStyleInterpolator'] = ({ current }) => ({
   sceneStyle: {
     opacity: current.progress.interpolate({
-      inputRange: [-1, -0.5, 0, 0.5, 1],
+      inputRange: [-1, -0.6, 0, 0.6, 1],
       outputRange: [0, 0, 1, 0, 0],
     }),
     transform: [
@@ -144,7 +144,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
         sceneStyle: { backgroundColor: 'transparent' },
         animation: 'fade',
         sceneStyleInterpolator: tabSceneFadeLift,
-        transitionSpec: { animation: 'timing', config: { duration: 260, easing: Easing.out(Easing.cubic) } },
+        transitionSpec: { animation: 'timing', config: { duration: 170, easing: Easing.out(Easing.cubic) } },
         ...getSharedHeaderOptions(colors),
         // Redesign: a rounded bar that floats a little above the bottom edge, like the
         // Finance Flow mockups. It stays part of the layout (not drawn over the screen),

@@ -24,9 +24,9 @@ type Depth = {
 };
 
 const DEPTHS: Depth[] = [
-  { count: 12, size: [16, 30], fall: [40, 56], sway: [5, 10], swayPeriod: [6, 9], strength: [0.5, 0.65], wind: [0.4, 0.6], blur: 0 },
-  { count: 11, size: [38, 74], fall: [22, 32], sway: [12, 24], swayPeriod: [4, 7], strength: [0.8, 1], wind: [0.85, 1.15], blur: 0 },
-  { count: 4, size: [110, 170], fall: [12, 17], sway: [26, 42], swayPeriod: [3, 5], strength: [0.9, 1], wind: [1.45, 1.75], blur: 1.4 },
+  { count: 6, size: [16, 30], fall: [40, 56], sway: [5, 10], swayPeriod: [6, 9], strength: [0.5, 0.65], wind: [0.4, 0.6], blur: 0 },
+  { count: 6, size: [38, 74], fall: [22, 32], sway: [12, 24], swayPeriod: [4, 7], strength: [0.8, 1], wind: [0.85, 1.15], blur: 0 },
+  { count: 2, size: [110, 170], fall: [12, 17], sway: [26, 42], swayPeriod: [3, 5], strength: [0.9, 1], wind: [1.45, 1.75], blur: 0 }, // blur off: costly to draw for an almost invisible effect
 ];
 
 // Leaves can drift this far past either side before wrapping round to the other side,
