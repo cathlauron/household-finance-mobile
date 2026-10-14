@@ -260,6 +260,10 @@ export default function CalendarScreen() {
   const viewMode: CalendarViewMode = savedViewMode === 'list' ? 'compact' : savedViewMode;
   const [navMode, setNavMode] = useState<CalendarNavMode>(DEFAULT_NAV_MODE);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Month & year picker, opened by tapping the month title. pickerYear is the year the
+  // picker is showing (it can differ from the year on screen until a month is chosen).
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(today.getFullYear());
 
   // Swipe mode: one page per month, sized to the screen minus the 10pt side padding.
   const { width: screenWidth } = useWindowDimensions();
@@ -380,6 +384,28 @@ export default function CalendarScreen() {
     setSelectedDate({ year: dayYear, month: dayMonth, day });
   }
 
+  // Month & year picker. Only months inside the calendar's range (24 months either
+  // side of today) can be picked, so the grid always has a page to show.
+  const firstPage = monthPages[0];
+  const lastPage = monthPages[monthPages.length - 1];
+  const pageKey = (y: number, m: number) => y * 12 + m;
+  const firstKey = pageKey(firstPage.year, firstPage.month);
+  const lastKey = pageKey(lastPage.year, lastPage.month);
+
+  function openPicker() {
+    setPickerYear(year);
+    setPickerOpen(true);
+  }
+
+  function pickMonth(m: number) {
+    const key = pageKey(pickerYear, m);
+    if (key < firstKey || key > lastKey) return;
+    hapticSelection();
+    setYear(pickerYear);
+    setMonth(m);
+    setPickerOpen(false);
+  }
+
   function chooseViewMode(mode: CalendarViewMode) {
     setSavedViewMode(mode);
     setCalendarViewMode(mode);
@@ -417,9 +443,22 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.monthTitle} numberOfLines={1}>
-          {MONTHS[month]} {year}
-        </Text>
+        <TouchableOpacity
+          onPress={openPicker}
+          style={styles.monthTitleBtn}
+          activeOpacity={0.6}
+          accessibilityLabel={`${MONTHS[month]} ${year}. Choose a month`}
+        >
+          <Text style={styles.monthTitle} numberOfLines={1}>
+            {MONTHS[month]} {year}
+          </Text>
+          <Ionicons
+            name={pickerOpen ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.accent}
+            style={styles.monthTitleChevron}
+          />
+        </TouchableOpacity>
         <View style={styles.headerButtons}>
           <TouchableOpacity
             onPress={goPrevMonth}
@@ -558,6 +597,79 @@ export default function CalendarScreen() {
       </View>
 
       <Modal
+        visible={pickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <Pressable style={styles.pickerOverlay} onPress={() => setPickerOpen(false)}>
+          <Pressable style={styles.pickerCard} onPress={() => {}}>
+            <GradientFill match={styles.pickerCard} />
+            <View style={styles.pickerYearRow}>
+              <TouchableOpacity
+                onPress={() => setPickerYear(pickerYear - 1)}
+                disabled={pickerYear <= firstPage.year}
+                style={[styles.iconBtn, pickerYear <= firstPage.year && { opacity: 0.35 }]}
+                accessibilityLabel="Previous year"
+              >
+                <Ionicons name="chevron-back" size={18} color={colors.ink} />
+              </TouchableOpacity>
+              <Text style={styles.pickerYearText}>{pickerYear}</Text>
+              <TouchableOpacity
+                onPress={() => setPickerYear(pickerYear + 1)}
+                disabled={pickerYear >= lastPage.year}
+                style={[styles.iconBtn, pickerYear >= lastPage.year && { opacity: 0.35 }]}
+                accessibilityLabel="Next year"
+              >
+                <Ionicons name="chevron-forward" size={18} color={colors.ink} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerGrid}>
+              {MONTHS.map((name, m) => {
+                const key = pageKey(pickerYear, m);
+                const outOfRange = key < firstKey || key > lastKey;
+                const isShown = pickerYear === year && m === month;
+                const isThisMonth = pickerYear === today.getFullYear() && m === today.getMonth();
+                return (
+                  <TouchableOpacity
+                    key={name}
+                    disabled={outOfRange}
+                    onPress={() => pickMonth(m)}
+                    style={[
+                      styles.pickerMonth,
+                      isShown && styles.pickerMonthShown,
+                      outOfRange && { opacity: 0.3 },
+                    ]}
+                    accessibilityLabel={`${name} ${pickerYear}`}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerMonthText,
+                        isThisMonth && styles.pickerMonthTextThisMonth,
+                        isShown && styles.pickerMonthTextShown,
+                      ]}
+                    >
+                      {name.slice(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                goToday();
+                setPickerOpen(false);
+              }}
+              style={styles.pickerTodayBtn}
+              accessibilityLabel="Go to today"
+            >
+              <Text style={styles.pickerTodayText}>Go to today</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
         visible={menuOpen}
         transparent
         animationType="fade"
@@ -612,13 +724,90 @@ function makeStyles(colors: any) {
       paddingTop: 10,
       paddingBottom: 4,
     },
-    monthTitle: {
+    monthTitleBtn: {
       flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 8,
+      minHeight: 44,
+    },
+    monthTitle: {
+      flexShrink: 1,
       fontSize: 22,
       lineHeight: 28,
       fontWeight: '700',
       color: colors.ink,
-      marginRight: 8,
+    },
+    monthTitleChevron: {
+      marginLeft: 4,
+      marginTop: 2,
+    },
+    pickerOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      justifyContent: 'flex-start',
+      paddingTop: 70,
+      paddingHorizontal: 16,
+    },
+    pickerCard: {
+      backgroundColor: colors.navy3,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.navy4,
+      padding: 16,
+      overflow: 'hidden',
+    },
+    pickerYearRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    pickerYearText: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.ink,
+    },
+    pickerGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 8,
+    },
+    pickerMonth: {
+      width: '31%',
+      minHeight: 44,
+      borderRadius: 999,
+      backgroundColor: colors.navy1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pickerMonthShown: {
+      backgroundColor: colors.accent,
+    },
+    pickerMonthText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    pickerMonthTextThisMonth: {
+      color: colors.accent,
+      fontWeight: '700',
+    },
+    pickerMonthTextShown: {
+      color: colors.onAccent,
+    },
+    pickerTodayBtn: {
+      alignSelf: 'center',
+      marginTop: 14,
+      minHeight: 36,
+      paddingHorizontal: 14,
+      justifyContent: 'center',
+    },
+    pickerTodayText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.accent,
     },
     headerButtons: {
       flexDirection: 'row',
