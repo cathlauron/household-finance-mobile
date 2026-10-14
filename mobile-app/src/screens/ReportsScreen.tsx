@@ -215,10 +215,10 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     pillActive: { backgroundColor: colors.gold },
     tagPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.navy2, borderWidth: 1, borderColor: colors.navy3 },
     tagPillActive: { backgroundColor: colors.gold, borderColor: colors.gold },
-    tagPillText: { fontSize: 12, fontWeight: '600', color: colors.inkFaint },
+    tagPillText: { fontSize: 13, fontWeight: '600', color: colors.inkFaint },
     tagPillTextActive: { color: colors.navy1 },
     emptyStateWrap: { paddingHorizontal: 24, paddingTop: 40, alignItems: 'center' },
-    emptyStateText: { fontSize: 13.5, color: colors.inkDim, textAlign: 'center', lineHeight: 19 },
+    emptyStateText: { fontSize: 15, color: colors.inkDim, textAlign: 'center', lineHeight: 19 },
     customizeRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -228,7 +228,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       borderBottomColor: colors.navy4,
     },
     customizeRowLeft: { flexDirection: 'row', alignItems: 'center' },
-    customizeRowLabel: { fontSize: 14, color: colors.ink },
+    customizeRowLabel: { fontSize: 15, color: colors.ink },
     checkbox: {
       width: 22,
       height: 22,

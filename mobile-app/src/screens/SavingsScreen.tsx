@@ -735,7 +735,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       {efMonthsCovered !== null ? efMonthsCovered.toFixed(1) + ' months' : '—'}
     </Text>
     {getEfStatus(efMonthsCovered, colors).label && (
-      <Text style={{ color: getEfStatus(efMonthsCovered, colors).color, fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+      <Text style={{ color: getEfStatus(efMonthsCovered, colors).color, fontSize: 13, fontWeight: '600', marginTop: 4 }}>
         {getEfStatus(efMonthsCovered, colors).label}
       </Text>
     )}
@@ -1077,8 +1077,8 @@ function makeStyles(colors: any) {
     goalCollapsedWrap: {},
     detailContainer: { gap: 8 },
     detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 12, color: colors.inkDim },
-    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    detailLabel: { fontSize: 13, color: colors.inkDim },
+    detailValue: { fontSize: 15, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     goalRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     goalRowMain: { flex: 1, marginRight: 10 },
     goalName: { fontSize: 17, fontWeight: '500', color: colors.ink },
@@ -1094,7 +1094,7 @@ function makeStyles(colors: any) {
     progressFill: { height: 6, borderRadius: 999, backgroundColor: colors.saving },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
-    calcIntro: { fontSize: 12.5, color: colors.inkDim, lineHeight: 18, marginBottom: 18 },
+    calcIntro: { fontSize: 15, color: colors.inkDim, lineHeight: 18, marginBottom: 18 },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -1114,8 +1114,8 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     suggestionRow: { marginTop: -6, marginBottom: 14 },
-    suggestionText: { fontSize: 11.5, color: colors.gold, fontStyle: 'italic' },
-    fieldHint: { fontSize: 11, color: colors.inkFaint, marginBottom: 10, lineHeight: 15 },
+    suggestionText: { fontSize: 15, color: colors.gold },
+    fieldHint: { fontSize: 13, color: colors.inkFaint, marginBottom: 10, lineHeight: 15 },
     resultCard: {
       backgroundColor: colors.navy3,
       borderRadius: 12,
@@ -1125,19 +1125,19 @@ function makeStyles(colors: any) {
       marginTop: 4,
       marginBottom: 18,
     },
-    resultLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 6 },
+    resultLabel: { fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 6 },
     resultAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
-    resultSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 8 },
+    resultSub: { fontSize: 15, color: colors.inkDim, marginTop: 8 },
 swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
-resultSecondaryLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
+resultSecondaryLabel: { fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
 resultSecondary: { fontSize: 15, fontWeight: '700', color: colors.ink },
 toggleLink: { alignSelf: 'center', marginTop: 8 },
-toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
+toggleLinkText: { fontSize: 13, color: colors.gold, fontWeight: '600' },
     deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
     deleteButtonText: { fontSize: 13, color: colors.error, fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
+    errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
     contribRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     contribDateInput: { flex: 1.3 },
     contribAmountInput: { flex: 1 },
@@ -1150,11 +1150,11 @@ toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
       justifyContent: 'center',
       marginBottom: 14,
     },
-    contribRemoveButtonText: { fontSize: 14, color: colors.inkDim },
+    contribRemoveButtonText: { fontSize: 15, color: colors.inkDim },
     addContribButton: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 6, marginTop: -4 },
-    addContribButtonText: { fontSize: 12.5, fontWeight: '600', color: colors.gold },
+    addContribButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     chooseAccountsLink: { marginTop: -6, marginBottom: 14 },
-    chooseAccountsLinkText: { fontSize: 11.5, color: colors.gold, fontWeight: '600' },
+    chooseAccountsLinkText: { fontSize: 15, color: colors.gold, fontWeight: '600' },
     accountPickerRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1164,8 +1164,8 @@ toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
       borderBottomColor: colors.navy4,
     },
     accountPickerRowLeft: { flex: 1, marginRight: 10 },
-    accountPickerRowName: { fontSize: 14, color: colors.ink },
-    accountPickerRowGroup: { fontSize: 11, color: colors.inkDim, marginTop: 2 },
+    accountPickerRowName: { fontSize: 15, color: colors.ink },
+    accountPickerRowGroup: { fontSize: 13, color: colors.inkDim, marginTop: 2 },
     checkbox: {
       width: 22,
       height: 22,
@@ -1185,6 +1185,6 @@ toggleLinkText: { fontSize: 11, color: colors.gold, fontWeight: '600' },
       justifyContent: 'center',
       marginBottom: 14,
     },
-    compareButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
+    compareButtonText: { fontSize: 15, fontWeight: '700', color: colors.gold },
   });
 }

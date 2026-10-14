@@ -672,8 +672,8 @@ function makeStyles(colors: any) {
       borderColor: colors.navy4,
     },
     balanceBannerLabel: {
-      fontSize: 11,
-      letterSpacing: 1,
+      fontSize: 13,
+      letterSpacing: 0.3,
       color: colors.inkDim,
       marginBottom: 4,
     },

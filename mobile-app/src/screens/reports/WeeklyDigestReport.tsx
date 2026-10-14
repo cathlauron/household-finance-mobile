@@ -168,7 +168,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
     cardLabel: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '700',
       textTransform: 'uppercase',
       letterSpacing: 1,
@@ -177,13 +177,13 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     statRow: { flexDirection: 'row', justifyContent: 'space-between' },
     statBox: { flex: 1 },
-    statLabel: { fontSize: 11, color: colors.inkFaint, marginBottom: 2 },
+    statLabel: { fontSize: 13, color: colors.inkFaint, marginBottom: 2 },
     statValue: { fontSize: 15, fontWeight: '700' },
     emptyText: { fontSize: 13, color: colors.inkFaint },
     categoryRow: { marginTop: 12 },
     categoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     categoryName: { fontSize: 13, color: colors.ink, flex: 1, marginRight: 8 },
-    categoryAmount: { fontSize: 12, color: colors.inkDim },
+    categoryAmount: { fontSize: 13, color: colors.inkDim },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
     progressFill: { height: '100%', backgroundColor: colors.gold, borderRadius: 999 },
     txnRow: {
@@ -196,7 +196,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     txnLeft: { flex: 1, marginRight: 10 },
     txnLabel: { fontSize: 13, color: colors.ink },
-    txnMeta: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
+    txnMeta: { fontSize: 13, color: colors.inkFaint, marginTop: 2 },
     txnAmount: { fontSize: 13, fontWeight: '700' },
   });
 }

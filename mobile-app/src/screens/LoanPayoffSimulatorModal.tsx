@@ -254,8 +254,8 @@ function makeStyles(colors: any) {
       padding: 20,
     },
     title: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
-    emptyText: { fontSize: 13, color: colors.inkFaint, fontStyle: 'italic', marginBottom: 16 },
+    sub: { fontSize: 15, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
+    emptyText: { fontSize: 13, color: colors.inkFaint, marginBottom: 16 },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -274,7 +274,7 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 10,
     },
-    hintText: { fontSize: 11.5, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
+    hintText: { fontSize: 15, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
     statRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
     statCard: {
       flex: 1,
@@ -285,9 +285,9 @@ function makeStyles(colors: any) {
       borderColor: 'transparent',
     },
     statCardActive: { borderColor: colors.gold },
-    statLabel: { fontSize: 11, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 13, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
     statValue: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statNote: { fontSize: 11, color: colors.inkFaint, marginTop: 3 },
+    statNote: { fontSize: 13, color: colors.inkFaint, marginTop: 3 },
     orderTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 16, marginBottom: 8 },
     orderRow: {
       flexDirection: 'row',
@@ -297,8 +297,8 @@ function makeStyles(colors: any) {
       borderBottomWidth: 1,
       borderBottomColor: colors.navy2,
     },
-    orderRowText: { fontSize: 12.5, color: colors.inkDim, flex: 1, marginRight: 10 },
-    orderRowMonths: { fontSize: 12.5, color: colors.ink, fontWeight: '600' },
+    orderRowText: { fontSize: 15, color: colors.inkDim, flex: 1, marginRight: 10 },
+    orderRowMonths: { fontSize: 15, color: colors.ink, fontWeight: '600' },
     closeButton: { alignItems: 'center', paddingVertical: 12, marginTop: 16 },
     closeButtonText: { fontSize: 13, color: colors.inkDim, fontWeight: '600' },
   });

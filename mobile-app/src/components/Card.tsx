@@ -32,7 +32,8 @@ export default function Card({ children, variant = 'card', row = false, testID, 
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 10, padding: 16, marginBottom: 12 },
+  // Redesign: same 12pt rounding as every other grouped block.
+  card: { borderRadius: 12, padding: 16, marginBottom: 12 },
   banner: { borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

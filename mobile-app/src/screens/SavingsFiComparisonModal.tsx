@@ -198,7 +198,7 @@ function makeStyles(colors: any) {
       padding: 20,
     },
     title: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
+    sub: { fontSize: 15, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
     statRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
     statCard: {
       flex: 1,
@@ -209,10 +209,10 @@ function makeStyles(colors: any) {
       borderColor: 'transparent',
     },
     statCardActive: { borderColor: colors.gold },
-    statLabel: { fontSize: 11, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 13, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
     statValue: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statNote: { fontSize: 11, color: colors.inkFaint, marginTop: 3 },
-    hintText: { fontSize: 11.5, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
+    statNote: { fontSize: 13, color: colors.inkFaint, marginTop: 3 },
+    hintText: { fontSize: 15, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
     sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 6, marginBottom: 10 },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
@@ -234,7 +234,7 @@ function makeStyles(colors: any) {
       marginBottom: 12,
     },
     resetButton: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
-    resetButtonText: { fontSize: 12.5, color: colors.gold, fontWeight: '600' },
+    resetButtonText: { fontSize: 15, color: colors.gold, fontWeight: '600' },
     closeButton: { alignItems: 'center', paddingVertical: 12, marginTop: 8 },
     closeButtonText: { fontSize: 13, color: colors.inkDim, fontWeight: '600' },
   });

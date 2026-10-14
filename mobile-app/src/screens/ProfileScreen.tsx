@@ -808,11 +808,11 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                           >
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
 <Avatar initials={getInitials(avatarName)} config={avatarConfig} size={32} />
-                              <Text style={{ color: colors.ink, fontWeight: isMe ? '700' : '400', fontSize: 14 }}>
+                              <Text style={{ color: colors.ink, fontWeight: isMe ? '700' : '400', fontSize: 15 }}>
                                 {m.username} {isMe ? '(You)' : ''}
                               </Text>
                               {m.isOwner && (
-                                <Text style={{ fontSize: 11, color: colors.gold, fontWeight: '700' }}>
+                                <Text style={{ fontSize: 13, color: colors.gold, fontWeight: '700' }}>
                                   Owner
                                 </Text>
                               )}
@@ -858,11 +858,11 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                               setPendingPersonId(p.id);
                             }}
                           >
-                            <Text style={{ color: colors.ink, fontWeight: selected ? '700' : '400', fontSize: 14 }}>
+                            <Text style={{ color: colors.ink, fontWeight: selected ? '700' : '400', fontSize: 15 }}>
                               {p.name || 'Unnamed'}
                             </Text>
                             {selected && (
-                              <Text style={{ fontSize: 11, color: colors.gold, fontWeight: '700' }}>
+                              <Text style={{ fontSize: 13, color: colors.gold, fontWeight: '700' }}>
                                 This is me
                               </Text>
                             )}
@@ -1377,8 +1377,8 @@ function makeStyles(colors: any) {
       justifyContent: 'center',
       marginRight: 12,
     },
-    memberSinceLabel: { fontSize: 11, color: colors.inkDim },
-    memberSinceValue: { fontSize: 13.5, fontWeight: '700', color: colors.ink },
+    memberSinceLabel: { fontSize: 13, color: colors.inkDim },
+    memberSinceValue: { fontSize: 15, fontWeight: '700', color: colors.ink },
     usernameText: {
       fontSize: 19,
       fontWeight: '700',
@@ -1399,12 +1399,12 @@ function makeStyles(colors: any) {
       paddingVertical: 5,
     },
     vaultBadgeText: {
-      fontSize: 11.5,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.gold,
     },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.ink, marginBottom: 4 },
-    sectionSub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 14, lineHeight: 17 },
+    sectionSub: { fontSize: 15, color: colors.inkDim, marginBottom: 14, lineHeight: 17 },
     shortcutCard: {
       backgroundColor: colors.navy3,
       borderRadius: 12,
@@ -1433,13 +1433,13 @@ function makeStyles(colors: any) {
       marginLeft: 62,
     },
     shortcutTitle: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.ink,
       marginBottom: 2,
     },
     shortcutSub: {
-      fontSize: 11.5,
+      fontSize: 15,
       color: colors.inkDim,
     },
     chevron: {
@@ -1458,7 +1458,7 @@ function makeStyles(colors: any) {
       borderColor: colors.navy4,
     },
     lockButtonText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.inkDim,
     },
@@ -1472,7 +1472,7 @@ function makeStyles(colors: any) {
       borderColor: colors.error,
     },
     signOutButtonText: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '700',
       color: colors.error,
     },
@@ -1495,11 +1495,11 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-    successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
+    errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
+    successText: { fontSize: 13, color: '#059669', marginBottom: 10 },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
-    hintText: { fontSize: 11.5, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
+    hintText: { fontSize: 15, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
     dataButton: {
       backgroundColor: colors.navy3,
       borderRadius: 10,
@@ -1507,7 +1507,7 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       marginBottom: 8,
     },
-    dataButtonText: { fontSize: 14, fontWeight: '600', color: colors.gold },
+    dataButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     linkCodeBox: {
       backgroundColor: colors.navy3,
       borderRadius: 10,
@@ -1515,7 +1515,7 @@ function makeStyles(colors: any) {
       marginBottom: 8,
       alignItems: 'center',
     },
-    linkCodeLabel: { fontSize: 12.5, color: colors.inkDim, marginBottom: 8 },
+    linkCodeLabel: { fontSize: 15, color: colors.inkDim, marginBottom: 8 },
     linkCodeText: {
       fontSize: 28,
       fontWeight: '700',
@@ -1529,7 +1529,7 @@ function makeStyles(colors: any) {
       padding: 14,
       marginBottom: 8,
     },
-    dangerConfirmText: { fontSize: 12.5, color: colors.error, lineHeight: 17, marginBottom: 12 },
+    dangerConfirmText: { fontSize: 15, color: colors.error, lineHeight: 17, marginBottom: 12 },
     cancelInlineButton: {
       backgroundColor: colors.navy3,
       borderRadius: 10,

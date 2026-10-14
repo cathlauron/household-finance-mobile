@@ -435,7 +435,7 @@ function makeStyles(colors: any) {
       backgroundColor: colors.gold,
     },
     toggleBtnText: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '600',
       color: colors.inkDim,
     },
@@ -458,13 +458,13 @@ function makeStyles(colors: any) {
       backgroundColor: 'rgba(233,196,106,0.12)',
     },
     collapseChipText: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '600',
       color: colors.gold,
     },
     balanceBannerLabel: {
-      fontSize: 11,
-      letterSpacing: 1,
+      fontSize: 13,
+      letterSpacing: 0.3,
       color: colors.inkDim,
       marginBottom: 4,
     },
@@ -493,7 +493,7 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
     },
     emptyText: {
-      fontSize: 12,
+      fontSize: 13,
       color: colors.inkFaint,
       marginBottom: 8,
       fontStyle: 'italic',
@@ -546,7 +546,7 @@ function makeStyles(colors: any) {
       borderColor: colors.ink,
     },
     errorText: {
-      fontSize: 12,
+      fontSize: 13,
       color: colors.error,
       marginBottom: 10,
     },

@@ -369,7 +369,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
+          <Text style={{ fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
         </Card>
         {sources.length === 0 && (
@@ -647,7 +647,7 @@ function makeStyles(colors: any) {
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    emptyText: { fontSize: 13, color: colors.inkFaint, marginBottom: 12 },
     rowCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -655,12 +655,12 @@ function makeStyles(colors: any) {
     },
     detailContainer: { gap: 8 },
     detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 12, color: colors.inkDim },
-    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    detailLabel: { fontSize: 13, color: colors.inkDim },
+    detailValue: { fontSize: 15, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     rowMain: { flex: 1, marginRight: 10 },
-    rowName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    rowSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    rowAmount: { fontSize: 14, fontWeight: '600', color: colors.ok },
+    rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
+    rowSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
+    rowAmount: { fontSize: 15, fontWeight: '600', color: colors.ok },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     inputLabel: {
@@ -692,12 +692,12 @@ function makeStyles(colors: any) {
       paddingVertical: 6,
       paddingHorizontal: 12,
     },
-    chipText: { fontSize: 11.5, fontWeight: '500', color: colors.inkDim },
+    chipText: { fontSize: 15, fontWeight: '500', color: colors.inkDim },
     row2: { flexDirection: 'row', gap: 10 },
     row2Item: { flex: 1 },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    hintText: { fontSize: 12, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
+    hintText: { fontSize: 13, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
+    errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
     paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
     paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
     paymentLogAmountInput: { flex: 1, marginBottom: 0 },
