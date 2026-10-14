@@ -11,6 +11,7 @@ import { formatPeso, totalLiquidBalance } from '../balanceProjection';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 // Redesign: the Wallet on Home, an interactive card stack like Apple Wallet.
 //  - Every card shows its name, a CASH / DEBIT / CREDIT tag and its balance.
@@ -216,6 +217,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // so the Left to Spend card and the + button stay the stars of the screen.
   const { isDark } = useTheme();
   const cardFill = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.2 : 0.1);
+  // Like a real bank card: the colour deepens from the top-left corner to the
+  // bottom-right, with a faint sheen across the top. Still kept soft.
+  const cardFillFrom = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.12 : 0.05);
+  const cardFillTo = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.34 : 0.22);
 
   const total = totalLiquidBalance(model);
   const openAccounts = () => navigation.navigate('Accounts');
@@ -351,6 +356,26 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     lifted && styles.lifted,
                   ]}
                 >
+                  {(() => {
+                    const tint = c.account.color || DEFAULT_GROUP_COLORS[c.group];
+                    const gid = c.key.replace(/[^A-Za-z0-9]/g, '_');
+                    return (
+                      <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                        <Defs>
+                          <LinearGradient id={`wg_${gid}`} x1="0" y1="0" x2="1" y2="1">
+                            <Stop offset="0" stopColor={cardFillFrom(tint)} />
+                            <Stop offset="1" stopColor={cardFillTo(tint)} />
+                          </LinearGradient>
+                          <LinearGradient id={`ws_${gid}`} x1="0" y1="0" x2="0.6" y2="1">
+                            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? 0.07 : 0.45} />
+                            <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity={0} />
+                          </LinearGradient>
+                        </Defs>
+                        <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#wg_${gid})`} />
+                        <Rect x="0" y="0" width="100%" height="100%" rx={15} ry={15} fill={`url(#ws_${gid})`} />
+                      </Svg>
+                    );
+                  })()}
                   <View style={styles.cardHead}>
                     <View style={styles.nameRow}>
                       <View style={[styles.chip, { backgroundColor: c.account.color || DEFAULT_GROUP_COLORS[c.group] }]} />
