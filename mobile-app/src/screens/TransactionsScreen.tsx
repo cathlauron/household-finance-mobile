@@ -194,6 +194,22 @@ export default function TransactionsScreen() {
   useEffect(() => {
     if (addNonce) openAddModal();
   }, [addNonce]);
+  // Redesign: search button in the title bar (opens Search).
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          testID="transactions-search"
+          onPress={() => (navigation as any).navigate('Search')}
+          accessibilityRole="button"
+          accessibilityLabel="Search"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="search" size={22} color={colors.gold} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors.gold]);
   // Redesign: the Transaction page's "Edit" comes back here with { editId } to open the form.
   const editNonce = route.params?.editNonce;
   useEffect(() => {
