@@ -380,6 +380,8 @@ export type HouseholdModel = {
   manualTransactions: ManualTransaction[];
   // Redesign (Move money): money moved between your own accounts. Not spending.
   transfers?: Transfer[];
+  // Redesign: the order of cards in Home's Wallet ("debit:<id>" keys), set by dragging.
+  walletOrder?: string[];
   categories: Category[];
   categoryBudgets: CategoryBudget[];
   calculatorInputs?: CalculatorInputs;

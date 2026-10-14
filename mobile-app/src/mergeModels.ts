@@ -239,6 +239,9 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
       vehicle: [...(a.balanceAccounts.vehicle ?? []), ...(b.balanceAccounts.vehicle ?? [])],
     },
     manualTransactions: mergedManualTransactions,
+    // Redesign: keep moves between accounts and the Wallet card order.
+    transfers: [...(a.transfers ?? []), ...(b.transfers ?? [])],
+    walletOrder: a.walletOrder ?? b.walletOrder,
     categories: mergedCategories,
     categoryBudgets: mergedCategoryBudgets,
     calculatorInputs: a.calculatorInputs ?? b.calculatorInputs,
