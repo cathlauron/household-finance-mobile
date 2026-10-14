@@ -364,7 +364,18 @@ export function computeRunningBalances(
   const monthStart = new Date(year, monthIndex, 1);
   const monthEnd = new Date(year, monthIndex, daysInMonth);
   const asOf = accountsAsOfDate(model);
-  const totalStart = totalLiquidBalance(model);
+  // The account totals are true as of the moment they were last updated. Transactions
+  // on that same day that were logged AFTER the update aren't in them yet, so add them
+  // on top (the day's events are otherwise treated as already included).
+  const asOfAt = model.balanceAccounts.asOfAt;
+  const asOfISO = toISO(asOf);
+  const loggedAfterUpdate =
+    asOfAt && model.balanceAccounts.asOfDate
+      ? model.manualTransactions
+          .filter((t) => t.date === asOfISO && (t.createdAt ?? 0) > asOfAt)
+          .reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0)
+      : 0;
+  const totalStart = totalLiquidBalance(model) + loggedAfterUpdate;
 
   const rangeStart = asOf < monthStart ? asOf : monthStart;
   const rangeEnd = asOf > monthEnd ? asOf : monthEnd;

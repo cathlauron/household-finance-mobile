@@ -424,7 +424,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 
   async function saveModel(updatedModel: HouseholdModel) {
-    const sanitizedModel = sanitizeModelIds(updatedModel);
+    // Left to Spend: stamp the moment each NEW transaction is first saved (any screen
+    // that adds one: Transactions, CSV import, Travel, Events, refunds). Existing
+    // transactions are never re-stamped.
+    const knownIds = new Set((model?.manualTransactions || []).map((t) => t.id));
+    const now = Date.now();
+    const stamped: HouseholdModel = {
+      ...updatedModel,
+      manualTransactions: (updatedModel.manualTransactions || []).map((t) =>
+        t.createdAt || knownIds.has(t.id) ? t : { ...t, createdAt: now }
+      ),
+    };
+    const sanitizedModel = sanitizeModelIds(stamped);
     modelVersionRef.current += 1;
     setModel(sanitizedModel);
     const username = usernameRef.current;

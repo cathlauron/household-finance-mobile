@@ -148,6 +148,7 @@ export default function AccountsScreen() {
     const balanceChanged = !editingId || !previous || Number(previous.amount || 0) !== Number(parsedAmount || 0);
     if (isSpendingGroup && balanceChanged) {
       updated.balanceAccounts.asOfDate = todayISO();
+      updated.balanceAccounts.asOfAt = Date.now();
     }
 
     setSaving(true);

@@ -221,8 +221,16 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     loans: mergedLoans,
     savingsGoals: [...a.savingsGoals, ...b.savingsGoals],
     balanceAccounts: {
-      // Keep the more recent "balances true as of" date (ISO dates compare as text).
-      asOfDate: [a.balanceAccounts.asOfDate, b.balanceAccounts.asOfDate].filter(Boolean).sort().pop() || '',
+      // Keep the more recent "balances true as of" date and its exact time, together.
+      ...(() => {
+        const pick =
+          (b.balanceAccounts.asOfDate || '') > (a.balanceAccounts.asOfDate || '') ||
+          ((b.balanceAccounts.asOfDate || '') === (a.balanceAccounts.asOfDate || '') &&
+            (b.balanceAccounts.asOfAt ?? 0) > (a.balanceAccounts.asOfAt ?? 0))
+            ? b.balanceAccounts
+            : a.balanceAccounts;
+        return { asOfDate: pick.asOfDate || '', asOfAt: pick.asOfAt };
+      })(),
       cash: [...a.balanceAccounts.cash, ...b.balanceAccounts.cash],
       debit: [...a.balanceAccounts.debit, ...b.balanceAccounts.debit],
       credit: [...a.balanceAccounts.credit, ...b.balanceAccounts.credit],

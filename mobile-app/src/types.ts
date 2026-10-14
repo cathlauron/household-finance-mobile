@@ -263,6 +263,9 @@ export type BalanceAccountEntry = {
 
 export type BalanceAccounts = {
   asOfDate: string;
+  // The exact moment (milliseconds since 1970) the spending balances were last updated.
+  // Pairs with asOfDate; see computeRunningBalances().
+  asOfAt?: number;
   cash: BalanceAccountEntry[];
   debit: BalanceAccountEntry[];
   credit: BalanceAccountEntry[];
@@ -293,6 +296,10 @@ export type ManualTransaction = {
   // "Refunded" rather than "Pending" — mirrors the expenseTransactionId pattern already used
   // by Travel checklist items and Events.
   refundTransactionId?: string;
+  // When this transaction was first saved (milliseconds since 1970). Lets Left to Spend
+  // tell whether spending logged on the same day as a balance update came before or
+  // after that update. Older transactions don't have it and are treated as "before".
+  createdAt?: number;
 };
 
 export type Category = {
