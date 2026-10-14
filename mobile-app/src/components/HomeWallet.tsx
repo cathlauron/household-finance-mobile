@@ -313,9 +313,6 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
             const others = dragging ? order.filter((k) => k !== dragging) : order;
             const j = others.indexOf(c.key);
             const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
-            // The cards in front of the held one go slightly see-through, so you can
-            // make out the part of it that's tucked in under them.
-            const inFront = !!dragging && !lifted && layer > gapAt;
             const amount = typeof c.account.amount === 'number' ? c.account.amount : 0;
             const top = tops.get(c.key) as Animated.Value;
             return (
@@ -334,7 +331,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       top: 0,
                       zIndex: layer,
                       elevation: (lifted ? 3 : 1) + layer * 0.5,
-                      opacity: lifted ? 1 : inFront ? 0.7 : (fades.get(c.key) as Animated.Value),
+                      // The held card itself goes slightly see-through while you move it.
+                      opacity: lifted ? 0.7 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
