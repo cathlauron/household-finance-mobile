@@ -457,15 +457,19 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
 // Same three-tier red/orange/green shape as SavingsScreen's getEfStatus() — red when
 // negative, green at or above the household's caution threshold (a % of the monthly
 // obligations baseline, user-tunable in Settings), orange in between.
+export type LeftToSpendMood = 'good' | 'low' | 'over';
+
 export function getLeftToSpendStatus(
   amount: number,
   model: HouseholdModel,
   colors: { error: string; orange: string; ok: string }
-): { color: string; label: string } {
-  if (amount < 0) return { color: colors.error, label: 'Over budget' };
+): { color: string; label: string; mood: LeftToSpendMood } {
+  // Redesign: labels match the Finance Flow mockups, and `mood` drives the Home card
+  // colour (green / burnt orange / red).
+  if (amount < 0) return { color: colors.error, label: 'Overspent', mood: 'over' };
   const baseline = computeMonthlyObligationsBaseline(model.bills, model.debts, model.loans);
   const thresholdPercent = model.settings.cautionThresholdPercent ?? 20;
   const cautionAmount = baseline * (thresholdPercent / 100);
-  if (amount < cautionAmount) return { color: colors.orange, label: 'Cutting it close' };
-  return { color: colors.ok, label: 'Looking good' };
+  if (amount < cautionAmount) return { color: colors.orange, label: 'Running low', mood: 'low' };
+  return { color: colors.ok, label: 'Looking good', mood: 'good' };
 }

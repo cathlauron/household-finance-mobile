@@ -40,12 +40,22 @@ export default function HomeScreen({ username }: Props) {
   const pctUsed =
     totalBalanceToday > 0 ? Math.min(100, Math.max(0, (spentSoFar / totalBalanceToday) * 100)) : 0;
 
-  const leftToSpendBg =
-    leftToSpendStatus && leftToSpendStatus.color === colors.ok
-      ? colors.okBg
-      : leftToSpendStatus && leftToSpendStatus.color === colors.orange
-      ? colors.warnBg
-      : colors.errorBg;
+  // Redesign: the Left to Spend card changes colour with the mood. Looking good keeps
+  // the forest-green card; Running low is burnt orange; Overspent is red. All three
+  // were picked so the white text on them stays easy to read (4.5:1 or better).
+  const { isDark } = useTheme();
+  const mood = leftToSpendStatus?.mood ?? 'good';
+  const moodCard =
+    mood === 'over'
+      ? { start: isDark ? '#A00D1C' : '#B30F1F', end: isDark ? '#A00D1C' : '#B30F1F', dim: 'rgba(255,255,255,0.92)', fill: '#FFFFFF' }
+      : mood === 'low'
+      ? { start: isDark ? '#933600' : '#A33C00', end: isDark ? '#933600' : '#A33C00', dim: 'rgba(255,255,255,0.92)', fill: '#FFFFFF' }
+      : { start: colors.cardTealStart, end: colors.cardTealEnd, dim: colors.cardTealTextDim, fill: colors.mintAccent };
+
+  // Redesign: greeting under "Hi, name" that follows the time of day.
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 5 ? 'Good to see you' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : hour < 22 ? 'Good evening' : 'Good to see you';
 
   const hasDueSoon = model ? getUpcomingDue(model, 14).length > 0 : false;
   const [bellOpen, setBellOpen] = useState(false);
@@ -88,20 +98,23 @@ export default function HomeScreen({ username }: Props) {
           style={hs.profilePill}
           activeOpacity={0.7}
           onPress={() => navigation.navigate('Profile')}
-          accessibilityLabel="Open profile"
+          accessibilityLabel={`Hi, ${username}. ${greeting}. Open profile`}
         >
           <Avatar
             initials={getInitials(username || '')}
             config={model?.avatars?.[username || '']}
-            size={30}
+            size={48}
             variant="filled"
           />
-          <Text style={hs.greeting} numberOfLines={1}>Hi, {username}</Text>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={hs.greeting} numberOfLines={1}>Hi, {username}</Text>
+            <Text style={hs.greetingSub} numberOfLines={1}>{greeting}</Text>
+          </View>
         </TouchableOpacity>
 
         <View style={hs.headerRight}>
           <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn} onPress={() => setBellOpen(true)}>
-            <Ionicons name="notifications-outline" size={20} color={colors.ink} />
+            <Ionicons name="notifications-outline" size={24} color={colors.ink} />
             {unreadCount > 0 ? (
               <View style={[hs.bellBadge, { backgroundColor: '#C81E43' }]}>
                 <Text style={hs.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -116,43 +129,43 @@ export default function HomeScreen({ username }: Props) {
           onScrollY={(y) => setShowSlimBar(y > 150)}
           header={
             leftToSpend && leftToSpendStatus ? (
-              <View style={[hs.leftCard, { overflow: 'hidden', backgroundColor: colors.cardTealStart }]}>
-                <CardGradient start={colors.cardTealStart} end={colors.cardTealEnd} />
+              <View style={[hs.leftCard, { overflow: 'hidden', backgroundColor: moodCard.start }, mood === 'good' && hs.leftCardShadow]}>
+                <CardGradient start={moodCard.start} end={moodCard.end} />
                 <View style={hs.leftCardTop}>
-                  <Text style={[hs.leftLabel, { marginBottom: 0, color: colors.cardTealTextDim }]}>Left to Spend</Text>
+                  <Text style={[hs.leftLabel, { marginBottom: 0, color: moodCard.dim }]}>Left to spend</Text>
                   <TouchableOpacity
                     testID="home-calendar-shortcut"
                     onPress={() => navigation.navigate('Calendar')}
-                    style={[hs.datePill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.2)' }]}
-                    accessibilityLabel="Open calendar"
+                    style={hs.calBtn}
+                    accessibilityLabel={`Open calendar. Today is ${fullDate}`}
                   >
-                    <Ionicons name="calendar-outline" size={16} color={colors.mintAccent} />
-                    <Text style={[hs.dateText, { color: colors.cardTealText }]} numberOfLines={1}>{fullDate}</Text>
+                    <Ionicons name="calendar-outline" size={18} color={colors.cardTealText} />
                   </TouchableOpacity>
                 </View>
-                <Text style={{ fontSize: 32, fontWeight: '700', color: colors.cardTealText, marginTop: 10 }}>
-                  {formatPeso(leftToSpend.amount)}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.cardTealTextDim, marginTop: 4 }}>
-                  {leftToSpendStatus.label} ·{' '}
-                  {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
-                </Text>
+                <Text style={hs.leftAmount}>{formatPeso(leftToSpend.amount)}</Text>
+                <View style={hs.statusRow}>
+                  <View style={hs.statusDot} />
+                  <Text style={[hs.statusText, { color: moodCard.dim }]}>
+                    {leftToSpendStatus.label} ·{' '}
+                    {leftToSpend.basis === 'payday' ? 'until next payday' : 'through month end'}
+                  </Text>
+                </View>
                 <View style={[hs.pctTrack, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                  <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: colors.mintAccent }]} />
+                  <View style={[hs.pctFill, { width: `${pctUsed}%`, backgroundColor: moodCard.fill }]} />
                 </View>
                 <View style={hs.pctLabelRow}>
-                  <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>
+                  <Text style={[hs.pctLabelText, { color: moodCard.dim }]}>
                     {formatPeso(leftToSpend.amount)} left of {formatPeso(totalBalanceToday)}
                   </Text>
-                  <Text style={[hs.pctLabelText, { color: colors.cardTealTextDim }]}>{Math.round(pctUsed)}% used</Text>
+                  <Text style={[hs.pctLabelText, { color: moodCard.dim }]}>{Math.round(pctUsed)}% used</Text>
                 </View>
               </View>
             ) : undefined
           }
         />
         {showSlimBar && leftToSpend && (
-          <View pointerEvents="none" style={[hs.slimBar, { backgroundColor: colors.cardTealStart }]}>
-            <Text style={[hs.slimBarLabel, { color: colors.cardTealTextDim }]}>Left to Spend</Text>
+          <View pointerEvents="none" style={[hs.slimBar, { backgroundColor: moodCard.start }]}>
+            <Text style={[hs.slimBarLabel, { color: moodCard.dim }]}>Left to spend</Text>
             <Text style={[hs.slimBarAmount, { color: colors.cardTealText }]}>{formatPeso(leftToSpend.amount)}</Text>
           </View>
         )}
@@ -208,27 +221,22 @@ function makeHomeStyles(colors: any) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 12,
+      paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 8,
+      paddingBottom: 12,
     },
     headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
     profilePill: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      backgroundColor: colors.navy3,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      paddingVertical: 4,
-      paddingLeft: 4,
-      paddingRight: 14,
-      borderRadius: 999,
-      maxWidth: '75%',
+      gap: 12,
+      minHeight: 48,
+      maxWidth: '80%',
     },
     headerRight: { alignItems: 'flex-end' },
-    greeting: { color: colors.ink, fontSize: 14, fontWeight: '700' },
-    bellBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+    greeting: { color: colors.ink, fontSize: 20, lineHeight: 25, fontWeight: '700' },
+    greetingSub: { color: colors.inkDim, fontSize: 15, lineHeight: 20 },
+    bellBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     bellDot: { position: 'absolute', top: 6, right: 7, width: 8, height: 8, borderRadius: 4 },
     bellBadge: { position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
     bellBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
@@ -252,7 +260,28 @@ function makeHomeStyles(colors: any) {
       paddingVertical: 8,
     },
     dateText: { color: colors.ink, fontSize: 12.5, fontWeight: '600' },
-    leftCard: { marginBottom: 12, borderRadius: 16, padding: 16 },
+    leftCard: { marginBottom: 12, borderRadius: 20, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 16 },
+    leftCardShadow: {
+      shadowColor: '#1B3F30',
+      shadowOpacity: 0.18,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+    calBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: -6,
+      marginRight: -6,
+    },
+    leftAmount: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -0.5, color: '#FFFFFF', marginTop: 6 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+    statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF', opacity: 0.85 },
+    statusText: { fontSize: 15, lineHeight: 20 },
     slimBar: {
       position: 'absolute',
       top: 0,
@@ -265,7 +294,7 @@ function makeHomeStyles(colors: any) {
       alignItems: 'center',
       justifyContent: 'space-between',
     },
-    slimBarLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+    slimBarLabel: { fontSize: 13, fontWeight: '600' },
     slimBarAmount: { fontSize: 15, fontWeight: '700' },
     leftCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     leftCardIconBubble: {
@@ -278,10 +307,8 @@ function makeHomeStyles(colors: any) {
       marginLeft: 12,
     },
     leftLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
+      fontSize: 15,
+      fontWeight: '600',
       color: colors.inkDim,
       marginBottom: 8,
     },
@@ -294,6 +321,6 @@ function makeHomeStyles(colors: any) {
     },
     pctFill: { height: '100%', borderRadius: 999 },
     pctLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-    pctLabelText: { fontSize: 11.5, color: colors.inkDim },
+    pctLabelText: { fontSize: 13, color: colors.inkDim },
   });
 }
