@@ -14,7 +14,7 @@ import type { PlanningTab } from './PlanningScreen';
 //
 // "Everything else" is TEMPORARY: Accounts, Income, Reports and Settings used to live
 // in More. They stay reachable here until their redesigned homes are built (Accounts
-// is done: Home's Wallet; Reports is done: Home's Insights. Still to move: Income in Transactions, Reports in Home's Insights, Settings from
+// is done: Home's Wallet; Reports is done: Home's Insights. Still to move: Income in Transactions, and Settings from
 // the profile photo on Home). Remove that group once each one has its new home.
 
 type Row = {
