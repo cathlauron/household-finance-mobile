@@ -89,7 +89,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       />
       <Stack.Screen
         name="Income"
-        options={{ title: 'Income', headerBackTitle: 'Plan' }}
+        options={{ title: 'Income', headerBackTitle: 'Transactions' }}
       >
         {({ route }) => (
           <IncomeScreen

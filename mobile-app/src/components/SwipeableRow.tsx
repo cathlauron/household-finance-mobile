@@ -7,6 +7,8 @@ import { hapticMedium, hapticSelection } from '../haptics';
 
 export type SwipeableRowProps = {
   children: React.ReactNode;
+  // Redesign: inside a grouped list the action button fills the row height exactly.
+  flat?: boolean;
   enabled: boolean;
   onDelete: () => void;
   testID?: string;
@@ -21,7 +23,7 @@ export type SwipeableRowProps = {
   };
 };
 
-export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }: SwipeableRowProps) {
+export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, flat }: SwipeableRowProps) {
   const { colors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -38,7 +40,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
     if (viewAction) {
       return (
         <TouchableOpacity
-          style={[styles.deleteAction, { backgroundColor: colors.gold }]}
+          style={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: colors.gold }]}
           activeOpacity={0.8}
           onPress={() => {
             hapticSelection();
@@ -56,7 +58,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
     }
     return (
       <TouchableOpacity
-        style={[styles.deleteAction, { backgroundColor: '#C81E43' }]}
+        style={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: '#C81E43' }]}
         activeOpacity={0.8}
         onPress={() => {
           hapticMedium();
@@ -97,4 +99,5 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 10,
   },
+  flatAction: { marginBottom: 0, borderRadius: 0 },
 });

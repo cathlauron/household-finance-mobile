@@ -86,10 +86,47 @@ const SOURCE_LABELS: Record<string, string> = { bill: 'Bill', debt: 'Debt', loan
 const DIRECTIONS: Array<'out' | 'in' | 'saving'> = ['out', 'in', 'saving'];
 const DIRECTION_LABELS: Record<string, string> = { out: 'Money out', in: 'Money in', saving: 'Savings' };
 
-function amountColor(direction: string, colors: { ok: string; orange: string; error: string }): string {
-  if (direction === 'in') return colors.ok;
-  if (direction === 'saving') return colors.orange;
-  return colors.error;
+function amountColor(direction: string, colors: { positive: string; saving: string; negative: string }): string {
+  if (direction === 'in') return colors.positive;
+  if (direction === 'saving') return colors.saving;
+  return colors.negative;
+}
+
+// Redesign: icon tile for each row, tinted by direction.
+const DIRECTION_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  in: 'arrow-down',
+  out: 'arrow-up',
+  saving: 'leaf-outline',
+};
+function tileBg(direction: string, colors: { okBg: string; errorBg: string; warnBg: string }): string {
+  if (direction === 'in') return colors.okBg;
+  if (direction === 'saving') return colors.warnBg;
+  return colors.errorBg;
+}
+
+// Redesign: transactions are shown under date headings (Today, Yesterday, Mon, Oct 12).
+// The list is already sorted, so this keeps that order and just starts a new group
+// whenever the date changes.
+function groupByDate(list: TransactionEntry[]): { date: string; items: TransactionEntry[] }[] {
+  const groups: { date: string; items: TransactionEntry[] }[] = [];
+  list.forEach((t) => {
+    const last = groups[groups.length - 1];
+    if (last && last.date === t.date) last.items.push(t);
+    else groups.push({ date: t.date, items: [t] });
+  });
+  return groups;
+}
+function dayHeading(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff === -1) return 'Tomorrow';
+  const sameYear = d.getFullYear() === today.getFullYear();
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
 // Bill-sourced TransactionEntry ids are built as 'bill-' + cycle.id
@@ -540,83 +577,66 @@ export default function TransactionsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.statRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>TOTAL IN</Text>
-            <Text style={[styles.statAmount, { color: colors.ok }]}>{formatPeso(totals.totalIn)}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>TOTAL OUT</Text>
-            <Text style={[styles.statAmount, { color: colors.error }]}>{formatPeso(totals.totalOut)}</Text>
-          </View>
-        </View>
-        {totals.totalSaving > 0 && (
-          <View style={styles.statRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>SAVED</Text>
-              <Text style={[styles.statAmount, { color: colors.orange }]}>{formatPeso(totals.totalSaving)}</Text>
-            </View>
-          </View>
-        )}
-        <Card variant="banner" row style={{ marginBottom: 16 }}>
-          <Text style={styles.netLabel}>NET (CASH IN HAND)</Text>
-          <Text style={styles.netAmount}>{formatPeso(totals.net)}</Text>
-        </Card>
-
-        {categoryFilter && (
+        {/* Redesign: filter chips (month, newest/oldest, category) */}
+        <View style={styles.filterRow}>
           <TouchableOpacity
-            onPress={() => setCategoryFilter(null)}
-            accessibilityLabel="Clear filter"
-            style={{
-              alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-              borderRadius: 999,
-              backgroundColor: colors.navy3,
-              borderWidth: 1,
-              borderColor: colors.navy4,
-              marginBottom: 10,
-            }}
-          >
-            <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.ink }}>
-              {categoryFilter}
-            </Text>
-            <Ionicons name="close-circle" size={16} color={colors.inkDim} />
-            <Text style={{ fontSize: 12, color: colors.inkDim }}>Clear filter</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={{ flexDirection: 'row', marginBottom: 10 }}>
-          <Pill
-            label={monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
-            icon="calendar-outline"
-            minWidth={140}
-            active={monthFilter !== 'all'}
-            onPress={() => setMonthSheetOpen(true)}
             testID="transactions-month-filter"
-          />
+            style={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]}
+            onPress={() => setMonthSheetOpen(true)}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.filterChipText, monthFilter !== 'all' && styles.filterChipTextOn]}>
+              {monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={monthFilter !== 'all' ? colors.gold : colors.inkDim} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="transactions-sort"
+            style={styles.filterChip}
+            onPress={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+            accessibilityRole="button"
+            accessibilityLabel={`Sorted ${sortOrder} first. Tap to switch.`}
+          >
+            <Text style={styles.filterChipText}>{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
+            <Ionicons name="swap-vertical" size={14} color={colors.inkDim} />
+          </TouchableOpacity>
+          {categoryFilter && (
+            <TouchableOpacity
+              style={[styles.filterChip, styles.filterChipOn]}
+              onPress={() => setCategoryFilter(null)}
+              accessibilityRole="button"
+              accessibilityLabel={`Showing ${categoryFilter} only. Tap to clear.`}
+            >
+              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{categoryFilter}</Text>
+              <Ionicons name="close-circle" size={15} color={colors.gold} />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.pillRow}>
-          <Pill
-            label="Newest first"
-            fill
-            minWidth={80}
-            active={sortOrder === 'newest'}
-            onPress={() => setSortOrder('newest')}
-          />
-          <Pill
-            label="Oldest first"
-            fill
-            minWidth={80}
-            active={sortOrder === 'oldest'}
-            onPress={() => setSortOrder('oldest')}
-          />
+        {/* Redesign: In / Out summary. "In" opens Income (its new home). */}
+        <View style={[styles.group, styles.summary]}>
+          <TouchableOpacity
+            testID="transactions-income-link"
+            style={styles.summaryCell}
+            onPress={() => (navigation as any).navigate('Income')}
+            accessibilityRole="button"
+            accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}. Open Income`}
+          >
+            <Text style={styles.summaryLabel}>In ›</Text>
+            <Text style={[styles.summaryAmount, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
+          </TouchableOpacity>
+          <View style={[styles.summaryCell, styles.summaryDivider]}>
+            <Text style={styles.summaryLabel}>Out</Text>
+            <Text style={[styles.summaryAmount, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>−{formatPeso(totals.totalOut)}</Text>
+          </View>
+          {totals.totalSaving > 0 && (
+            <View style={[styles.summaryCell, styles.summaryDivider]}>
+              <Text style={styles.summaryLabel}>Saved</Text>
+              <Text style={[styles.summaryAmount, { color: colors.saving }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatPeso(totals.totalSaving)}</Text>
+            </View>
+          )}
         </View>
-
+        <Text style={styles.netNote}>Net (cash in hand): {formatPeso(totals.net)}</Text>
 
         <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Filter by month">
           <TouchableOpacity
@@ -664,7 +684,11 @@ export default function TransactionsScreen() {
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 
-        {transactions.map((t: TransactionEntry) => {
+        {groupByDate(transactions).map((day) => (
+        <View key={day.date} style={styles.daySection}>
+        <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
+        <View style={styles.group}>
+        {day.items.map((t: TransactionEntry, rowIndex: number) => {
           const isManual = t.source === 'manual';
           const isExpanded = expandedTxnId === t.id;
           const rawManual = isManual ? (model.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
@@ -733,9 +757,17 @@ export default function TransactionsScreen() {
               onDelete={() => handleSwipeDelete(t.rawId as string)}
               viewAction={viewAction}
               testID={`txn-swipe-${t.id}`}
+              flat
             >
             <CollapsibleRow
               testID={`txn-row-${t.id}`}
+              flat
+              showDivider={rowIndex > 0}
+              leading={
+                <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
+                  <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
+                </View>
+              }
               isExpanded={isExpanded}
               onToggle={() => setExpandedTxnId((prev) => (prev === t.id ? null : t.id))}
               onEdit={isManual ? () => openEditModal(t) : undefined}
@@ -744,8 +776,7 @@ export default function TransactionsScreen() {
                   <View style={styles.txnMain}>
                     <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
                     <Text style={styles.txnSub} numberOfLines={1}>
-                      {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
-                      {!isManual ? ' (linked)' : ''}
+                      {t.category}{!isManual ? ` · ${SOURCE_LABELS[t.source]} (linked)` : ''}
                       {isRefundPending ? ' · Refund pending' : ''}
                       {isRefundReceived ? ' · Refunded' : ''}
                     </Text>
@@ -824,11 +855,12 @@ export default function TransactionsScreen() {
             </SwipeableRow>
           );
         })}
+        </View>
+        </View>
+        ))}
 
+        {/* Redesign: adding is done with the floating + button; Import CSV stays here. */}
         <View style={styles.addButtonRow}>
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Text style={styles.addButtonText}>+ Add transaction</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.importButton} onPress={() => setCsvModalOpen(true)}>
             <Text style={styles.importButtonText}>Import CSV</Text>
           </TouchableOpacity>
@@ -1004,7 +1036,23 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
+    // Redesign styles
+    filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+    filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.navy3 },
+    filterChipOn: { backgroundColor: colors.okBg },
+    filterChipText: { fontSize: 15, fontWeight: '500', color: colors.ink },
+    filterChipTextOn: { color: colors.gold, fontWeight: '600' },
+    group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
+    summary: { flexDirection: 'row' },
+    summaryCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 16 },
+    summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
+    summaryLabel: { fontSize: 13, color: colors.inkDim },
+    summaryAmount: { fontSize: 17, fontWeight: '600', marginTop: 2 },
+    netNote: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginBottom: 20, marginLeft: 16 },
+    daySection: { marginBottom: 20 },
+    dayHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
+    tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     statRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
     statCard: {
       flex: 1,
@@ -1018,7 +1066,7 @@ function makeStyles(colors: any) {
     netLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim },
     netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
-    emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6, marginBottom: 12 },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginTop: 6, marginBottom: 12, textAlign: 'center' },
     txnCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -1030,14 +1078,14 @@ function makeStyles(colors: any) {
     detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
     txnMain: { flex: 1, marginRight: 10 },
-    txnLabel: { fontSize: 13.5, fontWeight: '600', color: colors.ink },
-    txnSub: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
-    txnAmount: { fontSize: 13.5, fontWeight: '700' },
+    txnLabel: { fontSize: 17, fontWeight: '500', color: colors.ink },
+    txnSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    txnAmount: { fontSize: 17, fontWeight: '600' },
     addButtonRow: { flexDirection: 'row', gap: 16, marginTop: 4, flexWrap: 'wrap' },
     addButton: { paddingVertical: 8, paddingHorizontal: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     importButton: { paddingVertical: 8, paddingHorizontal: 4 },
-    importButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    importButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,

@@ -18,6 +18,12 @@ export type CollapsibleRowProps = {
   onToggle: () => void;
   onEdit?: () => void;
   testID?: string;
+  // Redesign: draw the row as one line inside a grouped list (no card of its own),
+  // with a hairline above it unless it's the first row in its group.
+  flat?: boolean;
+  showDivider?: boolean;
+  // Redesign: optional icon tile shown at the left of the row.
+  leading?: React.ReactNode;
 };
 
 export function CollapsibleRow({
@@ -27,6 +33,9 @@ export function CollapsibleRow({
   onToggle,
   onEdit,
   testID,
+  flat = false,
+  showDivider = false,
+  leading,
 }: CollapsibleRowProps) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -39,15 +48,20 @@ export function CollapsibleRow({
   return (
     <View
       testID={testID}
-      style={[styles.container, isExpanded && styles.containerExpanded]}
+      style={
+        flat
+          ? [styles.flatContainer, showDivider && styles.flatDivider]
+          : [styles.container, isExpanded && styles.containerExpanded]
+      }
     >
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={handleToggle}
-        style={styles.headerRow}
+        style={[styles.headerRow, flat && styles.flatHeaderRow]}
         accessibilityRole="button"
         accessibilityState={{ expanded: isExpanded }}
       >
+        {leading}
         <View style={styles.contentWrap}>
           {collapsedContent}
         </View>
@@ -99,6 +113,9 @@ function makeStyles(colors: any) {
     containerExpanded: {
       borderColor: colors.navy4,
     },
+    flatContainer: { backgroundColor: colors.navy3 },
+    flatDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    flatHeaderRow: { minHeight: 60, paddingHorizontal: 16, paddingVertical: 10 },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
