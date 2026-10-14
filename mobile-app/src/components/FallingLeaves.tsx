@@ -115,7 +115,7 @@ export default function FallingLeaves({ color, opacity, veinColor }: Props) {
   );
 }
 
-function FallingLeaf({
+const FallingLeaf = React.memo(function FallingLeaf({
   leaf,
   screenW,
   screenH,
@@ -157,17 +157,30 @@ function FallingLeaf({
     };
   }, [fall, leaf]);
 
-  // Swaying side to side (and tilting with it), forever.
+  // Swaying side to side (and tilting with it), forever. Each half-swing starts exactly
+  // where the last one ended, so there is never a jump. (Animated.loop resets the value
+  // between rounds, which made the leaves twitch.) The first half-swing starts from a
+  // random spot, with a duration to match, so the leaves stay out of step.
   useEffect(() => {
+    let stopped = false;
     const half = leaf.swayMs / 2;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(sway, { toValue: 1, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(sway, { toValue: -1, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
+    function swing(from: number, to: number) {
+      const share = Math.abs(to - from) / 2; // 1 for a full half-swing
+      Animated.timing(sway, {
+        toValue: to,
+        duration: Math.max(1, half * share),
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished && !stopped) swing(to, -to);
+      });
+    }
+    sway.setValue(leaf.swayStart);
+    swing(leaf.swayStart, 1);
+    return () => {
+      stopped = true;
+      sway.stopAnimation();
+    };
   }, [sway, leaf]);
 
   // Wind: each gust pushes the leaf sideways (quick start, slow settle) and tilts it
@@ -201,28 +214,37 @@ function FallingLeaf({
   const w = BOX_W * unit;
   const h = BOX_H * unit;
   const filterId = `leafBlur${leaf.blurId}`;
-  const span = screenW + SIDE_MARGIN * 2;
-  // Horizontal spot: starting x + wind + sway, wrapped round so blown leaves come back
-  // in from the other side.
-  const translateX = Animated.subtract(
-    Animated.modulo(
-      Animated.add(Animated.add(wind, Animated.multiply(sway, leaf.sway)), leaf.x * screenW + SIDE_MARGIN),
-      span
-    ),
-    SIDE_MARGIN + w / 2
-  );
-  const translateY = fall.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-h - 40, screenH + 40],
-  });
-  const rotate = Animated.add(Animated.add(Animated.multiply(sway, TILT_DEG), tilt), leaf.angle).interpolate({
-    inputRange: [-720, 720],
-    outputRange: ['-720deg', '720deg'],
-  });
+  // The moving parts are built once (not on every redraw of the screen), so the native
+  // animation keeps running untouched when the app updates its data.
+  const { translateX, translateY, rotate } = useMemo(() => {
+    const span = screenW + SIDE_MARGIN * 2;
+    // Horizontal spot: starting x + wind + sway, wrapped round so blown leaves come
+    // back in from the other side (the wrap happens off screen).
+    const tx = Animated.subtract(
+      Animated.modulo(
+        Animated.add(Animated.add(wind, Animated.multiply(sway, leaf.sway)), leaf.x * screenW + SIDE_MARGIN),
+        span
+      ),
+      SIDE_MARGIN + w / 2
+    );
+    const ty = fall.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-h - 40, screenH + 40],
+    });
+    const rot = Animated.add(Animated.add(Animated.multiply(sway, TILT_DEG), tilt), leaf.angle).interpolate({
+      inputRange: [-720, 720],
+      outputRange: ['-720deg', '720deg'],
+    });
+    return { translateX: tx, translateY: ty, rotate: rot };
+  }, [wind, sway, fall, tilt, leaf, screenW, screenH, w, h]);
 
   return (
     <Animated.View
       style={[styles.leaf, { width: w, height: h, transform: [{ translateX }, { translateY }, { rotate }] }]}
+      // Keep the drawn leaf as a ready-made picture while it moves, instead of redrawing
+      // the SVG (and its blur) every frame.
+      renderToHardwareTextureAndroid
+      shouldRasterizeIOS
     >
       <Svg width={w} height={h} viewBox={`${-PAD} ${-PAD} ${BOX_W} ${BOX_H}`}>
         {leaf.blur > 0 && (
@@ -248,7 +270,7 @@ function FallingLeaf({
       </Svg>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   leaf: {

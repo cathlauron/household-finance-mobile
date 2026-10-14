@@ -95,7 +95,7 @@ export default function LeafBackground() {
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
     const motionSub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    const appSub = AppState.addEventListener('change', (state) => setAppActive(state === 'active'));
+    const appSub = AppState.addEventListener('change', (state) => setAppActive(state !== 'background'));
     return () => {
       motionSub.remove();
       appSub.remove();
