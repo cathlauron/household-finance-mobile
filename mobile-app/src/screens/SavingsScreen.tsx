@@ -9,7 +9,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
-import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource } from '../types';
+import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource, CalculatorInputs } from '../types';
 import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
@@ -23,7 +23,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
-import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth } from '../savingsPots';
+import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonths } from '../savingsPots';
 
 function todayISO(): string {
   const d = new Date();
@@ -133,6 +133,21 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const navigation = useNavigation<any>();
 
   const [activeTab, setActiveTab] = useState<PillTab>('goals');
+
+  // Redesign: one sheet edits any Emergency / FI value.
+  type EditField = { key: keyof CalculatorInputs; title: string; kind: 'peso' | 'pct' | 'months'; hint?: string; value: number; suggest?: { label: string; value: number } };
+  const [editField, setEditField] = useState<EditField | null>(null);
+  const [editVal, setEditVal] = useState<number | ''>('');
+  function openEdit(f: EditField) {
+    setEditVal(isNaN(f.value) ? '' : f.value);
+    setEditField(f);
+  }
+  async function saveEdit() {
+    if (!editField || !model) return;
+    hapticLight();
+    await saveModel({ ...model, calculatorInputs: { ...calcInputsFromModel(), [editField.key]: editVal } as CalculatorInputs });
+    setEditField(null);
+  }
 
   // Redesign: + in the top bar starts a new pot (the mockup's "Add a savings pot").
   useLayoutEffect(() => {
@@ -598,6 +613,22 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   })();
 
+  // Redesign: Emergency tab. Saved so far comes from the Emergency Fund pot when there is one.
+  const efPot = goals.find(isEmergencyPot);
+  const efSavedNow = efPot ? contributionsTotal(efPot) : isNaN(efSavingsNum) ? 0 : efSavingsNum;
+  const efTarget = efTargetMonths(model);
+  const efMonths = efExpensesNum > 0 ? efSavedNow / efExpensesNum : null;
+  const efToGo = efExpensesNum > 0 ? Math.max(0, efTarget * efExpensesNum - efSavedNow) : 0;
+
+  // One tappable row in the Emergency / FI lists.
+  const calcRow = (label: string, value: string, valueColor: string | undefined, onPress: () => void, divider = false) => (
+    <TouchableOpacity style={[styles.calcRow, divider && styles.potDivider]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}${value ? ', ' + value : ''}`}>
+      <Text style={styles.calcRowLabel}>{label}</Text>
+      {!!value && <Text style={[styles.calcRowValue, valueColor ? { color: valueColor } : null]}>{value}</Text>}
+      <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pillRow}>
@@ -684,253 +715,135 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
       {activeTab === 'ef' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.calcIntro}>
-            Estimates how many months of essential expenses your savings cover. 3–6 months is standard.
+          <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
+            <GradientFill match={styles.summaryCard} />
+            <Text style={styles.balanceBannerLabel}>Your emergency fund covers</Text>
+            <Text style={styles.potsTotal}>{efMonths !== null ? `${efMonths.toFixed(1)} months` : '—'}</Text>
+            <Text style={styles.calcSub}>
+              {efMonths === null
+                ? 'Add your essential expenses below'
+                : efToGo > 0
+                  ? `Aim for ${efTarget} months · ${formatPeso(efToGo)} to go`
+                  : `You've reached ${efTarget} months`}
+            </Text>
+            {efMonths !== null && (
+              <View style={[styles.progressTrack, { alignSelf: 'stretch', marginTop: 14 }]}>
+                <View style={[styles.progressFill, { width: `${Math.min(100, (efMonths / efTarget) * 100)}%` as const }]} />
+              </View>
+            )}
+          </View>
+          <View style={styles.listGroup}>
+            <GradientFill match={styles.listGroup} />
+            {calcRow('Essential expenses', efExpensesNum > 0 ? `${formatPeso(efExpensesNum)} / mo` : 'Not set', colors.error, () =>
+              openEdit({ key: 'efMonthlyExpenses', title: 'Essential expenses', kind: 'peso', hint: 'What you need each month for the basics', value: efExpensesNum, suggest: suggestedMonthlyExpenses > 0 ? { label: `From your bills: ${formatPeso(suggestedMonthlyExpenses)}/mo`, value: Math.round(suggestedMonthlyExpenses * 100) / 100 } : undefined })
+            )}
+            {calcRow('Saved so far', formatPeso(efSavedNow), colors.saving, () =>
+              efPot ? navigation.navigate('PotDetail', { id: efPot.id }) : openEdit({ key: 'efCurrentSavings', title: 'Saved so far', kind: 'peso', hint: 'Start an "Emergency Fund" pot to track this automatically', value: efSavingsNum }),
+              true
+            )}
+            {calcRow('Target', `${efTarget} months`, undefined, () => openEdit({ key: 'efTargetMonths', title: 'Target', kind: 'months', value: efTarget }), true)}
+          </View>
+          <Text style={styles.potsFooter}>
+            {efPot ? 'Saved so far comes from your Emergency Fund pot. ' : ''}Essential expenses are suggested from your bills. Tap to change.
           </Text>
-
-          <Text style={styles.inputLabel}>Monthly essential expenses</Text>
-          <AmountInput
-            value={efExpensesDisplay === '' ? '' : parseFloat(efExpensesDisplay)}
-            onChangeAmount={(v) => setEfExpensesInput(v === '' ? '' : String(v))}
-            onBlur={() => handleSaveEf()}
-          />
-          {suggestedMonthlyExpenses > 0 && (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={() => {
-                const rounded = String(Math.round(suggestedMonthlyExpenses * 100) / 100);
-                setEfExpensesInput(rounded);
-                handleSaveEf(rounded);
-              }}
-            >
-              <Text style={styles.suggestionText}>
-                From recurring bills: {formatPeso(suggestedMonthlyExpenses)}/mo — tap to use
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {!!efIncomeDisplay && (
-            <View style={styles.suggestionRow}>
-              <Text style={styles.suggestionText}>{efIncomeDisplay}</Text>
-            </View>
-          )}
-
-          <Text style={styles.inputLabel}>Current savings</Text>
-          <AmountInput
-            value={efSavingsDisplay === '' ? '' : parseFloat(efSavingsDisplay)}
-            onChangeAmount={(v) => setEfSavingsInput(v === '' ? '' : String(v))}
-            onBlur={() => handleSaveEf()}
-          />
-
-          <View style={styles.resultCard}>
-            <GradientFill match={styles.resultCard} />
-    <Text style={styles.resultLabel}>MONTHS COVERED</Text>
-    <Text style={[styles.resultAmount, { color: getEfStatus(efMonthsCovered, colors).color }]}>
-      {efMonthsCovered !== null ? efMonthsCovered.toFixed(1) + ' months' : '—'}
-    </Text>
-    {getEfStatus(efMonthsCovered, colors).label && (
-      <Text style={{ color: getEfStatus(efMonthsCovered, colors).color, fontSize: 13, fontWeight: '600', marginTop: 4 }}>
-        {getEfStatus(efMonthsCovered, colors).label}
-      </Text>
-    )}
-  </View>
-
-                <Button
-                  label={efSaved ? '✓ Saved' : 'Save'}
-                  onPress={handleSaveEf}
-                  loading={saving}
-                  disabled={saving}
-                />
         </PullToRefreshScrollView>
       )}
 
       {activeTab === 'fi' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.calcIntro}>
-            Estimated invested savings needed to cover expenses without a paycheck. Not financial advice.
-          </Text>
-
-          <Text style={styles.inputLabel}>Annual expenses</Text>
-          <AmountInput
-            value={fiExpensesDisplay === '' ? '' : parseFloat(fiExpensesDisplay)}
-            onChangeAmount={(v) => setFiExpensesInput(v === '' ? '' : String(v))}
-            onBlur={() => handleSaveFi()}
-          />
-          {suggestedAnnualExpenses > 0 && (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={() =>
-                setFiExpensesInput(String(Math.round(suggestedAnnualExpenses * 100) / 100))
-              }
-            >
-              <Text style={styles.suggestionText}>
-                From recurring bills: {formatPeso(suggestedAnnualExpenses)}/yr — tap to use
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {!!fiIncomeDisplay && (
-            <View style={styles.suggestionRow}>
-              <Text style={styles.suggestionText}>{fiIncomeDisplay}</Text>
-            </View>
-          )}
-
-          <Text style={styles.inputLabel}>Pension / Social Security (optional)</Text>
-          <AmountInput
-            placeholder="e.g. 120,000"
-            value={fiGuaranteedIncomeDisplay === '' ? '' : parseFloat(fiGuaranteedIncomeDisplay)}
-            onChangeAmount={(v) => setFiGuaranteedIncomeInput(v === '' ? '' : String(v))}
-            onBlur={() => handleSaveFi()}
-          />
-          <View style={styles.suggestionRow}>
-            <Text style={styles.suggestionText}>
-              Guaranteed yearly income already covering part of your expenses — subtracted before the FI target is
-              calculated.
+          <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
+            <GradientFill match={styles.summaryCard} />
+            <Text style={styles.balanceBannerLabel}>{fiMonthsUntilFi === 0 ? 'You could be' : 'Financially independent in about'}</Text>
+            <Text style={styles.potsTotal}>
+              {fiMonthsUntilFi === null ? '—' : fiMonthsUntilFi === 0 ? 'there now' : fiMonthsUntilFi >= 12 ? `${Math.round(fiMonthsUntilFi / 12)} years` : `${fiMonthsUntilFi} months`}
+            </Text>
+            <Text style={styles.calcSub}>
+              {fiNumber !== null ? `You'd need ${formatPeso(Math.round(fiNumber))} invested` : 'Fill in the rows below to see your estimate'}
             </Text>
           </View>
-
-          <Text style={styles.inputLabel}>Current savings / investments</Text>
-          <AmountInput
-            value={fiSavingsDisplay === '' ? '' : parseFloat(fiSavingsDisplay)}
-            onChangeAmount={(v) => setFiSavingsInput(v === '' ? '' : String(v))}
-            onBlur={() => handleSaveFi()}
-          />
-          {suggestedNetWorth > 0 && (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={() => {
-                const rounded = String(Math.round(suggestedNetWorth * 100) / 100);
-                setFiSavingsInput(rounded);
-                handleSaveFi({ savings: rounded });
-              }}
-            >
-              <Text style={styles.suggestionText}>
-                From Cash, Debit &amp; Investment accounts: {formatPeso(suggestedNetWorth)} — tap to use
-              </Text>
-            </TouchableOpacity>
-          )}
-          {fiAllAccounts.length > 0 && (
-            <TouchableOpacity
-              style={styles.chooseAccountsLink}
-              onPress={() => setFiAccountPickerOpen(true)}
-            >
-              <Text style={styles.chooseAccountsLinkText}>Choose which accounts count</Text>
-            </TouchableOpacity>
-          )}
-
-          <Text style={styles.inputLabel}>Safe withdrawal rate</Text>
-          <View style={styles.swrPillRow}>
-            {FI_SWR_PRESETS.map((preset) => (
-              <Pill
-                key={preset}
-                label={preset + '%'}
-                fill
-                compact
-                active={fiSwrDisplay === preset && !fiSwrCustomOpen}
-                onPress={() => {
-                  setFiSwrCustomOpen(false);
-                  setFiSwrInput(preset);
-                  handleSaveFi({ swr: preset });
-                }}
-              />
-            ))}
-            <Pill
-              label="Custom"
-              fill
-              compact
-              active={fiSwrCustomOpen || !fiSwrIsPreset}
-              onPress={() => setFiSwrCustomOpen(true)}
-            />
-          </View>
-          {(fiSwrCustomOpen || !fiSwrIsPreset) && (
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 3.8"
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="decimal-pad"
-              value={fiSwrDisplay}
-              onChangeText={setFiSwrInput}
-              onBlur={() => handleSaveFi()}
-            />
-          )}
-
-          <Text style={styles.inputLabel}>Expected annual return (optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 6"
-            placeholderTextColor={colors.inkFaint}
-            keyboardType="decimal-pad"
-            value={fiReturnDisplay}
-            onChangeText={setFiReturnRateInput}
-            onBlur={() => handleSaveFi()}
-          />
-
-          <Text style={styles.inputLabel}>Monthly savings toward FI (optional)</Text>
-          <AmountInput
-            value={fiMonthlySavingsDisplay === '' ? '' : parseFloat(fiMonthlySavingsDisplay)}
-            onChangeAmount={(v) => setFiMonthlySavingsInput(v === '' ? '' : String(v))}
-            onBlur={() => handleSaveFi()}
-          />
-          {suggestedMonthlySavings > 0 && (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={() => {
-                const rounded = String(Math.round(suggestedMonthlySavings * 100) / 100);
-                setFiMonthlySavingsInput(rounded);
-                handleSaveFi({ monthlySavings: rounded });
-              }}
-            >
-              <Text style={styles.suggestionText}>
-                From income minus obligations: {formatPeso(suggestedMonthlySavings)}/mo — tap to use
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.resultCard}>
-            <GradientFill match={styles.resultCard} />
-            <Text style={styles.resultLabel}>YOUR FI NUMBER</Text>
-            <Text style={styles.resultAmount}>{fiNumber !== null ? formatPeso(fiNumber) : '—'}</Text>
-            {fiProgressPct !== null && (
-              <>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${fiProgressPct}%` as const }]} />
-                </View>
-                <Text style={styles.resultSub}>{fiProgressPct.toFixed(1)}% funded</Text>
-              </>
+          <View style={styles.listGroup}>
+            <GradientFill match={styles.listGroup} />
+            {calcRow('Yearly expenses', !isNaN(fiExpensesNum) ? formatPeso(fiExpensesNum) : 'Not set', colors.error, () =>
+              openEdit({ key: 'fiAnnualExpenses', title: 'Yearly expenses', kind: 'peso', value: fiExpensesNum, suggest: suggestedAnnualExpenses > 0 ? { label: `From your bills: ${formatPeso(suggestedAnnualExpenses)}/yr`, value: Math.round(suggestedAnnualExpenses * 100) / 100 } : undefined })
             )}
-
-            <Text style={styles.resultSecondaryLabel}>YEARS UNTIL FI</Text>
-            {fiTimelineLabel !== null ? (
-              <>
-                <Text style={styles.resultSecondary}>
-                  {fiTimelineLabel}
-                  {fiShowDate && fiProjectedDateLabel ? ` (${fiProjectedDateLabel})` : ''}
-                </Text>
-                <TouchableOpacity style={styles.toggleLink} onPress={() => setFiShowDate((v) => !v)}>
-                  <Text style={styles.toggleLinkText}>
-                    {fiShowDate ? 'Hide projected date' : 'Show projected date'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <Text style={styles.resultSub}>
-                Enter annual expenses, expected return, and monthly savings above
-              </Text>
+            {calcRow('Pension or other income', !isNaN(fiGuaranteedIncomeNum) && fiGuaranteedIncomeNum > 0 ? `${formatPeso(fiGuaranteedIncomeNum)} / yr` : 'None', undefined, () =>
+              openEdit({ key: 'fiGuaranteedAnnualIncome', title: 'Pension or other income', kind: 'peso', hint: 'Yearly income you\'ll get without working (optional)', value: fiGuaranteedIncomeNum }),
+              true
+            )}
+            {calcRow('Invested now', formatPeso(isNaN(fiSavingsNum) ? 0 : fiSavingsNum), colors.saving, () =>
+              openEdit({ key: 'fiCurrentSavings', title: 'Invested now', kind: 'peso', value: fiSavingsNum, suggest: suggestedNetWorth > 0 ? { label: `Your chosen accounts: ${formatPeso(suggestedNetWorth)}`, value: Math.round(suggestedNetWorth * 100) / 100 } : undefined }),
+              true
+            )}
+            {calcRow('Saving each month', !isNaN(fiMonthlySavingsNum) ? formatPeso(fiMonthlySavingsNum) : 'Not set', colors.saving, () =>
+              openEdit({ key: 'fiMonthlySavings', title: 'Saving each month', kind: 'peso', value: fiMonthlySavingsNum, suggest: suggestedMonthlySavings > 0 ? { label: `Income minus bills: ${formatPeso(suggestedMonthlySavings)}/mo`, value: Math.round(suggestedMonthlySavings * 100) / 100 } : undefined }),
+              true
+            )}
+            {calcRow('Expected return', !isNaN(fiReturnNum) ? `${fiReturnNum}% a year` : 'Not set', undefined, () =>
+              openEdit({ key: 'fiExpectedReturnPct', title: 'Expected return', kind: 'pct', hint: 'Average yearly growth of your investments', value: fiReturnNum }),
+              true
+            )}
+            {calcRow('Safe withdrawal rate', `${fiSwrForMath}%`, undefined, () =>
+              openEdit({ key: 'fiWithdrawalRatePct', title: 'Safe withdrawal rate', kind: 'pct', hint: 'How much you take out each year. 4% is the usual rule of thumb.', value: fiSwrForMath }),
+              true
             )}
           </View>
-
-          <TouchableOpacity style={styles.compareButton} onPress={() => setFiCompareOpen(true)}>
-            <GradientFill match={styles.compareButton} />
-            <Ionicons name="stats-chart-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
-            <Text style={styles.compareButtonText}>Compare Scenarios</Text>
-          </TouchableOpacity>
-
-          <Button
-            label={fiSaved ? '✓ Saved' : 'Save'}
-            onPress={handleSaveFi}
-          />
+          <Text style={styles.potsFooter}>An estimate, not advice.</Text>
+          <View style={styles.listGroup}>
+            <GradientFill match={styles.listGroup} />
+            {calcRow('Accounts counted', `${fiSelectedAccountIds.length} of ${fiAllAccounts.length}`, undefined, () => setFiAccountPickerOpen(true))}
+            {calcRow('Compare scenarios', '', undefined, () => setFiCompareOpen(true), true)}
+          </View>
         </PullToRefreshScrollView>
       )}
+
+      <BottomSheet
+        visible={editField !== null}
+        onClose={() => setEditField(null)}
+        header={
+          <View style={styles.sheetBar}>
+            <TouchableOpacity onPress={() => setEditField(null)} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.sheetBarBtn}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.sheetBarTitle}>{editField?.title}</Text>
+            <TouchableOpacity onPress={saveEdit} accessibilityRole="button" testID="calc-edit-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[styles.sheetBarBtn, { fontWeight: '700' }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
+          {!!editField?.hint && <Text style={styles.calcSub}>{editField.hint}</Text>}
+          {editField?.kind === 'months' ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[3, 6, 9, 12].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => setEditVal(m)}
+                  style={[styles.monthChip, editVal === m && { backgroundColor: colors.buttonFill }]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: editVal === m }}
+                >
+                  <GradientFill match={[styles.monthChip, editVal === m && { backgroundColor: colors.buttonFill }]} />
+                  <Text style={{ fontSize: 17, fontWeight: '600', color: editVal === m ? colors.onButton : colors.ink }}>{m} months</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <AmountInput
+              value={editVal}
+              onChangeAmount={setEditVal}
+              prefix={editField?.kind === 'pct' ? null : undefined}
+              suffix={editField?.kind === 'pct' ? '%' : undefined}
+              placeholder="0"
+            />
+          )}
+          {!!editField?.suggest && (
+            <TouchableOpacity onPress={() => setEditVal(editField.suggest!.value)} accessibilityRole="button">
+              <Text style={styles.suggestionText}>{editField.suggest.label} — tap to use</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </BottomSheet>
 
       <BottomSheet
         visible={modalOpen}
@@ -1067,6 +980,14 @@ function makeStyles(colors: any) {
     potRow: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'transparent' },
     potDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     potAmount: { fontSize: 17, fontWeight: '600' },
+    calcSub: { fontSize: 15, color: colors.inkDim, marginTop: 2, textAlign: 'center' },
+    calcRow: { flexDirection: 'row', alignItems: 'center', minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+    calcRowLabel: { flex: 1, fontSize: 17, color: colors.ink },
+    calcRowValue: { fontSize: 17, color: colors.inkDim },
+    monthChip: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy3 },
+    sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
+    sheetBarBtn: { fontSize: 17, color: colors.gold },
+    sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
 
     pillRow: {
