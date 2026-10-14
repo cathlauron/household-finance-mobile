@@ -88,6 +88,11 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const { width: screenW } = useWindowDimensions();
   const busy = useRef(false);
   const dragY = useRef(new Animated.Value(0)).current;
+  // While held, only the card's top half rides on your finger; it rises by half a
+  // card so its bottom edge meets the gap, where the bottom half shows as already
+  // tucked in between the cards.
+  const HALF = CARD_HEIGHT / 2;
+  const liftUp = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
   const [dragging, setDragging] = useState<string | null>(null);
   const [gapAt, setGapAt] = useState<number>(-1); // where the lifted card will land
@@ -238,6 +243,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       .onStart(() => {
         hapticMedium();
         dragY.setValue(0);
+        liftUp.setValue(0);
+        Animated.timing(liftUp, { toValue: -HALF, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
         dragTarget.current = index;
         setDragging(c.key);
         setGapAt(index);
@@ -260,8 +267,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         keys.splice(target, 0, c.key);
         const v = tops.get(c.key);
         // Settle the lifted card into its new slot, then save the order.
-        v?.setValue(index * PEEK + (dragY as any)._value);
+        // The full card comes back at the held half's spot, then slides into the slot.
+        v?.setValue(index * PEEK + (dragY as any)._value - HALF);
         dragY.setValue(0);
+        liftUp.setValue(0);
         dragTarget.current = -1;
         setDragging(null);
         setGapAt(-1);
@@ -288,35 +297,41 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         </TouchableOpacity>
       ) : (
         <View style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0) }}>
-          {/* Where the lifted card will land: a dashed outline in the gap. */}
-          {dragging && gapAt >= 0 && (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.slot,
-                {
-                  top: gapAt * PEEK,
-                  height: gapAt === cards.length - 1 ? CARD_HEIGHT : PEEK - 6,
-                  borderColor: colors.gold,
-                  backgroundColor: colors.accentTint,
-                },
-              ]}
-            >
-              {/* A faint preview of the held card's bottom (its balance), since that's
-                  the part that slides into the gap first. */}
-              {(() => {
-                const held = cards.find((x) => x.key === dragging);
-                if (!held) return null;
-                const amt = typeof held.account.amount === 'number' ? held.account.amount : 0;
-                return (
-                  <View style={styles.ghost}>
-                    <Text style={styles.ghostLabel}>Balance</Text>
-                    <Text style={[styles.ghostAmount, { color: amountColor(amt) }]}>{formatPeso(amt)}</Text>
-                  </View>
-                );
-              })()}
-            </View>
-          )}
+          {/* The held card's bottom half, already slid halfway into the gap where it
+              will land (the cards in front of it cover the rest, like a card being
+              inserted). Its top half is the part you're holding, just above. */}
+          {dragging && gapAt >= 0 && (() => {
+            const held = cards.find((x) => x.key === dragging);
+            if (!held) return null;
+            const amt = typeof held.account.amount === 'number' ? held.account.amount : 0;
+            const tint = held.account.color || DEFAULT_GROUP_COLORS[held.group];
+            const atFront = gapAt === cards.length - 1;
+            return (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.slot,
+                  {
+                    top: gapAt * PEEK,
+                    height: HALF,
+                    borderColor: `${tint}4D`,
+                    backgroundColor: cardFill(tint),
+                    // At the front the whole bottom half shows, balance at the bottom;
+                    // between cards only the strip above the next card shows, so the
+                    // balance sits at the top of the strip.
+                    justifyContent: atFront ? 'flex-end' : 'flex-start',
+                    paddingTop: atFront ? 0 : 12,
+                    paddingBottom: atFront ? 12 : 0,
+                  },
+                ]}
+              >
+                <View style={styles.ghost}>
+                  <Text style={styles.ghostLabel}>Balance</Text>
+                  <Text style={[styles.ghostAmount, { color: amountColor(amt) }]}>{formatPeso(amt)}</Text>
+                </View>
+              </View>
+            );
+          })()}
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
@@ -338,22 +353,22 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       top: 0,
                       zIndex: lifted ? 100 : i,
                       elevation: lifted ? 6 : 1 + i * 0.5,
-                      opacity: lifted ? 0.92 : (fades.get(c.key) as Animated.Value),
+                      opacity: lifted ? 1 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardFill(c.account.color || DEFAULT_GROUP_COLORS[c.group]),
                       transform: [
-                        { translateY: lifted ? Animated.add(top, dragY) : top },
+                        { translateY: lifted ? Animated.add(Animated.add(top, dragY), liftUp) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
                         // The lift: as a card moves to the right, its bottom-left corner (A)
                         // rises above its bottom-right corner (B), mostly in the first few
                         // pixels of movement. Coming back in, it levels out until A and B
                         // line up again as it settles.
                         { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 30, 400], outputRange: ['-3deg', '0deg', '5deg', '9deg'], extrapolate: 'clamp' }) },
-                        { scale: lifted ? 0.94 : 1 },
                       ],
                     },
                     lifted && styles.lifted,
+                    lifted && styles.heldHalf,
                   ]}
                 >
                   <View style={styles.cardHead}>
@@ -365,7 +380,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                         <Text style={styles.typeTagText}>{GROUP_LABEL[c.group]}</Text>
                       </View>
                     </View>
-                    {!isFront && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>}
+                    {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>}
                   </View>
                   {isFront && (
                     <View style={styles.front}>
@@ -413,8 +428,12 @@ function makeStyles(colors: ThemeColors) {
       shadowRadius: 4,
       shadowOffset: { width: 0, height: 1 },
     },
-    slot: { position: 'absolute', left: 6, right: 6, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', opacity: 0.85, justifyContent: 'flex-end', paddingHorizontal: 14, paddingBottom: 8, overflow: 'hidden' },
-    ghost: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', opacity: 0.55 },
+    // The bottom half of the held card, sitting in the gap: square top corners and no
+    // top border so it reads as the continuation of the half you're holding.
+    slot: { position: 'absolute', left: 0, right: 0, borderWidth: 1, borderTopWidth: 0, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, paddingHorizontal: 16, overflow: 'hidden' },
+    // The held card shows only its top half (square bottom, no bottom border).
+    heldHalf: { height: CARD_HEIGHT / 2, overflow: 'hidden', borderBottomWidth: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+    ghost: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
     ghostLabel: { fontSize: 13, color: colors.inkDim },
     ghostAmount: { fontSize: 20, fontWeight: '700' },
     lifted: { shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
