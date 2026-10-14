@@ -14,6 +14,7 @@ import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import { todayISO } from '../dateUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -136,6 +137,17 @@ export default function AccountsScreen() {
         color: colorInput,
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
+    }
+
+    // Left to Spend fix: remember the day the spending balances (Cash, Debit, Credit)
+    // were last brought up to date. Left to Spend treats these balances as true as of
+    // that day, so any transaction dated AFTER it moves Left to Spend until the next
+    // balance update. Same idea as the web app's "balance as of" date.
+    const isSpendingGroup = activeGroup === 'cash' || activeGroup === 'debit' || activeGroup === 'credit';
+    const previous = editingId ? currentList.find((a) => a.id === editingId) : undefined;
+    const balanceChanged = !editingId || !previous || Number(previous.amount || 0) !== Number(parsedAmount || 0);
+    if (isSpendingGroup && balanceChanged) {
+      updated.balanceAccounts.asOfDate = todayISO();
     }
 
     setSaving(true);
