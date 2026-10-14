@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { View, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { useTheme } from '../ThemeContext';
-import Pill from '../components/Pill';
+import SegmentedControl from '../components/SegmentedControl';
 import GroceriesScreen from './GroceriesScreen';
 import TravelScreen from './TravelScreen';
 import EventsScreen from './EventsScreen';
@@ -39,22 +39,15 @@ export default function PlanningScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.pillScroll}
-        contentContainerStyle={styles.pillRow}
-      >
-        {tabs.map((t) => (
-          <Pill
-            key={t.id}
-            label={t.label}
-            icon={t.icon}
-            active={activeTab === t.id}
-            onPress={() => setActiveTab(t.id)}
-          />
-        ))}
-      </ScrollView>
+      {/* Redesign: iPhone-style switcher instead of pills */}
+      <View style={styles.pillRow}>
+        <SegmentedControl<PlanningTab>
+          accessibilityLabel="Planning section"
+          options={tabs.map((t) => ({ id: t.id, label: t.label, testID: `planning-tab-${t.id}` }))}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
+      </View>
       <View style={styles.content}>
         {activeTab === 'groceries' && <GroceriesScreen />}
         {activeTab === 'travel' && <TravelScreen />}
@@ -73,10 +66,7 @@ function makeStyles(colors: any) {
     },
     pillScroll: { flexGrow: 0 },
     pillRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 12,
+      paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 4,
     },

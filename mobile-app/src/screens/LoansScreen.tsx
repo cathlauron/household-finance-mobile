@@ -439,18 +439,18 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Card variant="banner" row style={{ marginBottom: 12 }}>
-          <View>
-            <Text style={styles.balanceBannerLabel}>OWED (BORROWED)</Text>
-            <Text style={[styles.balanceBannerAmount, { color: colors.orange }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
+        <View style={[styles.group, styles.summaryRow]}>
+          <View style={styles.summaryCell}>
+            <Text style={styles.balanceBannerLabel}>You owe (borrowed)</Text>
+            <Text style={[styles.balanceBannerAmount, { color: colors.negative }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
           </View>
-          <View>
-            <Text style={styles.balanceBannerLabel}>OWED TO YOU (LENT)</Text>
-            <Text style={[styles.balanceBannerAmount, { color: colors.ok }]}>
+          <View style={[styles.summaryCell, styles.summaryDivider]}>
+            <Text style={styles.balanceBannerLabel}>Owed to you (lent)</Text>
+            <Text style={[styles.balanceBannerAmount, { color: colors.positive }]}>
               {formatPeso(Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0)))}
             </Text>
           </View>
-        </Card>
+        </View>
 
         {simLoans.length > 0 && (
           <TouchableOpacity style={styles.simulatorButton} onPress={() => setSimulatorOpen(true)}>
@@ -462,7 +462,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         {loans.length === 0 ? (
           <Text style={styles.emptyText}>No loans yet.</Text>
         ) : (
-          loans.map((loan) => {
+          <View style={[styles.group, styles.section]}>
+          {loans.map((loan, rowIndex) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
             const isExpanded = expandedLoanId === loan.id;
             const loanRecurType = (loan.recurringType as RecurringType) || 'onetime';
@@ -480,9 +481,17 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                 enabled={Boolean(model.settings.swipeToDeleteEnabled)}
                 onDelete={() => handleSwipeDelete(loan)}
                 testID={`loan-swipe-${loan.id}`}
+                flat
               >
               <CollapsibleRow
                 testID={`loan-row-${loan.id}`}
+                flat
+                showDivider={rowIndex > 0}
+                leading={
+                  <View style={[styles.tile, loan.direction === 'lent' && { backgroundColor: colors.okBg }]}>
+                    <Ionicons name={loan.direction === 'lent' ? 'arrow-redo-outline' : 'business-outline'} size={17} color={colors.gold} />
+                  </View>
+                }
                 isExpanded={isExpanded}
                 onToggle={() => setExpandedLoanId((prev) => (prev === loan.id ? null : loan.id))}
                 onEdit={() => openEditModal(loan)}
@@ -505,7 +514,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                         {typeof loan.interestRate === 'number' && loan.interestRate > 0 ? ` · ${loan.interestRate}% APR` : ''}
                       </Text>
                     </View>
-                    <Text style={[styles.loanAmount, { color: loan.direction === 'lent' ? colors.ok : colors.orange }]}>
+                    <Text style={[styles.loanAmount, { color: loan.direction === 'lent' ? colors.positive : colors.negative }]}>
                       {loan.direction === 'lent' ? '+' : '−'}{formatPeso(remaining)}
                     </Text>
                     </View>
@@ -536,7 +545,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
               />
               </SwipeableRow>
             );
-          })
+          })}
+          </View>
         )}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
@@ -798,9 +808,17 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
+    // Redesign styles
+    group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
+    summaryCard: { padding: 16, marginBottom: 20 },
+    section: { marginBottom: 20 },
+    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.okBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    summaryRow: { flexDirection: 'row', marginBottom: 12 },
+    summaryCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 16 },
+    summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
+    balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
+    balanceBannerAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
     simulatorButton: {
       backgroundColor: colors.navy3,
       borderRadius: 10,
@@ -811,7 +829,7 @@ function makeStyles(colors: any) {
       marginBottom: 18,
     },
     simulatorButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     loanCollapsedWrap: {
       flex: 1,
     },
@@ -821,9 +839,9 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     loanRowMain: { flex: 1, marginRight: 10 },
-    loanName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    loanSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    loanAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    loanName: { fontSize: 17, fontWeight: '500', color: colors.ink },
+    loanSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    loanAmount: { fontSize: 17, fontWeight: '600', color: colors.ink },
 
     detailContainer: {
       gap: 6,
@@ -847,7 +865,7 @@ function makeStyles(colors: any) {
       fontWeight: '500',
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,

@@ -20,6 +20,7 @@ import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import { getOverdueItems } from '../overdue';
 
 function billAmount(bill: Bill): number {
   const c = bill.cycles && bill.cycles[0];
@@ -348,19 +349,40 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const bills = sortByNextDue(model.bills);
   const totalDue = bills.reduce((sum, b) => sum + billAmount(b), 0);
 
+  // Redesign: bills are grouped like the Finance Flow mockup: Overdue, Due this week,
+  // then Later. Overdue uses the same rule as the bell (an unpaid cycle past its date).
+  const overdueIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'bill').map((o) => o.id));
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const daysUntil = (d: Date | null) => (d ? Math.round((d.getTime() - todayStart.getTime()) / 86400000) : Infinity);
+  const sections: { title: string; items: Bill[] }[] = [
+    { title: 'Overdue', items: bills.filter((b) => overdueIds.has(b.id)) },
+    { title: 'Due this week', items: bills.filter((b) => !overdueIds.has(b.id) && daysUntil(getNextDueDate(b.recurringType, b.dueDate)) <= 7) },
+    { title: 'Later', items: bills.filter((b) => !overdueIds.has(b.id) && daysUntil(getNextDueDate(b.recurringType, b.dueDate)) > 7) },
+  ];
+
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Card variant="banner" style={{ marginBottom: 18 }}>
-          <Text style={styles.balanceBannerLabel}>TOTAL BILLS</Text>
+        <View style={[styles.group, styles.summaryCard]}>
+          <Text style={styles.balanceBannerLabel}>Total bills</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalDue)}</Text>
-        </Card>
+          <Text style={styles.summarySub}>
+            {bills.length} {bills.length === 1 ? 'bill' : 'bills'}
+            {overdueIds.size > 0 ? ` · ${overdueIds.size} overdue` : ''}
+          </Text>
+        </View>
 
         {bills.length === 0 && (
           <Text style={styles.emptyText}>No bills yet.</Text>
         )}
 
-        {bills.map((bill) => {
+        {sections.map((sec) => sec.items.length === 0 ? null : (
+        <View key={sec.title} style={styles.section}>
+        <Text style={[styles.sectionHeader, sec.title === 'Overdue' && { color: colors.negative }]}>{sec.title}</Text>
+        <View style={styles.group}>
+        {sec.items.map((bill, rowIndex) => {
+          const isOverdue = overdueIds.has(bill.id);
           const nextDue = getNextDueDate(bill.recurringType, bill.dueDate);
           const pm = bill.cycles && bill.cycles[0] ? bill.cycles[0].paymentMethod : undefined;
           const isExpanded = expandedBillId === bill.id;
@@ -371,9 +393,17 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
               enabled={Boolean(model.settings.swipeToDeleteEnabled)}
               onDelete={() => handleSwipeDelete(bill)}
               testID={`bill-swipe-${bill.id}`}
+              flat
             >
             <CollapsibleRow
               testID={`bill-row-${bill.id}`}
+              flat
+              showDivider={rowIndex > 0}
+              leading={
+                <View style={styles.tile}>
+                  <Ionicons name={bill.isSubscription ? 'repeat' : 'flash-outline'} size={17} color={colors.gold} />
+                </View>
+              }
               isExpanded={isExpanded}
               onToggle={() => setExpandedBillId((prev) => (prev === bill.id ? null : bill.id))}
               onEdit={() => openEditModal(bill)}
@@ -421,7 +451,10 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                       {(bill.category || 'Uncategorized')} · {recurringTypeLabel(bill.recurringType)} · {formatShortDate(nextDue)}
                     </Text>
                   </View>
-                  <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.billAmount}>{formatPeso(billAmount(bill))}</Text>
+                    {isOverdue && <Text style={styles.overdueBadge}>Overdue</Text>}
+                  </View>
                 </View>
               }
               expandedContent={
@@ -512,6 +545,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
             </SwipeableRow>
           );
         })}
+        </View>
+        </View>
+        ))}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add bill</Text>
@@ -686,10 +722,18 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBannerLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
+    // Redesign styles
+    group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
+    summaryCard: { padding: 16, marginBottom: 20 },
+    summarySub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
+    section: { marginBottom: 20 },
+    sectionHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
+    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.okBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    overdueBadge: { marginTop: 3, fontSize: 12, fontWeight: '600', color: colors.negative, backgroundColor: colors.errorBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' },
+    balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
+    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     billCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -697,9 +741,9 @@ function makeStyles(colors: any) {
       flex: 1,
     },
     billRowMain: { flex: 1, marginRight: 10 },
-    billName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    billSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    billAmount: { fontSize: 14, fontWeight: '600', color: colors.ink },
+    billName: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
+    billSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    billAmount: { fontSize: 17, fontWeight: '600', color: colors.negative },
     detailContainer: {
       gap: 6,
     },
@@ -758,7 +802,7 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,

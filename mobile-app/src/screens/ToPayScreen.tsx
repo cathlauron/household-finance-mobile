@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
-import Pill from '../components/Pill';
+import SegmentedControl from '../components/SegmentedControl';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
@@ -78,15 +78,12 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.switcherRow}>
-        {TOPAY_TABS.map((tab) => (
-          <Pill
-            key={tab.id}
-            label={tab.label}
-            icon={tab.icon}
-            active={activeSubTab === tab.id}
-            onPress={() => setActiveSubTab(tab.id)}
-          />
-        ))}
+        <SegmentedControl<SubTab>
+          accessibilityLabel="Show"
+          options={TOPAY_TABS.map((t) => ({ id: t.id, label: t.label, testID: `topay-tab-${t.id}` }))}
+          value={activeSubTab}
+          onChange={setActiveSubTab}
+        />
       </View>
       <View style={styles.contentWrap}>
         {activeSubTab === 'bills' && (
@@ -118,9 +115,7 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     switcherRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 12,
+      paddingHorizontal: 16,
       paddingTop: 10,
       paddingBottom: 4,
     },

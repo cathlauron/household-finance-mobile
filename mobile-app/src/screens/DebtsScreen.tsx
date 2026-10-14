@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -346,16 +347,18 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Card variant="banner" style={{ marginBottom: 18 }}>
-          <Text style={styles.balanceBannerLabel}>TOTAL DEBT LOGGED</Text>
+        <View style={[styles.group, styles.summaryCard]}>
+          <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
-        </Card>
+        </View>
 
         {debts.length === 0 && (
           <Text style={styles.emptyText}>No debts yet.</Text>
         )}
 
-        {debts.map((debt) => {
+        {debts.length > 0 && (
+        <View style={[styles.group, styles.section]}>
+        {debts.map((debt, rowIndex) => {
           const nextDue = getNextDueDate(debt.recurringType, debt.dueDate);
           const firstCycle = debt.cycles && debt.cycles[0];
           const pm = firstCycle ? firstCycle.paymentMethod : undefined;
@@ -368,9 +371,17 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
               enabled={Boolean(model.settings.swipeToDeleteEnabled)}
               onDelete={() => handleSwipeDelete(debt)}
               testID={`debt-swipe-${debt.id}`}
+              flat
             >
             <CollapsibleRow
               testID={`debt-row-${debt.id}`}
+              flat
+              showDivider={rowIndex > 0}
+              leading={
+                <View style={styles.tile}>
+                  <Ionicons name="people-outline" size={17} color={colors.gold} />
+                </View>
+              }
               isExpanded={isExpanded}
               onToggle={() => setExpandedDebtId((prev) => (prev === debt.id ? null : debt.id))}
               onEdit={() => openEditModal(debt)}
@@ -435,6 +446,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
             </SwipeableRow>
           );
         })}
+        </View>
+        )}
 
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add debt</Text>
@@ -599,10 +612,15 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.orange },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
+    // Redesign styles
+    group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
+    summaryCard: { padding: 16, marginBottom: 20 },
+    section: { marginBottom: 20 },
+    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.okBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
+    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     debtCollapsedRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -610,9 +628,9 @@ function makeStyles(colors: any) {
       flex: 1,
     },
     debtRowMain: { flex: 1, marginRight: 10 },
-    debtName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    debtSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    debtAmount: { fontSize: 14, fontWeight: '600', color: colors.orange },
+    debtName: { fontSize: 17, fontWeight: '500', color: colors.ink },
+    debtSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    debtAmount: { fontSize: 17, fontWeight: '600', color: colors.negative },
     detailContainer: {
       gap: 6,
     },
@@ -643,7 +661,7 @@ function makeStyles(colors: any) {
       marginLeft: 12,
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       fontSize: 11,
       letterSpacing: 0.5,
