@@ -15,9 +15,11 @@ import { hapticMedium, hapticSelection } from '../haptics';
 // Redesign: the Wallet on Home, an interactive card stack like Apple Wallet.
 //  - Every card shows its name, a CASH / DEBIT / CREDIT tag and its balance.
 //    The front (bottom) card shows the balance large.
-//  - Swipe the stack left or right to bring the next or previous card to the front.
-//  - Long-press a card to pick it up, drag it up or down, and let go where you
-//    want it; the other cards slide out of the way.
+//  - Swipe right to bring the next card forward; swipe left to bring the last one back.
+//  - Long-press a card to pick it up and drag it up or down. The other cards part to
+//    open a gap, with a dashed outline showing exactly where it will land; let go to
+//    drop it in.
+//  - Each card has a faint border in its own colour.
 //  - Tap a card to open its page.
 // The order is saved with your household data (walletOrder), so it stays put.
 
@@ -64,13 +66,16 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const dragY = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
   const [dragging, setDragging] = useState<string | null>(null);
+  const [gapAt, setGapAt] = useState<number>(-1); // where the lifted card will land
   const dragTarget = useRef<number>(-1);
 
-  function layout(keys: string[], skip?: string) {
+  // Slides cards to their places. While dragging, `others` leaves an empty slot at
+  // `gap` so you can see where the card will go.
+  function layout(keys: string[], gap = -1) {
     keys.forEach((k, i) => {
-      if (k === skip) return;
       const v = tops.get(k);
-      if (v) Animated.timing(v, { toValue: i * PEEK, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
+      const slot = gap >= 0 && i >= gap ? i + 1 : i;
+      if (v) Animated.timing(v, { toValue: slot * PEEK, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
     });
   }
   useEffect(() => {
@@ -82,12 +87,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
     saveModel({ ...model, walletOrder: keys }).catch(() => {});
   }
 
-  // Swipe: left sends the front card to the back; right brings the back card forward.
+  // Swipe right: the front card goes to the back, so the next one comes forward.
+  // Swipe left: the card at the back comes to the front.
   function cycle(dir: 'left' | 'right') {
     if (cards.length < 2) return;
     hapticSelection();
     const keys = [...order];
-    if (dir === 'left') keys.unshift(keys.pop() as string);
+    if (dir === 'right') keys.unshift(keys.pop() as string);
     else keys.push(keys.shift() as string);
     Animated.timing(swipeX, { toValue: dir === 'left' ? -60 : 60, duration: 120, useNativeDriver: false }).start(() => {
       swipeX.setValue(0);
@@ -123,6 +129,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         dragY.setValue(0);
         dragTarget.current = index;
         setDragging(c.key);
+        setGapAt(index);
+        layout(order.filter((k) => k !== c.key), index);
       })
       .onUpdate((e) => {
         dragY.setValue(e.translationY);
@@ -130,9 +138,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         if (target !== dragTarget.current) {
           dragTarget.current = target;
           hapticSelection();
-          const keys = order.filter((k) => k !== c.key);
-          keys.splice(target, 0, c.key);
-          layout(keys, c.key);
+          setGapAt(target);
+          layout(order.filter((k) => k !== c.key), target);
         }
       })
       .onFinalize(() => {
@@ -146,6 +153,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         dragY.setValue(0);
         dragTarget.current = -1;
         setDragging(null);
+        setGapAt(-1);
         if (v) Animated.timing(v, { toValue: target * PEEK, duration: 160, useNativeDriver: false }).start();
         if (keys.join('|') !== order.join('|')) persist(keys);
       });
@@ -168,7 +176,22 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
           <Text style={styles.emptySub}>Cash, debit or credit. Left to Spend starts from these.</Text>
         </TouchableOpacity>
       ) : (
-        <View style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) }}>
+        <View style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0) }}>
+          {/* Where the lifted card will land: a dashed outline in the gap. */}
+          {dragging && gapAt >= 0 && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.slot,
+                {
+                  top: gapAt * PEEK,
+                  height: gapAt === cards.length - 1 ? CARD_HEIGHT : PEEK - 6,
+                  borderColor: colors.gold,
+                  backgroundColor: colors.accentTint,
+                },
+              ]}
+            />
+          )}
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
@@ -188,7 +211,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       top: lifted ? Animated.add(top, dragY) : top,
                       zIndex: lifted ? 100 : i,
                       elevation: lifted ? 12 : 2 + i,
-                      transform: [{ translateX: isFront && !dragging ? swipeX : 0 }, { scale: lifted ? 1.03 : 1 }],
+                      opacity: lifted ? 0.92 : 1,
+                      // A faint border in the card's own colour.
+                      borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
+                      transform: [{ translateX: isFront && !dragging ? swipeX : 0 }, { scale: lifted ? 0.94 : 1 }],
                     },
                     lifted && styles.lifted,
                   ]}
@@ -242,13 +268,14 @@ function makeStyles(colors: ThemeColors) {
       paddingHorizontal: 16,
       paddingVertical: 12,
       backgroundColor: colors.navy3,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: 1,
       borderColor: colors.navy4,
       shadowColor: '#000',
       shadowOpacity: 0.06,
       shadowRadius: 6,
       shadowOffset: { width: 0, height: -1 },
     },
+    slot: { position: 'absolute', left: 6, right: 6, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', opacity: 0.8 },
     lifted: { shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
     cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28, gap: 8 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
