@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, useWindowDimensions, AccessibilityInfo, AppState } from 'react-native';
 import Svg, { Path, G, Rect } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
 import { useMood } from '../mood';
+import { useData } from '../DataContext';
+import FallingLeaves from './FallingLeaves';
+import { LEAF_OUTLINE, LEAF_STEM, LEAF_VEINS } from './leafShape';
 
 // Redesign: the faint leaf field behind every screen, from the Finance Flow mockups.
 // Same leaf shape as the opening screen (pointed oval with a stem), with a centre vein
@@ -10,15 +13,11 @@ import { useMood } from '../mood';
 // green normally, burnt orange when Running low, red when Overspent.
 // The layout is the mockup's 750 x 1120 field, drawn for a 390-wide phone and scaled.
 
-// Kept for any older import; the shapes now come from the new leaf below.
-export const RIGHT_LEAF = 'M 512 656 C 512 588, 578 508, 597 490 C 609 552, 584 636, 512 680 Z';
-export const LEFT_LEAF = 'M 502 668 C 453 664, 432 592, 428 548 C 442 544, 486 566, 505 658 Z';
-export const LEAF_VIEWBOX = '420 480 200 210';
+// Falling leaves: when Settings › Appearance › Falling leaves is on (the default) and
+// the phone's Reduce Motion is off, the leaves fall and sway (src/components/
+// FallingLeaves.tsx) instead of this still field. They stop while the app is in the
+// background.
 
-const OUTLINE = 'M 62 8 C 86 34, 99 92, 88 136 C 81 160, 66 170, 52 172 C 36 170, 14 158, 10 122 C 6 84, 30 36, 62 8 Z';
-const STEM = 'M 52 172 C 50 182, 47 191, 44 198';
-const VEINS =
-  'M 52 172 C 49 120, 54 62, 62 10 M 51.1 136.9 q 17.6 -5.6, 32 -28 M 53.5 82.8 q 14.3 -5.2, 26 -26 M 51.8 110.8 q -17.6 -5.6, -32 -28 M 55.7 58.1 q -11.0 -4.4, -20 -22';
 
 // [x, y, rotation in degrees, scale] for each leaf in the mockup field.
 const FIELD: [number, number, number, number][] = [
@@ -87,26 +86,43 @@ const MOOD_LEAF = {
 export default function LeafBackground() {
   const { colors, isDark } = useTheme();
   const mood = useMood();
+  const { model } = useData();
   const { width, height } = useWindowDimensions();
+  const fallingOn = model?.settings?.fallingLeavesEnabled !== false;
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [appActive, setAppActive] = useState(AppState.currentState !== 'background');
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
+    const motionSub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    const appSub = AppState.addEventListener('change', (state) => setAppActive(state === 'active'));
+    return () => {
+      motionSub.remove();
+      appSub.remove();
+    };
+  }, []);
+
   const [leaf, opacity] = MOOD_LEAF[mood][isDark ? 'dark' : 'light'];
   const scale = width / 390;
   const leaves = useMemo(
     () =>
       FIELD.filter(([, y]) => y * scale < height + 120).map(([x, y, r, s], i) => (
         <G key={i} transform={`translate(${x} ${y}) rotate(${r}) scale(${s}) translate(-50 -103)`}>
-          <Path d={STEM} fill="none" stroke={leaf} strokeOpacity={opacity} strokeWidth={3.22} strokeLinecap="round" />
-          <Path d={OUTLINE} fill={leaf} fillOpacity={opacity} />
-          <Path d={VEINS} fill="none" stroke={colors.navy2} strokeWidth={2.3} strokeLinecap="round" />
+          <Path d={LEAF_STEM} fill="none" stroke={leaf} strokeOpacity={opacity} strokeWidth={3.22} strokeLinecap="round" />
+          <Path d={LEAF_OUTLINE} fill={leaf} fillOpacity={opacity} />
+          <Path d={LEAF_VEINS} fill="none" stroke={colors.navy2} strokeWidth={2.3} strokeLinecap="round" />
         </G>
       )),
     [leaf, opacity, colors.navy2, scale, height]
   );
+  const falling = fallingOn && !reduceMotion;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
         <Rect x="0" y="0" width={width} height={height} fill={colors.navy2} />
-        <G transform={`scale(${scale})`}>{leaves}</G>
+        {!falling && <G transform={`scale(${scale})`}>{leaves}</G>}
       </Svg>
+      {falling && appActive && <FallingLeaves color={leaf} opacity={opacity} veinColor={colors.navy2} />}
     </View>
   );
 }

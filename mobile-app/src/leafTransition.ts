@@ -1,11 +1,13 @@
 ﻿// ============================================================
-// Household Finance App — Leaf Transition Signal (transient)
+// Household Finance App — Leaf "wind" signal (transient)
 // ============================================================
-// App.tsx fires this whenever the visible screen or tab changes.
-// LeafTransitionOverlay listens and plays the drifting-leaves animation.
+// App.tsx fires this when you switch tabs (or open Settings). The falling leaves
+// behind the app (src/components/FallingLeaves.tsx) listen and get blown sideways.
+// `push` is in pixels for a middle-depth leaf: negative blows the leaves left
+// (you moved right along the tab bar), positive blows them right.
 // In-memory only, and it never delays or blocks navigation.
 
-type LeafTransitionListener = () => void;
+type LeafTransitionListener = (push: number) => void;
 
 const listeners = new Set<LeafTransitionListener>();
 
@@ -16,6 +18,6 @@ export function subscribeToLeafTransition(listener: LeafTransitionListener): () 
   };
 }
 
-export function triggerLeafTransition(): void {
-  listeners.forEach((listener) => listener());
+export function triggerLeafTransition(push: number): void {
+  listeners.forEach((listener) => listener(push));
 }

@@ -30,7 +30,6 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
 import IntroSlidesScreen from './src/screens/IntroSlidesScreen';
 import RootStack from './src/navigation/RootStack';
-import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
 import LeafBackground from './src/components/LeafBackground';
 import { triggerLeafTransition } from './src/leafTransition';
 import { loadProfilesIndex, loadEncryptedProfileData } from './src/storage';
@@ -456,12 +455,23 @@ function AppContent() {
     flushPendingDeepLink();
   }
 
+  // Redesign: switching tabs is a gust of wind for the falling leaves behind the app.
+  // Moving right along the tab bar blows them left (about 150px per tab), moving left
+  // blows them right. Opening Settings is a small gust; other pages and sheets none.
   function handleNavStateChange() {
     const name = navigationRef.getCurrentRoute()?.name ?? null;
     const prevName = lastRouteNameRef.current;
-    const involvesSheet = name === 'Calendar' || prevName === 'Calendar';
-    if (name && name !== prevName && !involvesSheet) {
-      triggerLeafTransition();
+    if (name && prevName && name !== prevName) {
+      const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
+      const from = TAB_ORDER.indexOf(prevName);
+      const to = TAB_ORDER.indexOf(name);
+      if (from >= 0 && to >= 0) {
+        triggerLeafTransition(-150 * (to - from));
+      } else if (name === 'Settings') {
+        triggerLeafTransition(-60);
+      } else if (prevName === 'Settings' && to >= 0) {
+        triggerLeafTransition(60);
+      }
     }
     lastRouteNameRef.current = name;
   }
@@ -511,7 +521,6 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
-        <LeafTransitionOverlay />
       </View>
     );
   }

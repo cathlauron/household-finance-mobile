@@ -1215,7 +1215,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           <View style={[styles.feelRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={styles.feelTitle}>Falling leaves</Text>
-              <Text style={styles.sectionSub}>A few leaves drift down as you move between tabs</Text>
+              <Text style={styles.sectionSub}>Leaves fall gently behind the app; switching tabs blows them sideways</Text>
             </View>
             <Switch
               testID="settings-falling-leaves"
