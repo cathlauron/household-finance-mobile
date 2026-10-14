@@ -32,16 +32,16 @@ const GROUPS: Group[] = [
   {
     header: 'Money set aside',
     rows: [
-      { title: 'Savings', subtitle: 'Goals, Emergency Fund & FI Calculator', icon: 'leaf-outline', testID: 'more-savings-row', go: (n) => n.navigate('Savings') },
-      { title: 'Goals', subtitle: 'What you are working toward this year', icon: 'flag-outline', testID: 'plan-goals-row', go: openPlanning('goals') },
+      { title: 'Savings', subtitle: 'Pots, emergency fund and FI', icon: 'leaf-outline', testID: 'more-savings-row', go: (n) => n.navigate('Savings') },
+      { title: 'Goals', subtitle: 'What you are working toward this year', icon: 'flag-outline', testID: 'plan-goals-row', go: (n) => n.navigate('YearlyGoals') },
     ],
   },
   {
     header: 'Coming up',
     rows: [
-      { title: 'Groceries', subtitle: 'Lists and what you plan to spend', icon: 'cart-outline', testID: 'more-planning-row', go: openPlanning('groceries') },
-      { title: 'Travel', subtitle: 'Trips and their budgets', icon: 'airplane-outline', testID: 'plan-travel-row', go: openPlanning('travel') },
-      { title: 'Events', subtitle: 'Birthdays, holidays and celebrations', icon: 'balloon-outline', testID: 'plan-events-row', go: openPlanning('events') },
+      { title: 'Groceries', subtitle: 'Lists and what you plan to spend', icon: 'cart-outline', testID: 'more-planning-row', go: (n) => n.navigate('Groceries') },
+      { title: 'Travel', subtitle: 'Trips and their budgets', icon: 'airplane-outline', testID: 'plan-travel-row', go: (n) => n.navigate('Travel') },
+      { title: 'Events', subtitle: 'Birthdays, holidays and celebrations', icon: 'balloon-outline', testID: 'plan-events-row', go: (n) => n.navigate('Events') },
     ],
   },
 ];

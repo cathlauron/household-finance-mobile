@@ -106,6 +106,7 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
     categoryBudgets: sanitizeIdList(model.categoryBudgets, 'budget'),
     groceries: sanitizeIdList(model.groceries ?? [], 'grocery'),
     groceryCalculator: sanitizeIdList(model.groceryCalculator ?? [], 'grocery-calc'),
+    mealIdeas: sanitizeIdList(model.mealIdeas ?? [], 'meal'),
     travel: sanitizeIdList(model.travel ?? [], 'trip').map((trip) => ({
       ...trip,
       checklist: sanitizeIdList(trip.checklist, 'travelitem', seenTravelItems),
@@ -247,6 +248,7 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     calculatorInputs: a.calculatorInputs ?? b.calculatorInputs,
     groceries: [...(a.groceries ?? []), ...(b.groceries ?? [])],
     groceryCalculator: [...(a.groceryCalculator ?? []), ...(b.groceryCalculator ?? [])],
+    mealIdeas: [...(a.mealIdeas ?? []), ...(b.mealIdeas ?? [])],
     travel: [...(a.travel ?? []), ...(b.travel ?? [])],
     events: [...(a.events ?? []), ...(b.events ?? [])],
     yearlyGoals: [...(a.yearlyGoals ?? []), ...(b.yearlyGoals ?? [])],

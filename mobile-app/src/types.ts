@@ -196,6 +196,16 @@ export type GroceryCalcEntry = {
   id: string;
   label: string;
   amount: number;
+  // Redesign: quantity and price each (amount = qty × unitPrice).
+  qty?: number;
+  unitPrice?: number;
+};
+
+// Redesign: a meal idea in Groceries; it costs the total of its ingredients.
+export type MealIdea = {
+  id: string;
+  name: string;
+  ingredients: { id: string; name: string; price: number | '' }[];
 };
 
 // ---- Checkpoint 8.2: Travel ----
@@ -395,6 +405,7 @@ export type HouseholdModel = {
   calculatorInputs?: CalculatorInputs;
   groceries?: GroceryItem[];
   groceryCalculator?: GroceryCalcEntry[];
+  mealIdeas?: MealIdea[];
   travel?: TravelTrip[];
   events?: EventItem[];
     yearlyGoals?: YearlyGoal[];

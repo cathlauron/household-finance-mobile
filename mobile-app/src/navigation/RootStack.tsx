@@ -18,6 +18,10 @@ import PayDetailScreen from '../screens/PayDetailScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import PotDetailScreen from '../screens/PotDetailScreen';
+import GroceriesScreen from '../screens/GroceriesScreen';
+import TravelScreen from '../screens/TravelScreen';
+import EventsScreen from '../screens/EventsScreen';
+import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
@@ -42,6 +46,10 @@ export type RootStackParamList = {
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
   PotDetail: { id: string };
+  Groceries: undefined;
+  Travel: undefined;
+  Events: undefined;
+  YearlyGoals: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -146,6 +154,11 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: '', headerBackTitle: 'Savings' }} />
+      {/* Redesign: each Plan section is its own page, as in the mockup. */}
+      <Stack.Screen name="Groceries" component={GroceriesScreen} options={{ title: 'Groceries', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="Travel" component={TravelScreen} options={{ title: 'Travel', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false, animation: 'fade' }} />
       <Stack.Screen
