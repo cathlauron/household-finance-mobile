@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } f
 import { Text, TextInput } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
+import CenteredAmount from './CenteredAmount';
 import GradientFill from './GradientFill';
 
 type Props = {
@@ -17,14 +18,14 @@ type Props = {
   suffix?: string | null;
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
-  // Big centred amounts: while typing, the hint (0.00) hides and the box hugs the digits,
-  // so the cursor sits in the middle next to the ₱ instead of off to the right.
+  // Big centred amount (new transaction, bills, debts, loans, income): the app draws the
+  // ₱ and digits itself, always centred, with its own blinking cursor (see CenteredAmount).
   centered?: boolean;
   // Puts the cursor here when the field appears (see AppText's TextInput).
   autoFocus?: boolean;
 };
 
-function formatWithCommas(num: number, allowDecimals: boolean): string {
+export function formatWithCommas(num: number, allowDecimals: boolean): string {
   if (isNaN(num)) return '';
   return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
@@ -32,7 +33,7 @@ function formatWithCommas(num: number, allowDecimals: boolean): string {
   });
 }
 
-export default function AmountInput({
+function PlainAmountInput({
   value,
   onChangeAmount,
   onBlur,
@@ -44,7 +45,6 @@ export default function AmountInput({
   style,
   inputStyle,
   autoFocus,
-  centered,
 }: Props) {
   const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -103,9 +103,6 @@ export default function AmountInput({
   }
 
   const styles = makeStyles(colors);
-  // Centred and empty while typing: the box shrinks to just the cursor and "0.00" is drawn
-  // next to it in grey, so the hint stays visible and the cursor stays in the middle.
-  const showSideHint = !!centered && isFocused && textBuffer === '' && !!placeholder;
 
   return (
     <View style={[styles.container, style]}>
@@ -120,34 +117,9 @@ export default function AmountInput({
         </TouchableOpacity>
       ) : null}
       {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
-      {centered ? (
-      <View style={{ justifyContent: 'center' }}>
-        <TextInput
-          style={[styles.input, inputStyle, showSideHint ? { minWidth: 3, textAlign: 'left' } : centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
-          placeholder={centered && isFocused ? '' : placeholder}
-          placeholderTextColor={colors.inkFaint}
-          keyboardType={allowDecimals ? 'decimal-pad' : 'number-pad'}
-          value={textBuffer}
-          onChangeText={handleChangeText}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          autoFocus={autoFocus}
-        />
-        {showSideHint ? (
-          // Drawn beside the cursor without taking up space, so the cursor stays centred.
-          <Text
-            pointerEvents="none"
-            numberOfLines={1}
-            style={[styles.input, inputStyle, { position: 'absolute', left: '100%', color: colors.inkFaint, minWidth: 0, width: 200, textAlign: 'left' }]}
-          >
-            {placeholder}
-          </Text>
-        ) : null}
-      </View>
-      ) : (
       <TextInput
-        style={[styles.input, inputStyle, showSideHint ? { minWidth: 3, textAlign: 'left' } : centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
-        placeholder={centered && isFocused ? '' : placeholder}
+        style={[styles.input, inputStyle]}
+        placeholder={placeholder}
         placeholderTextColor={colors.inkFaint}
         keyboardType={allowDecimals ? 'decimal-pad' : 'number-pad'}
         value={textBuffer}
@@ -156,7 +128,6 @@ export default function AmountInput({
         onBlur={handleBlur}
         autoFocus={autoFocus}
       />
-      )}
       {suffix ? <Text style={styles.affix}>{suffix}</Text> : null}
     </View>
   );
@@ -199,3 +170,9 @@ function makeStyles(colors: any) {
     },
   });
 }
+
+export default function AmountInput(props: Props) {
+  return props.centered ? <CenteredAmount {...props} /> : <PlainAmountInput {...props} />;
+}
+
+export type AmountInputProps = Props;
