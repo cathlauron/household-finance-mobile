@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { todayISO } from '../dateUtils';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
@@ -192,6 +192,7 @@ export default function TravelScreen() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const itemTitleRef = useRef<any>(null);
   const [nameInput, setNameInput] = useState('');
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
@@ -311,6 +312,8 @@ export default function TravelScreen() {
     setItemTitleInput('');
     setItemCostInput('');
     setErrorMsg('');
+    // Ready for the next item straight away.
+    setTimeout(() => itemTitleRef.current?.focus(), 50);
   }
 
   function handleToggleChecklistItem(id: string) {
@@ -588,6 +591,7 @@ export default function TravelScreen() {
 
                 <Text style={styles.inputLabel}>Trip name</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. Japan trip, Beach weekend"
                   placeholderTextColor={colors.inkFaint}
@@ -679,6 +683,7 @@ export default function TravelScreen() {
 
                 <Text style={styles.inputLabel}>Item title</Text>
                 <TextInput
+                  ref={itemTitleRef}
                   style={styles.input}
                   placeholder="e.g. Book flights, Reserve hotel"
                   placeholderTextColor={colors.inkFaint}

@@ -17,6 +17,8 @@ type Props = {
   suffix?: string | null;
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
+  // Puts the cursor here when the field appears (see AppText's TextInput).
+  autoFocus?: boolean;
 };
 
 function formatWithCommas(num: number, allowDecimals: boolean): string {
@@ -38,6 +40,7 @@ export default function AmountInput({
   suffix = null,
   style,
   inputStyle,
+  autoFocus,
 }: Props) {
   const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -119,6 +122,7 @@ export default function AmountInput({
         onChangeText={handleChangeText}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        autoFocus={autoFocus}
       />
       {suffix ? <Text style={styles.affix}>{suffix}</Text> : null}
     </View>

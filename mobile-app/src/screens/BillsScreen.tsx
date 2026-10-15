@@ -489,6 +489,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       >
         <Text style={styles.inputLabel}>Bill name</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. Meralco, Netflix, Car insurance"
                   placeholderTextColor={colors.inkFaint}

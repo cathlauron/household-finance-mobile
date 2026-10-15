@@ -1,4 +1,4 @@
-import React, { createContext, forwardRef, useContext } from 'react';
+import React, { createContext, forwardRef, useContext, useEffect, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, Text as RNText, TextInput as RNTextInput } from 'react-native';
 import type { TextProps, TextInputProps, TextStyle } from 'react-native';
 import { useTextScale } from '../textSize';
@@ -108,10 +108,23 @@ export const Text = forwardRef<RNText, TextProps>(function AppText({ style, ...r
   );
 });
 
-export const TextInput = forwardRef<RNTextInput, TextInputProps>(function AppTextInput({ style, ...rest }, ref) {
+// autoFocus: puts the cursor in this field (and opens the keyboard) when it appears.
+// React Native's own autoFocus often does nothing inside a sheet that is still sliding
+// up (especially on Android), so the field is focused a moment after it appears instead.
+const AUTO_FOCUS_DELAY_MS = 350;
+
+export const TextInput = forwardRef<RNTextInput, TextInputProps>(function AppTextInput({ style, autoFocus, ...rest }, ref) {
   const flat = (StyleSheet.flatten(style) || {}) as TextStyle;
   const scale = useTextScale();
+  const innerRef = useRef<RNTextInput>(null);
+  useImperativeHandle(ref, () => innerRef.current as RNTextInput);
+  useEffect(() => {
+    if (!autoFocus) return;
+    const t = setTimeout(() => innerRef.current?.focus(), AUTO_FOCUS_DELAY_MS);
+    return () => clearTimeout(t);
+    // Only when the field first appears (or autoFocus is switched on).
+  }, [autoFocus]);
   const font = !fontsReady || flat.fontFamily ? null : { fontFamily: nunitoFor(flat.fontWeight), fontWeight: 'normal' as const };
   const size = sizeStyleFor(style, scale, false);
-  return <RNTextInput ref={ref} {...rest} style={font || size ? [style, font, size] : style} />;
+  return <RNTextInput ref={innerRef} {...rest} style={font || size ? [style, font, size] : style} />;
 });

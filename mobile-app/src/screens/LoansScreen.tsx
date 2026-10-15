@@ -526,6 +526,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
       >
                 <Text style={styles.inputLabel}>Loan name</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. Car loan, Motorcycle loan"
                   placeholderTextColor={colors.inkFaint}

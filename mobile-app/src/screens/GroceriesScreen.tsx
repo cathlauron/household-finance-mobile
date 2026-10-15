@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,8 +49,11 @@ export default function GroceriesScreen() {
   const styles = makeStyles(colors);
 
   const [tab, setTab] = useStickyState<Tab>('groceries.tab', 'list');
+  // The ingredient row just added, so its name field gets the cursor.
+  const [focusIngredientId, setFocusIngredientId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
+  useEffect(() => setFocusIngredientId(null), [sheet]);
   const [nameIn, setNameIn] = useState('');
   const [plannedIn, setPlannedIn] = useState<number | ''>('');
   const [actualIn, setActualIn] = useState<number | ''>('');
@@ -470,6 +473,7 @@ export default function GroceriesScreen() {
       >
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
           <TextInput
+            autoFocus={!sheet?.id}
             style={styles.field}
             placeholder={sheet?.kind === 'meal' ? 'Meal, e.g. Chicken adobo' : 'Item, e.g. Rice, 5 kg'}
             placeholderTextColor={colors.inkDim}
@@ -494,6 +498,7 @@ export default function GroceriesScreen() {
               {ingredients.map((ing, i) => (
                 <View key={ing.id} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                   <TextInput
+                    autoFocus={ing.id === focusIngredientId}
                     style={[styles.field, { flex: 3 }]}
                     placeholder={`Ingredient ${i + 1}`}
                     placeholderTextColor={colors.inkDim}
@@ -513,7 +518,7 @@ export default function GroceriesScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              <TouchableOpacity onPress={() => setIngredients((rows) => [...rows, { id: makeId('ing'), name: '', price: '' }])} accessibilityRole="button">
+              <TouchableOpacity onPress={() => { const id = makeId('ing'); setIngredients((rows) => [...rows, { id, name: '', price: '' }]); setFocusIngredientId(id); }} accessibilityRole="button">
                 <Text style={[styles.title, { color: colors.gold }]}>+ Add ingredient</Text>
               </TouchableOpacity>
             </>

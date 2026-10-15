@@ -378,6 +378,7 @@ export default function GoalsScreen() {
 
                 <Text style={styles.inputLabel}>Title</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. Pay off credit card, Save 3-month emergency fund"
                   placeholderTextColor={colors.inkFaint}

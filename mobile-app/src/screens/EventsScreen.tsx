@@ -183,6 +183,9 @@ export default function EventsScreen() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // The cost row just added with "+ Add item", so its name field gets the cursor.
+  const [focusItemId, setFocusItemId] = useState<string | null>(null);
+  useEffect(() => setFocusItemId(null), [modalOpen]);
   const [nameInput, setNameInput] = useState('');
   const [typeInput, setTypeInput] = useState<EventItem['type']>('birthday');
   const [recurrenceInput, setRecurrenceInput] = useState<EventItem['recurrence']>('annual');
@@ -633,6 +636,7 @@ export default function EventsScreen() {
 
                 <Text style={styles.inputLabel}>Event name</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. Mom's birthday, Wedding anniversary"
                   placeholderTextColor={colors.inkFaint}
@@ -712,6 +716,7 @@ export default function EventsScreen() {
                 {itemsInput.map((it, i) => (
                   <View key={it.id} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                     <TextInput
+                      autoFocus={it.id === focusItemId}
                       style={[styles.input, { flex: 3, marginBottom: 0 }]}
                       placeholder={i === 0 ? 'e.g. Cake' : 'Item'}
                       placeholderTextColor={colors.inkFaint}
@@ -726,7 +731,7 @@ export default function EventsScreen() {
                     </TouchableOpacity>
                   </View>
                 ))}
-                <TouchableOpacity onPress={() => setItemsInput((rows) => [...rows, { id: makeId('evitem'), name: '', cost: '' }])} accessibilityRole="button" style={{ marginBottom: 12 }}>
+                <TouchableOpacity onPress={() => { const id = makeId('evitem'); setItemsInput((rows) => [...rows, { id, name: '', cost: '' }]); setFocusItemId(id); }} accessibilityRole="button" style={{ marginBottom: 12 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.gold }}>+ Add an item (cake, gift…)</Text>
                 </TouchableOpacity>
 

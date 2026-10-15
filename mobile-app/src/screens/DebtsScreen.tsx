@@ -413,6 +413,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       >
         <Text style={styles.inputLabel}>Creditor or person</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. BDO Credit Card, GCredit, Ate Fely"
                   placeholderTextColor={colors.inkFaint}

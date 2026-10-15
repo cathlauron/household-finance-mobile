@@ -929,6 +929,7 @@ export default function TransactionsScreen() {
         />
 
         <AmountInput
+          autoFocus={!editingId}
           style={styles.bigAmountWrap}
           inputStyle={[styles.bigAmountInput, { color: amountColor(directionInput, colors) }]}
           value={amountInput}
@@ -1006,6 +1007,7 @@ export default function TransactionsScreen() {
               <View style={[styles.formRow, styles.formRowLine]}>
                 <Text style={styles.formLabel}>Amount back</Text>
                 <AmountInput
+                  autoFocus={!refundAmountInput}
                   style={styles.inlineAmount}
                   value={refundAmountInput}
                   onChangeAmount={setRefundAmountInput}
