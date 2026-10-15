@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CardGradient from '../components/CardGradient';
 import HomeHero from '../components/HomeHero';
 import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
+import OfflineBanner from '../components/OfflineBanner';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, totalCurrentBalance, formatPeso } from '../balanceProjection';
@@ -108,6 +109,7 @@ export default function HomeScreen({ username }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent', paddingTop: insets.top }}>
+      <OfflineBanner style={{ marginHorizontal: 14, marginTop: 6 }} />
       <View style={hs.headerRow}>
         <TouchableOpacity
           testID="home-settings-button"

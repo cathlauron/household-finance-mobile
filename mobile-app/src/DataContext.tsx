@@ -16,7 +16,8 @@
 // ============================================================
 import { getCurrentFirebaseUser } from './authFirebase';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import React, { createContext, useContext, useRef, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import * as Network from 'expo-network';
 import { Alert } from 'react-native';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel } from './types';
@@ -93,6 +94,10 @@ type DataContextValue = {
     newPassword: string
   ) => Promise<ChangePasswordResult>;
   username: string | null;
+  // Redesign (offline banner): whether the phone has internet right now, and how many
+  // saves are waiting to reach the cloud. They are sent by themselves once it's back.
+  isOnline: boolean;
+  pendingChanges: number;
   // Checkpoint 9.2c: whether this profile is currently reading/writing
   // shared household data (true) or its own personal data (false).
   isLinked: boolean;
@@ -137,6 +142,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
   const [linkNoticeMsg, setLinkNoticeMsg] = useState<string | null>(null);
+  // ---- Offline banner (redesign) ----
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingChanges, setPendingChanges] = useState(0);
+  const onlineRef = useRef(true);
+  const latestModelRef = useRef<HouseholdModel | null>(null);
+  latestModelRef.current = model;
   const householdUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Kept outside React state (in refs) since we only need them for the next save/load
@@ -423,6 +434,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
 
+  // Sends the latest data to the cloud after being offline (or after a failed sync).
+  const syncingRef = useRef(false);
+  async function syncPendingChanges() {
+    if (syncingRef.current) return;
+    const username = usernameRef.current;
+    const current = latestModelRef.current;
+    if (!username || !current) return;
+    syncingRef.current = true;
+    try {
+      if (householdIdRef.current && householdKeyRef.current) {
+        const encrypted = await encryptJSON(householdKeyRef.current, current);
+        await withTimeout(saveHouseholdData(householdIdRef.current, encrypted), 12000, 'Timed out syncing.');
+        lastEncryptedDataRef.current = encrypted;
+      } else if (saltRef.current && keyRef.current) {
+        const encrypted = await encryptJSON(keyRef.current, current);
+        await withTimeout(
+          backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
+          12000,
+          'Timed out syncing.'
+        );
+      }
+      setPendingChanges(0);
+    } catch (e) {
+      // Still not reachable; try again on the next change of connection.
+    } finally {
+      syncingRef.current = false;
+    }
+  }
+
+  useEffect(() => {
+    const apply = (state: { isConnected?: boolean; isInternetReachable?: boolean | null }) => {
+      const online = state.isConnected !== false && state.isInternetReachable !== false;
+      const cameBack = online && !onlineRef.current;
+      onlineRef.current = online;
+      setIsOnline(online);
+      if (cameBack) syncPendingChanges();
+    };
+    Network.getNetworkStateAsync().then(apply).catch(() => {});
+    const sub = Network.addNetworkStateListener(apply);
+    return () => sub.remove();
+  }, []);
+
   async function saveModel(updatedModel: HouseholdModel) {
     // Left to Spend: stamp the moment each NEW transaction is first saved (any screen
     // that adds one: Transactions, CSV import, Travel, Events, refunds). Existing
@@ -492,18 +545,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
           });
       }
 
-      try {
-        await withTimeout(
-          saveHouseholdData(householdIdRef.current, encrypted),
-          8000,
-          'Timed out waiting for the shared household to sync.'
-        );
-        lastEncryptedDataRef.current = encrypted;
-      } catch (err) {
-        Alert.alert(
-          'Sync Failed',
-          'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
-        );
+      if (!onlineRef.current) {
+        // Offline: saved on this phone; the banner shows it and it syncs once back online.
+        setPendingChanges((n) => n + 1);
+      } else {
+        try {
+          await withTimeout(
+            saveHouseholdData(householdIdRef.current, encrypted),
+            8000,
+            'Timed out waiting for the shared household to sync.'
+          );
+          lastEncryptedDataRef.current = encrypted;
+        } catch (err) {
+          setPendingChanges((n) => n + 1);
+          if (onlineRef.current) {
+            Alert.alert(
+              'Sync Failed',
+              'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
+            );
+          }
+        }
       }
 
       rescheduleBillNotifications(sanitizedModel).catch(() => {});
@@ -525,6 +586,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
+      if (!onlineRef.current) {
+        // Offline: saved on this phone; the banner shows it and it syncs once back online.
+        setPendingChanges((n) => n + 1);
+        return;
+      }
       try {
         await withTimeout(
           backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
@@ -533,10 +599,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         );
       } catch (err) {
         console.error('Cloud backup failed:', err);
-        Alert.alert(
-          'Backup Failed',
-          'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
-        );
+        setPendingChanges((n) => n + 1);
+        if (onlineRef.current) {
+          Alert.alert(
+            'Backup Failed',
+            'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
+          );
+        }
       }
     }
   }
@@ -625,6 +694,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   function clearModel() {
     cleanupHouseholdListener();
+    setPendingChanges(0);
     usernameRef.current = null;
     keyRef.current = null;
     householdIdRef.current = undefined;
@@ -969,6 +1039,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         changePassword,
         verifyPassword,
         username: usernameRef.current,
+        isOnline,
+        pendingChanges,
         isLinked,
         getPersonalKey,
         getHouseholdKey,
