@@ -296,8 +296,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
     <View style={styles.section}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Wallet</Text>
-        <TouchableOpacity onPress={openAccounts} accessibilityRole="button" accessibilityLabel="Add card" testID="home-wallet-add">
-          <Text style={styles.link}>Add card</Text>
+        <TouchableOpacity onPress={openAccounts} accessibilityRole="button" accessibilityLabel="Add account" testID="home-wallet-add">
+          <Text style={styles.link}>Add account</Text>
         </TouchableOpacity>
       </View>
 
