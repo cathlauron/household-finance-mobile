@@ -60,24 +60,63 @@ export function nextDueAfter(record: CycleRecord, afterISO: string): string | nu
   return next ? toISO(next) : null;
 }
 
-// Marks the current cycle paid (in full) today, and queues the next one if it repeats.
-export function markPaid<T extends CycleRecord>(record: T, pm?: PaymentMethod, date: string = todayISO()): T {
+// The least that should be paid on the current cycle: a debt's minimum payment plus
+// anything carried over from last time (never more than the amount due). Without a
+// minimum it is the whole amount due.
+export function minimumDue(record: CycleRecord, cur: BillCycle | undefined): number {
+  if (!cur) return 0;
+  const due = num(cur.amountDue);
+  const min = num((record as Debt).minPayment);
+  if (min <= 0) return due;
+  return Math.min(due, min + num(cur.carriedIn));
+}
+
+// Marks the current cycle paid today, and queues the next one if it repeats.
+// `amount` (debts only) can be less than the amount due:
+//  - Repeating debt: the unpaid part of the MINIMUM, plus any late fee, is added to the
+//    next amount due. Paying more than the minimum doesn't change the next amount.
+//  - One-time debt: whatever is still owed (plus any late fee) stays as a new amount
+//    due on the same date, so the debt shrinks by what was paid.
+// Without `amount` it is paid in full (bills, and debts paid in full).
+export function markPaid<T extends CycleRecord>(
+  record: T,
+  pm?: PaymentMethod,
+  date: string = todayISO(),
+  amount?: number,
+  lateFee: number = 0
+): T {
   const cur = currentCycle(record);
   if (!cur || isCyclePaid(cur)) return record;
-  const paid: BillCycle = { ...cur, amountPaid: num(cur.amountDue), paidDate: date, paidAt: Date.now(), paymentMethod: pm ?? cur.paymentMethod };
+  const due = num(cur.amountDue);
+  const paidAmt = typeof amount === 'number' ? Math.max(0, Math.round(amount * 100) / 100) : due;
+  const fee = Math.max(0, Math.round(lateFee * 100) / 100);
+  const partial = paidAmt < due;
+  const paid: BillCycle = {
+    ...cur,
+    amountPaid: paidAmt,
+    paidDate: date,
+    paidAt: Date.now(),
+    paymentMethod: pm ?? cur.paymentMethod,
+    ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
+    ...(fee > 0 ? { lateFee: fee } : {}),
+  };
   const cycles = (record.cycles || []).map((c) => (c.id === cur.id ? paid : c));
+  const base = {
+    id: makeId('cycle'),
+    amountPaid: '' as const,
+    paidDate: '',
+    notes: '',
+    paymentMethod: paid.paymentMethod,
+    ...(cur.feesPortion !== undefined ? { feesPortion: cur.feesPortion } : {}),
+  };
   const nextDue = nextDueAfter(record, cur.dueDate || date);
   if (nextDue) {
-    cycles.push({
-      id: makeId('cycle'),
-      dueDate: nextDue,
-      amountDue: cur.amountDue,
-      amountPaid: '',
-      paidDate: '',
-      notes: '',
-      paymentMethod: paid.paymentMethod,
-      ...(cur.feesPortion !== undefined ? { feesPortion: cur.feesPortion } : {}),
-    });
+    const normal = Math.max(0, due - num(cur.carriedIn));
+    const carry = Math.max(0, minimumDue(record, cur) - paidAmt) + fee;
+    cycles.push({ ...base, dueDate: nextDue, amountDue: Math.round((normal + carry) * 100) / 100, ...(carry > 0 ? { carriedIn: carry } : {}) });
+  } else if (partial || fee > 0) {
+    const left = Math.max(0, due - paidAmt) + fee;
+    cycles.push({ ...base, dueDate: cur.dueDate || date, amountDue: Math.round(left * 100) / 100, ...(fee > 0 ? { carriedIn: fee } : {}) });
   }
   return { ...record, cycles };
 }
@@ -92,7 +131,8 @@ export function undoLastPayment<T extends CycleRecord>(record: T): T {
   if (idx < 0) return record;
   const last = cycles[cycles.length - 1];
   if (idx !== cycles.length - 1 && num(last.amountPaid) === 0 && !last.notes) cycles.pop();
-  cycles[idx] = { ...cycles[idx], amountPaid: '', paidDate: '', paidAt: undefined };
+  const { dueBefore, lateFee, ...rest } = cycles[idx];
+  cycles[idx] = { ...rest, amountPaid: '', paidDate: '', paidAt: undefined, ...(typeof dueBefore === 'number' ? { amountDue: dueBefore } : {}) };
   return { ...record, cycles };
 }
 

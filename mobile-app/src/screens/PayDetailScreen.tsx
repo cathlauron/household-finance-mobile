@@ -9,7 +9,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, loanOutstandingBalance } from '../balanceProjection';
 import { getNextDueDate, recurringTypeLabel } from '../recurrence';
-import { currentCycle, paidCycles, markPaid, undoLastPayment, isCyclePaid } from '../billPayments';
+import { currentCycle, paidCycles, markPaid, undoLastPayment, isCyclePaid, minimumDue } from '../billPayments';
 import { accountLabel } from '../transactionActions';
 import { getOverdueItems } from '../overdue';
 import { requestOpenBill } from '../openBillRequest';
@@ -116,6 +116,9 @@ export default function PayDetailScreen() {
   const cur = currentCycle(rec);
   const curPaid = cur ? isCyclePaid(cur) : true;
   const amount = num(cur?.amountDue);
+  // Debts: the least to pay this time (minimum + anything carried over).
+  const minDue = kind === 'debt' ? minimumDue(rec, cur) : amount;
+  const carried = num(cur?.carriedIn);
   const dueISO = cur?.dueDate || '';
   const today = todayISO();
   const days = dueISO ? daysBetween(today, dueISO) : null;
@@ -147,6 +150,13 @@ export default function PayDetailScreen() {
         </View>
         <Text style={styles.name}>{name}</Text>
         <Text style={[styles.amount, { color: colors.negative }]}>{formatPeso(amount)}</Text>
+        {kind === 'debt' && !curPaid && (minDue < amount || carried > 0) && (
+          <Text style={styles.nextDue}>
+            {minDue < amount ? `Minimum ${formatPeso(minDue)}` : ''}
+            {minDue < amount && carried > 0 ? ' · ' : ''}
+            {carried > 0 ? `includes ${formatPeso(carried)} carried over` : ''}
+          </Text>
+        )}
         {paidToday ? (
           <Text style={[styles.badge, { color: colors.positive, backgroundColor: colors.okBg }]}>
             Paid today{history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
@@ -187,14 +197,17 @@ export default function PayDetailScreen() {
         visible={payOpen}
         onClose={() => setPayOpen(false)}
         title={`Pay ${name}`}
-        amount={amount}
+        amount={kind === 'debt' ? minDue : amount}
         direction="out"
         model={model}
         initial={cur?.paymentMethod}
         confirmLabel="Paid"
-        onConfirm={(pm) => {
+        editableAmount={kind === 'debt'}
+        fullAmount={amount}
+        minimumAmount={minDue}
+        onConfirm={(pm, paidAmount, lateFee) => {
           setPayOpen(false);
-          const next = markPaid(rec, pm);
+          const next = kind === 'debt' ? markPaid(rec, pm, undefined, paidAmount, lateFee) : markPaid(rec, pm);
           save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
         }}
       />
@@ -237,6 +250,8 @@ export default function PayDetailScreen() {
                     <Text style={styles.histTitle}>{isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'long' })}</Text>
                     <Text style={styles.meta}>
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
+                      {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
+                      {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: colors.negative }]}>{formatPeso(num(c.amountPaid))}</Text>

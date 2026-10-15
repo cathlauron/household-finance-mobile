@@ -93,6 +93,16 @@ export type BillCycle = {
   feesPortion?: number | '';
   // Redesign: the exact moment it was marked paid (for Left to Spend's same-day check).
   paidAt?: number;
+  // Partial debt payments (Round 3). On a cycle paid with less than was due, amountDue
+  // is lowered to what was paid (so the cycle counts as settled everywhere) and the
+  // original due amount is kept here, for history and Undo.
+  dueBefore?: number;
+  // On the NEXT cycle: how much of its amountDue is unpaid minimum plus any late fee
+  // carried over from the cycle before.
+  carriedIn?: number;
+  // A late fee the lender charged for this cycle's short or late payment (added to the
+  // next amount due).
+  lateFee?: number;
 };
 
 export type Bill = {
