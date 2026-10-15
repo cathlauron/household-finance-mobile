@@ -429,10 +429,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // transactions are never re-stamped.
     const knownIds = new Set((model?.manualTransactions || []).map((t) => t.id));
     const now = Date.now();
+    // Redesign: loan payments and savings moves get the same stamp, so a card's
+    // balance can tell whether they came after its balance was last updated.
+    const knownLoanPays = new Set((model?.loans || []).flatMap((l) => (l.actualPayments || []).map((p) => p.id)));
+    const knownContribs = new Set((model?.savingsGoals || []).flatMap((g) => (g.contributions || []).map((c) => c.id)));
     const stamped: HouseholdModel = {
       ...updatedModel,
       manualTransactions: (updatedModel.manualTransactions || []).map((t) =>
         t.createdAt || knownIds.has(t.id) ? t : { ...t, createdAt: now }
+      ),
+      loans: (updatedModel.loans || []).map((l) =>
+        (l.actualPayments || []).some((p) => !p.createdAt && !knownLoanPays.has(p.id))
+          ? {
+              ...l,
+              actualPayments: (l.actualPayments || []).map((p) =>
+                p.createdAt || knownLoanPays.has(p.id) ? p : { ...p, createdAt: now }
+              ),
+            }
+          : l
+      ),
+      savingsGoals: (updatedModel.savingsGoals || []).map((g) =>
+        (g.contributions || []).some((c) => !c.createdAt && !knownContribs.has(c.id))
+          ? {
+              ...g,
+              contributions: (g.contributions || []).map((c) =>
+                c.createdAt || knownContribs.has(c.id) ? c : { ...c, createdAt: now }
+              ),
+            }
+          : g
       ),
     };
     const sanitizedModel = sanitizeModelIds(stamped);

@@ -131,6 +131,9 @@ export type LoanPayment = {
   date: string;
   actual: number | '';
   paymentMethod?: PaymentMethod;
+  // When it was logged (stamped on save), so a card's balance knows whether it came
+  // after the balances were last updated that same day.
+  createdAt?: number;
 };
 
 export type Loan = {
@@ -158,6 +161,7 @@ export type SavingsContribution = {
   amount: number | '';
   paymentMethod?: PaymentMethod;
   auto?: boolean; // added automatically on a payday
+  createdAt?: number; // when it was logged (stamped on save)
 };
 
 export type SavingsGoal = {

@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { formatPeso } from '../balanceProjection';
+import { formatPeso, accountCurrentBalance } from '../balanceProjection';
 import { buildTransactionsList } from '../transactions';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from '../components/AccountCard';
 import type { ThemeColors } from '../theme';
@@ -84,7 +84,8 @@ export default function CardDetailScreen() {
     );
   }
 
-  const amount = typeof account.amount === 'number' ? account.amount : 0;
+  // Live balance: saved balance plus anything paid from or into it since.
+  const amount = accountCurrentBalance(model, group, account);
   const chip = account.color || DEFAULT_GROUP_COLORS[group];
   const maxDay = Math.max(1, ...data.days.map((d) => d.v));
 

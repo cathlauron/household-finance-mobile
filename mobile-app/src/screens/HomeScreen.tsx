@@ -10,7 +10,7 @@ import HomeHero from '../components/HomeHero';
 import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { computeLeftToSpend, getLeftToSpendStatus, totalLiquidBalance, formatPeso } from '../balanceProjection';
+import { computeLeftToSpend, getLeftToSpendStatus, totalCurrentBalance, formatPeso } from '../balanceProjection';
 import type { RootStackParamList } from '../navigation/RootStack';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
@@ -44,7 +44,7 @@ export default function HomeScreen({ username }: Props) {
   const leftToSpendStatus =
     leftToSpend && model ? getLeftToSpendStatus(leftToSpend.amount, model, colors) : null;
 
-  const totalBalanceToday = useMemo(() => (model ? totalLiquidBalance(model) : 0), [model]);
+  const totalBalanceToday = useMemo(() => (model ? totalCurrentBalance(model) : 0), [model]);
   const spentSoFar = leftToSpend ? Math.max(0, totalBalanceToday - leftToSpend.amount) : 0;
   const pctUsed =
     totalBalanceToday > 0 ? Math.min(100, Math.max(0, (spentSoFar / totalBalanceToday) * 100)) : 0;

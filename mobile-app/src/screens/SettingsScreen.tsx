@@ -12,7 +12,7 @@ import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { defaultModel } from '../defaultModel';
-import { formatPeso } from '../balanceProjection';
+import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission } from '../pushNotifications';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -321,6 +321,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     String(model?.settings?.cautionThresholdPercent ?? 20)
   );
   const [notifStatusMsg, setNotifStatusMsg] = useState('');
+  // Redesign: the monthly budget the Running low warning is measured against.
+  const [monthlyBudgetInput, setMonthlyBudgetInput] = useState<number | ''>(
+    typeof model?.settings?.monthlySpendingBudget === 'number' ? model.settings.monthlySpendingBudget : ''
+  );
   const [recapHourInput, setRecapHourInput] = useState(
     String(model?.settings?.weeklyRecapHour ?? 18)
   );
@@ -451,6 +455,24 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     }, 600);
     return () => clearTimeout(timer);
   }, [cautionThresholdInput]);
+  // Monthly budget: saved ~600ms after you stop typing (same safety net as above).
+  const monthlyBudgetMountedRef = useRef(false);
+  useEffect(() => {
+    if (!monthlyBudgetMountedRef.current) {
+      monthlyBudgetMountedRef.current = true;
+      return;
+    }
+    const timer = setTimeout(async () => {
+      if (!model) return;
+      if ((model.settings.monthlySpendingBudget ?? '') === monthlyBudgetInput) return;
+      try {
+        await saveModel({ ...model, settings: { ...model.settings, monthlySpendingBudget: monthlyBudgetInput } });
+      } catch (e) {
+        Alert.alert('Failed to save', 'Please try again.');
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [monthlyBudgetInput]);
     async function togglePushNotifications() {
     if (!model) return;
     hapticSelection();
@@ -1275,8 +1297,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Left to Spend</Text>
 <Text style={styles.sectionSub}>
-  "Left to Spend" on Home turns orange once your balance drops below this % of your typical monthly bills, debts & loans.
+  "Left to Spend" on Home turns orange (Running low) once it drops below this % of your monthly budget.
 </Text>
+        <Text style={[styles.rowName, { marginBottom: 6 }]}>Monthly budget</Text>
+        <AmountInput
+          style={styles.amountInput}
+          placeholder="e.g. 38,000"
+          value={monthlyBudgetInput}
+          onChangeAmount={setMonthlyBudgetInput}
+        />
         <View style={styles.row}>
           <GradientFill match={styles.row} />
           <Text style={styles.rowName}>Caution below</Text>
@@ -1288,8 +1317,24 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
             keyboardType="number-pad"
             maxLength={3}
           />
-          <Text style={styles.rowName}>% of monthly obligations</Text>
+          <Text style={styles.rowName}>% of {monthlyBudgetInput !== '' && monthlyBudgetInput > 0 ? 'monthly budget' : 'monthly bills'}</Text>
         </View>
+        {(() => {
+          const pct = Math.max(0, Math.min(100, parseInt(cautionThresholdInput, 10) || 0));
+          const base = monthlyBudgetInput !== '' && monthlyBudgetInput > 0
+            ? { amount: monthlyBudgetInput, kind: 'budget' as const }
+            : model
+            ? cautionBase({ ...model, settings: { ...model.settings, monthlySpendingBudget: '' } })
+            : { amount: 0, kind: 'obligations' as const };
+          return (
+            <Text style={styles.sectionSub}>
+              {`At ${pct}%, Left to Spend turns orange below ${formatPeso(base.amount * (pct / 100))}.`}
+              {base.kind === 'obligations'
+                ? ' With no monthly budget, this is measured against your typical monthly bills, debts and loans. Add a budget above to measure against that instead.'
+                : ''}
+            </Text>
+          );
+        })()}
 
         </>
         )}

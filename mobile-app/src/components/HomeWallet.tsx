@@ -7,7 +7,7 @@ import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import type { ThemeColors } from '../theme';
-import { formatPeso, totalLiquidBalance } from '../balanceProjection';
+import { formatPeso, totalCurrentBalance, accountCurrentBalance } from '../balanceProjection';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
@@ -222,7 +222,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // A gentle range with in-between steps so it blends evenly (no dark edge).
   const cardShade = (hex: string, t: number) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.14 + t * 0.12 : 0.06 + t * 0.1);
 
-  const total = totalLiquidBalance(model);
+  const total = totalCurrentBalance(model);
   const openAccounts = () => navigation.navigate('Accounts');
   const amountColor = (n: number) => (n < 0 ? colors.negative : colors.positive);
 
@@ -318,7 +318,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
             const others = dragging ? order.filter((k) => k !== dragging) : order;
             const j = others.indexOf(c.key);
             const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
-            const amount = typeof c.account.amount === 'number' ? c.account.amount : 0;
+            // Live balance: saved balance plus anything paid from or into it since.
+            const amount = accountCurrentBalance(model, c.group, c.account);
             const top = tops.get(c.key) as Animated.Value;
             return (
               <GestureDetector key={c.key} gesture={gestureFor(c, i)}>

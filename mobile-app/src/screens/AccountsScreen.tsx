@@ -6,7 +6,7 @@ import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
-import { totalLiquidBalance, formatPeso } from '../balanceProjection';
+import { formatPeso, totalCurrentBalance, withCurrentBalance, accountCurrentBalance, bakeCurrentBalances } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
 import SwipeableRow from '../components/SwipeableRow';
@@ -120,15 +120,26 @@ export default function AccountsScreen() {
     }
     const parsedAmount = amountInput === '' ? 0 : amountInput;
 
+    // Redesign: balances shown here are live (saved balance + anything paid since).
+    // If the balance was changed, every spending account's saved balance becomes its
+    // live balance first, so nothing paid since the last update is lost when the
+    // "as of" moment moves to now. A name or colour change leaves balances alone.
+    const isSpendingGroup = activeGroup === 'cash' || activeGroup === 'debit' || activeGroup === 'credit';
+    const previous = editingId ? model.balanceAccounts[activeGroup].find((a) => a.id === editingId) : undefined;
+    const previousLive = previous ? accountCurrentBalance(model, activeGroup, previous) : 0;
+    const balanceChanged = !editingId || !previous || Number(previousLive) !== Number(parsedAmount || 0);
+
     const updated: HouseholdModel = {
       ...model,
-      balanceAccounts: { ...model.balanceAccounts },
+      balanceAccounts: isSpendingGroup && balanceChanged ? bakeCurrentBalances(model) : { ...model.balanceAccounts },
     };
     const currentList = updated.balanceAccounts[activeGroup];
 
     if (editingId) {
       updated.balanceAccounts[activeGroup] = currentList.map((a) =>
-        a.id === editingId ? { ...a, name: trimmedName, amount: parsedAmount, color: colorInput } : a
+        a.id === editingId
+          ? { ...a, name: trimmedName, amount: balanceChanged ? parsedAmount : a.amount, color: colorInput }
+          : a
       );
     } else {
       const newAccount: BalanceAccountEntry = {
@@ -144,9 +155,6 @@ export default function AccountsScreen() {
     // were last brought up to date. Left to Spend treats these balances as true as of
     // that day, so any transaction dated AFTER it moves Left to Spend until the next
     // balance update. Same idea as the web app's "balance as of" date.
-    const isSpendingGroup = activeGroup === 'cash' || activeGroup === 'debit' || activeGroup === 'credit';
-    const previous = editingId ? currentList.find((a) => a.id === editingId) : undefined;
-    const balanceChanged = !editingId || !previous || Number(previous.amount || 0) !== Number(parsedAmount || 0);
     if (isSpendingGroup && balanceChanged) {
       updated.balanceAccounts.asOfDate = todayISO();
       updated.balanceAccounts.asOfAt = Date.now();
@@ -219,7 +227,7 @@ export default function AccountsScreen() {
     );
   }
 
-  const totalBalance = totalLiquidBalance(model);
+  const totalBalance = totalCurrentBalance(model);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -259,7 +267,8 @@ export default function AccountsScreen() {
         </Card>
 
         {GROUPS.map((group) => {
-          const accounts = model.balanceAccounts[group];
+          // Live balances (saved balance + anything paid from or into it since).
+          const accounts = model.balanceAccounts[group].map((a) => withCurrentBalance(model, group, a));
           const groupTotal = accounts.reduce((sum, a) => sum + accountAmountNumber(a), 0);
           const isStackedSection = viewMode === 'stacked' && accounts.length >= 2;
           const sectionHasExpanded = isStackedSection && accounts.some((a) => a.id === expandedAccountId);

@@ -23,7 +23,7 @@
 // screen for logging actual paydays.
 // ============================================================
 
-import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
+import type { HouseholdModel, Bill, Debt, Loan, IncomeSource, PaymentMethod, BalanceAccountEntry } from './types';
 import { lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
@@ -63,6 +63,90 @@ function lastDayOfMonth(year: number, monthIndex: number): number {
 export function totalLiquidBalance(model: HouseholdModel): number {
   const groups = [model.balanceAccounts.cash, model.balanceAccounts.debit, model.balanceAccounts.credit];
   return groups.reduce((sum, group) => sum + group.reduce((s, a) => s + toNumber(a.amount), 0), 0);
+}
+
+// ---- Live account balances (redesign) ----
+// An account's saved balance is true as of the moment the balances were last updated on
+// the Accounts page. Anything paid from or into that account since then moves it:
+// transactions, bills and debts marked paid, loan payments, and money put into or taken
+// out of savings pots. Moving money between accounts already changes the saved balances
+// directly, so transfers aren't counted again here. Items dated in the future don't
+// count yet. The saved balance itself is never changed by this; updating a balance on
+// the Accounts page folds this activity in and starts afresh.
+export type SpendingGroup = 'cash' | 'debit' | 'credit';
+
+function happenedSinceUpdate(model: HouseholdModel, date: string | undefined, at: number | undefined, today: string): boolean {
+  const asOf = model.balanceAccounts.asOfDate;
+  if (!date || !asOf || date > today) return false;
+  if (date > asOf) return true;
+  if (date === asOf) {
+    const asOfAt = model.balanceAccounts.asOfAt;
+    return !!asOfAt && !!at && at > asOfAt;
+  }
+  return false;
+}
+
+export function accountActivitySinceUpdate(model: HouseholdModel, group: SpendingGroup, accountId: string): number {
+  // Cash paid without picking a cash account counts against the first cash account.
+  const firstCashId = model.balanceAccounts.cash[0]?.id;
+  const matches = (pm?: PaymentMethod) =>
+    !!pm &&
+    pm.type === group &&
+    (pm.accountId === accountId || (group === 'cash' && !pm.accountId && accountId === firstCashId));
+  const today = toISO(new Date());
+  let delta = 0;
+  (model.manualTransactions || []).forEach((t) => {
+    if (!matches(t.paymentMethod) || !happenedSinceUpdate(model, t.date, t.createdAt, today)) return;
+    delta += t.direction === 'in' ? toNumber(t.amount) : -toNumber(t.amount);
+  });
+  [...model.bills, ...model.debts].forEach((r) =>
+    (r.cycles || []).forEach((c) => {
+      if (!c.paidDate || !matches(c.paymentMethod) || !happenedSinceUpdate(model, c.paidDate, c.paidAt, today)) return;
+      delta -= toNumber(c.amountPaid);
+    })
+  );
+  (model.loans || []).forEach((l) =>
+    (l.actualPayments || []).forEach((p) => {
+      if (!matches(p.paymentMethod) || !happenedSinceUpdate(model, p.date, p.createdAt, today)) return;
+      delta += l.direction === 'lent' ? toNumber(p.actual) : -toNumber(p.actual);
+    })
+  );
+  (model.savingsGoals || []).forEach((g) =>
+    (g.contributions || []).forEach((c) => {
+      if (!matches(c.paymentMethod) || !happenedSinceUpdate(model, c.date, c.createdAt, today)) return;
+      delta -= toNumber(c.amount); // put in = leaves the account; taken out (negative) = comes back
+    })
+  );
+  return delta;
+}
+
+export function accountCurrentBalance(model: HouseholdModel, group: SpendingGroup, account: BalanceAccountEntry): number {
+  return toNumber(account.amount) + accountActivitySinceUpdate(model, group, account.id);
+}
+
+// The same account with its live balance in place of the saved one (for display).
+export function withCurrentBalance(model: HouseholdModel, group: SpendingGroup, account: BalanceAccountEntry): BalanceAccountEntry {
+  return { ...account, amount: accountCurrentBalance(model, group, account) };
+}
+
+export function totalCurrentBalance(model: HouseholdModel): number {
+  return (['cash', 'debit', 'credit'] as SpendingGroup[]).reduce(
+    (sum, g) => sum + model.balanceAccounts[g].reduce((s, a) => s + accountCurrentBalance(model, g, a), 0),
+    0
+  );
+}
+
+// Updating balances on the Accounts page: every spending account's saved balance
+// becomes its live balance, so nothing paid since the last update is lost when the
+// "as of" moment moves to now.
+export function bakeCurrentBalances(model: HouseholdModel): HouseholdModel['balanceAccounts'] {
+  const ba = model.balanceAccounts;
+  return {
+    ...ba,
+    cash: ba.cash.map((a) => withCurrentBalance(model, 'cash', a)),
+    debit: ba.debit.map((a) => withCurrentBalance(model, 'debit', a)),
+    credit: ba.credit.map((a) => withCurrentBalance(model, 'credit', a)),
+  };
 }
 
 // ---- Bill / Debt outstanding amount ----
@@ -396,7 +480,11 @@ export function computeRunningBalances(
         [...model.bills, ...model.debts]
           .flatMap((r) => r.cycles || [])
           .filter((c) => c.paidDate === asOfISO && (c.paidAt ?? 0) > asOfAt)
-          .reduce((sum, c) => sum + toNumber(c.amountPaid), 0)
+          .reduce((sum, c) => sum + toNumber(c.amountPaid), 0) -
+        (model.savingsGoals || [])
+          .flatMap((g) => g.contributions || [])
+          .filter((c) => c.date === asOfISO && (c.createdAt ?? 0) > asOfAt)
+          .reduce((sum, c) => sum + toNumber(c.amount), 0)
       : 0;
   const totalStart = totalLiquidBalance(model) + loggedAfterUpdate;
 
@@ -489,9 +577,23 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
 }
 
 // Same three-tier red/orange/green shape as SavingsScreen's getEfStatus() — red when
-// negative, green at or above the household's caution threshold (a % of the monthly
-// obligations baseline, user-tunable in Settings), orange in between.
+// negative, green at or above the household's caution threshold, orange in between.
+// The threshold is a % (Settings › Budgeting) of your monthly budget, as in the Finance
+// Flow mockup ("At 20%, the mood turns orange below ₱7,600" for a ₱38,000 budget).
+// Without a monthly budget it falls back to a % of your typical monthly bills, debts and
+// loans (the old rule, which was often so small that it only turned orange near ₱0).
 export type LeftToSpendMood = 'good' | 'low' | 'over';
+
+export function cautionBase(model: HouseholdModel): { amount: number; kind: 'budget' | 'obligations' } {
+  const budget = model.settings.monthlySpendingBudget;
+  if (typeof budget === 'number' && budget > 0) return { amount: budget, kind: 'budget' };
+  return { amount: computeMonthlyObligationsBaseline(model.bills, model.debts, model.loans), kind: 'obligations' };
+}
+
+export function cautionThresholdAmount(model: HouseholdModel): number {
+  const thresholdPercent = model.settings.cautionThresholdPercent ?? 20;
+  return cautionBase(model).amount * (thresholdPercent / 100);
+}
 
 export function getLeftToSpendStatus(
   amount: number,
@@ -501,9 +603,7 @@ export function getLeftToSpendStatus(
   // Redesign: labels match the Finance Flow mockups, and `mood` drives the Home card
   // colour (green / burnt orange / red).
   if (amount < 0) return { color: colors.error, label: 'Overspent', mood: 'over' };
-  const baseline = computeMonthlyObligationsBaseline(model.bills, model.debts, model.loans);
-  const thresholdPercent = model.settings.cautionThresholdPercent ?? 20;
-  const cautionAmount = baseline * (thresholdPercent / 100);
+  const cautionAmount = cautionThresholdAmount(model);
   if (amount < cautionAmount) return { color: colors.orange, label: 'Running low', mood: 'low' };
   return { color: colors.ok, label: 'Looking good', mood: 'good' };
 }
