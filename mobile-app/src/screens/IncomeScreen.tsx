@@ -27,6 +27,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import { incomeOccurrencesInMonth } from '../balanceProjection';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
 import { todayISO } from '../dateUtils';
 import { useNavigation } from '@react-navigation/native';
@@ -401,14 +402,17 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
   const sources = sortByNextPayDate(model.income);
 
-  const totalMonthlyIncome = sources.reduce((sum, source) => {
+  // Expected this calendar month: every scheduled payday that falls in it (so a month with
+  // three bi-weekly paydays shows all three).
+  const nowDate = new Date();
+  const monthName = nowDate.toLocaleString('en-US', { month: 'long' });
+  let paydaysThisMonth = 0;
+  const expectedThisMonth = sources.reduce((sum, source) => {
     const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
     if (amount <= 0) return sum;
-    if (source.frequency === 'monthly') return sum + amount;
-    if (source.frequency === 'weekly') return sum + (amount * 52) / 12;
-    if (source.frequency === 'biweekly') return sum + (amount * 26) / 12;
-    if (source.frequency === 'semimonthly') return sum + (amount * 24) / 12;
-    return sum + amount;
+    const n = incomeOccurrencesInMonth(source, nowDate.getFullYear(), nowDate.getMonth()).length;
+    paydaysThisMonth += n;
+    return sum + amount * n;
   }, 0);
 
   const extras = extraIncome(model);
@@ -420,12 +424,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 4 }}>EXPECTED MONTHLY INCOME</Text>
+          <Text style={{ fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 4 }}>EXPECTED IN {monthName.toUpperCase()}</Text>
           {/* Redesign: expected income is a projection (blue). It shows on the Calendar, and
               only becomes real money when you log a payday into an account. */}
-          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.planned }}>{formatPeso(totalMonthlyIncome)}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.planned }}>{formatPeso(expectedThisMonth)}</Text>
           <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 4 }}>
-            Not in your balance yet. Log a payday when the money arrives.
+            {paydaysThisMonth === 1 ? '1 payday' : `${paydaysThisMonth} paydays`} this month. Not in your balance until you log it when the money arrives.
           </Text>
         </Card>
         {sources.length === 0 && (
