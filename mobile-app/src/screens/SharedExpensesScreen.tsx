@@ -16,7 +16,7 @@ import type { SharedExpense, SharedSettlement, PaymentMethod, ManualTransaction 
 import AmountInput from '../components/AmountInput';
 import { accountProblem } from '../components/AccountPicker';
 import { AccountChoices } from '../components/SimpleForm';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomSheet from '../components/BottomSheet';
 import DateField from '../components/DateField';
 import Button from '../components/Button';
@@ -60,6 +60,9 @@ export default function SharedExpensesScreen() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(sheetOpen);
+  // Set when the sheet was opened from a transaction's "Split with others".
+  const [fromTxnId, setFromTxnId] = useState<string | null>(null);
+  const route = useRoute<any>();
 
   // Settle up, opened under a balance line ("from|to" of that pair).
   const [settleKey, setSettleKey] = useState<string | null>(null);
@@ -68,13 +71,14 @@ export default function SharedExpensesScreen() {
   const [settlePm, setSettlePm] = useState<PaymentMethod | undefined>(undefined);
   const [settleError, setSettleError] = useState('');
 
-  function openAdd() {
-    if (!model) return;
+  function openAdd(): boolean {
+    if (!model) return false;
     const ids = model.sharedMembers ?? [];
     if (ids.length < 2) {
       Alert.alert('Add people first', 'Add at least two people (including you) under People, then add a shared expense.');
-      return;
+      return false;
     }
+    setFromTxnId(null);
     setEditingId(null);
     setLabel('');
     setAmount('');
@@ -85,9 +89,32 @@ export default function SharedExpensesScreen() {
     setCustom({});
     setError('');
     setSheetOpen(true);
+    return true;
   }
 
+  // Coming from a transaction: "Split with others" starts a shared expense filled in from
+  // it (you paid), or opens the one already made from it.
+  const handledNonce = React.useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const p = route.params;
+    if (!model || !p?.nonce || handledNonce.current === p.nonce) return;
+    handledNonce.current = p.nonce;
+    if (p.editExpenseId) {
+      const e = (model.sharedExpenses ?? []).find((x) => x.id === p.editExpenseId);
+      if (e) openEdit(e);
+      return;
+    }
+    const t = (model.manualTransactions || []).find((x) => x.id === p.fromTransactionId);
+    if (t && openAdd()) {
+      setAmount(t.amount);
+      setLabel(t.label);
+      setDate(t.date);
+      setFromTxnId(t.id);
+    }
+  }, [route.params, model]);
+
   function openEdit(e: SharedExpense) {
+    setFromTxnId(e.transactionId ?? null);
     setEditingId(e.id);
     setLabel(e.label);
     setAmount(e.amount);
@@ -202,6 +229,7 @@ export default function SharedExpensesScreen() {
       paidBy,
       shares,
       splitMode: mode,
+      ...(fromTxnId ? { transactionId: fromTxnId } : {}),
       createdAt: editingId ? (model.sharedExpenses ?? []).find((x) => x.id === editingId)?.createdAt ?? Date.now() : Date.now(),
     };
     const list = model.sharedExpenses ?? [];

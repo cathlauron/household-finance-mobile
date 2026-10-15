@@ -59,6 +59,7 @@ export default function TransactionDetailScreen() {
   const entry: TransactionEntry | undefined = model ? buildTransactionsList(model).find((t) => t.id === id) : undefined;
   const raw = entry?.source === 'manual' && model ? (model.manualTransactions || []).find((m) => m.id === entry.rawId) : undefined;
   const isManual = !!raw;
+  const linkedShare = raw ? (model?.sharedExpenses ?? []).find((x) => x.transactionId === raw.id) : undefined;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -213,7 +214,14 @@ export default function TransactionDetailScreen() {
 
           <View style={[styles.group, { marginTop: 24 }]}>
             <GradientFill match={[styles.group, { marginTop: 24 }]} />
-            <Row label="Split with others" value="Shared Expenses" onPress={() => comingSoon('Shared Expenses')} />
+            {/* Turns this transaction into a shared expense (or opens the one made from it). */}
+            <Row
+              label="Split with others"
+              value={linkedShare ? `Split ${linkedShare.shares.filter((x) => x.amount > 0).length} ways` : 'No'}
+              onPress={() =>
+                navigation.navigate('SharedExpenses', linkedShare ? { editExpenseId: linkedShare.id, nonce: Date.now() } : { fromTransactionId: raw!.id, nonce: Date.now() })
+              }
+            />
             <Row label="Make it repeat" value={rule ? frequencyLabel(rule.frequency) : 'Never'} onPress={() => setRepeatOpen(true)} />
             <Row
               label="Expecting a refund"

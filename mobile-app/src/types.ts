@@ -52,6 +52,8 @@ export type SharedExpense = {
   splitMode: 'equal' | 'custom';
   note?: string;
   createdAt?: number;
+  // Made from a transaction's "Split with others": that transaction's id.
+  transactionId?: string;
 };
 
 // Shared Expenses: one person paying another back ("Settle up").

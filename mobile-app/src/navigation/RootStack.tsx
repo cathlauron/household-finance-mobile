@@ -59,7 +59,7 @@ export type RootStackParamList = {
   Travel: undefined;
   Events: undefined;
   YearlyGoals: undefined;
-  SharedExpenses: undefined;
+  SharedExpenses: { fromTransactionId?: string; editExpenseId?: string; nonce?: number } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
