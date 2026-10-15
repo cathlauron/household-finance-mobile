@@ -65,6 +65,33 @@ export function totalLiquidBalance(model: HouseholdModel): number {
   return groups.reduce((sum, group) => sum + group.reduce((s, a) => s + toNumber(a.amount), 0), 0);
 }
 
+// ---- Early / late paydays (redesign) ----
+// You might be paid a day or two before or after the expected payday. A logged payday
+// within this many days of an expected one counts as that payday, so the expected
+// amount isn't added again. The window is under half the gap between paydays, so one
+// logged payday can never stand in for two expected ones.
+function paydayWindowDays(frequency: string): number {
+  switch (frequency) {
+    case 'weekly':
+      return 3;
+    case 'biweekly':
+    case 'semimonthly':
+      return 6;
+    default:
+      return 10; // monthly, one-time
+  }
+}
+
+export function isPaydayReceived(source: IncomeSource, expectedISO: string): boolean {
+  const expected = parseISO(expectedISO);
+  if (!expected) return false;
+  const windowMs = paydayWindowDays(source.frequency) * 86400000;
+  return (source.paymentLog || []).some((e) => {
+    const got = parseISO(e.date);
+    return !!got && toNumber(e.amount) > 0 && Math.abs(stripTime(got).getTime() - stripTime(expected).getTime()) <= windowMs;
+  });
+}
+
 // ---- Live account balances (redesign) ----
 // An account's saved balance is true as of the moment the balances were last updated on
 // the Accounts page. Anything paid from or into that account since then moves it:
@@ -416,7 +443,9 @@ export function computeMonthEvents(
     const amount = toNumber(source.expectedAmount);
     const label = source.sourceName || source.category || 'Income';
     incomeOccurrencesInMonth(source, year, monthIndex).forEach((day) => {
-      if (toISO(new Date(year, monthIndex, day)) <= todayKey) return;
+      const key = toISO(new Date(year, monthIndex, day));
+      if (key <= todayKey) return;
+      if (isPaydayReceived(source, key)) return; // already logged a day or two early
       push(day, { type: 'income', label, amount });
     });
     (source.paymentLog || []).forEach((e) => {
@@ -582,7 +611,19 @@ export type LeftToSpendResult = {
 function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): Date | null {
   let earliest: Date | null = null;
   (model.income || []).forEach((source) => {
-    const next = computeNextPayDate(source.frequency as any, source.payDates || [], today);
+    let next = computeNextPayDate(source.frequency as any, source.payDates || [], today);
+    // A payday already logged early doesn't count as the next one; use the one after.
+    let guard = 0;
+    while (next && isPaydayReceived(source, toISO(next)) && guard < 6) {
+      guard++;
+      const after = new Date(next.getFullYear(), next.getMonth(), next.getDate() + 1);
+      const following = computeNextPayDate(source.frequency as any, source.payDates || [], after);
+      if (!following || following.getTime() === next.getTime()) {
+        next = null;
+        break;
+      }
+      next = following;
+    }
     if (next && (!earliest || next < earliest)) earliest = next;
   });
   return earliest;
