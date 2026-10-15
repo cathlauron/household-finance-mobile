@@ -124,7 +124,9 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
                 style={styles.calBtn}
                 accessibilityLabel={`Open calendar. Today is ${fullDate}`}
               >
-                <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
+                <Ionicons name="calendar-outline" size={17} color="#FFFFFF" />
+                {/* Today's day and date, e.g. "Thu, Oct 15" (approved mockup, option A). */}
+                <Text style={styles.calText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>{formatPeso(amount)}</Text>
@@ -234,7 +236,8 @@ const styles = StyleSheet.create({
   bTotalVal: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: 15, fontWeight: '600' },
-  calBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginTop: -6, marginRight: -6 },
+  calBtn: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 10, paddingRight: 12, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.16)', marginTop: -6, marginRight: -6 },
+  calText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   amount: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -0.5, color: '#FFFFFF', marginTop: 4 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF', opacity: 0.85 },
