@@ -7,13 +7,25 @@ import GradientFill from './GradientFill';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-export function SettingsGroup({ label, children }: { label: string; children: React.ReactNode }) {
+// `plain`: rows without icons (PlainRow), so the dividers start at the text.
+// `footer`: a small grey note under the group.
+export function SettingsGroup({
+  label,
+  footer,
+  plain,
+  children,
+}: {
+  label?: string;
+  footer?: string;
+  plain?: boolean;
+  children: React.ReactNode;
+}) {
   const { colors } = useTheme();
-  const items = React.Children.toArray(children);
+  const items = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={{ marginBottom: 24 }}>
       {/* Redesign: iPhone Settings-style grouped list */}
-      <Text
+      {!!label && <Text
         style={{
           fontSize: 13,
           fontWeight: '600',
@@ -25,7 +37,7 @@ export function SettingsGroup({ label, children }: { label: string; children: Re
         }}
       >
         {label}
-      </Text>
+      </Text>}
       <View
         style={{
           backgroundColor: colors.navy3,
@@ -40,11 +52,14 @@ export function SettingsGroup({ label, children }: { label: string; children: Re
         }} />
         {items.map((child, i) => (
           <React.Fragment key={i}>
-            {i > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4, marginLeft: 60 }} />}
+            {i > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4, marginLeft: plain ? 16 : 60 }} />}
             {child}
           </React.Fragment>
         ))}
       </View>
+      {!!footer && (
+        <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 6, marginHorizontal: 16 }}>{footer}</Text>
+      )}
     </View>
   );
 }
@@ -97,6 +112,52 @@ export function SettingsRow({
       <Text numberOfLines={1} style={{ flex: 1, fontSize: 17, color: colors.ink }}>{title}</Text>
       {!!value && <Text numberOfLines={1} style={{ fontSize: 17, color: colors.inkDim, marginRight: 6, flexShrink: 1 }}>{value}</Text>}
       <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
+    </TouchableOpacity>
+  );
+}
+
+// A row with no icon: a title, an optional grey value, and either a chevron (when it
+// opens something), a control on the right (like a Switch), or nothing.
+export function PlainRow({
+  title,
+  sub,
+  value,
+  onPress,
+  right,
+  danger,
+  accent,
+  dot,
+  testID,
+}: {
+  title: string;
+  sub?: string;
+  value?: string;
+  onPress?: () => void;
+  right?: React.ReactNode;
+  danger?: boolean;
+  accent?: boolean;
+  dot?: string;
+  testID?: string;
+}) {
+  const { colors } = useTheme();
+  const titleColor = danger ? colors.negative : accent ? colors.gold : colors.ink;
+  const content = (
+    <>
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <Text numberOfLines={1} style={{ fontSize: 17, color: titleColor }}>{title}</Text>
+        {!!sub && <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 1 }}>{sub}</Text>}
+      </View>
+      {!!dot && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: dot, marginRight: 8 }} />}
+      {!!value && <Text numberOfLines={1} style={{ fontSize: 17, color: colors.inkDim, marginRight: onPress && !right ? 6 : 0, flexShrink: 1 }}>{value}</Text>}
+      {right}
+      {!!onPress && !right && !danger && !accent && <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />}
+    </>
+  );
+  const style = { flexDirection: 'row' as const, alignItems: 'center' as const, minHeight: 52, paddingVertical: 8, paddingHorizontal: 16 };
+  if (!onPress) return <View testID={testID} style={style}>{content}</View>;
+  return (
+    <TouchableOpacity testID={testID} activeOpacity={0.7} onPress={onPress} style={style} accessibilityRole="button" accessibilityLabel={value ? `${title}, ${value}` : title}>
+      {content}
     </TouchableOpacity>
   );
 }

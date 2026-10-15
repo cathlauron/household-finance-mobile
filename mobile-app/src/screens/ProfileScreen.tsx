@@ -45,6 +45,7 @@ import {
 import { hapticLight } from '../haptics';
 import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
+import { SettingsGroup, PlainRow } from '../components/SettingsHub';
 
 export function getInitials(name: string): string {
   if (!name) return '?';
@@ -646,7 +647,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {section === 'profile' && (<>
-        {/* 1. Identity Header */}
+        {/* Profile: picture, name and email, then plain grouped rows. */}
         <View style={styles.identityHeader}>
           <TouchableOpacity
             testID="avatar-edit-button"
@@ -658,97 +659,34 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             <Avatar
               initials={getInitials(username || '')}
               config={model?.avatars?.[username || '']}
-              size={88}
+              size={96}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.editIconBtn}
-            activeOpacity={0.7}
-            onPress={() => setAvatarSheetOpen(true)}
-            accessibilityLabel="Edit profile picture"
-          >
-            <Ionicons name="create-outline" size={22} color={colors.gold} />
+            <View style={[styles.cameraBadge, { backgroundColor: colors.buttonFill, borderColor: colors.navy2 }]}>
+              <Ionicons name="camera" size={14} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
           <Text style={styles.usernameText}>@{username || 'user'}</Text>
           <Text style={styles.emailText}>{userEmail}</Text>
-          <View style={styles.vaultBadge}>
-            <Text style={styles.vaultBadgeText}>
-              {isLinked
-                ? `Shared Household Vault (${householdMemberCount} member${householdMemberCount === 1 ? '' : 's'})`
-                : 'Solo Vault (Personal)'}
-            </Text>
-          </View>
         </View>
 
-        {!!memberSinceText && (
-          <View style={styles.memberSinceCard}>
-            <GradientFill match={styles.memberSinceCard} />
-            <View style={styles.memberSinceIcon}>
-              <Ionicons name="calendar-outline" size={18} color={colors.gold} />
-            </View>
-            <View>
-              <Text style={styles.memberSinceLabel}>Member since</Text>
-              <Text style={styles.memberSinceValue}>{memberSinceText}</Text>
-            </View>
-          </View>
-        )}
+        <SettingsGroup plain>
+          <PlainRow title="Username" value={`@${username || 'user'}`} />
+          {!!memberSinceText && <PlainRow title="Member since" value={memberSinceText} />}
+        </SettingsGroup>
 
-        {/* 2. Security & Devices Shortcuts */}
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Account &amp; Security</Text>
-        <Text style={styles.sectionSub}>
-          Manage credentials, encryption keys, and device sessions.
-        </Text>
-        <View style={styles.shortcutCard}>
-          <GradientFill match={styles.shortcutCard} />
-          <TouchableOpacity
-            style={styles.shortcutItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Settings', { page: 'security' })}
-          >
-            <View style={styles.shortcutIconBubble}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={colors.gold} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>Password & Encryption Key</Text>
-              <Text style={styles.shortcutSub}>Change password and access your Secret Recovery Key</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.decor} style={{ marginLeft: 10 }} />
-          </TouchableOpacity>
-
-          <View style={styles.shortcutDivider} />
-
-          <TouchableOpacity
-            style={styles.shortcutItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Settings', { page: 'security' })}
-          >
-            <View style={styles.shortcutIconBubble}>
-              <Ionicons name="phone-portrait-outline" size={18} color={colors.gold} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>Active Devices</Text>
-              <Text style={styles.shortcutSub}>View and sign out other devices.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.decor} style={{ marginLeft: 10 }} />
-          </TouchableOpacity>
-
-          <View style={styles.shortcutDivider} />
-
-          <TouchableOpacity
-            style={styles.shortcutItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <View style={styles.shortcutIconBubble}>
-              <Ionicons name="settings-outline" size={18} color={colors.gold} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>All settings</Text>
-              <Text style={styles.shortcutSub}>All other preferences.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.decor} style={{ marginLeft: 10 }} />
-          </TouchableOpacity>
-        </View>
+        <SettingsGroup plain>
+          <PlainRow
+            testID="profile-row-household"
+            title="Household"
+            value={isLinked ? `Shared · ${householdMemberCount}` : 'Just you'}
+            onPress={() => navigation.push('Profile', { section: 'household' })}
+          />
+          <PlainRow
+            testID="profile-row-security"
+            title="Account & Security"
+            onPress={() => navigation.push('SettingsPage', { subPage: 'sec' })}
+          />
+        </SettingsGroup>
 
         </>)}
         {section === 'household' && (<>
@@ -1422,44 +1360,13 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },
+    cameraBadge: { position: 'absolute', right: 0, bottom: 0, width: 30, height: 30, borderRadius: 15, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
     identityHeader: {
       alignItems: 'center',
       paddingTop: 4,
       paddingBottom: 8,
       marginBottom: 10,
     },
-    editIconBtn: {
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    memberSinceCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 14,
-    },
-    memberSinceIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.navy2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    memberSinceLabel: { fontSize: 13, color: colors.inkDim },
-    memberSinceValue: { fontSize: 15, fontWeight: '700', color: colors.ink },
     usernameText: {
       fontSize: 19,
       fontWeight: '700',
@@ -1471,64 +1378,8 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
       marginBottom: 12,
     },
-    vaultBadge: {
-      backgroundColor: colors.navy2,
-      borderColor: colors.gold + '55',
-      borderWidth: 1,
-      borderRadius: 999,
-      paddingHorizontal: 14,
-      paddingVertical: 5,
-    },
-    vaultBadgeText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.gold,
-    },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.ink, marginBottom: 4 },
     sectionSub: { fontSize: 15, color: colors.inkDim, marginBottom: 14, lineHeight: 17 },
-    shortcutCard: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      marginBottom: 8,
-    },
-    shortcutItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-    },
-    shortcutIconBubble: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.navy2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    shortcutDivider: {
-      height: 1,
-      backgroundColor: colors.navy4,
-      marginLeft: 62,
-    },
-    shortcutTitle: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.ink,
-      marginBottom: 2,
-    },
-    shortcutSub: {
-      fontSize: 15,
-      color: colors.inkDim,
-    },
-    chevron: {
-      fontSize: 20,
-      color: colors.gold,
-      fontWeight: '600',
-      marginLeft: 10,
-    },
     lockButton: {
       backgroundColor: 'transparent',
       borderRadius: 999,
@@ -1578,7 +1429,6 @@ function makeStyles(colors: any) {
     },
     errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
     successText: { fontSize: 13, color: '#059669', marginBottom: 10 },
-    cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     hintText: { fontSize: 15, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
     dataButton: {
