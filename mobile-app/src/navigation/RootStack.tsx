@@ -16,6 +16,7 @@ import PremiumScreen from '../screens/PremiumScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import ReviewScreen from '../screens/ReviewScreen';
+import RecurringScreen from '../screens/RecurringScreen';
 import PayDetailScreen from '../screens/PayDetailScreen';
 import SubscriptionsScreen from '../screens/SubscriptionsScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
@@ -45,6 +46,7 @@ export type RootStackParamList = {
   TransactionDetail: { id: string };
   Search: undefined;
   Review: undefined;
+  Recurring: undefined;
   Subscriptions: undefined;
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
@@ -176,6 +178,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
+      <Stack.Screen name="Recurring" component={RecurringScreen} options={{ title: 'Recurring', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="TransactionDetail"

@@ -22,6 +22,7 @@ import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { requestToPayTab } from '../openToPayTabRequest';
 import { applyAutoSavings } from '../savingsPots';
+import { applyRecurring } from '../recurring';
 
 type Props = {
   username: string;
@@ -30,10 +31,13 @@ type Props = {
 export default function HomeScreen({ username }: Props) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  // Redesign: savings pots set to "add every payday" catch up when Home opens.
+  // Redesign: savings pots set to "add every payday", and repeating transactions
+  // ("Make it repeat"), catch up when Home opens.
   React.useEffect(() => {
     if (!model) return;
-    const next = applyAutoSavings(model);
+    const afterSavings = applyAutoSavings(model);
+    const afterRepeats = applyRecurring(afterSavings ?? model);
+    const next = afterRepeats ?? afterSavings;
     if (next) saveModel(next);
   }, [model, saveModel]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();

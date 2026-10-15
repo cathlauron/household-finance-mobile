@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,9 @@ import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import type { ThemeColors } from '../theme';
 import GradientFill from '../components/GradientFill';
+import BottomSheet from '../components/BottomSheet';
+import { FREQUENCY_OPTIONS, ruleForTransaction, setRepeat, stopRepeat, frequencyLabel, describeFrequency } from '../recurring';
+import type { RecurringFrequency } from '../types';
 
 // Redesign: the Transaction page from the Finance Flow mockup. Tapping a transaction
 // opens this full page (it used to expand in the list): big name and amount, then
@@ -50,6 +53,7 @@ export default function TransactionDetailScreen() {
   const route = useRoute<any>();
   const id: string = route.params?.id;
   const styles = makeStyles(colors);
+  const [repeatOpen, setRepeatOpen] = useState(false);
 
   const entry: TransactionEntry | undefined = model ? buildTransactionsList(model).find((t) => t.id === id) : undefined;
   const raw = entry?.source === 'manual' && model ? (model.manualTransactions || []).find((m) => m.id === entry.rawId) : undefined;
@@ -92,6 +96,16 @@ export default function TransactionDetailScreen() {
   const openEdit = () => {
     if (raw) navigation.navigate('Main', { screen: 'Transactions', params: { editId: raw.id, editNonce: Date.now() } });
   };
+  const rule = raw && model ? ruleForTransaction(model, raw) : undefined;
+  async function chooseRepeat(freq: RecurringFrequency | 'never') {
+    setRepeatOpen(false);
+    if (!raw || !model) return;
+    if (freq === 'never') {
+      if (rule) await save(stopRepeat(model, rule.id));
+      return;
+    }
+    await save(setRepeat(model, raw, freq));
+  }
   const comingSoon = (what: string) => Alert.alert('Coming soon', `${what} will be added in a later update.`);
 
   async function save(next: ReturnType<typeof markRefundReceived>) {
@@ -197,7 +211,7 @@ export default function TransactionDetailScreen() {
           <View style={[styles.group, { marginTop: 24 }]}>
             <GradientFill match={[styles.group, { marginTop: 24 }]} />
             <Row label="Split with others" value="Shared Expenses" onPress={() => comingSoon('Shared Expenses')} />
-            <Row label="Make it repeat" value="Never" onPress={() => comingSoon('Repeating transactions')} />
+            <Row label="Make it repeat" value={rule ? frequencyLabel(rule.frequency) : 'Never'} onPress={() => setRepeatOpen(true)} />
             <Row
               label="Expecting a refund"
               value={typeof refundExpected === 'number' ? `${formatPeso(refundExpected)}${refundReceived ? ' · received' : ''}` : 'No'}
@@ -205,6 +219,11 @@ export default function TransactionDetailScreen() {
               last
             />
           </View>
+          {rule && (
+            <Text style={styles.footer}>
+              {`${describeFrequency(rule)}. Added for you on the day; see all on Transactions › Recurring.`}
+            </Text>
+          )}
           {typeof refundExpected === 'number' && (
             <TouchableOpacity
               style={[styles.group, styles.action]}
@@ -234,6 +253,26 @@ export default function TransactionDetailScreen() {
           )}
         </>
       )}
+      <BottomSheet visible={repeatOpen} onClose={() => setRepeatOpen(false)} title="Make it repeat">
+        {[{ key: 'never' as const, label: 'Never' }, ...FREQUENCY_OPTIONS].map((o, i) => {
+          const selected = rule ? rule.frequency === o.key : o.key === 'never';
+          return (
+            <TouchableOpacity
+              key={o.key}
+              style={[styles.row, i > 0 && styles.rowTop]}
+              onPress={() => chooseRepeat(o.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+            >
+              <Text style={styles.rowLabel}>{o.label}</Text>
+              {selected && <Ionicons name="checkmark" size={20} color={colors.gold} />}
+            </TouchableOpacity>
+          );
+        })}
+        <Text style={[styles.footer, { marginHorizontal: 0, marginTop: 10 }]}>
+          The next ones are added for you on the day, with the same amount, category and account.
+        </Text>
+      </BottomSheet>
     </ScrollView>
   );
 }
@@ -249,6 +288,7 @@ function makeStyles(colors: ThemeColors) {
     when: { fontSize: 15, color: colors.inkDim, marginTop: 4 },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
     row: { flexDirection: 'row', alignItems: 'center', minHeight: 50, paddingHorizontal: 16, paddingVertical: 10 },
+    rowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },
     rowLabel: { fontSize: 17, color: colors.ink, flex: 1 },
     rowValue: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },

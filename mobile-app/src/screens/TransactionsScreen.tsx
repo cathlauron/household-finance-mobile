@@ -207,15 +207,27 @@ export default function TransactionsScreen() {
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          testID="transactions-search"
-          onPress={() => (navigation as any).navigate('Search')}
-          accessibilityRole="button"
-          accessibilityLabel="Search"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="search" size={22} color={colors.gold} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+          {/* Redesign: repeating transactions (Recurring page). */}
+          <TouchableOpacity
+            testID="transactions-recurring"
+            onPress={() => (navigation as any).navigate('Recurring')}
+            accessibilityRole="button"
+            accessibilityLabel="Recurring transactions"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="repeat" size={24} color={colors.gold} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="transactions-search"
+            onPress={() => (navigation as any).navigate('Search')}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="search" size={22} color={colors.gold} />
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation, colors.gold]);

@@ -8,6 +8,9 @@
 // ============================================================
 
 export type Settings = {
+  // Redesign (Recurring page): when on, repeats are still added on the day but marked
+  // "To review" so you can check each one.
+  recurringAskFirst?: boolean;
   currency: string;
   notifyDaysBefore: number;
   cautionThresholdPercent: number;
@@ -362,6 +365,29 @@ export type ManualTransaction = {
   // reviewWhy says why, e.g. 'Filled in by your rule' or 'Imported from a spreadsheet'.
   needsReview?: boolean;
   reviewWhy?: string;
+  // Redesign ("Make it repeat"): set on transactions added by a repeat, pointing at it.
+  recurringId?: string;
+};
+
+// Redesign ("Make it repeat" / Recurring page): a transaction that is added for you on a
+// schedule. Made from an existing transaction (its first occurrence). nextDate is the
+// next day one should be added; src/recurring.ts adds every one that has come due.
+export type RecurringFrequency = 'weekly' | 'every2weeks' | 'monthly' | 'yearly';
+
+export type RecurringRule = {
+  id: string;
+  label: string;
+  amount: number;
+  direction: 'in' | 'out' | 'saving';
+  owner: string;
+  category?: string;
+  notes?: string;
+  paymentMethod?: PaymentMethod;
+  frequency: RecurringFrequency;
+  startDate: string; // the first occurrence (the transaction it was made from)
+  nextDate: string; // the next date to add
+  sourceTxnId?: string;
+  createdAt?: number;
 };
 
 export type Category = {
@@ -424,6 +450,7 @@ export type HouseholdModel = {
   mealIdeas?: MealIdea[];
   travel?: TravelTrip[];
   events?: EventItem[];
+  recurring?: RecurringRule[];
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];

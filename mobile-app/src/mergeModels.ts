@@ -112,6 +112,7 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
       checklist: sanitizeIdList(trip.checklist, 'travelitem', seenTravelItems),
     })),
     events: sanitizeIdList(model.events ?? [], 'event'),
+    recurring: sanitizeIdList(model.recurring ?? [], 'repeat'),
     yearlyGoals: sanitizeIdList(model.yearlyGoals ?? [], 'ygoal'),
     payees: sanitizeIdList(model.payees ?? [], 'payee'),
     categorizationRules: sanitizeIdList(model.categorizationRules ?? [], 'rule'),
@@ -251,6 +252,16 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     mealIdeas: [...(a.mealIdeas ?? []), ...(b.mealIdeas ?? [])],
     travel: [...(a.travel ?? []), ...(b.travel ?? [])],
     events: [...(a.events ?? []), ...(b.events ?? [])],
+    // The same repeat on both sides is kept once (the one further along wins), so it
+    // can't be added twice.
+    recurring: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['recurring']>[number]>();
+      [...(a.recurring ?? []), ...(b.recurring ?? [])].forEach((r) => {
+        const seen = byId.get(r.id);
+        if (!seen || r.nextDate > seen.nextDate) byId.set(r.id, r);
+      });
+      return [...byId.values()];
+    })(),
     yearlyGoals: [...(a.yearlyGoals ?? []), ...(b.yearlyGoals ?? [])],
     payees: mergedPayees,
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
