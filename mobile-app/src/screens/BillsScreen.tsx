@@ -26,6 +26,8 @@ import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, pa
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT } from '../components/SimpleForm';
+import { paymentMethodColor } from '../components/CardFace';
 
 function billAmount(bill: Bill): number {
   // Redesign: the amount of the cycle that's due next (paid cycles are history).
@@ -79,6 +81,7 @@ function sortByNextDue(bills: Bill[]): Bill[] {
 
 const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
+const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Subscription', 'School', 'Other'];
 
 type BillsScreenProps = {
   openBillId?: string;
@@ -134,6 +137,27 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  // Simple form: which row's choices are open (one at a time).
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  useEffect(() => {
+    if (!modalOpen) setOpenRow(null);
+  }, [modalOpen]);
+  const toggleRow = (r: string) => setOpenRow((cur) => (cur === r ? null : r));
+  const dueLabel =
+    recurTypeInput === 'onetime'
+      ? onetimeDateInput
+        ? new Date(onetimeDateInput + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'Choose'
+      : recurTypeInput === 'monthly'
+      ? dayInput ? `the ${ordinal(parseInt(dayInput, 10))}` : 'Choose'
+      : dayInput && monthInput ? `${MONTHS_SHORT[parseInt(monthInput, 10) - 1] ?? ''} ${parseInt(dayInput, 10)}` : 'Choose';
+  const nextDueDate =
+    recurTypeInput === 'onetime'
+      ? (onetimeDateInput ? new Date(onetimeDateInput + 'T00:00:00') : null)
+      : getNextDueDate(recurTypeInput, recurTypeInput === 'monthly' ? { day: dayInput } : { day: dayInput, month: monthInput ? parseInt(monthInput, 10) : '' });
+  const nextDueText = nextDueDate && !isNaN(nextDueDate.getTime())
+    ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${nextDueDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
+    : '';
 
   if (!model) {
     return (
@@ -482,174 +506,70 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
 
       </PullToRefreshScrollView>
 
+      {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit bill' : 'New bill'}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <Text style={styles.inputLabel}>Bill name</Text>
-                <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="e.g. Meralco, Netflix, Car insurance"
-                  placeholderTextColor={colors.inkFaint}
-                  value={nameInput}
-                  onChangeText={setNameInput}
-                />
+        <BigAmount label="Amount due" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
 
-                <Text style={styles.inputLabel}>Category (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Utilities, Subscription"
-                  placeholderTextColor={colors.inkFaint}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                />
-
-                <Text style={styles.inputLabel}>Amount</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={amountInput}
-                  onChangeAmount={setAmountInput}
-                />
-
-                <Text style={styles.inputLabel}>Repeats</Text>
-                <View style={styles.pillRow}>
-                  {RECUR_TYPES.map((rt) => (
-                    <Pill
-                      key={rt}
-                      label={recurringTypeLabel(rt)}
-                      tone="sheet"
-                      fill
-                      active={recurTypeInput === rt}
-                      onPress={() => setRecurTypeInput(rt)}
-                    />
-                  ))}
-                </View>
-
-                {recurTypeInput === 'onetime' && (
-                <DateField
-                  label="Due date"
-                  value={onetimeDateInput}
-                  onChange={setOnetimeDateInput}
-                  placeholder="2025-03-15"
-                  clearable
-                  testID="bill-due-date-field"
-                />
-              )}
-
-                {recurTypeInput === 'monthly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 15"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="number-pad"
-                      value={dayInput}
-                      onChangeText={setDayInput}
-                    />
-                  </>
-                )}
-
+        <FormGroup>
+          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" />
+          <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
+            <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
+            <TextInput
+              style={styles.inlineField}
+              placeholder="Or type your own"
+              placeholderTextColor={colors.inkFaint}
+              value={BILL_CATEGORIES.includes(categoryInput) ? '' : categoryInput}
+              onChangeText={setCategoryInput}
+            />
+          </PickerRow>
+          <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+            <Choices
+              options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }]}
+              value={recurTypeInput as any}
+              onChange={(v) => setRecurTypeInput(v as RecurringType)}
+            />
+          </PickerRow>
+          <PickerRow label="Due on" value={dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+            {recurTypeInput === 'onetime' ? (
+              <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
+            ) : (
+              <>
                 {recurTypeInput === 'annual' && (
-                  <View style={styles.row2}>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Month (1–12)</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 3"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={monthInput}
-                        onChangeText={setMonthInput}
-                      />
-                    </View>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Day</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 15"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={dayInput}
-                        onChangeText={setDayInput}
-                      />
-                    </View>
+                  <View style={{ marginBottom: 10 }}>
+                    <Choices options={MONTHS_SHORT.map((m, i) => ({ id: String(i + 1), label: m }))} value={monthInput} onChange={setMonthInput} />
                   </View>
                 )}
+                <DayStrip value={parseInt(dayInput, 10) || null} onChange={(d) => setDayInput(String(d))} />
+              </>
+            )}
+          </PickerRow>
+          <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
+          </PickerRow>
+        </FormGroup>
 
-                <Text style={styles.inputLabel}>Priority (optional)</Text>
-                <View style={styles.pillRow}>
-                  {PRIORITIES.map((p) => (
-                    <Pill
-                      key={p}
-                      label={p.charAt(0).toUpperCase() + p.slice(1)}
-                      tone="sheet"
-                      fill
-                      active={priorityInput === p}
-                      onPress={() => setPriorityInput(priorityInput === p ? '' : p)}
-                    />
-                  ))}
-                </View>
+        <FormGroup>
+          <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
+          <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
+            <Text style={styles.inlineLabel}>Priority</Text>
+            <Choices
+              options={PRIORITIES.map((pr) => ({ id: pr, label: pr.charAt(0).toUpperCase() + pr.slice(1) }))}
+              value={priorityInput as any}
+              onChange={(pr) => setPriorityInput(priorityInput === pr ? '' : pr)}
+            />
+            <Text style={[styles.inlineLabel, { marginTop: 12 }]}>Note</Text>
+            <TextInput style={styles.inlineField} placeholder="Optional" placeholderTextColor={colors.inkFaint} value={notesInput} onChangeText={setNotesInput} multiline />
+          </PickerRow>
+        </FormGroup>
 
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}
-                  onPress={() => { hapticSelection(); setSubscriptionInput((prev) => !prev); }}
-                >
-                  <View
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      borderWidth: 2,
-                      borderColor: subscriptionInput ? colors.gold : colors.inkFaint,
-                      backgroundColor: subscriptionInput ? colors.gold : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 10,
-                    }}
-                  >
-                    <GradientFill match={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      borderWidth: 2,
-                      borderColor: subscriptionInput ? colors.gold : colors.inkFaint,
-                      backgroundColor: subscriptionInput ? colors.gold : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 10,
-                    }} />
-                    {subscriptionInput && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
-                  </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink }}>Subscription</Text>
-                </TouchableOpacity>
-
-                <PaymentMethodPicker
-                  value={paymentMethodInput}
-                  onChange={setPaymentMethodInput}
-                  debitAccounts={model.balanceAccounts.debit}
-                  creditAccounts={model.balanceAccounts.credit}
-                />
-
-                <Text style={styles.inputLabel}>Notes (optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.notesInput]}
-                  placeholder="Optional notes"
-                  placeholderTextColor={colors.inkFaint}
-                  value={notesInput}
-                  onChangeText={setNotesInput}
-                  multiline
-                />
-
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {!!nextDueText && <Footnote>{nextDueText}</Footnote>}
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -744,6 +664,8 @@ function makeStyles(colors: any) {
     },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
+    inlineLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 },
+    inlineField: { marginTop: 10, backgroundColor: colors.navy2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.ink },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
