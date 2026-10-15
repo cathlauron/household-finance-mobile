@@ -28,7 +28,8 @@ export function RowInteractionPreview({ mode }: RowInteractionPreviewProps) {
           Animated.delay(900),
           Animated.timing(translateX, { toValue: 0, duration: 320, useNativeDriver: true }),
           Animated.delay(400),
-        ])
+        ]),
+        { iterations: 3 }
       );
     } else {
       loop = Animated.loop(
@@ -38,7 +39,8 @@ export function RowInteractionPreview({ mode }: RowInteractionPreviewProps) {
           Animated.delay(1200),
           Animated.timing(expand, { toValue: 0, duration: 220, useNativeDriver: false }),
           Animated.delay(500),
-        ])
+        ]),
+        { iterations: 3 }
       );
     }
 

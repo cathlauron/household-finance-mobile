@@ -433,6 +433,22 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     setLinkBusy(false);
   }
 
+  // Cancels the open invite/link code without making a new one.
+  async function handleCancelInvite() {
+    const oldCode = linkCode;
+    setLinkBusy(true);
+    try {
+      if (oldCode) await cancelLinkCode(oldCode);
+    } catch {}
+    if (username) await clearPendingHostLink(username).catch(() => {});
+    clearLinkCodeExpiryTimer();
+    setLinkCode('');
+    setLinkSecretHex('');
+    setHostFinishMsg('');
+    setLinkErrorMsg('');
+    setLinkBusy(false);
+  }
+
   async function handleStartOverLinking() {
     const oldCode = linkCode;
     if (oldCode) {
@@ -1131,8 +1147,16 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   {linkBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
-                    <Text style={styles.cancelButtonText}>Cancel invite / generate new code</Text>
+                    <Text style={styles.cancelButtonText}>Generate a new code</Text>
                   )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]}
+                  onPress={handleCancelInvite}
+                  disabled={linkBusy}
+                >
+                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]} />
+                  <Text style={[styles.cancelButtonText, { color: colors.error }]}>Cancel invite</Text>
                 </TouchableOpacity>
                 {!!cooldownActive && (
                   <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
@@ -1221,8 +1245,16 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                   {linkBusy ? (
                     <ActivityIndicator color={colors.gold} />
                   ) : (
-                    <Text style={styles.cancelButtonText}>Code expired? Start over with a new code</Text>
+                    <Text style={styles.cancelButtonText}>Generate a new code</Text>
                   )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]}
+                  onPress={handleCancelInvite}
+                  disabled={linkBusy}
+                >
+                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]} />
+                  <Text style={[styles.cancelButtonText, { color: colors.error }]}>Cancel invite</Text>
                 </TouchableOpacity>
                 {!!cooldownActive && (
                   <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>

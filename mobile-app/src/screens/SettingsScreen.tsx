@@ -1279,22 +1279,20 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         {inPage('listrows') && (
         <>
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>List Rows</Text>
-<Text style={styles.sectionSub}>
-  Swipe left to delete, or tap the row open and delete from inside.
-</Text>
-        <View style={styles.modeRow}>
-          <Pill
-            label="Swipe to delete"
-            fill
-            active={!!model.settings.swipeToDeleteEnabled}
-            onPress={() => handleSetSwipeToDelete(true)}
-          />
-          <Pill
-            label="Tap to open"
-            fill
-            active={!model.settings.swipeToDeleteEnabled}
-            onPress={() => handleSetSwipeToDelete(false)}
-          />
+<View style={styles.feelGroup}>
+          <GradientFill match={styles.feelGroup} />
+          <View style={styles.feelRow}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.feelTitle}>Swipe to delete</Text>
+              <Text style={styles.sectionSub}>Off: tap a row to open it, then delete from inside</Text>
+            </View>
+            <Switch
+              testID="settings-swipe-delete"
+              value={!!model.settings.swipeToDeleteEnabled}
+              onValueChange={(on) => handleSetSwipeToDelete(on)}
+              trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
+            />
+          </View>
         </View>
         <RowInteractionPreview mode={model.settings.swipeToDeleteEnabled ? 'swipe' : 'tap'} />
 
