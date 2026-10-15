@@ -88,7 +88,12 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
 
   const billRemindersOn = model.settings.pushNotificationsEnabled;
   const weeklyRecapOn = model.settings.weeklyRecapEnabled;
-  if (!billRemindersOn && !weeklyRecapOn) return;
+  // Redesign: "Remind me to cancel by…" on Subscriptions is something you asked for
+  // directly, so it is scheduled even when the general bill reminders are off.
+  const cancelByBills = model.bills.filter(
+    (b) => b.isSubscription && b.subscriptionStatus !== 'cancelled' && !!b.cancelBy
+  );
+  if (!billRemindersOn && !weeklyRecapOn && cancelByBills.length === 0) return;
 
   const permission = await Notifications.getPermissionsAsync();
   if (permission.status !== 'granted') return;
@@ -99,7 +104,9 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   const now = new Date();
 
   if (billRemindersOn) for (const bill of model.bills) {
-    if (bill.isSubscription && bill.subscriptionStatus !== 'cancelled') continue; // handled by subscription cancel-reminder below
+    // Subscriptions are handled below. A cancelled one has stopped, so no "due soon"
+    // alert either (this used to fire for cancelled subscriptions by mistake).
+    if (bill.isSubscription) continue;
     if (billOutstanding(bill) <= 0) continue; // already paid — nothing to alert about
     const nextDue = getNextDueDate(bill.recurringType, bill.dueDate, now);
     if (!nextDue) continue;
@@ -131,6 +138,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   // notification can deep-link straight to this bill.
   if (billRemindersOn) for (const bill of model.bills) {
     if (!bill.isSubscription || bill.subscriptionStatus === 'cancelled') continue;
+    if (bill.cancelBy) continue; // you already chose a cancel-by date; that reminder covers it
     if (billOutstanding(bill) <= 0) continue;
     const nextRenewal = getNextDueDate(bill.recurringType, bill.dueDate, now);
     if (!nextRenewal) continue;
@@ -151,6 +159,39 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: reminderDate,
+      },
+    });
+  }
+
+  // ============================================================
+  // Cancel-by reminders (redesign)
+  // ============================================================
+  // On the "cancel by" day you set on Subscriptions, at 9:00 AM. If you set it for
+  // today and 9:00 has already gone, it comes a minute later instead. Tapping it opens
+  // the subscription, like the reminder above.
+  for (const bill of cancelByBills) {
+    const [y, m, d] = (bill.cancelBy as string).split('-').map(Number);
+    if (!y || !m || !d) continue;
+    let when = new Date(y, m - 1, d, 9, 0, 0, 0);
+    const endOfDay = new Date(y, m - 1, d, 23, 59, 0, 0);
+    if (when.getTime() <= now.getTime()) {
+      if (endOfDay.getTime() <= now.getTime()) continue; // that day has passed
+      when = new Date(now.getTime() + 60 * 1000);
+    }
+    const renewal = getNextDueDate(bill.recurringType, bill.dueDate, now);
+    const amount = billOutstanding(bill);
+    const renewText = renewal
+      ? ` before it renews ${renewal.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}${amount > 0 ? ` for ${formatPeso(amount)}` : ''}`
+      : '';
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Cancel ${bill.name || 'your subscription'} today`,
+        body: `You asked to be reminded to cancel${renewText}.`,
+        data: { type: 'subscriptionReminder', billId: bill.id },
+      },
+      trigger: {
+        type: SchedulableTriggerInputTypes.DATE,
+        date: when,
       },
     });
   }

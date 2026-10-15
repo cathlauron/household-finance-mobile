@@ -8,6 +8,7 @@ import { formatPeso } from '../balanceProjection';
 import { currentCycle, paidCycles } from '../billPayments';
 import { accountLabel } from '../transactionActions';
 import { todayISO } from '../dateUtils';
+import { requestNotificationPermission } from '../pushNotifications';
 import type { ThemeColors } from '../theme';
 import type { Bill } from '../types';
 import GradientFill from '../components/GradientFill';
@@ -74,7 +75,24 @@ export default function SubscriptionsScreen() {
   function actions(b: Bill) {
     const due = currentCycle(b)?.dueDate;
     Alert.alert(b.name || 'Subscription', undefined, [
-      ...(due && !b.cancelBy ? [{ text: `Remind me to cancel by ${short(dayBefore(due))}`, onPress: () => update(b.id, { cancelBy: dayBefore(due) }) }] : []),
+      ...(due && !b.cancelBy
+        ? [
+            {
+              text: `Remind me to cancel by ${short(dayBefore(due))}`,
+              onPress: async () => {
+                // The reminder is a phone notification, so make sure the app may send one.
+                const allowed = await requestNotificationPermission().catch(() => false);
+                await update(b.id, { cancelBy: dayBefore(due) });
+                if (!allowed) {
+                  Alert.alert(
+                    'Notifications are off',
+                    "We'll still show this under Needs a look, but to get the reminder on your phone, allow notifications for this app in your phone's settings."
+                  );
+                }
+              },
+            },
+          ]
+        : []),
       ...(b.cancelBy ? [{ text: 'Keep it (clear the reminder)', onPress: () => update(b.id, { cancelBy: undefined }) }] : []),
       {
         text: 'Mark as cancelled',
