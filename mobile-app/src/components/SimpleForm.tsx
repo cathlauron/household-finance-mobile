@@ -16,22 +16,67 @@ import type { ThemeColors } from '../theme';
 // iPhone Settings). Tapping a row opens its choices right under it; tap again to close.
 // Extras live under "More details". One short grey line at the bottom says what happens.
 
-export function SheetBar({ title, onCancel, onDone, doneLabel, busy }: { title: string; onCancel: () => void; onDone: () => void; doneLabel: string; busy?: boolean }) {
+// Top bar of a sheet: Cancel / title / Done. `doneDisabled` fades Done until the form is
+// ready; `hideCancel` leaves just the title and Done (e.g. a final "all done" step).
+export function SheetBar({ title, onCancel, onDone, doneLabel, busy, doneDisabled, hideCancel }: { title: string; onCancel: () => void; onDone: () => void; doneLabel: string; busy?: boolean; doneDisabled?: boolean; hideCancel?: boolean }) {
   const { colors } = useTheme();
+  const off = !!busy || !!doneDisabled;
   return (
     <View style={bar.row}>
-      <TouchableOpacity onPress={onCancel} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Text style={[bar.btn, { color: colors.gold }]}>Cancel</Text>
+      <TouchableOpacity onPress={onCancel} disabled={hideCancel} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={bar.side}>
+        {!hideCancel && <Text style={[bar.btn, { color: colors.gold }]}>Cancel</Text>}
       </TouchableOpacity>
       <Text style={[bar.title, { color: colors.ink }]} numberOfLines={1}>{title}</Text>
-      <TouchableOpacity onPress={onDone} disabled={busy} accessibilityRole="button" testID="simple-form-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Text style={[bar.btn, { color: colors.gold, fontWeight: '700', opacity: busy ? 0.5 : 1 }]}>{doneLabel}</Text>
+      <TouchableOpacity onPress={onDone} disabled={off} accessibilityRole="button" accessibilityState={{ disabled: off }} testID="simple-form-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[bar.side, { alignItems: 'flex-end' }]}>
+        <Text style={[bar.btn, { color: colors.gold, fontWeight: '700', opacity: off ? 0.4 : 1 }]}>{doneLabel}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
+// A password typed in a form row: label on the left, dots on the right, eye to show it.
+export function PasswordRow({ label, value, onChangeText, placeholder, autoFocus, testID }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; autoFocus?: boolean; testID?: string }) {
+  const { colors } = useTheme();
+  const s = rowStyles(colors);
+  const [hidden, setHidden] = useState(true);
+  return (
+    <View style={s.row}>
+      <Text style={[s.label, { width: 92 }]}>{label}</Text>
+      <TextInput
+        testID={testID}
+        autoFocus={autoFocus}
+        style={s.input}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.inkFaint}
+        secureTextEntry={hidden}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <TouchableOpacity onPress={() => setHidden((h) => !h)} hitSlop={10} accessibilityLabel={hidden ? 'Show password' : 'Hide password'}>
+        <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.inkFaint} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// Icon in a soft circle, a title and a line of explanation, centred at the top of a sheet.
+export function SheetHero({ icon, title, sub, tone = 'accent' }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; sub?: string; tone?: 'accent' | 'ok' }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ alignItems: 'center', paddingHorizontal: 12, marginBottom: 20 }}>
+      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: tone === 'ok' ? colors.okBg : colors.accentTint, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={26} color={tone === 'ok' ? colors.ok : colors.gold} />
+      </View>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: colors.ink, marginTop: 12, textAlign: 'center' }}>{title}</Text>
+      {!!sub && <Text style={{ fontSize: 15, lineHeight: 20, color: colors.inkDim, marginTop: 4, textAlign: 'center' }}>{sub}</Text>}
+    </View>
+  );
+}
+
 const bar = StyleSheet.create({
+  side: { minWidth: 64 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 8, gap: 12 },
   btn: { fontSize: 17 },
   title: { fontSize: 17, fontWeight: '700', flexShrink: 1 },

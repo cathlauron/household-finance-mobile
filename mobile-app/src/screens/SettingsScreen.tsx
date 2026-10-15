@@ -4,7 +4,7 @@ import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
 import LogoMark from '../components/LogoMark';
@@ -31,7 +31,7 @@ import {
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
 import { SettingsGroup, SettingsRow, PlainRow, SegmentRow } from '../components/SettingsHub';
-import { PickerRow, Choices, AmountRow } from '../components/SimpleForm';
+import { PickerRow, Choices, AmountRow, SheetBar, FormGroup, PasswordRow, SheetHero } from '../components/SimpleForm';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -576,6 +576,20 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   const [openRow, setOpenRow] = useState<string | null>(null);
   const toggleRow = (key: string) => setOpenRow((o) => (o === key ? null : key));
   const [passSheetOpen, setPassSheetOpen] = useState(false);
+  const passDone = passChangeMsg === 'Password changed.';
+  function closePassSheet() {
+    setPassSheetOpen(false);
+    setCurrentPassInput('');
+    setNewPass1Input('');
+    setNewPass2Input('');
+    setTimeout(() => setPassChangeMsg(''), 300);
+  }
+  function openRecoverySheet() {
+    setRetroactiveVerifyPass('');
+    setRetroactiveError('');
+    setRetroactiveSuccessCode(null);
+    setRetroactiveModalOpen(true);
+  }
 
   const settingSwitch = (value: boolean, onChange: (on: boolean) => void, testID?: string) => (
     <Switch
@@ -1233,12 +1247,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
             testID="settings-recovery-key"
             title="Secret Recovery Key"
             value={hasRecoveryKey === false ? 'Needs a new one' : hasRecoveryKey === true ? 'Active' : undefined}
-            onPress={() => {
-              setRetroactiveVerifyPass('');
-              setRetroactiveError('');
-              setRetroactiveSuccessCode(null);
-              setRetroactiveModalOpen(true);
-            }}
+            onPress={openRecoverySheet}
           />
         </SettingsGroup>
         {hasRecoveryKey === false && (
@@ -1614,44 +1623,64 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         </>
         )}
       </PullToRefreshScrollView>
-      <BottomSheet visible={passSheetOpen} onClose={() => setPassSheetOpen(false)} title="Change password">
-        <Text style={styles.sectionSub}>Used to sign in and to encrypt your data on this phone.</Text>
-        <Text style={styles.inputLabel}>Current password</Text>
-        <PasswordField
-          testID="current-password-input"
-          style={styles.input}
-          value={currentPassInput}
-          onChangeText={setCurrentPassInput}
-          placeholder="Enter your current password"
-          autoFocus
-        />
-        <Text style={styles.inputLabel}>New password</Text>
-        <PasswordField
-          testID="new-password-input"
-          style={styles.input}
-          value={newPass1Input}
-          onChangeText={setNewPass1Input}
-          placeholder="At least 6 characters"
-        />
-        <Text style={styles.inputLabel}>Confirm new password</Text>
-        <PasswordField
-          testID="confirm-new-password-input"
-          style={styles.input}
-          value={newPass2Input}
-          onChangeText={setNewPass2Input}
-          placeholder="Type it again"
-        />
-        {!!passChangeMsg && (
-          <Text style={passChangeMsg === 'Password changed.' ? styles.successText : styles.errorText}>{passChangeMsg}</Text>
+      {/* Change password: Cancel / Save sheet, then a "Password changed" step. */}
+      <BottomSheet
+        visible={passSheetOpen}
+        onClose={closePassSheet}
+        grouped
+        header={
+          passDone ? (
+            <SheetBar title="Change password" onCancel={closePassSheet} onDone={closePassSheet} doneLabel="Done" hideCancel />
+          ) : (
+            <SheetBar
+              title="Change password"
+              onCancel={closePassSheet}
+              onDone={handleChangePassword}
+              doneLabel="Save"
+              busy={passChangeBusy}
+              doneDisabled={!currentPassInput || !newPass1Input || !newPass2Input}
+            />
+          )
+        }
+      >
+        {passDone ? (
+          <>
+            <SheetHero icon="checkmark" tone="ok" title="Password changed" sub="Use your new password next time you sign in." />
+            {hasRecoveryKey === false && (
+              <>
+                <FormGroup>
+                  <TouchableOpacity
+                    style={styles.sheetAccentRow}
+                    onPress={() => {
+                      closePassSheet();
+                      setTimeout(openRecoverySheet, 350);
+                    }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.sheetAccentText, { color: colors.gold }]}>Make a new recovery key</Text>
+                  </TouchableOpacity>
+                </FormGroup>
+                <Text style={[styles.sheetNote, { color: colors.orange }]}>
+                  Your old recovery key stopped working when your password changed. Make a new one now so you can always get back in.
+                </Text>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <SheetHero icon="lock-closed-outline" title="Change your password" sub="Used to sign in and to encrypt your data on this phone." />
+            <FormGroup>
+              <PasswordRow testID="current-password-input" label="Current" value={currentPassInput} onChangeText={setCurrentPassInput} placeholder="Current password" autoFocus />
+            </FormGroup>
+            <FormGroup>
+              <PasswordRow testID="new-password-input" label="New" value={newPass1Input} onChangeText={setNewPass1Input} placeholder="New password" />
+              <PasswordRow testID="confirm-new-password-input" label="Confirm" value={newPass2Input} onChangeText={setNewPass2Input} placeholder="Type it again" />
+            </FormGroup>
+            <Text style={[styles.sheetNote, passChangeMsg ? { color: colors.error } : null]}>
+              {passChangeMsg || 'At least 6 characters.'}
+            </Text>
+          </>
         )}
-        <Button
-          testID="change-password-button"
-          label="Change password"
-          onPress={handleChangePassword}
-          loading={passChangeBusy}
-          disabled={passChangeBusy}
-          style={{ marginTop: 6 }}
-        />
       </BottomSheet>
       <CsvImportModal visible={csvOpen} onClose={() => setCsvOpen(false)} />
 
@@ -1816,121 +1845,65 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         </Pressable>
       </Modal>
 
-      {/* Retroactive Recovery Key Modal */}
-      <Modal
+      {/* Secret Recovery Key: enter your password (Next), then see and copy the new key (Done). */}
+      <BottomSheet
         visible={retroactiveModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRetroactiveModalOpen(false)}
+        onClose={() => setRetroactiveModalOpen(false)}
+        grouped
+        header={
+          retroactiveSuccessCode ? (
+            <SheetBar title="Recovery key" onCancel={() => setRetroactiveModalOpen(false)} onDone={() => setRetroactiveModalOpen(false)} doneLabel="Done" hideCancel />
+          ) : (
+            <SheetBar
+              title="Recovery key"
+              onCancel={() => setRetroactiveModalOpen(false)}
+              onDone={handleGenerateRetroactiveRecoveryKey}
+              doneLabel="Next"
+              busy={retroactiveBusy}
+              doneDisabled={!retroactiveVerifyPass}
+            />
+          )
+        }
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setRetroactiveModalOpen(false)}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <GradientFill match={styles.modalCard} />
-            <Text style={styles.modalTitle}>Secret Recovery Key</Text>
-
-            {!retroactiveSuccessCode ? (
-              <>
-                <Text style={styles.sectionSub}>
-      Enter your password to generate a new Secret Recovery Key.
-    </Text>
-                <Text style={styles.inputLabel}>Current Password</Text>
-                <PasswordField
-                  autoFocus
-                  style={styles.input}
-                  placeholder="Enter your current password"
-                  value={retroactiveVerifyPass}
-                  onChangeText={setRetroactiveVerifyPass}
-                />
-                {!!retroactiveError && <Text style={styles.errorText}>{retroactiveError}</Text>}
-
-                <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    (!retroactiveVerifyPass || retroactiveBusy) && { opacity: 0.4 },
-                  ]}
-                  disabled={!retroactiveVerifyPass || retroactiveBusy}
-                  onPress={handleGenerateRetroactiveRecoveryKey}
-                >
-                  <GradientFill match={[
-                    styles.saveButton,
-                    (!retroactiveVerifyPass || retroactiveBusy) && { opacity: 0.4 },
-                  ]} />
-                  {retroactiveBusy ? (
-                    <ActivityIndicator color={colors.navy2} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Generate Key</Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.sectionSub}>
-      Save this somewhere safe — it's the only way to recover your data if you forget your password:
-    </Text>
-                <View
-                  style={{
-                    backgroundColor: colors.navy3,
-                    borderRadius: 8,
-                    paddingVertical: 14,
-                    paddingHorizontal: 12,
-                    marginVertical: 12,
-                    alignItems: 'center',
-                  }}
-                >
-                  <GradientFill match={{
-                    backgroundColor: colors.navy3,
-                    borderRadius: 8,
-                    paddingVertical: 14,
-                    paddingHorizontal: 12,
-                    marginVertical: 12,
-                    alignItems: 'center',
-                  }} />
-                  <Text
-                    selectable
-                    style={{
-                      fontSize: 18,
-                      fontWeight: '700',
-                      letterSpacing: 2,
-                      color: colors.gold,
-                    }}
-                  >
-                    {retroactiveSuccessCode}
-                  </Text>
-                </View>
-                <Text style={[styles.hintText, { marginBottom: 12 }]}>
-      Keep it somewhere private, like your password manager's notes.
-    </Text>
-                                <TouchableOpacity
-                  style={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
-                  onPress={async () => {
-                    if (!retroactiveSuccessCode) return;
-                    await Clipboard.setStringAsync(retroactiveSuccessCode);
-                    setRecoveryCopied(true);
-                    setTimeout(() => setRecoveryCopied(false), 2000);
-                  }}
-                >
-                                  <GradientFill match={[styles.dataButton, { alignSelf: 'stretch', marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} />
-                  <Ionicons
-                    name={recoveryCopied ? 'checkmark' : 'copy-outline'}
-                    size={16}
-                    color={colors.gold}
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={styles.dataButtonText}>
-                    {recoveryCopied ? 'Copied!' : 'Copy Recovery Key'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-              <Button
-                variant="quiet"
-                label="Close"
-                onPress={() => setRetroactiveModalOpen(false)}
-              />
-          </Pressable>
-        </Pressable>
-      </Modal>
+        {!retroactiveSuccessCode ? (
+          <>
+            <SheetHero icon="key-outline" title="Secret Recovery Key" sub="A 16-character key that gets you back in if you ever forget your password." />
+            <FormGroup>
+              <PasswordRow label="Password" value={retroactiveVerifyPass} onChangeText={setRetroactiveVerifyPass} placeholder="Your current password" autoFocus />
+            </FormGroup>
+            <Text style={[styles.sheetNote, retroactiveError ? { color: colors.error } : null]}>
+              {retroactiveError || (retroactiveBusy ? 'Making your new key…' : 'Making a new key replaces your old one, which stops working.')}
+            </Text>
+          </>
+        ) : (
+          <>
+            <SheetHero icon="key-outline" title="Your new key" sub="Save it somewhere safe. It's the only way back in if you forget your password." />
+            <FormGroup>
+              <View style={{ paddingVertical: 22, paddingHorizontal: 12, alignItems: 'center' }}>
+                <Text selectable adjustsFontSizeToFit numberOfLines={1} style={[styles.recoveryKeyText, { color: colors.gold }]}>
+                  {retroactiveSuccessCode}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.sheetAccentRow}
+                accessibilityRole="button"
+                onPress={async () => {
+                  if (!retroactiveSuccessCode) return;
+                  await Clipboard.setStringAsync(retroactiveSuccessCode);
+                  setRecoveryCopied(true);
+                  setTimeout(() => setRecoveryCopied(false), 2000);
+                }}
+              >
+                <Ionicons name={recoveryCopied ? 'checkmark' : 'copy-outline'} size={18} color={colors.gold} style={{ marginRight: 6 }} />
+                <Text style={[styles.sheetAccentText, { color: colors.gold }]}>{recoveryCopied ? 'Copied' : 'Copy key'}</Text>
+              </TouchableOpacity>
+            </FormGroup>
+            <Text style={styles.sheetNote}>
+              Keep it private, like in your password manager's notes. Anyone with this key and your username can open your data.
+            </Text>
+          </>
+        )}
+      </BottomSheet>
 
       {/* Remote Device Revocation Confirmation Modal */}
       <Modal
@@ -1980,6 +1953,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    sheetNote: { fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: -10, marginBottom: 16, marginHorizontal: 16 },
+    sheetAccentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 52, paddingHorizontal: 16 },
+    sheetAccentText: { fontSize: 17, fontWeight: '600' },
+    recoveryKeyText: { fontSize: 21, fontWeight: '800', letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
     groupNote: { fontSize: 13, lineHeight: 18, marginTop: -16, marginBottom: 24, marginHorizontal: 16 },
     inlineNumWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     inlineNum: { minWidth: 44, fontSize: 17, color: colors.ink, textAlign: 'center', backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 6 },
@@ -2055,7 +2032,6 @@ function makeStyles(colors: any) {
     swatch: { width: 30, height: 30, borderRadius: 15 },
     swatchActive: { borderWidth: 3, borderColor: colors.ink },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-    successText: { fontSize: 12, color: '#059669', marginBottom: 10 },
     saveButton: {
       backgroundColor: colors.buttonFill,
       borderRadius: radii.pill,
@@ -2064,15 +2040,6 @@ function makeStyles(colors: any) {
       marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.onButton },
-    hintText: { fontSize: 11.5, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
-    dataButton: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    dataButtonText: { fontSize: 14, fontWeight: '600', color: colors.gold },
     dangerConfirmBox: {
       backgroundColor: 'rgba(229,72,77,0.08)',
       borderRadius: 10,
