@@ -368,11 +368,21 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     <View style={styles.nameRow}>
                       <View style={[styles.chip, { backgroundColor: c.account.color || DEFAULT_GROUP_COLORS[c.group] }]} />
                       <Text style={styles.name} numberOfLines={1}>{c.account.name || GROUP_LABEL[c.group]}</Text>
+                      {/* Cards behind: the type tag sits next to the name. */}
+                      {!isFront && (
+                        <View style={[styles.typeTag, { backgroundColor: colors.navy1 }]}>
+                          <Ionicons name={GROUP_ICON[c.group]} size={11} color={colors.inkDim} />
+                          <Text style={styles.typeTagText}>{GROUP_LABEL[c.group]}</Text>
+                        </View>
+                      )}
+                    </View>
+                    {/* Front card: the type tag sits on the right, like the Card page. */}
+                    {isFront && (
                       <View style={[styles.typeTag, { backgroundColor: colors.navy1 }]}>
                         <Ionicons name={GROUP_ICON[c.group]} size={11} color={colors.inkDim} />
                         <Text style={styles.typeTagText}>{GROUP_LABEL[c.group]}</Text>
                       </View>
-                    </View>
+                    )}
                     {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>}
                   </View>
                   {isFront && (
