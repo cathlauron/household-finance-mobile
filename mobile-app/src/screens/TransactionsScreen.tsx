@@ -8,6 +8,7 @@ import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
+import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
 import { accountLabel } from '../transactionActions';
@@ -23,7 +24,6 @@ import {
 import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
-import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
 import { CollapsibleRow } from '../components/CollapsibleRow';
@@ -440,6 +440,11 @@ export default function TransactionsScreen() {
       return;
     }
     const parsedAmount = amountInput;
+    const acctProblem = accountProblem(model, directionInput, parsedAmount, paymentMethodInput, editingId);
+    if (acctProblem) {
+      setErrorMsg(acctProblem);
+      return;
+    }
 
     const refundAmountToSave =
       directionInput === 'out' && refundTrackingEnabled && typeof refundAmountInput === 'number' && refundAmountInput > 0
@@ -968,11 +973,14 @@ export default function TransactionsScreen() {
         )}
 
         <View style={{ marginTop: 20 }}>
-          <PaymentMethodPicker
+          {/* Redesign: the account is required. Money out can't overdraw cash or debit. */}
+          <AccountPicker
+            model={model}
+            direction={directionInput}
+            amount={amountInput}
             value={paymentMethodInput}
             onChange={setPaymentMethodInput}
-            debitAccounts={model.balanceAccounts.debit}
-            creditAccounts={model.balanceAccounts.credit}
+            excludeTxnId={editingId}
           />
         </View>
 

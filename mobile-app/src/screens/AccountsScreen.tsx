@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -44,7 +46,26 @@ export default function AccountsScreen() {
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
-  const [viewMode, setViewMode] = useState<'stacked' | 'list'>('stacked');
+  // Redesign: always a plain list here; Home's Wallet already shows the stacked cards.
+  const [viewMode, setViewMode] = useState<'stacked' | 'list'>('list');
+  // One + in the title bar asks which kind of account to add.
+  const [chooseTypeOpen, setChooseTypeOpen] = useState(false);
+  const navigation = useNavigation<any>();
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setChooseTypeOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Add an account"
+          testID="accounts-add"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="add" size={30} color={colors.gold} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors.gold]);
   // Which account card is currently expanded in stacked view, or null if all collapsed.
   const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
@@ -240,31 +261,29 @@ export default function AccountsScreen() {
             <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
             <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
           </View>
-          <View style={styles.viewToggleWrap}>
-  <View style={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]}>
-    <GradientFill match={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]} />
-    <IconLabelHint
-      name="albums"
-      label="Stacked card view"
-      size={15}
-      color={viewMode === 'stacked' ? colors.navy2 : colors.inkDim}
-      position="below"
-      onPress={() => handleToggleViewMode('stacked')}
-    />
-  </View>
-  <View style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}>
-    <GradientFill match={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]} />
-    <IconLabelHint
-      name="reorder-three"
-      label="List card view"
-      size={15}
-      color={viewMode === 'list' ? colors.navy2 : colors.inkDim}
-      position="below"
-      onPress={() => handleToggleViewMode('list')}
-    />
-  </View>
-          </View>
         </Card>
+
+        {/* Redesign: Income lives with your accounts (money coming in). */}
+        <TouchableOpacity
+          style={styles.incomeRow}
+          onPress={() => navigation.navigate('Income')}
+          accessibilityRole="button"
+          testID="accounts-income"
+        >
+          <GradientFill match={styles.incomeRow} />
+          <View style={styles.incomeIcon}>
+            <Ionicons name="trending-up" size={18} color={colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.incomeTitle}>Income</Text>
+            <Text style={styles.incomeSub}>
+              {(model.income || []).length === 0
+                ? 'Add where your money comes from'
+                : `${(model.income || []).length} ${(model.income || []).length === 1 ? 'source' : 'sources'} of income`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+        </TouchableOpacity>
 
         {GROUPS.map((group) => {
           // Live balances (saved balance + anything paid from or into it since).
@@ -308,6 +327,7 @@ export default function AccountsScreen() {
                       testID={`account-swipe-${account.id}`}
                     >
                       <AccountCard
+                        hideTypeBadge
                         account={account}
                         group={group}
                         onPress={() => openEditModal(group, account)}
@@ -332,6 +352,7 @@ export default function AccountsScreen() {
 
                 return (
                   <AccountCard
+                    hideTypeBadge
                     key={account.id}
                     account={account}
                     group={group}
@@ -347,15 +368,34 @@ export default function AccountsScreen() {
                 );
               })}
 
-              <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(group)}>
-                <Text style={styles.addButtonText}>
-                  + Add {GROUP_LABELS[group].toLowerCase()} account
-                </Text>
-              </TouchableOpacity>
             </View>
           );
         })}
       </PullToRefreshScrollView>
+
+      <BottomSheet visible={chooseTypeOpen} onClose={() => setChooseTypeOpen(false)} title="Add an account">
+        {GROUPS.map((g, i) => (
+          <TouchableOpacity
+            key={g}
+            style={[styles.typeRow, i > 0 && styles.typeRowTop]}
+            onPress={() => {
+              setChooseTypeOpen(false);
+              // Let the chooser close before the account form opens.
+              setTimeout(() => openAddModal(g), 250);
+            }}
+            accessibilityRole="button"
+            testID={`accounts-add-${g}`}
+          >
+            <Ionicons
+              name={g === 'cash' ? 'wallet-outline' : 'card-outline'}
+              size={22}
+              color={colors.gold}
+              style={{ marginRight: 12 }}
+            />
+            <Text style={styles.typeRowText}>{GROUP_LABELS[g]}</Text>
+          </TouchableOpacity>
+        ))}
+      </BottomSheet>
 
       <BottomSheet
         visible={activeGroup !== null}
@@ -510,6 +550,30 @@ function makeStyles(colors: any) {
       marginBottom: 8,
       fontStyle: 'italic',
     },
+    incomeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 18,
+      overflow: 'hidden',
+    },
+    incomeIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      backgroundColor: colors.accentTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    incomeTitle: { fontSize: 17, color: colors.ink, fontWeight: '600' },
+    incomeSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    typeRow: { flexDirection: 'row', alignItems: 'center', minHeight: 54 },
+    typeRowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    typeRowText: { fontSize: 17, color: colors.ink },
     addButton: {
       alignSelf: 'flex-start',
       paddingVertical: 8,

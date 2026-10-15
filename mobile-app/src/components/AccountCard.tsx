@@ -41,9 +41,12 @@ type Props = {
   style?: ViewStyle;
   testID?: string;
   isExpanded?: boolean;
+  // Redesign: the Accounts page already groups cards under Cash / Debit / Credit
+  // headings, so it hides the type tag on each card.
+  hideTypeBadge?: boolean;
 };
 
-export default function AccountCard({ account, group, onPress, style, testID, isExpanded }: Props) {
+export default function AccountCard({ account, group, onPress, style, testID, isExpanded, hideTypeBadge }: Props) {
   const { colors } = useTheme();
   const accentColor = account.color || DEFAULT_GROUP_COLORS[group];
 
@@ -78,10 +81,14 @@ export default function AccountCard({ account, group, onPress, style, testID, is
 
       <View style={styles.topRow}>
         <View style={styles.topRowLeft}>
-          <View style={[styles.badge, { backgroundColor: badgeBg }]}>
-            <View style={[styles.badgeDot, { backgroundColor: accentColor }]} />
-            <Text style={[styles.badgeText, { color: colors.ink }]}>{GROUP_LABELS[group]}</Text>
-          </View>
+          {hideTypeBadge ? (
+            <View style={[styles.badgeDot, { backgroundColor: accentColor, marginRight: 8 }]} />
+          ) : (
+            <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+              <View style={[styles.badgeDot, { backgroundColor: accentColor }]} />
+              <Text style={[styles.badgeText, { color: colors.ink }]}>{GROUP_LABELS[group]}</Text>
+            </View>
+          )}
           <Text style={[styles.accountName, { color: colors.ink }]} numberOfLines={1}>
             {account.name || 'Untitled account'}
           </Text>
