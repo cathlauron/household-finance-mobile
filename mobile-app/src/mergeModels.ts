@@ -25,7 +25,9 @@ import type {
   Payee,
   CategoryBudget,
   AvatarConfig,
+  SavedAvatarPhoto,
 } from './types';
+import { MAX_SAVED_AVATAR_PHOTOS } from './types';
 
 function normalizedName(name: string | undefined): string {
   return (name || '').trim().toLowerCase();
@@ -150,6 +152,23 @@ function mergeAvatars(
     if (!theirs || (mine.updatedAt ?? 0) >= (theirs.updatedAt ?? 0)) {
       merged[username] = mine;
     }
+  });
+  return merged;
+}
+
+// Saved profile photos: both sides' photos for each person, newest first, up to the limit.
+function mergeAvatarPhotos(
+  a: Record<string, SavedAvatarPhoto[]> | undefined,
+  b: Record<string, SavedAvatarPhoto[]> | undefined
+): Record<string, SavedAvatarPhoto[]> | undefined {
+  if (!a && !b) return undefined;
+  const merged: Record<string, SavedAvatarPhoto[]> = {};
+  new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})]).forEach((username) => {
+    const seen = new Set<string>();
+    merged[username] = [...(a?.[username] ?? []), ...(b?.[username] ?? [])]
+      .filter((p) => (seen.has(p.dataUri) ? false : (seen.add(p.dataUri), true)))
+      .sort((x, y) => y.addedAt - x.addedAt)
+      .slice(0, MAX_SAVED_AVATAR_PHOTOS);
   });
   return merged;
 }
@@ -287,6 +306,7 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     payees: mergedPayees,
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
     avatars: mergeAvatars(a.avatars, b.avatars),
+    avatarPhotos: mergeAvatarPhotos(a.avatarPhotos, b.avatarPhotos),
   };
 
   return sanitizeModelIds(mergedModel);

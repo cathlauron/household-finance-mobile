@@ -481,6 +481,14 @@ export type AvatarConfig = {
   updatedAt?: number;
 };
 
+// A photo someone uploaded, kept so they can switch back to it later.
+export const MAX_SAVED_AVATAR_PHOTOS = 4;
+export type SavedAvatarPhoto = {
+  id: string;
+  dataUri: string;
+  addedAt: number;
+};
+
 export type HouseholdModel = {
   settings: Settings;
   people: Person[];
@@ -513,4 +521,6 @@ export type HouseholdModel = {
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];
   avatars?: Record<string, AvatarConfig>;
+  // Uploaded profile photos per username, newest first (encrypted and synced with the rest).
+  avatarPhotos?: Record<string, SavedAvatarPhoto[]>;
 };

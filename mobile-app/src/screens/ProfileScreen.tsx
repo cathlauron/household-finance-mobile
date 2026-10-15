@@ -9,7 +9,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { getMyPersonId, setMyPersonId } from '../myPerson';
 import { getCurrentFirebaseUser } from '../authFirebase';
-import type { HouseholdModel, AvatarConfig } from '../types';
+import type { HouseholdModel, AvatarConfig, SavedAvatarPhoto } from '../types';
 import Avatar from '../components/Avatar';
 import AvatarPickerSheet from '../components/AvatarPickerSheet';
 import {
@@ -616,7 +616,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   }
 
   // PC.5a: save (or clear) this user's avatar inside the encrypted household model.
-  async function handleSaveAvatar(config: AvatarConfig | null) {
+  // Passing `photos` also replaces this user's saved photos ("Your photos").
+  async function handleSaveAvatar(config: AvatarConfig | null, photos?: SavedAvatarPhoto[]) {
     if (!model || !username) throw new Error('Not ready');
     const nextAvatars = { ...(model.avatars ?? {}) };
     if (config) {
@@ -624,7 +625,13 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     } else {
       delete nextAvatars[username];
     }
-    await saveModel({ ...model, avatars: nextAvatars });
+    let nextPhotos = model.avatarPhotos;
+    if (photos) {
+      nextPhotos = { ...(model.avatarPhotos ?? {}) };
+      if (photos.length > 0) nextPhotos[username] = photos;
+      else delete nextPhotos[username];
+    }
+    await saveModel({ ...model, avatars: nextAvatars, avatarPhotos: nextPhotos });
     updateRecentAccountIfPresent(username, {
       avatarConfig: nextAvatars[username] ?? { type: 'initials' },
     }).catch(() => {});
@@ -1401,6 +1408,7 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
         onClose={() => setAvatarSheetOpen(false)}
         initials={getInitials(username || '')}
         current={model?.avatars?.[username || '']}
+        photos={model?.avatarPhotos?.[username || '']}
         onSave={handleSaveAvatar}
       />
     </SafeAreaView>

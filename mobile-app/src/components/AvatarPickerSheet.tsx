@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
 import { Text } from './AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,30 +8,48 @@ import Avatar from './Avatar';
 import { useTheme } from '../ThemeContext';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { AVATAR_PRESETS, makeAvatarDataUri } from '../avatars';
-import type { AvatarConfig } from '../types';
+import { MAX_SAVED_AVATAR_PHOTOS } from '../types';
+import type { AvatarConfig, SavedAvatarPhoto } from '../types';
 import GradientFill from './GradientFill';
 
-// onSave(null) means "go back to plain initials".
+// onSave(null) means "go back to plain initials". When `photos` is passed, it replaces
+// this person's saved photos ("Your photos"); otherwise they stay as they are.
 type Props = {
   visible: boolean;
   onClose: () => void;
   initials: string;
   current?: AvatarConfig;
-  onSave: (config: AvatarConfig | null) => Promise<void>;
+  photos?: SavedAvatarPhoto[];
+  onSave: (config: AvatarConfig | null, photos?: SavedAvatarPhoto[]) => Promise<void>;
 };
 
-export default function AvatarPickerSheet({ visible, onClose, initials, current, onSave }: Props) {
+export default function AvatarPickerSheet({ visible, onClose, initials, current, photos, onSave }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
+
+  // The saved photos, plus the photo in use if it was uploaded before photos were kept.
+  const currentPhoto = current?.type === 'photo' ? current.photoDataUri : undefined;
+  const saved: SavedAvatarPhoto[] = [...(photos ?? [])];
+  if (currentPhoto && !saved.some((p) => p.dataUri === currentPhoto)) {
+    saved.unshift({ id: `avp-${current?.updatedAt ?? 0}`, dataUri: currentPhoto, addedAt: current?.updatedAt ?? 0 });
+  }
+  const isFull = saved.length >= MAX_SAVED_AVATAR_PHOTOS;
+
+  function close() {
+    setEditing(false);
+    setError('');
+    onClose();
+  }
 
   async function save(config: AvatarConfig | null) {
     setBusy(true);
     setError('');
     try {
       await onSave(config);
-      onClose();
+      close();
     } catch (e) {
       setError('Could not save. Please try again.');
     } finally {
@@ -39,8 +57,40 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
     }
   }
 
+  function confirmDelete(photo: SavedAvatarPhoto) {
+    const inUse = photo.dataUri === currentPhoto;
+    Alert.alert(
+      'Delete this photo?',
+      inUse ? "You're using this one, so your picture goes back to your initials." : 'It will be removed from your photos.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            setError('');
+            try {
+              const rest = saved.filter((p) => p.id !== photo.id);
+              await onSave(inUse ? null : current ?? null, rest);
+              if (rest.length === 0) setEditing(false);
+            } catch (e) {
+              setError('Could not delete. Please try again.');
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function handlePickPhoto() {
     setError('');
+    if (isFull) {
+      setError(`You can keep up to ${MAX_SAVED_AVATAR_PHOTOS} photos. Tap Edit and delete one first.`);
+      return;
+    }
     setAutoLockSuppressed(true);
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,8 +110,10 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
       if (result.canceled || !result.assets || !result.assets[0]) return;
       setBusy(true);
       const dataUri = await makeAvatarDataUri(result.assets[0].uri);
-      await onSave({ type: 'photo', photoDataUri: dataUri });
-      onClose();
+      const now = Date.now();
+      const added: SavedAvatarPhoto = { id: `avp-${now.toString(36)}`, dataUri, addedAt: now };
+      await onSave({ type: 'photo', photoDataUri: dataUri }, [added, ...saved]);
+      close();
     } catch (e: any) {
       setError(e?.message || "Couldn't use that photo. Try a different one.");
     } finally {
@@ -73,10 +125,59 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
   const showUseInitials = !!current && current.type !== 'initials';
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Profile picture" testID="avatar-picker-sheet">
+    <BottomSheet visible={visible} onClose={close} title="Profile picture" testID="avatar-picker-sheet">
       <View style={styles.previewWrap}>
         <Avatar initials={initials} config={current} size={96} />
       </View>
+
+      <View style={styles.labelRow}>
+        <Text style={[styles.label, { marginBottom: 0 }]}>Your photos</Text>
+        {saved.length > 0 && (
+          <TouchableOpacity onPress={() => setEditing((e) => !e)} hitSlop={10} disabled={busy}>
+            <Text style={styles.editText}>{editing ? 'Done' : 'Edit'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={styles.photoRow}>
+        {saved.map((p) => {
+          const selected = !editing && p.dataUri === currentPhoto;
+          return (
+            <TouchableOpacity
+              key={p.id}
+              disabled={busy}
+              activeOpacity={0.7}
+              onPress={() => (editing ? confirmDelete(p) : save({ type: 'photo', photoDataUri: p.dataUri }))}
+              accessibilityLabel={editing ? 'Delete this photo' : 'Use this photo'}
+              style={[styles.presetRing, { borderColor: selected ? colors.gold : 'transparent' }]}
+            >
+              <Image source={{ uri: p.dataUri }} style={styles.photo} />
+              {editing && (
+                <View style={styles.deleteBadge}>
+                  <Ionicons name="close" size={13} color="#FFFFFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+        {!editing && !isFull && (
+          <TouchableOpacity
+            disabled={busy}
+            activeOpacity={0.7}
+            onPress={handlePickPhoto}
+            accessibilityLabel="Add a photo"
+            style={styles.presetRing}
+          >
+            <View style={[styles.addTile, { borderColor: colors.inkFaint }]}>
+              <Ionicons name="add" size={24} color={colors.gold} />
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
+      <Text style={styles.hint}>
+        {editing
+          ? "Tap a photo to delete it. If it's the one you use, you go back to your initials."
+          : `Photos you upload stay here so you can switch back. Up to ${MAX_SAVED_AVATAR_PHOTOS}.`}
+      </Text>
 
       <Text style={styles.label}>Pick an icon</Text>
       <View style={styles.presetGrid}>
@@ -136,6 +237,13 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
 function makeStyles(colors: any) {
   return StyleSheet.create({
     previewWrap: { alignItems: 'center', marginBottom: 16 },
+    labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    editText: { fontSize: 14, fontWeight: '700', color: colors.gold },
+    photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+    photo: { width: 48, height: 48, borderRadius: 24 },
+    addTile: { width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+    deleteBadge: { position: 'absolute', top: -2, right: -2, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.error, borderWidth: 2, borderColor: colors.navy3, alignItems: 'center', justifyContent: 'center' },
+    hint: { fontSize: 12, lineHeight: 16, color: colors.inkDim, marginBottom: 16 },
     label: {
       fontSize: 11,
       letterSpacing: 0.5,
