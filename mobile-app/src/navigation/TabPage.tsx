@@ -13,11 +13,11 @@ import LargeHeader from './LargeHeader';
 // the left or right edge. The tab's large title header slides with its page.
 
 // Softer (2026-10-15): the old 320ms full-width push felt aggressive. Now pages glide
-// only part of the way (30% of the width) while cross-fading, over 420ms, starting
+// only part of the way (22% of the width) while cross-fading, over 560ms, starting
 // straight away but easing in and out gently, so it still responds instantly.
-const SLIDE_MS = 420;
-const SLIDE_EASING = Easing.bezier(0.33, 0.0, 0.2, 1);
-const SLIDE_SHARE = 0.3;
+const SLIDE_MS = 560;
+const SLIDE_EASING = Easing.bezier(0.4, 0.0, 0.2, 1);
+const SLIDE_SHARE = 0.22;
 
 // The tab that was showing last, so a tab opened for the first time knows which side
 // to come in from.
