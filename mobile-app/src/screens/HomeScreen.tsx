@@ -9,6 +9,7 @@ import CardGradient from '../components/CardGradient';
 import HomeHero from '../components/HomeHero';
 import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
 import OfflineBanner from '../components/OfflineBanner';
+import { hapticSelection } from '../haptics';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, totalCurrentBalance, formatPeso } from '../balanceProjection';
@@ -29,7 +30,7 @@ type Props = {
 };
 
 export default function HomeScreen({ username }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark, setMode } = useTheme();
   const { model, saveModel } = useData();
   // Redesign: savings pots set to "add every payday", and repeating transactions
   // ("Make it repeat"), catch up when Home opens.
@@ -57,7 +58,6 @@ export default function HomeScreen({ username }: Props) {
   // Redesign: the Left to Spend card changes colour with the mood. Looking good keeps
   // the forest-green card; Running low is burnt orange; Overspent is red. All three
   // were picked so the white text on them stays easy to read (4.5:1 or better).
-  const { isDark } = useTheme();
   const mood = leftToSpendStatus?.mood ?? 'good';
   const moodCard =
     mood === 'over'
@@ -135,6 +135,18 @@ export default function HomeScreen({ username }: Props) {
         </TouchableOpacity>
 
         <View style={hs.headerRight}>
+          {/* Quick light/dark switch (sets Light or Dark; Settings → Appearance can go back to Auto). */}
+          <TouchableOpacity
+            testID="home-theme-toggle"
+            accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={hs.bellBtn}
+            onPress={() => {
+              hapticSelection();
+              setMode(isDark ? 'light' : 'dark');
+            }}
+          >
+            <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={23} color={colors.ink} />
+          </TouchableOpacity>
           <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn} onPress={() => setBellOpen(true)}>
             <Ionicons name="notifications-outline" size={24} color={colors.ink} />
             {unreadCount > 0 ? (
@@ -236,7 +248,7 @@ function makeHomeStyles(colors: any) {
       minHeight: 48,
       maxWidth: '80%',
     },
-    headerRight: { alignItems: 'flex-end' },
+    headerRight: { flexDirection: 'row', alignItems: 'center' },
     greeting: { color: colors.ink, fontSize: 20, lineHeight: 25, fontWeight: '700' },
     greetingSub: { color: colors.inkDim, fontSize: 15, lineHeight: 20 },
     bellBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

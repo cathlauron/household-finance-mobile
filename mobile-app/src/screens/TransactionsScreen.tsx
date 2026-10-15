@@ -981,6 +981,7 @@ export default function TransactionsScreen() {
 
         <AmountInput
           autoFocus={!editingId}
+          centered
           style={styles.bigAmountWrap}
           inputStyle={[styles.bigAmountInput, { color: amountColor(directionInput, colors) }]}
           value={amountInput}

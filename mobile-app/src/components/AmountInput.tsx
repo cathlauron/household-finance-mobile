@@ -17,6 +17,9 @@ type Props = {
   suffix?: string | null;
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
+  // Big centred amounts: while typing, the hint (0.00) hides and the box hugs the digits,
+  // so the cursor sits in the middle next to the ₱ instead of off to the right.
+  centered?: boolean;
   // Puts the cursor here when the field appears (see AppText's TextInput).
   autoFocus?: boolean;
 };
@@ -41,6 +44,7 @@ export default function AmountInput({
   style,
   inputStyle,
   autoFocus,
+  centered,
 }: Props) {
   const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -114,8 +118,8 @@ export default function AmountInput({
       ) : null}
       {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
       <TextInput
-        style={[styles.input, inputStyle]}
-        placeholder={placeholder}
+        style={[styles.input, inputStyle, centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
+        placeholder={centered && isFocused ? '' : placeholder}
         placeholderTextColor={colors.inkFaint}
         keyboardType={allowDecimals ? 'decimal-pad' : 'number-pad'}
         value={textBuffer}

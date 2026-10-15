@@ -90,6 +90,7 @@ export function BigAmount({ label, value, onChange, color, autoFocus }: { label:
       <Text style={{ fontSize: 13, color: colors.inkDim }}>{label}</Text>
       <AmountInput
         autoFocus={autoFocus}
+        centered
         value={value}
         onChangeAmount={onChange}
         style={{ backgroundColor: 'transparent', justifyContent: 'center', minHeight: 60, marginBottom: 0 }}
