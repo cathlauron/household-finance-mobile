@@ -43,7 +43,8 @@ export type RootStackParamList = {
   Reports: undefined;
   Report: { id: string; backTitle?: string };
   MoreReports: undefined;
-  Settings: undefined;
+  Settings: { page?: string } | undefined;
+  SettingsPage: { subPage: string };
   Premium: undefined;
   TransactionDetail: { id: string };
   Search: undefined;
@@ -167,6 +168,10 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Settings"
         options={{ title: 'Settings', headerBackTitle: 'Home' }}
       >
+        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
+      </Stack.Screen>
+      {/* A Settings sub-page (Account & Security, Appearance, ...), pushed so it slides in. */}
+      <Stack.Screen name="SettingsPage" options={{ title: '', headerBackTitle: 'Settings' }}>
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />

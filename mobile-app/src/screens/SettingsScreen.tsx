@@ -115,7 +115,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   const styles = makeStyles(colors);
 
   // Which page is open. null = the hub (the grouped list of rows).
-  const [page, setPage] = useState<string | null>(null);
+  // Settings sub-pages (Account & Security, Appearance, ... ) open as their own screen
+  // ("SettingsPage") so they slide in like every other page.
+  const fixedPage: string | null = route.name === 'SettingsPage' ? route.params?.subPage ?? null : null;
+  const [page, setPage] = useState<string | null>(fixedPage);
+  const openPage = (key: string) => navigation.push('SettingsPage', { subPage: key });
   const [csvOpen, setCsvOpen] = useState(false);
   const inPage = (key: string) => page === key || !!(page && SECTIONS[page]?.parts.includes(key));
   const scrollRef = useRef<ScrollView>(null);
@@ -123,7 +127,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   // Back (header, swipe or Android) closes an open page first instead of leaving Settings.
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-    if (page === null) return;
+    if (page === null || fixedPage) return;
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
       e.preventDefault();
       setPage(null);
@@ -1087,15 +1091,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           <SettingsRow testID="settings-row-household" icon="people-outline" title="Household" value={isLinked ? 'Shared' : 'Just you'} onPress={() => navigation.navigate('Profile', { section: 'household' })} />
         </SettingsGroup>
         <SettingsGroup label="You">
-          <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Account & Security" value={biometricState === 'ENABLED' ? `${biometricLabel}` : pinIsSet ? 'PIN' : undefined} onPress={() => setPage('sec')} />
-          <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => setPage('look')} />
-          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" value={model.settings.pushNotificationsEnabled ? 'On' : 'Off'} onPress={() => setPage('notify')} />
+          <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Account & Security" value={biometricState === 'ENABLED' ? `${biometricLabel}` : pinIsSet ? 'PIN' : undefined} onPress={() => openPage('sec')} />
+          <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => openPage('look')} />
+          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" value={model.settings.pushNotificationsEnabled ? 'On' : 'Off'} onPress={() => openPage('notify')} />
         </SettingsGroup>
         <SettingsGroup label="Money">
-          <SettingsRow testID="settings-row-budgeting" icon="speedometer-outline" title="Budgeting" onPress={() => setPage('budget')} />
-          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories & Rules" onPress={() => setPage('cats')} />
-          <SettingsRow testID="settings-row-data" icon="cloud-outline" title="Backup & Data" value="Synced" onPress={() => setPage('backup')} />
-          <SettingsRow testID="settings-row-help" icon="information-circle-outline" title="About & Help" onPress={() => setPage('helpabout')} />
+          <SettingsRow testID="settings-row-budgeting" icon="speedometer-outline" title="Budgeting" onPress={() => openPage('budget')} />
+          <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories & Rules" onPress={() => openPage('cats')} />
+          <SettingsRow testID="settings-row-data" icon="cloud-outline" title="Backup & Data" value="Synced" onPress={() => openPage('backup')} />
+          <SettingsRow testID="settings-row-help" icon="information-circle-outline" title="About & Help" onPress={() => openPage('helpabout')} />
         </SettingsGroup>
         {!!onLock && (
           <SettingsGroup label="This phone">
