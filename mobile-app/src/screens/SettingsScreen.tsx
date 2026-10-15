@@ -534,6 +534,9 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     }
   }
 
+  // The swipe preview only plays right after Swipe to delete is turned on here.
+  const [showSwipePreview, setShowSwipePreview] = useState(false);
+
   async function handleSetSwipeToDelete(enabled: boolean) {
     if (!model) return;
     const updated: HouseholdModel = {
@@ -1284,17 +1287,20 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           <View style={styles.feelRow}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={styles.feelTitle}>Swipe to delete</Text>
-              <Text style={styles.sectionSub}>Off: tap a row to open it, then delete from inside</Text>
+              <Text style={styles.sectionSub}>Swipe a row left to delete it</Text>
             </View>
             <Switch
               testID="settings-swipe-delete"
               value={!!model.settings.swipeToDeleteEnabled}
-              onValueChange={(on) => handleSetSwipeToDelete(on)}
+              onValueChange={(on) => {
+                setShowSwipePreview(on);
+                handleSetSwipeToDelete(on);
+              }}
               trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
             />
           </View>
         </View>
-        <RowInteractionPreview mode={model.settings.swipeToDeleteEnabled ? 'swipe' : 'tap'} />
+        {showSwipePreview && <RowInteractionPreview />}
 
         </>
         )}
