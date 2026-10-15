@@ -111,6 +111,12 @@ export function accountActivitySinceUpdate(model: HouseholdModel, group: Spendin
       delta += l.direction === 'lent' ? toNumber(p.actual) : -toNumber(p.actual);
     })
   );
+  (model.income || []).forEach((s) =>
+    (s.paymentLog || []).forEach((e) => {
+      if (!matches(e.paymentMethod) || !happenedSinceUpdate(model, e.date, e.createdAt, today)) return;
+      delta += toNumber(e.amount); // a logged payday adds to the account it went into
+    })
+  );
   (model.savingsGoals || []).forEach((g) =>
     (g.contributions || []).forEach((c) => {
       if (!matches(c.paymentMethod) || !happenedSinceUpdate(model, c.date, c.createdAt, today)) return;
@@ -403,10 +409,21 @@ export function computeMonthEvents(
     });
   });
 
+  // Redesign: expected income is only a projection, so it counts from tomorrow on.
+  // Paydays you've logged (money actually received) count on the day they came in.
+  const todayKey = toISO(stripTime(new Date()));
   model.income.forEach((source) => {
     const amount = toNumber(source.expectedAmount);
+    const label = source.sourceName || source.category || 'Income';
     incomeOccurrencesInMonth(source, year, monthIndex).forEach((day) => {
-      push(day, { type: 'income', label: source.sourceName || source.category || 'Income', amount });
+      if (toISO(new Date(year, monthIndex, day)) <= todayKey) return;
+      push(day, { type: 'income', label, amount });
+    });
+    (source.paymentLog || []).forEach((e) => {
+      const dt = parseISO(e.date);
+      if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
+      const got = toNumber(e.amount);
+      if (got > 0) push(dt.getDate(), { type: 'income', label: `${label} (received)`, amount: got });
     });
   });
 
@@ -484,7 +501,11 @@ export function computeRunningBalances(
         (model.savingsGoals || [])
           .flatMap((g) => g.contributions || [])
           .filter((c) => c.date === asOfISO && (c.createdAt ?? 0) > asOfAt)
-          .reduce((sum, c) => sum + toNumber(c.amount), 0)
+          .reduce((sum, c) => sum + toNumber(c.amount), 0) +
+        (model.income || [])
+          .flatMap((s) => s.paymentLog || [])
+          .filter((e) => e.date === asOfISO && (e.createdAt ?? 0) > asOfAt)
+          .reduce((sum, e) => sum + toNumber(e.amount), 0)
       : 0;
   const totalStart = totalLiquidBalance(model) + loggedAfterUpdate;
 
@@ -569,7 +590,15 @@ function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): 
 
 export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date()): LeftToSpendResult {
   const payDate = nextHouseholdPayDate(model, today);
-  const targetDate = payDate || new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  // Redesign: what you can spend UNTIL payday, so the payday's own (not yet received)
+  // income isn't counted: read the balance the day before, never earlier than today.
+  const todayStart = stripTime(today);
+  const dayBefore = payDate ? stripTime(new Date(payDate.getFullYear(), payDate.getMonth(), payDate.getDate() - 1)) : null;
+  const targetDate = dayBefore
+    ? dayBefore < todayStart
+      ? todayStart
+      : dayBefore
+    : new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const basis: 'payday' | 'endOfMonth' = payDate ? 'payday' : 'endOfMonth';
   const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
   const amount = balances[targetDate.getDate()] ?? totalLiquidBalance(model);

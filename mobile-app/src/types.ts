@@ -46,6 +46,10 @@ export type PaymentLogEntry = {
   id: string;
   date: string;
   amount: number | '';
+  // Redesign: the account this payday went into. A logged payday is real money, so it
+  // adds to that account's balance; the expected amount is only a projection.
+  paymentMethod?: PaymentMethod;
+  createdAt?: number; // when it was logged (stamped on save)
 };
 
 export type IncomeSource = {
@@ -58,6 +62,8 @@ export type IncomeSource = {
   payDates: string[];
   paymentLog: PaymentLogEntry[];
   destinationAccountId?: string;
+  // Redesign: the account paydays usually go into (preselected when logging one).
+  depositTo?: PaymentMethod;
   createdAt?: number;
 };
 

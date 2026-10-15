@@ -486,6 +486,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // balance can tell whether they came after its balance was last updated.
     const knownLoanPays = new Set((model?.loans || []).flatMap((l) => (l.actualPayments || []).map((p) => p.id)));
     const knownContribs = new Set((model?.savingsGoals || []).flatMap((g) => (g.contributions || []).map((c) => c.id)));
+    const knownPaydays = new Set((model?.income || []).flatMap((s) => (s.paymentLog || []).map((e) => e.id)));
     const stamped: HouseholdModel = {
       ...updatedModel,
       manualTransactions: (updatedModel.manualTransactions || []).map((t) =>
@@ -500,6 +501,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
               ),
             }
           : l
+      ),
+      income: (updatedModel.income || []).map((s) =>
+        (s.paymentLog || []).some((e) => !e.createdAt && !knownPaydays.has(e.id))
+          ? {
+              ...s,
+              paymentLog: (s.paymentLog || []).map((e) =>
+                e.createdAt || knownPaydays.has(e.id) ? e : { ...e, createdAt: now }
+              ),
+            }
+          : s
       ),
       savingsGoals: (updatedModel.savingsGoals || []).map((g) =>
         (g.contributions || []).some((c) => !c.createdAt && !knownContribs.has(c.id))

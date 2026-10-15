@@ -16,7 +16,8 @@ import {
   computeNextPayDate,
   formatShortDate,
 } from '../income';
-import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
+import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry, PaymentMethod } from '../types';
+import AccountPicker from '../components/AccountPicker';
 import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
@@ -29,7 +30,7 @@ import AmountInput from '../components/AmountInput';
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
 // doesn't get mangled, and is only parsed/validated on Save.
-type PaymentLogFormEntry = { id: string; date: string; amount: number | '' };
+type PaymentLogFormEntry = { id: string; date: string; amount: number | ''; paymentMethod?: PaymentMethod };
 
 const CATEGORY_SUGGESTIONS = ['Salary', 'Freelance / Side gig', 'Business income', 'Rental income', 'Other'];
 
@@ -106,6 +107,8 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
+  // Redesign: the account logged paydays go into (they add to its balance).
+  const [depositInput, setDepositInput] = useState<PaymentMethod | undefined>(undefined);
   const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -130,6 +133,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     setBiweeklyAnchorInput('');
     setErrorMsg('');
     setPaymentLogEntries([]);
+    setDepositInput(undefined);
   }
 
   function openAddModal() {
@@ -160,7 +164,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         id: e.id,
         date: e.date,
         amount: typeof e.amount === 'number' ? e.amount : '',
+        paymentMethod: e.paymentMethod,
       }))
+    );
+    setDepositInput(
+      source.depositTo ??
+        [...(source.paymentLog || [])].reverse().find((e) => e.paymentMethod?.accountId)?.paymentMethod
     );
     setErrorMsg('');
     setModalOpen(true);
@@ -246,7 +255,14 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
-      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: entry.amount as number });
+      // A payday is real money: it goes into an account (the one chosen above, unless
+      // it was already logged into another one).
+      const pm = entry.paymentMethod?.accountId ? entry.paymentMethod : depositInput;
+      if (!pm?.accountId) {
+        setErrorMsg('Choose which account your paydays go into.');
+        return;
+      }
+      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: entry.amount as number, paymentMethod: pm });
     }
 
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
@@ -269,6 +285,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
               frequency: frequencyInput,
               payDates,
               paymentLog: validPaymentLog,
+              ...(depositInput?.accountId ? { depositTo: depositInput } : {}),
             }
           : s
       );
@@ -282,6 +299,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         frequency: frequencyInput,
         payDates,
         paymentLog: validPaymentLog,
+        ...(depositInput?.accountId ? { depositTo: depositInput } : {}),
         destinationAccountId: '',
         createdAt: Date.now(),
       };
@@ -369,8 +387,13 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <Card variant="banner" style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
+          <Text style={{ fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 4 }}>EXPECTED MONTHLY INCOME</Text>
+          {/* Redesign: expected income is a projection (blue). It shows on the Calendar, and
+              only becomes real money when you log a payday into an account. */}
+          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.planned }}>{formatPeso(totalMonthlyIncome)}</Text>
+          <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 4 }}>
+            Not in your balance yet. Log a payday when the money arrives.
+          </Text>
         </Card>
         {sources.length === 0 && (
           <Text style={styles.emptyText}>No income sources yet.</Text>        )}
@@ -599,28 +622,40 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
                 <Text style={styles.inputLabel}>Payment log</Text>
                 <Text style={styles.hintText}>
-                  Log paydays to track in Transactions and reports.
+                  Log a payday when the money actually arrives. It's added to the account below.
                 </Text>
+                <AccountPicker
+                  model={model}
+                  direction="in"
+                  amount=""
+                  value={depositInput}
+                  onChange={setDepositInput}
+                  label="Paydays go into"
+                />
                 {paymentLogEntries.map((entry) => (
-                  <View key={entry.id} style={styles.paymentLogRow}>
+                  <View key={entry.id} style={styles.paymentLogEntry}>
+                    {/* Date on its own full-width line, so its calendar has room to open. */}
                     <DateField
-                      style={styles.paymentLogDateInput}
                       value={entry.date}
                       onChange={(v) => updatePaymentLogDate(entry.id, v)}
-                      placeholder="YYYY-MM-DD"
+                      placeholder="Payday date"
                     />
-                    <AmountInput
-                      style={[styles.amountInput, styles.paymentLogAmountInput]}
-                      placeholder="Amount"
-                      value={entry.amount}
-                      onChangeAmount={(v) => updatePaymentLogAmount(entry.id, v)}
-                    />
-                    <TouchableOpacity
-                      style={styles.paymentLogRemoveBtn}
-                      onPress={() => removePaymentLogEntry(entry.id)}
-                    >
-                      color={colors.error}
-                    </TouchableOpacity>
+                    <View style={styles.paymentLogRow}>
+                      <AmountInput
+                        style={[styles.amountInput, styles.paymentLogAmountInput]}
+                        placeholder="Amount received"
+                        value={entry.amount}
+                        onChangeAmount={(v) => updatePaymentLogAmount(entry.id, v)}
+                      />
+                      <TouchableOpacity
+                        style={styles.paymentLogRemoveBtn}
+                        onPress={() => removePaymentLogEntry(entry.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove this payday"
+                      >
+                        <Ionicons name="close-circle" size={24} color={colors.error} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
                 <TouchableOpacity style={styles.addPaymentLogButton} onPress={addPaymentLogEntry}>
@@ -660,7 +695,7 @@ function makeStyles(colors: any) {
     rowMain: { flex: 1, marginRight: 10 },
     rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
-    rowAmount: { fontSize: 15, fontWeight: '600', color: colors.ok },
+    rowAmount: { fontSize: 15, fontWeight: '600', color: colors.planned },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     inputLabel: {
@@ -698,7 +733,8 @@ function makeStyles(colors: any) {
     pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
     hintText: { fontSize: 13, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
     errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
-    paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    paymentLogEntry: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },
+    paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
     paymentLogAmountInput: { flex: 1, marginBottom: 0 },
     paymentLogRemoveBtn: { paddingHorizontal: 8, paddingVertical: 6 },
