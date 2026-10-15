@@ -1,6 +1,7 @@
 ﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, the H series Home redesign, and the V series visual-system pass: mint base, accessible colors, shared components)
 
 >>> START HERE: The redesign code is on the `redesign` branch; read the two design artifacts listed in PROGRESS6.md's R series section first.
+>>> NEWEST (2026-10-15): see "R SERIES, SESSION 3" and the NEWEST ▶️ Next step bullet (leaves in dark mode → code sweep → transitions).
 
 This file picks up from PROGRESS5.md. PROGRESS5.md is now PAUSED, not closed for good —
 work there stopped mid-way through Quick Unlock Step 6 (build made, installed, opens; the
@@ -133,40 +134,9 @@ Still open from the archived sections (check against the R series first)
   (react-native-svg is a native module).
 
 =====================================================================
-🫧 RUBBER BAND AUDIT (Android): plain ScrollViews swapped; Bills and Person Spending still have NO bounce (OPEN PROBLEMS)
-=====================================================================
-
-Why: Cath wanted the rubber-band overscroll on screens that lacked it. Worked as Antigravity investigates (read-only, three passes), Claude reviews, Cath pastes by hand. Every swap was one tag rename plus an import, with npx tsc --noEmit after each file.
-
-✅ DONE, tsc clean, device-tested on Android:
-- Screens using a plain react-native ScrollView were swapped to PullToRefreshScrollView (a NAMED export: import { PullToRefreshScrollView } from '...', with braces). It forwards refs and all ScrollView props, and has no onRefresh prop, so nothing broke.
-- MoreScreen.tsx and PremiumScreen.tsx (done earlier in this work).
-- SavingsScreen.tsx: only the Emergency Fund ('ef') and FI Calculator ('fi') tabs; the Goals tab already used it.
-- SettingsScreen.tsx: the ONE ScrollView (ref={scrollRef}) that serves the hub and all 15 sub-pages. The import was added and ScrollView was kept in the react-native import because useRef<ScrollView> still needs the type.
-- The 9 report screens in src/screens/reports/ (MonthlyCloseOut, CashFlowForecast, PersonSpending, WeeklyDigest, SubscriptionAudit, YearInReview, MerchantSpending, TaxSummary, PaymentMethods), each with import { PullToRefreshScrollView } from '../../PullToRefreshScrollView'.
-- Device result: 8 of the 9 reports bounce at both top and bottom. Debts and Loans bounce. Device results for the Savings EF/FI tabs and Settings were not itemised separately.
-- Deliberately NOT touched: ReportsScreen.tsx (only two horizontal pill ScrollViews), CalendarScreen (FlatList), BottomSheet (bounces={false} on purpose), IntroSlidesScreen, and the dialog modals (CsvImport, LoanPayoffSimulator, SavingsFiComparison).
-
-⚠️ OPEN PROBLEM 1: BILLS SCREEN HAS NO BOUNCE ON ANDROID
-- BillsScreen already uses PullToRefreshScrollView, yet it never bounces. Debts and Loans, with the same component, DO bounce.
-- RULED OUT (tested on-device):
-  - Short content: the test account has more bills than debts and loans combined, so Bills scrolls, and the "content shorter than the screen" theory is wrong.
-  - Mount order: ToPayScreen's default sub-tab was temporarily changed from 'bills' to 'loans'. Loans (now mounted first) still bounced, and Bills (now mounted later) still did NOT. The line was then changed back to 'bills'. (Confirm with git diff that ToPayScreen.tsx shows no change.)
-  - Remounting: opening Debts and then returning to Bills did not help.
-- RULED OUT by reading real code: Bills, Debts and Loans have the SAME wrappers (SafeAreaView flex:1, then PullToRefreshScrollView with only contentContainerStyle), the same container/scrollContent styles, the same SwipeableRow + CollapsibleRow rows built with .map, and the same single useRef/useEffect that opens an item. None uses scrollTo, onLayout, a nested FlatList, nestedScrollEnabled or a sticky header.
-- Only known differences, none shown to matter: Bills has subscription badges (SUB/CANCELLED) and Keep/Cancel/Reactivate buttons inside rows; it mounts by default; its open-bill prop can be filled at mount (deep link); it is sorted with sortByNextDue like Debts.
-- UNTESTED ideas for next time (do NOT apply without evidence): the real Bills data (a particular bill or the subscription rows); whether something in the Bills modal or its sheet changes the scroll view; whether the row renders differently from Debts under the same SwipeableRow settings. A safe experiment is to temporarily render Bills with a trimmed list (for example only the first 3 bills) and see whether bounce returns.
-- Rejected earlier: minHeight:'100.5%' in the shared component (unreliable, affects every screen) and flexGrow:1 on Bills (does not address the theory).
-
-⚠️ OPEN PROBLEM 2: PERSON SPENDING REPORT BOUNCES AT THE TOP ONLY
-- On Android it stretches when pulled down at the top but stays still when pushed past the bottom. The other 8 reports bounce both ways.
-- Real code shows its structure matches WeeklyDigestReport (same container and contentContainer styles, same host in ReportsScreen, no absolute positioning or fixed heights). The only structural difference is that its last child is a plain Text footerNote (marginTop 4, marginBottom 12), outside any Card, and the number of cards depends on how many people have spending.
-- Not yet checked: whether the report actually scrolls when dragged (if it fits the screen there is no bottom bounce to see), and how many cards the test account shows. Check this first.
-
-📌 Lessons (this round)
-- Never write find/replace text from an Antigravity summary. Use code Cath has pasted from the real file, or ask for a read-only dump first. The first PremiumScreen paste left two stray lines for this reason.
-- The method that works: one file at a time, Ctrl+F the tag, change only the tag name, fix the import, run tsc.
-- Remaining files that probably still use a plain ScrollView (not requested yet): ProfileScreen, AccountSwitcherScreen, SignInScreen, CreateProfileScreen, OnboardingScreen, SetPinScreen.
+📚 Rubber band audit session log archived in PROGRESS6-ARCHIVE-2.md (2026-10-15).
+Its two open problems (Bills no bounce, Person Spending top-only bounce) are DONE per
+Cath (2026-10-15). Everything else from it is folded into the sections here.
 
 =====================================================================
 🎨 R SERIES: Finance Flow full redesign to match the Claude Design mockups (2026-10-14)
@@ -446,6 +416,150 @@ sign-off before the next step. 21 commits this session, all tsc clean (4b2d15d t
     types.ts, leafTransition.ts, PullToRefreshScrollView.tsx, App.tsx
   - package.json: expo-linear-gradient, expo-network
 
+=====================================================================
+🌿 R SERIES, SESSION 3 (2026-10-15): sign-in once, simple forms, Shared Expenses,
+Settings / Profile / Household / Accounts / Income redesigns
+=====================================================================
+Same way of working: Claude Code (direct repo access) edits code on `redesign`, runs
+npx tsc --noEmit until clean, commits and pushes; Cath tests in Expo Go (git pull;
+cd mobile-app; npx expo start -c; for fair speed tests add --no-dev --minify) and replies
+"device test is as described" before the next step. New designs are mocked up first on
+the Design canvas and built only after Cath approves. 39 commits (07b4667 to 503ac53),
+all tsc clean, all device-tested by Cath.
+
+🔗 Design canvas for this session: "Finance Flow — Forms Redesign"
+https://claude.ai/artifact/3tWYb57gAsRQjwXzf1rN1T (version 25). Rows: Home date pill/tile,
+detailed and simple bill/debt/loan/income forms, Settings & Profile (simple), Change
+password & Recovery key, Amount entry / Accounts / Income (incl. 3 Income options), and
+Household / Security / switches. Uses the Finance Flow design system
+https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ. Main mockups canvas (older):
+https://claude.ai/artifact/AszP4RAjsgqkyB4uYXwXgA.
+
+✅ Done this session (all on `redesign`, device-tested)
+- Sign in once (07b4667): staySignedIn.ts keeps {email, username, password} in
+  SecureStore (WHEN_UNLOCKED_THIS_DEVICE_ONLY). Cold start: unlinked profiles unlock
+  offline; linked ones sign in silently under the opening screen. Cleared on full sign-out,
+  switch account, remote revoke, password out of date, or unlocking into another account.
+  Smaller bottom leaf on the opening screen.
+- Round 1 (3c60ca6, d9d0595): sign-in logo lower and closer to the title; account card
+  colours carry through (CardFace.tsx: Accounts, Wallet tags, account picker, transfer,
+  transaction detail); To-Pay and other tabs stay on the same sub-tab after saving
+  (stickyState.ts); Text size setting Small / Medium / Large (textSize.ts, AppText scales).
+- Round 2 (1334291, 5a87720, d0fcd89): the cursor goes to the first field in every add
+  form (AppText delayed autoFocus); Savings form says Save / Title; pull down on
+  Transactions opens Search, which drops in from the top (pullDownToOpen.tsx).
+- Round 3, debts (efc8a17): Mark as paid fills in the minimum; partial payments keep the
+  original due as history; the unpaid minimum (plus an optional late fee) carries to the
+  next due; one-time debts get a remainder cycle (billPayments.ts, PayFromSheet).
+- Income + Money in (f54cd3b, 8fc28f7, 0dc0f62): Money in asks "What is it?" (salary,
+  bonus, side job, allowance, gift, other; incomeKinds.ts). Salary picks an income source
+  and logs a payday (the same record as logging it on Income). Extra income section on
+  Income. Home "Accounts ›" header; Left to Spend third page "Where it comes from";
+  date pill on the calendar button.
+- Simple forms (f96f2f6, 3632134): approved "Option 2" layout (SimpleForm.tsx) for bills,
+  debts, loans and income: Cancel / title / Save bar, big amount, white grouped rows,
+  rows that open their choices underneath.
+- Shared Expenses, 4 steps (7f97e16, 0e92c72, 70331d7, 1cb5644): sharedExpenses.ts and
+  SharedExpensesScreen (Plan › Shared Expenses): people, add/edit/delete with equal or
+  custom split, balances netted per pair, Settle up (optional account logs money in/out),
+  Activity with Undo, "Split with others" from a transaction.
+- Settings + Profile redesign (9f8aeeb, bd40cf2, f8a9c3c, 7645797, fc62d23):
+  - Settings hub: profile card, a quiet "Finance Flow Premium › Upgrade" row, Money
+    (Budgeting, Categories & Rules), App (Backup & Data, About & Help), Switch account,
+    Log out. "Lock app now" removed.
+  - Profile: picture with camera badge, @username, email; Username / Member since;
+    Household / Account & Security; Appearance / Notifications.
+  - Profile picture sheet: "Your photos" keeps up to 4 uploaded photos (model.avatarPhotos,
+    encrypted and synced, Cath's choice), tap to use, + to add, Edit to delete.
+  - Every Settings page uses plain grouped rows (SettingsHub: SettingsGroup with label /
+    footer / plain, PlainRow, SegmentRow). Categories / Payees / Rules open as their own
+    pages. About & Help shows the LogoMark. Premium page restyled as a plan page (Yearly
+    ₱950.40 "Save 20%" / Monthly ₱99); Subscribe says it opens soon (no payments exist).
+  - Change password and Secret Recovery Key are simple sheets (SheetBar with faded Done
+    until ready, PasswordRow, SheetHero). After a password change that invalidates the
+    key, "Make a new recovery key" opens the key sheet. Key shown on ONE line with dashes
+    plus Copy key.
+  - List Rows: only a Swipe to delete switch; its preview plays 3 times and only right
+    after turning it on.
+  - Household: a real Cancel invite (separate from New code).
+- Home light/dark switch beside the bell (b61366d).
+- Offline (99b8a63): DataContext re-checks the connection every 4s while open and when the
+  app returns; a sync that fails while offline shows the offline banner instead of
+  "Sync Failed". The GO_BACK warning no longer appears (Cath, 2026-10-15).
+- Big amounts (df93f87 and earlier tries): CenteredAmount.tsx draws "₱0.00" itself,
+  centred, with its own blinking cursor in the middle before typing; digits grow from the
+  centre with commas. Used by every big amount (new transaction, bills, debts, loans,
+  income, shared). Plain AmountInput fields are unchanged.
+- Accounts redesign (87520ad): soft white Total balance in money colours (green / red /
+  grey) with "Credit owed" in red and the next payday row (opens Income); accounts as
+  simple rows with a colour chip and money-coloured balance.
+- Income redesign, option 3 (4b74a4b, 19cc029): "Expected in <month>" (blue) with
+  received (green) and a bar; one row per person (received / expected); a person's page
+  (route IncomePerson) lists their paydays this month (logged = green tick with actual
+  amount and "₱X more/less than expected"; to come = dashed blue) and their sources;
+  tap a payday to log it (Log payday sheet, same record as Money in › Salary); + in the
+  header adds a source. incomeMonth.ts matches logged paydays to scheduled ones within
+  7 days; unmatched ones show as "Extra payday".
+- Sheets reach the bottom edge (7c08965): BottomSheet's Modal is statusBarTranslucent +
+  navigationBarTranslucent and pads by the bottom inset (no strip under sheets).
+- Switches (ce4807b): AppSwitch everywhere: white knob, track = mood colour when on,
+  light grey off. Account & Security: "Active devices" row opens its own page (This phone /
+  Other devices with Sign out; "Sign out all other devices" with a confirm).
+- Household redesign (503ac53): status card (Shared household / Just you), Members with
+  Remove and Invite someone, "Which one is you?" with a tick, Unlink this device as a red
+  row; one invite card (code, waiting, New code / Cancel invite); just-you view with
+  Invite someone and a Join with a code row. Confirm steps unchanged.
+- Transitions: tabs (TabPage) and pages (RootStack animation 'fade') now use a short soft
+  fade; earlier slide attempts (420ms cross-fade, 560ms 22% glide, 400ms full push) were
+  rejected. Cath still wants an "ebook page turn" feel (see Next step).
+
+📌 Decisions (session 3)
+- Sign in once: only a remote revoke, a full log out, or switching accounts asks for the
+  password again.
+- Repeating debts have no total balance; an overpayment only shows in history (a
+  "Total still owed" field was offered, not built).
+- Income page total = expected this calendar month (not a monthly average).
+- Income page uses "by person" (option 3) so it stays short for 5 members with several
+  sources each.
+- Money colours on totals: green = real money, red = owed, blue = projected.
+- Saved profile photos: encrypted and synced, up to 4 per person.
+- Premium stays a placeholder; no payment flow. Benefits list is a placeholder for Cath to
+  confirm (some imply free-tier limits that don't exist).
+- Forgot password and Google/Apple sign-in: skipped for now (Cath, again 2026-10-15).
+- Quick Unlock Step 6 (PROGRESS5) is no longer needed: the app opens straight in once
+  signed in (Cath, 2026-10-15).
+- New designs: mock up on the Design canvas first, build only after approval.
+
+⚠️ Known issues / open problems (session 3)
+- Leaves don't show in dark mode (Cath, 2026-10-15). FIRST item next session.
+- Tab/page transitions: Cath wants an ebook page-turn feel (the screen slides left/right
+  with that page feel, no 3D flip). Not started; after the code sweep.
+- Cancel-by reminders don't notify yet; transfer fees are logged as a "Fees" transaction
+  but don't reduce the balance. Accepted as known limits for now.
+- iPhone-only checks (card shadow, Calendar look, faceIDPermission) wait for an iPhone.
+- Leftover code from the old Accounts, Income, Settings and Profile layouts (unused
+  styles, CollapsibleRow / stacked-card code, unused imports) is still in the files; for
+  the code sweep.
+- Update: PROGRESS6.md was about 550 lines (not 2,000) before this wrap-up; the rubber
+  band section was archived to PROGRESS6-ARCHIVE-2.md.
+
+📁 Files (session 3, under mobile-app/src)
+- New: staySignedIn.ts, stickyState.ts, textSize.ts, pullDownToOpen.tsx, incomeKinds.ts,
+  sharedExpenses.ts, incomeMonth.ts, components/CardFace.tsx, components/SimpleForm.tsx,
+  components/CenteredAmount.tsx, components/AppSwitch.tsx,
+  screens/SharedExpensesScreen.tsx.
+- Changed: App.tsx, DataContext.tsx, types.ts (ManualTransaction.incomeKind,
+  SharedExpense, SharedSettlement, sharedMembers, SavedAvatarPhoto, avatarPhotos,
+  MAX_SAVED_AVATAR_PHOTOS, BillCycle dueBefore/carriedIn/lateFee), mergeModels.ts,
+  billPayments.ts, balanceProjection.ts, autoLock.ts (default Never), components
+  (AppText, AmountInput, PasswordField, BottomSheet, SettingsHub, AvatarPickerSheet,
+  RowInteractionPreview, PayFromSheet, HomeHero, HomeWallet, AccountCard, AccountPicker,
+  GradientFill, OfflineBanner), navigation (TabPage, RootStack: SettingsPage,
+  SharedExpenses, IncomePerson routes; DeferredContent), screens (Settings, Profile,
+  Premium, Accounts, Income, Transactions, Search, Bills, Debts, Loans, PayDetail,
+  Home, SignIn, Intro, Plan, CardDetail, Transfer, TransactionDetail, Savings, Events,
+  Groceries, Travel, Goals, PotDetail, Envelopes, Recurring, OnboardSetup).
+
 📌 Decisions (R series)
 - Exact-match sweep scope: "Everything, including features"; full pages instead of rows.
 - Wallet: a corner lift (not a curl, not a cut-off card); the held card stays whole and
@@ -511,7 +625,13 @@ sign-off before the next step. 21 commits this session, all tsc clean (4b2d15d t
   mobile-app/App.tsx).
 
 ▶️ Next step
-- NEWEST (R series session 2, 2026-10-15): steps 22-37 are done on `redesign` (see the "R SERIES, SESSION 2" section). Next, in a NEW conversation:
+- NEWEST (R series session 3, 2026-10-15): everything in the "R SERIES, SESSION 3" section is done and device-tested on `redesign` (39 commits through 503ac53). Next, in a NEW conversation, in THIS order (Cath's order):
+  (1) Leaves don't show in dark mode: investigate LeafBackground / FallingLeaves colours and opacity in dark mode, fix, device-test.
+  (2) Code sweep: bugs, stale/unused code (old Accounts/Income/Settings/Profile layout leftovers, unused styles and imports), improvements and suggestions; include loading states everywhere (anything that loads shows an animation, never a frozen-looking screen). Give Cath suggestions before big changes.
+  (3) Tab and page transitions: an ebook page-turn feel (slide left/right with that page feel, not a 3D flip); show options before building.
+  Known limits, no action now: cancel-by reminders don't notify and transfer fees don't reduce balances; iPhone checks wait for an iPhone; Forgot password and Google/Apple sign-in stay skipped. Closed: offline banner, GO_BACK warning, rubber-band bounce, Calendar items, Quick Unlock Step 6 (no longer needed).
+  Then: merge `redesign` into main, and make the new EAS build last.
+- (superseded by NEWEST above) NEWEST (R series session 2, 2026-10-15): steps 22-37 are done on `redesign` (see the "R SERIES, SESSION 2" section). Next, in a NEW conversation:
   (1) Shared Expenses, from the SharedExpenses mockup artboard. It's big, so split it into small steps: people/members, add a shared expense with a split, netted balances, Settle up, the activity list, and a "Split with others" link from transaction detail.
   (2) Optional: change the Income total to "Expected this month".
   (3) The parked problems: transition lag, the offline banner, the GO_BACK warning.
