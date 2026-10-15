@@ -52,9 +52,10 @@ type Props = {
   value: PaymentMethod | undefined;
   onChange: (pm: PaymentMethod) => void;
   excludeTxnId?: string | null;
+  label?: string; // instead of "Paid from" / "Add to"
 };
 
-export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId }: Props) {
+export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const groups: SpendingGroup[] = ['cash', 'debit', 'credit'];
@@ -63,7 +64,7 @@ export default function AccountPicker({ model, direction, amount, value, onChang
 
   return (
     <View>
-      <Text style={styles.label}>{spending ? 'Paid from' : 'Add to'}</Text>
+      <Text style={styles.label}>{label ?? (spending ? 'Paid from' : 'Add to')}</Text>
       {rows.length === 0 ? (
         <Text style={styles.empty}>Add an account first (Home › Wallet, or Accounts), then come back.</Text>
       ) : (

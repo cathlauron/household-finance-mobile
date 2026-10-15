@@ -13,7 +13,7 @@ import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
-import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import BottomSheet from '../components/BottomSheet';
 import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
@@ -228,6 +228,14 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     }
     if (newPaymentAmount === '' || newPaymentAmount <= 0) {
       setPaymentError('Enter a valid amount paid.');
+      return;
+    }
+    // Redesign: the account is required; paying a loan can't overdraw cash or debit.
+    const acctProblem = model
+      ? accountProblem(model, directionInput === 'lent' ? 'in' : 'out', newPaymentAmount, newPaymentMethod)
+      : null;
+    if (acctProblem) {
+      setPaymentError(acctProblem);
       return;
     }
     const newPayment: LoanPayment = {
@@ -721,11 +729,12 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
                           value={newPaymentAmount}
                           onChangeAmount={setNewPaymentAmount}
                         />
-                      <PaymentMethodPicker
+                      <AccountPicker
+                        model={model}
+                        direction={directionInput === 'lent' ? 'in' : 'out'}
+                        amount={newPaymentAmount}
                         value={newPaymentMethod}
                         onChange={setNewPaymentMethod}
-                        debitAccounts={model.balanceAccounts.debit}
-                        creditAccounts={model.balanceAccounts.credit}
                       />
                       {!!paymentError && <Text style={styles.errorText}>{paymentError}</Text>}
                       <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>

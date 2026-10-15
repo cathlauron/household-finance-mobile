@@ -6,7 +6,7 @@ import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
 import AmountInput from '../components/AmountInput';
-import PaymentMethodPicker from '../components/PaymentMethodPicker';
+import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -116,6 +116,12 @@ export default function PotDetailScreen() {
       if (a <= 0) return;
       if (sheet === 'out' && a > saved) {
         Alert.alert('Not enough in this pot', `You can move out up to ${formatPeso(saved)}.`);
+        return;
+      }
+      // Redesign: the account is required; adding to a pot can't overdraw cash or debit.
+      const problem = accountProblem(model, sheet === 'add' ? 'out' : 'in', a, pm);
+      if (problem) {
+        Alert.alert(sheet === 'add' ? 'Choose where it comes from' : 'Choose where it goes', problem);
         return;
       }
       hapticLight();
@@ -283,8 +289,14 @@ export default function PotDetailScreen() {
           )}
           {(sheet === 'add' || sheet === 'out' || sheet === 'keptIn') && (
             <>
-              <Text style={styles.meta}>{sheet === 'add' ? 'From' : sheet === 'out' ? 'To' : 'Where this money is kept'}</Text>
-              <PaymentMethodPicker value={pm} onChange={setPm} debitAccounts={model.balanceAccounts.debit} creditAccounts={model.balanceAccounts.credit} />
+              <AccountPicker
+                model={model}
+                direction={sheet === 'add' ? 'out' : 'in'}
+                amount={sheet === 'keptIn' ? '' : amount}
+                label={sheet === 'add' ? 'Take it from' : sheet === 'out' ? 'Put it into' : 'Where this money is kept'}
+                value={pm}
+                onChange={setPm}
+              />
             </>
           )}
         </View>

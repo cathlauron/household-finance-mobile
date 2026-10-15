@@ -1,9 +1,10 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
+import PayFromSheet from '../components/PayFromSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, loanOutstandingBalance } from '../balanceProjection';
@@ -17,7 +18,7 @@ import { requestOpenLoan } from '../openLoanRequest';
 import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
-import type { Bill, Debt, Loan, HouseholdModel } from '../types';
+import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod } from '../types';
 
 // Redesign: the Bill, Debt and Loan pages from the Finance Flow mockups (BillDetail,
 // LoanDetail). Tapping one in To-Pay or Home opens this full page.
@@ -61,6 +62,8 @@ export default function PayDetailScreen() {
   const kind: Kind = route.params?.kind;
   const id: string = route.params?.id;
   const styles = makeStyles(colors);
+  // Redesign: "Mark as paid" first asks which account it's paid from.
+  const [payOpen, setPayOpen] = useState(false);
 
   const record: Bill | Debt | Loan | undefined = !model
     ? undefined
@@ -158,10 +161,7 @@ export default function PayDetailScreen() {
           <TouchableOpacity
             testID="pay-detail-mark-paid"
             style={[styles.primary, { backgroundColor: colors.buttonFill }]}
-            onPress={() => {
-              const next = markPaid(rec);
-              save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
-            }}
+            onPress={() => setPayOpen(true)}
             accessibilityRole="button"
           >
             <GradientFill color={colors.buttonFill} strength={0.18} />
@@ -182,6 +182,22 @@ export default function PayDetailScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      <PayFromSheet
+        visible={payOpen}
+        onClose={() => setPayOpen(false)}
+        title={`Pay ${name}`}
+        amount={amount}
+        direction="out"
+        model={model}
+        initial={cur?.paymentMethod}
+        confirmLabel="Paid"
+        onConfirm={(pm) => {
+          setPayOpen(false);
+          const next = markPaid(rec, pm);
+          save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
+        }}
+      />
 
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
         <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
@@ -256,11 +272,18 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
   const totalPayments = monthly > 0 ? Math.ceil(total / monthly) : 0;
   const today = todayISO();
   const paidToday = payments[0]?.date === today;
+  // Redesign: logging a payment first asks which account it comes from (or, for money
+  // you lent, which account it goes into).
+  const [payOpen, setPayOpen] = useState(false);
+  const payAmount = monthly > 0 ? Math.min(monthly, left || monthly) : left;
 
-  function logPayment() {
-    const amt = monthly > 0 ? Math.min(monthly, left || monthly) : left;
-    if (amt <= 0) return;
-    const next: Loan = { ...loan, actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date: today, actual: amt }] };
+  function logPayment(pm: PaymentMethod) {
+    if (payAmount <= 0) return;
+    setPayOpen(false);
+    const next: Loan = {
+      ...loan,
+      actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date: today, actual: payAmount, paymentMethod: pm }],
+    };
     save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) });
   }
   function undoPayment() {
@@ -294,7 +317,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
       )}
 
       {!paidToday && left > 0 && (
-        <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill, alignSelf: 'stretch', marginTop: 16 }]} onPress={logPayment} accessibilityRole="button">
+        <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill, alignSelf: 'stretch', marginTop: 16 }]} onPress={() => payAmount > 0 && setPayOpen(true)} accessibilityRole="button">
           <GradientFill color={colors.buttonFill} strength={0.18} />
           <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(Math.min(monthly, left))}` : ''}</Text>
         </TouchableOpacity>
@@ -358,6 +381,17 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
         </>
       )}
       <Text style={styles.footer}>Each payment is saved with its date, so late ones are easy to spot.</Text>
+      <PayFromSheet
+        visible={payOpen}
+        onClose={() => setPayOpen(false)}
+        title={lent ? 'Money received' : `Pay ${loan.name || 'loan'}`}
+        amount={payAmount}
+        direction={lent ? 'in' : 'out'}
+        model={model}
+        initial={payments[0]?.paymentMethod}
+        confirmLabel={lent ? 'Received' : 'Paid'}
+        onConfirm={logPayment}
+      />
     </ScrollView>
   );
 }
