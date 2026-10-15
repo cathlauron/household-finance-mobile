@@ -62,6 +62,35 @@ function three(a: string, b: string, c: string) {
 
 let counter = 0;
 
+const END_DIAGONAL = { x: 1, y: 1 }; // top-left to bottom-right
+const END_DOWN = { x: 0.25, y: 1 }; // mostly top to bottom
+
+// Smoothness: the colour stops for each look are worked out once and reused, instead of
+// being recalculated by every one of the few hundred gradients on every redraw.
+type Grad = { gradColors: readonly [string, string, ...string[]]; locations: readonly [number, number, ...number[]] };
+const gradCache = new Map<string, Grad>();
+function gradientFor(k: Kind, bg: string, strength: number, accentTint: string, navy3: string, gold: string): Grad {
+  const key = `${k}|${bg}|${strength}|${accentTint}|${navy3}|${gold}`;
+  const hit = gradCache.get(key);
+  if (hit) return hit;
+  let stops: { o: number; c: string }[];
+  if (k === 'surface') {
+    const tintEnd = mixHex(accentTint, bg, 0.45);
+    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(tintEnd, bg, s) }));
+  } else if (k === 'tint') {
+    stops = three(mixHex(bg, navy3, 0.7), bg, mixHex(bg, gold, 0.9));
+  } else {
+    stops = three(mixHex('#FFFFFF', bg, strength), bg, mixHex('#000000', bg, strength));
+  }
+  const g: Grad = {
+    gradColors: stops.map((st) => st.c) as unknown as Grad['gradColors'],
+    locations: stops.map((st) => st.o) as unknown as Grad['locations'],
+  };
+  if (gradCache.size > 200) gradCache.clear();
+  gradCache.set(key, g);
+  return g;
+}
+
 function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: isDarkProp, match }: Props) {
   const theme = useTheme();
   const colors = theme.colors;
@@ -96,19 +125,8 @@ function GradientFill({ color, kind, strength = 0.2, radius, surface, isDark: is
 
   // Everything else is one native gradient view: it fills its parent by itself, so there
   // is no measuring step and no SVG to build. This is what keeps screens quick to open.
-  let stops: { o: number; c: string }[];
-  let end = { x: 1, y: 1 }; // top-left to bottom-right
-  if (k === 'surface') {
-    const tintEnd = mixHex(colors.accentTint, bg, 0.45);
-    stops = STOPS.map(({ o, s }) => ({ o, c: mixHex(tintEnd, bg, s) }));
-    end = { x: 0.25, y: 1 }; // mostly top to bottom
-  } else if (k === 'tint') {
-    stops = three(mixHex(bg, colors.navy3, 0.7), bg, mixHex(bg, colors.gold, 0.9));
-  } else {
-    stops = three(mixHex('#FFFFFF', bg, strength), bg, mixHex('#000000', bg, strength));
-  }
-  const gradColors = stops.map((st) => st.c) as unknown as readonly [string, string, ...string[]];
-  const locations = stops.map((st) => st.o) as unknown as readonly [number, number, ...number[]];
+  const end = k === 'surface' ? END_DOWN : END_DIAGONAL;
+  const { gradColors, locations } = gradientFor(k, bg, strength, colors.accentTint, colors.navy3, colors.gold);
 
   return (
     <LinearGradient
