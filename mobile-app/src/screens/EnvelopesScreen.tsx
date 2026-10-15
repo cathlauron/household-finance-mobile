@@ -298,6 +298,7 @@ function EnvelopeSheet({
           <>
             <Text style={styles.label}>Category</Text>
             <TextInput
+              autoFocus={sheet?.kind === 'add'}
               style={styles.input}
               placeholder="e.g. Groceries"
               placeholderTextColor={colors.inkDim}
@@ -321,7 +322,7 @@ function EnvelopeSheet({
             <Text style={styles.label}>Each month</Text>
           </>
         )}
-        <AmountInput style={styles.amountInput} value={amount} onChangeAmount={(v) => { setAmount(v); setError(''); }} placeholder="0" />
+        <AmountInput autoFocus={sheet?.kind === 'assign'} style={styles.amountInput} value={amount} onChangeAmount={(v) => { setAmount(v); setError(''); }} placeholder="0" />
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
         {sheet?.kind === 'edit' && (
           <TouchableOpacity style={styles.removeBtn} onPress={confirmRemove} accessibilityRole="button">

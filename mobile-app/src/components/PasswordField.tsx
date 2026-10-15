@@ -11,12 +11,13 @@ type Props = {
   placeholder?: string;
   editable?: boolean;
   testID?: string;
+  autoFocus?: boolean;
 };
 
 // One shared password/passphrase input with a show/hide eye icon — used everywhere a
 // real password is typed (sign-in, create-profile, change-password). Deliberately NOT
 // used on the 4-digit PIN screens, which have their own numeric-only UX.
-export default function PasswordField({ style, value, onChangeText, placeholder, editable = true, testID }: Props) {
+export default function PasswordField({ style, value, onChangeText, placeholder, editable = true, testID, autoFocus }: Props) {
   const { colors } = useTheme();
   const [hidden, setHidden] = useState(true);
   const styles = makeStyles();
@@ -32,6 +33,7 @@ export default function PasswordField({ style, value, onChangeText, placeholder,
         secureTextEntry={hidden}
         autoCapitalize="none"
         editable={editable}
+        autoFocus={autoFocus}
       />
       <TouchableOpacity
         style={styles.iconBtn}

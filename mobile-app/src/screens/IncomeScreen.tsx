@@ -478,6 +478,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
       >
         <Text style={styles.inputLabel}>Belongs to</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="Type a name, e.g. Miguel, Ana"
                   placeholderTextColor={colors.inkFaint}

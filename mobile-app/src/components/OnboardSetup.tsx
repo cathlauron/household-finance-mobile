@@ -256,6 +256,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
       >
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
           <TextInput
+            autoFocus={!sheet?.name}
             style={styles.field}
             placeholder="Name, e.g. BPI Savings"
             placeholderTextColor={colors.inkDim}

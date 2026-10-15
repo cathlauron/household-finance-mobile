@@ -1983,6 +1983,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       >
         <Text style={styles.inputLabel}>Name</Text>
         <TextInput
+          autoFocus={!editingId}
           style={styles.input}
           placeholder="e.g. Groceries, Utilities"
           placeholderTextColor={colors.inkFaint}
@@ -2021,6 +2022,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       >
         <Text style={styles.inputLabel}>Name</Text>
         <TextInput
+          autoFocus={!editingPayeeId}
           style={styles.input}
           placeholder="e.g. SM Supermarket, Meralco"
           placeholderTextColor={colors.inkFaint}
@@ -2053,6 +2055,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       >
         <Text style={styles.inputLabel}>If the label contains</Text>
         <TextInput
+          autoFocus={!editingRuleId}
           style={styles.input}
           placeholder="e.g. jollibee, meralco, grab"
           placeholderTextColor={colors.inkFaint}
@@ -2103,6 +2106,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
             <Text style={styles.inputLabel}>Password</Text>
             <PasswordField
               testID="biometric-password-input"
+              autoFocus
               style={styles.input}
               placeholder="Your password"
               value={biometricPassword}
@@ -2152,6 +2156,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     </Text>
                 <Text style={styles.inputLabel}>Current Password</Text>
                 <PasswordField
+                  autoFocus
                   style={styles.input}
                   placeholder="Enter your current password"
                   value={retroactiveVerifyPass}

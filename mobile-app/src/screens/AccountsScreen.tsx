@@ -408,6 +408,7 @@ export default function AccountsScreen() {
       >
         <Text style={styles.inputLabel}>Account name</Text>
         <TextInput
+          autoFocus={!editingId}
           style={styles.input}
           placeholder="e.g. GCash, BPI Savings"
           placeholderTextColor={colors.inkFaint}

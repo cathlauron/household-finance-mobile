@@ -284,7 +284,7 @@ export default function PotDetailScreen() {
               <Text style={styles.meta}>
                 {sheet === 'auto' ? 'Amount to add on each payday' : sheet === 'out' ? `Up to ${formatPeso(saved)}` : 'Amount'}
               </Text>
-              <AmountInput value={amount} onChangeAmount={setAmount} placeholder="0.00" />
+              <AmountInput autoFocus value={amount} onChangeAmount={setAmount} placeholder="0.00" />
             </>
           )}
           {(sheet === 'add' || sheet === 'out' || sheet === 'keptIn') && (

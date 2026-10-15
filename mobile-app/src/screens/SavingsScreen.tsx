@@ -831,6 +831,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
             </View>
           ) : (
             <AmountInput
+              autoFocus
               value={editVal}
               onChangeAmount={setEditVal}
               prefix={editField?.kind === 'pct' ? null : undefined}
