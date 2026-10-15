@@ -12,8 +12,12 @@ import LargeHeader from './LargeHeader';
 // keeps every visited tab drawn, and the pages that aren't showing simply wait just off
 // the left or right edge. The tab's large title header slides with its page.
 
-const SLIDE_MS = 320;
-const SLIDE_EASING = Easing.bezier(0.22, 1, 0.36, 1); // quick start, long gentle settle
+// Softer (2026-10-15): the old 320ms full-width push felt aggressive. Now pages glide
+// only part of the way (30% of the width) while cross-fading, over 420ms, starting
+// straight away but easing in and out gently, so it still responds instantly.
+const SLIDE_MS = 420;
+const SLIDE_EASING = Easing.bezier(0.33, 0.0, 0.2, 1);
+const SLIDE_SHARE = 0.3;
 
 // The tab that was showing last, so a tab opened for the first time knows which side
 // to come in from.
@@ -59,10 +63,13 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     else x.setValue(place);
   }, [place, routeIndex, x]);
 
-  const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
+  const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width * SLIDE_SHARE, 0, width * SLIDE_SHARE] });
+  const opacity = x.interpolate({ inputRange: [-1, -0.6, 0, 0.6, 1], outputRange: [0, 0.15, 1, 0.15, 0] });
 
   return (
-    <Animated.View style={[styles.page, { transform: [{ translateX }] }]}>
+    // Pages that aren't showing are see-through and sit just to the side, so they must
+    // not catch taps meant for the page that is showing.
+    <Animated.View pointerEvents={place === 0 ? 'auto' : 'none'} style={[styles.page, { opacity, transform: [{ translateX }] }]}>
       {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
       {children}
     </Animated.View>
