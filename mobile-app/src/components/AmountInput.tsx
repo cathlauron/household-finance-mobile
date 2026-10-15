@@ -103,6 +103,9 @@ export default function AmountInput({
   }
 
   const styles = makeStyles(colors);
+  // Centred and empty while typing: the box shrinks to just the cursor and "0.00" is drawn
+  // next to it in grey, so the hint stays visible and the cursor stays in the middle.
+  const showSideHint = !!centered && isFocused && textBuffer === '' && !!placeholder;
 
   return (
     <View style={[styles.container, style]}>
@@ -118,7 +121,7 @@ export default function AmountInput({
       ) : null}
       {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
       <TextInput
-        style={[styles.input, inputStyle, centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
+        style={[styles.input, inputStyle, showSideHint ? { minWidth: 3, textAlign: 'left' } : centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
         placeholder={centered && isFocused ? '' : placeholder}
         placeholderTextColor={colors.inkFaint}
         keyboardType={allowDecimals ? 'decimal-pad' : 'number-pad'}
@@ -128,6 +131,14 @@ export default function AmountInput({
         onBlur={handleBlur}
         autoFocus={autoFocus}
       />
+      {showSideHint ? (
+        <Text
+          pointerEvents="none"
+          style={[styles.input, inputStyle, { color: colors.inkFaint, flex: 0, minWidth: 0, textAlign: 'left' }]}
+        >
+          {placeholder}
+        </Text>
+      ) : null}
       {suffix ? <Text style={styles.affix}>{suffix}</Text> : null}
     </View>
   );
