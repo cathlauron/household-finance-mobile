@@ -38,6 +38,7 @@ export type RootStackParamList = {
   Calendar: undefined;
   Accounts: undefined;
   Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
+  IncomePerson: { personId: string };
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
   Planning: { tab?: PlanningTab } | undefined;
   Reports: undefined;
@@ -142,6 +143,10 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
             openIncomeNonce={route.params?.openIncomeNonce}
           />
         )}
+      </Stack.Screen>
+      {/* One person's income: their paydays this month and their sources. */}
+      <Stack.Screen name="IncomePerson" options={{ title: '', headerBackTitle: 'Income' }}>
+        {({ route }) => <IncomeScreen personId={route.params.personId} />}
       </Stack.Screen>
       <Stack.Screen
         name="Savings"
