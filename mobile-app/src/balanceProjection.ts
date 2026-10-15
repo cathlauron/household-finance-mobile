@@ -646,6 +646,56 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
   return { amount, targetDate, basis };
 }
 
+// For the "Where it comes from" page on Home's Left to Spend card: starts from what is
+// in your accounts right now, then the money planned to go out (or come in) after today
+// and up to the Left to Spend date, grouped by kind. Anything else that makes up the
+// difference (for example something due today that isn't marked paid yet) is shown as
+// "Other changes", so the lines always add up to the Left to Spend amount.
+export type LeftToSpendLine = { label: string; amount: number };
+export function leftToSpendBreakdown(model: HouseholdModel, result: LeftToSpendResult, today: Date = new Date()): {
+  now: number;
+  lines: LeftToSpendLine[];
+} {
+  const now = totalCurrentBalance(model);
+  const start = stripTime(today);
+  const end = stripTime(result.targetDate);
+  const sums: Record<string, number> = {};
+  const LABEL: Record<CalendarEvent['type'], string> = {
+    bill: 'Bills',
+    debt: 'Debts',
+    loan: 'Loans',
+    saving: 'Savings top-ups',
+    manual: 'Planned transactions',
+    income: 'Income',
+  };
+  let y = start.getFullYear();
+  let m = start.getMonth();
+  while (y < end.getFullYear() || (y === end.getFullYear() && m <= end.getMonth())) {
+    const events = computeMonthEvents(model, y, m);
+    Object.keys(events).forEach((dayStr) => {
+      const d = stripTime(new Date(y, m, parseInt(dayStr, 10)));
+      if (d <= start || d > end) return;
+      events[parseInt(dayStr, 10)].forEach((ev) => {
+        const key = LABEL[ev.type];
+        sums[key] = (sums[key] || 0) + eventDelta(ev);
+      });
+    });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  const lines: LeftToSpendLine[] = Object.keys(sums)
+    .filter((k) => Math.abs(sums[k]) >= 0.005)
+    .map((k) => ({ label: k, amount: Math.round(sums[k] * 100) / 100 }))
+    .sort((a, b) => a.amount - b.amount);
+  const counted = now + lines.reduce((sum, l) => sum + l.amount, 0);
+  const other = Math.round((result.amount - counted) * 100) / 100;
+  if (Math.abs(other) >= 0.5) lines.push({ label: 'Other changes', amount: other });
+  return { now, lines };
+}
+
 // Same three-tier red/orange/green shape as SavingsScreen's getEfStatus() — red when
 // negative, green at or above the household's caution threshold, orange in between.
 // The threshold is a % (Settings › Budgeting) of your monthly budget, as in the Finance

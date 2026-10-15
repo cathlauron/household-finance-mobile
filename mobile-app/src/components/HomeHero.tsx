@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline, Polygon, Circle } from 'react-native-svg';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
-import { formatPeso, LeftToSpendMood } from '../balanceProjection';
+import { formatPeso, LeftToSpendMood, leftToSpendBreakdown } from '../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../transactions';
 import type { HouseholdModel } from '../types';
 
@@ -15,6 +15,8 @@ import type { HouseholdModel } from '../types';
 //   1. Left to spend: amount, status, how much of the money is used.
 //   2. This month: spending so far vs last month (solid line = this month, dashed =
 //      last month), and In / Out / Saved for the month.
+//   3. Where it comes from: what's in your accounts now, minus what's planned to go out
+//      before payday, equals Left to spend.
 // The card colour follows the mood (green / burnt orange / red).
 
 type Props = {
@@ -27,6 +29,7 @@ type Props = {
   pctUsed: number;
   isDark: boolean;
   fullDate: string;
+  targetDate: Date;
 };
 
 const CARD = {
@@ -56,7 +59,7 @@ function cumulativeOut(list: ReturnType<typeof buildTransactionsList>, ym: strin
   return out;
 }
 
-export default function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isDark, fullDate }: Props) {
+export default function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isDark, fullDate, targetDate }: Props) {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [width, setWidth] = useState(0);
@@ -83,6 +86,9 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
     const diff = (thisCum[thisCum.length - 1] ?? 0) - sameDayLast;
     return { totals, thisCum, prevCum, daysThis, diff };
   }, [model]);
+
+  const breakdown = useMemo(() => leftToSpendBreakdown(model, { amount, targetDate, basis }), [model, amount, targetDate, basis]);
+  const untilLabel = targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   const chartW = Math.max(0, width - 40);
   const chartH = 50;
@@ -172,10 +178,43 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               </View>
             </View>
           </View>
+
+          {/* Page 3: Where Left to spend comes from */}
+          <View style={[styles.page, { width }]}>
+            <Text style={[styles.label, { color: dim }]}>Where it comes from</Text>
+            <View style={{ marginTop: 8 }}>
+              <View style={styles.bRow}>
+                <Text style={[styles.bLabel, { color: dim }]}>In your accounts now</Text>
+                <Text style={styles.bVal}>{formatPeso(breakdown.now)}</Text>
+              </View>
+              {breakdown.lines.slice(0, 4).map((l) => (
+                <View key={l.label} style={styles.bRow}>
+                  <Text style={[styles.bLabel, { color: dim }]} numberOfLines={1}>
+                    {l.amount < 0 ? '− ' : '+ '}
+                    {l.label} {basis === 'payday' ? 'before payday' : 'this month'}
+                  </Text>
+                  <Text style={styles.bVal}>{formatPeso(Math.abs(l.amount))}</Text>
+                </View>
+              ))}
+              {breakdown.lines.length > 4 && (
+                <View style={styles.bRow}>
+                  <Text style={[styles.bLabel, { color: dim }]}>{breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0) < 0 ? '− ' : '+ '}Everything else</Text>
+                  <Text style={styles.bVal}>{formatPeso(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
+                </View>
+              )}
+              {breakdown.lines.length === 0 && (
+                <Text style={[styles.bLabel, { color: dim, marginVertical: 2 }]}>Nothing planned to go out {basis === 'payday' ? 'before payday' : 'this month'}.</Text>
+              )}
+              <View style={[styles.bRow, styles.bTotal]}>
+                <Text style={styles.bTotalLabel}>Left to spend until {untilLabel}</Text>
+                <Text style={styles.bTotalVal}>{formatPeso(amount)}</Text>
+              </View>
+            </View>
+          </View>
         </ScrollView>
       )}
       <View style={styles.dots} accessibilityElementsHidden>
-        {[0, 1].map((i) => (
+        {[0, 1, 2].map((i) => (
           <View key={i} style={[styles.dot, { opacity: i === page ? 1 : 0.35 }]} />
         ))}
       </View>
@@ -187,6 +226,12 @@ const styles = StyleSheet.create({
   card: { borderRadius: 20, overflow: 'hidden', marginBottom: 24 },
   shadow: { shadowColor: '#1B3F30', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
   page: { paddingTop: 18, paddingHorizontal: 20, paddingBottom: 6, minHeight: 148 },
+  bRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 2, gap: 8 },
+  bLabel: { fontSize: 14, flexShrink: 1 },
+  bVal: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  bTotal: { marginTop: 6, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.35)' },
+  bTotalLabel: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', flexShrink: 1 },
+  bTotalVal: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: 15, fontWeight: '600' },
   calBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginTop: -6, marginRight: -6 },

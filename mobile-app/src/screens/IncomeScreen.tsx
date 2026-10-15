@@ -404,12 +404,6 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
           <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 4 }}>
             Not in your balance yet. Log a payday when the money arrives.
           </Text>
-          {sources.some((s) => typeof s.expectedAmount === 'number' && s.expectedAmount > 0 && s.frequency !== 'monthly' && s.frequency !== 'onetime') && (
-            <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 4 }}>
-              This is a monthly average. Pay every 2 weeks comes 26 times a year (not 24), and
-              weekly pay 52 times, so some months have an extra payday.
-            </Text>
-          )}
         </Card>
         {sources.length === 0 && (
           <Text style={styles.emptyText}>No income sources yet.</Text>        )}

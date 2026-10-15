@@ -295,9 +295,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   return (
     <View style={styles.section}>
       <View style={styles.headerRow}>
-        <Text style={styles.header}>Wallet</Text>
-        <TouchableOpacity onPress={openAccounts} accessibilityRole="button" accessibilityLabel="Add account" testID="home-wallet-add">
-          <Text style={styles.link}>Add account</Text>
+        {/* "Accounts" opens the Accounts page (where accounts are added too). */}
+        <TouchableOpacity onPress={openAccounts} accessibilityRole="button" accessibilityLabel="Open Accounts" testID="home-wallet-add" style={styles.headerLink}>
+          <Text style={styles.header}>Accounts</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
       </View>
 
@@ -413,6 +414,7 @@ function makeStyles(colors: ThemeColors) {
     section: { marginBottom: 24 },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingHorizontal: 4, marginBottom: 8 },
     header: { fontSize: 20, fontWeight: '700', color: colors.ink },
+    headerLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
     link: { fontSize: 15, fontWeight: '600', color: colors.gold, paddingVertical: 4 },
     card: {
       position: 'absolute',

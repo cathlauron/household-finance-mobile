@@ -161,6 +161,7 @@ export default function HomeScreen({ username }: Props) {
                 pctUsed={pctUsed}
                 isDark={isDark}
                 fullDate={fullDate}
+                targetDate={leftToSpend.targetDate}
               />
             ) : undefined
           }
