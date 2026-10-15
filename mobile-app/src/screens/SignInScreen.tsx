@@ -45,14 +45,27 @@ type Props = {
   initialUsername?: string;
   autoSignIn?: { email: string; username: string; password: string };
   onAutoSignInFailed?: (username: string) => void;
+  // Sign in once: true when this screen is running out of sight behind the opening
+  // screen. If the automatic sign-in doesn't finish, onSilentFailed is called instead
+  // of showing anything here.
+  silent?: boolean;
+  onSilentFailed?: (username: string) => void;
 };
 
 export default function SignInScreen({
-  onSignedIn,
+  onSignedIn: onSignedInProp,
   onGoToCreateProfile,
   remoteRevokeNotice,
   onClearRemoteRevokeNotice, initialUsername, autoSignIn, onAutoSignInFailed,
+  silent, onSilentFailed,
 }: Props) {
+  // Remembers whether sign-in actually finished, so a quiet (silent) attempt that
+  // didn't can hand over to the visible sign-in screen.
+  const signedInRef = useRef(false);
+  const onSignedIn: Props['onSignedIn'] = (...args) => {
+    signedInRef.current = true;
+    onSignedInProp(...args);
+  };
   const { colors } = useTheme();
   const ms = makeMainStyles(colors);
   const styles = makeStyles(colors);
@@ -336,6 +349,9 @@ export default function SignInScreen({
     autoAttemptRef.current = true;
     handleSignIn().finally(() => {
       autoAttemptRef.current = false;
+      if (silent && !signedInRef.current && onSilentFailed) {
+        onSilentFailed(autoSignIn.username);
+      }
     });
   }, []);
   function friendlyFirebaseSignInError(e: any): string {

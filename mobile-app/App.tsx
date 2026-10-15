@@ -2,8 +2,9 @@ import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts, updateRecentAccountIfPresent } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
+import { saveSession, loadSession, clearSession } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated } from 'react-native';
+import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet } from 'react-native';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -79,6 +80,12 @@ function AppContent() {
   const [recentAccounts, setRecentAccounts] = useState<RecentAccount[]>([]);
   const [autoSignIn, setAutoSignIn] = useState<{ email: string; username: string; password: string } | null>(null);
   const [signInPrefillUsername, setSignInPrefillUsername] = useState<string | undefined>(undefined);
+  // Sign in once: true while a remembered LINKED account signs in quietly behind the
+  // opening screen (an unlinked one opens offline straight away instead).
+  const [silentSignIn, setSilentSignIn] = useState(false);
+  // Resolves when the opening animation has had its ~3 seconds, so a quick quiet
+  // sign-in never cuts the animation short.
+  const introDoneRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 3100)));
 
   const screenRef = useRef<Screen>('loading');
   // Set only by the lock screen's "Sign in to another account" button, so that
@@ -188,6 +195,7 @@ function AppContent() {
     if (revoked) {
       wipeQuickUnlock(username).catch(() => {});
       removeRecentAccount(username).catch(() => {});
+      clearSession().catch(() => {});
       clearModel();
       setCurrentUsername(null);
       setDerivedKey(null);
@@ -196,6 +204,30 @@ function AppContent() {
       return;
     }
     registerAndListenDeviceSession(user.uid).catch(() => {});
+  }
+
+  // Opens an account that was unlocked offline (unlinked profiles only). Used by the
+  // account switcher and by "sign in once" when the app starts.
+  function enterWithOfflineUnlock(
+    creds: { email: string; username: string; password: string },
+    offline: { key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry }
+  ) {
+    setRemoteRevokeNotice(null);
+    setCurrentUsername(creds.username);
+    setDerivedKey(offline.key);
+    loadModel(
+      creds.username,
+      offline.key,
+      { profile: offline.profile, initialModel: offline.model },
+      { deferNotifications: true }
+    ).catch(() => {});
+    recordRecentAccount(creds.username, undefined, undefined, offline.model.avatars?.[creds.username]).catch(() => {});
+    saveSession(creds).catch(() => {});
+    setScreen('home');
+    setTimeout(() => {
+      rescheduleBillNotifications(offline.model).catch(() => {});
+    }, 0);
+    reconcileOfflineUnlockWithServer(creds.username, creds).catch(() => {});
   }
 
   async function recordRecentAccount(
@@ -246,6 +278,7 @@ function AppContent() {
       removeRecentAccount(revokedUsername).catch(() => {});
       wipeQuickUnlock(revokedUsername).catch(() => {});
     }
+    clearSession().catch(() => {});
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -284,8 +317,25 @@ function AppContent() {
     (async () => {
       // Redesign: long enough for the opening animation (logo draws, bar fills once
       // and fades) to finish before moving on.
-      const minDelay = new Promise((resolve) => setTimeout(resolve, 3100));
-      const [profiles, recents] = await Promise.all([loadProfilesIndex(), loadRecentAccounts(), minDelay]);
+      const [profiles, recents, saved] = await Promise.all([loadProfilesIndex(), loadRecentAccounts(), loadSession()]);
+      autoLockMinutesRef.current = await getAutoLockMinutes();
+      // Sign in once: a remembered account opens without asking for the password.
+      if (saved && profiles.some((p) => p.username === saved.username)) {
+        const offline = await attemptOfflineUnlock(saved.username, saved);
+        if (offline) {
+          await introDoneRef.current;
+          enterWithOfflineUnlock(saved, offline);
+          return;
+        }
+        // Linked household: sign in quietly behind the opening screen.
+        setRemoteRevokeNotice(null);
+        setSignInPrefillUsername(undefined);
+        setAutoSignIn(saved);
+        setSilentSignIn(true);
+        return;
+      }
+      if (saved) clearSession().catch(() => {});
+      await introDoneRef.current;
       if (!profiles.length) {
         setScreen('intro');
       } else if (recents.length) {
@@ -294,7 +344,6 @@ function AppContent() {
       } else {
         setScreen('signIn');
       }
-      autoLockMinutesRef.current = await getAutoLockMinutes();
     })();
   }, []);
 
@@ -310,6 +359,8 @@ function AppContent() {
 
   async function lockIfConfigured() {
     if (isAutoLockSuppressed()) return;
+    // Auto-lock set to Never (the default since "sign in once").
+    if (autoLockMinutesRef.current <= 0) return;
     const username = usernameRef.current;
     if (screenRef.current !== 'home' || !username) return;
     const [pinIsSetUp, biometricState] = await Promise.all([
@@ -331,6 +382,7 @@ function AppContent() {
   function resetIdleTimer() {
     clearIdleTimer();
     if (screenRef.current !== 'home') return;
+    if (autoLockMinutesRef.current <= 0) return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
       lockIfConfigured();
@@ -372,6 +424,8 @@ function AppContent() {
       removeRecentAccount(signedOutUsername).catch(() => {});
       wipeQuickUnlock(signedOutUsername).catch(() => {});
     }
+    // Log out always means the password is asked for next time.
+    clearSession().catch(() => {});
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -416,6 +470,8 @@ function AppContent() {
   // fresh and lands back on the switcher instead of a blank sign-in form.
   async function handleSwitchAccount() {
     clearIdleTimer();
+    // The next launch shows the account switcher instead of opening this account.
+    clearSession().catch(() => {});
     // 1. Unsubscribe listener FIRST (same ordering as handleFullSignOut)
     if (deviceSessionUnsubRef.current) {
       deviceSessionUnsubRef.current();
@@ -478,7 +534,20 @@ function AppContent() {
 
   function renderScreen(): React.ReactElement {
   if (screen === 'loading') {
-    return <IntroScreen />;
+    return (
+      <View style={{ flex: 1 }}>
+        {silentSignIn && autoSignIn && (
+          // Sign in once (linked households): the normal sign-in runs out of sight
+          // behind the opening screen. It never shows unless it fails.
+          <View style={{ ...StyleSheet.absoluteFillObject, opacity: 0 }} pointerEvents="none">
+            {renderSignIn(true)}
+          </View>
+        )}
+        <View style={StyleSheet.absoluteFill}>
+          <IntroScreen />
+        </View>
+      </View>
+    );
   }
 
   if (screen === 'locked' && currentUsername && derivedKey) {
@@ -488,6 +557,9 @@ function AppContent() {
           username={currentUsername}
           onUnlocked={(newUsername, newKey) => {
             if (newUsername && newKey) {
+              // Unlocked into a different account with only its password: there is no
+              // email to remember, so the next launch asks once.
+              if (newUsername !== currentUsername) clearSession().catch(() => {});
               setCurrentUsername(newUsername);
               setDerivedKey(newKey);
               loadModel(newUsername, newKey);
@@ -562,26 +634,7 @@ function AppContent() {
             (async () => {
               const offline = await attemptOfflineUnlock(creds.username, creds);
               if (offline) {
-                setRemoteRevokeNotice(null);
-                setCurrentUsername(creds.username);
-                setDerivedKey(offline.key);
-                loadModel(
-                  creds.username,
-                  offline.key,
-                  { profile: offline.profile, initialModel: offline.model },
-                  { deferNotifications: true }
-                ).catch(() => {});
-                recordRecentAccount(
-                  creds.username,
-                  undefined,
-                  undefined,
-                  offline.model.avatars?.[creds.username]
-                ).catch(() => {});
-                setScreen('home');
-                setTimeout(() => {
-                  rescheduleBillNotifications(offline.model).catch(() => {});
-                }, 0);
-                reconcileOfflineUnlockWithServer(creds.username, creds).catch(() => {});
+                enterWithOfflineUnlock(creds, offline);
                 return;
               }
               setRemoteRevokeNotice(null);
@@ -626,6 +679,7 @@ function AppContent() {
                 username,
                 password: credentials.password,
               }).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
             }
             setScreen('onboarding');
           }}
@@ -635,6 +689,10 @@ function AppContent() {
     );
   }
 
+  return renderSignIn(false);
+  }
+
+  function renderSignIn(silent: boolean): React.ReactElement {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
 <SignInScreen
@@ -644,12 +702,26 @@ function AppContent() {
         autoSignIn={autoSignIn ?? undefined}
         onAutoSignInFailed={(username) => {
           wipeQuickUnlock(username).catch(() => {});
+          clearSession().catch(() => {});
           setAutoSignIn(null);
           setSignInPrefillUsername(username);
           setRemoteRevokeNotice('Your saved sign-in is out of date. Sign in with your password.');
         }}
-        onSignedIn={(username, key, initialModel, profile, householdKey, credentials) => {
+        silent={silent}
+        onSilentFailed={(username) => {
+          // The quiet sign-in at launch didn't work (no connection, or the saved
+          // password changed): show the normal sign-in screen, once.
+          setSilentSignIn(false);
+          setAutoSignIn(null);
+          setSignInPrefillUsername(username);
+          setRemoteRevokeNotice((prev) => prev ?? "Couldn't sign you in automatically. Check your connection and sign in.");
+          setScreen('signIn');
+        }}
+        onSignedIn={async (username, key, initialModel, profile, householdKey, credentials) => {
           const viaQuickUnlock = autoSignIn !== null;
+          // Don't cut the opening animation short.
+          if (silent) await introDoneRef.current;
+          setSilentSignIn(false);
           setAutoSignIn(null);
           setSignInPrefillUsername(undefined);
           setRemoteRevokeNotice(null);
@@ -676,6 +748,7 @@ function AppContent() {
                 const deviceId = await getDeviceId();
                 const revoked = await isThisDeviceRevoked(user.uid, deviceId);
                 if (revoked) {
+                  clearSession().catch(() => {});
                   wipeQuickUnlock(username).catch(() => {});
                   removeRecentAccount(username).catch(() => {});
                   clearModel();
@@ -695,6 +768,9 @@ function AppContent() {
               profile?.householdId,
               initialModel ? (initialModel.avatars?.[username] ?? { type: 'initials' }) : undefined
             ).catch(() => {});
+          }
+          if (credentials) {
+            saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
           }
           if (credentials && !viaQuickUnlock) {
             saveFingerprintCopyIfPossible({

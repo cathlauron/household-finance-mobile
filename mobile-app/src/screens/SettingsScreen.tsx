@@ -1,5 +1,6 @@
 import { hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
+import { updateSessionPassword } from '../staySignedIn';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch } from 'react-native';
@@ -185,7 +186,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(5);
+  const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(0);
 
   // Active Devices state
   const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
@@ -949,6 +950,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       (async () => {
         await removeFingerprintCopy(quickUser);
         await removePinCopy(quickUser);
+        // Sign in once: keep this phone signed in, with the new password.
+        await updateSessionPassword(quickUser, quickPassword, quickEmail ?? undefined);
         if (quickEmail) {
           await saveFingerprintCopyIfPossible({
             email: quickEmail,

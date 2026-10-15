@@ -211,16 +211,16 @@ export default function IntroScreen() {
       <Animated.View style={[styles.loader, { opacity: loader }]} pointerEvents="none">
         <Animated.View
           style={{
-            width: 26,
-            height: 44,
+            width: 19,
+            height: 32,
             transform: [
-              { translateY: 22 },
+              { translateY: 16 },
               { rotate: sway.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '6deg'] }) },
-              { translateY: -22 },
+              { translateY: -16 },
             ],
           }}
         >
-          <Svg width={26} height={44} viewBox="-10 0 120 205">
+          <Svg width={19} height={32} viewBox="-10 0 120 205">
             <G transform="rotate(14 50 100)">
               <VeinedLeaf id="small" opacity={0.62} withStem />
             </G>
