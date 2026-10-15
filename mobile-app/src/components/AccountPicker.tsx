@@ -6,6 +6,7 @@ import { useTheme } from '../ThemeContext';
 import { accountCurrentBalance, formatPeso, SpendingGroup } from '../balanceProjection';
 import type { HouseholdModel, PaymentMethod } from '../types';
 import GradientFill from './GradientFill';
+import { cardColor, cardChipColors } from './CardFace';
 
 // Redesign: choosing the account for a new transaction (required).
 // Money out: "Paid from". Cash and debit accounts with nothing in them, or less than the
@@ -56,7 +57,7 @@ type Props = {
 };
 
 export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
   const groups: SpendingGroup[] = ['cash', 'debit', 'credit'];
   const rows = groups.flatMap((g) => model.balanceAccounts[g].map((a) => ({ g, a })));
@@ -80,7 +81,13 @@ export default function AccountPicker({ model, direction, amount, value, onChang
             return (
               <TouchableOpacity
                 key={`${g}:${a.id}`}
-                style={[styles.row, i > 0 && styles.rowTop, blocked && !selected && { opacity: 0.45 }]}
+                style={[
+                  styles.row,
+                  i > 0 && styles.rowTop,
+                  // The chosen account is tinted in its own card colour.
+                  selected && { backgroundColor: cardChipColors(cardColor(a, g), isDark, true).backgroundColor },
+                  blocked && !selected && { opacity: 0.45 },
+                ]}
                 disabled={blocked && !selected}
                 onPress={() => onChange(pm)}
                 accessibilityRole="radio"
@@ -93,6 +100,8 @@ export default function AccountPicker({ model, direction, amount, value, onChang
                   color={selected ? colors.gold : colors.inkFaint}
                   style={{ marginRight: 10 }}
                 />
+                {/* A small card in the account's own colour. */}
+                <View style={[styles.miniCard, { backgroundColor: cardColor(a, g) }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name} numberOfLines={1}>{a.name || GROUP_LABEL[g]}</Text>
                   <Text style={[styles.sub, reason ? { color: colors.negative } : null]}>
@@ -115,6 +124,7 @@ function makeStyles(colors: any) {
     group: { backgroundColor: colors.navy2, borderRadius: 12, overflow: 'hidden', marginBottom: 14 },
     row: { flexDirection: 'row', alignItems: 'center', minHeight: 54, paddingHorizontal: 14, paddingVertical: 8 },
     rowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    miniCard: { width: 26, height: 18, borderRadius: 4, marginRight: 10 },
     name: { fontSize: 16, color: colors.ink },
     sub: { fontSize: 12, color: colors.inkDim, marginTop: 1 },
     balance: { fontSize: 15, fontWeight: '600', marginLeft: 8 },

@@ -24,6 +24,7 @@ import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
 import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonths } from '../savingsPots';
+import { useStickyState } from '../stickyState';
 
 function todayISO(): string {
   const d = new Date();
@@ -132,7 +133,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const styles = makeStyles(colors);
   const navigation = useNavigation<any>();
 
-  const [activeTab, setActiveTab] = useState<PillTab>('goals');
+  const [activeTab, setActiveTab] = useStickyState<PillTab>('savings.tab', 'goals');
 
   // Redesign: one sheet edits any Emergency / FI value.
   type EditField = { key: keyof CalculatorInputs; title: string; kind: 'peso' | 'pct' | 'months'; hint?: string; value: number; suggest?: { label: string; value: number } };

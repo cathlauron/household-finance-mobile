@@ -16,6 +16,7 @@ import GradientFill from '../components/GradientFill';
 import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import { hapticLight, hapticSelection } from '../haptics';
+import { useStickyState } from '../stickyState';
 
 // Redesign: Groceries (Plan › Groceries), matching the Finance Flow mockup.
 // List: tick items off as you shop; "Finish trip" adds what you bought to your spending.
@@ -47,7 +48,7 @@ export default function GroceriesScreen() {
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
 
-  const [tab, setTab] = useState<Tab>('list');
+  const [tab, setTab] = useStickyState<Tab>('groceries.tab', 'list');
   const [showAll, setShowAll] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [nameIn, setNameIn] = useState('');

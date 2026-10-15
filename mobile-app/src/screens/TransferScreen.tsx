@@ -13,6 +13,7 @@ import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
 import type { HouseholdModel, ManualTransaction, PaymentMethod } from '../types';
 import GradientFill from '../components/GradientFill';
+import { cardColor, cardChipColors } from '../components/CardFace';
 
 // Redesign: Move money, from the Finance Flow mockup. Moves money between two of your
 // own accounts (e.g. BPI Savings to Cash at an ATM). It isn't spending, so Left to
@@ -20,20 +21,20 @@ import GradientFill from '../components/GradientFill';
 // small "Fees" transaction paid from the first account.
 
 type Group = 'cash' | 'debit' | 'credit';
-type Acct = { key: string; group: Group; id: string; name: string; amount: number };
+type Acct = { key: string; group: Group; id: string; name: string; amount: number; color: string };
 
 function accountsOf(model: HouseholdModel): Acct[] {
   const out: Acct[] = [];
   (['cash', 'debit', 'credit'] as Group[]).forEach((g) =>
     (model.balanceAccounts[g] || []).forEach((a) =>
-      out.push({ key: `${g}:${a.id}`, group: g, id: a.id, name: a.name || (g === 'cash' ? 'Cash' : g === 'debit' ? 'Debit' : 'Credit card'), amount: typeof a.amount === 'number' ? a.amount : 0 })
+      out.push({ key: `${g}:${a.id}`, group: g, id: a.id, name: a.name || (g === 'cash' ? 'Cash' : g === 'debit' ? 'Debit' : 'Credit card'), amount: typeof a.amount === 'number' ? a.amount : 0, color: cardColor(a, g) })
     )
   );
   return out;
 }
 
 export default function TransferScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { model, saveModel } = useData();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -99,9 +100,12 @@ export default function TransferScreen() {
       <Text style={styles.pickLabel}>{label}</Text>
       <View style={styles.pickChips}>
         {accounts.filter((a) => a.key !== exclude).map((a) => (
-          <TouchableOpacity key={a.key} style={[styles.pickChip, value === a.key && styles.pickChipOn]} onPress={() => onPick(a.key)} accessibilityRole="button" accessibilityState={{ selected: value === a.key }}>
-            <GradientFill match={[styles.pickChip, value === a.key && styles.pickChipOn]} />
-            <Text style={[styles.pickChipText, value === a.key && { color: colors.gold, fontWeight: '600' }]} numberOfLines={1}>{a.name}</Text>
+          <TouchableOpacity key={a.key} style={[styles.pickChip, cardChipColors(a.color, isDark, value === a.key)]} onPress={() => onPick(a.key)} accessibilityRole="button" accessibilityState={{ selected: value === a.key }}>
+            {/* Each chip wears its card's own colour; the chosen one is deeper with a solid border. */}
+            <View style={styles.pickChipHead}>
+              <View style={[styles.pickChipDot, { backgroundColor: a.color }]} />
+              <Text style={[styles.pickChipText, value === a.key && { fontWeight: '700' }]} numberOfLines={1}>{a.name}</Text>
+            </View>
             <Text style={styles.pickChipAmt}>{formatPeso(a.amount).replace('.00', '')}</Text>
           </TouchableOpacity>
         ))}
@@ -169,8 +173,9 @@ function makeStyles(colors: ThemeColors) {
     pickWrap: { padding: 16 },
     pickLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 8 },
     pickChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    pickChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.navy2, maxWidth: '100%' },
-    pickChipOn: { backgroundColor: colors.accentTint },
+    pickChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, maxWidth: '100%' },
+    pickChipHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    pickChipDot: { width: 8, height: 8, borderRadius: 4 },
     pickChipText: { fontSize: 15, color: colors.ink },
     pickChipAmt: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     line: { height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4, marginLeft: 16 },

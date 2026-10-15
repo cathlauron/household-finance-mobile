@@ -1,6 +1,7 @@
 import { hapticSelection } from '../haptics';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
+import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch } from 'react-native';
@@ -187,6 +188,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(0);
+  const textSize = useTextSize();
 
   // Active Devices state
   const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
@@ -1209,6 +1211,23 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
               fill
               active={mode === opt.id}
               onPress={() => setMode(opt.id)}
+            />
+          ))}
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Text size</Text>
+<Text style={styles.sectionSub}>
+  How big the writing is across the app. Large is the size it used to be.
+</Text>
+        <View style={styles.modeRow}>
+          {TEXT_SIZE_OPTIONS.map((opt) => (
+            <Pill
+              key={opt.id}
+              testID={`settings-text-${opt.id}`}
+              label={opt.label}
+              fill
+              active={textSize === opt.id}
+              onPress={() => setTextSize(opt.id)}
             />
           ))}
         </View>

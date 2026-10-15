@@ -1,6 +1,7 @@
 import React, { createContext, forwardRef, useContext } from 'react';
 import { StyleSheet, Text as RNText, TextInput as RNTextInput } from 'react-native';
 import type { TextProps, TextInputProps, TextStyle } from 'react-native';
+import { useTextScale } from '../textSize';
 
 // Redesign: the app's rounded font (Nunito, the Finance Flow design system font).
 //
@@ -80,18 +81,37 @@ function fontStyleFor(style: TextProps['style'], inherited: Weight | null) {
   };
 }
 
+// Text size setting (Settings › Appearance, see textSize.ts): scales the font size and
+// line height. Text with no size of its own is React Native's default 14. Nested text
+// with no size of its own already inherits its parent's scaled size, so it is left alone.
+const RN_DEFAULT_SIZE = 14;
+function sizeStyleFor(style: TextProps['style'], scale: number, nested: boolean) {
+  if (scale === 1) return null;
+  const flat = (StyleSheet.flatten(style) || {}) as TextStyle;
+  const size = typeof flat.fontSize === 'number' ? flat.fontSize : nested ? null : RN_DEFAULT_SIZE;
+  if (size === null) return null;
+  const out: TextStyle = { fontSize: Math.round(size * scale * 10) / 10 };
+  if (typeof flat.lineHeight === 'number') out.lineHeight = Math.round(flat.lineHeight * scale * 10) / 10;
+  return out;
+}
+
 export const Text = forwardRef<RNText, TextProps>(function AppText({ style, ...rest }, ref) {
   const inherited = useContext(ParentWeight);
+  const scale = useTextScale();
   const { font, weight } = fontStyleFor(style, inherited);
+  const size = sizeStyleFor(style, scale, inherited !== null);
+  const extra = font || size ? [style, font, size] : style;
   return (
     <ParentWeight.Provider value={(weight ?? '400') as Weight}>
-      <RNText ref={ref} {...rest} style={font ? [style, font] : style} />
+      <RNText ref={ref} {...rest} style={extra} />
     </ParentWeight.Provider>
   );
 });
 
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(function AppTextInput({ style, ...rest }, ref) {
   const flat = (StyleSheet.flatten(style) || {}) as TextStyle;
+  const scale = useTextScale();
   const font = !fontsReady || flat.fontFamily ? null : { fontFamily: nunitoFor(flat.fontWeight), fontWeight: 'normal' as const };
-  return <RNTextInput ref={ref} {...rest} style={font ? [style, font] : style} />;
+  const size = sizeStyleFor(style, scale, false);
+  return <RNTextInput ref={ref} {...rest} style={font || size ? [style, font, size] : style} />;
 });

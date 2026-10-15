@@ -11,6 +11,7 @@ import { DEFAULT_GROUP_COLORS, AccountGroup } from '../components/AccountCard';
 import type { ThemeColors } from '../theme';
 import type { HouseholdModel, PaymentMethod } from '../types';
 import GradientFill from '../components/GradientFill';
+import { cardFaceColors, CardFaceFill } from '../components/CardFace';
 
 // Redesign: the Card page from the Finance Flow mockup, opened by tapping a card in
 // Home's Wallet. Shows the card with its balance, how much was spent from it this
@@ -18,6 +19,11 @@ import GradientFill from '../components/GradientFill';
 // between your accounts; "Edit card" opens Accounts.
 
 const GROUP_LABEL: Record<AccountGroup, string> = { cash: 'Cash', debit: 'Debit', credit: 'Credit' };
+const GROUP_ICON: Record<AccountGroup, React.ComponentProps<typeof Ionicons>['name']> = {
+  cash: 'cash-outline',
+  debit: 'card-outline',
+  credit: 'card',
+};
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function iso(d: Date): string {
@@ -35,7 +41,7 @@ export function idsForAccount(model: HouseholdModel, group: AccountGroup, accoun
 }
 
 export default function CardDetailScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { model } = useData();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -91,13 +97,18 @@ export default function CardDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.card}>
+      {/* The same colour and gradient as this card in Home's Wallet. */}
+      <View style={[styles.card, cardFaceColors(chip, isDark)]}>
+        <CardFaceFill color={chip} radius={17} />
         <View style={styles.cardHead}>
           <View style={styles.nameRow}>
             <View style={[styles.chip, { backgroundColor: chip }]} />
             <Text style={styles.cardName} numberOfLines={1}>{account.name || GROUP_LABEL[group]}</Text>
           </View>
-          <Text style={styles.type}>{GROUP_LABEL[group]}</Text>
+          <View style={[styles.typeTag, { backgroundColor: colors.navy1 }]}>
+            <Ionicons name={GROUP_ICON[group]} size={11} color={colors.inkDim} />
+            <Text style={styles.type}>{GROUP_LABEL[group]}</Text>
+          </View>
         </View>
         <View style={{ marginTop: 'auto' }}>
           <Text style={styles.meta}>Balance</Text>
@@ -187,9 +198,7 @@ function makeStyles(colors: ThemeColors) {
       height: 190,
       borderRadius: 18,
       padding: 18,
-      backgroundColor: colors.navy3,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.navy4,
+      borderWidth: 1,
       shadowColor: '#000',
       shadowOpacity: 0.08,
       shadowRadius: 12,
@@ -200,7 +209,8 @@ function makeStyles(colors: ThemeColors) {
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
     chip: { width: 12, height: 12, borderRadius: 3 },
     cardName: { fontSize: 17, fontWeight: '600', color: colors.ink, flexShrink: 1 },
-    type: { fontSize: 12, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', color: colors.inkDim },
+    typeTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+    type: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', color: colors.inkDim },
     balance: { fontSize: 30, lineHeight: 36, fontWeight: '700' },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
     meta: { fontSize: 13, color: colors.inkDim },

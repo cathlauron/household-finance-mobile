@@ -6,7 +6,7 @@ import { formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry } from '../types';
 import { radii, spacing } from '../tokens';
 import { useTheme } from '../ThemeContext';
-import GradientFill from './GradientFill';
+import { cardFaceColors, CardFaceFill } from './CardFace';
 
 export type AccountGroup = 'cash' | 'debit' | 'credit';
 
@@ -47,13 +47,13 @@ type Props = {
 };
 
 export default function AccountCard({ account, group, onPress, style, testID, isExpanded, hideTypeBadge }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const accentColor = account.color || DEFAULT_GROUP_COLORS[group];
 
   // All text is colors.ink / colors.inkDim, so contrast never depends on the chosen colour.
   // The colour shows up as a faint tint, a border, and a dot, never as text.
-  const tintLayer = `${accentColor}14`;
-  const borderColor = `${accentColor}40`;
+  // Same colour and gradient as this card in Home's Wallet.
+  const face = cardFaceColors(accentColor, isDark);
   const badgeBg = `${accentColor}26`;
 
   const rawAmount = typeof account.amount === 'number' ? account.amount : 0;
@@ -66,18 +66,12 @@ export default function AccountCard({ account, group, onPress, style, testID, is
       onPress={onPress}
       style={[
         styles.card,
-        { backgroundColor: colors.navy3, borderColor },
+        face,
         isExpanded && [styles.cardExpanded, { borderColor: accentColor }],
         style,
       ]}
     >
-      <GradientFill match={[
-        styles.card,
-        { backgroundColor: colors.navy3, borderColor },
-        isExpanded && [styles.cardExpanded, { borderColor: accentColor }],
-        style,
-      ]} />
-      <View pointerEvents="none" style={[styles.tintLayer, { backgroundColor: tintLayer }]} />
+      <CardFaceFill color={accentColor} radius={radii[16] - 1} />
 
       <View style={styles.topRow}>
         <View style={styles.topRowLeft}>

@@ -1082,7 +1082,7 @@ function makeStyles(colors: any) {
 function makeMainStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },
-    brandWrap: { alignItems: 'center', marginBottom: 28 },
+    brandWrap: { alignItems: 'center', marginTop: 36, marginBottom: 28 },
     brandLogo: { width: 64, height: 64 },
     brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
     title: { fontSize: 28, fontWeight: '700', color: colors.ink, marginBottom: 6, textAlign: 'center' },

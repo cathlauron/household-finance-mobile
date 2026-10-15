@@ -3,6 +3,7 @@ import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
 import { setToPaySub } from '../fabActions';
+import { useStickyState } from '../stickyState';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
@@ -14,6 +15,9 @@ import { subscribeToToPayTabRequest, consumePendingToPayTab } from '../openToPay
 import { Ionicons } from '@expo/vector-icons';
 
 type SubTab = 'bills' | 'debts' | 'loans';
+
+// The reminder (bill id) that last opened this screen on Bills.
+let lastHandledOpenBillId: string | undefined;
 
 const TOPAY_TABS: { id: SubTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: 'bills', label: 'Bills', icon: 'receipt-outline' },
@@ -27,15 +31,18 @@ interface ToPayScreenProps {
 
 export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   const { colors } = useTheme();
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('bills');
+  const [activeSubTab, setActiveSubTab] = useStickyState<SubTab>('toPay.sub', 'bills');
   const [swipeOpenRequest, setSwipeOpenRequest] = useState<OpenBillRequest | null>(null);
   const [swipeOpenDebtRequest, setSwipeOpenDebtRequest] = useState<OpenDebtRequest | null>(null);
   const [swipeOpenLoanRequest, setSwipeOpenLoanRequest] = useState<OpenLoanRequest | null>(null);
 
   // B.14: a subscription-reminder deep-link always means "open the Bills
   // sub-tab", regardless of whichever sub-tab was last active.
+  // Only once per reminder: if this screen is rebuilt later with the same id still
+  // attached, it must not jump back to Bills.
   useEffect(() => {
-    if (initialOpenBillId) {
+    if (initialOpenBillId && initialOpenBillId !== lastHandledOpenBillId) {
+      lastHandledOpenBillId = initialOpenBillId;
       setActiveSubTab('bills');
     }
   }, [initialOpenBillId]);

@@ -7,6 +7,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { buildTransactionsList, TransactionEntry } from '../transactions';
+import { paymentMethodColor } from '../components/CardFace';
 import { accountLabel, deleteManualTxn, markRefundReceived, undoRefund } from '../transactionActions';
 import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
@@ -161,9 +162,11 @@ export default function TransactionDetailScreen() {
         }
       : undefined;
 
-  const Row = ({ label, value, onPress, valueColor, last }: { label: string; value: string; onPress?: () => void; valueColor?: string; last?: boolean }) => (
+  const Row = ({ label, value, onPress, valueColor, last, dot }: { label: string; value: string; onPress?: () => void; valueColor?: string; last?: boolean; dot?: string | null }) => (
     <TouchableOpacity style={[styles.row, !last && styles.rowLine]} disabled={!onPress} onPress={onPress} activeOpacity={0.6} accessibilityRole={onPress ? 'button' : undefined}>
       <Text style={styles.rowLabel}>{label}</Text>
+      {/* The account's own card colour, as a small card shape. */}
+      {!!dot && <View style={{ width: 18, height: 12, borderRadius: 3, backgroundColor: dot, marginRight: 8 }} />}
       <Text style={[styles.rowValue, valueColor ? { color: valueColor } : null]} numberOfLines={1}>
         {value}
       </Text>
@@ -185,7 +188,7 @@ export default function TransactionDetailScreen() {
       <View style={styles.group}>
         <GradientFill match={styles.group} />
         <Row label="Category" value={entry.category || 'Uncategorized'} onPress={isManual ? openEdit : undefined} />
-        <Row label="Account" value={account ?? (isManual ? 'Not set' : '—')} onPress={isManual ? openEdit : undefined} />
+        <Row label="Account" value={account ?? (isManual ? 'Not set' : '—')} onPress={isManual ? openEdit : undefined} dot={account ? paymentMethodColor(model, raw?.paymentMethod) : null} />
         <Row label="Paid by" value={paidBy} onPress={isManual ? openEdit : undefined} last={!isManual} />
         {isManual && <Row label="Note" value={raw?.notes?.trim() || 'Add a note'} valueColor={raw?.notes?.trim() ? undefined : colors.gold} onPress={openEdit} last />}
       </View>

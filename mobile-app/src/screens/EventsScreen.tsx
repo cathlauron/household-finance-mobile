@@ -21,6 +21,7 @@ import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import { useStickyState } from '../stickyState';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
@@ -193,7 +194,7 @@ export default function EventsScreen() {
   const [trackInSavingsInput, setTrackInSavingsInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [itemsInput, setItemsInput] = useState<{ id: string; name: string; cost: number | '' }[]>([]);
-  const [view, setView] = useState<'up' | 'done'>('up');
+  const [view, setView] = useStickyState<'up' | 'done'>('events.view', 'up');
   const [openId, setOpenId] = useState<string | null>(null);
   const navigation = useNavigation<any>();
 

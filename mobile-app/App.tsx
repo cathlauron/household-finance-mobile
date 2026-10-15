@@ -19,6 +19,7 @@ import {
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
 import { setFontsReady } from './src/components/AppText';
+import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -816,7 +817,12 @@ export default function App() {
     Nunito_900Black,
   });
   setFontsReady(fontsLoaded);
-  if (!fontsLoaded && !fontError) {
+  // Wait for the saved Text size too, so text never jumps size on launch.
+  const [textSizeReady, setTextSizeReady] = useState(false);
+  useEffect(() => {
+    textSizeLoaded.then(() => setTextSizeReady(true));
+  }, []);
+  if ((!fontsLoaded && !fontError) || !textSizeReady) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />
