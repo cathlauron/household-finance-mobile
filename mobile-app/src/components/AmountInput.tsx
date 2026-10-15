@@ -120,6 +120,31 @@ export default function AmountInput({
         </TouchableOpacity>
       ) : null}
       {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
+      {centered ? (
+      <View style={{ justifyContent: 'center' }}>
+        <TextInput
+          style={[styles.input, inputStyle, showSideHint ? { minWidth: 3, textAlign: 'left' } : centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
+          placeholder={centered && isFocused ? '' : placeholder}
+          placeholderTextColor={colors.inkFaint}
+          keyboardType={allowDecimals ? 'decimal-pad' : 'number-pad'}
+          value={textBuffer}
+          onChangeText={handleChangeText}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          autoFocus={autoFocus}
+        />
+        {showSideHint ? (
+          // Drawn beside the cursor without taking up space, so the cursor stays centred.
+          <Text
+            pointerEvents="none"
+            numberOfLines={1}
+            style={[styles.input, inputStyle, { position: 'absolute', left: '100%', color: colors.inkFaint, minWidth: 0, width: 200, textAlign: 'left' }]}
+          >
+            {placeholder}
+          </Text>
+        ) : null}
+      </View>
+      ) : (
       <TextInput
         style={[styles.input, inputStyle, showSideHint ? { minWidth: 3, textAlign: 'left' } : centered && isFocused ? { minWidth: 28, textAlign: 'center' } : null]}
         placeholder={centered && isFocused ? '' : placeholder}
@@ -131,14 +156,7 @@ export default function AmountInput({
         onBlur={handleBlur}
         autoFocus={autoFocus}
       />
-      {showSideHint ? (
-        <Text
-          pointerEvents="none"
-          style={[styles.input, inputStyle, { color: colors.inkFaint, flex: 0, minWidth: 0, textAlign: 'left' }]}
-        >
-          {placeholder}
-        </Text>
-      ) : null}
+      )}
       {suffix ? <Text style={styles.affix}>{suffix}</Text> : null}
     </View>
   );
