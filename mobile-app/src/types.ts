@@ -63,6 +63,9 @@ export type SharedSettlement = {
   amount: number;
   note?: string;
   createdAt?: number;
+  // When you paid or were paid from one of your accounts, the money in/out transaction
+  // logged with it (removed again if the payment is undone).
+  transactionId?: string;
 };
 
 export type Person = {
