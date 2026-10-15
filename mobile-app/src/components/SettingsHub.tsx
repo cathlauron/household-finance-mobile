@@ -161,3 +161,55 @@ export function PlainRow({
     </TouchableOpacity>
   );
 }
+
+// A row with a title and a small segmented picker under it (Light / Dark / Auto, ...).
+export function SegmentRow<T extends string | number>({
+  title,
+  options,
+  value,
+  onChange,
+  testIDPrefix,
+}: {
+  title: string;
+  options: { id: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  testIDPrefix?: string;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+      <Text style={{ fontSize: 17, color: colors.ink }}>{title}</Text>
+      <View style={{ flexDirection: 'row', backgroundColor: colors.navy2, borderRadius: 11, padding: 3, gap: 3 }}>
+        {options.map((o) => {
+          const on = o.id === value;
+          return (
+            <TouchableOpacity
+              key={String(o.id)}
+              testID={testIDPrefix ? `${testIDPrefix}-${o.id}` : undefined}
+              activeOpacity={0.7}
+              onPress={() => onChange(o.id)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{
+                flex: 1,
+                height: 34,
+                borderRadius: 9,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: on ? colors.navy3 : 'transparent',
+                elevation: on ? 1 : 0,
+                shadowColor: '#000',
+                shadowOpacity: on ? 0.12 : 0,
+                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 1 },
+              }}
+            >
+              <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: on ? '700' : '600', color: on ? colors.ink : colors.inkDim }}>{o.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}

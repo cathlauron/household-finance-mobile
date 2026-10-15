@@ -200,7 +200,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen
         name="Premium"
         component={PremiumScreen}
-        options={{ title: 'Subscription', headerBackTitle: 'Settings' }}
+        options={{ title: 'Premium', headerBackTitle: 'Settings' }}
       />
     </Stack.Navigator>
   );

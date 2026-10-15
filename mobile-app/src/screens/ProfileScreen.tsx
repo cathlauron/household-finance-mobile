@@ -99,7 +99,7 @@ type ProfileScreenProps = {
 };
 
 export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: ProfileScreenProps) {
-  const { colors } = useTheme();
+  const { colors, mode: themeMode } = useTheme();
   const navigation = useNavigation<any>();
   // Redesign: Settings opens this page either as your Profile or as the Household page.
   const route = useRoute<any>();
@@ -685,6 +685,21 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             testID="profile-row-security"
             title="Account & Security"
             onPress={() => navigation.push('SettingsPage', { subPage: 'sec' })}
+          />
+        </SettingsGroup>
+
+        <SettingsGroup plain>
+          <PlainRow
+            testID="profile-row-appearance"
+            title="Appearance"
+            value={themeMode === 'dark' ? 'Dark' : themeMode === 'light' ? 'Light' : 'Auto'}
+            onPress={() => navigation.push('SettingsPage', { subPage: 'look' })}
+          />
+          <PlainRow
+            testID="profile-row-notifications"
+            title="Notifications"
+            value={model?.settings.pushNotificationsEnabled ? 'On' : 'Off'}
+            onPress={() => navigation.push('SettingsPage', { subPage: 'notify' })}
           />
         </SettingsGroup>
 

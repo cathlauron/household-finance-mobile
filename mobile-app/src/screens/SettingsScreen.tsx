@@ -29,7 +29,9 @@ import {
 } from '../recovery';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
-import { SettingsGroup, SettingsRow } from '../components/SettingsHub';
+import { SettingsGroup, SettingsRow, PlainRow, SegmentRow } from '../components/SettingsHub';
+import { PickerRow, Choices, AmountRow } from '../components/SimpleForm';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -69,10 +71,12 @@ const COLOR_PALETTE = [
 
 // ---- Appearance mode options ----
 // Backed entirely by ThemeContext's existing setMode()/mode — this just gives it a UI.
+const APP_VERSION = '1.0.0';
+
 const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
   { id: 'light', label: 'Light' },
   { id: 'dark', label: 'Dark' },
-  { id: 'device', label: 'Automatic' },
+  { id: 'device', label: 'Auto' },
 ];
 
 function amountRangeLabel(rule: CategorizationRule): string {
@@ -145,7 +149,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     categories: 'Categories',
     watchlist: 'Category Watchlist',
     payees: 'Merchants & Payees',
-    rules: 'Categorization Rules',
+    rules: 'Rules',
     security: 'Security',
     quickunlock: 'Quick Unlock',
     devices: 'Active Devices',
@@ -533,6 +537,54 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       setNotifStatusMsg('Failed to save. Please try again.');
     }
   }
+
+  // Quick PIN switch: off asks before removing the PIN; on opens PIN setup.
+  function handlePinSwitch() {
+    hapticSelection();
+    if (pinIsSet) {
+      Alert.alert(
+        'Turn Off Quick PIN',
+        'Are you sure you want to remove your Quick PIN? You will need to use your password or biometric unlock to access the app.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Turn Off',
+            style: 'destructive',
+            onPress: async () => {
+              if (!username) return;
+              setPinBusy(true);
+              try {
+                await removePin(username);
+                await removePinCopy(username);
+                updateRecentAccountIfPresent(username, { hasPin: false }).catch(() => {});
+                setPinIsSet(false);
+              } catch (e) {
+                Alert.alert('Failed to remove PIN', 'Please try again.');
+              } finally {
+                setPinBusy(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      setShowSetPinModal(true);
+    }
+  }
+
+  // Which expanding row (Auto-lock, Day, Watch a category) is open; one at a time.
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const toggleRow = (key: string) => setOpenRow((o) => (o === key ? null : key));
+  const [passSheetOpen, setPassSheetOpen] = useState(false);
+
+  const settingSwitch = (value: boolean, onChange: (on: boolean) => void, testID?: string) => (
+    <Switch
+      testID={testID}
+      value={value}
+      onValueChange={(on) => { hapticSelection(); onChange(on); }}
+      trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
+    />
+  );
 
   // The swipe preview only plays right after Swipe to delete is turned on here.
   const [showSwipePreview, setShowSwipePreview] = useState(false);
@@ -1090,25 +1142,35 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
 
-        <SettingsGroup label="Household">
-          <SettingsRow testID="settings-row-household" icon="people-outline" title="Household" value={isLinked ? 'Shared' : 'Just you'} onPress={() => navigation.navigate('Profile', { section: 'household' })} />
-        </SettingsGroup>
-        <SettingsGroup label="You">
-          <SettingsRow testID="settings-row-security" icon="shield-checkmark-outline" title="Account & Security" value={biometricState === 'ENABLED' ? `${biometricLabel}` : pinIsSet ? 'PIN' : undefined} onPress={() => openPage('sec')} />
-          <SettingsRow testID="settings-row-appearance" icon="color-palette-outline" title="Appearance" value={MODE_OPTIONS.find((o) => o.id === mode)?.label} onPress={() => openPage('look')} />
-          <SettingsRow testID="settings-row-notifications" icon="notifications-outline" title="Notifications" value={model.settings.pushNotificationsEnabled ? 'On' : 'Off'} onPress={() => openPage('notify')} />
-        </SettingsGroup>
+        {/* Premium: right under the profile, so it's the first thing people see. */}
+        <TouchableOpacity
+          testID="settings-premium-card"
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Premium')}
+          style={[styles.premiumCard, { backgroundColor: colors.buttonFill }]}
+          accessibilityRole="button"
+          accessibilityLabel="Finance Flow Premium. See plans"
+        >
+          <View style={styles.premiumIcon}>
+            <MaterialCommunityIcons name="crown" size={24} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.premiumTitle}>Finance Flow Premium</Text>
+            <Text style={styles.premiumSub}>Unlock everything · from ₱79.20 a month</Text>
+          </View>
+          <View style={styles.premiumPill}>
+            <Text style={[styles.premiumPillText, { color: colors.buttonFill }]}>Upgrade</Text>
+          </View>
+        </TouchableOpacity>
+
         <SettingsGroup label="Money">
           <SettingsRow testID="settings-row-budgeting" icon="speedometer-outline" title="Budgeting" onPress={() => openPage('budget')} />
           <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories & Rules" onPress={() => openPage('cats')} />
-          <SettingsRow testID="settings-row-data" icon="cloud-outline" title="Backup & Data" value="Synced" onPress={() => openPage('backup')} />
+        </SettingsGroup>
+        <SettingsGroup label="App">
+          <SettingsRow testID="settings-row-data" icon="cloud-outline" title="Backup & Data" onPress={() => openPage('backup')} />
           <SettingsRow testID="settings-row-help" icon="information-circle-outline" title="About & Help" onPress={() => openPage('helpabout')} />
         </SettingsGroup>
-        {!!onLock && (
-          <SettingsGroup label="This phone">
-            <SettingsRow testID="settings-row-lock" icon="lock-closed-outline" title="Lock app now" onPress={onLock} />
-          </SettingsGroup>
-        )}
         </>
         )}
         {page === null && (
@@ -1172,476 +1234,401 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           <Text style={{ fontSize: 17, color: colors.negative }}>Log out</Text>
         </TouchableOpacity>
         )}
-        {inPage('language') && (
+        {/* ---------- Account & Security ---------- */}
+        {page === 'sec' && (
         <>
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Language</Text>
-        <Text style={styles.sectionSub}>More languages are coming later.</Text>
-        <View style={styles.row}>
-          <GradientFill match={styles.row} />
-          <Text style={styles.rowName}>English</Text>
-          <Ionicons name="checkmark" size={18} color={colors.gold} />
-        </View>
-        </>
-        )}
-
-        {page === 'helpabout' && (
-          <SettingsGroup label="Membership">
-            <SettingsRow testID="settings-row-premium" icon="sparkles-outline" title="Subscription" value="Coming soon" onPress={() => navigation.navigate('Premium')} />
-          </SettingsGroup>
-        )}
-        {inPage('help') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Help & support</Text>
-        <Text style={styles.sectionSub}>Guides and a way to reach us are coming soon.</Text>
-        </>
-        )}
-
-        {inPage('about') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>About us</Text>
-        <Text style={styles.sectionSub}>Finance Flow · Version 1.0.0</Text>
-        <Text style={styles.hintText}>Household budgeting for you and the people you share a home with.</Text>
-        </>
-        )}
-
-        {inPage('appearance') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Appearance</Text>
-<Text style={styles.sectionSub}>
-  Light, Dark, or match your phone's own setting.
-</Text>
-        <View style={styles.modeRow}>
-          {MODE_OPTIONS.map((opt) => (
-            <Pill
-              key={opt.id}
-              label={opt.label}
-              fill
-              active={mode === opt.id}
-              onPress={() => setMode(opt.id)}
-            />
-          ))}
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Text size</Text>
-<Text style={styles.sectionSub}>
-  How big the writing is across the app. Large is the size it used to be.
-</Text>
-        <View style={styles.modeRow}>
-          {TEXT_SIZE_OPTIONS.map((opt) => (
-            <Pill
-              key={opt.id}
-              testID={`settings-text-${opt.id}`}
-              label={opt.label}
-              fill
-              active={textSize === opt.id}
-              onPress={() => setTextSize(opt.id)}
-            />
-          ))}
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>+ button side</Text>
-<Text style={styles.sectionSub}>
-  Which thumb taps +? The button sits on that side, just above the tabs.
-</Text>
-        <View style={styles.modeRow}>
-          <Pill testID="settings-fab-left" label="Left" fill active={fabSide === 'left'} onPress={() => setFabSide('left')} />
-          <Pill testID="settings-fab-right" label="Right" fill active={fabSide === 'right'} onPress={() => setFabSide('right')} />
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Feel</Text>
-        <View style={styles.feelGroup}>
-          <GradientFill match={styles.feelGroup} />
-          <View style={styles.feelRow}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.feelTitle}>Mood colours</Text>
-              <Text style={styles.sectionSub}>Card, buttons and leaves follow Left to Spend</Text>
-            </View>
-            <Switch
-              testID="settings-mood-colors"
-              value={model.settings.moodColorsEnabled !== false}
-              onValueChange={(on) => saveModel({ ...model, settings: { ...model.settings, moodColorsEnabled: on } })}
-              trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
-            />
-          </View>
-          <View style={[styles.feelRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.feelTitle}>Falling leaves</Text>
-              <Text style={styles.sectionSub}>Leaves fall gently behind the app; switching tabs blows them sideways</Text>
-            </View>
-            <Switch
-              testID="settings-falling-leaves"
-              value={model.settings.fallingLeavesEnabled !== false}
-              onValueChange={(on) => saveModel({ ...model, settings: { ...model.settings, fallingLeavesEnabled: on } })}
-              trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
-            />
-          </View>
-        </View>
-
-        </>
-        )}
-        {inPage('listrows') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>List Rows</Text>
-<View style={styles.feelGroup}>
-          <GradientFill match={styles.feelGroup} />
-          <View style={styles.feelRow}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.feelTitle}>Swipe to delete</Text>
-              <Text style={styles.sectionSub}>Swipe a row left to delete it</Text>
-            </View>
-            <Switch
-              testID="settings-swipe-delete"
-              value={!!model.settings.swipeToDeleteEnabled}
-              onValueChange={(on) => {
-                setShowSwipePreview(on);
-                handleSetSwipeToDelete(on);
-              }}
-              trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
-            />
-          </View>
-        </View>
-        {showSwipePreview && <RowInteractionPreview />}
-
-        </>
-        )}
-        {inPage('notifications') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Notifications</Text>
-<View style={styles.row}>
-  <GradientFill match={styles.row} />
-          <Text style={styles.rowName}>Alert me</Text>
-          <TextInput
-            style={styles.notifyInput}
-            value={notifyDaysInput}
-            onChangeText={setNotifyDaysInput}
-            onBlur={saveNotifyDays}
-            keyboardType="number-pad"
-            maxLength={2}
+        <SettingsGroup label="Sign in" plain>
+          <PlainRow testID="settings-change-password" title="Change password" onPress={() => { setPassChangeMsg(''); setPassSheetOpen(true); }} />
+          <PlainRow
+            testID="settings-recovery-key"
+            title="Secret Recovery Key"
+            value={hasRecoveryKey === false ? 'Needs a new one' : hasRecoveryKey === true ? 'Active' : undefined}
+            onPress={() => {
+              setRetroactiveVerifyPass('');
+              setRetroactiveError('');
+              setRetroactiveSuccessCode(null);
+              setRetroactiveModalOpen(true);
+            }}
           />
-          <Text style={styles.rowName}>day(s) before due</Text>
-        </View>
-
-        </>
-        )}
-        {inPage('leftspend') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Left to Spend</Text>
-<Text style={styles.sectionSub}>
-  "Left to Spend" on Home turns orange (Running low) once it drops below this % of your monthly budget.
-</Text>
-        <Text style={[styles.rowName, { marginBottom: 6 }]}>Monthly budget</Text>
-        <AmountInput
-          style={styles.amountInput}
-          placeholder="e.g. 38,000"
-          value={monthlyBudgetInput}
-          onChangeAmount={setMonthlyBudgetInput}
-        />
-        <View style={styles.row}>
-          <GradientFill match={styles.row} />
-          <Text style={styles.rowName}>Caution below</Text>
-          <TextInput
-            style={styles.notifyInput}
-            value={cautionThresholdInput}
-            onChangeText={setCautionThresholdInput}
-            onBlur={saveCautionThreshold}
-            keyboardType="number-pad"
-            maxLength={3}
-          />
-          <Text style={styles.rowName}>% of {monthlyBudgetInput !== '' && monthlyBudgetInput > 0 ? 'monthly budget' : 'monthly bills'}</Text>
-        </View>
-        {(() => {
-          const pct = Math.max(0, Math.min(100, parseInt(cautionThresholdInput, 10) || 0));
-          const base = monthlyBudgetInput !== '' && monthlyBudgetInput > 0
-            ? { amount: monthlyBudgetInput, kind: 'budget' as const }
-            : model
-            ? cautionBase({ ...model, settings: { ...model.settings, monthlySpendingBudget: '' } })
-            : { amount: 0, kind: 'obligations' as const };
-          return (
-            <Text style={styles.sectionSub}>
-              {`At ${pct}%, Left to Spend turns orange below ${formatPeso(base.amount * (pct / 100))}.`}
-              {base.kind === 'obligations'
-                ? ' With no monthly budget, this is measured against your typical monthly bills, debts and loans. Add a budget above to measure against that instead.'
-                : ''}
-            </Text>
-          );
-        })()}
-
-        </>
-        )}
-        {inPage('notifications') && (
-        <>
-        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={togglePushNotifications}>
-          <GradientFill match={styles.row} />
-          <Text style={styles.rowName}>Notify me on this phone</Text>
-          <View
-            style={[
-              styles.toggleTrack,
-              model.settings.pushNotificationsEnabled && styles.toggleTrackActive,
-            ]}
-          >
-            <GradientFill match={[
-              styles.toggleTrack,
-              model.settings.pushNotificationsEnabled && styles.toggleTrackActive,
-            ]} />
-            <View
-              style={[
-                styles.toggleThumb,
-                model.settings.pushNotificationsEnabled && styles.toggleThumbActive,
-              ]}
-            />
-          </View>
-        </TouchableOpacity>
-        {!!notifStatusMsg && <Text style={styles.notifStatusText}>{notifStatusMsg}</Text>}
-
-        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={toggleWeeklyRecap}>
-          <GradientFill match={styles.row} />
-          <Text style={styles.rowName}>Weekly spending recap</Text>
-          <View
-            style={[
-              styles.toggleTrack,
-              model.settings.weeklyRecapEnabled && styles.toggleTrackActive,
-            ]}
-          >
-            <GradientFill match={[
-              styles.toggleTrack,
-              model.settings.weeklyRecapEnabled && styles.toggleTrackActive,
-            ]} />
-            <View
-              style={[
-                styles.toggleThumb,
-                model.settings.weeklyRecapEnabled && styles.toggleThumbActive,
-              ]}
-            />
-          </View>
-        </TouchableOpacity>
-
-        {model.settings.weeklyRecapEnabled && (
-          <>
-            <View style={styles.pillRow}>
-              {DOW_LABELS.map((label, idx) => (
-                <Pill
-                  key={label}
-                  label={label}
-                  compact
-                  minWidth={42}
-                  active={(model.settings.weeklyRecapDay ?? 0) === idx}
-                  onPress={() => setWeeklyRecapDay(idx)}
-                />
-              ))}
-            </View>
-            <View style={styles.row}>
-              <GradientFill match={styles.row} />
-              <Text style={styles.rowName}>At</Text>
-              <TextInput
-                style={styles.notifyInput}
-                value={recapHourInput}
-                onChangeText={setRecapHourInput}
-                onBlur={saveWeeklyRecapHour}
-                keyboardType="number-pad"
-                maxLength={2}
-              />
-              <Text style={styles.rowName}>:00 (24-hour, e.g. 18 = 6 PM)</Text>
-            </View>
-          </>
+        </SettingsGroup>
+        {hasRecoveryKey === false && (
+          <Text style={[styles.groupNote, { color: colors.orange }]}>
+            Your password changed, so your old recovery key no longer works. Make a new one.
+          </Text>
         )}
 
-        </>
-        )}
-        {inPage('categories') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categories</Text>
-<Text style={styles.sectionSub}>
-  Category names and colors used across Bills, Debts & Transactions.
-</Text>
-
-        {categories.length === 0 && (
-          <Text style={styles.emptyText}>No categories yet. Add your first one below.</Text>
-        )}
-
-        {categories.map((cat) => (
-          <TouchableOpacity
-            key={cat.id}
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => openEditModal(cat)}
-          >
-            <GradientFill match={styles.row} />
-            <View style={[styles.colorDot, { backgroundColor: cat.color }]} />
-            <Text style={styles.rowName} numberOfLines={1}>
-              {cat.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add category</Text>
-        </TouchableOpacity>
-
-        </>
-        )}
-        {inPage('watchlist') && (
-        <>
-        {/* Redesign: Envelopes (give every peso a job). Envelopes and watched
-            categories are the same list. */}
-        <TouchableOpacity
-          style={[styles.row, { marginTop: 20 }]}
-          onPress={() => navigation.navigate('Envelopes')}
-          accessibilityRole="button"
-          testID="settings-envelopes"
+        <SettingsGroup
+          label="Quick unlock"
+          plain
+          footer={biometricError || 'Open the app with your fingerprint or a PIN instead of your password.'}
         >
-          <GradientFill match={[styles.row, { marginTop: 20 }]} />
-          <Ionicons name="mail-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowName}>Envelopes</Text>
-            <Text style={{ fontSize: 13, color: colors.inkDim }}>Give every peso a job, and roll leftovers into next month</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
-        </TouchableOpacity>
+          {biometricState === 'UNAVAILABLE' ? (
+            <PlainRow title="Fingerprint" value="Not available" />
+          ) : (
+            <PlainRow
+              title={biometricLabel}
+              right={settingSwitch(biometricState === 'ENABLED', () => handleToggleBiometrics(), 'biometric-toggle')}
+            />
+          )}
+          <PlainRow
+            title="PIN"
+            right={pinBusy ? <ActivityIndicator size="small" color={colors.gold} /> : settingSwitch(pinIsSet, handlePinSwitch, 'pin-toggle')}
+          />
+          {pinIsSet && <PlainRow testID="change-pin-button" title="Change PIN" onPress={() => setShowSetPinModal(true)} />}
+        </SettingsGroup>
 
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
-<Text style={styles.sectionSub}>
-  Set a monthly limit per category — flagged on Home when you get close.
-</Text>
-
-        {model.categoryBudgets.length === 0 && (
-          <Text style={styles.emptyText}>Not watching any categories yet. Add one below.</Text>
+        {showSetPinModal && username && (
+          <Modal visible={showSetPinModal} animationType="slide">
+            <SetPinScreen
+              username={username}
+              email={getCurrentFirebaseUser()?.email ?? undefined}
+              onDone={() => {
+                setShowSetPinModal(false);
+                setPinIsSet(true);
+              }}
+              onCancel={() => setShowSetPinModal(false)}
+            />
+          </Modal>
         )}
 
-        {model.categoryBudgets.map((cb) => (
-          <View key={cb.id} style={styles.row}>
-            <GradientFill match={styles.row} />
-            <Text style={styles.rowName} numberOfLines={1}>
-              {cb.category} — {formatPeso(typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0)}/mo
-            </Text>
-            <TouchableOpacity onPress={() => handleRemoveWatchedCategory(cb.id)}>
-              <Text style={{ color: colors.error, fontSize: 13 }}>Remove</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        <TextInput
-          style={styles.input}
-          placeholder="Category name (e.g. Groceries)"
-          placeholderTextColor={colors.inkDim}
-          value={watchCategoryInput}
-          onChangeText={setWatchCategoryInput}
-        />
-        <AmountInput
-          style={styles.amountInput}
-          placeholder="Monthly limit (e.g. 5000)"
-          value={watchLimitInput}
-          onChangeAmount={setWatchLimitInput}
-        />
-        {watchErrorMsg !== '' && (
-          <Text style={{ color: colors.error, fontSize: 13, marginBottom: 8 }}>{watchErrorMsg}</Text>
-        )}
-        <TouchableOpacity style={styles.addButton} onPress={handleAddWatchedCategory}>
-          <Text style={styles.addButtonText}>+ Add to Watchlist</Text>
-        </TouchableOpacity>
-
-        </>
-        )}
-        {inPage('payees') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Merchants &amp; Payees</Text>
-<Text style={styles.sectionSub}>
-  Save frequent names for quicker entry — set a default category to auto-fill it on matching transactions.
-</Text>
-
-        {payees.length === 0 && (
-          <Text style={styles.emptyText}>No payees yet. Add your first one below.</Text>
-        )}
-
-        {payees.map((payee) => (
-          <TouchableOpacity
-            key={payee.id}
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={() => openEditPayeeModal(payee)}
+        <SettingsGroup label="This phone" plain footer="Auto-lock needs a PIN or password set up.">
+          <PickerRow
+            label="Auto-lock"
+            value={AUTO_LOCK_OPTIONS.find((o) => o.minutes === autoLockMinutes)?.label ?? ''}
+            open={openRow === 'autolock'}
+            onToggle={() => toggleRow('autolock')}
           >
-            <GradientFill match={styles.row} />
-            <Text style={styles.rowName} numberOfLines={1}>
-              {payee.name}
-            </Text>
-            {!!payee.defaultCategory && (
-              <Text style={styles.rowSubText} numberOfLines={1}>
-                {payee.defaultCategory}
-              </Text>
-            )}
-          </TouchableOpacity>
-        ))}
+            <Choices
+              options={AUTO_LOCK_OPTIONS.map((o) => ({ id: String(o.minutes), label: o.label }))}
+              value={String(autoLockMinutes)}
+              onChange={(v) => handleChangeAutoLock(Number(v))}
+            />
+          </PickerRow>
+        </SettingsGroup>
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddPayeeModal}>
-          <Text style={styles.addButtonText}>+ Add payee</Text>
-        </TouchableOpacity>
-
+        <SettingsGroup label="Signed-in devices" plain footer="You can sign out any other device from here.">
+          {deviceSessions.length === 0 && <PlainRow title="No devices found" />}
+          {deviceSessions.map((dev) => {
+            const isThisDevice = dev.deviceId === myDeviceId;
+            const status = getDeviceStatus(dev);
+            let statusDetail = formatRelativeTime(dev.lastActiveAt);
+            if (status === 'signed_out') statusDetail = `Signed out ${formatTimeAgo(dev.signedOutAt || dev.lastActiveAt)}`;
+            else if (status === 'revoked') statusDetail = `Revoked ${formatTimeAgo(dev.revokedAt || dev.lastActiveAt)}`;
+            return (
+              <PlainRow
+                key={dev.deviceId}
+                title={dev.deviceName + (isThisDevice ? ' (this phone)' : '')}
+                sub={`${dev.platform === 'ios' ? 'iPhone' : dev.platform === 'android' ? 'Android' : dev.platform} · ${statusDetail}`}
+                right={
+                  !isThisDevice && status === 'active' ? (
+                    <TouchableOpacity
+                      hitSlop={8}
+                      onPress={() => {
+                        setDeviceToRevoke(dev);
+                        setRevokeError('');
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.negative }}>Sign out</Text>
+                    </TouchableOpacity>
+                  ) : undefined
+                }
+              />
+            );
+          })}
+        </SettingsGroup>
         </>
         )}
-        {inPage('rules') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Categorization Rules</Text>
-<Text style={styles.sectionSub}>
-  Auto-fill a category when a label matches text (and optionally an amount range). Checked top to bottom — first match wins; a payee's own default category above takes priority.
-</Text>
 
-        {rules.length === 0 && (
-          <Text style={styles.emptyText}>No rules yet. Add your first one below.</Text>
+        {/* ---------- Appearance ---------- */}
+        {page === 'look' && (
+        <>
+        <SettingsGroup plain>
+          <SegmentRow title="Theme" options={MODE_OPTIONS} value={mode} onChange={setMode} />
+          <SegmentRow title="Text size" options={TEXT_SIZE_OPTIONS} value={textSize} onChange={setTextSize} testIDPrefix="settings-text" />
+          <SegmentRow
+            title="+ button side"
+            options={[{ id: 'left', label: 'Left' }, { id: 'right', label: 'Right' }]}
+            value={fabSide}
+            onChange={(v) => setFabSide(v as 'left' | 'right')}
+            testIDPrefix="settings-fab"
+          />
+        </SettingsGroup>
+
+        <SettingsGroup label="Feel" plain footer="Mood colours: the card, buttons and leaves follow Left to Spend.">
+          <PlainRow
+            title="Mood colours"
+            right={settingSwitch(model.settings.moodColorsEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, moodColorsEnabled: on } }), 'settings-mood-colors')}
+          />
+          <PlainRow
+            title="Falling leaves"
+            right={settingSwitch(model.settings.fallingLeavesEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, fallingLeavesEnabled: on } }), 'settings-falling-leaves')}
+          />
+        </SettingsGroup>
+
+        <SettingsGroup label="List rows" plain footer="Swipe a row left to delete it.">
+          <PlainRow
+            title="Swipe to delete"
+            right={settingSwitch(!!model.settings.swipeToDeleteEnabled, (on) => {
+              setShowSwipePreview(on);
+              handleSetSwipeToDelete(on);
+            }, 'settings-swipe-delete')}
+          />
+        </SettingsGroup>
+        {showSwipePreview && <View style={{ marginTop: -12, marginBottom: 24 }}><RowInteractionPreview /></View>}
+
+        <SettingsGroup plain footer="More languages are coming later.">
+          <PlainRow title="Language" value="English" />
+        </SettingsGroup>
+        </>
         )}
 
-        {rules.map((rule, idx) => (
-          <View key={rule.id} style={styles.ruleRow}>
-            <GradientFill match={styles.ruleRow} />
-            <View style={styles.reorderCol}>
-              <TouchableOpacity
-                onPress={() => moveRule(rule.id, 'up')}
-                disabled={idx === 0}
-                style={styles.reorderBtn}
-              >
-                <Ionicons name="chevron-up" size={13} color={colors.inkDim} style={idx === 0 ? { opacity: 0.3 } : undefined} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => moveRule(rule.id, 'down')}
-                disabled={idx === rules.length - 1}
-                style={styles.reorderBtn}
-              >
-                <Ionicons
-                  name="chevron-down"
-                  size={13}
-                  color={colors.inkDim}
-                  style={idx === rules.length - 1 ? { opacity: 0.3 } : undefined}
+        {/* ---------- Notifications ---------- */}
+        {page === 'notify' && (
+        <>
+        <SettingsGroup plain footer={notifStatusMsg || 'Turn this off to stop all reminders from Finance Flow.'}>
+          <PlainRow title="Notify me on this phone" right={settingSwitch(!!model.settings.pushNotificationsEnabled, () => togglePushNotifications())} />
+        </SettingsGroup>
+
+        <SettingsGroup label="Reminders" plain footer="How many days before a bill, debt or loan is due.">
+          <PlainRow
+            title="Remind me"
+            right={
+              <View style={styles.inlineNumWrap}>
+                <TextInput
+                  style={styles.inlineNum}
+                  value={notifyDaysInput}
+                  onChangeText={setNotifyDaysInput}
+                  onBlur={saveNotifyDays}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  selectTextOnFocus
                 />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={styles.ruleRowMain}
-              activeOpacity={0.7}
-              onPress={() => openEditRuleModal(rule)}
+                <Text style={styles.inlineNumUnit}>days before</Text>
+              </View>
+            }
+          />
+        </SettingsGroup>
+
+        <SettingsGroup label="Weekly spending recap" plain>
+          <PlainRow title="Weekly recap" right={settingSwitch(!!model.settings.weeklyRecapEnabled, () => toggleWeeklyRecap())} />
+          {model.settings.weeklyRecapEnabled && (
+            <PickerRow
+              label="Day"
+              value={DOW_LABELS[model.settings.weeklyRecapDay ?? 0]}
+              open={openRow === 'recapday'}
+              onToggle={() => toggleRow('recapday')}
             >
-              <Text style={styles.rowName} numberOfLines={1}>
-                "{rule.labelContains}" → {rule.category}
-              </Text>
-              {!!amountRangeLabel(rule) && (
-                <Text style={styles.rowSubText} numberOfLines={1}>
-                  {amountRangeLabel(rule)}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.addButton} onPress={openAddRuleModal}>
-          <Text style={styles.addButtonText}>+ Add rule</Text>
-        </TouchableOpacity>
-
+              <Choices
+                options={DOW_LABELS.map((label, idx) => ({ id: String(idx), label }))}
+                value={String(model.settings.weeklyRecapDay ?? 0)}
+                onChange={(v) => setWeeklyRecapDay(Number(v))}
+              />
+            </PickerRow>
+          )}
+          {model.settings.weeklyRecapEnabled && (
+            <PlainRow
+              title="Time"
+              right={
+                <View style={styles.inlineNumWrap}>
+                  <TextInput
+                    style={styles.inlineNum}
+                    value={recapHourInput}
+                    onChangeText={setRecapHourInput}
+                    onBlur={saveWeeklyRecapHour}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    selectTextOnFocus
+                  />
+                  <Text style={styles.inlineNumUnit}>:00 (24-hour)</Text>
+                </View>
+              }
+            />
+          )}
+        </SettingsGroup>
         </>
         )}
-        {inPage('security') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Security</Text>
-<Text style={styles.sectionSub}>
-  Used to sign in and encrypt your data on this phone.
-</Text>
 
+        {/* ---------- Budgeting ---------- */}
+        {page === 'budget' && (
+        <>
+        <SettingsGroup
+          label="Left to Spend"
+          plain
+          footer={(() => {
+            const pct = Math.max(0, Math.min(100, parseInt(cautionThresholdInput, 10) || 0));
+            const base = monthlyBudgetInput !== '' && monthlyBudgetInput > 0
+              ? { amount: monthlyBudgetInput, kind: 'budget' as const }
+              : cautionBase({ ...model, settings: { ...model.settings, monthlySpendingBudget: '' } });
+            return `Left to Spend on Home turns orange below ${formatPeso(base.amount * (pct / 100))}.` +
+              (base.kind === 'obligations' ? ' With no monthly budget, this is measured against your usual monthly bills, debts and loans.' : '');
+          })()}
+        >
+          <AmountRow label="Monthly budget" value={monthlyBudgetInput} onChange={setMonthlyBudgetInput} placeholder="None" />
+          <PlainRow
+            title="Running low at"
+            right={
+              <View style={styles.inlineNumWrap}>
+                <TextInput
+                  style={styles.inlineNum}
+                  value={cautionThresholdInput}
+                  onChangeText={setCautionThresholdInput}
+                  onBlur={saveCautionThreshold}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  selectTextOnFocus
+                />
+                <Text style={styles.inlineNumUnit}>% left</Text>
+              </View>
+            }
+          />
+        </SettingsGroup>
+
+        <SettingsGroup plain footer="Give every peso a job, and roll leftovers into next month.">
+          <PlainRow testID="settings-envelopes" title="Envelopes" onPress={() => navigation.navigate('Envelopes')} />
+        </SettingsGroup>
+
+        <SettingsGroup label="Watchlist" plain footer="Get a heads-up on Home when one of these gets close to its limit.">
+          {model.categoryBudgets.map((cb) => (
+            <PlainRow
+              key={cb.id}
+              title={cb.category}
+              dot={categories.find((c) => c.name === cb.category)?.color}
+              value={`${formatPeso(typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0)} a month`}
+              right={
+                <TouchableOpacity hitSlop={8} onPress={() => handleRemoveWatchedCategory(cb.id)} style={{ marginLeft: 10 }} accessibilityLabel={`Stop watching ${cb.category}`}>
+                  <Ionicons name="remove-circle" size={22} color={colors.negative} />
+                </TouchableOpacity>
+              }
+            />
+          ))}
+          <PickerRow
+            label="Watch a category"
+            value=""
+            open={openRow === 'watch'}
+            onToggle={() => toggleRow('watch')}
+          >
+            <TextInput
+              style={styles.input}
+              placeholder="Category name (e.g. Groceries)"
+              placeholderTextColor={colors.inkDim}
+              value={watchCategoryInput}
+              onChangeText={setWatchCategoryInput}
+            />
+            <AmountInput
+              style={styles.amountInput}
+              placeholder="Monthly limit (e.g. 5000)"
+              value={watchLimitInput}
+              onChangeAmount={setWatchLimitInput}
+            />
+            {watchErrorMsg !== '' && <Text style={[styles.errorText, { textAlign: 'left' }]}>{watchErrorMsg}</Text>}
+            <Button label="Add to watchlist" onPress={handleAddWatchedCategory} />
+          </PickerRow>
+        </SettingsGroup>
+        </>
+        )}
+
+        {/* ---------- Categories & Rules ---------- */}
+        {page === 'cats' && (
+        <>
+        <SettingsGroup plain footer={'Rules sort new transactions for you, e.g. anything with "Jollibee" goes to Eating out.'}>
+          <PlainRow testID="settings-row-categories-list" title="Categories" value={String(categories.length)} onPress={() => openPage('categories')} />
+          <PlainRow testID="settings-row-payees" title="Merchants & payees" value={String(payees.length)} onPress={() => openPage('payees')} />
+          <PlainRow testID="settings-row-rules" title="Rules" value={String(rules.length)} onPress={() => openPage('rules')} />
+        </SettingsGroup>
+        </>
+        )}
+
+        {page === 'categories' && (
+        <SettingsGroup plain footer="Used across Bills, Debts and Transactions. Tap one to rename it or change its colour.">
+          {categories.map((cat) => (
+            <PlainRow key={cat.id} title={cat.name} dot={cat.color} onPress={() => openEditModal(cat)} />
+          ))}
+          <PlainRow title="Add a category" accent onPress={openAddModal} />
+        </SettingsGroup>
+        )}
+
+        {page === 'payees' && (
+        <SettingsGroup plain footer="Saved names for quicker entry. A default category fills itself in on matching transactions.">
+          {payees.map((payee) => (
+            <PlainRow key={payee.id} title={payee.name} value={payee.defaultCategory || undefined} onPress={() => openEditPayeeModal(payee)} />
+          ))}
+          <PlainRow title="Add a payee" accent onPress={openAddPayeeModal} />
+        </SettingsGroup>
+        )}
+
+        {page === 'rules' && (
+        <SettingsGroup plain footer="Checked top to bottom; the first match wins. A payee's own default category comes first. Use the arrows to reorder.">
+          {rules.map((rule, idx) => (
+            <View key={rule.id} style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
+              <View style={styles.reorderCol}>
+                <TouchableOpacity onPress={() => moveRule(rule.id, 'up')} disabled={idx === 0} style={styles.reorderBtn} accessibilityLabel="Move up">
+                  <Ionicons name="chevron-up" size={14} color={colors.inkDim} style={idx === 0 ? { opacity: 0.3 } : undefined} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => moveRule(rule.id, 'down')} disabled={idx === rules.length - 1} style={styles.reorderBtn} accessibilityLabel="Move down">
+                  <Ionicons name="chevron-down" size={14} color={colors.inkDim} style={idx === rules.length - 1 ? { opacity: 0.3 } : undefined} />
+                </TouchableOpacity>
+              </View>
+              <View style={{ flex: 1 }}>
+                <PlainRow
+                  title={`"${rule.labelContains}" → ${rule.category}`}
+                  sub={amountRangeLabel(rule) || undefined}
+                  onPress={() => openEditRuleModal(rule)}
+                />
+              </View>
+            </View>
+          ))}
+          <PlainRow title="Add a rule" accent onPress={openAddRuleModal} />
+        </SettingsGroup>
+        )}
+
+        {/* ---------- Backup & Data ---------- */}
+        {page === 'backup' && (
+        <>
+        <SettingsGroup label="Your data" plain footer={exportMsg || 'Everything is encrypted on this phone before it is saved online.'}>
+          <PlainRow
+            title="Save a backup"
+            onPress={exportBusy ? undefined : handleExportBackup}
+            right={exportBusy ? <ActivityIndicator size="small" color={colors.gold} /> : undefined}
+          />
+          <PlainRow testID="settings-import-csv" title="Import from a spreadsheet" sub="CSV file" onPress={() => setCsvOpen(true)} />
+        </SettingsGroup>
+
+        {!clearConfirmOpen ? (
+          <SettingsGroup plain footer="This can't be undone. You'll be asked to confirm first.">
+            <PlainRow title="Clear all data & start fresh" danger onPress={() => setClearConfirmOpen(true)} />
+          </SettingsGroup>
+        ) : (
+          <View style={styles.dangerConfirmBox}>
+            <Text style={styles.dangerConfirmText}>
+              This clears every entry for this profile — bills, debts, loans, income, savings, accounts, everything. Your username and password stay the same. This can't be undone.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button variant="solidDanger" label="Yes, clear everything" onPress={handleClearAllData} loading={clearBusy} disabled={clearBusy} style={{ flex: 1 }} />
+              <Button variant="secondary" label="Cancel" onPress={() => setClearConfirmOpen(false)} style={{ flex: 1 }} />
+            </View>
+          </View>
+        )}
+        </>
+        )}
+
+        {/* ---------- About & Help ---------- */}
+        {page === 'helpabout' && (
+        <>
+        <View style={{ alignItems: 'center', paddingVertical: 12, marginBottom: 12 }}>
+          <View style={[styles.appIcon, { backgroundColor: colors.buttonFill }]}>
+            <Ionicons name="leaf" size={36} color="#FFFFFF" />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '800', color: colors.ink, marginTop: 10 }}>Finance Flow</Text>
+          <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 2 }}>Version {APP_VERSION}</Text>
+        </View>
+        <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
+          <PlainRow title="Help & guides" value="Coming soon" />
+        </SettingsGroup>
+        </>
+        )}
+      </PullToRefreshScrollView>
+      <BottomSheet visible={passSheetOpen} onClose={() => setPassSheetOpen(false)} title="Change password">
+        <Text style={styles.sectionSub}>Used to sign in and to encrypt your data on this phone.</Text>
         <Text style={styles.inputLabel}>Current password</Text>
         <PasswordField
           testID="current-password-input"
@@ -1649,6 +1636,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           value={currentPassInput}
           onChangeText={setCurrentPassInput}
           placeholder="Enter your current password"
+          autoFocus
         />
         <Text style={styles.inputLabel}>New password</Text>
         <PasswordField
@@ -1666,322 +1654,18 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           onChangeText={setNewPass2Input}
           placeholder="Type it again"
         />
-
         {!!passChangeMsg && (
-          <Text style={passChangeMsg === 'Password changed.' ? styles.successText : styles.errorText}>
-            {passChangeMsg}
-          </Text>
+          <Text style={passChangeMsg === 'Password changed.' ? styles.successText : styles.errorText}>{passChangeMsg}</Text>
         )}
-
-          <Button
-            testID="change-password-button"
-            label="Change password"
-            onPress={handleChangePassword}
-            loading={passChangeBusy}
-            disabled={passChangeBusy}
-            style={{ marginTop: 6 }}
-          />
-        <View style={[styles.linkCodeBox, { marginTop: 16 }]}>
-          <GradientFill match={[styles.linkCodeBox, { marginTop: 16 }]} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-            <Text style={styles.linkCodeLabel}>Secret Recovery Key</Text>
-            {hasRecoveryKey === false && (
-              <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: '700' }}>Needs regenerating</Text>
-              </View>
-            )}
-            {hasRecoveryKey === true && (
-              <View style={styles.statusBadgeActive}>
-                <Text style={styles.statusBadgeTextActive}>Active</Text>
-              </View>
-            )}
-          </View>
-          {hasRecoveryKey === false && (
-                <Text style={[styles.hintText, { color: '#f59e0b', marginTop: 2, marginBottom: 4, fontWeight: '500' }]}>
-      Password changed — your old recovery key is no longer valid and needs regenerating.
-    </Text>
-          )}
-           <Text style={styles.hintText}>
-    A 16-character key that lets you regain access if you ever forget your password.
-  </Text>
-          <TouchableOpacity
-            style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]}
-            onPress={() => {
-              setRetroactiveVerifyPass('');
-              setRetroactiveError('');
-              setRetroactiveSuccessCode(null);
-              setRetroactiveModalOpen(true);
-            }}
-          >
-            <GradientFill match={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch' }]} />
-            <Text style={styles.dataButtonText}>Generate / Reset Recovery Key</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Unlock & Biometrics */}
-        </>
-        )}
-        {inPage('quickunlock') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Quick Unlock</Text>
-<Text style={styles.sectionSub}>
-  Unlock quickly with your device's biometrics or a short PIN.
-</Text>
-
-        {biometricState === 'UNAVAILABLE' ? (
-          <View style={styles.row}>
-            <GradientFill match={styles.row} />
-            <Text style={[styles.rowName, { color: colors.inkFaint }]}>
-              Biometric unlock isn't available on this device
-            </Text>
-          </View>
-        ) : (
-          <>
-              <TouchableOpacity testID="biometric-toggle" style={styles.row} activeOpacity={0.7} onPress={handleToggleBiometrics}>
-                <GradientFill match={styles.row} />
-              <Text style={styles.rowName}>{biometricLabel} Unlock</Text>
-              <View style={[styles.toggleTrack, biometricState === 'ENABLED' && styles.toggleTrackActive]}>
-                <GradientFill match={[styles.toggleTrack, biometricState === 'ENABLED' && styles.toggleTrackActive]} />
-                <View style={[styles.toggleThumb, biometricState === 'ENABLED' && styles.toggleThumbActive]} />
-              </View>
-            </TouchableOpacity>
-            {!!biometricError && <Text style={[styles.errorText, { textAlign: 'left', marginTop: 4 }]}>{biometricError}</Text>}
-          </>
-        )}
-
-        <View style={[styles.row, { marginTop: 8 }]}>
-          <GradientFill match={[styles.row, { marginTop: 8 }]} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowName}>Quick PIN</Text>
-            <Text style={styles.hintText}>{pinIsSet ? 'Active as fallback' : 'Not configured'}</Text>
-          </View>
-          {pinBusy ? (
-            <ActivityIndicator size="small" color={colors.gold} />
-          ) : (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                hapticSelection();
-                if (pinIsSet) {
-                  Alert.alert(
-                    'Turn Off Quick PIN',
-                    'Are you sure you want to remove your Quick PIN? You will need to use your password or biometric unlock to access the app.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Turn Off',
-                        style: 'destructive',
-                        onPress: async () => {
-                          if (!username) return;
-                          setPinBusy(true);
-                          try {
-                            await removePin(username);
-                            await removePinCopy(username);
-                            updateRecentAccountIfPresent(username, { hasPin: false }).catch(() => {});
-                            setPinIsSet(false);
-                          } catch (e) {
-                            Alert.alert('Failed to remove PIN', 'Please try again.');
-                          } finally {
-                            setPinBusy(false);
-                          }
-                        },
-                      },
-                    ]
-                  );
-                } else {
-                  setShowSetPinModal(true);
-                }
-              }}
-            >
-              <View style={[styles.toggleTrack, pinIsSet && styles.toggleTrackActive]}>
-                <GradientFill match={[styles.toggleTrack, pinIsSet && styles.toggleTrackActive]} />
-                <View style={[styles.toggleThumb, pinIsSet && styles.toggleThumbActive]} />
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {pinIsSet && (
-          <View style={[styles.row, { marginTop: 4 }]}>
-            <GradientFill match={[styles.row, { marginTop: 4 }]} />
-            <View style={{ flex: 1 }} />
-              <TouchableOpacity
-    testID="change-pin-button"
-    style={[styles.dataButton, { alignSelf: 'center' }]}
-    disabled={pinBusy}
-    onPress={() => setShowSetPinModal(true)}
-  >
-                <GradientFill match={[styles.dataButton, { alignSelf: 'center' }]} />
-    <Text style={styles.dataButtonText}>Change PIN</Text>
-  </TouchableOpacity>
-          </View>
-        )}
-
-        {showSetPinModal && username && (
-          <Modal visible={showSetPinModal} animationType="slide">
-            <SetPinScreen
-              username={username}
-              email={getCurrentFirebaseUser()?.email ?? undefined}
-              onDone={() => {
-                setShowSetPinModal(false);
-                setPinIsSet(true);
-              }}
-              onCancel={() => setShowSetPinModal(false)}
-            />
-          </Modal>
-        )}
-
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Auto-lock</Text>
-<Text style={styles.sectionSub}>
-  How long before the app locks itself when untouched (needs a PIN or password set up).
-</Text>
-        <View style={styles.modeRow}>
-          {AUTO_LOCK_OPTIONS.map((opt) => (
-            <Pill
-              key={opt.minutes}
-              label={opt.label}
-              fill
-              compact
-              active={autoLockMinutes === opt.minutes}
-              onPress={() => handleChangeAutoLock(opt.minutes)}
-            />
-          ))}
-        </View>
-
-        </>
-        )}
-        {inPage('devices') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Active Devices</Text>
-<Text style={styles.sectionSub}>
-  Devices that have signed in. You can remotely sign any of them out.
-</Text>
-
-        {deviceSessions.map((dev) => {
-          const isThisDevice = dev.deviceId === myDeviceId;
-          const status = getDeviceStatus(dev);
-          const isActive = status === 'active';
-
-          let statusDetail = formatRelativeTime(dev.lastActiveAt);
-          if (status === 'signed_out') {
-            statusDetail = `Signed out ${formatTimeAgo(dev.signedOutAt || dev.lastActiveAt)}`;
-          } else if (status === 'revoked') {
-            statusDetail = `Revoked ${formatTimeAgo(dev.revokedAt || dev.lastActiveAt)}`;
-          }
-
-          return (
-            <View
-              key={dev.deviceId}
-              style={[styles.deviceItemRow, isThisDevice && styles.deviceItemRowCurrent]}
-            >
-              <GradientFill match={[styles.deviceItemRow, isThisDevice && styles.deviceItemRowCurrent]} />
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                  <Text style={styles.deviceNameText}>{dev.deviceName}</Text>
-                  {status === 'active' && (
-                    <View style={styles.statusBadgeActive}>
-                      <Text style={styles.statusBadgeTextActive}>Active</Text>
-                    </View>
-                  )}
-                  {status === 'signed_out' && (
-                    <View style={styles.statusBadgeSignedOut}>
-                      <Text style={styles.statusBadgeTextSignedOut}>Signed out</Text>
-                    </View>
-                  )}
-                  {status === 'revoked' && (
-                    <View style={styles.statusBadgeRevoked}>
-                      <Text style={styles.statusBadgeTextRevoked}>Revoked</Text>
-                    </View>
-                  )}
-                  {isThisDevice && (
-                    <View style={styles.thisDeviceBadge}>
-                      <GradientFill match={styles.thisDeviceBadge} />
-                      <Text style={styles.thisDeviceBadgeText}>This device</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.deviceMetaText}>
-                  {dev.platform.toUpperCase()} • {statusDetail}
-                </Text>
-              </View>
-
-              {!isThisDevice && isActive && (
-                <TouchableOpacity
-                  style={styles.deviceSignOutBtn}
-                  onPress={() => {
-                    setDeviceToRevoke(dev);
-                    setRevokeError('');
-                  }}
-                >
-                  <Text style={styles.deviceSignOutBtnText}>Sign out</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          );
-        })}
-        {deviceSessions.length === 0 && (
-          <Text style={styles.emptyDevicesText}>No devices detected.</Text>
-        )}
-
-
-        </>
-        )}
-        {inPage('data') && (
-        <>
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Data</Text>
-<Text style={styles.sectionSub}>
-  Back up your data, or clear everything and start fresh.
-</Text>
-
-        {/* Redesign: importing from a spreadsheet lives here now (moved from Transactions). */}
-        <TouchableOpacity style={styles.dataButton} onPress={() => setCsvOpen(true)} testID="settings-import-csv">
-          <GradientFill match={styles.dataButton} />
-          <Text style={styles.dataButtonText}>Import from a spreadsheet (CSV)</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.dataButton} onPress={handleExportBackup} disabled={exportBusy}>
-          <GradientFill match={styles.dataButton} />
-          {exportBusy ? (
-            <ActivityIndicator color={colors.gold} />
-          ) : (
-            <Text style={styles.dataButtonText}>Save a backup</Text>
-          )}
-        </TouchableOpacity>
-        {!!exportMsg && <Text style={styles.errorText}>{exportMsg}</Text>}
-
-        {!clearConfirmOpen ? (
-            <Button
-              variant="outlineDanger"
-              label="Clear all data & start fresh"
-              onPress={() => setClearConfirmOpen(true)}
-              style={{ marginBottom: 8 }}
-            />
-        ) : (
-          <View style={styles.dangerConfirmBox}>
-            <Text style={styles.dangerConfirmText}>
-      This clears every entry for this profile — bills, debts, loans, income, savings, accounts, everything. Your username and password stay the same. This can't be undone.
-    </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button
-                  variant="solidDanger"
-                  label="Yes, clear everything"
-                  onPress={handleClearAllData}
-                  loading={clearBusy}
-                  disabled={clearBusy}
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  variant="secondary"
-                  label="Cancel"
-                  onPress={() => setClearConfirmOpen(false)}
-                  style={{ flex: 1 }}
-                />
-            </View>
-          </View>
-        )}
-      </>
-        )}
-      </PullToRefreshScrollView>
+        <Button
+          testID="change-password-button"
+          label="Change password"
+          onPress={handleChangePassword}
+          loading={passChangeBusy}
+          disabled={passChangeBusy}
+          style={{ marginTop: 6 }}
+        />
+      </BottomSheet>
       <CsvImportModal visible={csvOpen} onClose={() => setCsvOpen(false)} />
 
       <BottomSheet
@@ -2309,9 +1993,17 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    feelGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginTop: 8 },
-    feelRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, minHeight: 56 },
-    feelTitle: { fontSize: 17, color: colors.ink },
+    premiumCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 14, marginBottom: 24, gap: 12 },
+    premiumIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+    premiumTitle: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
+    premiumSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+    premiumPill: { backgroundColor: '#FFFFFF', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+    premiumPillText: { fontSize: 14, fontWeight: '800' },
+    groupNote: { fontSize: 13, lineHeight: 18, marginTop: -16, marginBottom: 24, marginHorizontal: 16 },
+    inlineNumWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    inlineNum: { minWidth: 44, fontSize: 17, color: colors.ink, textAlign: 'center', backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 6 },
+    inlineNumUnit: { fontSize: 17, color: colors.inkDim },
+    appIcon: { width: 72, height: 72, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
     container: {
       flex: 1,
       backgroundColor: 'transparent',
@@ -2337,93 +2029,13 @@ function makeStyles(colors: any) {
       fontSize: 13,
       color: colors.inkDim,
     },
-    profileChevron: {
-      fontSize: 22,
-      color: colors.inkDim,
-      fontWeight: '600',
-    },
-    sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 4 },
     sectionSub: { fontSize: 15, color: colors.inkDim, marginBottom: 16, lineHeight: 20 },
-    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12 },
-    modeRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    row: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 8,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    colorDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
-    notifyInput: {
-      borderWidth: 1,
-      borderColor: colors.navy2,
-      borderRadius: 8,
-      paddingVertical: 4,
-      paddingHorizontal: 10,
-      marginHorizontal: 8,
-      minWidth: 40,
-      textAlign: 'center',
-      fontSize: 14,
-      color: colors.ink,
-    },
-    rowName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.ink },
-    rowSubText: {
-      fontSize: 12,
-      color: colors.inkDim,
-      marginLeft: 8,
-      flexShrink: 1,
-      textAlign: 'right',
-    },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    ruleRow: {
-      flexDirection: 'row',
-      alignItems: 'stretch',
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      marginBottom: 8,
-      overflow: 'hidden',
-    },
     reorderCol: {
       justifyContent: 'center',
       paddingHorizontal: 4,
       backgroundColor: colors.navy2,
     },
     reorderBtn: { paddingVertical: 4, paddingHorizontal: 6 },
-    reorderBtnText: { fontSize: 11, color: colors.inkDim },
-    reorderBtnDisabled: { opacity: 0.3 },
-    ruleRowMain: {
-      flex: 1,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      justifyContent: 'center',
-    },
-    toggleTrack: {
-      width: 44,
-      height: 26,
-      borderRadius: 13,
-      backgroundColor: colors.navy2,
-      padding: 3,
-      justifyContent: 'center',
-    },
-    toggleTrackActive: { backgroundColor: colors.buttonFill },
-    toggleThumb: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: '#fff',
-    },
-    toggleThumbActive: { alignSelf: 'flex-end' },
-    notifStatusText: {
-      fontSize: 12,
-      color: colors.inkDim,
-      marginTop: -4,
-      marginBottom: 12,
-      lineHeight: 16,
-    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -2472,14 +2084,6 @@ function makeStyles(colors: any) {
       marginBottom: spacing[10],
     },
     saveButtonText: { fontSize: 14, fontWeight: '700', color: colors.onButton },
-    primaryFullButton: {
-      backgroundColor: colors.buttonFill,
-      borderRadius: 999,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginTop: 6,
-      marginBottom: 8,
-    },
     hintText: { fontSize: 11.5, color: colors.inkFaint, lineHeight: 16, marginBottom: 4 },
     dataButton: {
       backgroundColor: colors.navy3,
@@ -2489,39 +2093,6 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     dataButtonText: { fontSize: 14, fontWeight: '600', color: colors.gold },
-    linkCodeBox: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      padding: 16,
-      marginBottom: 8,
-      alignItems: 'center',
-    },
-    linkCodeLabel: { fontSize: 12.5, color: colors.inkDim, marginBottom: 8 },
-    linkCodeText: {
-      fontSize: 28,
-      fontWeight: '700',
-      letterSpacing: 4,
-      color: colors.ink,
-      marginBottom: 8,
-    },
-    dangerButton: {
-      backgroundColor: '#C81E43',
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    dangerButtonText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-    dangerOutlineButton: {
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderColor: colors.error,
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    dangerOutlineButtonText: { fontSize: 14, fontWeight: '600', color: colors.error },
     dangerConfirmBox: {
       backgroundColor: 'rgba(229,72,77,0.08)',
       borderRadius: 10,
@@ -2529,106 +2100,5 @@ function makeStyles(colors: any) {
       marginBottom: 8,
     },
     dangerConfirmText: { fontSize: 12.5, color: colors.error, lineHeight: 17, marginBottom: 12 },
-    cancelInlineButton: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: colors.error, fontWeight: '600' },
-    cancelButtonText: { fontSize: 13, color: colors.inkDim },
-    deviceItemRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      marginBottom: 8,
-    },
-    deviceItemRowCurrent: {
-      borderWidth: 1.5,
-      borderColor: colors.gold,
-    },
-    deviceNameText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.ink,
-    },
-    thisDeviceBadge: {
-      backgroundColor: colors.buttonFill,
-      borderRadius: 4,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    thisDeviceBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.navy1,
-    },
-    statusBadgeActive: {
-      backgroundColor: colors.ok + '26',
-      borderColor: colors.ok,
-      borderWidth: 1,
-      borderRadius: 6,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-    },
-    statusBadgeTextActive: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.ok,
-    },
-    statusBadgeSignedOut: {
-      backgroundColor: colors.navy4,
-      borderRadius: 4,
-      paddingHorizontal: 6,
-      paddingVertical: 1.5,
-    },
-    statusBadgeTextSignedOut: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    statusBadgeRevoked: {
-      backgroundColor: colors.errorBg,
-      borderColor: colors.error,
-      borderWidth: 1,
-      borderRadius: 4,
-      paddingHorizontal: 6,
-      paddingVertical: 1.5,
-    },
-    statusBadgeTextRevoked: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.error,
-    },
-    deviceMetaText: {
-      fontSize: 12,
-      color: colors.inkDim,
-      marginTop: 2,
-    },
-    deviceSignOutBtn: {
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderColor: colors.error,
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    deviceSignOutBtnText: {
-      color: colors.error,
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    emptyDevicesText: {
-      color: colors.inkDim,
-      fontSize: 13,
-      textAlign: 'center',
-      marginVertical: 10,
-      fontStyle: 'italic',
-    },
   });
 }
