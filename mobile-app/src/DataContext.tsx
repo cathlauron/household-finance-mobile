@@ -18,7 +18,7 @@ import { getCurrentFirebaseUser } from './authFirebase';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel } from './types';
 import { defaultModel } from './defaultModel';
@@ -463,17 +463,47 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Online / offline. The phone's "connection changed" event doesn't always arrive (e.g.
+  // switching on airplane mode in Expo Go), so the app also re-checks every few seconds
+  // while it's open and whenever it comes back to the front.
+  function applyNetworkState(state: { isConnected?: boolean; isInternetReachable?: boolean | null }) {
+    const online = state.isConnected !== false && state.isInternetReachable !== false;
+    const cameBack = online && !onlineRef.current;
+    onlineRef.current = online;
+    setIsOnline(online);
+    if (cameBack) syncPendingChanges();
+  }
+  function recheckNetwork() {
+    Network.getNetworkStateAsync().then(applyNetworkState).catch(() => {});
+  }
+  // A sync that times out or can't reach the cloud: show the offline banner instead of an
+  // error, and let the regular re-check pick it up (and sync) once the connection is back.
+  // Returns true when it looks like the phone is offline.
+  async function treatAsOfflineIfUnreachable(): Promise<boolean> {
+    try {
+      const state = await Network.getNetworkStateAsync();
+      if (state.isConnected === false || state.isInternetReachable === false) {
+        applyNetworkState(state);
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
   useEffect(() => {
-    const apply = (state: { isConnected?: boolean; isInternetReachable?: boolean | null }) => {
-      const online = state.isConnected !== false && state.isInternetReachable !== false;
-      const cameBack = online && !onlineRef.current;
-      onlineRef.current = online;
-      setIsOnline(online);
-      if (cameBack) syncPendingChanges();
+    recheckNetwork();
+    const sub = Network.addNetworkStateListener(applyNetworkState);
+    const appSub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') recheckNetwork();
+    });
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') recheckNetwork();
+    }, 4000);
+    return () => {
+      sub.remove();
+      appSub.remove();
+      clearInterval(timer);
     };
-    Network.getNetworkStateAsync().then(apply).catch(() => {});
-    const sub = Network.addNetworkStateListener(apply);
-    return () => sub.remove();
   }, []);
 
   async function saveModel(updatedModel: HouseholdModel) {
@@ -569,7 +599,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           lastEncryptedDataRef.current = encrypted;
         } catch (err) {
           setPendingChanges((n) => n + 1);
-          if (onlineRef.current) {
+          if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
             Alert.alert(
               'Sync Failed',
               'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
@@ -611,7 +641,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error('Cloud backup failed:', err);
         setPendingChanges((n) => n + 1);
-        if (onlineRef.current) {
+        if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
           Alert.alert(
             'Backup Failed',
             'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
