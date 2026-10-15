@@ -1451,6 +1451,23 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         )}
         {inPage('watchlist') && (
         <>
+        {/* Redesign: Envelopes (give every peso a job). Envelopes and watched
+            categories are the same list. */}
+        <TouchableOpacity
+          style={[styles.row, { marginTop: 20 }]}
+          onPress={() => navigation.navigate('Envelopes')}
+          accessibilityRole="button"
+          testID="settings-envelopes"
+        >
+          <GradientFill match={[styles.row, { marginTop: 20 }]} />
+          <Ionicons name="mail-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowName}>Envelopes</Text>
+            <Text style={{ fontSize: 13, color: colors.inkDim }}>Give every peso a job, and roll leftovers into next month</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.inkDim} />
+        </TouchableOpacity>
+
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Category Watchlist</Text>
 <Text style={styles.sectionSub}>
   Set a monthly limit per category — flagged on Home when you get close.

@@ -33,6 +33,10 @@ export type Settings = {
   // Redesign (onboarding): what you want to spend each month after bills, and a name
   // for the household's wallet.
   monthlySpendingBudget?: number | '';
+  // Redesign (Envelopes): roll what is left in each envelope into the next month,
+  // counting from envelopeRolloverFrom ("YYYY-MM", the month it was switched on).
+  envelopeRollover?: boolean;
+  envelopeRolloverFrom?: string;
   walletName?: string;
 };
 
