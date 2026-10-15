@@ -1,6 +1,6 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -638,6 +638,44 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     }).catch(() => {});
   }
 
+  // The invite code card: the code, a "waiting" line, then New code / Cancel invite.
+  const inviteCard = (hint: string) => (
+    <View>
+      <Text style={styles.hhLabel}>INVITE</Text>
+      <View style={styles.hhCodeCard}>
+        <GradientFill match={styles.hhCodeCard} />
+        <Text style={styles.hhRole}>Give this code to the other phone</Text>
+        <Text selectable style={[styles.hhCode, { color: colors.ink }]}>{linkCode}</Text>
+        <Text style={[styles.hhRole, { textAlign: 'center' }]}>{hint}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+          <ActivityIndicator size="small" color={colors.gold} />
+          <Text style={styles.hhRole}>{hostFinishBusy ? 'Finishing…' : 'Waiting for them to join…'}</Text>
+        </View>
+        {!!hostFinishMsg && (
+          <Text style={[hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText, { marginTop: 8 }]}>{hostFinishMsg}</Text>
+        )}
+        <View style={styles.hhCodeButtons}>
+          <TouchableOpacity
+            style={[styles.hhCodeBtn, { backgroundColor: colors.navy2, opacity: cooldownActive ? 0.5 : 1 }]}
+            onPress={handleStartOverLinking}
+            disabled={linkBusy || cooldownActive}
+            accessibilityRole="button"
+          >
+            {linkBusy ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.hhCodeBtnText, { color: colors.gold }]}>{cooldownActive ? `New code (${cooldownSeconds}s)` : 'New code'}</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.hhCodeBtn, { backgroundColor: colors.errorBg }]}
+            onPress={handleCancelInvite}
+            disabled={linkBusy}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.hhCodeBtnText, { color: colors.negative }]}>Cancel invite</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
   const unlinkConfirmText =
     householdMemberCount <= 1 || (isOwner && householdMemberCount <= 2)
       ? 'This will dissolve the household. Your data becomes your personal profile.'
@@ -705,13 +743,21 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
         </>)}
         {section === 'household' && (<>
-        {/* 3. Household & Sharing Section */}
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Household &amp; Sharing</Text>
-        <Text style={styles.sectionSub}>
-          {isLinked
-    ? 'This profile shares data with another linked profile — anything either of you enters shows up for both.'
-    : 'Link this profile with another phone so you both see and edit the same data.'}
-        </Text>
+        {/* Household: a status card, then plain grouped rows. */}
+        <View style={styles.hhStatus}>
+          <GradientFill match={styles.hhStatus} />
+          <View style={[styles.hhIcon, { backgroundColor: colors.accentTint }]}>
+            <Ionicons name="people-outline" size={24} color={colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.hhTitle}>{isLinked ? 'Shared household' : 'Just you'}</Text>
+            <Text style={styles.hhSub}>
+              {isLinked
+                ? `${householdMemberCount || 2} of 5 people · anything anyone adds shows up for everyone`
+                : 'Share with up to 4 others so everyone sees the same money'}
+            </Text>
+          </View>
+        </View>
 
         {!!linkNoticeMsg && (
           <View style={[styles.dangerConfirmBox, { borderColor: colors.gold, backgroundColor: colors.navy2, marginBottom: 14 }]}>
@@ -759,109 +805,92 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           <>
             {!linkCode ? (
               !unlinkConfirmOpen && !transferOwnerModalOpen ? (
-                <View style={styles.linkCodeBox}>
-                  <GradientFill match={styles.linkCodeBox} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="checkmark" size={13} color={colors.inkDim} style={{ marginRight: 4 }} />
-                      <Text style={[styles.linkCodeLabel, { marginBottom: 0 }]}>Linked</Text>
-                    </View>
-                    {householdMemberCount > 0 && (
-                      <Text style={[styles.hintText, { color: colors.gold, fontWeight: '600' }]}>
-                        {householdMemberCount} of 5 linked
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={styles.hintText}>
-  This profile is currently sharing data with another linked profile. Unlinking gives this
-  phone its own separate copy going forward — the shared data, and anyone else still linked,
-  are left untouched.
-</Text>
-
-                  {/* Member Roster */}
-                  {householdMembers.length > 0 && (
-                    <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.navy4, alignSelf: 'stretch' }}>
-                      <Text style={[styles.hintText, { fontWeight: '700', marginBottom: 6 }]}>Household Members</Text>
-                      {householdMembers.map((m) => {
-                        const isMe = m.uid === getCurrentFirebaseUser()?.uid;
-const avatarName = isMe ? (username || m.username) : m.username;
-const isFallbackName = !isMe && (m.username === 'Owner' || m.username === 'Member');
-const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
-                        return (
-                          <View
-                            key={m.uid}
-                            style={{
-                              flexDirection: 'row',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              paddingVertical: 6,
-                              borderBottomWidth: 1,
-                              borderBottomColor: colors.navy4,
-                            }}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-<Avatar initials={getInitials(avatarName)} config={avatarConfig} size={32} />
-                              <Text style={{ color: colors.ink, fontWeight: isMe ? '700' : '400', fontSize: 15 }}>
-                                {m.username} {isMe ? '(You)' : ''}
-                              </Text>
-                              {m.isOwner && (
-                                <Text style={{ fontSize: 13, color: colors.gold, fontWeight: '700' }}>
-                                  Owner
-                                </Text>
-                              )}
-                            </View>
-                            {isOwner && !isMe && (
-                              <Button
-                                variant="outlineDanger"
-                                size="compact"
-                                label="Remove"
-                                onPress={() => {
-                                  setRemoveMemberMsg('');
-                                  setMemberToRemove(m);
-                                }}
-                              />
-                            )}
+                <View>
+                  <SettingsGroup label="Members" plain footer={isOwner && householdMemberCount >= 5 ? 'Household full (5 of 5). Remove someone to invite another person.' : 'Up to 5 people can share one household.'}>
+                    {householdMembers.map((m, idx) => {
+                      const isMe = m.uid === getCurrentFirebaseUser()?.uid;
+                      const avatarName = isMe ? (username || m.username) : m.username;
+                      const isFallbackName = !isMe && (m.username === 'Owner' || m.username === 'Member');
+                      const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
+                      return (
+                        <View key={m.uid} style={styles.hhRow}>
+                          <Avatar initials={getInitials(avatarName)} config={avatarConfig} size={36} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.hhName} numberOfLines={1}>{m.username}{isMe ? ' (you)' : ''}</Text>
+                            <Text style={styles.hhRole}>{m.isOwner ? 'Owner' : 'Member'}</Text>
                           </View>
-                        );
-                      })}
+                          {isOwner && !isMe && (
+                            <TouchableOpacity
+                              hitSlop={8}
+                              onPress={() => {
+                                setRemoveMemberMsg('');
+                                setMemberToRemove(m);
+                              }}
+                            >
+                              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.negative }}>Remove</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
+                    {isOwner && householdMemberCount < 5 && (
+                      <TouchableOpacity style={styles.hhRow} onPress={handleStartHouseholdInvite} disabled={linkBusy} accessibilityRole="button">
+                        {linkBusy ? <ActivityIndicator color={colors.gold} /> : <Ionicons name="add" size={22} color={colors.gold} />}
+                        <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>
+                          {linkBusy ? 'Making an invite code…' : 'Invite someone'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </SettingsGroup>
+                  {!!linkErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginBottom: 16, marginHorizontal: 16 }]}>{linkErrorMsg}</Text>}
+
+                  {/* Remove Member Confirmation Box */}
+                  {memberToRemove && (
+                    <View style={styles.dangerConfirmBox}>
+  <Text style={styles.dangerConfirmText}>
+    Remove {memberToRemove.username} from the household? They'll keep a personal copy of everything.
+  </Text>
+  <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <Button
+                            variant="solidDanger"
+                            label="Yes, remove"
+                            onPress={handleRemoveMember}
+                            loading={removeMemberBusy}
+                            disabled={removeMemberBusy}
+                            style={{ flex: 1 }}
+                          />
+                          <Button
+                            variant="secondary"
+                            label="Cancel"
+                            onPress={() => setMemberToRemove(null)}
+                            disabled={removeMemberBusy}
+                            style={{ flex: 1 }}
+                          />
+                      </View>
+                      {!!removeMemberMsg && <Text style={[styles.errorText, { marginTop: 6 }]}>{removeMemberMsg}</Text>}
                     </View>
                   )}
 
+
                   {model?.people && model.people.length > 0 && (
-                    <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.navy4, alignSelf: 'stretch' }}>
-                      <Text style={[styles.hintText, { fontWeight: '700', marginBottom: 6 }]}>Which of these is you?</Text>
-<Text style={[styles.hintText, { marginBottom: 8 }]}>
-  Decides what shows as "Mine" on your Transactions — others see it labeled with your name.
-</Text>
-                      {model.people.map((p) => {
-                        const selected = p.id === (pendingPersonId ?? myPersonId);
-                        return (
-                          <TouchableOpacity
-                            key={p.id}
-                            style={{
-                              flexDirection: 'row',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              paddingVertical: 8,
-                              borderBottomWidth: 1,
-                              borderBottomColor: colors.navy4,
-                            }}
-                            onPress={() => {
-                              setMyPersonMsg('');
-                              setPendingPersonId(p.id);
-                            }}
-                          >
-                            <Text style={{ color: colors.ink, fontWeight: selected ? '700' : '400', fontSize: 15 }}>
-                              {p.name || 'Unnamed'}
-                            </Text>
-                            {selected && (
-                              <Text style={{ fontSize: 13, color: colors.gold, fontWeight: '700' }}>
-                                This is me
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
+                    <>
+                      <SettingsGroup label="Which one is you?" plain footer={'Decides what shows as "Mine" on Transactions. Others see it with your name.'}>
+                        {model.people.map((p) => {
+                          const selected = p.id === (pendingPersonId ?? myPersonId);
+                          return (
+                            <PlainRow
+                              key={p.id}
+                              title={p.name || 'Unnamed'}
+                              onPress={() => {
+                                setMyPersonMsg('');
+                                setPendingPersonId(p.id);
+                              }}
+                              right={selected ? <Ionicons name="checkmark" size={22} color={colors.gold} /> : <View />}
+                            />
+                          );
+                        })}
+                      </SettingsGroup>
+                      <View style={{ marginTop: -14, marginBottom: 16 }}>
                       {pendingPersonId !== null && pendingPersonId !== myPersonId && (
                         <View style={{ marginTop: 10 }}>
                           {!!myPersonMsg && <Text style={[styles.errorText, { marginBottom: 6 }]}>{myPersonMsg}</Text>}
@@ -905,65 +934,14 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                           </View>
                         </View>
                       )}
-                    </View>
-                  )}
-
-                  {/* Remove Member Confirmation Box */}
-                  {memberToRemove && (
-                    <View style={styles.dangerConfirmBox}>
-  <Text style={styles.dangerConfirmText}>
-    Remove {memberToRemove.username} from the household? They'll keep a personal copy of everything.
-  </Text>
-  <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <Button
-                            variant="solidDanger"
-                            label="Yes, remove"
-                            onPress={handleRemoveMember}
-                            loading={removeMemberBusy}
-                            disabled={removeMemberBusy}
-                            style={{ flex: 1 }}
-                          />
-                          <Button
-                            variant="secondary"
-                            label="Cancel"
-                            onPress={() => setMemberToRemove(null)}
-                            disabled={removeMemberBusy}
-                            style={{ flex: 1 }}
-                          />
                       </View>
-                      {!!removeMemberMsg && <Text style={[styles.errorText, { marginTop: 6 }]}>{removeMemberMsg}</Text>}
-                    </View>
+                    </>
                   )}
 
-                  {isOwner && householdMemberCount < 5 && (
-                    <TouchableOpacity
-                      style={[styles.dataButton, { marginTop: 14, alignSelf: 'stretch' }]}
-                      onPress={handleStartHouseholdInvite}
-                      disabled={linkBusy}
-                    >
-                      <GradientFill match={[styles.dataButton, { marginTop: 14, alignSelf: 'stretch' }]} />
-                      {linkBusy ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                          <ActivityIndicator color={colors.gold} />
-                          <Text style={styles.hintText}>Generating the invite code...</Text>
-                        </View>
-                      ) : (
-                        <Text style={styles.dataButtonText}>Invite someone</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-
-                  {isOwner && householdMemberCount >= 5 && (
-  <Text style={[styles.hintText, { marginTop: 8 }]}>
-    Household full (5 of 5) — remove someone first.
-  </Text>
-)}
-
-                  {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
-
-                    <Button
-                      variant="outlineDanger"
-                      label="Unlink this device"
+                  <SettingsGroup plain footer="This phone keeps its own copy from now on. The shared data and anyone else linked stay as they are.">
+                    <PlainRow
+                      title="Unlink this device"
+                      danger
                       onPress={() => {
                         const currentUid = getCurrentFirebaseUser()?.uid;
                         const otherMembers = householdMembers.filter((m) => m.uid !== currentUid);
@@ -975,8 +953,8 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                           setUnlinkConfirmOpen(true);
                         }
                       }}
-                      style={{ marginTop: 12, marginBottom: 8, alignSelf: 'stretch' }}
                     />
+                  </SettingsGroup>
                 </View>
               ) : transferOwnerModalOpen ? (
                 <View style={styles.dangerConfirmBox}>
@@ -1075,151 +1053,44 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
                 </View>
               )
             ) : (
-              <View style={styles.linkCodeBox}>
-                <GradientFill match={styles.linkCodeBox} />
-                <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
-                <Text style={styles.linkCodeText}>{linkCode}</Text>
-                <Text style={styles.hintText}>
-                  On the other phone, choose "Join with a code" and enter this.
-                </Text>
-
-                <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
-                  <GradientFill match={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]} />
-                  {hostFinishBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : (
-                    <ActivityIndicator color={colors.gold} size="small" />
-                  )}
-                  <Text style={styles.dataButtonText}>Waiting for the other phone to finish…</Text>
-                </View>
-
-                {!!hostFinishMsg && (
-                  <Text style={hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
-                    {hostFinishMsg}
-                  </Text>
-                )}
-                <TouchableOpacity
-                  style={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]}
-                  onPress={handleStartOverLinking}
-                  disabled={linkBusy || cooldownActive}
-                >
-                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]} />
-                  {linkBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : (
-                    <Text style={styles.cancelButtonText}>Generate a new code</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]}
-                  onPress={handleCancelInvite}
-                  disabled={linkBusy}
-                >
-                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]} />
-                  <Text style={[styles.cancelButtonText, { color: colors.error }]}>Cancel invite</Text>
-                </TouchableOpacity>
-                {!!cooldownActive && (
-                  <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
-                )}
-              </View>
+              inviteCard('On their phone: Join with a code')
             )}
           </>
         ) : (
           <>
             {!linkCode && !joinResult && (
               <>
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={handleStartLinking}
-                  disabled={linkBusy}
-                >
-                  <GradientFill match={styles.dataButton} />
-                  {linkBusy ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <SettingsGroup plain footer="Invite: you get a code to give them. Join: type the code from their phone.">
+                  <TouchableOpacity style={styles.hhRow} onPress={handleStartLinking} disabled={linkBusy} accessibilityRole="button">
+                    {linkBusy ? <ActivityIndicator color={colors.gold} /> : <Ionicons name="add" size={22} color={colors.gold} />}
+                    <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>{linkBusy ? 'Making your code…' : 'Invite someone'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.hhRow}>
+                    <TextInput
+                      style={{ flex: 1, fontSize: 17, color: colors.ink, paddingVertical: 8 }}
+                      placeholder="Join with a code"
+                      placeholderTextColor={colors.inkFaint}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      value={joinCodeInput}
+                      onChangeText={setJoinCodeInput}
+                    />
+                    {joinBusy ? (
                       <ActivityIndicator color={colors.gold} />
-                      <Text style={styles.hintText}>Generating your secure code...</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.dataButtonText}>Start linking (get a code)</Text>
-                  )}
-                </TouchableOpacity>
-                {!!linkErrorMsg && <Text style={styles.errorText}>{linkErrorMsg}</Text>}
-
-                <Text style={[styles.inputLabel, { marginTop: 8 }]}>Or join with a code</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter the 6-character code"
-                  placeholderTextColor={colors.inkFaint}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  value={joinCodeInput}
-                  onChangeText={setJoinCodeInput}
-                />
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={handleJoinWithCode}
-                  disabled={joinBusy}
-                >
-                  <GradientFill match={styles.dataButton} />
-                  {joinBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : (
-                    <Text style={styles.dataButtonText}>Join with a code</Text>
-                  )}
-                </TouchableOpacity>
-                {!!joinErrorMsg && <Text style={styles.errorText}>{joinErrorMsg}</Text>}
+                    ) : (
+                      <TouchableOpacity onPress={handleJoinWithCode} disabled={!joinCodeInput.trim()} hitSlop={8}>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold, opacity: joinCodeInput.trim() ? 1 : 0.4 }}>Join</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </SettingsGroup>
+                {!!linkErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginHorizontal: 16 }]}>{linkErrorMsg}</Text>}
+                {!!joinErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginHorizontal: 16 }]}>{joinErrorMsg}</Text>}
               </>
             )}
 
             {!!linkCode && (
-              <View style={styles.linkCodeBox}>
-                <GradientFill match={styles.linkCodeBox} />
-                <Text style={styles.linkCodeLabel}>Give this code to the other phone</Text>
-                <Text style={styles.linkCodeText}>{linkCode}</Text>
-                <Text style={styles.hintText}>
-                  On the other phone, choose "Join with a code" and enter this. Then come back and confirm
-  who's linking before you finish.
-                </Text>
-
-                <View style={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]}>
-                  <GradientFill match={[styles.dataButton, { marginTop: 10, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }]} />
-                  {hostFinishBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : (
-                    <ActivityIndicator color={colors.gold} size="small" />
-                  )}
-                  <Text style={styles.dataButtonText}>Waiting for the other phone to finish…</Text>
-                </View>
-
-                {!!hostFinishMsg && (
-                  <Text style={hostFinishMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
-                    {hostFinishMsg}
-                  </Text>
-                )}
-                <TouchableOpacity
-                  style={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]}
-                  onPress={handleStartOverLinking}
-                  disabled={linkBusy || cooldownActive}
-                >
-                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 10, alignSelf: 'stretch', opacity: cooldownActive ? 0.5 : 1 }]} />
-                  {linkBusy ? (
-                    <ActivityIndicator color={colors.gold} />
-                  ) : (
-                    <Text style={styles.cancelButtonText}>Generate a new code</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]}
-                  onPress={handleCancelInvite}
-                  disabled={linkBusy}
-                >
-                  <GradientFill match={[styles.cancelInlineButton, { marginTop: 8, alignSelf: 'stretch' }]} />
-                  <Text style={[styles.cancelButtonText, { color: colors.error }]}>Cancel invite</Text>
-                </TouchableOpacity>
-                {!!cooldownActive && (
-                  <Text style={[styles.hintText, { marginTop: 6, textAlign: 'center' }]}>Generate a new code in {cooldownSeconds}s</Text>
-                )}
-              </View>
+              inviteCard("On their phone: Join with a code. Then come back here to finish.")
             )}
 
             {!!joinResult && model && (
@@ -1370,6 +1241,19 @@ const avatarConfig = isFallbackName ? undefined : model?.avatars?.[avatarName];
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    hhStatus: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.navy3, borderRadius: 20, padding: 18, marginTop: 8, marginBottom: 24, overflow: 'hidden' },
+    hhIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    hhTitle: { fontSize: 20, fontWeight: '800', color: colors.ink },
+    hhSub: { fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 2 },
+    hhLabel: { fontSize: 13, fontWeight: '600', letterSpacing: 0.3, color: colors.inkDim, marginLeft: 16, marginBottom: 6 },
+    hhCodeCard: { backgroundColor: colors.navy3, borderRadius: 16, padding: 18, alignItems: 'center', marginBottom: 24, overflow: 'hidden' },
+    hhCode: { fontSize: 32, fontWeight: '800', letterSpacing: 4, marginVertical: 4, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+    hhCodeButtons: { flexDirection: 'row', gap: 8, alignSelf: 'stretch', marginTop: 14 },
+    hhCodeBtn: { flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    hhCodeBtnText: { fontSize: 15, fontWeight: '700' },
+    hhRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16 },
+    hhName: { fontSize: 17, color: colors.ink },
+    hhRole: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     container: {
       flex: 1,
       backgroundColor: 'transparent',
