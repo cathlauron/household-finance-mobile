@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
+import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
 import { RowInteractionPreview } from '../components/RowInteractionPreview';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -31,7 +32,6 @@ import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
 import { SettingsGroup, SettingsRow, PlainRow, SegmentRow } from '../components/SettingsHub';
 import { PickerRow, Choices, AmountRow } from '../components/SimpleForm';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -1142,26 +1142,16 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
           <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
         </TouchableOpacity>
 
-        {/* Premium: right under the profile, so it's the first thing people see. */}
-        <TouchableOpacity
-          testID="settings-premium-card"
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Premium')}
-          style={[styles.premiumCard, { backgroundColor: colors.buttonFill }]}
-          accessibilityRole="button"
-          accessibilityLabel="Finance Flow Premium. See plans"
-        >
-          <View style={styles.premiumIcon}>
-            <MaterialCommunityIcons name="crown" size={24} color="#FFFFFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.premiumTitle}>Finance Flow Premium</Text>
-            <Text style={styles.premiumSub}>Unlock everything · from ₱79.20 a month</Text>
-          </View>
-          <View style={styles.premiumPill}>
-            <Text style={[styles.premiumPillText, { color: colors.buttonFill }]}>Upgrade</Text>
-          </View>
-        </TouchableOpacity>
+        {/* Premium: right under the profile, as a quiet row like the others. */}
+        <SettingsGroup>
+          <SettingsRow
+            testID="settings-premium-card"
+            icon="diamond-outline"
+            title="Finance Flow Premium"
+            value="Upgrade"
+            onPress={() => navigation.navigate('Premium')}
+          />
+        </SettingsGroup>
 
         <SettingsGroup label="Money">
           <SettingsRow testID="settings-row-budgeting" icon="speedometer-outline" title="Budgeting" onPress={() => openPage('budget')} />
@@ -1615,11 +1605,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         {page === 'helpabout' && (
         <>
         <View style={{ alignItems: 'center', paddingVertical: 12, marginBottom: 12 }}>
-          <View style={[styles.appIcon, { backgroundColor: colors.buttonFill }]}>
-            <Ionicons name="leaf" size={36} color="#FFFFFF" />
-          </View>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: colors.ink, marginTop: 10 }}>Finance Flow</Text>
-          <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 2 }}>Version {APP_VERSION}</Text>
+          <LogoMark width={96} />
+          <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 8 }}>Version {APP_VERSION}</Text>
         </View>
         <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
           <PlainRow title="Help & guides" value="Coming soon" />
@@ -1993,17 +1980,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    premiumCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 14, marginBottom: 24, gap: 12 },
-    premiumIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-    premiumTitle: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
-    premiumSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-    premiumPill: { backgroundColor: '#FFFFFF', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
-    premiumPillText: { fontSize: 14, fontWeight: '800' },
     groupNote: { fontSize: 13, lineHeight: 18, marginTop: -16, marginBottom: 24, marginHorizontal: 16 },
     inlineNumWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     inlineNum: { minWidth: 44, fontSize: 17, color: colors.ink, textAlign: 'center', backgroundColor: colors.navy2, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 6 },
     inlineNumUnit: { fontSize: 17, color: colors.inkDim },
-    appIcon: { width: 72, height: 72, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
     container: {
       flex: 1,
       backgroundColor: 'transparent',
