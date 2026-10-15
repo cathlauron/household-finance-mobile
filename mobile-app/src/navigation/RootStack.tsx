@@ -78,18 +78,18 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
   return (
     <Stack.Navigator
       id={undefined}
-      // Pages build their contents a frame after the slide starts, so opening one feels
+      // Pages build their contents a frame after the fade starts, so opening one feels
       // instant (the tabs page is left alone).
       screenLayout={({ children, route }) =>
         route.name === 'Main' ? children : <DeferredContent>{children}</DeferredContent>
       }
       screenOptions={{
         contentStyle: { backgroundColor: 'transparent' },
-        // Every page slides in from the right while the page behind slides fully out to
-        // the left, and the reverse on Back. Pages are see-through (the leaves sit behind
-        // the whole app), so the page behind must move fully away rather than the iPhone
-        // default of shifting a third, which left its text showing through.
-        animation: 'slide_from_right',
+        // Pages open and close with a short, soft cross-fade (Android's own 150ms page
+        // fade) instead of sliding across the screen, so there is never a half-empty
+        // screen mid-move. Matches the tabs' fade.
+        animation: 'fade',
+        animationDuration: 200, // iPhone only; Android's fade is always 150ms
         ...getSharedHeaderOptions(colors),
       }}
     >
@@ -170,7 +170,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       >
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
-      {/* A Settings sub-page (Account & Security, Appearance, ...), pushed so it slides in. */}
+      {/* A Settings sub-page (Account & Security, Appearance, ...), pushed so it fades in like other pages. */}
       <Stack.Screen name="SettingsPage" options={{ title: '', headerBackTitle: 'Settings' }}>
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>

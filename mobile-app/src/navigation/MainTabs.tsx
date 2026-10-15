@@ -147,7 +147,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
   const screenOptions = React.useMemo<BottomTabNavigationOptions>(() => ({
         sceneStyle: { backgroundColor: 'transparent' },
         ...getSharedHeaderOptions(colors),
-        // The tab's large title is drawn by TabPage (so it slides with its page); the
+        // The tab's large title is drawn by TabPage (so it fades with its page); the
         // navigator's own header slot stays empty.
         header: () => null,
         // Redesign: a rounded bar that floats a little above the bottom edge, like the
@@ -188,7 +188,7 @@ export default function MainTabs({ username, onSignOut, initialOpenBillId }: Mai
       initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
       screenListeners={screenListeners}
       // Every visited tab stays drawn; TabPage keeps the hidden ones just off screen and
-      // slides them in and out.
+      // fades them in and out.
       detachInactiveScreens={false}
       screenLayout={({ children, route, options, navigation }) => (
         <TabPage

@@ -116,7 +116,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
   // Which page is open. null = the hub (the grouped list of rows).
   // Settings sub-pages (Account & Security, Appearance, ... ) open as their own screen
-  // ("SettingsPage") so they slide in like every other page.
+  // ("SettingsPage") so they open like every other page.
   const fixedPage: string | null = route.name === 'SettingsPage' ? route.params?.subPage ?? null : null;
   const [page, setPage] = useState<string | null>(fixedPage);
   const openPage = (key: string) => navigation.push('SettingsPage', { subPage: key });

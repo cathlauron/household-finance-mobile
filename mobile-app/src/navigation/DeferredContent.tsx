@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
-// Opening a page: the slide starts straight away, and the page's contents are built a
-// moment later (the next frame), while the slide is already moving. Building a busy page
+// Opening a page: the fade starts straight away, and the page's contents are built a
+// moment later (the next frame), while the fade is already moving. Building a busy page
 // first used to hold the old screen still for a beat before anything moved.
 export default function DeferredContent({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
