@@ -385,6 +385,9 @@ export type ManualTransaction = {
   // reviewWhy says why, e.g. 'Filled in by your rule' or 'Imported from a spreadsheet'.
   needsReview?: boolean;
   reviewWhy?: string;
+  // Money in only: what kind of extra income this is (see incomeKinds.ts). Shown under
+  // "Extra income" on the Income page.
+  incomeKind?: 'bonus' | 'side' | 'allowance' | 'gift' | 'other';
   // Redesign ("Make it repeat"): set on transactions added by a repeat, pointing at it.
   recurringId?: string;
 };

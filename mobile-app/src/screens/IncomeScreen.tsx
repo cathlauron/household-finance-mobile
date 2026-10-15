@@ -26,6 +26,10 @@ import Pill from '../components/Pill';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
+import { extraIncome, incomeKindLabel } from '../incomeKinds';
+import { todayISO } from '../dateUtils';
+import { useNavigation } from '@react-navigation/native';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -77,6 +81,7 @@ type IncomeScreenProps = {
 export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const navigation = useNavigation<any>();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -383,6 +388,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     return sum + amount;
   }, 0);
 
+  const extras = extraIncome(model);
+  const ymNow = todayISO().slice(0, 7);
+  const extraMonth = extras.filter((t) => t.date.startsWith(ymNow)).reduce((sum, t) => sum + t.amount, 0);
+  const extraYear = extras.filter((t) => t.date.startsWith(ymNow.slice(0, 4))).reduce((sum, t) => sum + t.amount, 0);
+
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
@@ -469,6 +479,45 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Text style={styles.addButtonText}>+ Add income</Text>
         </TouchableOpacity>
+
+        {/* Extra income: bonuses, side jobs, allowances and gifts added with the + button
+            (Money in › What is it?). Real money already in your accounts. */}
+        <Text style={styles.extraHeader}>Extra income</Text>
+        <View style={styles.extraGroup}>
+          <GradientFill match={styles.extraGroup} />
+          <View style={styles.extraTotals}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.extraMeta}>This month</Text>
+              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraMonth)}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.extraMeta}>This year</Text>
+              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraYear)}</Text>
+            </View>
+          </View>
+          {extras.length === 0 ? (
+            <Text style={[styles.extraMeta, styles.extraEmpty]}>
+              Got a bonus, side-job pay or an allowance? Tap + and choose Money in, then pick what it is. It will show up here.
+            </Text>
+          ) : (
+            extras.slice(0, 10).map((t) => (
+              <TouchableOpacity
+                key={t.id}
+                style={styles.extraRow}
+                onPress={() => navigation.navigate('TransactionDetail', { id: t.id })}
+                accessibilityRole="button"
+              >
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.rowName} numberOfLines={1}>{t.label}</Text>
+                  <Text style={styles.rowSub} numberOfLines={1}>
+                    {t.incomeKind ? incomeKindLabel(t.incomeKind) : 'Other'} · {formatShortDate(new Date(t.date + 'T00:00:00'))}
+                  </Text>
+                </View>
+                <Text style={[styles.rowAmount, { color: colors.positive }]}>+{formatPeso(t.amount)}</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       </PullToRefreshScrollView>
 
       <BottomSheet
@@ -703,6 +752,13 @@ function makeStyles(colors: any) {
     rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
     rowAmount: { fontSize: 15, fontWeight: '600', color: colors.planned },
+    extraHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 28, marginBottom: 6, marginLeft: 4 },
+    extraGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 24 },
+    extraTotals: { flexDirection: 'row', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },
+    extraMeta: { fontSize: 13, color: colors.inkDim },
+    extraTotal: { fontSize: 20, fontWeight: '700', marginTop: 2 },
+    extraEmpty: { padding: 16, lineHeight: 19 },
+    extraRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
     addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
     inputLabel: {

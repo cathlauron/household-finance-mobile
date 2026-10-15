@@ -9,6 +9,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { usePullDownToOpen } from '../pullDownToOpen';
+import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
@@ -259,6 +260,10 @@ export default function TransactionsScreen() {
   const [amountInput, setAmountInput] = useState<number | ''>('');
   const [dateInput, setDateInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
+  // Money in: "What is it?" (Salary logs a payday on an Income source).
+  const [incomeKindInput, setIncomeKindInput] = useState<IncomeKind | null>(null);
+  const [incomeSourceIdInput, setIncomeSourceIdInput] = useState<string | null>(null);
+  const salaryEntry = !editingId && directionInput === 'in' && incomeKindInput === 'salary';
   const [refundTrackingEnabled, setRefundTrackingEnabled] = useState(false);
   const [refundAmountInput, setRefundAmountInput] = useState<number | ''>('');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
@@ -327,6 +332,8 @@ export default function TransactionsScreen() {
     setAmountInput('');
     setDateInput(todayISO());
     setDirectionInput('out');
+    setIncomeKindInput(null);
+    setIncomeSourceIdInput(null);
     setRefundTrackingEnabled(false);
     setRefundAmountInput('');
     setReceiptPhoto(null);
@@ -360,6 +367,8 @@ export default function TransactionsScreen() {
     setAmountInput(typeof raw.amount === 'number' ? raw.amount : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
+    setIncomeKindInput(raw.incomeKind ?? null);
+    setIncomeSourceIdInput(null);
     setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
     setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
     setReceiptPhoto(raw.receiptPhoto || null);
@@ -426,9 +435,51 @@ export default function TransactionsScreen() {
     setReceiptPhoto(null);
   }
 
+  // Money in › Salary: logs a payday on the chosen Income source (the same as logging
+  // it on the Income page), into the chosen account.
+  async function saveSalary() {
+    if (!model) return;
+    const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
+    if (!source) {
+      setErrorMsg('Pick which salary this is.');
+      return;
+    }
+    const trimmedDate = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      setErrorMsg('Enter date as YYYY-MM-DD.');
+      return;
+    }
+    if (amountInput === '' || amountInput <= 0) {
+      setErrorMsg('Enter an amount greater than 0.');
+      return;
+    }
+    const acctProblem = accountProblem(model, 'in', amountInput, paymentMethodInput);
+    if (acctProblem) {
+      setErrorMsg(acctProblem);
+      return;
+    }
+    const entry = { id: makeId('paylog'), date: trimmedDate, amount: amountInput, paymentMethod: paymentMethodInput, createdAt: Date.now() };
+    const updated: HouseholdModel = {
+      ...model,
+      income: (model.income || []).map((s) => (s.id === source.id ? { ...s, paymentLog: [entry, ...(s.paymentLog || [])] } : s)),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSave() {
     if (!model) return;
-    const trimmedLabel = labelInput.trim();
+    if (!editingId && directionInput === 'in' && incomeKindInput === 'salary') return saveSalary();
+    // Extra income with no description gets the kind's name (e.g. "Bonus").
+    const extraKind = directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? incomeKindInput : undefined;
+    const trimmedLabel = labelInput.trim() || (extraKind ? incomeKindLabel(extraKind) : '');
     if (!trimmedLabel) {
       setErrorMsg('Enter a label.');
       return;
@@ -476,11 +527,13 @@ export default function TransactionsScreen() {
             amount: parsedAmount,
             direction: directionInput,
             owner: personId || 'shared',
-            category: categoryInput.trim(),
+            category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
             notes: notesInput.trim(),
             tags: parsedTags.length > 0 ? parsedTags : undefined,
             paymentMethod: paymentMethodInput,
           };
+        if (extraKind) next.incomeKind = extraKind;
+        else delete next.incomeKind;
         // Saving an edit counts as checking it.
         delete next.needsReview;
         delete next.reviewWhy;
@@ -506,8 +559,9 @@ export default function TransactionsScreen() {
           amount: parsedAmount,
           direction: directionInput,
           owner: personId || 'shared',
-          category: categoryInput.trim(),
+          category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
           notes: notesInput.trim(),
+          ...(extraKind ? { incomeKind: extraKind, createdAt: Date.now() } : {}),
           ...(parsedTags.length > 0 ? { tags: parsedTags } : {}),
           paymentMethod: paymentMethodInput,
           ...(receiptPhoto ? { receiptPhoto } : {}),
@@ -723,19 +777,13 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Redesign: In / Out summary. "In" opens Income (its new home). */}
+        {/* Redesign: In / Out summary (just totals; Income is reached from Accounts). */}
         <View style={[styles.group, styles.summary]}>
           <GradientFill match={[styles.group, styles.summary]} />
-          <TouchableOpacity
-            testID="transactions-income-link"
-            style={styles.summaryCell}
-            onPress={() => (navigation as any).navigate('Income')}
-            accessibilityRole="button"
-            accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}. Open Income`}
-          >
-            <Text style={styles.summaryLabel}>In ›</Text>
+          <View style={styles.summaryCell} accessible accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}`}>
+            <Text style={styles.summaryLabel}>In</Text>
             <Text style={[styles.summaryAmount, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
-          </TouchableOpacity>
+          </View>
           <View style={[styles.summaryCell, styles.summaryDivider]}>
             <Text style={styles.summaryLabel}>Out</Text>
             <Text style={[styles.summaryAmount, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>−{formatPeso(totals.totalOut)}</Text>
@@ -939,6 +987,62 @@ export default function TransactionsScreen() {
           onChangeAmount={handleAmountChange}
         />
 
+        {directionInput === 'in' && (
+          <>
+            <Text style={styles.inputLabel}>What is it?</Text>
+            <View style={styles.chipRow}>
+              {INCOME_KINDS.filter((k) => k.id !== 'salary' || !editingId).map((k) => {
+                const on = incomeKindInput === k.id;
+                return (
+                  <TouchableOpacity
+                    key={k.id}
+                    testID={`txn-kind-${k.id}`}
+                    style={[styles.chip, on && { backgroundColor: colors.accentTint }]}
+                    onPress={() => { setIncomeKindInput(on ? null : k.id); setErrorMsg(''); }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.chipText, on && { color: colors.gold }]}>{k.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {incomeKindInput === 'salary' && !editingId && (
+              (model.income || []).length === 0 ? (
+                <Text style={styles.formFooter}>Add your salary on the Income page first (Home › Wallet › Add account › Income).</Text>
+              ) : (
+                <>
+                  <Text style={styles.inputLabel}>Which salary?</Text>
+                  <View style={styles.chipRow}>
+                    {(model.income || []).map((src) => {
+                      const on = incomeSourceIdInput === src.id;
+                      const who = personName(model.people || [], src.personId);
+                      return (
+                        <TouchableOpacity
+                          key={src.id}
+                          style={[styles.chip, on && { backgroundColor: colors.accentTint }]}
+                          onPress={() => {
+                            setIncomeSourceIdInput(src.id);
+                            setErrorMsg('');
+                            if (amountInput === '' && typeof src.expectedAmount === 'number') setAmountInput(src.expectedAmount);
+                            if (!paymentMethodInput && src.depositTo) setPaymentMethodInput(src.depositTo);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: on }}
+                        >
+                          <Text style={[styles.chipText, on && { color: colors.gold }]}>{src.sourceName || src.category || 'Salary'}{who ? ` · ${who}` : ''}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.formFooter}>This logs the payday on the Income page, so it replaces the expected one instead of counting twice.</Text>
+                </>
+              )
+            )}
+          </>
+        )}
+
+        {!salaryEntry && (
         <View style={styles.formGroup}>
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Description</Text>
@@ -972,6 +1076,7 @@ export default function TransactionsScreen() {
             />
           </View>
         </View>
+        )}
         {ruleFilled && !!categoryInput && (
           <Text style={styles.formFooter}>Category was filled in by one of your rules.</Text>
         )}
@@ -1023,11 +1128,13 @@ export default function TransactionsScreen() {
           <Text style={styles.formFooter}>Already marked as refunded. Undo it on the transaction's page to change the amount.</Text>
         )}
 
+        {!salaryEntry && (
         <TouchableOpacity style={styles.moreToggle} onPress={() => setMoreOpen((v) => !v)} accessibilityRole="button">
           <Text style={styles.moreToggleText}>More details</Text>
           <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.gold} />
         </TouchableOpacity>
-        {moreOpen && (
+        )}
+        {moreOpen && !salaryEntry && (
           <>
             <Text style={styles.inputLabel}>Belongs to</Text>
             <TextInput

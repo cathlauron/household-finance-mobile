@@ -11,6 +11,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, totalCurrentBalance, withCurrentBalance, accountCurrentBalance, bakeCurrentBalances } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+import { cardFaceColors, CardFaceFill } from '../components/CardFace';
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
@@ -41,7 +42,7 @@ function makeId(): string {
 }
 
 export default function AccountsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
@@ -256,12 +257,12 @@ export default function AccountsScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Card variant="banner" row style={{ marginBottom: 18 }}>
-          <View>
-            <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-            <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
-          </View>
-        </Card>
+        {/* A soft wash in the app's green, the same style as the account cards below. */}
+        <View style={[styles.totalCard, cardFaceColors(colors.gold, isDark)]}>
+          <CardFaceFill color={colors.gold} radius={15} />
+          <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
+          <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+        </View>
 
         {/* Redesign: Income lives with your accounts (money coming in). */}
         <TouchableOpacity
@@ -515,6 +516,7 @@ function makeStyles(colors: any) {
       fontWeight: '600',
       color: colors.gold,
     },
+    totalCard: { borderRadius: 16, borderWidth: 1, paddingVertical: 16, paddingHorizontal: 18, marginBottom: 18 },
     balanceBannerLabel: {
       fontSize: 13,
       letterSpacing: 0.3,
