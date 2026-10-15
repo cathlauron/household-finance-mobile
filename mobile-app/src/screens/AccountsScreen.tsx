@@ -11,7 +11,8 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, totalCurrentBalance, withCurrentBalance, accountCurrentBalance, bakeCurrentBalances } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
 import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
-import { cardFaceColors, CardFaceFill } from '../components/CardFace';
+import { cardFaceColors, CardFaceFill, cardColor } from '../components/CardFace';
+import { computeNextPayDate, formatShortDate } from '../income';
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
@@ -250,6 +251,17 @@ export default function AccountsScreen() {
   }
 
   const totalBalance = totalCurrentBalance(model);
+  // Money colours: green for money you have, red for money owed, grey for nothing.
+  const moneyColor = (n: number) => (n > 0.004 ? colors.positive : n < -0.004 ? colors.negative : colors.inkDim);
+  const accountCount = GROUPS.reduce((n, g) => n + model.balanceAccounts[g].length, 0);
+  const creditOwed = model.balanceAccounts.credit
+    .map((a) => accountCurrentBalance(model, 'credit', a))
+    .reduce((sum, b) => sum + (b < 0 ? -b : 0), 0);
+  // The soonest payday across all income sources.
+  const nextPay = (model.income || [])
+    .map((src) => ({ date: computeNextPayDate(src.frequency as any, src.payDates || []), amount: typeof src.expectedAmount === 'number' ? src.expectedAmount : 0 }))
+    .filter((x): x is { date: Date; amount: number } => !!x.date)
+    .sort((x, y) => x.date.getTime() - y.date.getTime())[0];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -257,69 +269,59 @@ export default function AccountsScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* A soft wash in the app's green, the same style as the account cards below. */}
-        <View style={[styles.totalCard, cardFaceColors(colors.gold, isDark)]}>
-          <CardFaceFill color={colors.gold} radius={15} />
-          <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
-        </View>
-
-        {/* Redesign: Income lives with your accounts (money coming in). */}
-        <TouchableOpacity
-          style={styles.incomeRow}
-          onPress={() => navigation.navigate('Income')}
-          accessibilityRole="button"
-          testID="accounts-income"
-        >
-          <GradientFill match={styles.incomeRow} />
-          <View style={styles.incomeIcon}>
-            <Ionicons name="trending-up" size={18} color={colors.gold} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.incomeTitle}>Income</Text>
-            <Text style={styles.incomeSub}>
-              {(model.income || []).length === 0
-                ? 'Add where your money comes from'
-                : `${(model.income || []).length} ${(model.income || []).length === 1 ? 'source' : 'sources'} of income`}
+        {/* Total balance: soft white card (money colours on the number), with the next
+            payday as a quiet row at the bottom that opens Income. */}
+        <View style={styles.totalCard}>
+          <GradientFill match={styles.totalCard} />
+          <View style={styles.totalTop}>
+            <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
+            <Text style={[styles.balanceBannerAmount, { color: moneyColor(totalBalance) }]}>{formatPeso(totalBalance)}</Text>
+            <Text style={styles.totalSub}>
+              {`Across ${accountCount} ${accountCount === 1 ? 'account' : 'accounts'}`}
+              {creditOwed > 0 ? ' · Credit owed ' : ''}
+              {creditOwed > 0 ? <Text style={{ color: colors.negative, fontWeight: '700' }}>{formatPeso(creditOwed)}</Text> : null}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.incomeRow}
+            onPress={() => navigation.navigate('Income')}
+            accessibilityRole="button"
+            testID="accounts-income"
+          >
+            <View style={[styles.incomeIcon, { backgroundColor: colors.indigoBg }]}>
+              <Ionicons name="trending-up" size={16} color={colors.planned} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.incomeTitle}>Income</Text>
+              <Text style={styles.incomeSub} numberOfLines={1}>
+                {nextPay ? `Next payday ${formatShortDate(nextPay.date)}` : (model.income || []).length === 0 ? 'Add where your money comes from' : 'No payday scheduled'}
+              </Text>
+            </View>
+            {!!nextPay && <Text style={[styles.incomeAmount, { color: colors.planned }]}>+{formatPeso(nextPay.amount)}</Text>}
+            <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
+          </TouchableOpacity>
+        </View>
 
         {GROUPS.map((group) => {
           // Live balances (saved balance + anything paid from or into it since).
           const accounts = model.balanceAccounts[group].map((a) => withCurrentBalance(model, group, a));
           const groupTotal = accounts.reduce((sum, a) => sum + accountAmountNumber(a), 0);
-          const isStackedSection = viewMode === 'stacked' && accounts.length >= 2;
-          const sectionHasExpanded = isStackedSection && accounts.some((a) => a.id === expandedAccountId);
           return (
             <View key={group} style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>{GROUP_LABELS[group]}</Text>
-                <View style={styles.sectionHeaderRight}>
-                  {sectionHasExpanded && (
-                    <IconLabelHint
-                      name="chevron-up"
-                      label="Collapse"
-                      size={15}
-                      color={colors.gold}
-                      onPress={handleCollapse}
-                      style={styles.collapseChip}
-                      testID="accounts-collapse-chip"
-                    />
-                  )}
-                  <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
-                </View>
+                <Text style={styles.sectionTitle}>{GROUP_LABELS[group].toUpperCase()}</Text>
+                <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
               </View>
-
-              {accounts.length === 0 && (
-                <Text style={styles.emptyText}>
-                  No {GROUP_LABELS[group].toLowerCase()} accounts yet.
-                </Text>
-              )}
-
-              {accounts.map((account, index) => {
-                if (!isStackedSection) {
+              <View style={styles.listGroup}>
+                <GradientFill match={styles.listGroup} />
+                {accounts.length === 0 && (
+                  <TouchableOpacity style={styles.accountRow} onPress={() => openAddModal(group)} accessibilityRole="button">
+                    <Text style={[styles.accountName, { color: colors.gold }]}>Add a {GROUP_LABELS[group].toLowerCase()} account</Text>
+                  </TouchableOpacity>
+                )}
+                {accounts.map((account, i) => {
+                  const bal = accountAmountNumber(account);
+                  const tint = cardColor(account, group);
                   return (
                     <SwipeableRow
                       key={account.id}
@@ -327,48 +329,26 @@ export default function AccountsScreen() {
                       onDelete={() => handleSwipeDeleteAccount(group, account)}
                       testID={`account-swipe-${account.id}`}
                     >
-                      <AccountCard
-                        hideTypeBadge
-                        account={account}
-                        group={group}
+                      <TouchableOpacity
+                        style={[styles.accountRow, i > 0 && styles.accountRowDivider]}
                         onPress={() => openEditModal(group, account)}
-                      />
+                        accessibilityRole="button"
+                        accessibilityLabel={`${account.name}, ${formatPeso(bal)}`}
+                      >
+                        <View style={[styles.accountChip, cardFaceColors(tint, isDark)]}>
+                          <CardFaceFill color={tint} radius={6} />
+                        </View>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.accountName} numberOfLines={1}>{account.name || GROUP_LABELS[group]}</Text>
+                          <Text style={styles.accountSub} numberOfLines={1}>{GROUP_LABELS[group]}</Text>
+                        </View>
+                        <Text style={[styles.accountAmount, { color: moneyColor(bal) }]}>{formatPeso(bal)}</Text>
+                        <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
                     </SwipeableRow>
                   );
-                }
-
-                const isExpanded = expandedAccountId === account.id;
-                const expandedIndex = accounts.findIndex((a) => a.id === expandedAccountId);
-
-                let marginTop = 0;
-                if (index > 0) {
-                  if (expandedIndex !== -1 && index === expandedIndex + 1) {
-                    marginTop = 14;
-                  } else {
-                    marginTop = -72;
-                  }
-                }
-
-                const isDimmed = expandedIndex !== -1 && !isExpanded;
-
-                return (
-                  <AccountCard
-                    hideTypeBadge
-                    key={account.id}
-                    account={account}
-                    group={group}
-                    isExpanded={isExpanded}
-                    style={{
-                      marginTop,
-                      marginBottom: index === accounts.length - 1 ? 12 : 0,
-                      zIndex: isExpanded ? 20 : index + 1,
-                      opacity: isDimmed ? 0.78 : 1,
-                    }}
-                    onPress={() => handleCardPress(group, account, isExpanded)}
-                  />
-                );
-              })}
-
+                })}
+              </View>
             </View>
           );
         })}
@@ -516,7 +496,17 @@ function makeStyles(colors: any) {
       fontWeight: '600',
       color: colors.gold,
     },
-    totalCard: { borderRadius: 16, borderWidth: 1, paddingVertical: 16, paddingHorizontal: 18, marginBottom: 18 },
+    totalCard: { borderRadius: 20, backgroundColor: colors.navy3, marginBottom: 22, overflow: 'hidden' },
+    totalTop: { paddingTop: 18, paddingBottom: 14, paddingHorizontal: 20 },
+    totalSub: { fontSize: 13, color: colors.inkDim, marginTop: 4 },
+    incomeAmount: { fontSize: 15, fontWeight: '700', marginRight: 6 },
+    listGroup: { backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden' },
+    accountRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.navy3 },
+    accountRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    accountChip: { width: 40, height: 28, borderRadius: 6, marginRight: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+    accountName: { fontSize: 17, color: colors.ink },
+    accountSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    accountAmount: { fontSize: 17, fontWeight: '600' },
     balanceBannerLabel: {
       fontSize: 13,
       letterSpacing: 0.3,
@@ -524,8 +514,9 @@ function makeStyles(colors: any) {
       marginBottom: 4,
     },
     balanceBannerAmount: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 32,
+      fontWeight: '800',
+      letterSpacing: -0.5,
       color: colors.ink,
     },
     section: {
@@ -535,12 +526,14 @@ function makeStyles(colors: any) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
+      paddingHorizontal: 16,
     },
     sectionTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.ink,
+      fontSize: 13,
+      fontWeight: '600',
+      letterSpacing: 0.3,
+      color: colors.inkDim,
     },
     sectionTotal: {
       fontSize: 13,
@@ -556,23 +549,20 @@ function makeStyles(colors: any) {
     incomeRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingHorizontal: 14,
+      paddingHorizontal: 20,
       paddingVertical: 12,
-      marginBottom: 18,
-      overflow: 'hidden',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.navy4,
     },
     incomeIcon: {
-      width: 34,
-      height: 34,
+      width: 30,
+      height: 30,
       borderRadius: 8,
-      backgroundColor: colors.accentTint,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,
     },
-    incomeTitle: { fontSize: 17, color: colors.ink, fontWeight: '600' },
+    incomeTitle: { fontSize: 15, color: colors.ink, fontWeight: '600' },
     incomeSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     typeRow: { flexDirection: 'row', alignItems: 'center', minHeight: 54 },
     typeRowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
