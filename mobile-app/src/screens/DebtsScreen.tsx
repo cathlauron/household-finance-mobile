@@ -5,6 +5,9 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount } from '../components/SimpleForm';
+import { paymentMethodColor } from '../components/CardFace';
+const DEBT_TYPES = ['Credit card', 'Lending app', 'Family or friend', 'Personal loan', 'Other'];
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import { currentCycle, withEditedCurrentCycle } from '../billPayments';
@@ -119,6 +122,16 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
+  const debtNext = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput);
+  const debtMonths =
+    recurTypeInput === 'monthly' && typeof amountInput === 'number' && typeof minPaymentInput === 'number' && minPaymentInput > 0 && amountInput > minPaymentInput
+      ? Math.ceil(amountInput / minPaymentInput)
+      : 0;
+  const debtFootnote = [
+    nextDateText(recurTypeInput === 'onetime' ? 'Due' : 'Next payment', debtNext),
+    debtMonths ? `At ${formatPeso(minPaymentInput as number)} a month it's paid off in about ${debtMonths} months.` : '',
+  ].filter(Boolean).join(' ');
 
   if (!model) {
     return (
@@ -406,153 +419,45 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
       </PullToRefreshScrollView>
 
+      {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit debt' : 'New debt'}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <Text style={styles.inputLabel}>Creditor or person</Text>
-                <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="e.g. BDO Credit Card, GCredit, Ate Fely"
-                  placeholderTextColor={colors.inkFaint}
-                  value={creditorInput}
-                  onChangeText={setCreditorInput}
-                />
+        <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
 
-                <Text style={styles.inputLabel}>Category</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Credit card, Lending app, Personal loan"
-                  placeholderTextColor={colors.inkFaint}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                />
+        <FormGroup>
+          <InputRow label="Owed to" value={creditorInput} onChangeText={setCreditorInput} placeholder="e.g. BDO, Ate Fely" testID="debt-creditor-input" />
+          <PickerRow label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
+            <Choices options={DEBT_TYPES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
+            <View style={{ height: 10 }} />
+            <InlineField label="Or type your own" value={DEBT_TYPES.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+          </PickerRow>
+          <AmountRow label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
+          <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+            <Choices options={REPEAT_CHOICES} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
+          </PickerRow>
+          <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+            <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="debt-due-date-field" />
+          </PickerRow>
+          <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
+          </PickerRow>
+        </FormGroup>
 
-                <Text style={styles.inputLabel}>Amount owed</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={amountInput}
-                  onChangeAmount={setAmountInput}
-                />
+        <FormGroup>
+          <PickerRow label="More details" value={[interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Interest, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
+            <InlineField label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
+            <InlineAmount label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
+            <InlineField label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />
+          </PickerRow>
+        </FormGroup>
 
-                <Text style={styles.inputLabel}>Repeats</Text>
-                <View style={styles.pillRow}>
-                  {RECUR_TYPES.map((rt) => (
-                    <Pill
-                      key={rt}
-                      label={recurringTypeLabel(rt)}
-                      tone="sheet"
-                      fill
-                      minWidth={80}
-                      active={recurTypeInput === rt}
-                      onPress={() => setRecurTypeInput(rt)}
-                    />
-                  ))}
-                </View>
-
-                {recurTypeInput === 'onetime' && (
-                  <DateField
-                    label="Due date"
-                    value={onetimeDateInput}
-                    onChange={setOnetimeDateInput}
-                    placeholder="2026-08-25"
-                    clearable
-                    testID="debt-due-date-field"
-                  />
-                )}
-
-                {recurTypeInput === 'monthly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 15"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="number-pad"
-                      value={dayInput}
-                      onChangeText={setDayInput}
-                    />
-                  </>
-                )}
-
-                {recurTypeInput === 'annual' && (
-                  <View style={styles.row2}>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Month (1–12)</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 3"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={monthInput}
-                        onChangeText={setMonthInput}
-                      />
-                    </View>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Day</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 15"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={dayInput}
-                        onChangeText={setDayInput}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                <Text style={styles.inputLabel}>Interest rate (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 24"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={interestRateInput}
-                  onChangeText={setInterestRateInput}
-                />
-
-                <Text style={styles.inputLabel}>Minimum payment (optional)</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={minPaymentInput}
-                  onChangeAmount={setMinPaymentInput}
-                />
-
-                <Text style={styles.inputLabel}>Fees portion (optional)</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  placeholder="e.g. late fee or interest charged"
-                  value={feesPortionInput}
-                  onChangeAmount={setFeesPortionInput}
-                />
-
-                <PaymentMethodPicker
-                  value={paymentMethodInput}
-                  onChange={setPaymentMethodInput}
-                  debitAccounts={model.balanceAccounts.debit}
-                  creditAccounts={model.balanceAccounts.credit}
-                />
-
-                <Text style={styles.inputLabel}>Notes (optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.notesInput]}
-                  placeholder="Optional notes"
-                  placeholderTextColor={colors.inkFaint}
-                  value={notesInput}
-                  onChangeText={setNotesInput}
-                  multiline
-                />
-
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {!!debtFootnote && <Footnote>{debtFootnote}</Footnote>}
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>
   );

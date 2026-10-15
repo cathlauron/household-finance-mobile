@@ -30,6 +30,8 @@ import GradientFill from '../components/GradientFill';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
 import { todayISO } from '../dateUtils';
 import { useNavigation } from '@react-navigation/native';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField } from '../components/SimpleForm';
+import { paymentMethodColor } from '../components/CardFace';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
@@ -37,6 +39,8 @@ import { useNavigation } from '@react-navigation/native';
 type PaymentLogFormEntry = { id: string; date: string; amount: number | ''; paymentMethod?: PaymentMethod };
 
 const CATEGORY_SUGGESTIONS = ['Salary', 'Freelance / Side gig', 'Business income', 'Rental income', 'Other'];
+// Friendlier names for how often pay comes (the simple form).
+const PAY_LABEL: Record<Frequency, string> = { weekly: 'Weekly', biweekly: 'Every 2 weeks', semimonthly: 'Twice a month', monthly: 'Monthly', onetime: 'Just once' };
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -116,6 +120,25 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   const [depositInput, setDepositInput] = useState<PaymentMethod | undefined>(undefined);
   const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
+  const paydayLabel = (() => {
+    if (frequencyInput === 'monthly') return monthlyDayInput ? `the ${ordinal(parseInt(monthlyDayInput, 10))}` : 'Choose';
+    if (frequencyInput === 'semimonthly') return semiDay1Input && semiDay2Input ? `${ordinal(parseInt(semiDay1Input, 10))} and ${ordinal(parseInt(semiDay2Input, 10))}` : 'Choose';
+    if (frequencyInput === 'weekly') return weeklyDowInput !== null ? `${DOW_LABELS[weeklyDowInput]}s` : 'Choose';
+    const d = frequencyInput === 'onetime' ? onetimeDateInput : biweeklyAnchorInput;
+    return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Choose';
+  })();
+  const nextPaydayText = (() => {
+    const pd =
+      frequencyInput === 'monthly' ? (monthlyDayInput ? [monthlyDayInput] : [])
+      : frequencyInput === 'semimonthly' ? (semiDay1Input && semiDay2Input ? [semiDay1Input, semiDay2Input] : [])
+      : frequencyInput === 'weekly' ? (weeklyDowInput !== null ? [String(weeklyDowInput)] : [])
+      : frequencyInput === 'onetime' ? (onetimeDateInput ? [onetimeDateInput] : [])
+      : biweeklyAnchorInput ? [biweeklyAnchorInput] : [];
+    if (!pd.length) return '';
+    const next = computeNextPayDate(frequencyInput, pd);
+    return next ? `Next payday ${next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}.` : '';
+  })();
 
   if (!model) {
     return (
@@ -514,174 +537,57 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         </View>
       </PullToRefreshScrollView>
 
+      {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit income' : 'New income'}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit income' : 'New income'} onCancel={closeModal} onDone={handleSave} doneLabel="Save" busy={saving} />}
       >
-        <Text style={styles.inputLabel}>Belongs to</Text>
-                <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="Type a name, e.g. Miguel, Ana"
-                  placeholderTextColor={colors.inkFaint}
-                  value={personInput}
-                  onChangeText={setPersonInput}
-                />
-                {model.people.length > 0 && (
-                  <View style={styles.chipRow}>
-                    {model.people.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.chip}
-                        onPress={() => setPersonInput(p.name)}
-                      >
-                        <Text style={styles.chipText}>{p.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+        <BigAmount label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
 
-                <Text style={styles.inputLabel}>Category</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Salary, Freelance"
-                  placeholderTextColor={colors.inkFaint}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                />
-                <View style={styles.chipRow}>
-                  {CATEGORY_SUGGESTIONS.map((c) => (
-                    <TouchableOpacity key={c} style={styles.chip} onPress={() => setCategoryInput(c)}>
-                      <Text style={styles.chipText}>{c}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+        <FormGroup>
+          <InputRow label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />
+          <PickerRow label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
+            <Choices options={CATEGORY_SUGGESTIONS.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
+            <View style={{ height: 10 }} />
+            <InlineField label="Or type your own" value={CATEGORY_SUGGESTIONS.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+          </PickerRow>
+          <PickerRow label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
+            {model.people.length > 0 && (
+              <Choices options={model.people.map((p) => ({ id: p.name, label: p.name }))} value={personInput} onChange={setPersonInput} />
+            )}
+            <View style={{ height: 10 }} />
+            <InlineField label="Or type a name" value={model.people.some((p) => p.name === personInput) ? '' : personInput} onChangeText={setPersonInput} placeholder="e.g. Miguel" />
+          </PickerRow>
+          <PickerRow label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
+            <Choices options={FREQUENCIES.map((f) => ({ id: f, label: PAY_LABEL[f] }))} value={frequencyInput} onChange={(f) => setFrequencyInput(f as Frequency)} />
+          </PickerRow>
+          <PickerRow label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} onToggle={() => toggleRow('payday')}>
+            {frequencyInput === 'monthly' && <DayStrip value={parseInt(monthlyDayInput, 10) || null} onChange={(d) => setMonthlyDayInput(String(d))} />}
+            {frequencyInput === 'semimonthly' && (
+              <>
+                <Text style={styles.inlineLabel}>First payday</Text>
+                <DayStrip value={parseInt(semiDay1Input, 10) || null} onChange={(d) => setSemiDay1Input(String(d))} />
+                <Text style={[styles.inlineLabel, { marginTop: 12 }]}>Second payday</Text>
+                <DayStrip value={parseInt(semiDay2Input, 10) || null} onChange={(d) => setSemiDay2Input(String(d))} />
+              </>
+            )}
+            {frequencyInput === 'weekly' && (
+              <Choices options={DOW_LABELS.map((l, i) => ({ id: String(i), label: l }))} value={weeklyDowInput === null ? '' : String(weeklyDowInput)} onChange={(v) => setWeeklyDowInput(parseInt(v, 10))} />
+            )}
+            {frequencyInput === 'onetime' && <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="income-onetime-date-field" />}
+            {frequencyInput === 'biweekly' && <DateField value={biweeklyAnchorInput} onChange={setBiweeklyAnchorInput} placeholder="Pick your last payday" testID="income-biweekly-anchor-field" />}
+          </PickerRow>
+          <PickerRow label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <AccountChoices model={model} value={depositInput} onChange={setDepositInput} />
+          </PickerRow>
+        </FormGroup>
+        {!!nextPaydayText && <Footnote>{nextPaydayText}</Footnote>}
 
-                <Text style={styles.inputLabel}>Source name (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Freelance design, ABC Corp"
-                  placeholderTextColor={colors.inkFaint}
-                  value={sourceNameInput}
-                  onChangeText={setSourceNameInput}
-                />
-
-                <Text style={styles.inputLabel}>Expected amount</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={amountInput}
-                  onChangeAmount={setAmountInput}
-                />
-
-                <Text style={styles.inputLabel}>Frequency</Text>
-                <View style={styles.pillRow}>
-                  {FREQUENCIES.map((f) => (
-                    <Pill
-                      key={f}
-                      label={frequencyLabel(f)}
-                      tone="sheet"
-                      fill
-                      minWidth={80}
-                      active={frequencyInput === f}
-                      onPress={() => setFrequencyInput(f)}
-                    />
-                  ))}
-                </View>
-
-                {frequencyInput === 'monthly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 30"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="number-pad"
-                      value={monthlyDayInput}
-                      onChangeText={setMonthlyDayInput}
-                    />
-                  </>
-                )}
-
-                {frequencyInput === 'semimonthly' && (
-                  <View style={styles.row2}>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>First payday</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 15"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={semiDay1Input}
-                        onChangeText={setSemiDay1Input}
-                      />
-                    </View>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Second payday</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 30"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={semiDay2Input}
-                        onChangeText={setSemiDay2Input}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                {frequencyInput === 'weekly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Pay day</Text>
-                    <View style={styles.pillRow}>
-                      {DOW_LABELS.map((label, idx) => (
-                        <Pill
-                          key={label}
-                          label={label}
-                          tone="sheet"
-                          compact
-                          minWidth={42}
-                          active={weeklyDowInput === idx}
-                          onPress={() => setWeeklyDowInput(idx)}
-                        />
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {frequencyInput === 'onetime' && (
-                  <DateField
-                    label="Date"
-                    value={onetimeDateInput}
-                    onChange={setOnetimeDateInput}
-                    placeholder="2025-03-15"
-                    testID="income-onetime-date-field"
-                  />
-                )}
-
-                {frequencyInput === 'biweekly' && (
-  <DateField
-    label="Most recent payday"
-    value={biweeklyAnchorInput}
-    onChange={setBiweeklyAnchorInput}
-    placeholder="Select recent payday"
-    clearable
-    testID="income-biweekly-anchor-field"
-  />
-)}
-
-                <Text style={styles.inputLabel}>Payment log</Text>
-                <Text style={styles.hintText}>
-                  Log a payday when the money actually arrives. It's added to the account below.
-                </Text>
-                <AccountPicker
-                  model={model}
-                  direction="in"
-                  amount=""
-                  value={depositInput}
-                  onChange={setDepositInput}
-                  label="Paydays go into"
-                />
+        <Text style={styles.groupHeader}>Paydays received</Text>
+        <FormGroup>
+          <View style={{ paddingHorizontal: 16, paddingTop: paymentLogEntries.length ? 12 : 0 }}>
                 {paymentLogEntries.map((entry) => (
                   <View key={entry.id} style={styles.paymentLogEntry}>
                     {/* Date on its own full-width line, so its calendar has room to open. */}
@@ -711,14 +617,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
                 <TouchableOpacity style={styles.addPaymentLogButton} onPress={addPaymentLogEntry}>
                   <Text style={styles.addPaymentLogButtonText}>+ Log a payday</Text>
                 </TouchableOpacity>
+          </View>
+        </FormGroup>
+        <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -746,6 +650,8 @@ function makeStyles(colors: any) {
     rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
     rowAmount: { fontSize: 15, fontWeight: '600', color: colors.planned },
+    inlineLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 },
+    groupHeader: { fontSize: 13, color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginLeft: 16 },
     extraHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 28, marginBottom: 6, marginLeft: 4 },
     extraGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 24 },
     extraTotals: { flexDirection: 'row', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },

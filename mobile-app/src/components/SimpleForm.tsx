@@ -1,4 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import DateField from './DateField';
+import { getNextDueDate, RecurringType } from '../recurrence';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Switch, KeyboardTypeOptions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
@@ -254,4 +256,88 @@ function rowStyles(colors: ThemeColors) {
     value: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
     input: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
   });
+}
+
+// Which row's choices are open (one at a time); closes everything when the form closes.
+export function useOpenRow(formOpen: boolean): [string | null, (row: string) => void] {
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  useEffect(() => {
+    if (!formOpen) setOpenRow(null);
+  }, [formOpen]);
+  return [openRow, (row: string) => setOpenRow((cur) => (cur === row ? null : row))];
+}
+
+export function repeatLabel(rt: RecurringType): string {
+  return rt === 'onetime' ? 'Once' : rt === 'monthly' ? 'Every month' : rt === 'annual' ? 'Every year' : 'Custom';
+}
+
+export const REPEAT_CHOICES: { id: RecurringType; label: string }[] = [
+  { id: 'onetime', label: 'Once' },
+  { id: 'monthly', label: 'Every month' },
+  { id: 'annual', label: 'Every year' },
+];
+
+function niceDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// "the 15th", "Mar 15" or "Sun, Nov 15" for the Due on row.
+export function scheduleLabel(rt: RecurringType, date: string, day: string, month: string): string {
+  if (rt === 'onetime') return date ? niceDate(new Date(date + 'T00:00:00')) : 'Choose';
+  if (rt === 'monthly') return day ? `the ${ordinal(parseInt(day, 10))}` : 'Choose';
+  return day && month ? `${MONTHS_SHORT[parseInt(month, 10) - 1] ?? ''} ${parseInt(day, 10)}` : 'Choose';
+}
+
+export function nextDateFor(rt: RecurringType, date: string, day: string, month: string): Date | null {
+  if (rt === 'onetime') return date ? new Date(date + 'T00:00:00') : null;
+  const d = getNextDueDate(rt, rt === 'monthly' ? { day } : { day, month: month ? parseInt(month, 10) : '' });
+  return d && !isNaN(d.getTime()) ? d : null;
+}
+
+export function nextDateText(prefix: string, d: Date | null): string {
+  return d ? `${prefix} ${niceDate(d)}.` : '';
+}
+
+// The choices under a "Due on" row: a date for one-time, days for monthly, month + day for yearly.
+export function ScheduleChoices({ rt, date, onDate, day, onDay, month, onMonth, testID }: { rt: RecurringType; date: string; onDate: (v: string) => void; day: string; onDay: (v: string) => void; month: string; onMonth: (v: string) => void; testID?: string }) {
+  if (rt === 'onetime') return <DateField value={date} onChange={onDate} placeholder="Pick a date" testID={testID} />;
+  return (
+    <>
+      {rt === 'annual' && (
+        <View style={{ marginBottom: 10 }}>
+          <Choices options={MONTHS_SHORT.map((m, i) => ({ id: String(i + 1), label: m }))} value={month} onChange={onMonth} />
+        </View>
+      )}
+      <DayStrip value={parseInt(day, 10) || null} onChange={(d) => onDay(String(d))} />
+    </>
+  );
+}
+
+// A small grey label and a field, used inside an open row (More details).
+export function InlineField({ label, value, onChangeText, placeholder, keyboardType, multiline }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; keyboardType?: KeyboardTypeOptions; multiline?: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }}>{label}</Text>
+      <TextInput
+        style={{ backgroundColor: colors.navy2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.ink }}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.inkFaint}
+        keyboardType={keyboardType}
+        multiline={multiline}
+      />
+    </View>
+  );
+}
+
+export function InlineAmount({ label, value, onChange, placeholder }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }}>{label}</Text>
+      <AmountInput value={value} onChangeAmount={onChange} placeholder={placeholder ?? '0.00'} style={{ backgroundColor: colors.navy2, marginBottom: 0 }} />
+    </View>
+  );
 }
