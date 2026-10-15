@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, Platform, SafeAreaView, useWindowDimensions } from 'react-native';
+import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
@@ -28,6 +29,9 @@ export default function BottomSheet({
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const styles = makeStyles(colors, screenHeight);
+  // The app draws edge to edge, so the sheet runs under the phone's navigation bar too
+  // (no strip of the screen behind showing below it) and pads its content above the bar.
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal
@@ -36,6 +40,8 @@ export default function BottomSheet({
       animationType="slide"
       onRequestClose={onClose}
       testID={testID}
+      statusBarTranslucent
+      navigationBarTranslucent
     >
       <View style={styles.backdropWrap}>
         <Pressable
@@ -71,7 +77,7 @@ export default function BottomSheet({
               {children}
             </ScrollView>
 
-            <SafeAreaView style={[styles.bottomSafeArea, grouped && { backgroundColor: colors.navy2 }]} />
+            <View style={{ height: insets.bottom }} />
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -132,9 +138,6 @@ function makeStyles(colors: any, screenHeight: number) {
     scrollContent: {
       paddingHorizontal: spacing[20],
       paddingBottom: Platform.OS === 'ios' ? spacing[12] : spacing[20],
-    },
-    bottomSafeArea: {
-      backgroundColor: colors.navy3,
     },
   });
 }
