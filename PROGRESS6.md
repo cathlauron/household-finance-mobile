@@ -296,6 +296,156 @@ step on her phone in Expo Go and replied "device test is as described" before th
 - Smaller agreed changes: no top-bar + on To-Pay (the floating + adds a bill, debt or loan
   for the segment showing); no floating + on the Plan tab.
 
+🍂 R SERIES, SESSION 2 (2026-10-14 to 2026-10-15): steps 22-37
+=====================================================================
+Same way of working as session 1: Claude Code has direct access to the repo, edits the
+code, runs npx tsc --noEmit, then commits and pushes to the `redesign` branch. Cath runs
+git pull + npx expo start -c and tests in Expo Go. "device test is as described" is the
+sign-off before the next step. 21 commits this session, all tsc clean (4b2d15d to aadb869).
+
+✅ Done this session (all on `redesign`, device-tested unless marked)
+- 22 Calendar matches the mockup (4b2d15d): white sheet; a month title with a chevron;
+  four round buttons (previous, next, view options, close); a "Projected balance" label
+  plus a Today chip; a box-free grid with 34px number circles and 5px dots; selected = ink
+  circle; today = accent text; the day panel always shows (no popup). List mode was folded
+  in (a saved 'list' setting shows as compact).
+- 23 Calendar month/year picker (6d8ae5f): tap the month title to jump to any month
+  (24-month range).
+- 24-26 Falling leaves (881c73b, 1d74386, fa48404, 7d3d3e1) in
+  components/FallingLeaves.tsx + components/leafShape.ts.
+  - Depths: far 6, mid 6, near 2 (blur off).
+  - FALL_SLOWDOWN 2.5, SWAY_SLOWDOWN 1.6, WIND_STRENGTH 0.3, GUST_TILT_DEG 6, gust 1600ms.
+  - Sway uses self-chaining swings, not Animated.loop; the loop caused the twitch.
+  - Tab switches blow the leaves sideways: TAB_ORDER Home, Transactions, To-Pay, Plan,
+    -150 x the number of tabs moved. Settings gives a gust of -60, and back from Settings
+    +60.
+  - Onboarding steps also gust (useLeafGustOnStep).
+  - LeafBackground switches between the static and falling leaves based on the setting,
+    Reduce Motion, and the app being in the foreground. LeafTransitionOverlay was deleted.
+- 27 Responsiveness pass (7750910, 12fb18e): plain ScrollView with
+  keyboardShouldPersistTaps="handled" (first taps register); GradientFill memoized and
+  using expo-linear-gradient (CardGradient stays SVG); HomeWallet tap maxDuration 340;
+  Home useMemo for heavy sums.
+- 28 Screen transitions (ecf6e6c, 02fc8dc):
+  - Main tabs: navigation/TabPage.tsx slides each tab left or right by its position
+    (320ms). An external currentTab store means AddFab no longer re-renders MainTabs.
+    detachInactiveScreens={false}.
+  - Other pages: RootStack uses animation 'slide_from_right', and
+    navigation/DeferredContent.tsx builds the page content after the slide starts.
+  - STILL LAGGY on device; parked (see known issues).
+- 29 Subscriptions cancel-by reminders (2be9feb): a notification at 9:00 on the cancel-by
+  day (or one minute from now if it is set for today after 9). Scheduled even with bill
+  reminders off. Cancelled subscriptions no longer alert. Setting a cancel-by date asks
+  for notification permission.
+- 30 Live account balances + Left to Spend colour (7ae9ebe).
+  - A balance = the saved snapshot (asOfDate/asOfAt) + activity since, matched by
+    paymentMethod. Activity covers: manual transactions, paid bill/debt cycles, loan
+    payments, savings contributions and logged paydays.
+  - Editing a balance bakes the live figure into the snapshot.
+  - "Running low" is measured against Settings › Budgeting › Monthly budget (a new
+    AmountInput there, with an "At X%, Left to Spend turns orange below ₱Y" line), or
+    against monthly bills if no budget is set.
+  - Left to Spend = balance at the day before the next payday, never earlier than today.
+- 31 Offline banner (a546cf8): components/OfflineBanner.tsx. DataContext tracks
+  isOnline/pendingChanges with expo-network and syncs on reconnect. NOT WORKING on device;
+  parked.
+- 32 Make it repeat (a8e2228): recurring.ts and screens/RecurringScreen.tsx, reached from
+  the repeat icon on Transactions.
+  - TransactionDetail has a "Make it repeat" sheet: Never, weekly, every 2 weeks,
+    monthly, yearly.
+  - Recurring ids are `rec-<ruleId>-<date>`.
+  - "Ask before adding" puts new ones in To review.
+  - mergeModels merges rules by id and keeps the later nextDate.
+- 33 Transactions need an account (ef9ca9f): components/AccountPicker.tsx replaces
+  PaymentMethodPicker.
+  - Money out: cash or debit is blocked at a zero balance or when the amount is more than
+    the balance ("Insufficient balance"); credit is always allowed. Money in asks
+    "Add to".
+  - Accounts page: list view only; one + opens a Cash/Debit/Credit chooser; the per-group
+    add buttons and type banners are gone (AccountCard hideTypeBadge); an Income row was
+    added.
+- 34 Same account rule everywhere (887c57c): components/PayFromSheet.tsx. Bills/debts
+  "Mark as paid", loan "Log payment / Log money received", Loans "Log a new payment", and
+  pots "Add money / Move out" all need an account and can't overdraw.
+- 35 Income is a projection (067bac3, 6aeab0a).
+  - Expected monthly income shows in blue (colors.planned) and is NOT in balances.
+  - Only logged paydays add money, into the required "Paydays go into" account
+    (IncomeSource.depositTo, PaymentLogEntry.paymentMethod/createdAt).
+  - Calendar: expected income only for dates after today; logged paydays show as
+    "(received)".
+  - A payday logged near an expected one replaces it (isPaydayReceived window: weekly ±3
+    days, biweekly/semi-monthly ±6, monthly/one-time ±10). nextHouseholdPayDate skips
+    paydays already received early.
+  - The squeezed payday-row calendar on the Income edit screen was fixed (rows are now
+    vertical).
+- 36 Small fixes (3885785): the Home wallet link says "Add account". The Income page
+  explains that ₱65,000 = ₱30,000 every 2 weeks x 26 ÷ 12 (a monthly average); this was
+  not a bug.
+- 37 Envelopes (aadb869): envelopes.ts and screens/EnvelopesScreen.tsx (route
+  Envelopes), reached from Settings › Budgeting › Envelopes.
+  - "Not given a job yet" = monthly budget (or this month's expected paydays) minus the
+    envelope amounts, with an Assign sheet.
+  - Each envelope shows left/over, spent of available, and a bar (orange at 80%, red at
+    100%). Tap to edit or remove.
+  - "Roll leftovers into next month": settings.envelopeRollover/envelopeRolloverFrom;
+    counts from the month it is turned on; never rolls a negative.
+
+📌 Decisions (session 2)
+- Envelopes and the Category Watchlist are ONE list (model.categoryBudgets). Envelope
+  spending counts by transaction category.
+- Expected income is never real money: it is projection only (blue). Balances change only
+  through logged paydays.
+- Every money movement needs an account. Cash and debit can never go below zero; credit
+  can.
+- The Accounts page is a list only (the Home wallet already shows the stacked cards).
+- The Income page total stays a monthly average; offered "Expected this month" instead
+  (not chosen yet).
+- Lag, the offline banner and the GO_BACK warning were deliberately parked by Cath.
+- New packages: expo-linear-gradient ~15.0.8 and expo-network ~8.0.8 (both included in
+  Expo Go; they still need the new EAS build).
+
+⚠️ Known issues / open problems (session 2), parked by Cath
+- SCREEN TRANSITION LAG (tabs and pages) is still there on device.
+  Tried so far:
+  - ios_from_right, which showed through because it only moved 30%
+  - slide_from_right
+  - DeferredContent
+  - moving activeTab to an external store
+  - TabPage self-animation
+  - memoized GradientFill and screenOptions
+  - native gradients
+  Ideas not tried yet:
+  - test in a release/EAS build first (Expo Go is slower)
+  - react-native-reanimated or the native-stack defaults
+  - profile the heaviest screens (Home, Settings)
+- OFFLINE BANNER doesn't show in airplane mode, and a "Sync Failed" alert still appears.
+  expo-network likely isn't reporting offline in Expo Go. Check
+  Network.getNetworkStateAsync / isInternetReachable on device.
+- Warning "The action 'GO_BACK' was not handled" after adding a transaction from the
+  quick-add sheet.
+- (Update to the older R-series known issues above:) the falling-leaves animation and the
+  cancel-by reminders ARE now built (steps 24-26, 29).
+- Still no device confirmation for the early-payday Calendar fix (6aeab0a) as a separate
+  test; Cath's later tests passed.
+
+📁 Files (session 2, under mobile-app/src)
+- New:
+  - components: FallingLeaves.tsx, leafShape.ts, OfflineBanner.tsx, AccountPicker.tsx,
+    PayFromSheet.tsx
+  - navigation: TabPage.tsx, DeferredContent.tsx
+  - recurring.ts, envelopes.ts
+  - screens: RecurringScreen.tsx, EnvelopesScreen.tsx
+- Deleted: LeafTransitionOverlay.
+- Changed:
+  - screens: CalendarScreen, HomeScreen, AccountsScreen, CardDetailScreen,
+    SettingsScreen, SubscriptionsScreen, TransactionsScreen, TransactionDetailScreen,
+    PayDetailScreen, LoansScreen, PotDetailScreen, IncomeScreen, OnboardingScreen
+  - components: OnboardSetup, LeafBackground, GradientFill, HomeWallet, AccountCard
+  - navigation: MainTabs, RootStack, LargeHeader
+  - balanceProjection.ts, pushNotifications.ts, DataContext.tsx, mergeModels.ts,
+    types.ts, leafTransition.ts, PullToRefreshScrollView.tsx, App.tsx
+  - package.json: expo-linear-gradient, expo-network
+
 📌 Decisions (R series)
 - Exact-match sweep scope: "Everything, including features"; full pages instead of rows.
 - Wallet: a corner lift (not a curl, not a cut-off card); the held card stays whole and
@@ -361,7 +511,14 @@ step on her phone in Expo Go and replied "device test is as described" before th
   mobile-app/App.tsx).
 
 ▶️ Next step
-- LATEST (R series, 2026-10-14): the redesign is on the `redesign` branch, steps 1-21 done and device-tested. Next, in a NEW conversation: (1) read the two design artifacts listed in the R series section; (2) continue with step 22+: Shared Expenses, Envelope budgets, Recurring / "Make it repeat", the offline banner, the falling-leaves animation, cancel-by reminders; (3) optional mockup leftovers (Notifications page layout, Forgot password once Cath agrees, Profile sign-in methods); (4) run the deferred Left to Spend exact-time device test; (5) when Cath approves, merge `redesign` into main and make a new EAS build. Older bullets below are from before the redesign and still stand.
+- NEWEST (R series session 2, 2026-10-15): steps 22-37 are done on `redesign` (see the "R SERIES, SESSION 2" section). Next, in a NEW conversation:
+  (1) Shared Expenses, from the SharedExpenses mockup artboard. It's big, so split it into small steps: people/members, add a shared expense with a split, netted balances, Settle up, the activity list, and a "Split with others" link from transaction detail.
+  (2) Optional: change the Income total to "Expected this month".
+  (3) The parked problems: transition lag, the offline banner, the GO_BACK warning.
+  (4) Optional mockup leftovers (Notifications page layout, Forgot password once Cath agrees, Profile sign-in methods).
+  (5) The deferred Left to Spend exact-time device test.
+  (6) When Cath approves: merge `redesign` into main and make a new EAS build (needed for react-native-svg, expo-linear-gradient, expo-network).
+- (superseded by NEWEST above) LATEST (R series, 2026-10-14): the redesign is on the `redesign` branch, steps 1-21 done and device-tested. Next, in a NEW conversation: (1) read the two design artifacts listed in the R series section; (2) continue with step 22+: Shared Expenses, Envelope budgets, Recurring / "Make it repeat", the offline banner, the falling-leaves animation, cancel-by reminders; (3) optional mockup leftovers (Notifications page layout, Forgot password once Cath agrees, Profile sign-in methods); (4) run the deferred Left to Spend exact-time device test; (5) when Cath approves, merge `redesign` into main and make a new EAS build. Older bullets below are from before the redesign and still stand.
 - NEWEST (rubber band audit, swaps done): Bills (no bounce at all) and Person Spending report (bounces at the top only) are OPEN PROBLEMS, see the section above. Next: (1) check whether Person Spending actually scrolls and how many cards it shows; (2) try the trimmed-list experiment on Bills; (3) once the cause is found, consider swapping the remaining plain ScrollViews (Profile, AccountSwitcher, SignIn, CreateProfile, Onboarding, SetPin). Confirm with git status that the swaps are pushed.
 - NEWEST (Parts 1-3, done and pushed): Home/Calendar polish and the Insights removal are finished. Small follow-ups: (1) fix white-on-gold in the Calendar "today" cell for dark mode (see open issue in the Part 1-3 section); (2) test whether swiping the Calendar sheet down works on Android, then remove the X if it does; (3) update EMULATOR-TESTING-CHECKLIST.md sections 14-15. Then continue with the bullet below.
 - PREVIOUS (Batches A-F, all done, device-tested and pushed): the V series AND its optional leftovers are finished. Next, confirm with Cath which to do first: (a) run the short phone checklist (see "Still open after Batches A-F"); (b) make a NEW EAS build, which is required before the H series, mint restyle and Home leaves work on an installed app (react-native-svg is a native module), and which can double as the Quick Unlock Step 6 test build; (c) return to PROGRESS5.md's paused Quick Unlock Step 6 checklist and PC.3 real social sign-in on that build. Optional small items: a "Sync now" button in Settings, delete the now-unused styles, set Transactions' default month.
