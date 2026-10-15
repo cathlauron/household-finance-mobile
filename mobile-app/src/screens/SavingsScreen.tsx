@@ -849,10 +849,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit goal' : 'New goal'}
+        title={editingId ? 'Edit savings' : 'Save'}
       >
-        <Text style={styles.inputLabel}>Goal name</Text>
+        <Text style={styles.inputLabel}>Title</Text>
                 <TextInput
+                  autoFocus={!editingId}
                   style={styles.input}
                   placeholder="e.g. Emergency fund, New laptop"
                   placeholderTextColor={colors.inkFaint}

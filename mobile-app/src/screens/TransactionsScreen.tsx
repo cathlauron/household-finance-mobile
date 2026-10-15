@@ -8,6 +8,7 @@ import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
+import { usePullDownToOpen } from '../pullDownToOpen';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
@@ -179,6 +180,8 @@ export default function TransactionsScreen() {
   const { colors } = useTheme();
   const { model, saveModel, username } = useData();
   const navigation = useNavigation();
+  // Pull the list down from the top to open Search (like the iPhone).
+  const pullToSearch = usePullDownToOpen(() => (navigation as any).navigate('Search'));
   const route = useRoute<any>();
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>('all');
@@ -645,7 +648,7 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshControl={pullToSearch}>
         {/* Redesign: filter chips (month, newest/oldest, category) */}
         <View style={styles.filterRow}>
           <TouchableOpacity

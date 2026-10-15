@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,27 @@ export default function SearchScreen() {
   const [accountIdx, setAccountIdx] = useState(-1); // -1 = any account
   const [amount, setAmount] = useState<AmountFilter>('any');
   const [recent, setRecent] = useState<string[]>([]);
+
+  // Search drops down from the top of the screen (over Transactions) and slides back up
+  // when you close it, like pulling down to search on an iPhone.
+  const { height } = useWindowDimensions();
+  const drop = useRef(new Animated.Value(0)).current;
+  const closingRef = useRef(false);
+  useEffect(() => {
+    Animated.timing(drop, { toValue: 1, duration: 300, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true }).start();
+  }, [drop]);
+  function close() {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    Animated.timing(drop, { toValue: 0, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => navigation.goBack());
+  }
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      close();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(RECENT_KEY)
@@ -106,7 +127,13 @@ export default function SearchScreen() {
   const shown = results.slice(0, 50);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+    <Animated.View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + 8, backgroundColor: colors.navy2 },
+        { transform: [{ translateY: drop.interpolate({ inputRange: [0, 1], outputRange: [-height, 0] }) }] },
+      ]}
+    >
       <View style={styles.bar}>
         <View style={styles.field}>
           <Ionicons name="search" size={18} color={colors.inkDim} />
@@ -128,7 +155,7 @@ export default function SearchScreen() {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button">
+        <TouchableOpacity onPress={close} accessibilityRole="button">
           <Text style={styles.cancel}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -249,7 +276,7 @@ export default function SearchScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 

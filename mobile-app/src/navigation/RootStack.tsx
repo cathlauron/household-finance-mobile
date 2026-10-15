@@ -182,7 +182,8 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Recurring" component={RecurringScreen} options={{ title: 'Recurring', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Envelopes" component={EnvelopesScreen} options={{ title: 'Envelopes', headerBackTitle: 'Budgeting' }} />
-      <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
+      {/* Search drops down from the top itself (see SearchScreen), over the page behind it. */}
+      <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false, presentation: 'transparentModal', animation: 'none' }} />
       <Stack.Screen
         name="TransactionDetail"
         component={TransactionDetailScreen}
