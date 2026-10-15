@@ -1,4 +1,5 @@
 import { hapticSelection } from '../haptics';
+import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
@@ -152,7 +153,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     rules: 'Rules',
     security: 'Security',
     quickunlock: 'Quick Unlock',
-    devices: 'Active Devices',
+    devices: 'Active devices',
     data: 'Data',
   };
 
@@ -216,6 +217,34 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
       unsubscribe();
     };
   }, []);
+
+  // Signs out every other active device (each one needs the password next time).
+  const [signOutAllBusy, setSignOutAllBusy] = useState(false);
+  function confirmSignOutAll(list: { deviceId: string }[]) {
+    Alert.alert(
+      'Sign out all other devices?',
+      `${list.length} devices will need your password next time. This phone stays signed in.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out all',
+          style: 'destructive',
+          onPress: async () => {
+            const user = getCurrentFirebaseUser();
+            if (!user) return;
+            setSignOutAllBusy(true);
+            try {
+              for (const d of list) await revokeDeviceSession(user.uid, d.deviceId);
+            } catch {
+              Alert.alert('Could not sign out every device', 'Check your connection and try again.');
+            } finally {
+              setSignOutAllBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   async function handleConfirmRevoke() {
     if (!deviceToRevoke) return;
@@ -592,7 +621,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   }
 
   const settingSwitch = (value: boolean, onChange: (on: boolean) => void, testID?: string) => (
-    <Switch
+    <AppSwitch
       testID={testID}
       value={value}
       onValueChange={(on) => { hapticSelection(); onChange(on); }}
@@ -1303,40 +1332,87 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
               onChange={(v) => handleChangeAutoLock(Number(v))}
             />
           </PickerRow>
+          <PlainRow
+            testID="settings-active-devices"
+            title="Active devices"
+            value={String(deviceSessions.filter((d) => getDeviceStatus(d) === 'active').length || '')}
+            onPress={() => openPage('devices')}
+          />
         </SettingsGroup>
 
-        <SettingsGroup label="Signed-in devices" plain footer="You can sign out any other device from here.">
-          {deviceSessions.length === 0 && <PlainRow title="No devices found" />}
-          {deviceSessions.map((dev) => {
-            const isThisDevice = dev.deviceId === myDeviceId;
-            const status = getDeviceStatus(dev);
-            let statusDetail = formatRelativeTime(dev.lastActiveAt);
-            if (status === 'signed_out') statusDetail = `Signed out ${formatTimeAgo(dev.signedOutAt || dev.lastActiveAt)}`;
-            else if (status === 'revoked') statusDetail = `Revoked ${formatTimeAgo(dev.revokedAt || dev.lastActiveAt)}`;
-            return (
-              <PlainRow
-                key={dev.deviceId}
-                title={dev.deviceName + (isThisDevice ? ' (this phone)' : '')}
-                sub={`${dev.platform === 'ios' ? 'iPhone' : dev.platform === 'android' ? 'Android' : dev.platform} · ${statusDetail}`}
-                right={
-                  !isThisDevice && status === 'active' ? (
-                    <TouchableOpacity
-                      hitSlop={8}
-                      onPress={() => {
-                        setDeviceToRevoke(dev);
-                        setRevokeError('');
-                      }}
-                    >
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.negative }}>Sign out</Text>
-                    </TouchableOpacity>
-                  ) : undefined
-                }
-              />
-            );
-          })}
-        </SettingsGroup>
         </>
         )}
+
+        {/* ---------- Active devices ---------- */}
+        {page === 'devices' && (() => {
+          const describe = (dev: any) => {
+            const status = getDeviceStatus(dev);
+            const when =
+              status === 'signed_out'
+                ? `signed out ${formatTimeAgo(dev.signedOutAt || dev.lastActiveAt)}`
+                : status === 'revoked'
+                ? `signed out remotely ${formatTimeAgo(dev.revokedAt || dev.lastActiveAt)}`
+                : `active ${formatRelativeTime(dev.lastActiveAt).replace(/^Active /i, '').toLowerCase()}`;
+            const platform = dev.platform === 'ios' ? 'iPhone' : dev.platform === 'android' ? 'Android' : dev.platform;
+            return `${platform} · ${when}`;
+          };
+          const phoneIcon = (
+            <View style={[styles.deviceIcon, { backgroundColor: colors.navy2 }]}>
+              <Ionicons name="phone-portrait-outline" size={20} color={colors.inkDim} />
+            </View>
+          );
+          const mine = deviceSessions.filter((d) => d.deviceId === myDeviceId);
+          const others = deviceSessions.filter((d) => d.deviceId !== myDeviceId);
+          const activeOthers = others.filter((d) => getDeviceStatus(d) === 'active');
+          return (
+            <>
+              <SettingsGroup label="This phone" plain>
+                {mine.length === 0 && <PlainRow title="This phone" sub="Not found yet" />}
+                {mine.map((dev) => (
+                  <View key={dev.deviceId} style={styles.deviceRow}>
+                    {phoneIcon}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.deviceName} numberOfLines={1}>{dev.deviceName}</Text>
+                      <Text style={styles.deviceSub}>{describe(dev)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </SettingsGroup>
+              <SettingsGroup label="Other devices" plain footer="Signing a device out means it needs your password next time.">
+                {others.length === 0 && <PlainRow title="No other devices" />}
+                {others.map((dev) => (
+                  <View key={dev.deviceId} style={styles.deviceRow}>
+                    {phoneIcon}
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={styles.deviceName} numberOfLines={1}>{dev.deviceName}</Text>
+                      <Text style={styles.deviceSub}>{describe(dev)}</Text>
+                    </View>
+                    {getDeviceStatus(dev) === 'active' && (
+                      <TouchableOpacity
+                        hitSlop={8}
+                        onPress={() => {
+                          setDeviceToRevoke(dev);
+                          setRevokeError('');
+                        }}
+                      >
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.negative }}>Sign out</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </SettingsGroup>
+              {activeOthers.length > 1 && (
+                <SettingsGroup plain>
+                  <PlainRow
+                    title={signOutAllBusy ? 'Signing out…' : 'Sign out all other devices'}
+                    danger
+                    onPress={signOutAllBusy ? undefined : () => confirmSignOutAll(activeOthers)}
+                  />
+                </SettingsGroup>
+              )}
+            </>
+          );
+        })()}
 
         {/* ---------- Appearance ---------- */}
         {page === 'look' && (
@@ -1953,6 +2029,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    deviceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16 },
+    deviceIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    deviceName: { fontSize: 17, color: colors.ink },
+    deviceSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     sheetNote: { fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: -10, marginBottom: 16, marginHorizontal: 16 },
     sheetAccentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 52, paddingHorizontal: 16 },
     sheetAccentText: { fontSize: 17, fontWeight: '600' },

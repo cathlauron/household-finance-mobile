@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';

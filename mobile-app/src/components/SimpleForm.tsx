@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import AppSwitch from './AppSwitch';
 import DateField from './DateField';
 import { getNextDueDate, RecurringType } from '../recurrence';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Switch, KeyboardTypeOptions } from 'react-native';
@@ -191,7 +192,7 @@ export function SwitchRow({ label, value, onChange }: { label: string; value: bo
   return (
     <View style={s.row}>
       <Text style={[s.label, { flex: 1 }]}>{label}</Text>
-      <Switch value={value} onValueChange={(v) => { hapticSelection(); onChange(v); }} trackColor={{ true: colors.buttonFill, false: colors.navy4 }} />
+      <AppSwitch value={value} onValueChange={(v) => { hapticSelection(); onChange(v); }} trackColor={{ true: colors.buttonFill, false: colors.navy4 }} />
     </View>
   );
 }

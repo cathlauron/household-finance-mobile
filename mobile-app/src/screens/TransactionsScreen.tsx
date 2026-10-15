@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert, Switch } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
@@ -1105,7 +1106,7 @@ export default function TransactionsScreen() {
           <View style={[styles.formGroup, { marginTop: 4 }]}>
             <View style={styles.formRow}>
               <Text style={[styles.formLabel, { flex: 1 }]}>Expecting a refund</Text>
-              <Switch
+              <AppSwitch
                 value={refundTrackingEnabled}
                 onValueChange={(v) => { hapticSelection(); setRefundTrackingEnabled(v); }}
                 trackColor={{ true: colors.gold, false: colors.navy4 }}

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import AppSwitch from '../components/AppSwitch';
 import { Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import SegmentedControl from '../components/SegmentedControl';
@@ -557,7 +558,7 @@ export default function EventsScreen() {
                             ))}
                             <View style={[styles.subLine, { alignItems: 'center', marginTop: 4 }]}>
                               <Text style={styles.subLineText}>Save for this in Savings</Text>
-                              <Switch
+                              <AppSwitch
                                 value={!!ev.trackInSavings}
                                 onValueChange={(on) => setTrack(ev, on)}
                                 disabled={budget <= 0}

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -132,7 +133,7 @@ export default function RecurringScreen() {
             <Text style={styles.rowTitle}>Ask before adding</Text>
             <Text style={styles.rowSub}>On: new ones wait in To review. Off: added automatically on the day.</Text>
           </View>
-          <Switch
+          <AppSwitch
             value={!!model.settings.recurringAskFirst}
             onValueChange={(on) => save({ ...model, settings: { ...model.settings, recurringAskFirst: on } })}
             trackColor={{ true: colors.buttonFill, false: colors.navy4 }}

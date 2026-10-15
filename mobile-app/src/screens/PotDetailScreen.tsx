@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -250,7 +251,7 @@ export default function PotDetailScreen() {
             <Text style={styles.rowTitle}>{autoAmt > 0 ? `Add ${formatPeso(autoAmt)} every payday` : 'Add money every payday'}</Text>
             {autoAmt > 0 && <Text style={styles.meta}>Tap to change the amount</Text>}
           </TouchableOpacity>
-          <Switch
+          <AppSwitch
             value={!!goal.autoAdd?.enabled}
             onValueChange={toggleAuto}
             trackColor={{ true: colors.buttonFill, false: colors.navy4 }}

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -116,7 +117,7 @@ export default function EnvelopesScreen() {
             <Text style={styles.rowTitle}>Roll leftovers into next month</Text>
             <Text style={styles.rowSub}>Counts from the month you turn this on.</Text>
           </View>
-          <Switch
+          <AppSwitch
             value={!!model.settings.envelopeRollover}
             onValueChange={toggleRollover}
             trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
