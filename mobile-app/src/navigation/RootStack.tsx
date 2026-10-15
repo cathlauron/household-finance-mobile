@@ -15,6 +15,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
+import SharedExpensesScreen from '../screens/SharedExpensesScreen';
 import ReviewScreen from '../screens/ReviewScreen';
 import RecurringScreen from '../screens/RecurringScreen';
 import EnvelopesScreen from '../screens/EnvelopesScreen';
@@ -58,6 +59,7 @@ export type RootStackParamList = {
   Travel: undefined;
   Events: undefined;
   YearlyGoals: undefined;
+  SharedExpenses: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -179,6 +181,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Travel" component={TravelScreen} options={{ title: 'Travel', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="SharedExpenses" component={SharedExpensesScreen} options={{ title: 'Shared Expenses', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Recurring" component={RecurringScreen} options={{ title: 'Recurring', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Envelopes" component={EnvelopesScreen} options={{ title: 'Envelopes', headerBackTitle: 'Budgeting' }} />

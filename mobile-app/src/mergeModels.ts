@@ -113,6 +113,8 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
     })),
     events: sanitizeIdList(model.events ?? [], 'event'),
     recurring: sanitizeIdList(model.recurring ?? [], 'repeat'),
+    sharedExpenses: sanitizeIdList(model.sharedExpenses ?? [], 'shx'),
+    sharedSettlements: sanitizeIdList(model.sharedSettlements ?? [], 'shs'),
     yearlyGoals: sanitizeIdList(model.yearlyGoals ?? [], 'ygoal'),
     payees: sanitizeIdList(model.payees ?? [], 'payee'),
     categorizationRules: sanitizeIdList(model.categorizationRules ?? [], 'rule'),
@@ -263,6 +265,25 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
       return [...byId.values()];
     })(),
     yearlyGoals: [...(a.yearlyGoals ?? []), ...(b.yearlyGoals ?? [])],
+    // Shared Expenses: people ids from b are remapped like everything else; the same
+    // item on both sides (same id) is kept once.
+    sharedMembers: [...new Set([...(a.sharedMembers ?? []), ...(b.sharedMembers ?? []).map(remapPersonId)])],
+    sharedExpenses: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['sharedExpenses']>[number]>();
+      (a.sharedExpenses ?? []).forEach((x) => byId.set(x.id, x));
+      (b.sharedExpenses ?? []).forEach((x) => {
+        if (!byId.has(x.id)) byId.set(x.id, { ...x, paidBy: remapPersonId(x.paidBy), shares: x.shares.map((s) => ({ ...s, personId: remapPersonId(s.personId) })) });
+      });
+      return [...byId.values()];
+    })(),
+    sharedSettlements: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['sharedSettlements']>[number]>();
+      (a.sharedSettlements ?? []).forEach((x) => byId.set(x.id, x));
+      (b.sharedSettlements ?? []).forEach((x) => {
+        if (!byId.has(x.id)) byId.set(x.id, { ...x, from: remapPersonId(x.from), to: remapPersonId(x.to) });
+      });
+      return [...byId.values()];
+    })(),
     payees: mergedPayees,
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
     avatars: mergeAvatars(a.avatars, b.avatars),

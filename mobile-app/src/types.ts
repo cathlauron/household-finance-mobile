@@ -40,6 +40,31 @@ export type Settings = {
   walletName?: string;
 };
 
+// Shared Expenses: one thing someone paid for that a few people share.
+export type SharedExpense = {
+  id: string;
+  date: string;
+  label: string;
+  amount: number;
+  paidBy: string; // Person id
+  // How much each person's share is (Person id + amount); together they add up to amount.
+  shares: { personId: string; amount: number }[];
+  splitMode: 'equal' | 'custom';
+  note?: string;
+  createdAt?: number;
+};
+
+// Shared Expenses: one person paying another back ("Settle up").
+export type SharedSettlement = {
+  id: string;
+  date: string;
+  from: string; // Person id who paid
+  to: string; // Person id who was paid
+  amount: number;
+  note?: string;
+  createdAt?: number;
+};
+
 export type Person = {
   id: string;
   name: string;
@@ -474,6 +499,11 @@ export type HouseholdModel = {
   travel?: TravelTrip[];
   events?: EventItem[];
   recurring?: RecurringRule[];
+  // Shared Expenses (Plan): who is in the group (Person ids), what was paid and how it
+  // was split, and payments between people that settle balances.
+  sharedMembers?: string[];
+  sharedExpenses?: SharedExpense[];
+  sharedSettlements?: SharedSettlement[];
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];
