@@ -1,7 +1,8 @@
 ﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, the H series Home redesign, and the V series visual-system pass: mint base, accessible colors, shared components)
 
->>> START HERE: The redesign code is on the `redesign` branch; read the two design artifacts listed in PROGRESS6.md's R series section first.
->>> NEWEST (2026-10-16, later): see "R SERIES, SESSION 5" and the NEWEST ▶️ Next step bullet (test the Finance Flow 2 build → forms check → transitions → merge).
+>>> START HERE (2026-10-16, merge): `redesign` is MERGED into `main` (9ae00f9) = version 2.0.0. New work happens on the `v3` branch (made from main at 9ae00f9). `redesign` is kept but no longer used. See the NEWEST ▶️ Next step bullet.
+>>> (older) The redesign code was on the `redesign` branch; read the two design artifacts listed in PROGRESS6.md's R series section first.
+>>> (older) 2026-10-16, later: see "R SERIES, SESSION 5" and the NEWEST ▶️ Next step bullet (test the Finance Flow 2 build → forms check → transitions → merge).
 >>> (older) 2026-10-16: see "R SERIES, SESSION 4".
 >>> (older) 2026-10-15: see "R SERIES, SESSION 3".
 
@@ -852,6 +853,7 @@ Trip). Also "Every screen" mockup https://claude.ai/artifact/SLMt6JRrmWzxccwqRvS
   mobile-app/App.tsx).
 
 ▶️ Next step
+- NEWEST (2026-10-16, merge): Cath decided version 2.0.0 is final. `redesign` was merged into `main` (merge commit 9ae00f9, no conflicts; app code identical to redesign c814819, which was tsc clean). A new branch `v3` was made from main for all further work; `redesign` stays on GitHub untouched but is retired. A v2.0.0 git tag was made but could not be pushed from Claude's session (optional; not needed). ALL remaining items below now belong to version 3: test Finance Flow 2 (build c35f77f6), check the six add forms + semibold header buttons, ebook page-turn transitions (options/mockup first), the normal "preview" EAS build, App Check, PROGRESS5.md Quick Unlock Step 6, optional transfers list with undo, archive older PROGRESS6 session logs. Cath will also send her own notes / ideas for version 3 — read those first and agree an order with her. Version number: still 2.0.0 in app.json (version + android.versionCode 2) and SettingsScreen APP_VERSION; bump both together when v3 is ready.
 - NEWEST (R series session 5, 2026-10-16): see "R SERIES, SESSION 5" (through c814819). Next:
   (1) Install and open Finance Flow 2 (build c35f77f6, link in session 5); sign in, set a PIN, check Settings › About says 2.0.0, and compare it with version 1.
   (2) In Finance Flow 2, check the six new add forms (trip, event, goal, pot, grocery item, meal) and the semibold header buttons; fix what Cath finds.
