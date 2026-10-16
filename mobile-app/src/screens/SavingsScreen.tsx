@@ -136,7 +136,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a savings pot" testID="savings-add-pot" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
+          <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });

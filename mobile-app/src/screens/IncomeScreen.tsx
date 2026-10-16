@@ -162,7 +162,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           testID="income-add"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
+          <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });

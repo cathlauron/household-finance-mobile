@@ -14,7 +14,7 @@ import OfflineBanner from '../components/OfflineBanner';
 // The text style for every word button in the top row (Back, Add, Edit...). They all share
 // one fixed line height with Android's extra font padding turned off, so a word on the
 // right sits on exactly the same line as the back label on the left.
-export const headerButtonText = { fontSize: 17, lineHeight: 22, includeFontPadding: false } as const;
+export const headerButtonText = { fontSize: 17, lineHeight: 22, fontWeight: '600', includeFontPadding: false } as const;
 
 type Props = {
   navigation: any;
