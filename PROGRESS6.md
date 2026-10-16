@@ -1,7 +1,8 @@
 ﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, the H series Home redesign, and the V series visual-system pass: mint base, accessible colors, shared components)
 
 >>> START HERE: The redesign code is on the `redesign` branch; read the two design artifacts listed in PROGRESS6.md's R series section first.
->>> NEWEST (2026-10-15): see "R SERIES, SESSION 3" and the NEWEST ▶️ Next step bullet (leaves in dark mode → code sweep → transitions).
+>>> NEWEST (2026-10-16): see "R SERIES, SESSION 4" and the NEWEST ▶️ Next step bullet (security review → transitions → merge + EAS build).
+>>> (older) 2026-10-15: see "R SERIES, SESSION 3".
 
 This file picks up from PROGRESS5.md. PROGRESS5.md is now PAUSED, not closed for good —
 work there stopped mid-way through Quick Unlock Step 6 (build made, installed, opens; the
@@ -560,6 +561,138 @@ https://claude.ai/artifact/AszP4RAjsgqkyB4uYXwXgA.
   Home, SignIn, Intro, Plan, CardDetail, Transfer, TransactionDetail, Savings, Events,
   Groceries, Travel, Goals, PotDetail, Envelopes, Recurring, OnboardSetup).
 
+=====================================================================
+🌦️ R SERIES, SESSION 4 (2026-10-15 to 2026-10-16): leaves in dark mode, sky glow,
+weather, rain, name step, Mark all as read, the code sweep, travel time note,
+payday nudge, envelope alerts, month-end summary
+=====================================================================
+Same way of working: Claude Code (direct repo access) edits code on `redesign`, runs
+npx tsc --noEmit until clean, commits and pushes; Cath tests in Expo Go (git pull;
+cd mobile-app; npx expo start -c). Two conversations: the first did steps 1-4 below;
+the second (this wrap-up) did the rest. 16 commits (3c922ec to 82ccaeb), all tsc clean.
+Sign-off: "device test is as described" for steps 1-4, the name step, the keyboard fix,
+Mark all as read, sweep batches 1 and 2 and the travel note; for batches 3a/3b/3c, the
+cancel-by fix, fees + payday nudge and envelope alerts Cath replied "next"/"proceed"
+(moved on without an explicit device-test line).
+
+How access worked this time (for future conversations):
+- The GitHub link belongs to each Claude account (each Gmail). In a new account, Claude
+  could not attach the repo until Cath connected GitHub at claude.ai/code with THAT
+  account and installed the Claude GitHub App on household-finance-mobile
+  (github.com/apps/claude/installations/new). Step 2 (the app) carries over to all
+  accounts; step 1 is once per Claude account.
+- Without it, Claude can still read/write files in C:\Projects\household-finance-mobile
+  through the desktop app's computer link, but cannot run git there; Cath then commits.
+
+🔗 Design canvas for this session: "Finance Flow — Travel time note"
+https://claude.ai/artifact/DHhxt3ET4wtbAwURpgtGDM (3 artboards: Home abroad light,
+Home abroad dark, the sheet). Owned by the Gmail account used in this conversation. The
+older "Forms Redesign" canvas belongs to a different account and could not be opened.
+
+✅ Done this session (all on `redesign`)
+- 1 Leaves in dark mode (3c922ec): dark page is a mood-tinted near-black (deep green /
+  brown / wine) instead of pure black; leaves raised from 4% to about 7%.
+- 2 Sky glow on Home only (2fafb02): soft time-of-day glow from the top-right (morning
+  specks, afternoon rays, evening dusk, night stars); greeting follows the same phase;
+  Settings > Appearance > Sky: Time-of-day glow and Live weather switches (saved on this
+  phone); expo-location added, approximate location only. Cath chose glow on Home only.
+- 3 Live weather (0f84678): Open-Meteo about once an hour (rounded location), last
+  reading kept up to 6h offline; cloudy and rain looks; testing-only Preview weather row.
+- 4 Falling rain (80efaa5): about 42 slanted drops, native driver, paused in the
+  background, still with Reduce Motion; Settings > Appearance > Sky > Rain animation.
+- 5 "What should we call you?" (c8fe9d1): onboarding is now 4 steps (name first);
+  Profile has a Name row (edit sheet) and shows the name above @username; Home says
+  "Hi, <name>" (falls back to the username). model.preferredNames[username] =
+  {name, updatedAt} (encrypted, synced; latest change wins in mergeModels; clearing keeps
+  an empty entry so it wins too). New preferredName.ts.
+- 6 Sheets above the keyboard on Android (87bd17e): BottomSheet measures the keyboard
+  and lifts itself (and caps its height); the edge-to-edge sheet window no longer
+  resizes by itself. Fixes every sheet with a text field.
+- 7 Bell "Mark all as read" (cc4a074): link beside the Notifications title, only while
+  something is unread; markAllBellRead in bellReadState.ts.
+- 8 Sweep batch 1, bugs (9c80bcf): Travel/Events completions use the phone's local date
+  (todayISO, not UTC); PayFromSheet ignores a second quick tap (no double payments);
+  unlinked profiles show "Couldn't save" if saving on the phone fails (8s timeout).
+- 9 Sweep batch 2, loading states (d0ed994): components/LoadingView.tsx (spinner) on
+  Insights, Subscriptions, Recurring, Shared Expenses and onboarding instead of a blank
+  page; "Unlocking…" over the account switcher during an unlock; components/SavedToast.tsx
+  (showSaved + SavedToastHost in App.tsx): a "Saved" pill after Paid / Log payment /
+  Money received / Add money / Move out / Finish trip; pot Add money / Move out ignores a
+  second tap.
+- 10 Sweep batches 3a/3b/3c, clean-up (6d170a1, ccf3130, e00ab06): about 2,100 lines
+  of leftovers removed with TypeScript's own remove-unused fixer plus an unused-style
+  pass (Bills, Debts, Loans, Transactions, Savings, Income, Accounts, Settings, Home,
+  Dashboard, Plan pages, onboarding, sign-in, reports). Deleted: CollapsibleRow,
+  PaymentMethodPicker, IconLabelHint, ReportsScreen, useRefresh, PlanningScreen + its
+  "Planning" route. Kept on purpose: typography.ts (for new code), ReportBits (shared
+  report styles), AccountCard (helpers still used). A few read-but-never-set state
+  values remain in SavingsScreen (harmless).
+- 11 Cancel-by reminders fixed (62bf70d): reminder set-up runs one at a time (newest
+  wins); a cancel-by for today set after 9:00 fires once, a minute after it is first set
+  up (time remembered in AsyncStorage) instead of moving a minute later on every save;
+  all reminders use the 'bill-alerts' channel; testing-only "Send a test reminder" row.
+- 12 Travel time note (da12548, approved mockup): travelTime.ts remembers the phone's
+  home time zone (first one seen, per phone); when the phone is in another zone with a
+  different clock, Home shows "You're on <city> time · <difference> · dates follow this
+  phone"; the sheet shows both clocks, what changes while away, "Hide until I'm back
+  home" and "make <city> home"; reminders are set up again on a zone change; Settings >
+  Appearance > Time > Home time zone.
+- 13 Transfer fees (afafdfa): today's transfers already took the fee off (via the Fees
+  transaction with the account); a transfer dated before the last balance update now
+  takes the fee off the saved balance so it counts exactly once.
+- 14 Payday nudge (afafdfa): 6:00 PM on each expected payday not yet logged (next 2 per
+  source), "Payday: <source> - did <person>'s pay come in?"; tap opens IncomePerson (or
+  Income); Settings > Notifications > Paydays switch (settings.paydayNudgeEnabled, on by
+  default); testing-only "Send a test payday nudge".
+- 15 Envelope alerts + month-end summary (82ccaeb): notification at 80% and at 100% of
+  an envelope (once each per envelope per month, remembered in AsyncStorage; includes
+  household spending); tap opens Envelopes. The 1st at 9:00 AM "<month> is done" opens
+  the close-out report. Settings > Notifications > Budget switches
+  (envelopeAlertsEnabled, closeOutReminderEnabled, both on by default); testing-only
+  "Send a test month-end summary".
+
+📌 Decisions (session 4)
+- Sky glow on Home only (not every tab).
+- The app always follows the phone's clock and time zone; location is never used to
+  set the time. Abroad, a small note explains it (approved mockup).
+- Every reminder needs "Notify me on this phone"; payday nudge, envelope alerts and
+  month-end summary each have their own switch, on by default.
+- Payday nudge time: 6:00 PM local. Month-end summary: the 1st at 9:00 AM.
+- Clean-up is done with the compiler's own remove-unused fixer, never by hand, and always
+  type-checked after.
+- Testing-only rows (Preview weather, test reminder / payday nudge / month-end summary)
+  only appear in Expo Go (__DEV__), never in a release build.
+
+⚠️ Known issues / open problems (session 4)
+- Session 3's known issues "leaves don't show in dark mode", "cancel-by reminders don't
+  notify" and "transfer fees don't reduce the balance" are FIXED (see above). The old
+  R-series note "Falling leaves: the animation itself is not built yet" is also out of
+  date (built in session 2).
+- Transfers have no list and no undo (a saved transfer can't be viewed or removed).
+  Not requested yet.
+- The first time this version runs, envelopes already past 80%/100% this month send
+  their alert straight away (then once a month).
+- Payday nudge, envelope alerts and month-end summary were tested with the testing rows
+  and envelope changes; a real 6 PM payday and a real 1st-of-month were not waited for.
+- Tab/page transitions (ebook page-turn feel) still not started.
+- Still waiting for an iPhone: card shadow, Calendar look, faceIDPermission.
+- Firestore security rules review not done yet (next).
+
+📁 Files (session 4, under mobile-app/src)
+- New: preferredName.ts, travelTime.ts, sky.ts, components/SkyGlow.tsx,
+  components/FallingRain.tsx, components/LoadingView.tsx, components/SavedToast.tsx.
+- Deleted: components/CollapsibleRow.tsx, components/PaymentMethodPicker.tsx,
+  components/IconLabelHint.tsx, screens/ReportsScreen.tsx, useRefresh.tsx,
+  screens/PlanningScreen.tsx (and the Planning route).
+- Changed: types.ts (preferredNames, PreferredName, Settings paydayNudgeEnabled /
+  envelopeAlertsEnabled / closeOutReminderEnabled), mergeModels.ts, DataContext.tsx,
+  pushNotifications.ts, bellReadState.ts, useBellInbox.ts, App.tsx (SavedToastHost,
+  Unlocking overlay, notification taps for payday / envelope / close-out), components
+  (BottomSheet, OnboardSetup, PayFromSheet, LeafBackground, FallingLeaves, theme colours),
+  screens (Home, Profile, Settings, PayDetail, PotDetail, Groceries, Travel, Events,
+  Transfer, Insights, Subscriptions, Recurring, SharedExpenses) and the clean-up across
+  most screens. package.json: expo-location.
+
 📌 Decisions (R series)
 - Exact-match sweep scope: "Everything, including features"; full pages instead of rows.
 - Wallet: a corner lift (not a curl, not a cut-off card); the held card stays whole and
@@ -625,7 +758,12 @@ https://claude.ai/artifact/AszP4RAjsgqkyB4uYXwXgA.
   mobile-app/App.tsx).
 
 ▶️ Next step
-- NEWEST (R series session 3, 2026-10-15): everything in the "R SERIES, SESSION 3" section is done and device-tested on `redesign` (39 commits through 503ac53). Next, in a NEW conversation, in THIS order (Cath's order):
+- NEWEST (R series session 4, 2026-10-16): everything in "R SERIES, SESSION 4" is done on `redesign` (through 82ccaeb). Next, in this order:
+  (1) Security review of the Firestore rules (mobile-app/firestore.rules): sign-in required, the ownerUid fallback, join-a-household-by-ID, username squatting, link-code guessability, open sign-up. Findings first, then fixes Cath approves; test in the Firebase Rules Playground before deploying.
+  (2) Tab and page transitions: an ebook page-turn feel (slide left/right, not a 3D flip); show options first. Judge speed in a release build, not Expo Go.
+  (3) Merge `redesign` into main and make the new EAS build (needed for react-native-svg, expo-linear-gradient, expo-network, expo-location); re-test the lag there.
+  Optional: a transfers list with undo; archive the session 2-3 logs into PROGRESS6-ARCHIVE-3.md.
+- (superseded by NEWEST above) NEWEST (R series session 3, 2026-10-15): everything in the "R SERIES, SESSION 3" section is done and device-tested on `redesign` (39 commits through 503ac53). Next, in a NEW conversation, in THIS order (Cath's order):
   (1) Leaves don't show in dark mode: investigate LeafBackground / FallingLeaves colours and opacity in dark mode, fix, device-test.
   (2) Code sweep: bugs, stale/unused code (old Accounts/Income/Settings/Profile layout leftovers, unused styles and imports), improvements and suggestions; include loading states everywhere (anything that loads shows an animation, never a frozen-looking screen). Give Cath suggestions before big changes.
   (3) Tab and page transitions: an ebook page-turn feel (slide left/right with that page feel, not a 3D flip); show options before building.
