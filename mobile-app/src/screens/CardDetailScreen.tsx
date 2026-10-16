@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, accountCurrentBalance } from '../balanceProjection';
@@ -55,7 +56,7 @@ export default function CardDetailScreen() {
       headerBackTitle: 'Home',
       headerRight: () => (
         <TouchableOpacity onPress={() => navigation.navigate('Transfer', { fromGroup: group, fromId: accountId })} accessibilityRole="button" testID="card-move-money">
-          <Text style={{ fontSize: 17, color: colors.gold }}>Move money</Text>
+          <Text style={[headerButtonText, { color: colors.gold }]}>Move money</Text>
         </TouchableOpacity>
       ),
     });

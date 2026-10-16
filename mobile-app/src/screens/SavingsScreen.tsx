@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
@@ -135,7 +136,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a savings pot" testID="savings-add-pot" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
+          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });

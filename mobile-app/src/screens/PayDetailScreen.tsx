@@ -4,6 +4,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
 import { useTheme } from '../ThemeContext';
@@ -87,7 +88,7 @@ export default function PayDetailScreen() {
       headerBackTitle: route.params?.backTitle ?? 'To-Pay',
       headerRight: () => (
         <TouchableOpacity onPress={openEdit} accessibilityRole="button" testID="pay-detail-edit">
-          <Text style={{ fontSize: 17, color: colors.gold }}>Edit</Text>
+          <Text style={[headerButtonText, { color: colors.gold }]}>Edit</Text>
         </TouchableOpacity>
       ),
     });

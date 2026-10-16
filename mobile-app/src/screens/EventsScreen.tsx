@@ -6,6 +6,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import { todayISO } from '../dateUtils';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -197,7 +198,7 @@ export default function EventsScreen() {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add an event" testID="events-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
+          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });

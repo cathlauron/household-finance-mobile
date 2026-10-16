@@ -3,6 +3,7 @@ import LoadingView from '../components/LoadingView';
 import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -132,7 +133,7 @@ export default function SharedExpensesScreen() {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAdd} accessibilityRole="button" accessibilityLabel="Add a shared expense" testID="shared-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
+          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });

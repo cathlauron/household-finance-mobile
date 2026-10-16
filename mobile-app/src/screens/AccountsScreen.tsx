@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -60,7 +61,7 @@ export default function AccountsScreen() {
           testID="accounts-add"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
+          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });

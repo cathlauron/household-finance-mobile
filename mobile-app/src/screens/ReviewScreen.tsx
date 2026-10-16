@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -49,7 +50,7 @@ export default function ReviewScreen() {
       headerRight: items.length
         ? () => (
             <TouchableOpacity onPress={() => approve(items.map((t) => t.id))} accessibilityRole="button">
-              <Text style={{ fontSize: 17, color: colors.gold }}>Approve all</Text>
+              <Text style={[headerButtonText, { color: colors.gold }]}>Approve all</Text>
             </TouchableOpacity>
           )
         : undefined,

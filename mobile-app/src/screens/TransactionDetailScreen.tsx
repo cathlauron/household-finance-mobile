@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 're
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
@@ -69,7 +70,7 @@ export default function TransactionDetailScreen() {
               onPress={() => navigation.navigate('Main', { screen: 'Transactions', params: { editId: raw!.id, editNonce: Date.now() } })}
               accessibilityRole="button"
             >
-              <Text style={{ fontSize: 17, color: colors.gold }}>Edit</Text>
+              <Text style={[headerButtonText, { color: colors.gold }]}>Edit</Text>
             </TouchableOpacity>
           )
         : undefined,

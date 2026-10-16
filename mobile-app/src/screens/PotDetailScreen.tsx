@@ -6,6 +6,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
 import AmountInput from '../components/AmountInput';
@@ -66,7 +67,7 @@ export default function PotDetailScreen() {
           accessibilityRole="button"
           testID="pot-edit"
         >
-          <Text style={{ fontSize: 17, color: colors.gold }}>Edit</Text>
+          <Text style={[headerButtonText, { color: colors.gold }]}>Edit</Text>
         </TouchableOpacity>
       ),
     });

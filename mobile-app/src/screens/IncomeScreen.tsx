@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
@@ -161,7 +162,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           testID="income-add"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
+          <Text style={[headerButtonText, { fontWeight: '700', color: colors.gold }]}>Add</Text>
         </TouchableOpacity>
       ),
     });
