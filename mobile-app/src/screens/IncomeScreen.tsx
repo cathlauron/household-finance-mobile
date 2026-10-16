@@ -149,7 +149,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   const personMode = personId !== undefined;
   const pagePerson = personMode && personId !== NO_PERSON ? (model?.people || []).find((p) => p.id === personId) : undefined;
 
-  // + in the header adds an income source (for this person on their page).
+  // Add in the header adds an income source (for this person on their page).
   React.useLayoutEffect(() => {
     navigation.setOptions({
       ...(personMode ? { title: pagePerson?.name || 'Not assigned', headerBackTitle: 'Income' } : {}),
@@ -161,7 +161,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           testID="income-add"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -508,7 +508,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
               </View>
 
               {pageSources.length === 0 && (
-                <Text style={styles.emptyText}>No income sources yet. Tap + to add where money comes from.</Text>
+                <Text style={styles.emptyText}>No income sources yet. Tap Add to add where money comes from.</Text>
               )}
 
               {/* Main page: one row per person (stays short for the whole household). */}

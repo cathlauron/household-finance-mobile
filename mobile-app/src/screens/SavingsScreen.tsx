@@ -130,12 +130,12 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     setEditField(null);
   }
 
-  // Redesign: + in the top bar starts a new pot (the mockup's "Add a savings pot").
+  // Redesign: Add in the top bar starts a new pot (the mockup's "Add a savings pot").
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a savings pot" testID="savings-add-pot" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -591,7 +591,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </View>
 
           {goals.length === 0 ? (
-            <Text style={styles.emptyText}>No pots yet. Tap + to start one, like an emergency fund or a trip.</Text>
+            <Text style={styles.emptyText}>No pots yet. Tap Add to start one, like an emergency fund or a trip.</Text>
           ) : (
             <>
               <Text style={styles.potsHeader}>Pots</Text>
@@ -639,7 +639,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                   );
                 })}
               </View>
-              <Text style={styles.potsFooter}>Tap a pot to add money or see its history.</Text>
+              <Text style={styles.potsFooter}>Tap a pot to add money or see its history. Add savings here rather than with + on Home, so the money isn't counted twice.</Text>
             </>
           )}
         </PullToRefreshScrollView>

@@ -911,6 +911,11 @@ export default function TransactionsScreen() {
           onChangeAmount={handleAmountChange}
         />
 
+        {/* Trip items and savings have their own places, so they aren't counted twice. */}
+        {directionInput === 'out' && !editingId && (
+          <Text style={[styles.formFooter, { textAlign: 'center' }]}>Paid for something on a trip checklist? Tick it on Travel instead. Adding to savings? Do it from the pot's page.</Text>
+        )}
+
         {directionInput === 'in' && (
           <>
             <Text style={styles.inputLabel}>What is it?</Text>

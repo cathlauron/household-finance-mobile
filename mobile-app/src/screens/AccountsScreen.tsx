@@ -47,7 +47,7 @@ export default function AccountsScreen() {
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
   // Redesign: always a plain list here; Home's Wallet already shows the stacked cards.
-  // One + in the title bar asks which kind of account to add.
+  // One Add button in the title bar asks which kind of account to add.
   const [chooseTypeOpen, setChooseTypeOpen] = useState(false);
   const navigation = useNavigation<any>();
   useLayoutEffect(() => {
@@ -60,7 +60,7 @@ export default function AccountsScreen() {
           testID="accounts-add"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="add" size={30} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });

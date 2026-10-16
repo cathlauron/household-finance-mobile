@@ -193,17 +193,18 @@ export default function TravelScreen() {
   const [checklist, setChecklist] = useState<TravelChecklistItem[]>([]);
   const [itemTitleInput, setItemTitleInput] = useState('');
   const [itemCostInput, setItemCostInput] = useState<number | ''>('');
+  const [itemNoteInput, setItemNoteInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [trackInSavings, setTrackInSavings] = useState(false);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   const navigation = useNavigation<any>();
 
-  // Redesign: + in the top bar adds a trip.
+  // Redesign: Add in the top bar adds a trip.
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a trip" testID="travel-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -266,6 +267,7 @@ export default function TravelScreen() {
     setTrackInSavings(false);
     setItemTitleInput('');
     setItemCostInput('');
+    setItemNoteInput('');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -279,6 +281,7 @@ export default function TravelScreen() {
     setTrackInSavings(trip.trackInSavings ?? false);
     setItemTitleInput('');
     setItemCostInput('');
+    setItemNoteInput('');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -296,18 +299,26 @@ export default function TravelScreen() {
       return;
     }
     const cost: number | '' = itemCostInput;
+    const note = itemNoteInput.trim();
     const newItem: TravelChecklistItem = {
       id: makeId('travelitem'),
       title,
       cost,
+      ...(note ? { note } : {}),
       checked: false,
     };
     setChecklist((prev) => [...prev, newItem]);
     setItemTitleInput('');
     setItemCostInput('');
+    setItemNoteInput('');
     setErrorMsg('');
     // Ready for the next item straight away.
     setTimeout(() => itemTitleRef.current?.focus(), 50);
+  }
+
+  // Edits an item's note in the form (saved with the trip, like the name and dates).
+  function handleChecklistNote(id: string, note: string) {
+    setChecklist((prev) => prev.map((i) => (i.id === id ? { ...i, note } : i)));
   }
 
   function handleToggleChecklistItem(id: string) {
@@ -368,7 +379,8 @@ export default function TravelScreen() {
     const { checklist: reconciledChecklist, transactions: reconciledTransactions } =
       reconcileTravelChecklistTransactions(
         priorTrip?.checklist ?? [],
-        checklist,
+        // Tidy notes: trim them, and drop empty ones.
+        checklist.map(({ note, ...rest }) => (note?.trim() ? { ...rest, note: note.trim() } : rest)),
         model.manualTransactions ?? [],
         trimmedName
       );
@@ -463,7 +475,7 @@ export default function TravelScreen() {
           <View style={[styles.listGroup, { padding: 16 }]}>
             <GradientFill match={styles.listGroup} />
             <Text style={styles.tripName}>No trips yet</Text>
-            <Text style={[styles.tripSub, { marginTop: 4 }]}>Tap + to plan one. List what it will cost and the budget adds itself up.</Text>
+            <Text style={[styles.tripSub, { marginTop: 4 }]}>Tap Add to plan one. List what it will cost and the budget adds itself up.</Text>
           </View>
         )}
 
@@ -532,15 +544,18 @@ export default function TravelScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }} onPress={() => openEditModal(t)} accessibilityRole="button">
                       <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={[styles.tripName, item.checked && { color: colors.inkDim }]} numberOfLines={1}>{item.title || 'Item'}</Text>
-                        <Text style={styles.tripSub}>{item.checked ? `Paid${item.completedDate ? ' ' + shortDay(item.completedDate) : ''}` : 'Not paid yet'}</Text>
+                        <Text style={[styles.tripName, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title || 'Item'}</Text>
+                        <Text style={styles.tripSub} numberOfLines={2}>
+                          {[item.checked ? `Paid${item.completedDate ? ' ' + shortDay(item.completedDate) : ''}` : '', item.note?.trim() || ''].filter(Boolean).join(' · ') || 'Not paid yet'}
+                        </Text>
                       </View>
-                      <Text style={[styles.tripAmount, { color: colors.planned }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
+                      {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
+                      <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: colors.planned }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
-              <Text style={styles.groupFooter}>The budget is the total of this checklist. Ticking an item adds it to your spending.</Text>
+              <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out. Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
             </>
           );
         })()}
@@ -662,8 +677,17 @@ export default function TravelScreen() {
                         {item.title}
                       </Text>
                       {typeof item.cost === 'number' && (
-                        <Text style={styles.checklistItemCost}>{formatPeso(item.cost)}</Text>
+                        <Text style={[styles.checklistItemCost, { color: item.checked ? colors.negative : colors.planned }, item.checked && { textDecorationLine: 'line-through' }]}>{formatPeso(item.cost)}</Text>
                       )}
+                      <TextInput
+                        style={styles.checklistNoteInput}
+                        placeholder="Add a note"
+                        placeholderTextColor={colors.inkFaint}
+                        value={item.note ?? ''}
+                        onChangeText={(t) => handleChecklistNote(item.id, t)}
+                        accessibilityLabel={`Note for ${item.title}`}
+                        maxLength={140}
+                      />
                     </View>
                     <TouchableOpacity
                       style={styles.removeItemButton}
@@ -686,6 +710,15 @@ export default function TravelScreen() {
                 />
                 <Text style={styles.inputLabel}>Cost (optional)</Text>
                 <AmountInput style={styles.amountInput} value={itemCostInput} onChangeAmount={setItemCostInput} />
+                <Text style={styles.inputLabel}>Note (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Booked on Agoda, check-in 2 PM"
+                  placeholderTextColor={colors.inkFaint}
+                  value={itemNoteInput}
+                  onChangeText={setItemNoteInput}
+                  maxLength={140}
+                />
                 <TouchableOpacity style={styles.addItemButton} onPress={handleAddChecklistItem}>
                   <Text style={styles.addItemButtonText}>+ Add item</Text>
                 </TouchableOpacity>
@@ -799,6 +832,7 @@ function makeStyles(colors: any) {
     checklistItemTitle: { fontSize: 13.5, color: colors.ink },
     checklistItemTitleDone: { textDecorationLine: 'line-through', color: colors.inkFaint },
     checklistItemCost: { fontSize: 11.5, color: colors.inkDim, marginTop: 1 },
+    checklistNoteInput: { fontSize: 12, color: colors.inkDim, paddingVertical: 2, paddingHorizontal: 0, marginTop: 1 },
     removeItemButton: {
       width: 26,
       height: 26,

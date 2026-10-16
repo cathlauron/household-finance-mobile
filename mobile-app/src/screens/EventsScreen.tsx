@@ -192,12 +192,12 @@ export default function EventsScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   const navigation = useNavigation<any>();
 
-  // Redesign: + in the top bar adds an event.
+  // Redesign: Add in the top bar adds an event.
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add an event" testID="events-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -515,7 +515,7 @@ export default function EventsScreen() {
             </View>
 
             {upcoming.length === 0 ? (
-              <Text style={styles.emptyText}>Nothing coming up. Tap + to add a birthday, holiday or celebration.</Text>
+              <Text style={styles.emptyText}>Nothing coming up. Tap Add to add a birthday, holiday or celebration.</Text>
             ) : (
               <View style={styles.listGroup}>
                 <GradientFill match={styles.listGroup} />

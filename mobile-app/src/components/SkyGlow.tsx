@@ -9,7 +9,7 @@ import { SkyPhase, SkyWeather, useSkyPhase, useSkyPrefs, useSkyWeather } from '.
 // greeting round 5). No sun or moon shape: the light just glows out of the top-right
 // corner and fades into the page, with a light sprinkle of detail:
 //   morning   - pale butter to blush, floating specks of light and a faint wisp of cloud
-//   afternoon - soft honey, faint rays fanning down from the corner and a wisp of cloud
+//   afternoon - soft honey, three soft blurry rays from the corner and a wisp of cloud
 //   evening   - peach to rose dusk with the first few stars
 //   night     - cool blue with a scatter of stars and three small twinkles
 // With Live weather on, cloudy and rainy weather swap in their own looks (greying glow and
@@ -112,13 +112,17 @@ const DROPS: Drop[] = (() => {
 const twinkle = (x: number, y: number, k: number) =>
   `M ${x} ${y - k} Q ${x} ${y} ${x + k} ${y} Q ${x} ${y} ${x} ${y + k} Q ${x} ${y} ${x - k} ${y} Q ${x} ${y} ${x} ${y - k} Z`;
 
-// Thin wedges fanning down-left from the corner, for the afternoon rays.
-const RAYS = [112, 126, 140, 154, 168].map((deg) => {
+// Soft afternoon rays (option A on the "Softer rays & matching forms" canvas): three wide,
+// blurry beams fanning down-left from the corner. Each is a wide outer wedge with a narrower,
+// slightly brighter one inside it, both fading in from the corner and out towards the end,
+// so there are no hard edges or lines.
+const RAY_LEN = 360;
+const wedge = (deg: number, spread: number) => {
   const a = (deg * Math.PI) / 180;
-  const spread = 0.022;
-  const p = (ang: number) => `${CX + 340 * Math.cos(ang)},${CY + 340 * Math.sin(ang)}`;
+  const p = (ang: number) => `${(CX + RAY_LEN * Math.cos(ang)).toFixed(1)},${(CY + RAY_LEN * Math.sin(ang)).toFixed(1)}`;
   return `${CX},${CY} ${p(a - spread)} ${p(a + spread)}`;
-});
+};
+const RAYS = [118, 140, 162].map((deg) => ({ outer: wedge(deg, 0.08), inner: wedge(deg, 0.035) }));
 
 export default function SkyGlow() {
   const { isDark } = useTheme();
@@ -163,9 +167,17 @@ export default function SkyGlow() {
             <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? (sky === 'rain' ? 0.05 : 0.07) : sky === 'rain' ? 0.45 : 0.6} />
             <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
           </RadialGradient>
-          <RadialGradient id="skyRay" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={340}>
-            <Stop offset="0" stopColor={look.tex} stopOpacity={isDark ? 0.14 : 0.2} />
-            <Stop offset="1" stopColor={look.tex} stopOpacity={0} />
+          <RadialGradient id="skyRayOuter" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={RAY_LEN}>
+            <Stop offset="0" stopColor={isDark ? look.tex : '#FFF4DC'} stopOpacity={0} />
+            <Stop offset="0.22" stopColor={isDark ? look.tex : '#FFF4DC'} stopOpacity={isDark ? 0.09 : 0.28} />
+            <Stop offset="0.7" stopColor={isDark ? look.tex : '#FFF4DC'} stopOpacity={isDark ? 0.03 : 0.1} />
+            <Stop offset="1" stopColor={isDark ? look.tex : '#FFF4DC'} stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="skyRayInner" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={RAY_LEN}>
+            <Stop offset="0" stopColor={isDark ? '#F2D7A6' : '#FFF8E8'} stopOpacity={0} />
+            <Stop offset="0.22" stopColor={isDark ? '#F2D7A6' : '#FFF8E8'} stopOpacity={isDark ? 0.1 : 0.3} />
+            <Stop offset="0.7" stopColor={isDark ? '#F2D7A6' : '#FFF8E8'} stopOpacity={isDark ? 0.03 : 0.1} />
+            <Stop offset="1" stopColor={isDark ? '#F2D7A6' : '#FFF8E8'} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <Rect x={0} y={0} width={390} height={H} fill="url(#skyGlow)" />
@@ -197,8 +209,11 @@ export default function SkyGlow() {
         )}
         {sky === 'clear' && phase === 'afternoon' && (
           <>
-            {RAYS.map((pts, i) => (
-              <Polygon key={i} points={pts} fill="url(#skyRay)" />
+            {RAYS.map((r, i) => (
+              <React.Fragment key={i}>
+                <Polygon points={r.outer} fill="url(#skyRayOuter)" />
+                <Polygon points={r.inner} fill="url(#skyRayInner)" />
+              </React.Fragment>
             ))}
             {wisp(236, 70, 48, 11)}
             {dots(SPARKS)}

@@ -74,7 +74,7 @@ export default function GroceriesScreen() {
           testID="groceries-add"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -282,7 +282,7 @@ export default function GroceriesScreen() {
           <Text style={styles.header}>Shopping list</Text>
           <View style={styles.group}>
             <GradientFill match={styles.group} />
-            {items.length === 0 && <Text style={[styles.meta, { padding: 16 }]}>Nothing on the list yet. Tap + to add an item.</Text>}
+            {items.length === 0 && <Text style={[styles.meta, { padding: 16 }]}>Nothing on the list yet. Tap Add to add an item.</Text>}
             {shown.map((g, i) => (
               <SwipeableRow key={g.id} enabled={Boolean(model.settings.swipeToDeleteEnabled)} onDelete={() => deleteItem(g)} testID={`grocery-swipe-${g.id}`} flat>
                 <View style={[styles.row, i > 0 && styles.line]}>

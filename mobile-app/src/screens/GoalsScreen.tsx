@@ -86,12 +86,12 @@ export default function GoalsScreen() {
   const [linkInput, setLinkInput] = useState<YearlyGoal['linkedTo']>(undefined);
   const navigation = useNavigation<any>();
 
-  // Redesign: + in the top bar adds a goal.
+  // Redesign: Add in the top bar adds a goal.
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a goal" testID="goals-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -289,7 +289,7 @@ export default function GoalsScreen() {
           </View>
         </View>
 
-        {goals.length === 0 && <Text style={styles.emptyText}>Tap + to add what you want to achieve this year.</Text>}
+        {goals.length === 0 && <Text style={styles.emptyText}>Tap Add to add what you want to achieve this year.</Text>}
 
         {progressGoals.length > 0 && (
           <>

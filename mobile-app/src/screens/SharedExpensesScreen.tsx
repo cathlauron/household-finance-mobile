@@ -30,7 +30,7 @@ import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnot
 // - Balances: one netted number per pair of people.
 // - People: who you share with (and which one is you).
 // - Activity: every shared expense, newest first; tap one to edit or delete it.
-// The + in the top bar adds a shared expense: who paid, and how it's split (equally
+// Add in the top bar adds a shared expense: who paid, and how it's split (equally
 // between the people ticked, or custom amounts that add up to the total).
 // A shared expense is a record of who owes whom; it doesn't change your account
 // balances (log your own spending as a normal transaction).
@@ -132,7 +132,7 @@ export default function SharedExpensesScreen() {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAdd} accessibilityRole="button" accessibilityLabel="Add a shared expense" testID="shared-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="add" size={28} color={colors.gold} />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>Add</Text>
         </TouchableOpacity>
       ),
     });
@@ -488,7 +488,7 @@ export default function SharedExpensesScreen() {
       <View style={styles.group}>
         <GradientFill match={styles.group} />
         {activity.length === 0 ? (
-          <Text style={[styles.meta, { padding: 16 }]}>No shared expenses yet. Tap + to add one.</Text>
+          <Text style={[styles.meta, { padding: 16 }]}>No shared expenses yet. Tap Add to add one.</Text>
         ) : (
           activity.map((item, i) => {
             if (item.kind === 'settle') {

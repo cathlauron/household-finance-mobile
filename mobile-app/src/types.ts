@@ -283,6 +283,8 @@ export type TravelChecklistItem = {
   id: string;
   title: string;
   cost: number | '';
+  // Optional short note shown under the item (booking details, what to bring...).
+  note?: string;
   checked: boolean;
   completedDate?: string;
   // Set once this item is checked (with a cost) and a matching ManualTransaction has been
