@@ -24,7 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HouseholdModel, Bill } from './types';
 import { getNextDueDate } from './recurrence';
 import { buildTransactionsList, transactionTotals } from './transactions';
-import { formatPeso } from './balanceProjection';
+import { formatPeso, incomeOccurrencesInMonth, isPaydayReceived } from './balanceProjection';
 
 // Makes a notification actually pop up (with sound) while the app is open,
 // not just when it's in the background — matches how the web app's alerts behaved.
@@ -137,6 +137,25 @@ export async function sendTestNotification(): Promise<boolean> {
   });
   return true;
 }
+// Testing only: a payday nudge for the first income source, in 10 seconds (tap it to
+// check it opens the right Income page).
+export async function sendTestPaydayNudge(model: HouseholdModel): Promise<'sent' | 'no-income' | 'no-permission'> {
+  const source = (model.income || [])[0];
+  if (!source) return 'no-income';
+  if (!(await requestNotificationPermission())) return 'no-permission';
+  await ensureNotificationChannel();
+  const person = (model.people || []).find((p) => p.id === source.personId);
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `Payday: ${source.sourceName || 'income'}`,
+      body: `Did ${person?.name ? `${person.name}'s` : 'your'} pay come in? Tap to log it. (test)`,
+      data: { type: 'paydayNudge', personId: source.personId || '', sourceId: source.id },
+    },
+    trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, channelId: 'bill-alerts' },
+  });
+  return 'sent';
+}
+
 export async function countScheduledNotifications(): Promise<number> {
   return (await Notifications.getAllScheduledNotificationsAsync()).length;
 }
@@ -269,6 +288,50 @@ async function rescheduleNow(model: HouseholdModel): Promise<void> {
   }
   // Keep only today's remembered times (old days drop off).
   AsyncStorage.setItem(CANCEL_BY_FIRE_KEY, JSON.stringify(keptFireTimes)).catch(() => {});
+
+  // ============================================================
+  // Payday nudge
+  // ============================================================
+  // Income only counts once a payday is logged, so on each expected payday (6:00 PM) ask
+  // whether it came in. Skipped when that payday is already logged (early pay counts).
+  // Tapping it opens that person's Income page, where tapping the payday logs it.
+  if (billRemindersOn && model.settings.paydayNudgeEnabled !== false) {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const accountName = (pm?: { type: string; accountId?: string }) => {
+      if (!pm) return '';
+      if (pm.type === 'cash' && !pm.accountId) return 'Cash';
+      const list = (model.balanceAccounts as any)[pm.type] as { id: string; name?: string }[] | undefined;
+      return list?.find((a) => a.id === pm.accountId)?.name || '';
+    };
+    for (const source of model.income || []) {
+      const person = (model.people || []).find((p) => p.id === source.personId);
+      const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
+      let scheduled = 0;
+      for (let k = 0; k < 2 && scheduled < 2; k++) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() + k, 1);
+        const y = monthStart.getFullYear();
+        const mi = monthStart.getMonth();
+        for (const day of incomeOccurrencesInMonth(source, y, mi)) {
+          if (scheduled >= 2) break;
+          const iso = `${y}-${pad(mi + 1)}-${pad(day)}`;
+          const when = new Date(y, mi, day, 18, 0, 0, 0);
+          if (when.getTime() <= now.getTime()) continue;
+          if (isPaydayReceived(source, iso)) continue;
+          const into = accountName(source.depositTo);
+          const who = person?.name ? `${person.name}'s ` : '';
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `Payday: ${source.sourceName || 'income'}`,
+              body: `Did ${who || 'your '}pay come in?${amount > 0 ? ` Expected ${formatPeso(amount)}${into ? ` into ${into}` : ''}.` : ''} Tap to log it.`,
+              data: { type: 'paydayNudge', personId: source.personId || '', sourceId: source.id },
+            },
+            trigger: { type: SchedulableTriggerInputTypes.DATE, date: when, channelId: 'bill-alerts' },
+          });
+          scheduled++;
+        }
+      }
+    }
+  }
 
   // ============================================================
   // Weekly spending recap (Checkpoint B.11)

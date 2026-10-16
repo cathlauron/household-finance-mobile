@@ -19,7 +19,7 @@ import { useData } from '../DataContext';
 import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
-import { requestNotificationPermission, sendTestNotification, countScheduledNotifications } from '../pushNotifications';
+import { requestNotificationPermission, sendTestNotification, sendTestPaydayNudge, countScheduledNotifications } from '../pushNotifications';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -1551,6 +1551,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
+        <SettingsGroup label="Paydays" plain footer="At 6:00 PM on each expected payday, asks whether it came in, so you can log it. Skipped once it's logged.">
+          <PlainRow
+            title="Payday nudge"
+            right={settingSwitch(model.settings.paydayNudgeEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, paydayNudgeEnabled: on } }), 'settings-payday-nudge')}
+          />
+        </SettingsGroup>
+
         <SettingsGroup label="Weekly spending recap" plain>
           <PlainRow title="Weekly recap" right={settingSwitch(!!model.settings.weeklyRecapEnabled, () => toggleWeeklyRecap())} />
           {model.settings.weeklyRecapEnabled && (
@@ -1598,6 +1605,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                 const ok = await sendTestNotification();
                 const n = await countScheduledNotifications().catch(() => 0);
                 setTestNotifMsg(ok ? `Test reminder coming in 10 seconds. Reminders waiting on this phone: ${n}.` : 'Notifications are turned off for Finance Flow in the phone settings.');
+              }}
+            />
+            <PlainRow
+              title="Send a test payday nudge"
+              accent
+              testID="settings-test-payday"
+              onPress={async () => {
+                const r = await sendTestPaydayNudge(model);
+                setTestNotifMsg(r === 'sent' ? 'Payday nudge coming in 10 seconds. Tap it to open that Income page.' : r === 'no-income' ? 'Add an income source first.' : 'Notifications are turned off for Finance Flow in the phone settings.');
               }}
             />
           </SettingsGroup>

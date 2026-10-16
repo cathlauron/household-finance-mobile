@@ -113,6 +113,8 @@ function AppContent() {
   // getLastNotificationResponseAsync() and the live listener can both fire
   // for one tap).
   const pendingDeepLinkBillId = useRef<string | null>(null);
+  // Payday nudge: which person's Income page to open ('' = the Income page itself).
+  const pendingDeepLinkPayday = useRef<string | null>(null);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -125,9 +127,19 @@ function AppContent() {
       pendingDeepLinkBillId.current = data.billId;
       flushPendingDeepLink();
     }
+    if (data?.type === 'paydayNudge') {
+      pendingDeepLinkPayday.current = typeof data.personId === 'string' ? data.personId : '';
+      flushPendingDeepLink();
+    }
   }
 
   function flushPendingDeepLink() {
+    if (pendingDeepLinkPayday.current !== null && navigationRef.isReady()) {
+      const personId = pendingDeepLinkPayday.current;
+      pendingDeepLinkPayday.current = null;
+      if (personId) navigationRef.navigate('IncomePerson', { personId });
+      else navigationRef.navigate('Income', undefined);
+    }
     if (!pendingDeepLinkBillId.current) return;
     if (!navigationRef.isReady()) return;
     const billId = pendingDeepLinkBillId.current;

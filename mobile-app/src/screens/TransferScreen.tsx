@@ -66,7 +66,13 @@ export default function TransferScreen() {
         [a.group]: m.balanceAccounts[a.group].map((x) => (x.id === a.id ? { ...x, amount: (typeof x.amount === 'number' ? x.amount : 0) + delta } : x)),
       },
     });
-    let next = bump(bump(model, from, -amount), to, amount);
+    // The fee normally comes off through the "Fees" transaction below (live balances count
+    // anything paid since the balances were last updated). A transfer dated BEFORE that
+    // update would never be counted that way, so its fee comes straight off the saved
+    // balance instead, the same way the amount moves. Either way it counts exactly once.
+    const asOf = model.balanceAccounts.asOfDate;
+    const feeOffSavedBalance = feeAmt > 0 && !!asOf && date < asOf;
+    let next = bump(bump(model, from, -amount - (feeOffSavedBalance ? feeAmt : 0)), to, amount);
     const record = { id: makeId('xfer'), date, from: from.key, to: to.key, amount, ...(feeAmt ? { fee: feeAmt } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
     next = { ...next, transfers: [...(model.transfers || []), record] };
     if (feeAmt > 0) {

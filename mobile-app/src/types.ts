@@ -22,6 +22,9 @@ export type Settings = {
   incomeToleranceDays: number;
   pushNotificationsEnabled: boolean;
   weeklyRecapEnabled: boolean;
+  // Payday nudge: a 6:00 PM "Did it come in?" reminder on each expected payday that
+  // hasn't been logged yet. Missing means on (needs "Notify me on this phone").
+  paydayNudgeEnabled?: boolean;
   weeklyRecapDay: number;
   weeklyRecapHour: number;
   swipeToDeleteEnabled: boolean;
