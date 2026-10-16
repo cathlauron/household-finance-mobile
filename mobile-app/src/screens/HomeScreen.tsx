@@ -88,7 +88,7 @@ export default function HomeScreen({ username }: Props) {
 
   const hasDueSoon = useMemo(() => (model ? getUpcomingDue(model, 14).length > 0 : false), [model]);
   const [bellOpen, setBellOpen] = useState(false);
-  const { items: bellItems, unreadCount, isRead, markRead } = useBellInbox(username, model);
+  const { items: bellItems, unreadCount, isRead, markRead, markAllRead } = useBellInbox(username, model);
 
   const onBellItemPress = (item: BellItem) => {
     markRead(item.key);
@@ -202,7 +202,29 @@ export default function HomeScreen({ username }: Props) {
         )}
       </View>
 
-      <BottomSheet visible={bellOpen} onClose={() => setBellOpen(false)} title="Notifications">
+      <BottomSheet
+        visible={bellOpen}
+        onClose={() => setBellOpen(false)}
+        header={
+          <View style={hs.bellHeader}>
+            <Text style={hs.bellHeaderTitle}>Notifications</Text>
+            {unreadCount > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  hapticSelection();
+                  markAllRead();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Mark all ${unreadCount} as read`}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                testID="bell-mark-all-read"
+              >
+                <Text style={[hs.bellMarkAll, { color: colors.gold }]}>Mark all as read</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        }
+      >
         {bellItems.length === 0 ? (
           <Text style={hs.bellEmpty}>Nothing needs your attention right now.</Text>
         ) : (
@@ -271,6 +293,9 @@ function makeHomeStyles(colors: any) {
     bellDot: { position: 'absolute', top: 6, right: 7, width: 8, height: 8, borderRadius: 4 },
     bellBadge: { position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
     bellBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+    bellHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12, minHeight: 40 },
+    bellHeaderTitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
+    bellMarkAll: { fontSize: 15, fontWeight: '600' },
     bellEmpty: { color: colors.inkDim, fontSize: 13.5, paddingVertical: 20, textAlign: 'center' },
     bellGroupTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.inkDim, marginTop: 8, marginBottom: 6 },
     bellRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.navy4 },
