@@ -451,7 +451,6 @@ function makeStyles(colors: any) {
       marginRight: 6,
     },
     checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
-    checkboxMark: { fontSize: 10, color: colors.onButton, fontWeight: '700' },
     checkboxText: { fontSize: 11.5, color: colors.inkDim },
     moreText: { fontSize: 11.5, color: colors.inkFaint, marginTop: 6, marginBottom: 10 },
     invalidBox: {

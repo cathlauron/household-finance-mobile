@@ -8,7 +8,6 @@ import CalendarScreen from '../screens/CalendarScreen';
 import AccountsScreen from '../screens/AccountsScreen';
 import IncomeScreen from '../screens/IncomeScreen';
 import SavingsScreen from '../screens/SavingsScreen';
-import PlanningScreen from '../screens/PlanningScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import ReportDetailScreen, { MoreReportsScreen } from '../screens/ReportDetailScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -30,7 +29,6 @@ import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
-import type { PlanningTab } from '../screens/PlanningScreen';
 
 export type RootStackParamList = {
   Main: { openBillId?: string } | undefined;
@@ -40,7 +38,6 @@ export type RootStackParamList = {
   Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
   IncomePerson: { personId: string };
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
-  Planning: { tab?: PlanningTab } | undefined;
   Reports: undefined;
   Report: { id: string; backTitle?: string };
   MoreReports: undefined;
@@ -159,11 +156,6 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
           />
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="Planning"
-        component={PlanningScreen}
-        options={{ title: 'Planning', headerBackTitle: 'Plan' }}
-      />
       <Stack.Screen
         name="Reports"
         component={InsightsScreen}

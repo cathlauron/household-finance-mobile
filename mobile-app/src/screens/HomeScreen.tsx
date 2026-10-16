@@ -5,9 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import CardGradient from '../components/CardGradient';
 import HomeHero from '../components/HomeHero';
-import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
+import DashboardScreen from './DashboardScreen';
 import OfflineBanner from '../components/OfflineBanner';
 import SkyGlow from '../components/SkyGlow';
 import { useSkyPhase } from '../sky';
@@ -86,7 +85,6 @@ export default function HomeScreen({ username }: Props) {
   // "What should we call you?": the name picked in onboarding or Profile, else the username.
   const callName = getCallName(model, username);
 
-  const hasDueSoon = useMemo(() => (model ? getUpcomingDue(model, 14).length > 0 : false), [model]);
   const [bellOpen, setBellOpen] = useState(false);
   const { items: bellItems, unreadCount, isRead, markRead, markAllRead } = useBellInbox(username, model);
 
@@ -278,7 +276,6 @@ function makeHomeStyles(colors: any) {
       paddingTop: 12,
       paddingBottom: 12,
     },
-    headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
     profilePill: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -290,7 +287,6 @@ function makeHomeStyles(colors: any) {
     greeting: { color: colors.ink, fontSize: 20, lineHeight: 25, fontWeight: '700' },
     greetingSub: { color: colors.inkDim, fontSize: 15, lineHeight: 20 },
     bellBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-    bellDot: { position: 'absolute', top: 6, right: 7, width: 8, height: 8, borderRadius: 4 },
     bellBadge: { position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
     bellBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
     bellHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12, minHeight: 40 },
@@ -303,41 +299,6 @@ function makeHomeStyles(colors: any) {
     bellRowTitle: { color: colors.ink, fontSize: 14 },
     bellRowSub: { color: colors.inkDim, fontSize: 12, marginTop: 2 },
     bellRowAmt: { color: colors.orange, fontSize: 13, fontWeight: '600' },
-    datePill: {
-      flexShrink: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    dateText: { color: colors.ink, fontSize: 12.5, fontWeight: '600' },
-    leftCard: { marginBottom: 12, borderRadius: 20, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 16 },
-    leftCardShadow: {
-      shadowColor: '#1B3F30',
-      shadowOpacity: 0.18,
-      shadowRadius: 24,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 6,
-    },
-    calBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: 'rgba(255,255,255,0.14)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: -6,
-      marginRight: -6,
-    },
-    leftAmount: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -0.5, color: '#FFFFFF', marginTop: 6 },
-    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-    statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF', opacity: 0.85 },
-    statusText: { fontSize: 15, lineHeight: 20 },
     slimBar: {
       position: 'absolute',
       top: 0,
@@ -352,31 +313,5 @@ function makeHomeStyles(colors: any) {
     },
     slimBarLabel: { fontSize: 13, fontWeight: '600' },
     slimBarAmount: { fontSize: 15, fontWeight: '700' },
-    leftCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    leftCardIconBubble: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: 'rgba(255,255,255,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: 12,
-    },
-    leftLabel: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.inkDim,
-      marginBottom: 8,
-    },
-    pctTrack: {
-      height: 8,
-      borderRadius: 999,
-      backgroundColor: 'rgba(128,128,128,0.25)',
-      overflow: 'hidden',
-      marginTop: 14,
-    },
-    pctFill: { height: '100%', borderRadius: 999 },
-    pctLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-    pctLabelText: { fontSize: 13, color: colors.inkDim },
   });
 }

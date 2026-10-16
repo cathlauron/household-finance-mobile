@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import AppSwitch from './AppSwitch';
 import DateField from './DateField';
 import { getNextDueDate, RecurringType } from '../recurrence';
-import { View, TouchableOpacity, StyleSheet, ScrollView, Switch, KeyboardTypeOptions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, KeyboardTypeOptions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
 import AmountInput from './AmountInput';

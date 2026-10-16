@@ -540,5 +540,6 @@ function makeStyles(colors: any) {
     billSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     inlineLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 },
     inlineField: { marginTop: 10, backgroundColor: colors.navy2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.ink },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
+  });
 }

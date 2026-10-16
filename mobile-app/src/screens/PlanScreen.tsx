@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useTheme } from '../ThemeContext';
 import type { ThemeColors } from '../theme';
-import type { PlanningTab } from './PlanningScreen';
 import GradientFill from '../components/GradientFill';
 
 // Redesign: the Plan tab. It replaces the old More tab and follows the Finance Flow
@@ -26,7 +25,6 @@ type Row = {
 
 type Group = { header: string; footer?: string; rows: Row[] };
 
-const openPlanning = (tab: PlanningTab) => (navigation: any) => navigation.navigate('Planning', { tab });
 
 const GROUPS: Group[] = [
   {

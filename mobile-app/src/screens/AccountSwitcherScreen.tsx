@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
@@ -317,8 +317,6 @@ function makeStyles(colors: any) {
   return StyleSheet.create({
     content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 48, paddingBottom: 32 },
     brandWrap: { alignItems: 'center', marginBottom: 20 },
-    brandLogo: { width: 64, height: 64 },
-    brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
     bigAvatarWrap: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
     title: {
       fontSize: 28,

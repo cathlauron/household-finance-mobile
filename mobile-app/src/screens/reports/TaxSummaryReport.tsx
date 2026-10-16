@@ -209,7 +209,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    yearNavBtnText: { fontSize: 18, color: colors.ink, fontWeight: '700' },
     yearNavLabel: { fontSize: 18, fontWeight: '700', color: colors.ink, minWidth: 60, textAlign: 'center' },
     introNote: { fontSize: 13, color: colors.inkDim, lineHeight: 17, marginBottom: 14, textAlign: 'center' },
     statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },

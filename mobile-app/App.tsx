@@ -1,11 +1,10 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
-import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts, updateRecentAccountIfPresent } from './src/recentAccounts';
+import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
 import { saveSession, loadSession, clearSession } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet } from 'react-native';
-LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -56,6 +55,7 @@ import {
   subscribeToDeviceSession,
   updateDeviceHeartbeat,
 } from './src/sessions';
+LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
 

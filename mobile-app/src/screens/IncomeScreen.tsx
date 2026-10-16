@@ -883,5 +883,6 @@ function makeStyles(colors: any) {
       paddingHorizontal: 4,
       marginBottom: 14,
     },
-    addPaymentLogButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },});
+    addPaymentLogButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+  });
 }

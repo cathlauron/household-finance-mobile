@@ -3,7 +3,7 @@ import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, P
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
-import { radii, spacing } from '../tokens';
+import { spacing } from '../tokens';
 
 export type BottomSheetProps = {
   visible: boolean;

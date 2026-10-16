@@ -19,7 +19,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
-import { Text, TextInput } from '../components/AppText';
+import { Text } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
@@ -265,16 +265,6 @@ function makeStyles(colors: any) {
       marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
-    },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 10,
     },
     hintText: { fontSize: 15, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
     statRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },

@@ -26,7 +26,7 @@ import * as Crypto from 'expo-crypto';
 import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON, bytesToHex } from './encryption';
-import { getCurrentFirebaseUser, requireCurrentUid } from './authFirebase';
+import { requireCurrentUid } from './authFirebase';
 
 // A short random ID identifying one shared household in Firestore —
 // not secret, just a "which document" pointer (like a folder name).

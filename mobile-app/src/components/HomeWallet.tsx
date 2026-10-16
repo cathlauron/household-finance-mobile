@@ -98,7 +98,6 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const [settling, setSettling] = useState<string | null>(null);
   // The same slant as a swipe: bottom-left corner up, growing with the lift.
   const liftTilt = liftUp.interpolate({ inputRange: [-LIFT, 0], outputRange: ['5deg', '0deg'], extrapolate: 'clamp' });
-  const swipeX = useRef(new Animated.Value(0)).current;
   const [dragging, setDragging] = useState<string | null>(null);
   const [gapAt, setGapAt] = useState<number>(-1); // where the lifted card will land
   const dragTarget = useRef<number>(-1);
@@ -216,7 +215,6 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // A soft wash of each card's own colour (mixed into the card background), kept light
   // so the Left to Spend card and the + button stay the stars of the screen.
   const { isDark } = useTheme();
-  const cardFill = (hex: string) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.2 : 0.1);
   // Like a real bank card: the colour deepens from the top-left corner to the
   // bottom-right, with a faint sheen across the top. Still kept soft.
   // A gentle range with in-between steps so it blends evenly (no dark edge).
@@ -415,7 +413,6 @@ function makeStyles(colors: ThemeColors) {
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingHorizontal: 4, marginBottom: 8 },
     header: { fontSize: 20, fontWeight: '700', color: colors.ink },
     headerLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
-    link: { fontSize: 15, fontWeight: '600', color: colors.gold, paddingVertical: 4 },
     card: {
       position: 'absolute',
       left: 0,

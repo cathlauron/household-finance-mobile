@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Image, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import LogoMark from '../components/LogoMark';
@@ -313,8 +313,6 @@ function makeStyles(colors: any) {
     container: { flex: 1, backgroundColor: 'transparent' },
     scrollContent: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40 },
     brandWrap: { alignItems: 'center', marginBottom: 16 },
-    brandLogo: { width: 56, height: 56 },
-    brandName: { marginTop: 8, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
     eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
     title: {
       fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',

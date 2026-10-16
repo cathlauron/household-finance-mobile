@@ -1,8 +1,7 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import AppSwitch from '../components/AppSwitch';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';

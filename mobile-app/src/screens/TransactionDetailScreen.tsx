@@ -9,9 +9,6 @@ import { formatPeso } from '../balanceProjection';
 import { buildTransactionsList, TransactionEntry } from '../transactions';
 import { paymentMethodColor } from '../components/CardFace';
 import { accountLabel, deleteManualTxn, markRefundReceived, undoRefund } from '../transactionActions';
-import { requestOpenBill } from '../openBillRequest';
-import { requestOpenDebt } from '../openDebtRequest';
-import { requestOpenLoan } from '../openLoanRequest';
 import type { ThemeColors } from '../theme';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
@@ -108,7 +105,6 @@ export default function TransactionDetailScreen() {
     }
     await save(setRepeat(model, raw, freq));
   }
-  const comingSoon = (what: string) => Alert.alert('Coming soon', `${what} will be added in a later update.`);
 
   async function save(next: ReturnType<typeof markRefundReceived>) {
     if (!next) return;

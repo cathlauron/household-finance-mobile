@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, Image, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import LogoMark from '../components/LogoMark';
 import { useTheme } from '../ThemeContext';
@@ -1010,7 +1010,6 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
 function makeStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.navy2, padding: 24, paddingTop: 80 },
-    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
     title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
     sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
     label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
@@ -1027,7 +1026,6 @@ function makeStyles(colors: any) {
     btnDisabled: { opacity: 0.4 },
     busyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
     spinner: { marginRight: 8 },
-    slowHint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 8 },
     ghostBtn: { paddingVertical: 14, marginTop: 8 },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 },
@@ -1083,8 +1081,6 @@ function makeMainStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },
     brandWrap: { alignItems: 'center', marginTop: 36, marginBottom: 14 },
-    brandLogo: { width: 64, height: 64 },
-    brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
     title: { fontSize: 28, fontWeight: '700', color: colors.ink, marginBottom: 6, textAlign: 'center' },
     sub: { fontSize: 15, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
     label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },

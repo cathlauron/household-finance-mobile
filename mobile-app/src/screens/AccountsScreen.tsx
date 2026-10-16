@@ -535,5 +535,6 @@ function makeStyles(colors: any) {
       fontSize: 13,
       color: colors.error,
       marginBottom: 10,
-    },});
+    },
+  });
 }

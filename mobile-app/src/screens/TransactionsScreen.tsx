@@ -1209,5 +1209,6 @@ function makeStyles(colors: any) {
     },
     receiptRemoveButton: { alignSelf: 'flex-start' },
     receiptRemoveButtonText: { fontSize: 12, color: colors.error, fontWeight: '600' },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
+  });
 }

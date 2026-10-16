@@ -6,7 +6,7 @@ import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
 import LogoMark from '../components/LogoMark';
@@ -38,7 +38,7 @@ import { deriveKey, decryptJSON } from '../encryption';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
-import { getBiometricState, getBiometricLabel, setBiometricsDisabled, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
+import { getBiometricState, getBiometricLabel, setBiometricsDisabled, BiometricState } from '../biometrics';
 import SetPinScreen from './SetPinScreen';
 import CsvImportModal from './CsvImportModal';
 import {
@@ -51,7 +51,6 @@ import {
   type DeviceSession,
 } from '../sessions';
 import PasswordField from '../components/PasswordField';
-import Pill from '../components/Pill';
 import { makeId } from '../utils';
 import * as Clipboard from 'expo-clipboard';
 import { DOW_LABELS } from '../income';
@@ -102,7 +101,7 @@ const SECTIONS: Record<string, { title: string; parts: string[] }> = {
   helpabout: { title: 'About & Help', parts: ['help', 'about'] },
 };
 
-export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: { onSignOut?: () => void; onSwitchAccount?: () => void; onLock?: () => void }) {
+export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void; onLock?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const fabSide = useFabSide();
   const navigation = useNavigation<any>();
@@ -112,9 +111,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
     saveModel,
     changePassword,
     username,
-    loadModel,
     isLinked,
-    getPersonalKey,
     getHouseholdKey,
     verifyPassword,
   } = useData();
@@ -127,7 +124,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   const [page, setPage] = useState<string | null>(fixedPage);
   const openPage = (key: string) => navigation.push('SettingsPage', { subPage: key });
   const [csvOpen, setCsvOpen] = useState(false);
-  const inPage = (key: string) => page === key || !!(page && SECTIONS[page]?.parts.includes(key));
   const scrollRef = useRef<ScrollView>(null);
 
   // Back (header, swipe or Android) closes an open page first instead of leaving Settings.

@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import { isValidPinFormat, savePin } from '../pin';

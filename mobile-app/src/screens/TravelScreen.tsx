@@ -16,7 +16,6 @@ import type {
   SavingsGoal,
   ManualTransaction,
 } from '../types';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
@@ -147,12 +146,6 @@ function reconcileTravelChecklistTransactions(
   return { checklist: updatedChecklist, transactions: txns };
 }
 
-function tripDateRangeLabel(trip: TravelTrip): string {
-  if (trip.startDate && trip.endDate) return trip.startDate + ' – ' + trip.endDate;
-  if (trip.startDate) return trip.startDate;
-  if (trip.endDate) return trip.endDate;
-  return 'No dates set';
-}
 
 // Redesign helpers: "Nov 28 – 30 · 3 days", "In 46 days", "Oct 2".
 function shortDay(iso: string): string {
@@ -735,10 +728,7 @@ function makeStyles(colors: any) {
     groupFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
     checkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 10 },
     check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.inkDim, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-
-    sectionIntro: { fontSize: 15, color: colors.inkDim, lineHeight: 20, marginBottom: 16 },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     tripRow: {
       backgroundColor: colors.navy3,
@@ -752,8 +742,6 @@ function makeStyles(colors: any) {
     tripName: { fontSize: 17, fontWeight: '500', color: colors.ink },
     tripSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     tripAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -806,7 +794,6 @@ function makeStyles(colors: any) {
       justifyContent: 'center',
     },
     checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
-    checkboxMark: { fontSize: 13, color: colors.onButton, fontWeight: '700' },
     checklistRowMain: { flex: 1 },
     checklistItemTitle: { fontSize: 13.5, color: colors.ink },
     checklistItemTitleDone: { textDecorationLine: 'line-through', color: colors.inkFaint },
@@ -819,7 +806,6 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    removeItemButtonText: { fontSize: 12, color: colors.inkDim },
     addItemButton: {
       backgroundColor: colors.navy2,
       borderRadius: 999,
@@ -858,16 +844,6 @@ function makeStyles(colors: any) {
     },
     trackToggleActive: {
       backgroundColor: colors.accent ? colors.accent + '22' : colors.navy3,
-    },
-    trackToggleDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.decor,
-      marginRight: 8,
-    },
-    trackToggleDotActive: {
-      backgroundColor: colors.accent || '#3ecf8e',
     },
     trackToggleText: {
       fontSize: 12.5,

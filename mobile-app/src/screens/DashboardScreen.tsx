@@ -21,12 +21,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { useTheme } from '../ThemeContext';
 import {
-  computeMonthEvents,
-  outstandingBalance,
-  loanOutstandingBalance,
-  formatPeso,
+  computeMonthEvents, formatPeso
 } from '../balanceProjection';
-import { buildTransactionsList, transactionTotals, computeCategorySpend, getCategoryBudgetStatus } from '../transactions';
+import { computeCategorySpend, getCategoryBudgetStatus } from '../transactions';
 import { stripTime } from '../recurrence';
 import type { HouseholdModel } from '../types';
 import { useNavigation } from '@react-navigation/native';
@@ -34,7 +31,7 @@ import BottomSheet from '../components/BottomSheet';
 import { requestOpenBill } from '../openBillRequest';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
-import { requestToPayTab, ToPayTab } from '../openToPayTabRequest';
+import { requestToPayTab } from '../openToPayTabRequest';
 import GradientFill from '../components/GradientFill';
 
 type DueItem = {
@@ -117,10 +114,6 @@ export default function DashboardScreen({
   const navigation = useNavigation<any>();
   const [dueSheetOpen, setDueSheetOpen] = useState(false);
 
-  function goToPay(tab: ToPayTab) {
-    requestToPayTab(tab);
-    navigation.navigate('To-Pay');
-  }
 
   function openDueItem(item: DueItem) {
     // Redesign: open the full Bill / Debt / Loan page.
@@ -145,17 +138,7 @@ export default function DashboardScreen({
 
   const today = new Date();
   const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const monthLabel = today.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
-  const allTransactions = buildTransactionsList(model);
-  const thisMonthTransactions = allTransactions.filter((t) => t.date.startsWith(monthPrefix));
-  const monthTotals = transactionTotals(thisMonthTransactions);
 
-  const billsOwed = model.bills.reduce((sum, b) => sum + Math.max(0, outstandingBalance(b)), 0);
-  const debtsOwed = model.debts.reduce((sum, d) => sum + Math.max(0, outstandingBalance(d)), 0);
-  const loansOwed = (model.loans || [])
-    .filter((l) => l.direction !== 'lent')
-    .reduce((sum, l) => sum + loanOutstandingBalance(l), 0);
-  const totalOwed = billsOwed + debtsOwed + loansOwed;
 
   // Redesign: Due soon on Home shows overdue items first (red "Overdue" tag), then
   // what's coming up in the next 14 days, like the mockup.
@@ -169,12 +152,6 @@ export default function DashboardScreen({
   }));
   const dueSoon: (DueItem & { overdue?: boolean })[] = [...overdueDue, ...getUpcomingDue(model, 14)];
 
-  const goals = model.savingsGoals || [];
-  const totalSaved = goals.reduce((sum, g) => sum + (typeof g.currentAmount === 'number' ? g.currentAmount : 0), 0);
-  const totalTarget = goals.reduce(
-    (sum, g) => sum + (typeof g.targetAmount === 'number' ? g.targetAmount : 0),
-    0
-  );
 
   return (
     <>
@@ -342,19 +319,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       flex: 1,
       backgroundColor: 'transparent',
     },
-    rowCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    iconBubble: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.navy2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: 12,
-    },
     contentContainer: {
       paddingHorizontal: 16,
       paddingTop: 8,
@@ -366,113 +330,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.navy1,
-    },
-    card: {
-      backgroundColor: colors.navy3,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      padding: 16,
-      marginBottom: 12,
-    },
-    cardLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      color: colors.inkDim,
-      marginBottom: 8,
-    },
-    bigAmount: {
-      fontSize: 26,
-      fontWeight: '700',
-      color: colors.ink,
-    },
-    cardNote: {
-      fontSize: 13,
-      color: colors.inkDim,
-      marginTop: 4,
-    },
-    owedBreakdownRow: {
-      flexDirection: 'row',
-      gap: 6,
-      marginTop: 10,
-    },
-    owedPill: {
-      flex: 1,
-      minWidth: 0,
-      backgroundColor: colors.navy1,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      borderRadius: 10,
-    },
-    owedPillTextWrap: {
-      flex: 1,
-      minWidth: 0,
-    },
-    owedPillLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.inkDim,
-      marginBottom: 2,
-    },
-    owedPillAmount: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.ink,
-    },
-    statRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    statBox: {
-      flex: 1,
-      paddingVertical: 14,
-      paddingHorizontal: 14,
-    },
-    statBoxDivider: {
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderLeftColor: colors.navy4,
-    },
-    statIconRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      marginBottom: 4,
-    },
-    statIconCircle: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    iconBubbleSmall: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.navy2,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    statLabel: {
-      fontSize: 13,
-      color: colors.inkDim,
-      marginBottom: 2,
-    },
-    statValue: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: colors.ink,
-    },
-    iconBubbleQuiet: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.navy2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
     },
     emptyText: {
       fontSize: 15,
@@ -507,14 +364,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       color: colors.ink,
       flexShrink: 1,
     },
-    listAmount: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.ink,
-    },
-    goalRow: {
-      marginTop: 12,
-    },
     // Redesign: iPhone-style sections and grouped lists.
     section: { marginBottom: 24 },
     sectionHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingHorizontal: 4, marginBottom: 8 },
@@ -528,31 +377,5 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     rowTitle: { fontSize: 17, fontWeight: '500', color: colors.ink },
     rowSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     badge: { fontSize: 12, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: 'hidden' },
-    goalHeaderRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 6,
-    },
-    goalName: {
-      fontSize: 15,
-      color: colors.ink,
-      flex: 1,
-      marginRight: 8,
-    },
-    goalAmount: {
-      fontSize: 13,
-      color: colors.inkDim,
-    },
-    progressTrack: {
-      height: 8,
-      borderRadius: 999,
-      backgroundColor: colors.navy4,
-      overflow: 'hidden',
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: colors.saving,
-      borderRadius: 999,
-    },
   });
 }

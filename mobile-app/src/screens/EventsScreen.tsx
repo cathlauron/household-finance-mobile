@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import AppSwitch from '../components/AppSwitch';
-import { Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import SegmentedControl from '../components/SegmentedControl';
 import { todayISO } from '../dateUtils';
@@ -13,7 +12,6 @@ import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '../types';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
@@ -35,15 +33,6 @@ function isValidDateOrEmpty(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
 }
 
-function eventDateLabel(ev: EventItem): string {
-  if (ev.recurrence === 'onetime') {
-    return ev.onetimeDate ? ev.onetimeDate : 'No date set';
-  }
-  if (typeof ev.month === 'number' && typeof ev.day === 'number') {
-    return 'Every ' + String(ev.month).padStart(2, '0') + '/' + String(ev.day).padStart(2, '0');
-  }
-  return 'No date set';
-}
 
 function typeLabel(t: EventItem['type']): string {
   const found = EVENT_TYPES.find((x) => x.id === t);
@@ -822,10 +811,7 @@ function makeStyles(colors: any) {
     dateTileM: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
     dateTileD: { fontSize: 18, fontWeight: '700', lineHeight: 20 },
     groupFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
-    summaryCard: { backgroundColor: colors.navy3, borderRadius: 12, padding: 16, marginBottom: 20 },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-
-    sectionIntro: { fontSize: 15, color: colors.inkDim, lineHeight: 20, marginBottom: 16 },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     eventRow: {
       backgroundColor: colors.navy3,
@@ -836,12 +822,9 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     eventRowMain: { flex: 1, marginRight: 10 },
-    eventTitleRow: { flexDirection: 'row', alignItems: 'center' },
     eventName: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
     eventSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     eventAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,

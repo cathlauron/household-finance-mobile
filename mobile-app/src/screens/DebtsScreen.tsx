@@ -437,5 +437,6 @@ function makeStyles(colors: any) {
     balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
+  });
 }

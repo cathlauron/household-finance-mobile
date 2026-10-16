@@ -15,9 +15,9 @@ import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import TabPage from './TabPage';
+import GradientFill from '../components/GradientFill';
 
 const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
-import GradientFill from '../components/GradientFill';
 
 const Tab = createBottomTabNavigator();
 function TabIcon({
@@ -71,7 +71,7 @@ function useCurrentTab(): string {
 
 function AddFab({ bottom }: { bottom: number }) {
   const activeTab = useCurrentTab();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const side = useFabSide();
   const toPaySub = useToPaySub();
   const navigation = useNavigation<any>();
@@ -127,7 +127,7 @@ type MainTabsProps = {
   onSignOut?: () => void;
   initialOpenBillId?: string;
 };
-export default function MainTabs({ username, onSignOut, initialOpenBillId }: MainTabsProps) {
+export default function MainTabs({ username, initialOpenBillId }: MainTabsProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarBottom = Math.max(insets.bottom, 12);

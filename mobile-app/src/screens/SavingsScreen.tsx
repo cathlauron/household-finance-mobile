@@ -999,5 +999,6 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },});
+    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
+  });
 }

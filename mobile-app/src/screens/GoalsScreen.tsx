@@ -12,14 +12,12 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import type { YearlyGoal, HouseholdModel } from '../types';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
-import DateField from '../components/DateField'
+import DateField from '../components/DateField';
 import Pill from '../components/Pill';
 import Button from '../components/Button';
 import { hapticSelection } from '../haptics';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
 
@@ -501,9 +499,6 @@ function makeStyles(colors: any) {
     groupFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
     check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.inkDim, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-
-    yearBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
-    yearBannerAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     goalRow: {
       backgroundColor: colors.navy3,
@@ -513,8 +508,6 @@ function makeStyles(colors: any) {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    goalRowMain: { flex: 1, marginRight: 10 },
-    goalTitleRow: { flexDirection: 'row', alignItems: 'center' },
     goalTitle: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
     goalTitleDone: { color: '#10b981' },
     goalSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
@@ -527,8 +520,6 @@ function makeStyles(colors: any) {
       overflow: 'hidden',
     },
     progressFill: { height: '100%', backgroundColor: colors.planned, borderRadius: 999 },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,

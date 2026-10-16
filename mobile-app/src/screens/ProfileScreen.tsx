@@ -1430,13 +1430,6 @@ function makeStyles(colors: any) {
       alignItems: 'center',
     },
     linkCodeLabel: { fontSize: 15, color: colors.inkDim, marginBottom: 8 },
-    linkCodeText: {
-      fontSize: 28,
-      fontWeight: '700',
-      letterSpacing: 4,
-      color: colors.ink,
-      marginBottom: 8,
-    },
     dangerConfirmBox: {
       backgroundColor: 'rgba(229,72,77,0.08)',
       borderRadius: 10,

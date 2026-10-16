@@ -703,5 +703,6 @@ function makeStyles(colors: any) {
       marginTop: 2,
     },
     paymentAddButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.gold },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
+  });
 }
