@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { claimUsername } from '../usernameClaim';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -87,11 +88,29 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       // Create the real Firebase account FIRST. If this fails (e.g. the
       // email is already registered), nothing local has been created yet,
       // so there's nothing to undo.
+      let firebaseUser: Awaited<ReturnType<typeof createFirebaseAccount>>;
       try {
-        await createFirebaseAccount(email, password1);
+        firebaseUser = await createFirebaseAccount(email, password1);
       } catch (firebaseError: any) {
         setBusy(false);
         setError(friendlyFirebaseError(firebaseError));
+        return;
+      }
+
+      // Claim the username for this account before anything is saved under it. If someone
+      // on another phone already has it, undo the new sign-in account and say so.
+      try {
+        const claim = await claimUsername(username);
+        if (claim === 'taken') {
+          await firebaseUser.delete().catch(() => {});
+          setBusy(false);
+          setError('Username is taken. Choose another or sign in.');
+          return;
+        }
+      } catch {
+        await firebaseUser.delete().catch(() => {});
+        setBusy(false);
+        setError('Could not create account. Check your connection and try again.');
         return;
       }
 

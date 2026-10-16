@@ -15,6 +15,7 @@
 // shared data.
 // ============================================================
 import { getCurrentFirebaseUser } from './authFirebase';
+import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
@@ -317,6 +318,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     options: { deferNotifications?: boolean } = {}
   ): Promise<HouseholdModel | null> {
     setLoading(true);
+    // Accounts made before username claims existed claim theirs now (quietly).
+    ensureUsernameClaim(username);
     cleanupHouseholdListener();
     usernameRef.current = username;
     keyRef.current = key;
