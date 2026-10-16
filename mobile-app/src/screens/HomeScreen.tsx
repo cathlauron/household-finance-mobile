@@ -9,6 +9,8 @@ import CardGradient from '../components/CardGradient';
 import HomeHero from '../components/HomeHero';
 import DashboardScreen, { getUpcomingDue } from './DashboardScreen';
 import OfflineBanner from '../components/OfflineBanner';
+import SkyGlow from '../components/SkyGlow';
+import { useSkyPhase } from '../sky';
 import { hapticSelection } from '../haptics';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -66,10 +68,19 @@ export default function HomeScreen({ username }: Props) {
       ? { start: isDark ? '#933600' : '#A33C00', end: isDark ? '#933600' : '#A33C00', dim: 'rgba(255,255,255,0.92)', fill: '#FFFFFF' }
       : { start: colors.cardTealStart, end: colors.cardTealEnd, dim: colors.cardTealTextDim, fill: colors.mintAccent };
 
-  // Redesign: greeting under "Hi, name" that follows the time of day.
+  // Redesign: greeting under "Hi, name" that follows the same time of day as the sky glow
+  // (real sunrise and sunset when Live weather is on). Very late at night it just says
+  // "Good to see you".
+  const skyPhase = useSkyPhase();
   const hour = new Date().getHours();
   const greeting =
-    hour < 5 ? 'Good to see you' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : hour < 22 ? 'Good evening' : 'Good to see you';
+    skyPhase === 'morning'
+      ? 'Good morning'
+      : skyPhase === 'afternoon'
+      ? 'Good afternoon'
+      : skyPhase === 'night' && hour < 5
+      ? 'Good to see you'
+      : 'Good evening';
 
   const hasDueSoon = useMemo(() => (model ? getUpcomingDue(model, 14).length > 0 : false), [model]);
   const [bellOpen, setBellOpen] = useState(false);
@@ -113,6 +124,7 @@ export default function HomeScreen({ username }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent', paddingTop: insets.top }}>
+      <SkyGlow />
       <OfflineBanner style={{ marginHorizontal: 14, marginTop: 6 }} />
       <View style={hs.headerRow}>
         <TouchableOpacity

@@ -3,6 +3,7 @@ import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
+import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
@@ -198,6 +199,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(0);
   const textSize = useTextSize();
+  const skyPrefs = useSkyPrefs();
 
   // Active Devices state
   const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
@@ -1426,6 +1428,29 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
             value={fabSide}
             onChange={(v) => setFabSide(v as 'left' | 'right')}
             testIDPrefix="settings-fab"
+          />
+        </SettingsGroup>
+
+        <SettingsGroup
+          label="Sky"
+          plain
+          footer="Live weather uses your phone's approximate location to match the sky on Home to your real sunrise and sunset. Only a rounded location is used, never your money data."
+        >
+          <PlainRow
+            title="Time-of-day glow"
+            right={settingSwitch(skyPrefs.glowOn, (on) => setSkyGlowOn(on), 'settings-sky-glow')}
+          />
+          <PlainRow
+            title="Live weather"
+            right={settingSwitch(skyPrefs.liveWeatherOn, async (on) => {
+              const ok = await setLiveWeatherOn(on);
+              if (!ok) {
+                Alert.alert(
+                  'Location is off',
+                  "Finance Flow can't see your location, so the sky follows the clock instead. You can allow location for Finance Flow in your phone's settings."
+                );
+              }
+            }, 'settings-live-weather')}
           />
         </SettingsGroup>
 
