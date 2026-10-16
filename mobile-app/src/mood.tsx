@@ -22,6 +22,14 @@ const MOOD_ACCENTS: Record<Exclude<LeftToSpendMood, 'good'>, { light: Partial<Th
   },
 };
 
+// Dark mode page colour per mood: almost black, tinted to match the mood so the leaves never
+// clash with the page (deep green, deep brown, deep wine). Light mode keeps its page colour.
+const DARK_PAGE: Record<LeftToSpendMood, string> = {
+  good: '#06120C',
+  low: '#140A04',
+  over: '#16060A',
+};
+
 export function useMood(): LeftToSpendMood {
   const { model } = useData();
   const theme = useContext(ThemeContext);
@@ -43,9 +51,11 @@ export function MoodThemeProvider({ children }: { children: React.ReactNode }) {
   const base = useContext(ThemeContext);
   const mood = useMood();
   const value = useMemo(() => {
-    if (!base || mood === 'good') return base;
-    const swap = MOOD_ACCENTS[mood][base.isDark ? 'dark' : 'light'];
-    return { ...base, colors: { ...base.colors, ...swap } };
+    if (!base) return base;
+    if (mood === 'good' && !base.isDark) return base;
+    const swap = mood === 'good' ? {} : MOOD_ACCENTS[mood][base.isDark ? 'dark' : 'light'];
+    const page = base.isDark ? { navy2: DARK_PAGE[mood] } : {};
+    return { ...base, colors: { ...base.colors, ...swap, ...page } };
   }, [base, mood]);
   if (!value) return <>{children}</>;
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

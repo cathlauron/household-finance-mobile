@@ -77,10 +77,13 @@ const FIELD: [number, number, number, number][] = [
   [207.1, 500.0, 68.0, 0.122]
 ];
 
+// Dark mode: the page is a mood-tinted near-black (see DARK_PAGE in src/mood.tsx), so the
+// leaves need a little more strength than in light mode to look equally faint. At the old
+// 4% they disappeared completely on black.
 const MOOD_LEAF = {
-  good: { light: ['#2E6B47', 0.045], dark: ['#5FC48A', 0.04] },
-  low: { light: ['#D4500A', 0.055], dark: ['#F59055', 0.045] },
-  over: { light: ['#C42B32', 0.05], dark: ['#F26B6B', 0.04] },
+  good: { light: ['#2E6B47', 0.045], dark: ['#5FC48A', 0.07] },
+  low: { light: ['#D4500A', 0.055], dark: ['#F59055', 0.075] },
+  over: { light: ['#C42B32', 0.05], dark: ['#F26B6B', 0.07] },
 } as const;
 
 export default function LeafBackground() {
