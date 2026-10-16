@@ -20,6 +20,7 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { requestNotificationPermission, sendTestNotification, countScheduledNotifications } from '../pushNotifications';
+import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   loadProfilesIndex,
@@ -354,6 +355,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [watchLimitInput, setWatchLimitInput] = useState<number | ''>('');
   const [watchErrorMsg, setWatchErrorMsg] = useState('');
   const [testNotifMsg, setTestNotifMsg] = useState('');
+  // Travel time note: the home time zone (saved on this phone).
+  const [homeZoneCity, setHomeZoneCity] = useState<string | null>(null);
+  useEffect(() => {
+    if (page === 'look') getHomeZoneCity().then(setHomeZoneCity).catch(() => {});
+  }, [page]);
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
@@ -1468,6 +1474,26 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               testIDPrefix="settings-preview-weather"
             />
           )}
+        </SettingsGroup>
+
+        <SettingsGroup label="Time" plain footer="Finance Flow always uses this phone's date and time. When the phone is in another time zone, Home shows a small note.">
+          <PlainRow
+            title="Home time zone"
+            value={homeZoneCity ?? '…'}
+            testID="settings-home-zone"
+            onPress={() => {
+              const tz = phoneTimeZone();
+              const here = tz ? cityOf(tz) : null;
+              if (!here || here === homeZoneCity) {
+                Alert.alert('Home time zone', `Home is ${homeZoneCity ?? 'this phone'}. When you travel, Home shows how far you are from it. To change it, open this while your phone is set to the new place.`);
+                return;
+              }
+              Alert.alert('Change home time zone?', `Make ${here} (this phone's time zone now) your home instead of ${homeZoneCity}?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: `Make ${here} home`, onPress: () => setHomeZoneToPhone().then((c) => c && setHomeZoneCity(c)) },
+              ]);
+            }}
+          />
         </SettingsGroup>
 
         <SettingsGroup label="Feel" plain footer="Mood colours: the card, buttons and leaves follow Left to Spend.">
