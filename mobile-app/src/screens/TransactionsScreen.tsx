@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import AppSwitch from '../components/AppSwitch';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert, Switch } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,6 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { usePullDownToOpen } from '../pullDownToOpen';
 import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
-import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
 import { requestOpenBill } from '../openBillRequest';
 import { accountLabel } from '../transactionActions';
 import { requestOpenDebt } from '../openDebtRequest';
@@ -29,13 +28,9 @@ import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '.
 import CsvImportModal from './CsvImportModal';
 import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
-import { CollapsibleRow } from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
-import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import { reviewCount } from './ReviewScreen';
 import { idsForAccount } from './CardDetailScreen';
@@ -45,12 +40,6 @@ import GradientFill from '../components/GradientFill';
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
   return p ? p.name : '';
-}
-function ownerLabel(people: Person[], owner: string, myPersonId: string | null): string {
-  if (owner === 'shared') return 'Ours';
-  if (myPersonId && owner === myPersonId) return 'Mine';
-  const name = personName(people, owner);
-  return name ? name + "'s" : 'Shared';
 }
 // Finds an existing person by name (case-insensitive), or creates a new one.
 // Mirrors IncomeScreen's behavior: typing a name that doesn't exist yet quietly
@@ -71,11 +60,6 @@ function findOrCreatePerson(
   return { people: [...people, newPerson], personId: newPerson.id };
 }
 
-function formatDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 const TX_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -91,8 +75,6 @@ function todayISO(): string {
 }
 
 const SOURCE_LABELS: Record<string, string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan', manual: 'Manual' };
-const DIRECTIONS: Array<'out' | 'in' | 'saving'> = ['out', 'in', 'saving'];
-const DIRECTION_LABELS: Record<string, string> = { out: 'Money out', in: 'Money in', saving: 'Savings' };
 
 function amountColor(direction: string, colors: { positive: string; saving: string; negative: string }): string {
   if (direction === 'in') return colors.positive;
@@ -180,7 +162,7 @@ function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): 
 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel, username } = useData();
+  const { model, saveModel } = useData();
   const navigation = useNavigation();
   // Pull the list down from the top to open Search (like the iPhone).
   const pullToSearch = usePullDownToOpen(() => (navigation as any).navigate('Search'));
@@ -271,18 +253,9 @@ export default function TransactionsScreen() {
   const [personInput, setPersonInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
   const [tagsInput, setTagsInput] = useState('');
-  const [myPersonId, setMyPersonId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!username) return;
-    getMyPersonId(username).then(setMyPersonId);
-    const unsubscribe = subscribeToMyPersonId(setMyPersonId);
-    return unsubscribe;
-  }, [username]);
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Redesign: quick-add sheet extras.
   const [moreOpen, setMoreOpen] = useState(false);
@@ -647,59 +620,9 @@ export default function TransactionsScreen() {
   // Marks a pending refund as received: creates a real, linked "money in" transaction for the
   // amount expected back, and stamps refundTransactionId on the original expense so we know
   // it's been resolved. Mirrors reconcileTravelChecklistTransactions / reconcileEventTransaction.
-  async function handleMarkRefundReceived(txnId: string) {
-    if (!model) return;
-    const raw = (model.manualTransactions || []).find((m) => m.id === txnId);
-    if (!raw || typeof raw.refundExpectedAmount !== 'number' || raw.refundTransactionId) return;
-
-    const newTxn: ManualTransaction = {
-      id: makeId('txn'),
-      date: new Date().toISOString().slice(0, 10),
-      label: 'Refund: ' + (raw.label || 'Transaction'),
-      amount: raw.refundExpectedAmount,
-      direction: 'in',
-      owner: raw.owner || 'shared',
-      category: raw.category || 'Refund',
-    };
-
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: [
-        ...(model.manualTransactions || []).map((t) =>
-          t.id === txnId ? { ...t, refundTransactionId: newTxn.id } : t
-        ),
-        newTxn,
-      ],
-    };
-
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
-    }
-  }
 
   // Undoes a "marked received" refund: removes the linked income transaction it created, and
   // clears refundTransactionId so it goes back to showing as Pending.
-  async function handleUndoRefund(txnId: string) {
-    if (!model) return;
-    const raw = (model.manualTransactions || []).find((m) => m.id === txnId);
-    if (!raw || !raw.refundTransactionId) return;
-    const linkedId = raw.refundTransactionId;
-
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: (model.manualTransactions || [])
-        .filter((t) => t.id !== linkedId)
-        .map((t) => (t.id === txnId ? { ...t, refundTransactionId: undefined } : t)),
-    };
-
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
-    }
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -844,7 +767,6 @@ export default function TransactionsScreen() {
           <GradientFill match={styles.group} />
         {day.items.map((t: TransactionEntry, rowIndex: number) => {
           const isManual = t.source === 'manual';
-          const isExpanded = expandedTxnId === t.id;
           const rawManual = isManual ? (model.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
           const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
@@ -1213,34 +1135,10 @@ function makeStyles(colors: any) {
     summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
     summaryLabel: { fontSize: 13, color: colors.inkDim },
     summaryAmount: { fontSize: 17, fontWeight: '600', marginTop: 2 },
-    netNote: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginBottom: 20, marginLeft: 16 },
     daySection: { marginBottom: 20 },
     dayHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
     tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    statRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-    statCard: {
-      flex: 1,
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 14,
-    },
-    statLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    statAmount: { fontSize: 17, fontWeight: '700' },
-    netLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim },
-    netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
     emptyText: { fontSize: 15, color: colors.inkDim, marginTop: 6, marginBottom: 12, textAlign: 'center' },
-    txnCollapsedRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    detailContainer: { gap: 8 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 12, color: colors.inkDim },
-    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
-    detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
     txnMain: { flex: 1, marginRight: 10 },
     reviewCard: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 12 },
     // Quick-add sheet
@@ -1265,11 +1163,6 @@ function makeStyles(colors: any) {
     txnLabel: { fontSize: 17, fontWeight: '500', color: colors.ink },
     txnSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     txnAmount: { fontSize: 17, fontWeight: '600' },
-    addButtonRow: { flexDirection: 'row', gap: 16, marginTop: 4, flexWrap: 'wrap' },
-    addButton: { paddingVertical: 8, paddingHorizontal: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    importButton: { paddingVertical: 8, paddingHorizontal: 4 },
-    importButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -1287,9 +1180,6 @@ function makeStyles(colors: any) {
       fontSize: 17,
       color: colors.ink,
       marginBottom: 14,
-    },
-    amountInput: {
-      backgroundColor: colors.navy2,
     },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
     chip: {
@@ -1319,39 +1209,5 @@ function makeStyles(colors: any) {
     },
     receiptRemoveButton: { alignSelf: 'flex-start' },
     receiptRemoveButtonText: { fontSize: 12, color: colors.error, fontWeight: '600' },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-
-    refundToggle: {
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 16,
-    },
-    refundToggleActive: { backgroundColor: colors.orange },
-    refundToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    refundToggleTextActive: { color: colors.onButton },
-    refundBadge: {
-      alignSelf: 'flex-start',
-      backgroundColor: colors.orange,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      marginTop: 6,
-    },
-    refundBadgeReceived: { backgroundColor: colors.ok },
-    refundBadgeText: { fontSize: 11, fontWeight: '700', color: colors.onButton },
-    refundActionButton: {
-      marginTop: 10,
-      alignSelf: 'flex-start',
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-    },
-    refundActionButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.ink },
-  });
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
 }

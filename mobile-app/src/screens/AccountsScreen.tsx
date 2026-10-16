@@ -1,22 +1,20 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, LayoutAnimation, UIManager } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
-import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, totalCurrentBalance, withCurrentBalance, accountCurrentBalance, bakeCurrentBalances } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
-import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+import { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
 import { cardFaceColors, CardFaceFill, cardColor } from '../components/CardFace';
 import { computeNextPayDate, formatShortDate } from '../income';
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import { todayISO } from '../dateUtils';
 import GradientFill from '../components/GradientFill';
@@ -49,7 +47,6 @@ export default function AccountsScreen() {
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
   // Redesign: always a plain list here; Home's Wallet already shows the stacked cards.
-  const [viewMode, setViewMode] = useState<'stacked' | 'list'>('list');
   // One + in the title bar asks which kind of account to add.
   const [chooseTypeOpen, setChooseTypeOpen] = useState(false);
   const navigation = useNavigation<any>();
@@ -69,7 +66,6 @@ export default function AccountsScreen() {
     });
   }, [navigation, colors.gold]);
   // Which account card is currently expanded in stacked view, or null if all collapsed.
-  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   // Which group's add/edit form is open in the modal right now, or null if closed.
   const [activeGroup, setActiveGroup] = useState<AccountGroup | null>(null);
@@ -113,26 +109,8 @@ export default function AccountsScreen() {
     setErrorMsg('');
   }
 
-  function handleCardPress(group: AccountGroup, account: BalanceAccountEntry, isAlreadyExpanded: boolean) {
-    if (isAlreadyExpanded) {
-      // Step 2: tapping the already-expanded card opens the edit modal
-      openEditModal(group, account);
-    } else {
-      // Step 1: tapping a collapsed card brings it to front and expands it
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setExpandedAccountId(account.id);
-    }
-  }
 
-  function handleCollapse() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedAccountId(null);
-  }
 
-  function handleToggleViewMode(mode: 'stacked' | 'list') {
-    setViewMode(mode);
-    setExpandedAccountId(null);
-  }
 
   async function handleSave() {
     if (!activeGroup || !model) return;
@@ -451,51 +429,6 @@ function makeStyles(colors: any) {
       paddingTop: 16,
       paddingBottom: 40,
     },
-    viewToggleWrap: {
-      flexDirection: 'row',
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      padding: 3,
-    },
-    toggleBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 999,
-    },
-    toggleBtnActive: {
-      backgroundColor: colors.buttonFill,
-    },
-    toggleBtnText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    toggleBtnTextActive: {
-      color: colors.onButton,
-      fontWeight: '700',
-    },
-    sectionHeaderRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    collapseChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 6,
-      backgroundColor: 'rgba(233,196,106,0.12)',
-    },
-    collapseChipText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.gold,
-    },
     totalCard: { borderRadius: 20, backgroundColor: colors.navy3, marginBottom: 22, overflow: 'hidden' },
     totalTop: { paddingTop: 18, paddingBottom: 14, paddingHorizontal: 20 },
     totalSub: { fontSize: 13, color: colors.inkDim, marginTop: 4 },
@@ -540,12 +473,6 @@ function makeStyles(colors: any) {
       fontWeight: '600',
       color: colors.inkDim,
     },
-    emptyText: {
-      fontSize: 13,
-      color: colors.inkFaint,
-      marginBottom: 8,
-      fontStyle: 'italic',
-    },
     incomeRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -567,16 +494,6 @@ function makeStyles(colors: any) {
     typeRow: { flexDirection: 'row', alignItems: 'center', minHeight: 54 },
     typeRowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     typeRowText: { fontSize: 17, color: colors.ink },
-    addButton: {
-      alignSelf: 'flex-start',
-      paddingVertical: 8,
-      paddingHorizontal: 4,
-    },
-    addButtonText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.gold,
-    },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -618,6 +535,5 @@ function makeStyles(colors: any) {
       fontSize: 13,
       color: colors.error,
       marginBottom: 10,
-    },
-  });
+    },});
 }

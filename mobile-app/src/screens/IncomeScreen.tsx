@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
-import { Text, TextInput } from '../components/AppText';
+import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
@@ -11,23 +11,16 @@ import { formatPeso } from '../balanceProjection';
 import {
   Frequency,
   FREQUENCIES,
-  DOW_LABELS,
-  frequencyLabel,
-  computeNextPayDate,
-  formatShortDate,
+  DOW_LABELS, computeNextPayDate,
+  formatShortDate
 } from '../income';
 import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry, PaymentMethod } from '../types';
-import AccountPicker from '../components/AccountPicker';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
-import { incomeOccurrencesInMonth } from '../balanceProjection';
 import { monthTotals, sourcesByPerson } from '../incomeMonth';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
 import { todayISO } from '../dateUtils';
@@ -127,7 +120,6 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
   // Redesign: the account logged paydays go into (they add to its balance).
   const [depositInput, setDepositInput] = useState<PaymentMethod | undefined>(undefined);
-  const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   const paydayLabel = (() => {
@@ -475,14 +467,6 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   // three bi-weekly paydays shows all three).
   const nowDate = new Date();
   const monthName = nowDate.toLocaleString('en-US', { month: 'long' });
-  let paydaysThisMonth = 0;
-  const expectedThisMonth = sources.reduce((sum, source) => {
-    const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
-    if (amount <= 0) return sum;
-    const n = incomeOccurrencesInMonth(source, nowDate.getFullYear(), nowDate.getMonth()).length;
-    paydaysThisMonth += n;
-    return sum + amount * n;
-  }, 0);
 
   const extras = extraIncome(model);
   const ymNow = todayISO().slice(0, 7);
@@ -872,16 +856,6 @@ function makeStyles(colors: any) {
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
     emptyText: { fontSize: 13, color: colors.inkFaint, marginBottom: 12 },
-    rowCollapsedRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    detailContainer: { gap: 8 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 13, color: colors.inkDim },
-    detailValue: { fontSize: 15, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
-    rowMain: { flex: 1, marginRight: 10 },
     rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
     rowAmount: { fontSize: 15, fontWeight: '600', color: colors.planned },
@@ -894,55 +868,20 @@ function makeStyles(colors: any) {
     extraTotal: { fontSize: 20, fontWeight: '700', marginTop: 2 },
     extraEmpty: { padding: 16, lineHeight: 19 },
     extraRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    inputLabel: {
-      // Redesign: sentence-case grey labels, like iPhone forms.
-      fontSize: 13,
-      fontWeight: '600',
-      marginLeft: 4,
-      color: colors.inkDim,
-      marginBottom: 6,
-    },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 10,
-    },
     amountInput: {
       backgroundColor: colors.navy2,
       marginBottom: 10,
     },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
-    chip: {
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 6,
-      paddingHorizontal: 12,
-    },
-    chipText: { fontSize: 15, fontWeight: '500', color: colors.inkDim },
-    row2: { flexDirection: 'row', gap: 10 },
-    row2Item: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    hintText: { fontSize: 13, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
     errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
     paymentLogEntry: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },
     paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
     paymentLogAmountInput: { flex: 1, marginBottom: 0 },
     paymentLogRemoveBtn: { paddingHorizontal: 8, paddingVertical: 6 },
-    paymentLogRemoveText: { fontSize: 18, color: colors.error, fontWeight: '600' },
     addPaymentLogButton: {
       alignSelf: 'flex-start',
       paddingVertical: 8,
       paddingHorizontal: 4,
       marginBottom: 14,
     },
-    addPaymentLogButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-  });
+    addPaymentLogButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },});
 }

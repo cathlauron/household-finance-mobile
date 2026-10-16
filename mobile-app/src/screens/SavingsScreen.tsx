@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,17 +10,13 @@ import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource, CalculatorInputs } from '../types';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import SegmentedControl from '../components/SegmentedControl';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
-import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
 import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonths } from '../savingsPots';
@@ -54,12 +50,6 @@ function goalTarget(goal: SavingsGoal): number {
   return typeof goal.targetAmount === 'number' ? goal.targetAmount : 0;
 }
 
-function goalProgressPct(goal: SavingsGoal): number {
-  const target = goalTarget(goal);
-  if (target <= 0) return 0;
-  const pct = (contributionsTotal(goal) / target) * 100;
-  return Math.min(100, Math.max(0, pct));
-}
 
 function sortGoals(goals: SavingsGoal[]): SavingsGoal[] {
   return [...goals].sort((a, b) => {
@@ -94,17 +84,7 @@ function computeMonthlyIncomeBaseline(income: IncomeSource[]): number {
   return income.reduce((sum, source) => sum + incomeSourceMonthlyAmount(source), 0);
 }
 
-function sumAccountEntries(entries: { amount: number | '' }[]): number {
-  return entries.reduce((sum, e) => sum + (typeof e.amount === 'number' ? e.amount : 0), 0);
-}
 
-function formatYearsMonths(totalMonths: number): string {
-  const years = Math.floor(totalMonths / 12);
-  const months = totalMonths % 12;
-  if (years === 0) return `${months} mo${months === 1 ? '' : 's'}`;
-  if (months === 0) return `${years} yr${years === 1 ? '' : 's'}`;
-  return `${years} yr${years === 1 ? '' : 's'} ${months} mo${months === 1 ? '' : 's'}`;
-}
 
 type ContribRow = { id: string; date: string; amountInput: string };
 
@@ -170,17 +150,10 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [contribRows, setContribRows] = useState<ContribRow[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
 
-  function getEfStatus(months: number | null, colors: { error: string; orange: string; ok: string; inkDim: string }) {
-  if (months === null) return { color: colors.inkDim, label: null as string | null };
-  if (months < 1.5) return { color: colors.error, label: 'Needs attention' };
-  if (months < 3.0) return { color: colors.orange, label: 'Growing' };
-  return { color: colors.ok, label: 'Fully funded' };
-}
 
   // ---- Emergency Fund calculator local state ----
   const [efExpensesInput, setEfExpensesInput] = useState<string | null>(null);
   const [efSavingsInput, setEfSavingsInput] = useState<string | null>(null);
-  const [efSaved, setEfSaved] = useState(false);
 
   // ---- FI calculator local state ----
   const [fiExpensesInput, setFiExpensesInput] = useState<string | null>(null);
@@ -188,13 +161,10 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [fiSavingsInput, setFiSavingsInput] = useState<string | null>(null);
   const [fiSaved, setFiSaved] = useState(false);
   const [fiSwrInput, setFiSwrInput] = useState<string | null>(null);
-  const [fiSwrCustomOpen, setFiSwrCustomOpen] = useState(false);
   const [fiReturnRateInput, setFiReturnRateInput] = useState<string | null>(null);
   const [fiMonthlySavingsInput, setFiMonthlySavingsInput] = useState<string | null>(null);
-  const [fiShowDate, setFiShowDate] = useState(true);
   const [fiAccountPickerOpen, setFiAccountPickerOpen] = useState(false);
   const [fiCompareOpen, setFiCompareOpen] = useState(false);
-  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   if (!model) {
@@ -422,27 +392,6 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     );
   }
 
-  async function handleSaveEf(expensesOverride?: string) {
-    if (!model) return;
-    const current = calcInputsFromModel();
-    const expensesRaw = (expensesOverride ?? efExpensesInput ?? efExpensesDisplay).trim();
-    const savingsRaw = (efSavingsInput ?? efSavingsDisplay).trim();
-    const expenses = expensesRaw === '' ? '' : parseFloat(expensesRaw);
-    const savings = savingsRaw === '' ? '' : parseFloat(savingsRaw);
-    if (expenses !== '' && isNaN(expenses as number)) return;
-    if (savings !== '' && isNaN(savings as number)) return;
-    const updated: HouseholdModel = {
-      ...model,
-      calculatorInputs: {
-        ...current,
-        efMonthlyExpenses: expenses as number | '',
-        efCurrentSavings: savings as number | '',
-      },
-    };
-    await saveModel(updated);
-    setEfSaved(true);
-    setTimeout(() => setEfSaved(false), 1800);
-  }
 
   async function handleSaveFi(overrides?: {
     expenses?: string;
@@ -524,15 +473,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
   const fiSavingsDisplay =
     fiSavingsInput !== null ? fiSavingsInput : storedCalc.fiCurrentSavings === '' ? '' : String(storedCalc.fiCurrentSavings);
 
-  const efIncomeDisplay =
-    suggestedMonthlyIncome > 0 ? `Total income: ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
-  const fiIncomeDisplay =
-    suggestedMonthlyIncome > 0 ? `Total income: ${formatPeso(suggestedMonthlyIncome)}/mo` : '';
 
   const efExpensesNum = parseFloat(efExpensesDisplay);
   const efSavingsNum = parseFloat(efSavingsDisplay);
-  const efMonthsCovered =
-    !isNaN(efExpensesNum) && efExpensesNum > 0 && !isNaN(efSavingsNum) ? efSavingsNum / efExpensesNum : null;
 
   const fiExpensesNum = parseFloat(fiExpensesDisplay);
   const fiGuaranteedIncomeDisplay =
@@ -542,12 +485,10 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
   const fiGuaranteedIncomeNum = parseFloat(fiGuaranteedIncomeDisplay);
   const fiSavingsNum = fiSavingsDisplay.trim() === '' ? 0 : parseFloat(fiSavingsDisplay);
 
-  const FI_SWR_PRESETS = ['3.5', '4.0', '4.5'];
   const fiSwrDisplay =
     fiSwrInput !== null
       ? fiSwrInput
       : storedCalc.fiWithdrawalRatePct === '' ? '4.0' : String(storedCalc.fiWithdrawalRatePct);
-  const fiSwrIsPreset = FI_SWR_PRESETS.includes(fiSwrDisplay);
   const fiSwrNum = parseFloat(fiSwrDisplay);
   const fiSwrForMath = !isNaN(fiSwrNum) && fiSwrNum > 0 ? fiSwrNum : 4.0;
 
@@ -582,8 +523,6 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     : NaN;
   const fiNumber =
     !isNaN(fiNetAnnualExpenses) && fiNetAnnualExpenses > 0 ? fiNetAnnualExpenses / (fiSwrForMath / 100) : null;
-  const fiProgressPct =
-    fiNumber && !isNaN(fiSavingsNum) ? Math.min(100, Math.max(0, (fiSavingsNum / fiNumber) * 100)) : null;
 
   const fiCanProjectTimeline =
     fiNumber !== null && !isNaN(fiSavingsNum) && !isNaN(fiReturnNum) && !isNaN(fiMonthlySavingsNum) && fiMonthlySavingsNum >= 0;
@@ -605,14 +544,6 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     }
   }
 
-  const fiTimelineLabel = fiMonthsUntilFi !== null ? formatYearsMonths(fiMonthsUntilFi) : null;
-  const fiProjectedDateLabel = (() => {
-    if (fiMonthsUntilFi === null) return '';
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + fiMonthsUntilFi);
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  })();
 
   // Redesign: Emergency tab. Saved so far comes from the Emergency Fund pot when there is one.
   const efPot = goals.find(isEmergencyPot);
@@ -991,7 +922,6 @@ function makeStyles(colors: any) {
     sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
     sheetBarBtn: { fontSize: 17, color: colors.gold },
     sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
-    rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
 
     pillRow: {
       paddingHorizontal: 16,
@@ -1000,18 +930,10 @@ function makeStyles(colors: any) {
       backgroundColor: colors.navy2,
     },
     balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
-    goalCollapsedWrap: {},
-    detailContainer: { gap: 8 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 13, color: colors.inkDim },
-    detailValue: { fontSize: 15, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
     goalRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    goalRowMain: { flex: 1, marginRight: 10 },
     goalName: { fontSize: 17, fontWeight: '500', color: colors.ink },
     goalSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
-    goalAmount: { fontSize: 15, fontWeight: '600', color: colors.saving },
     progressTrack: {
       height: 6,
       borderRadius: 999,
@@ -1020,9 +942,6 @@ function makeStyles(colors: any) {
       marginTop: 10,
     },
     progressFill: { height: 6, borderRadius: 999, backgroundColor: colors.saving },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
-    calcIntro: { fontSize: 15, color: colors.inkDim, lineHeight: 18, marginBottom: 18 },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -1041,28 +960,8 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 14,
     },
-    suggestionRow: { marginTop: -6, marginBottom: 14 },
     suggestionText: { fontSize: 15, color: colors.gold },
     fieldHint: { fontSize: 13, color: colors.inkFaint, marginBottom: 10, lineHeight: 15 },
-    resultCard: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-      marginTop: 4,
-      marginBottom: 18,
-    },
-    resultLabel: { fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginBottom: 6 },
-    resultAmount: { fontSize: 22, fontWeight: '700', color: colors.ink },
-    resultSub: { fontSize: 15, color: colors.inkDim, marginTop: 8 },
-swrPillRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
-resultSecondaryLabel: { fontSize: 13, letterSpacing: 0.3, color: colors.inkDim, marginTop: 14, marginBottom: 4 },
-resultSecondary: { fontSize: 15, fontWeight: '700', color: colors.ink },
-toggleLink: { alignSelf: 'center', marginTop: 8 },
-toggleLinkText: { fontSize: 13, color: colors.gold, fontWeight: '600' },
-    deleteButton: { alignItems: 'center', paddingVertical: 10, marginBottom: 4 },
-    deleteButtonText: { fontSize: 13, color: colors.error, fontWeight: '600' },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
@@ -1078,11 +977,8 @@ toggleLinkText: { fontSize: 13, color: colors.gold, fontWeight: '600' },
       justifyContent: 'center',
       marginBottom: 14,
     },
-    contribRemoveButtonText: { fontSize: 15, color: colors.inkDim },
     addContribButton: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 6, marginTop: -4 },
     addContribButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
-    chooseAccountsLink: { marginTop: -6, marginBottom: 14 },
-    chooseAccountsLinkText: { fontSize: 15, color: colors.gold, fontWeight: '600' },
     accountPickerRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1103,16 +999,5 @@ toggleLinkText: { fontSize: 13, color: colors.gold, fontWeight: '600' },
       alignItems: 'center',
       justifyContent: 'center',
     },
-    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
-    compareButton: {
-      backgroundColor: colors.navy3,
-      borderRadius: 10,
-      paddingVertical: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 14,
-    },
-    compareButtonText: { fontSize: 15, fontWeight: '700', color: colors.gold },
-  });
+    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },});
 }
