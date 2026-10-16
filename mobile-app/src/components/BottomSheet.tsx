@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard } from 'react-native';
+import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions } from 'react-native';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
@@ -38,7 +39,14 @@ export default function BottomSheet({
   const [keyboardHeight, setKeyboardHeight] = React.useState(0);
   React.useEffect(() => {
     if (Platform.OS !== 'android' || !visible) return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates?.height ?? 0));
+    // How much of the screen the keyboard covers, from where its top edge actually is
+    // (its reported height leaves out the navigation bar on some phones).
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      const screenH = Dimensions.get('screen').height;
+      const { screenY, height } = e.endCoordinates ?? { screenY: 0, height: 0 };
+      const fromTop = typeof screenY === 'number' && screenY > 0 ? screenH - screenY : 0;
+      setKeyboardHeight(Math.max(height ?? 0, fromTop));
+    });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
     return () => {
       show.remove();
@@ -88,7 +96,7 @@ export default function BottomSheet({
               </View>
             )}
 
-            <ScrollView
+            <KeyboardAwareScrollView
               style={styles.scroll}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
@@ -96,7 +104,7 @@ export default function BottomSheet({
               bounces={false}
             >
               {children}
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={{ height: bottomSpace }} />
           </View>

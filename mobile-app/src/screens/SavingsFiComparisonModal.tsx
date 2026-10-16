@@ -11,6 +11,7 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
@@ -77,7 +78,7 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <GradientFill match={styles.card} />
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Compare Scenarios</Text>
             <Text style={styles.sub}>
               Base Plan is your saved plan. Change fields below to compare a What-If Plan. Nothing here changes what's saved.
@@ -175,7 +176,7 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </Pressable>
       </Pressable>
     </Modal>

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { useNavigation } from '@react-navigation/native';
 import { todayISO } from '../dateUtils';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
@@ -579,7 +580,7 @@ export default function TravelScreen() {
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
               <GradientFill match={styles.modalCard} />
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit trip' : 'New trip'}</Text>
 
                 <Text style={styles.inputLabel}>Trip name</Text>
@@ -696,7 +697,7 @@ export default function TravelScreen() {
                 {editingId && <Button label="Delete trip" variant="destructive" onPress={handleDeleteTrip} />}
 
                 <Button label="Cancel" variant="quiet" onPress={closeModal} />
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
 import { useNavigation } from '@react-navigation/native';
 import SegmentedControl from '../components/SegmentedControl';
@@ -621,7 +622,7 @@ export default function EventsScreen() {
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
               <GradientFill match={styles.modalCard} />
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit event' : 'New event'}</Text>
 
                 <Text style={styles.inputLabel}>Event name</Text>
@@ -780,7 +781,7 @@ export default function EventsScreen() {
                 {editingId && <Button label="Delete event" variant="destructive" onPress={handleDeleteEvent} />}
 
                 <Button label="Cancel" variant="quiet" onPress={closeModal} />
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>

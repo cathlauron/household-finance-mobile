@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, ScrollView, ScrollViewProps } from 'react-native';
+import { KeyboardAwareScrollView } from './components/KeyboardAwareScrollView';
 
 // Not a pull-to-refresh any more. This just gives every screen the platform's elastic
 // overscroll (iPhone bounce, Android stretch).
@@ -16,13 +17,13 @@ export const PullToRefreshScrollView = React.forwardRef<ScrollView, Props>(funct
   ref
 ) {
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       keyboardShouldPersistTaps="handled"
       {...rest}
       ref={ref}
       {...(Platform.OS === 'android' ? { overScrollMode: 'always' as const } : { bounces: true, alwaysBounceVertical: true })}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 });

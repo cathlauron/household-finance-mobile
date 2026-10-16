@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import LoadingView from './LoadingView';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -129,7 +130,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {step === 1 && (
           <>
             <Text style={styles.large}>What should we call you?</Text>
@@ -278,7 +279,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
             <Text style={styles.footer}>The + button sits on that side, just above the tabs.</Text>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <View style={styles.bottom}>
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill }]} onPress={next} accessibilityRole="button" testID="onboard-continue">

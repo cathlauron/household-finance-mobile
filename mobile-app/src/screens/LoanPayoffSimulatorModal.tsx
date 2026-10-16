@@ -18,6 +18,7 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
 import { Text } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
@@ -146,7 +147,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <GradientFill match={styles.card} />
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Loan Payoff Simulator</Text>
 
             {loans.length === 0 ? (
@@ -230,7 +231,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </Pressable>
       </Pressable>
     </Modal>

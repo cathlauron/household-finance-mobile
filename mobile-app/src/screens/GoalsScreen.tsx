@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatPeso, outstandingBalance, loanOutstandingBalance } from '../balanceProjection';
@@ -371,7 +372,7 @@ export default function GoalsScreen() {
           >
             <Pressable style={styles.modalCard} onPress={() => {}}>
               <GradientFill match={styles.modalCard} />
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{editingId ? 'Edit goal' : 'New goal'}</Text>
 
                 <Text style={styles.inputLabel}>Title</Text>
@@ -473,7 +474,7 @@ export default function GoalsScreen() {
                 {editingId && <Button label="Delete goal" variant="destructive" onPress={handleDeleteGoal} />}
 
                 <Button label="Cancel" variant="quiet" onPress={closeModal} />
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>

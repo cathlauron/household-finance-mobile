@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
@@ -114,7 +115,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
         {/* STEP 2: QUICK UNLOCK */}
         {step === 2 && (
@@ -188,7 +189,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
           </View>
         )}
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
@@ -72,7 +73,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.eyebrow}>QUICK UNLOCK</Text>
         <Text style={styles.title}>Set a PIN</Text>
         <Text style={styles.sub}>
@@ -117,7 +118,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
         <TouchableOpacity style={styles.ghostBtn} onPress={onCancel}>
           <Text style={styles.ghostBtnText}>Cancel</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

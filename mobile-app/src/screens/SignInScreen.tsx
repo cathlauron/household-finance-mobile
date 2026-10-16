@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import LogoMark from '../components/LogoMark';
@@ -773,7 +774,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
   }
 
   return (
-    <View style={ms.container}>
+    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[ms.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={ms.brandWrap}>
         <LogoMark width={84} />
       </View>
@@ -899,7 +900,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <GradientFill match={styles.modalCard} />
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalEyebrow}>ACCOUNT RECOVERY</Text>
               <Text style={styles.modalTitle}>Password Accepted, But Data Locked</Text>
               <Text style={styles.modalSub}>
@@ -999,11 +1000,11 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
               >
                 <Text style={styles.ghostBtnText}>Back to Sign In</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 

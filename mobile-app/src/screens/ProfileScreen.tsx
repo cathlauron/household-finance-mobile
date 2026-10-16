@@ -1,5 +1,6 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -712,7 +713,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         {section === 'profile' && (<>
         {/* Profile: picture, name and email, then plain grouped rows. */}
         <View style={styles.identityHeader}>
@@ -1216,7 +1217,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     <Text style={styles.signOutButtonText}>Log out</Text>
   </TouchableOpacity>
         </>)}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Peer Recovery Approval Modal */}
       <Modal

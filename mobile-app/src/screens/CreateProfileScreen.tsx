@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
@@ -148,7 +149,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -303,7 +304,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
             </View>
           </View>
         </Modal>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

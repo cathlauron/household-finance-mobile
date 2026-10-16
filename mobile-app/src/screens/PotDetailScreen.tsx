@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { showSaved } from '../components/SavedToast';
 import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
@@ -168,7 +169,7 @@ export default function PotDetailScreen() {
   const fromLabel = (p?: PaymentMethod) => accountLabel(model, p);
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView contentContainerStyle={styles.content}>
       <View style={styles.group}>
         <GradientFill match={styles.group} />
         <View style={{ padding: 16 }}>
@@ -316,7 +317,7 @@ export default function PotDetailScreen() {
           )}
         </View>
       </BottomSheet>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

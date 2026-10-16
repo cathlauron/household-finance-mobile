@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -70,7 +71,7 @@ export default function EnvelopesScreen() {
         : 'Set a monthly budget or add your income to see this';
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.intro}>Give every peso a job. What is left in an envelope can roll into next month.</Text>
 
       <View style={[styles.group, styles.unassigned]}>
@@ -126,7 +127,7 @@ export default function EnvelopesScreen() {
       </View>
 
       <EnvelopeSheet sheet={sheet} onClose={() => setSheet(null)} model={model} rows={rows} unassigned={unassigned} onSave={save} />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

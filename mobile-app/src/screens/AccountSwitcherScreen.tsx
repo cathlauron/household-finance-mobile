@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import LogoMark from '../components/LogoMark';
@@ -178,7 +179,7 @@ export default function AccountSwitcherScreen({
       style={{ flex: 1, backgroundColor: 'transparent' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.brandWrap}>
           <LogoMark width={84} />
         </View>
@@ -308,7 +309,7 @@ export default function AccountSwitcherScreen({
             <Text style={s.ghostBtnText}>Use another account</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

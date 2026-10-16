@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -130,7 +131,7 @@ export default function TransferScreen() {
           {saving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.barBtn, { fontWeight: '700' }]}>Move</Text>}
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {accounts.length < 2 ? (
           <Text style={styles.footer}>Add at least two accounts (in Home's Wallet) to move money between them.</Text>
         ) : (
@@ -161,7 +162,7 @@ export default function TransferScreen() {
             </Text>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

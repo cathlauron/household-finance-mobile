@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
@@ -137,7 +138,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[styles.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={{ alignItems: 'center', marginBottom: 28 }}>
         <LogoMark width={72} />
       </View>
@@ -237,7 +238,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
           </TouchableOpacity>
         </>
       )}
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 
