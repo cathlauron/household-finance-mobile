@@ -1,5 +1,10 @@
 ﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, the H series Home redesign, and the V series visual-system pass: mint base, accessible colors, shared components)
 
+🔒 CLOSED (2026-10-16). This file is no longer updated. The ACTIVE progress log is now
+PROGRESS7.md (repo root, on `main`), which covers version 3 on the `v3` branch and carries
+forward every still-open decision, known issue and next step from here. Everything below
+is kept for reference only.
+
 >>> START HERE (2026-10-16, merge): `redesign` is MERGED into `main` (9ae00f9) = version 2.0.0. New work happens on the `v3` branch (made from main at 9ae00f9). `redesign` is kept but no longer used. See the NEWEST ▶️ Next step bullet.
 >>> (older) The redesign code was on the `redesign` branch; read the two design artifacts listed in PROGRESS6.md's R series section first.
 >>> (older) 2026-10-16, later: see "R SERIES, SESSION 5" and the NEWEST ▶️ Next step bullet (test the Finance Flow 2 build → forms check → transitions → merge).
