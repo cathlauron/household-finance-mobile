@@ -54,7 +54,11 @@ export default function BottomSheet({
       setKeyboardHeight(0);
     };
   }, [visible]);
-  const bottomSpace = Math.max(keyboardHeight, insets.bottom);
+  // Android reports the keyboard's height WITHOUT the navigation bar under it, and the
+  // sheet runs right to the bottom edge, so the room kept at the bottom is keyboard +
+  // navigation bar. The content above shrinks (and scrolls) to make room; the sheet never
+  // grows past the top of the screen.
+  const bottomSpace = keyboardHeight > 0 ? keyboardHeight + (Platform.OS === 'android' ? insets.bottom : 0) : insets.bottom;
 
   return (
     <Modal
@@ -82,7 +86,7 @@ export default function BottomSheet({
             style={[
               styles.sheet,
               grouped && { backgroundColor: colors.navy2 },
-              keyboardHeight > 0 && { maxHeight: Math.max(200, screenHeight - keyboardHeight - insets.top - 24) },
+              keyboardHeight > 0 && { maxHeight: Math.max(200, screenHeight - insets.top - 24) },
             ]}
           >
             <View style={styles.handleWrap}>
@@ -163,6 +167,7 @@ function makeStyles(colors: any, screenHeight: number) {
     },
     scroll: {
       flexGrow: 0,
+      flexShrink: 1,
     },
     scrollContent: {
       paddingHorizontal: spacing[20],

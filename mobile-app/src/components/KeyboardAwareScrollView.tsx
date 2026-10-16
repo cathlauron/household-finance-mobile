@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // A ScrollView that keeps what you're typing above the keyboard.
 //
@@ -25,9 +26,13 @@ import {
 
 const MARGIN = 24; // gap kept between the field and the keyboard
 
-function keyboardTopFrom(e: KeyboardEvent): number {
+// Where the keyboard's top edge is on screen. On Android the reported height leaves out
+// the navigation bar under the keyboard (and screenY is just the screen's bottom when the
+// app draws edge to edge), so the navigation bar is added back.
+function keyboardTopFrom(e: KeyboardEvent, navBar: number): number {
   const screenH = Dimensions.get('screen').height;
   const { screenY, height } = e.endCoordinates;
+  if (Platform.OS === 'android') return screenH - height - navBar;
   const fromY = typeof screenY === 'number' && screenY > 0 ? screenY : screenH;
   return Math.min(fromY, screenH - height);
 }
@@ -37,6 +42,9 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, ScrollViewProps>(f
   ref
 ) {
   const inner = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
+  const navBarRef = useRef(insets.bottom);
+  navBarRef.current = insets.bottom;
   useImperativeHandle(ref, () => inner.current as ScrollView);
   const [extra, setExtra] = useState(0);
   const offsetY = useRef(0);
@@ -58,7 +66,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, ScrollViewProps>(f
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const show = Keyboard.addListener(showEvent, (e) => {
-      const top = keyboardTopFrom(e);
+      const top = keyboardTopFrom(e, navBarRef.current);
       keyboardTop.current = top;
       const node: any = inner.current;
       if (node && typeof node.measureInWindow === 'function') {

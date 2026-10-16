@@ -151,8 +151,10 @@ service cloud.firestore {
     }
 
     match /householdKeys/{username} {
+      // Security (2026-10-16): every record now has an owner, so the old "no owner =
+      // anyone signed in" fallback is gone. Only the owner can read or change it.
       allow get: if request.auth != null
-        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid;
+        && resource.data.ownerUid == request.auth.uid;
 
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt', 'ownerUid'])
@@ -162,7 +164,7 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow update: if request.auth != null
-        && request.auth.uid == resource.data.get('ownerUid', request.auth.uid)
+        && request.auth.uid == resource.data.ownerUid
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt', 'ownerUid'])
         && request.resource.data.householdId is string
@@ -183,7 +185,7 @@ service cloud.firestore {
       // Pre-Phase-B Tier 1 fix: ownerUid field added on create and required
       // on update so only the owning user can modify their backup.
       allow get: if request.auth != null
-        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid;
+        && resource.data.ownerUid == request.auth.uid;
 
       allow create: if request.auth != null
         && request.resource.data.ownerUid == request.auth.uid
@@ -221,7 +223,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number;
 
       allow update: if request.auth != null
-        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid
+        && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['ownerUid', 'recoverySalt', 'wrappedKey', 'isHouseholdKey', 'updatedAt'])
         && request.resource.data.ownerUid is string
