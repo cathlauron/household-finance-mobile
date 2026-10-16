@@ -8,8 +8,9 @@ import * as Location from 'expo-location';
 //
 // With "Live weather" on, the phone's approximate location is used to work out the real
 // sunrise and sunset for that day (worked out on the phone, no internet needed), so
-// morning starts at sunrise and night starts when it is really dark. Weather colours and
-// rain come in later steps. Without location the glow uses 6:00 sunrise / 18:00 sunset.
+// morning starts at sunrise and night starts when it is really dark, and the current
+// weather (clear, cloudy or rain) is checked about once an hour.
+// Without location the glow uses 6:00 sunrise / 18:00 sunset.
 //
 // Both switches are saved on this phone only (like Text size): location permission is a
 // per-phone thing, and the location itself is never put into the household's synced data.
@@ -21,6 +22,13 @@ type SavedPlace = { lat: number; lon: number; at: number };
 
 const PREFS_KEY = 'skyPrefs';
 const PLACE_KEY = 'skyPlace';
+const WEATHER_KEY = 'skyWeather';
+
+// Live weather, simplified to the three looks the sky has.
+export type SkyWeather = 'clear' | 'cloudy' | 'rain';
+type SavedWeather = { kind: SkyWeather; at: number };
+let weather: SavedWeather | null = null;
+let weatherBusy = false;
 
 let prefs: SkyPrefs = { glowOn: true, liveWeatherOn: false };
 let place: SavedPlace | null = null;
@@ -33,10 +41,11 @@ const subscribe = (l: () => void) => {
   };
 };
 
-AsyncStorage.multiGet([PREFS_KEY, PLACE_KEY])
-  .then(([[, savedPrefs], [, savedPlace]]) => {
+AsyncStorage.multiGet([PREFS_KEY, PLACE_KEY, WEATHER_KEY])
+  .then(([[, savedPrefs], [, savedPlace], [, savedWeather]]) => {
     if (savedPrefs) prefs = { ...prefs, ...JSON.parse(savedPrefs) };
     if (savedPlace) place = JSON.parse(savedPlace);
+    if (savedWeather) weather = JSON.parse(savedWeather);
     emit();
   })
   .catch(() => {});
@@ -69,6 +78,7 @@ async function refreshPlace(): Promise<boolean> {
     place = { lat: round2(pos.coords.latitude), lon: round2(pos.coords.longitude), at: Date.now() };
     emit();
     AsyncStorage.setItem(PLACE_KEY, JSON.stringify(place)).catch(() => {});
+    refreshWeather(true);
     return true;
   } catch {
     return false;
@@ -91,6 +101,59 @@ export async function setLiveWeatherOn(on: boolean): Promise<boolean> {
   savePrefs({ ...prefs, liveWeatherOn: true });
   refreshPlace();
   return true;
+}
+
+// ---- Weather (Open-Meteo: free, no account or key; only the rounded location is sent) ----
+// WMO weather codes: 0-1 clear, 2 partly cloudy (still shown as clear), 3 overcast and
+// 45/48 fog = cloudy, drizzle/rain/showers/thunderstorms = rain. Snow shows as cloudy.
+export function weatherFromCode(code: number): SkyWeather {
+  if (code <= 2) return 'clear';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return 'rain';
+  return 'cloudy';
+}
+
+const HOUR = 60 * 60 * 1000;
+async function refreshWeather(force = false): Promise<void> {
+  if (!prefs.liveWeatherOn || !place || weatherBusy) return;
+  if (!force && weather && Date.now() - weather.at < HOUR) return;
+  weatherBusy = true;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&current=weather_code&timezone=auto&forecast_days=1`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const json = await res.json();
+    const code = json?.current?.weather_code;
+    if (typeof code !== 'number') return;
+    weather = { kind: weatherFromCode(code), at: Date.now() };
+    emit();
+    AsyncStorage.setItem(WEATHER_KEY, JSON.stringify(weather)).catch(() => {});
+  } catch {
+    // Offline or the service is down: keep the last weather we saw.
+  } finally {
+    weatherBusy = false;
+  }
+}
+
+// The weather look to draw. Clear unless Live weather is on and we have a reading from
+// the last 6 hours (an old reading is not worth showing).
+// Testing only (development builds, e.g. Expo Go): force a weather look from Settings to
+// check how it draws. Not saved; never shown in a release build.
+let previewWeather: SkyWeather | null = null;
+export function setPreviewWeather(w: SkyWeather | null) {
+  previewWeather = w;
+  emit();
+}
+export function usePreviewWeather(): SkyWeather | null {
+  return useSyncExternalStore(subscribe, () => previewWeather, () => previewWeather);
+}
+
+export function useSkyWeather(): SkyWeather {
+  const { liveWeatherOn } = useSkyPrefs();
+  const w = useSyncExternalStore(subscribe, () => weather, () => weather);
+  const preview = usePreviewWeather();
+  if (__DEV__ && preview) return preview;
+  if (!liveWeatherOn || !w || Date.now() - w.at > 6 * HOUR) return 'clear';
+  return w.kind;
 }
 
 // ---- Sunrise and sunset (the standard NOAA sunrise equation) ----
@@ -158,13 +221,18 @@ export function useSkyPhase(): SkyPhase {
 
   useEffect(() => {
     setPhase(compute());
-    const tick = setInterval(() => setPhase(compute()), MIN);
+    const tick = setInterval(() => {
+      setPhase(compute());
+      if (liveWeatherOn) refreshWeather();
+    }, MIN);
     const sub = AppState.addEventListener('change', (s) => {
       if (s !== 'active') return;
       setPhase(compute());
       if (liveWeatherOn && (!place || Date.now() - place.at > 3 * 60 * MIN)) refreshPlace();
+      else if (liveWeatherOn) refreshWeather();
     });
     if (liveWeatherOn && (!place || Date.now() - place.at > 3 * 60 * MIN)) refreshPlace();
+    else if (liveWeatherOn) refreshWeather();
     return () => {
       clearInterval(tick);
       sub.remove();

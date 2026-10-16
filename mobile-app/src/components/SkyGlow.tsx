@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
-import { SkyPhase, useSkyPhase, useSkyPrefs } from '../sky';
+import { SkyPhase, SkyWeather, useSkyPhase, useSkyPrefs, useSkyWeather } from '../sky';
 
 // The time-of-day glow behind the top of Home (approved on the "Forms Redesign" canvas,
 // greeting round 5). No sun or moon shape: the light just glows out of the top-right
@@ -11,7 +11,10 @@ import { SkyPhase, useSkyPhase, useSkyPrefs } from '../sky';
 //   afternoon - soft honey, faint rays fanning down from the corner and a wisp of cloud
 //   evening   - peach to rose dusk with the first few stars
 //   night     - cool blue with a scatter of stars and three small twinkles
-// Drawn once per phase (no animation), so it costs almost nothing.
+// With Live weather on, cloudy and rainy weather swap in their own looks (greying glow and
+// a wider bank of cloud; rain adds fine slanted drops that fade before the Left to Spend
+// card). Evening counts as day for these; night keeps a few faint stars when cloudy.
+// Drawn once per phase and weather (no animation yet), so it costs almost nothing.
 
 const H = 340; // how far down the screen the glow reaches
 const CX = 392; // the light source: just off the top-right corner
@@ -37,6 +40,33 @@ const LOOKS: Record<SkyPhase, { light: Look; dark: Look }> = {
     dark: { c: '#2F3D78', co: 0.95, m: '#1C2450', mo: 0.5, tex: '#FFFFFF' },
   },
 };
+
+// Weather looks, from the "Live weather: cloudy and rain" boards.
+const WEATHER_LOOKS: Record<Exclude<SkyWeather, 'clear'>, { day: { light: Look; dark: Look }; night: { light: Look; dark: Look } }> = {
+  cloudy: {
+    day: {
+      light: { c: '#E3E1DA', co: 0.95, m: '#ECE9E4', mo: 0.45, tex: '#5E6AA0' },
+      dark: { c: '#3F3D38', co: 0.9, m: '#2A2926', mo: 0.45, tex: '#FFFFFF' },
+    },
+    night: {
+      light: { c: '#C3C6D6', co: 0.9, m: '#DADCE6', mo: 0.45, tex: '#5E6AA0' },
+      dark: { c: '#2A2F45', co: 0.95, m: '#1B1F30', mo: 0.5, tex: '#FFFFFF' },
+    },
+  },
+  rain: {
+    day: {
+      light: { c: '#C9D3DE', co: 0.95, m: '#DCE3EA', mo: 0.45, tex: '#6F86A6' },
+      dark: { c: '#2C3A4A', co: 0.9, m: '#1C2632', mo: 0.45, tex: '#AFC4E0' },
+    },
+    night: {
+      light: { c: '#B6C2D6', co: 0.92, m: '#D3DAE6', mo: 0.45, tex: '#6F86A6' },
+      dark: { c: '#233149', co: 0.95, m: '#161F30', mo: 0.5, tex: '#AFC4E0' },
+    },
+  },
+};
+const CLOUD_BANK: [number, number, number, number][] = [
+  [300, 30, 80, 22], [220, 52, 60, 16], [355, 78, 54, 17], [160, 34, 46, 12], [260, 104, 66, 15], [110, 70, 40, 11],
+];
 
 // A fixed "random" scatter (the same every time), denser near the corner.
 function seeded(seed: number) {
@@ -66,6 +96,17 @@ const STARS = scatter(7, 46, [0.6, 0.7, 0.8, 1.0, 1.2], 0.25, 0.75);
 const DUSK = scatter(11, 14, [0.6, 0.8, 1.0], 0.25, 0.6);
 const MOTES = scatter(5, 30, [0.8, 1.0, 1.3, 1.6], 0.2, 0.55);
 const SPARKS = scatter(13, 12, [0.8, 1.0, 1.2], 0.2, 0.45);
+const CLOUD_STARS = scatter(9, 10, [0.8], 0.2, 0.5);
+
+// Rain: short slanted strokes, fading out towards the bottom of the glow.
+type Drop = { x: number; y: number; len: number; o: number };
+const DROPS: Drop[] = (() => {
+  const r = seeded(3);
+  return Array.from({ length: 70 }, () => {
+    const y = r() * 310;
+    return { x: r() * 400, y, len: 9 + r() * 7, o: (0.18 + r() * 0.24) * (1 - y / 320) };
+  });
+})();
 
 const twinkle = (x: number, y: number, k: number) =>
   `M ${x} ${y - k} Q ${x} ${y} ${x + k} ${y} Q ${x} ${y} ${x} ${y + k} Q ${x} ${y} ${x - k} ${y} Q ${x} ${y} ${x} ${y - k} Z`;
@@ -82,10 +123,12 @@ export default function SkyGlow() {
   const { isDark } = useTheme();
   const { glowOn } = useSkyPrefs();
   const phase = useSkyPhase();
+  const sky = useSkyWeather();
   const { width } = useWindowDimensions();
 
   const art = useMemo(() => {
-    const look = LOOKS[phase][isDark ? 'dark' : 'light'];
+    const mode = isDark ? 'dark' : 'light';
+    const look = sky === 'clear' ? LOOKS[phase][mode] : WEATHER_LOOKS[sky][phase === 'night' ? 'night' : 'day'][mode];
     const dots = (list: Dot[], scale = 1) =>
       list.map((d, i) => <Circle key={i} cx={d.x} cy={d.y} r={d.r} fill={look.tex} fillOpacity={d.o * scale} />);
     const wisp = (cx: number, cy: number, rx: number, ry: number) => (
@@ -102,7 +145,7 @@ export default function SkyGlow() {
             <Stop offset="1" stopColor={look.m} stopOpacity={0} />
           </RadialGradient>
           <RadialGradient id="skyWisp" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? 0.07 : 0.6} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={isDark ? (sky === 'rain' ? 0.05 : 0.07) : sky === 'rain' ? 0.45 : 0.6} />
             <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
           </RadialGradient>
           <RadialGradient id="skyRay" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={340}>
@@ -111,13 +154,32 @@ export default function SkyGlow() {
           </RadialGradient>
         </Defs>
         <Rect x={0} y={0} width={390} height={H} fill="url(#skyGlow)" />
-        {phase === 'morning' && (
+        {sky !== 'clear' && (
+          <>
+            {CLOUD_BANK.map(([cx, cy, rx, ry], i) => (
+              <React.Fragment key={i}>{wisp(cx, cy, rx, ry)}</React.Fragment>
+            ))}
+            {sky === 'cloudy' && phase === 'night' && dots(CLOUD_STARS)}
+            {sky === 'rain' &&
+              DROPS.map((d, i) => (
+                <Path
+                  key={i}
+                  d={`M ${d.x} ${d.y} L ${d.x - d.len * 0.22} ${d.y + d.len}`}
+                  stroke={look.tex}
+                  strokeOpacity={d.o}
+                  strokeWidth={1.1}
+                  strokeLinecap="round"
+                />
+              ))}
+          </>
+        )}
+        {sky === 'clear' && phase === 'morning' && (
           <>
             {dots(MOTES)}
             {wisp(248, 78, 52, 12)}
           </>
         )}
-        {phase === 'afternoon' && (
+        {sky === 'clear' && phase === 'afternoon' && (
           <>
             {RAYS.map((pts, i) => (
               <Polygon key={i} points={pts} fill="url(#skyRay)" />
@@ -126,13 +188,13 @@ export default function SkyGlow() {
             {dots(SPARKS)}
           </>
         )}
-        {phase === 'evening' && (
+        {sky === 'clear' && phase === 'evening' && (
           <>
             {dots(DUSK)}
             <Path d={twinkle(262, 46, 4)} fill={look.tex} fillOpacity={0.7} />
           </>
         )}
-        {phase === 'night' && (
+        {sky === 'clear' && phase === 'night' && (
           <>
             {dots(STARS, isDark ? 1 : 0.8)}
             <Path d={twinkle(232, 38, 5)} fill={look.tex} fillOpacity={0.8} />
@@ -142,7 +204,7 @@ export default function SkyGlow() {
         )}
       </>
     );
-  }, [phase, isDark]);
+  }, [phase, isDark, sky]);
 
   if (!glowOn) return null;
   // The art is drawn for a 390-wide phone; wider phones stretch it a little sideways only.

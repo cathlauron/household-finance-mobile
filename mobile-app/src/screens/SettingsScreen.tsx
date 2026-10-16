@@ -3,7 +3,7 @@ import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
-import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn } from '../sky';
+import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
@@ -200,6 +200,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
   const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(0);
   const textSize = useTextSize();
   const skyPrefs = useSkyPrefs();
+  const previewWeather = usePreviewWeather();
 
   // Active Devices state
   const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
@@ -1434,7 +1435,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         <SettingsGroup
           label="Sky"
           plain
-          footer="Live weather uses your phone's approximate location to match the sky on Home to your real sunrise and sunset. Only a rounded location is used, never your money data."
+          footer="Live weather uses your phone's approximate location to match the sky on Home to your real sunrise, sunset and weather. Only a rounded location is sent to the weather service (Open-Meteo), never your money data."
         >
           <PlainRow
             title="Time-of-day glow"
@@ -1452,6 +1453,20 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
               }
             }, 'settings-live-weather')}
           />
+          {__DEV__ && (
+            <SegmentRow
+              title="Preview weather (testing only)"
+              options={[
+                { id: 'live', label: 'Live' },
+                { id: 'clear', label: 'Clear' },
+                { id: 'cloudy', label: 'Cloudy' },
+                { id: 'rain', label: 'Rain' },
+              ]}
+              value={previewWeather ?? 'live'}
+              onChange={(v) => setPreviewWeather(v === 'live' ? null : (v as 'clear' | 'cloudy' | 'rain'))}
+              testIDPrefix="settings-preview-weather"
+            />
+          )}
         </SettingsGroup>
 
         <SettingsGroup label="Feel" plain footer="Mood colours: the card, buttons and leaves follow Left to Spend.">
