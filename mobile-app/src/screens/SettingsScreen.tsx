@@ -19,7 +19,7 @@ import { useData } from '../DataContext';
 import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
-import { requestNotificationPermission } from '../pushNotifications';
+import { requestNotificationPermission, sendTestNotification, countScheduledNotifications } from '../pushNotifications';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   loadProfilesIndex,
@@ -353,6 +353,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [watchCategoryInput, setWatchCategoryInput] = useState('');
   const [watchLimitInput, setWatchLimitInput] = useState<number | ''>('');
   const [watchErrorMsg, setWatchErrorMsg] = useState('');
+  const [testNotifMsg, setTestNotifMsg] = useState('');
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
@@ -1560,6 +1561,21 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             />
           )}
         </SettingsGroup>
+
+        {__DEV__ && (
+          <SettingsGroup label="Testing only" plain footer={testNotifMsg || 'Sends a test reminder in 10 seconds. Lock the phone or leave the app to see it arrive.'}>
+            <PlainRow
+              title="Send a test reminder"
+              accent
+              testID="settings-test-notification"
+              onPress={async () => {
+                const ok = await sendTestNotification();
+                const n = await countScheduledNotifications().catch(() => 0);
+                setTestNotifMsg(ok ? `Test reminder coming in 10 seconds. Reminders waiting on this phone: ${n}.` : 'Notifications are turned off for Finance Flow in the phone settings.');
+              }}
+            />
+          </SettingsGroup>
+        )}
         </>
         )}
 

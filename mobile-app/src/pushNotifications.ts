@@ -20,6 +20,7 @@ import * as Notifications from 'expo-notifications';
 import { currentCycle } from './billPayments';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HouseholdModel, Bill } from './types';
 import { getNextDueDate } from './recurrence';
 import { buildTransactionsList, transactionTotals } from './transactions';
@@ -83,7 +84,64 @@ function billOutstanding(bill: Bill): number {
 // unpaid bill that has a computable due date, timed to fire at 9:00 AM on
 // whichever day is "X days before due" (X = the Notifications setting).
 // Does nothing if the setting is off, or if permission hasn't been granted.
-export async function rescheduleBillNotifications(model: HouseholdModel): Promise<void> {
+// Saves can come close together, so set-ups run one at a time: if one is running, the
+// newest model waits and runs straight after (older waiting ones are skipped). Without
+// this, two set-ups could interleave and wipe or double each other's reminders.
+let running: Promise<void> | null = null;
+let queued: HouseholdModel | null = null;
+
+export function rescheduleBillNotifications(model: HouseholdModel): Promise<void> {
+  if (running) {
+    queued = model;
+    return running;
+  }
+  running = (async () => {
+    let next: HouseholdModel | null = model;
+    while (next) {
+      queued = null;
+      try {
+        await rescheduleNow(next);
+      } catch (e) {
+        console.warn('Could not set up reminders:', e);
+      }
+      next = queued;
+    }
+  })().finally(() => {
+    running = null;
+  });
+  return running;
+}
+
+// A cancel-by reminder for today, set after 9:00, fires once, a minute after it was first
+// set up. That moment is remembered so later saves don't keep pushing it back (it used to
+// move a minute later on every save and never arrive) or send it again once it has fired.
+const CANCEL_BY_FIRE_KEY = 'notif:cancel-by-fire-times';
+async function loadFireTimes(): Promise<Record<string, number>> {
+  try {
+    const raw = await AsyncStorage.getItem(CANCEL_BY_FIRE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+// Testing only (Settings › Notifications in Expo Go): a reminder in 10 seconds, and how
+// many reminders are waiting, to check notifications work on this phone at all.
+export async function sendTestNotification(): Promise<boolean> {
+  if (!(await requestNotificationPermission())) return false;
+  await ensureNotificationChannel();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Test reminder', body: 'Notifications work on this phone.' },
+    trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, channelId: 'bill-alerts' },
+  });
+  return true;
+}
+export async function countScheduledNotifications(): Promise<number> {
+  return (await Notifications.getAllScheduledNotificationsAsync()).length;
+}
+
+async function rescheduleNow(model: HouseholdModel): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   const billRemindersOn = model.settings.pushNotificationsEnabled;
@@ -125,6 +183,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: alertDate,
+        channelId: 'bill-alerts',
       },
     });
   }
@@ -159,6 +218,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: reminderDate,
+        channelId: 'bill-alerts',
       },
     });
   }
@@ -169,6 +229,8 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
   // On the "cancel by" day you set on Subscriptions, at 9:00 AM. If you set it for
   // today and 9:00 has already gone, it comes a minute later instead. Tapping it opens
   // the subscription, like the reminder above.
+  const fireTimes = await loadFireTimes();
+  const keptFireTimes: Record<string, number> = {};
   for (const bill of cancelByBills) {
     const [y, m, d] = (bill.cancelBy as string).split('-').map(Number);
     if (!y || !m || !d) continue;
@@ -176,7 +238,16 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
     const endOfDay = new Date(y, m - 1, d, 23, 59, 0, 0);
     if (when.getTime() <= now.getTime()) {
       if (endOfDay.getTime() <= now.getTime()) continue; // that day has passed
-      when = new Date(now.getTime() + 60 * 1000);
+      const key = `${bill.id}:${bill.cancelBy}`;
+      const remembered = fireTimes[key];
+      if (remembered) {
+        keptFireTimes[key] = remembered;
+        if (remembered <= now.getTime()) continue; // already sent today
+        when = new Date(remembered);
+      } else {
+        when = new Date(now.getTime() + 60 * 1000);
+        keptFireTimes[key] = when.getTime();
+      }
     }
     const renewal = getNextDueDate(bill.recurringType, bill.dueDate, now);
     const amount = billOutstanding(bill);
@@ -192,9 +263,12 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: when,
+        channelId: 'bill-alerts',
       },
     });
   }
+  // Keep only today's remembered times (old days drop off).
+  AsyncStorage.setItem(CANCEL_BY_FIRE_KEY, JSON.stringify(keptFireTimes)).catch(() => {});
 
   // ============================================================
   // Weekly spending recap (Checkpoint B.11)
@@ -230,6 +304,7 @@ export async function rescheduleBillNotifications(model: HouseholdModel): Promis
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: recapDate,
+        channelId: 'bill-alerts',
       },
     });
   }
