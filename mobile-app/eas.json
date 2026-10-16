@@ -8,6 +8,12 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "preview-v2": {
+      "extends": "preview",
+      "env": {
+        "APP_VARIANT": "v2"
+      }
     }
   }
 }
