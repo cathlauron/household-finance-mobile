@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
+import { SheetBar, BigAmount, BigTotal, FormGroup, InputRow, AmountRow, GroupLabel } from '../components/SimpleForm';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -460,78 +461,76 @@ export default function GroceriesScreen() {
       <BottomSheet
         visible={sheet !== null}
         onClose={() => setSheet(null)}
+        grouped
         header={
-          <View style={styles.sheetBar}>
-            <TouchableOpacity onPress={() => setSheet(null)} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.sheetBtn}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.sheetTitle}>
-              {sheet?.kind === 'meal' ? (sheet.id ? 'Edit meal' : 'New meal') : sheet?.id ? 'Edit item' : 'New item'}
-            </Text>
-            <TouchableOpacity onPress={saveSheet} accessibilityRole="button" testID="groceries-sheet-save" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={[styles.sheetBtn, { fontWeight: '700' }]}>{sheet?.id ? 'Save' : 'Add'}</Text>
-            </TouchableOpacity>
-          </View>
+          <SheetBar
+            title={sheet?.kind === 'meal' ? (sheet.id ? 'Edit meal' : 'New meal') : sheet?.id ? 'Edit item' : 'New item'}
+            onCancel={() => setSheet(null)}
+            onDone={saveSheet}
+            doneLabel={sheet?.id ? 'Save' : 'Add'}
+          />
         }
       >
-        <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
-          <TextInput
-            autoFocus={!sheet?.id}
-            style={styles.field}
-            placeholder={sheet?.kind === 'meal' ? 'Meal, e.g. Chicken adobo' : 'Item, e.g. Rice, 5 kg'}
-            placeholderTextColor={colors.inkDim}
-            value={nameIn}
-            onChangeText={setNameIn}
-          />
-          {sheet?.kind === 'item' && (
-            <>
-              <Text style={styles.meta}>Planned price</Text>
-              <AmountInput value={plannedIn} onChangeAmount={setPlannedIn} placeholder="0.00" />
-              {!!sheet.id && (
-                <>
-                  <Text style={styles.meta}>What you paid (if different)</Text>
-                  <AmountInput value={actualIn} onChangeAmount={setActualIn} placeholder="0.00" />
-                </>
-              )}
-            </>
-          )}
-          {sheet?.kind === 'meal' && (
-            <>
-              <Text style={styles.meta}>Ingredients and their prices</Text>
+        {sheet?.kind === 'item' && (
+          <>
+            <BigAmount label="Planned price" value={plannedIn} onChange={setPlannedIn} color={colors.planned} />
+            <FormGroup>
+              <InputRow label="Item" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Rice, 5 kg" autoFocus={!sheet.id} testID="groceries-name-input" />
+              {!!sheet.id && <AmountRow label="What you paid" value={actualIn} onChange={setActualIn} placeholder="If different" />}
+            </FormGroup>
+          </>
+        )}
+        {sheet?.kind === 'meal' && (
+          <>
+            <BigTotal label="Meal total" value={formatPeso(ingredients.reduce((sum, r) => sum + (typeof r.price === 'number' ? r.price : 0), 0))} sub="Adds up from the ingredients" color={colors.planned} />
+            <FormGroup>
+              <InputRow label="Name" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Chicken adobo" autoFocus={!sheet.id} testID="groceries-name-input" />
+            </FormGroup>
+            <GroupLabel>Ingredients</GroupLabel>
+            <FormGroup>
               {ingredients.map((ing, i) => (
-                <View key={ing.id} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <View key={ing.id} style={styles.formItemRow}>
                   <TextInput
                     autoFocus={ing.id === focusIngredientId}
-                    style={[styles.field, { flex: 3 }]}
+                    style={styles.formItemName}
                     placeholder={`Ingredient ${i + 1}`}
-                    placeholderTextColor={colors.inkDim}
+                    placeholderTextColor={colors.inkFaint}
                     value={ing.name}
                     onChangeText={(t) => setIngredients((rows) => rows.map((r) => (r.id === ing.id ? { ...r, name: t } : r)))}
                   />
-                  <View style={{ flex: 2 }}>
-                    <AmountInput value={ing.price} onChangeAmount={(v) => setIngredients((rows) => rows.map((r) => (r.id === ing.id ? { ...r, price: v } : r)))} placeholder="Price" />
-                  </View>
+                  <AmountInput
+                    value={ing.price}
+                    onChangeAmount={(v) => setIngredients((rows) => rows.map((r) => (r.id === ing.id ? { ...r, price: v } : r)))}
+                    placeholder="0.00"
+                    style={{ backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, paddingHorizontal: 0, justifyContent: 'flex-end' }}
+                    inputStyle={{ textAlign: 'right', flex: 0, minWidth: 80, color: colors.planned }}
+                  />
                   <TouchableOpacity
                     onPress={() => setIngredients((rows) => rows.filter((r) => r.id !== ing.id))}
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ingredient ${i + 1}`}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginLeft: 10 }}
                   >
-                    <Ionicons name="close-circle" size={20} color={colors.inkDim} />
+                    <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
                   </TouchableOpacity>
                 </View>
               ))}
-              <TouchableOpacity onPress={() => { const id = makeId('ing'); setIngredients((rows) => [...rows, { id, name: '', price: '' }]); setFocusIngredientId(id); }} accessibilityRole="button">
-                <Text style={[styles.title, { color: colors.gold }]}>+ Add ingredient</Text>
+              <TouchableOpacity
+                onPress={() => { const id = makeId('ing'); setIngredients((rows) => [...rows, { id, name: '', price: '' }]); setFocusIngredientId(id); }}
+                accessibilityRole="button"
+                style={styles.formAddRow}
+              >
+                <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>+ Add ingredient</Text>
               </TouchableOpacity>
-            </>
-          )}
-          {!!sheet?.id && (
-            <TouchableOpacity onPress={deleteFromSheet} accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 10 }}>
-              <Text style={{ fontSize: 17, color: colors.error }}>{sheet.kind === 'meal' ? 'Delete meal' : 'Delete item'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+            </FormGroup>
+          </>
+        )}
+        {!!sheet?.id && (
+          <TouchableOpacity onPress={deleteFromSheet} accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 10 }}>
+            <Text style={{ fontSize: 17, color: colors.error }}>{sheet.kind === 'meal' ? 'Delete meal' : 'Delete item'}</Text>
+          </TouchableOpacity>
+        )}
       </BottomSheet>
     </View>
   );
@@ -539,6 +538,9 @@ export default function GroceriesScreen() {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    formItemRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16 },
+    formItemName: { flex: 1, fontSize: 17, color: colors.ink, paddingVertical: 12, marginRight: 8 },
+    formAddRow: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 16 },
     container: { flex: 1, backgroundColor: 'transparent' },
     segRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
     scroll: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
@@ -566,9 +568,5 @@ function makeStyles(colors: any) {
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: { backgroundColor: colors.navy1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
     chipText: { fontSize: 13, fontWeight: '500', color: colors.inkDim },
-    field: { backgroundColor: colors.navy3, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17, color: colors.ink },
-    sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
-    sheetBtn: { fontSize: 17, color: colors.gold },
-    sheetTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
   });
 }

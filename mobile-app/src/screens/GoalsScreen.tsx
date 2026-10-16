@@ -1,13 +1,15 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatPeso, outstandingBalance, loanOutstandingBalance } from '../balanceProjection';
 import { potSaved } from '../savingsPots';
 import { todayISO } from '../dateUtils';
-import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput } from '../components/AppText';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
+import BottomSheet from '../components/BottomSheet';
+import SegmentedControl from '../components/SegmentedControl';
+import { SheetBar, FormGroup, InputRow, AmountRow, PickerRow, SwitchRow, Footnote, GroupLabel, Choices, useOpenRow } from '../components/SimpleForm';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -17,10 +19,8 @@ import type { YearlyGoal, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import Button from '../components/Button';
 import { hapticSelection } from '../haptics';
-import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
 
 function isValidDateOrEmpty(s: string): boolean {
@@ -85,6 +85,7 @@ export default function GoalsScreen() {
   const [completedInput, setCompletedInput] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [linkInput, setLinkInput] = useState<YearlyGoal['linkedTo']>(undefined);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
   const navigation = useNavigation<any>();
 
   // Redesign: Add in the top bar adds a goal.
@@ -107,6 +108,27 @@ export default function GoalsScreen() {
   }
 
   const goals: YearlyGoal[] = model.yearlyGoals ?? [];
+
+  // For the form: the date in one line, and what the goal can follow (a pot, debt or loan).
+  const targetDateLabel = targetDateInput ? new Date(targetDateInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Optional';
+  const followOptions: { id: string; label: string }[] = [
+    { id: 'none', label: 'Nothing' },
+    ...(model.savingsGoals || []).map((p) => ({ id: `pot:${p.id}`, label: p.name || 'Pot' })),
+    ...(model.debts || []).map((d) => ({ id: `debt:${d.id}`, label: d.creditorOrPerson || 'Debt' })),
+    ...(model.loans || []).map((l) => ({ id: `loan:${l.id}`, label: l.name || 'Loan' })),
+  ];
+  const linkLabel = linkInput ? followOptions.find((o) => o.id === `${linkInput.kind}:${linkInput.id}`)?.label ?? 'Nothing' : 'Nothing';
+  function pickFollow(v: string) {
+    if (v === 'none') return setLinkInput(undefined);
+    const i = v.indexOf(':');
+    setLinkInput({ kind: v.slice(0, i) as 'pot' | 'debt' | 'loan', id: v.slice(i + 1) });
+  }
+  function confirmDeleteGoal() {
+    Alert.alert('Delete this goal?', 'Cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteGoal() },
+    ]);
+  }
 
   function openAddModal() {
     setEditingId(null);
@@ -365,121 +387,61 @@ export default function GoalsScreen() {
         {goals.length > 0 && <Text style={styles.groupFooter}>A goal can track an amount or just be ticked off. Tap a goal to edit it.</Text>}
       </PullToRefreshScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <GradientFill match={styles.modalCard} />
-              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit goal' : 'New goal'}</Text>
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit goal' : 'New goal'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} />}
+      >
+        <FormGroup>
+          <InputRow label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" />
+          <InputRow label="Description" value={descriptionInput} onChangeText={setDescriptionInput} placeholder="Optional" />
+        </FormGroup>
 
-                <Text style={styles.inputLabel}>Title</Text>
-                <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="e.g. Pay off credit card, Save 3-month emergency fund"
-                  placeholderTextColor={colors.inkFaint}
-                  value={titleInput}
-                  onChangeText={setTitleInput}
-                />
+        <SegmentedControl<YearlyGoal['mode']>
+          accessibilityLabel="Goal type"
+          options={[{ id: 'progress', label: 'Track progress' }, { id: 'checklist', label: 'Checklist' }]}
+          value={modeInput}
+          onChange={setModeInput}
+          style={{ marginBottom: 20 }}
+        />
 
-                <Text style={styles.inputLabel}>Description (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Optional detail"
-                  placeholderTextColor={colors.inkFaint}
-                  value={descriptionInput}
-                  onChangeText={setDescriptionInput}
-                />
+        {modeInput === 'progress' ? (
+          <>
+            <GroupLabel>Progress</GroupLabel>
+            <FormGroup>
+              <AmountRow label="Target amount" value={targetAmountInput} onChange={setTargetAmountInput} placeholder="Optional" />
+              {!linkInput && <AmountRow label="So far" value={currentAmountInput} onChange={setCurrentAmountInput} placeholder="Optional" />}
+              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+                <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
+              </PickerRow>
+              <PickerRow label="Follow" value={linkLabel} open={openRow === 'follow'} onToggle={() => toggleRow('follow')}>
+                <Choices options={followOptions} value={linkInput ? `${linkInput.kind}:${linkInput.id}` : 'none'} onChange={pickFollow} />
+              </PickerRow>
+            </FormGroup>
+            <Footnote>
+              {linkInput?.kind === 'pot'
+                ? 'Progress comes from what is saved in this pot.'
+                : linkInput
+                  ? 'Progress is how much of it you have paid off. Set the target to the full amount you started with.'
+                  : 'Follow a pot or debt and the goal moves on its own, or type the amounts yourself.'}
+            </Footnote>
+          </>
+        ) : (
+          <>
+            <FormGroup>
+              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+                <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
+              </PickerRow>
+              {!!editingId && <SwitchRow label="Done" value={completedInput} onChange={setCompletedInput} />}
+            </FormGroup>
+            <Footnote>A simple goal you tick off when it's done.</Footnote>
+          </>
+        )}
 
-                <Text style={styles.inputLabel}>Mode</Text>
-                <View style={styles.pillRow}>
-                  <Pill
-                    label="Track progress"
-                    tone="sheet"
-                    fill
-                    active={modeInput === 'progress'}
-                    onPress={() => setModeInput('progress')}
-                  />
-                  <Pill
-                    label="Simple checklist"
-                    tone="sheet"
-                    fill
-                    active={modeInput === 'checklist'}
-                    onPress={() => setModeInput('checklist')}
-                  />
-                </View>
-
-                <DateField
-                  label="Target date (optional)"
-                  value={targetDateInput}
-                  onChange={setTargetDateInput}
-                  placeholder="2026-12-31"
-                  clearable
-                  testID="goal-target-date-field"
-                />
-
-                {modeInput === 'progress' ? (
-                  <>
-                    <Text style={styles.inputLabel}>Follow (optional)</Text>
-                    <View style={[styles.pillRow, { flexWrap: 'wrap' }]}>
-                      <Pill label="Nothing" tone="sheet" active={!linkInput} onPress={() => setLinkInput(undefined)} />
-                      {(model.savingsGoals || []).map((p) => (
-                        <Pill key={p.id} label={p.name || 'Pot'} tone="sheet" active={linkInput?.kind === 'pot' && linkInput.id === p.id} onPress={() => setLinkInput({ kind: 'pot', id: p.id })} />
-                      ))}
-                      {(model.debts || []).map((d) => (
-                        <Pill key={d.id} label={d.creditorOrPerson || 'Debt'} tone="sheet" active={linkInput?.kind === 'debt' && linkInput.id === d.id} onPress={() => setLinkInput({ kind: 'debt', id: d.id })} />
-                      ))}
-                      {(model.loans || []).map((l) => (
-                        <Pill key={l.id} label={l.name || 'Loan'} tone="sheet" active={linkInput?.kind === 'loan' && linkInput.id === l.id} onPress={() => setLinkInput({ kind: 'loan', id: l.id })} />
-                      ))}
-                    </View>
-                    <Text style={[styles.goalSub, { marginBottom: 8 }]}>
-                      {linkInput?.kind === 'pot' ? 'Progress comes from what is saved in this pot.' : linkInput ? 'Progress is how much of it you have paid off. Set the target to the full amount you started with.' : 'Or type the amounts yourself.'}
-                    </Text>
-                    <Text style={styles.inputLabel}>Target amount (optional)</Text>
-                    <AmountInput style={styles.amountInput} value={targetAmountInput} onChangeAmount={setTargetAmountInput} />
-                    {!linkInput && (
-                      <>
-                        <Text style={styles.inputLabel}>Current amount (optional)</Text>
-                        <AmountInput style={styles.amountInput} value={currentAmountInput} onChangeAmount={setCurrentAmountInput} />
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.completedToggle, completedInput && styles.completedToggleActive]}
-                    onPress={() => { hapticSelection(); setCompletedInput((v) => !v); }}
-                  >
-                    {completedInput && (
-                      <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
-                    )}
-                    <Text
-                      style={[
-                        styles.completedToggleText,
-                        completedInput && styles.completedToggleTextActive,
-                      ]}
-                    >
-                      {completedInput ? 'Completed' : 'Not yet'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSaveGoal} />
-
-                {editingId && <Button label="Delete goal" variant="destructive" onPress={handleDeleteGoal} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
-              </KeyboardAwareScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete goal" variant="destructive" onPress={confirmDeleteGoal} />}
+      </BottomSheet>
     </View>
   );
 }
@@ -522,56 +484,6 @@ function makeStyles(colors: any) {
       overflow: 'hidden',
     },
     progressFill: { height: '100%', backgroundColor: colors.planned, borderRadius: 999 },
-    inputLabel: {
-      // Redesign: sentence-case grey labels, like iPhone forms.
-      fontSize: 13,
-      fontWeight: '600',
-      marginLeft: 4,
-      color: colors.inkDim,
-      marginBottom: 6,
-      marginTop: 6,
-    },
-    amountInput: { backgroundColor: colors.navy2 },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 14,
-    },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    completedToggle: {
-      flexDirection: 'row',
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 14,
-    },
-    completedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
-    completedToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    completedToggleTextActive: { color: '#10b981' },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '88%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 380,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
   });
 }

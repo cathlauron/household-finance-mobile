@@ -1,12 +1,13 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
 import { useNavigation } from '@react-navigation/native';
 import SegmentedControl from '../components/SegmentedControl';
 import { todayISO } from '../dateUtils';
-import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
+import BottomSheet from '../components/BottomSheet';
+import { SheetBar, BigAmount, BigTotal, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, GroupLabel, Choices, DayStrip, MONTHS_SHORT, useOpenRow } from '../components/SimpleForm';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -17,7 +18,6 @@ import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
@@ -191,6 +191,7 @@ export default function EventsScreen() {
   const [itemsInput, setItemsInput] = useState<{ id: string; name: string; cost: number | '' }[]>([]);
   const [view, setView] = useStickyState<'up' | 'done'>('events.view', 'up');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
   const navigation = useNavigation<any>();
 
   // Redesign: Add in the top bar adds an event.
@@ -435,6 +436,24 @@ export default function EventsScreen() {
     }
   }
 
+  // For the form: the items added up, and the date in one line ("Mar 14" or "Sat, Mar 14, 2027").
+  const itemsTotal = itemsInput.reduce((s2, i) => s2 + (typeof i.cost === 'number' ? i.cost : 0), 0);
+  const eventDateLabel =
+    recurrenceInput === 'annual'
+      ? monthInput && dayInput
+        ? `${MONTHS_SHORT[parseInt(monthInput, 10) - 1] ?? ''} ${parseInt(dayInput, 10)}`
+        : 'Choose'
+      : onetimeDateInput
+        ? new Date(onetimeDateInput + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+        : 'Choose';
+
+  function confirmDeleteEvent() {
+    Alert.alert('Delete this event?', 'Deletes the event and any linked savings pot or expense. Cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteEvent() },
+    ]);
+  }
+
   async function handleDeleteEvent() {
     if (!editingId || !model) return;
     const deletedEvent = (model.events ?? []).find((ev) => ev.id === editingId);
@@ -615,184 +634,92 @@ export default function EventsScreen() {
         )}
       </PullToRefreshScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit event' : 'New event'} onCancel={closeModal} onDone={handleSaveEvent} doneLabel={editingId ? 'Save' : 'Add'} />}
+      >
+        {itemsInput.length === 0 ? (
+          <BigAmount label="What it will cost" value={budgetInput} onChange={setBudgetInput} color={colors.planned} />
+        ) : (
+          <BigTotal label="What it will cost" value={formatPeso(itemsTotal)} sub="Adds up from the items below" color={colors.planned} />
+        )}
+
+        <FormGroup>
+          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Mama's birthday" autoFocus={!editingId} testID="event-name-input" />
+          <PickerRow label="Type" value={EVENT_TYPES.find((t) => t.id === typeInput)?.label ?? 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
+            <Choices<EventItem['type']> options={EVENT_TYPES} value={typeInput} onChange={(v) => setTypeInput(v)} />
+          </PickerRow>
+          <PickerRow label="Repeats" value={recurrenceInput === 'annual' ? 'Every year' : 'Once'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+            <Choices<EventItem['recurrence']> options={[{ id: 'annual', label: 'Every year' }, { id: 'onetime', label: 'Once' }]} value={recurrenceInput} onChange={(v) => setRecurrenceInput(v)} />
+          </PickerRow>
+          <PickerRow label="Date" value={eventDateLabel} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="event-date-row">
+            {recurrenceInput === 'annual' ? (
+              <>
+                <View style={{ marginBottom: 10 }}>
+                  <Choices options={MONTHS_SHORT.map((m, i) => ({ id: String(i + 1), label: m }))} value={monthInput} onChange={setMonthInput} />
+                </View>
+                <DayStrip value={parseInt(dayInput, 10) || null} onChange={(d) => setDayInput(String(d))} />
+              </>
+            ) : (
+              <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" clearable testID="event-date-field" />
+            )}
+          </PickerRow>
+        </FormGroup>
+
+        <GroupLabel>Items (optional)</GroupLabel>
+        <FormGroup>
+          {itemsInput.map((it, i) => (
+            <View key={it.id} style={styles.formItemRow}>
+              <TextInput
+                autoFocus={it.id === focusItemId}
+                style={styles.formItemName}
+                placeholder={i === 0 ? 'e.g. Cake' : 'Item'}
+                placeholderTextColor={colors.inkFaint}
+                value={it.name}
+                onChangeText={(t) => setItemsInput((rows) => rows.map((r) => (r.id === it.id ? { ...r, name: t } : r)))}
+              />
+              <AmountInput
+                value={it.cost}
+                onChangeAmount={(v) => setItemsInput((rows) => rows.map((r) => (r.id === it.id ? { ...r, cost: v } : r)))}
+                placeholder="0.00"
+                style={{ backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, paddingHorizontal: 0, justifyContent: 'flex-end' }}
+                inputStyle={{ textAlign: 'right', flex: 0, minWidth: 80, color: colors.planned }}
+              />
+              <TouchableOpacity onPress={() => setItemsInput((rows) => rows.filter((r) => r.id !== it.id))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+                <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TouchableOpacity
+            onPress={() => { const id = makeId('evitem'); setItemsInput((rows) => [...rows, { id, name: '', cost: '' }]); setFocusItemId(id); }}
+            accessibilityRole="button"
+            style={styles.formAddRow}
           >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <GradientFill match={styles.modalCard} />
-              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit event' : 'New event'}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>+ Add an item</Text>
+          </TouchableOpacity>
+        </FormGroup>
+        <Footnote>List the cake, gift and so on, and the cost adds itself up. Or just type one amount at the top.</Footnote>
 
-                <Text style={styles.inputLabel}>Event name</Text>
-                <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="e.g. Mom's birthday, Wedding anniversary"
-                  placeholderTextColor={colors.inkFaint}
-                  value={nameInput}
-                  onChangeText={setNameInput}
-                />
+        <FormGroup>
+          <SwitchRow label="Save for this in Savings" value={trackInSavingsInput} onChange={setTrackInSavingsInput} />
+          {!!editingId && <SwitchRow label="Done" value={completedInput} onChange={setCompletedInput} />}
+        </FormGroup>
+        <Footnote>{trackInSavingsInput ? 'Makes a pot that fills up before the date.' : 'Turn on to set money aside for this in Savings.'}</Footnote>
 
-                <Text style={styles.inputLabel}>Type</Text>
-                <View style={styles.pillRow}>
-                  {EVENT_TYPES.map((t) => (
-                    <Pill
-                      key={t.id}
-                      label={t.label}
-                      tone="sheet"
-                      fill
-                      active={typeInput === t.id}
-                      onPress={() => setTypeInput(t.id)}
-                    />
-                  ))}
-                </View>
-
-                <Text style={styles.inputLabel}>Recurs</Text>
-                <View style={styles.pillRow}>
-                  <Pill
-                    label="Annual"
-                    tone="sheet"
-                    fill
-                    active={recurrenceInput === 'annual'}
-                    onPress={() => setRecurrenceInput('annual')}
-                  />
-                  <Pill
-                    label="One-time"
-                    tone="sheet"
-                    fill
-                    active={recurrenceInput === 'onetime'}
-                    onPress={() => setRecurrenceInput('onetime')}
-                  />
-                </View>
-
-                {recurrenceInput === 'annual' ? (
-                  <View style={styles.rowTwoCol}>
-                    <View style={styles.rowTwoColItem}>
-                      <Text style={styles.inputLabel}>Month (1–12)</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 6"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={monthInput}
-                        onChangeText={setMonthInput}
-                      />
-                    </View>
-                    <View style={styles.rowTwoColItem}>
-                      <Text style={styles.inputLabel}>Day (1–31)</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 15"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={dayInput}
-                        onChangeText={setDayInput}
-                      />
-                    </View>
-                  </View>
-                  ) : (
-                    <DateField
-                      label="Date"
-                      value={onetimeDateInput}
-                      onChange={setOnetimeDateInput}
-                      placeholder="2026-06-15"
-                      clearable
-                      testID="event-date-field"
-                    />
-                  )}
-
-                <Text style={styles.inputLabel}>What it will cost (optional)</Text>
-                {itemsInput.map((it, i) => (
-                  <View key={it.id} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                    <TextInput
-                      autoFocus={it.id === focusItemId}
-                      style={[styles.input, { flex: 3, marginBottom: 0 }]}
-                      placeholder={i === 0 ? 'e.g. Cake' : 'Item'}
-                      placeholderTextColor={colors.inkFaint}
-                      value={it.name}
-                      onChangeText={(t) => setItemsInput((rows) => rows.map((r) => (r.id === it.id ? { ...r, name: t } : r)))}
-                    />
-                    <View style={{ flex: 2 }}>
-                      <AmountInput value={it.cost} onChangeAmount={(v) => setItemsInput((rows) => rows.map((r) => (r.id === it.id ? { ...r, cost: v } : r)))} placeholder="0" />
-                    </View>
-                    <TouchableOpacity onPress={() => setItemsInput((rows) => rows.filter((r) => r.id !== it.id))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="close-circle" size={20} color={colors.inkDim} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                <TouchableOpacity onPress={() => { const id = makeId('evitem'); setItemsInput((rows) => [...rows, { id, name: '', cost: '' }]); setFocusItemId(id); }} accessibilityRole="button" style={{ marginBottom: 12 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.gold }}>+ Add an item (cake, gift…)</Text>
-                </TouchableOpacity>
-
-                {itemsInput.length === 0 ? (
-                  <>
-                    <Text style={styles.inputLabel}>Or one budget for the whole event</Text>
-                    <AmountInput style={styles.amountInput} value={budgetInput} onChangeAmount={setBudgetInput} />
-                  </>
-                ) : (
-                  <Text style={[styles.inputLabel, { marginBottom: 12 }]}>
-                    Budget: {formatPeso(itemsInput.reduce((s2, i) => s2 + (typeof i.cost === 'number' ? i.cost : 0), 0))} (the total of the items)
-                  </Text>
-                )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.trackSavingsToggle,
-                    trackInSavingsInput && styles.trackSavingsToggleActive,
-                  ]}
-                  onPress={() => { hapticSelection(); setTrackInSavingsInput((v) => !v); }}
-                >
-                  {trackInSavingsInput && (
-                    <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
-                  )}
-                  <Text
-                    style={[
-                      styles.trackSavingsToggleText,
-                      trackInSavingsInput && styles.trackSavingsToggleTextActive,
-                    ]}
-                  >
-                    {trackInSavingsInput ? 'Auto-save to Savings' : "Don't track in Savings"}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.completedToggle, completedInput && styles.completedToggleActive]}
-                  onPress={() => { hapticSelection(); setCompletedInput((v) => !v); }}
-                >
-                  {completedInput && (
-                    <Ionicons name="checkmark" size={15} color="#10b981" style={{ marginRight: 6 }} />
-                  )}
-                  <Text
-                    style={[
-                      styles.completedToggleText,
-                      completedInput && styles.completedToggleTextActive,
-                    ]}
-                  >
-                    {completedInput ? 'Completed' : 'Not yet'}
-                  </Text>
-                </TouchableOpacity>
-
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSaveEvent} />
-
-                {editingId && <Button label="Delete event" variant="destructive" onPress={handleDeleteEvent} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
-              </KeyboardAwareScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete event" variant="destructive" onPress={confirmDeleteEvent} />}
+      </BottomSheet>
     </View>
   );
 }
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    formItemRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16 },
+    formItemName: { flex: 1, fontSize: 17, color: colors.ink, paddingVertical: 12, marginRight: 8 },
+    formAddRow: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 16 },
     container: {
       flex: 1,
       backgroundColor: 'transparent',
@@ -827,70 +754,6 @@ function makeStyles(colors: any) {
     eventName: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
     eventSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     eventAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
-    inputLabel: {
-      // Redesign: sentence-case grey labels, like iPhone forms.
-      fontSize: 13,
-      fontWeight: '600',
-      marginLeft: 4,
-      color: colors.inkDim,
-      marginBottom: 6,
-      marginTop: 6,
-    },
-        amountInput: { backgroundColor: colors.navy2 },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 14,
-    },
-    rowTwoCol: { flexDirection: 'row', gap: 10 },
-    rowTwoColItem: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    trackSavingsToggle: {
-      flexDirection: 'row',
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 14,
-    },
-    trackSavingsToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
-    trackSavingsToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    trackSavingsToggleTextActive: { color: '#10b981' },
-    completedToggle: {
-      flexDirection: 'row',
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 14,
-    },
-    completedToggleActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
-    completedToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    completedToggleTextActive: { color: '#10b981' },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '88%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 380,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
   });
 }

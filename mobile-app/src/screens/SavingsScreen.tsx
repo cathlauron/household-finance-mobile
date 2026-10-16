@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
-import { Text, TextInput } from '../components/AppText';
+import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
-import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource, CalculatorInputs } from '../types';
+import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource, CalculatorInputs, PaymentMethod } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
@@ -20,7 +20,8 @@ import { hapticLight } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
-import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonths } from '../savingsPots';
+import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonths, applyAutoSavings } from '../savingsPots';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, SwitchRow, Footnote, GroupLabel, AccountChoices, accountName, useOpenRow } from '../components/SimpleForm';
 import { useStickyState } from '../stickyState';
 
 function todayISO(): string {
@@ -149,6 +150,10 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [targetAmountInput, setTargetAmountInput] = useState('');
   const [targetDateInput, setTargetDateInput] = useState('');
   const [contribRows, setContribRows] = useState<ContribRow[]>([]);
+  const [keptInInput, setKeptInInput] = useState<PaymentMethod | undefined>(undefined);
+  const [autoOnInput, setAutoOnInput] = useState(false);
+  const [autoAmtInput, setAutoAmtInput] = useState<number | ''>('');
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
   const [errorMsg, setErrorMsg] = useState('');
 
 
@@ -200,6 +205,9 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     setTargetAmountInput('');
     setTargetDateInput('');
     setContribRows([]);
+    setKeptInInput(undefined);
+    setAutoOnInput(false);
+    setAutoAmtInput('');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -216,6 +224,9 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
         amountInput: typeof c.amount === 'number' ? String(c.amount) : '',
       }))
     );
+    setKeptInInput(goal.keptIn);
+    setAutoOnInput(!!goal.autoAdd?.enabled);
+    setAutoAmtInput(goal.autoAdd?.amount || '');
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -226,9 +237,6 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     setErrorMsg('');
   }
 
-  function addContribRow() {
-    setContribRows((rows) => [...rows, { id: makeId('contrib'), date: todayISO(), amountInput: '' }]);
-  }
 
   function removeContribRow(id: string) {
     setContribRows((rows) => rows.filter((r) => r.id !== id));
@@ -294,6 +302,19 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
       0
     );
 
+    if (autoOnInput && !(typeof autoAmtInput === 'number' && autoAmtInput > 0)) {
+      setErrorMsg('Enter how much to add each payday, or turn it off.');
+      return;
+    }
+    // "Add every payday": keep the original start date when it was already on.
+    const priorAuto = editingId ? model.savingsGoals.find((g) => g.id === editingId)?.autoAdd : undefined;
+    const autoAdd: SavingsGoal['autoAdd'] =
+      autoOnInput && typeof autoAmtInput === 'number'
+        ? { enabled: true, amount: autoAmtInput, since: priorAuto?.enabled ? priorAuto.since : todayISO() }
+        : priorAuto
+          ? { ...priorAuto, enabled: false }
+          : undefined;
+
     const updated: HouseholdModel = { ...model, savingsGoals: [...model.savingsGoals] };
 
     if (editingId) {
@@ -306,6 +327,8 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
           targetDate: trimmedDate,
           contributions,
           currentAmount: newCurrentAmount,
+          keptIn: keptInInput,
+          autoAdd,
         };
       });
     } else {
@@ -317,13 +340,16 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
         contributions,
         currentAmount: newCurrentAmount,
         createdAt: Date.now(),
+        ...(keptInInput ? { keptIn: keptInInput } : {}),
+        ...(autoAdd ? { autoAdd } : {}),
       };
       updated.savingsGoals = [...updated.savingsGoals, newGoal];
     }
 
     setSaving(true);
     try {
-      await saveModel(updated);
+      // Fill in any payday additions that are due now that the setting is on.
+      await saveModel(applyAutoSavings(updated) ?? updated);
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');
@@ -782,69 +808,56 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit savings' : 'Save'}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit pot' : 'New pot'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <Text style={styles.inputLabel}>Title</Text>
-                <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="e.g. Emergency fund, New laptop"
-                  placeholderTextColor={colors.inkFaint}
-                  value={nameInput}
-                  onChangeText={setNameInput}
-                />
+        <BigAmount
+          label="Target"
+          value={targetAmountInput === '' ? '' : parseFloat(targetAmountInput)}
+          onChange={(v) => setTargetAmountInput(v === '' ? '' : String(v))}
+          color={colors.saving}
+        />
 
-                <Text style={styles.inputLabel}>Target amount (optional)</Text>
-                <AmountInput
-                  value={targetAmountInput === '' ? '' : parseFloat(targetAmountInput)}
-                  onChangeAmount={(v) => setTargetAmountInput(v === '' ? '' : String(v))}
-                />
+        <FormGroup>
+          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Emergency fund" autoFocus={!editingId} testID="savings-name-input" />
+          <PickerRow label="Target date" value={targetDateInput ? new Date(targetDateInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Optional'} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="savings-target-date-row">
+            <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="savings-target-date-field" />
+          </PickerRow>
+          <PickerRow label="Kept in" value={accountName(model, keptInInput) ?? 'Choose'} open={openRow === 'kept'} onToggle={() => toggleRow('kept')}>
+            <AccountChoices model={model} value={keptInInput} onChange={setKeptInInput} optional />
+          </PickerRow>
+        </FormGroup>
 
-                <DateField
-                  label="Target date (optional)"
-                  value={targetDateInput}
-                  onChange={setTargetDateInput}
-                  placeholder="2026-12-31"
-                  clearable
-                  testID="savings-target-date-field"
-                />
+        <FormGroup>
+          <SwitchRow label="Add every payday" value={autoOnInput} onChange={setAutoOnInput} />
+          {autoOnInput && <AmountRow label="Each payday" value={autoAmtInput} onChange={setAutoAmtInput} />}
+        </FormGroup>
+        <Footnote>You can add or move money any time from the pot's page.</Footnote>
 
-                <Text style={styles.inputLabel}>Contributions</Text>
-                {contribRows.length === 0 && (
-                  <Text style={styles.fieldHint}>No contributions logged yet.</Text>
-                )}
-                {contribRows.map((row) => (
-                  <View key={row.id} style={styles.contribRow}>
-                    <DateField
-                      style={styles.contribDateInput}
-                      value={row.date}
-                      onChange={(v) => updateContribDate(row.id, v)}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <AmountInput
-                      style={styles.contribAmountInput}
-                      value={row.amountInput === '' ? '' : parseFloat(row.amountInput)}
-                      onChangeAmount={(v) => updateContribAmount(row.id, v === '' ? '' : String(v))}
-                    />
-                    <TouchableOpacity
-                      style={styles.contribRemoveButton}
-                      onPress={() => removeContribRow(row.id)}
-                    >
-                      <Ionicons name="close" size={16} color={colors.inkDim} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                <TouchableOpacity style={styles.addContribButton} onPress={addContribRow}>
-                  <Text style={styles.addContribButtonText}>+ Add contribution</Text>
-                </TouchableOpacity>
+        {/* Only when editing: past contributions, so a wrong one can be fixed or removed. */}
+        {!!editingId && contribRows.length > 0 && (
+          <>
+            <GroupLabel>History</GroupLabel>
+            <FormGroup>
+              {contribRows.map((row) => (
+                <View key={row.id} style={styles.contribRow}>
+                  <DateField style={styles.contribDateInput} value={row.date} onChange={(v) => updateContribDate(row.id, v)} placeholder="Pick a date" />
+                  <AmountInput
+                    style={styles.contribAmountInput}
+                    value={row.amountInput === '' ? '' : parseFloat(row.amountInput)}
+                    onChangeAmount={(v) => updateContribAmount(row.id, v === '' ? '' : String(v))}
+                  />
+                  <TouchableOpacity onPress={() => removeContribRow(row.id)} accessibilityRole="button" accessibilityLabel="Remove this entry" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 8 }}>
+                    <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </FormGroup>
+          </>
+        )}
 
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSaveGoal} />
-
-                {editingId && <Button label="Delete goal" variant="destructive" onPress={handleDeleteGoal} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete pot" variant="destructive" onPress={handleDeleteGoal} />}
       </BottomSheet>
 
       <BottomSheet
@@ -943,43 +956,14 @@ function makeStyles(colors: any) {
       marginTop: 10,
     },
     progressFill: { height: 6, borderRadius: 999, backgroundColor: colors.saving },
-    inputLabel: {
-      // Redesign: sentence-case grey labels, like iPhone forms.
-      fontSize: 13,
-      fontWeight: '600',
-      marginLeft: 4,
-      color: colors.inkDim,
-      marginBottom: 6,
-    },
-    input: {
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 14,
-    },
     suggestionText: { fontSize: 15, color: colors.gold },
     fieldHint: { fontSize: 13, color: colors.inkFaint, marginBottom: 10, lineHeight: 15 },
     cancelButton: { alignItems: 'center', paddingVertical: 8 },
     cancelButtonText: { fontSize: 13, color: colors.inkDim },
     errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
-    contribRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+    contribRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 16, paddingVertical: 6 },
     contribDateInput: { flex: 1.3 },
     contribAmountInput: { flex: 1 },
-    contribRemoveButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.navy2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 14,
-    },
-    addContribButton: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: 6, marginTop: -4 },
-    addContribButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     accountPickerRow: {
       flexDirection: 'row',
       alignItems: 'center',

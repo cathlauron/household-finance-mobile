@@ -1,8 +1,7 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
-import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import React, { useLayoutEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { todayISO } from '../dateUtils';
-import { View, TouchableOpacity, StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
@@ -23,8 +22,9 @@ import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
-import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import BottomSheet from '../components/BottomSheet';
+import { SheetBar, BigTotal, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, GroupLabel, InlineField, InlineAmount, useOpenRow } from '../components/SimpleForm';
 
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -187,7 +187,6 @@ export default function TravelScreen() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const itemTitleRef = useRef<any>(null);
   const [nameInput, setNameInput] = useState('');
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
@@ -198,6 +197,7 @@ export default function TravelScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [trackInSavings, setTrackInSavings] = useState(false);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
   const navigation = useNavigation<any>();
 
   // Redesign: Add in the top bar adds a trip.
@@ -313,8 +313,6 @@ export default function TravelScreen() {
     setItemCostInput('');
     setItemNoteInput('');
     setErrorMsg('');
-    // Ready for the next item straight away.
-    setTimeout(() => itemTitleRef.current?.focus(), 50);
   }
 
   // Edits an item's note in the form (saved with the trip, like the name and dates).
@@ -469,6 +467,17 @@ export default function TravelScreen() {
     );
   }
 
+  // Shown at the top of the trip form: the whole checklist added up, and the dates in one line.
+  const formBudget = checklist.reduce((sum, i) => sum + (typeof i.cost === 'number' ? i.cost : 0), 0);
+  const formDates = startDateInput || endDateInput ? niceRange({ startDate: startDateInput, endDate: endDateInput } as TravelTrip) : 'Optional';
+
+  function confirmDeleteTrip() {
+    Alert.alert('Delete this trip?', 'Deletes the trip and any linked savings goal or expenses. Cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteTrip() },
+    ]);
+  }
+
   return (
     <View style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
@@ -588,154 +597,76 @@ export default function TravelScreen() {
         )}
       </PullToRefreshScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable style={styles.modalOverlay} onPress={closeModal}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardWrap}
-          >
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <GradientFill match={styles.modalCard} />
-              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>{editingId ? 'Edit trip' : 'New trip'}</Text>
+      <BottomSheet
+        visible={modalOpen}
+        onClose={closeModal}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit trip' : 'New trip'} onCancel={closeModal} onDone={handleSaveTrip} doneLabel={editingId ? 'Save' : 'Add'} />}
+      >
+        {/* The budget isn't typed: it's everything on the checklist added up (blue = planned). */}
+        <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />
 
-                <Text style={styles.inputLabel}>Trip name</Text>
+        <FormGroup>
+          <InputRow label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus={!editingId} testID="travel-name-input" />
+          <PickerRow label="Dates" value={formDates} open={openRow === 'dates'} onToggle={() => toggleRow('dates')} testID="travel-dates-row">
+            <DateField label="Start" value={startDateInput} onChange={setStartDateInput} placeholder="Pick a date" clearable testID="travel-start-date-field" />
+            <DateField label="End" value={endDateInput} onChange={setEndDateInput} placeholder="Pick a date" clearable testID="travel-end-date-field" />
+          </PickerRow>
+        </FormGroup>
+
+        <GroupLabel>Checklist</GroupLabel>
+        <FormGroup>
+          {checklist.map((item) => (
+            <View key={item.id} style={styles.formItemRow}>
+              <TouchableOpacity
+                style={[styles.check, item.checked && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
+                onPress={() => { hapticSelection(); handleToggleChecklistItem(item.id); }}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: item.checked }}
+                accessibilityLabel={`Mark ${item.title} as paid`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
+              </TouchableOpacity>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={[styles.formItemTitle, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title}</Text>
                 <TextInput
-                  autoFocus={!editingId}
-                  style={styles.input}
-                  placeholder="e.g. Japan trip, Beach weekend"
+                  style={styles.checklistNoteInput}
+                  placeholder="Add a note"
                   placeholderTextColor={colors.inkFaint}
-                  value={nameInput}
-                  onChangeText={setNameInput}
-                />
-
-                <DateField
-                  label="Start date (optional)"
-                  value={startDateInput}
-                  onChange={setStartDateInput}
-                  placeholder="2026-03-01"
-                  clearable
-                  testID="travel-start-date-field"
-                />
-
-                <DateField
-                  label="End date (optional)"
-                  value={endDateInput}
-                  onChange={setEndDateInput}
-                  placeholder="2026-03-08"
-                  clearable
-                  testID="travel-end-date-field"
-                />
-
-                <View style={styles.budgetBanner}>
-                  <Text style={styles.budgetBannerLabel}>COMMITTED BUDGET (CHECKED ITEMS)</Text>
-                  <Text style={styles.budgetBannerAmount}>
-                    {formatPeso(checklist.filter((i) => i.checked).reduce((s, i) => s + (typeof i.cost === 'number' ? i.cost : 0), 0))}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.trackToggle, trackInSavings && styles.trackToggleActive]}
-                  onPress={() => { hapticSelection(); setTrackInSavings((prev) => !prev); }}
-                >
-                  <GradientFill match={[styles.trackToggle, trackInSavings && styles.trackToggleActive]} />
-                  {trackInSavings && (
-                    <Ionicons
-                      name="checkmark"
-                      size={15}
-                      color={colors.accent || '#3ecf8e'}
-                      style={{ marginRight: 6 }}
-                    />
-                  )}
-                  <Text style={[styles.trackToggleText, trackInSavings && styles.trackToggleTextActive]}>
-                    {trackInSavings ? 'Auto-saving to Savings tab' : 'Not tracked in Savings tab'}
-                  </Text>
-                </TouchableOpacity>
-                <Text style={styles.trackHint}>
-                  {trackInSavings
-                    ? 'Synced to a matching savings goal.'
-                    : 'Automatically syncs a savings goal with this trip budget.'}
-                </Text>
-
-                <Text style={styles.checklistHeading}>Checklist</Text>
-                {checklist.length === 0 && (
-                  <Text style={styles.emptyText}>No checklist items yet.</Text>
-                )}
-                {checklist.map((item) => (
-                  <View key={item.id} style={styles.checklistRow}>
-                    <TouchableOpacity
-                      style={[styles.checkbox, item.checked && styles.checkboxChecked]}
-                      onPress={() => handleToggleChecklistItem(item.id)}
-                    >
-                      <GradientFill match={[styles.checkbox, item.checked && styles.checkboxChecked]} />
-                      {item.checked && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
-                    </TouchableOpacity>
-                    <View style={styles.checklistRowMain}>
-                      <Text
-                        style={[styles.checklistItemTitle, item.checked && styles.checklistItemTitleDone]}
-                        numberOfLines={1}
-                      >
-                        {item.title}
-                      </Text>
-                      {typeof item.cost === 'number' && (
-                        <Text style={[styles.checklistItemCost, { color: item.checked ? colors.negative : colors.planned }, item.checked && { textDecorationLine: 'line-through' }]}>{formatPeso(item.cost)}</Text>
-                      )}
-                      <TextInput
-                        style={styles.checklistNoteInput}
-                        placeholder="Add a note"
-                        placeholderTextColor={colors.inkFaint}
-                        value={item.note ?? ''}
-                        onChangeText={(t) => handleChecklistNote(item.id, t)}
-                        accessibilityLabel={`Note for ${item.title}`}
-                        maxLength={140}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={styles.removeItemButton}
-                      onPress={() => handleRemoveChecklistItem(item.id)}
-                    >
-                      <GradientFill match={styles.removeItemButton} />
-                      <Ionicons name="close" size={14} color={colors.inkDim} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                <Text style={styles.inputLabel}>Item title</Text>
-                <TextInput
-                  ref={itemTitleRef}
-                  style={styles.input}
-                  placeholder="e.g. Book flights, Reserve hotel"
-                  placeholderTextColor={colors.inkFaint}
-                  value={itemTitleInput}
-                  onChangeText={setItemTitleInput}
-                />
-                <Text style={styles.inputLabel}>Cost (optional)</Text>
-                <AmountInput style={styles.amountInput} value={itemCostInput} onChangeAmount={setItemCostInput} />
-                <Text style={styles.inputLabel}>Note (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Booked on Agoda, check-in 2 PM"
-                  placeholderTextColor={colors.inkFaint}
-                  value={itemNoteInput}
-                  onChangeText={setItemNoteInput}
+                  value={item.note ?? ''}
+                  onChangeText={(t) => handleChecklistNote(item.id, t)}
+                  accessibilityLabel={`Note for ${item.title}`}
                   maxLength={140}
                 />
-                <TouchableOpacity style={styles.addItemButton} onPress={handleAddChecklistItem}>
-                  <Text style={styles.addItemButtonText}>+ Add item</Text>
-                </TouchableOpacity>
+              </View>
+              {typeof item.cost === 'number' && (
+                <Text style={[styles.formItemCost, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: colors.planned }]}>{formatPeso(item.cost)}</Text>
+              )}
+              <TouchableOpacity onPress={() => handleRemoveChecklistItem(item.id)} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+                <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <PickerRow label="+ Add item" value="" open={openRow === 'item'} onToggle={() => toggleRow('item')} testID="travel-add-item-row">
+            <InlineField label="Item" value={itemTitleInput} onChangeText={setItemTitleInput} placeholder="e.g. Bus tickets, Hotel" />
+            <InlineAmount label="Cost (optional)" value={itemCostInput} onChange={setItemCostInput} />
+            <InlineField label="Note (optional)" value={itemNoteInput} onChangeText={setItemNoteInput} placeholder="e.g. Booked on Agoda, check-in 2 PM" />
+            <TouchableOpacity style={[styles.addItemButton, { backgroundColor: colors.accentTint }]} onPress={handleAddChecklistItem} accessibilityRole="button" testID="travel-add-item">
+              <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add to checklist</Text>
+            </TouchableOpacity>
+          </PickerRow>
+        </FormGroup>
+        <Footnote>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out.</Footnote>
 
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <FormGroup>
+          <SwitchRow label="Save for this in Savings" value={trackInSavings} onChange={setTrackInSavings} />
+        </FormGroup>
+        <Footnote>{trackInSavings ? 'Makes a pot for this trip that fills up before you go.' : 'Turn on to make a savings pot for this trip.'}</Footnote>
 
-                <Button label="Save" onPress={handleSaveTrip} />
-
-                {editingId && <Button label="Delete trip" variant="destructive" onPress={handleDeleteTrip} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
-              </KeyboardAwareScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete trip" variant="destructive" onPress={confirmDeleteTrip} />}
+      </BottomSheet>
     </View>
   );
 }
@@ -764,7 +695,6 @@ function makeStyles(colors: any) {
     checkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 10 },
     check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.inkDim, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     tripRow: {
       backgroundColor: colors.navy3,
       minHeight: 60,
@@ -777,71 +707,10 @@ function makeStyles(colors: any) {
     tripName: { fontSize: 17, fontWeight: '500', color: colors.ink },
     tripSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     tripAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
-    inputLabel: {
-      // Redesign: sentence-case grey labels, like iPhone forms.
-      fontSize: 13,
-      fontWeight: '600',
-      marginLeft: 4,
-      color: colors.inkDim,
-      marginBottom: 6,
-      marginTop: 6,
-    },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 14,
-    },
-    amountInput: {
-      backgroundColor: colors.navy2,
-    },
-    budgetBanner: {
-      backgroundColor: colors.navy2,
-      borderRadius: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      marginBottom: 16,
-    },
-    budgetBannerLabel: { fontSize: 11, letterSpacing: 0.8, color: colors.inkDim, marginBottom: 4 },
-    budgetBannerAmount: { fontSize: 18, fontWeight: '700', color: colors.ink },
-    checklistHeading: { fontSize: 13, fontWeight: '700', color: colors.ink, marginBottom: 8 },
-    checklistRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      marginBottom: 6,
-      gap: 8,
-    },
-    checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: colors.inkFaint,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
-    checklistRowMain: { flex: 1 },
-    checklistItemTitle: { fontSize: 13.5, color: colors.ink },
-    checklistItemTitleDone: { textDecorationLine: 'line-through', color: colors.inkFaint },
-    checklistItemCost: { fontSize: 11.5, color: colors.inkDim, marginTop: 1 },
+    formItemRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 8 },
+    formItemTitle: { fontSize: 17, color: colors.ink },
+    formItemCost: { fontSize: 16, fontWeight: '600' },
     checklistNoteInput: { fontSize: 12, color: colors.inkDim, paddingVertical: 2, paddingHorizontal: 0, marginTop: 1 },
-    removeItemButton: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
-      backgroundColor: colors.navy3,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     addItemButton: {
       backgroundColor: colors.navy2,
       borderRadius: 999,
@@ -851,50 +720,5 @@ function makeStyles(colors: any) {
     },
     addItemButtonText: { fontSize: 12.5, fontWeight: '600', color: colors.gold },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalKeyboardWrap: { width: '100%', alignItems: 'center', maxHeight: '88%' },
-    modalCard: {
-      width: '100%',
-      maxWidth: 380,
-      maxHeight: '100%',
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 16 },
-    trackToggle: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-      marginTop: 12,
-      alignSelf: 'flex-start',
-    },
-    trackToggleActive: {
-      backgroundColor: colors.accent ? colors.accent + '22' : colors.navy3,
-    },
-    trackToggleText: {
-      fontSize: 12.5,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    trackToggleTextActive: {
-      color: colors.accent || '#3ecf8e',
-    },
-    trackHint: {
-      fontSize: 11.5,
-      color: colors.inkFaint,
-      marginTop: 6,
-      marginBottom: 4,
-      lineHeight: 16,
-    },
   });
 }

@@ -197,6 +197,24 @@ export function SwitchRow({ label, value, onChange }: { label: string; value: bo
   );
 }
 
+// A small grey caps label above a group ("CHECKLIST").
+export function GroupLabel({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return <Text style={{ fontSize: 13, color: colors.inkDim, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 6, marginHorizontal: 16 }}>{children}</Text>;
+}
+
+// The one big number at the top when it adds itself up (not typed): a trip budget, a meal total.
+export function BigTotal({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ alignItems: 'center', paddingTop: 4, paddingBottom: 16 }}>
+      <Text style={{ fontSize: 13, color: colors.inkDim }}>{label}</Text>
+      <Text style={{ fontSize: 40, fontWeight: '800', color, marginTop: 2 }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      {!!sub && <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 2 }}>{sub}</Text>}
+    </View>
+  );
+}
+
 export function Footnote({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   return <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: -10, marginBottom: 16, marginHorizontal: 16 }}>{children}</Text>;
