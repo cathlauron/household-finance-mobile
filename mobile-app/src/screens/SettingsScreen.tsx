@@ -3,7 +3,7 @@ import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
-import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, usePreviewWeather, setPreviewWeather } from '../sky';
+import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Switch, Platform } from 'react-native';
@@ -1435,7 +1435,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
         <SettingsGroup
           label="Sky"
           plain
-          footer="Live weather uses your phone's approximate location to match the sky on Home to your real sunrise, sunset and weather. Only a rounded location is sent to the weather service (Open-Meteo), never your money data."
+          footer="Live weather uses your phone's approximate location to match the sky on Home to your real sunrise, sunset and weather. Only a rounded location is sent to the weather service (Open-Meteo), never your money data. Rain stops falling when Reduce Motion is on."
         >
           <PlainRow
             title="Time-of-day glow"
@@ -1452,6 +1452,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount, onLock }: {
                 );
               }
             }, 'settings-live-weather')}
+          />
+          <PlainRow
+            title="Rain animation"
+            right={settingSwitch(skyPrefs.rainAnimOn, (on) => setRainAnimOn(on), 'settings-rain-anim')}
           />
           {__DEV__ && (
             <SegmentRow

@@ -17,7 +17,7 @@ import * as Location from 'expo-location';
 
 export type SkyPhase = 'morning' | 'afternoon' | 'evening' | 'night';
 
-type SkyPrefs = { glowOn: boolean; liveWeatherOn: boolean };
+type SkyPrefs = { glowOn: boolean; liveWeatherOn: boolean; rainAnimOn: boolean };
 type SavedPlace = { lat: number; lon: number; at: number };
 
 const PREFS_KEY = 'skyPrefs';
@@ -30,7 +30,7 @@ type SavedWeather = { kind: SkyWeather; at: number };
 let weather: SavedWeather | null = null;
 let weatherBusy = false;
 
-let prefs: SkyPrefs = { glowOn: true, liveWeatherOn: false };
+let prefs: SkyPrefs = { glowOn: true, liveWeatherOn: false, rainAnimOn: true };
 let place: SavedPlace | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
@@ -62,6 +62,11 @@ export function useSkyPrefs(): SkyPrefs {
 
 export function setSkyGlowOn(on: boolean) {
   savePrefs({ ...prefs, glowOn: on });
+}
+
+// Rain animation: when it rains, the drops fall gently (on) or stay still (off).
+export function setRainAnimOn(on: boolean) {
+  savePrefs({ ...prefs, rainAnimOn: on });
 }
 
 // Rounded to 2 decimal places (about 1 km), which is plenty for sunrise and weather.

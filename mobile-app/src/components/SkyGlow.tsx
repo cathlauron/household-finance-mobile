@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo, AppState, StyleSheet, useWindowDimensions, View } from 'react-native';
+import FallingRain from './FallingRain';
 import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
 import { SkyPhase, SkyWeather, useSkyPhase, useSkyPrefs, useSkyWeather } from '../sky';
@@ -121,10 +122,24 @@ const RAYS = [112, 126, 140, 154, 168].map((deg) => {
 
 export default function SkyGlow() {
   const { isDark } = useTheme();
-  const { glowOn } = useSkyPrefs();
+  const { glowOn, rainAnimOn } = useSkyPrefs();
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [appActive, setAppActive] = useState(AppState.currentState !== 'background');
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
+    const motionSub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    const appSub = AppState.addEventListener('change', (st) => setAppActive(st !== 'background'));
+    return () => {
+      motionSub.remove();
+      appSub.remove();
+    };
+  }, []);
   const phase = useSkyPhase();
   const sky = useSkyWeather();
   const { width } = useWindowDimensions();
+  // Rain falls only when the switch is on, Reduce Motion is off and the app is in front;
+  // otherwise the drops are drawn still.
+  const rainFalls = sky === 'rain' && rainAnimOn && !reduceMotion;
 
   const art = useMemo(() => {
     const mode = isDark ? 'dark' : 'light';
@@ -161,6 +176,7 @@ export default function SkyGlow() {
             ))}
             {sky === 'cloudy' && phase === 'night' && dots(CLOUD_STARS)}
             {sky === 'rain' &&
+              !rainFalls &&
               DROPS.map((d, i) => (
                 <Path
                   key={i}
@@ -204,8 +220,9 @@ export default function SkyGlow() {
         )}
       </>
     );
-  }, [phase, isDark, sky]);
+  }, [phase, isDark, sky, rainFalls]);
 
+  const rainColor = WEATHER_LOOKS.rain[phase === 'night' ? 'night' : 'day'][isDark ? 'dark' : 'light'].tex;
   if (!glowOn) return null;
   // The art is drawn for a 390-wide phone; wider phones stretch it a little sideways only.
   return (
@@ -213,6 +230,7 @@ export default function SkyGlow() {
       <Svg width={width} height={H} viewBox={`0 0 390 ${H}`} preserveAspectRatio="none">
         {art}
       </Svg>
+      {rainFalls && appActive && <FallingRain color={rainColor} />}
     </View>
   );
 }
