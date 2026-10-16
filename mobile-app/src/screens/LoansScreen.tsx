@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
-import { Text, TextInput } from '../components/AppText';
+import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -10,18 +10,15 @@ import { useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
-import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
+import { getNextDueDate, RecurringType } from '../recurrence';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import BottomSheet from '../components/BottomSheet';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
 import SegmentedControl from '../components/SegmentedControl';
@@ -48,33 +45,6 @@ function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel
   return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
 }
 
-function fullRecurrenceDetail(loan: Loan): string {
-  const rt = (loan.recurringType as RecurringType) || 'onetime';
-  const d = loan.dueDate || {};
-  if (rt === 'monthly') {
-    return d.day ? `Every month on day ${d.day}` : 'Monthly';
-  }
-  if (rt === 'annual') {
-    if (d.month && d.day) {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const mName = monthNames[(d.month as number) - 1] || `Month ${d.month}`;
-      return `Every year on ${mName} ${d.day}`;
-    }
-    return d.day ? `Every year on day ${d.day}` : 'Annual';
-  }
-  if (rt === 'onetime') {
-    return d.date ? `One-time: due ${d.date}` : 'One-time loan';
-  }
-  if (rt === 'custom') {
-    const freq = loan.customFreq ? loan.customFreq.charAt(0).toUpperCase() + loan.customFreq.slice(1) : 'Custom schedule';
-    const start = loan.customStartDate ? `, starting ${loan.customStartDate}` : '';
-    const count = typeof loan.customOccurrenceCount === 'number' && loan.customOccurrenceCount > 0
-      ? ` (${loan.customOccurrenceCount} payments)`
-      : '';
-    return `${freq}${start}${count}`;
-  }
-  return recurringTypeLabel(rt);
-}
 
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 
@@ -118,7 +88,6 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
-  const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -506,7 +475,6 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
             <GradientFill match={[styles.group, styles.section]} />
           {loans.map((loan, rowIndex) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
-            const isExpanded = expandedLoanId === loan.id;
             const loanRecurType = (loan.recurringType as RecurringType) || 'onetime';
             const loanNextDue = getNextDueDate(
               loanRecurType,
@@ -672,9 +640,7 @@ function makeStyles(colors: any) {
     scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
     // Redesign styles
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
-    summaryCard: { padding: 16, marginBottom: 20 },
     section: { marginBottom: 20 },
-    tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     summaryRow: { flexDirection: 'row', marginBottom: 12 },
     summaryCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 16 },
     summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
@@ -691,42 +657,6 @@ function makeStyles(colors: any) {
     },
     simulatorButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.gold },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
-    loanCollapsedWrap: {
-      flex: 1,
-    },
-    loanRowTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    loanRowMain: { flex: 1, marginRight: 10 },
-    loanName: { fontSize: 17, fontWeight: '500', color: colors.ink },
-    loanSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
-    loanAmount: { fontSize: 17, fontWeight: '600', color: colors.ink },
-
-    detailContainer: {
-      gap: 6,
-    },
-    detailRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 2,
-    },
-    detailLabel: {
-      fontSize: 11,
-      color: colors.inkDim,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      fontWeight: '600',
-    },
-    detailValue: {
-      fontSize: 12.5,
-      color: colors.ink,
-      fontWeight: '500',
-    },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inputLabel: {
       // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
@@ -735,20 +665,9 @@ function makeStyles(colors: any) {
       color: colors.inkDim,
       marginBottom: 6,
     },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 14,
-    },
     amountInput: {
       backgroundColor: colors.navy2,
     },
-    fieldHint: { fontSize: 11, color: colors.inkFaint, marginTop: -10, marginBottom: 14, lineHeight: 15 },
     paymentLogSection: {
       marginTop: 4,
       marginBottom: 14,
@@ -770,7 +689,6 @@ function makeStyles(colors: any) {
     paymentRowMethod: { fontSize: 11, color: colors.inkDim, marginTop: 1 },
     paymentRowAmount: { fontSize: 12.5, fontWeight: '600', color: colors.ink, marginRight: 8 },
     paymentRemoveBtn: { paddingHorizontal: 6, paddingVertical: 2 },
-    paymentRemoveBtnText: { fontSize: 13, color: colors.inkFaint },
     paymentAddBox: {
       backgroundColor: colors.navy2,
       borderRadius: 10,
@@ -785,9 +703,5 @@ function makeStyles(colors: any) {
       marginTop: 2,
     },
     paymentAddButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.gold },
-    row2: { flexDirection: 'row', gap: 10 },
-    row2Item: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-  });
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
 }

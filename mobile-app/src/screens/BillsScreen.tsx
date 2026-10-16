@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -9,19 +8,13 @@ import { useToPayAddRequest } from '../fabActions';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
-import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
+import { getNextDueDate, RecurringType } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
-import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
-import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
-import Card from '../components/Card';
-import AmountInput from '../components/AmountInput';
 import { getOverdueItems } from '../overdue';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, paidCycles } from '../billPayments';
 import PayRow from '../components/PayRow';
@@ -36,49 +29,10 @@ function billAmount(bill: Bill): number {
   return c && typeof c.amountDue === 'number' ? c.amountDue : 0;
 }
 
-function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel): string {
-  if (!pm) return 'Not set';
-  if (pm.type === 'cash') return 'Cash';
-  const list = pm.type === 'debit' ? model.balanceAccounts.debit : model.balanceAccounts.credit;
-  const acct = list.find((a) => a.id === pm.accountId);
-  const label = pm.type === 'debit' ? 'Debit' : 'Credit';
-  return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
-}
 
-function fullRecurrenceDetail(bill: Bill): string {
-  const d = bill.dueDate || {};
-  if (bill.recurringType === 'monthly') {
-    return d.day ? `Every month on day ${d.day}` : 'Monthly';
-  }
-  if (bill.recurringType === 'annual') {
-    if (d.month && d.day) {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const mName = monthNames[(d.month as number) - 1] || `Month ${d.month}`;
-      return `Every year on ${mName} ${d.day}`;
-    }
-    return d.day ? `Every year on day ${d.day}` : 'Annual';
-  }
-  if (bill.recurringType === 'onetime') {
-    return d.date ? `One-time: due ${d.date}` : 'One-time bill';
-  }
-  if (bill.recurringType === 'custom') {
-    return bill.customFreq ? `Custom: every ${bill.customFreq}` : 'Custom schedule';
-  }
-  return recurringTypeLabel(bill.recurringType);
-}
 
 // Sorts bills by next due date (soonest first); bills with no computable
 // due date yet sort to the bottom.
-function sortByNextDue(bills: Bill[]): Bill[] {
-  return [...bills].sort((a, b) => {
-    const da = getNextDueDate(a.recurringType, a.dueDate);
-    const db = getNextDueDate(b.recurringType, b.dueDate);
-    if (!da && !db) return 0;
-    if (!da) return 1;
-    if (!db) return -1;
-    return da.getTime() - db.getTime();
-  });
-}
 
 const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
@@ -122,7 +76,6 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   }, [model, openBillId, openBillNonce]);
   const styles = makeStyles(colors);
 
-  const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
@@ -214,18 +167,6 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setErrorMsg('');
   }
 
-  async function handleSetSubscriptionStatus(billId: string, status: 'active' | 'cancelled') {
-    if (!model) return;
-    const updated: HouseholdModel = {
-      ...model,
-      bills: model.bills.map((b) => (b.id === billId ? { ...b, subscriptionStatus: status } : b)),
-    };
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert('Failed to update', 'Please try again.');
-    }
-  }
 
   async function handleSave() {
     if (!model) return;
@@ -592,106 +533,12 @@ function makeStyles(colors: any) {
     sectionHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
     tile: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     subsRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 20 },
-    overdueBadge: { marginTop: 3, fontSize: 12, fontWeight: '600', color: colors.negative, backgroundColor: colors.errorBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' },
     balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
-    billCollapsedRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flex: 1,
-    },
-    billRowMain: { flex: 1, marginRight: 10 },
     billName: { fontSize: 17, fontWeight: '500', color: colors.ink, flexShrink: 1 },
     billSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
-    billAmount: { fontSize: 17, fontWeight: '600', color: colors.negative },
-    detailContainer: {
-      gap: 6,
-    },
-    detailRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 2,
-    },
-    detailLabel: {
-      fontSize: 11,
-      color: colors.inkDim,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      fontWeight: '600',
-    },
-    detailValue: {
-      fontSize: 12.5,
-      color: colors.ink,
-      fontWeight: '500',
-    },
-    detailNotesText: {
-      fontSize: 12.5,
-      color: colors.inkDim,
-      lineHeight: 17,
-      flex: 1,
-      textAlign: 'right',
-      marginLeft: 12,
-    },
-    priorityBadge: {
-      paddingHorizontal: 6,
-      paddingVertical: 1.5,
-      borderRadius: 4,
-    },
-    priorityBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 0.5,
-    },
-    priorityHigh: {
-      backgroundColor: colors.errorBg,
-    },
-    priorityHighText: {
-      color: colors.error,
-    },
-    priorityMedium: {
-      backgroundColor: colors.navy2,
-    },
-    priorityMediumText: {
-      color: colors.orange,
-    },
-    priorityLow: {
-      backgroundColor: colors.navy2,
-    },
-    priorityLowText: {
-      color: colors.inkDim,
-    },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 15, fontWeight: '600', color: colors.gold },
     inlineLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 },
     inlineField: { marginTop: 10, backgroundColor: colors.navy2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.ink },
-    inputLabel: {
-      // Redesign: sentence-case grey labels, like iPhone forms.
-      fontSize: 13,
-      fontWeight: '600',
-      marginLeft: 4,
-      color: colors.inkDim,
-      marginBottom: 6,
-    },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      minHeight: 48,
-      fontSize: 17,
-      color: colors.ink,
-      marginBottom: 14,
-    },
-    amountInput: {
-      backgroundColor: colors.navy2,
-    },
-    notesInput: { minHeight: 60, textAlignVertical: 'top' },
-    row2: { flexDirection: 'row', gap: 10 },
-    row2Item: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-  });
+    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },});
 }
