@@ -25,6 +25,7 @@ import type { HouseholdModel, Bill } from './types';
 import { getNextDueDate } from './recurrence';
 import { buildTransactionsList, transactionTotals } from './transactions';
 import { formatPeso, incomeOccurrencesInMonth, isPaydayReceived } from './balanceProjection';
+import { computeEnvelopes, monthKey } from './envelopes';
 
 // Makes a notification actually pop up (with sound) while the app is open,
 // not just when it's in the background — matches how the web app's alerts behaved.
@@ -137,6 +138,46 @@ export async function sendTestNotification(): Promise<boolean> {
   });
   return true;
 }
+const ENVELOPE_ALERTS_KEY = 'notif:envelope-alerts';
+
+async function sendEnvelopeAlerts(model: HouseholdModel, now: Date): Promise<void> {
+  const summary = computeEnvelopes(model, now);
+  if (!summary.rows.length) return;
+  const key = monthKey(now.getFullYear(), now.getMonth());
+  let sent: { month: string; levels: Record<string, number> } = { month: key, levels: {} };
+  try {
+    const raw = await AsyncStorage.getItem(ENVELOPE_ALERTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && parsed.month === key && parsed.levels) sent = parsed;
+  } catch {}
+  let changed = false;
+  for (const row of summary.rows) {
+    if (row.available <= 0) continue;
+    const level = row.pct >= 100 ? 100 : row.pct >= 80 ? 80 : 0;
+    const id = row.envelope.id;
+    if (level === 0 || (sent.levels[id] ?? 0) >= level) continue;
+    sent.levels[id] = level;
+    changed = true;
+    const name = row.envelope.category || 'An envelope';
+    await Notifications.scheduleNotificationAsync({
+      content:
+        level >= 100
+          ? {
+              title: `${name} is over for this month`,
+              body: `Spent ${formatPeso(row.spent)} of ${formatPeso(row.available)}.`,
+              data: { type: 'envelopeAlert' },
+            }
+          : {
+              title: `${name} is at ${Math.floor(row.pct)}%`,
+              body: `${formatPeso(Math.max(0, row.left))} left of ${formatPeso(row.available)} this month.`,
+              data: { type: 'envelopeAlert' },
+            },
+      trigger: { channelId: 'bill-alerts' },
+    });
+  }
+  if (changed) AsyncStorage.setItem(ENVELOPE_ALERTS_KEY, JSON.stringify(sent)).catch(() => {});
+}
+
 // Testing only: a payday nudge for the first income source, in 10 seconds (tap it to
 // check it opens the right Income page).
 export async function sendTestPaydayNudge(model: HouseholdModel): Promise<'sent' | 'no-income' | 'no-permission'> {
@@ -154,6 +195,17 @@ export async function sendTestPaydayNudge(model: HouseholdModel): Promise<'sent'
     trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, channelId: 'bill-alerts' },
   });
   return 'sent';
+}
+
+// Testing only: the month-end summary in 10 seconds (tap it to check it opens the close-out).
+export async function sendTestMonthEnd(): Promise<boolean> {
+  if (!(await requestNotificationPermission())) return false;
+  await ensureNotificationChannel();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Last month is done (test)', body: 'See how the month went: what came in, what went out, and where it went.', data: { type: 'closeOut' } },
+    trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, channelId: 'bill-alerts' },
+  });
+  return true;
 }
 
 export async function countScheduledNotifications(): Promise<number> {
@@ -288,6 +340,32 @@ async function rescheduleNow(model: HouseholdModel): Promise<void> {
   }
   // Keep only today's remembered times (old days drop off).
   AsyncStorage.setItem(CANCEL_BY_FIRE_KEY, JSON.stringify(keptFireTimes)).catch(() => {});
+
+  // ============================================================
+  // Envelope alerts (sent straight away, once per level per month)
+  // ============================================================
+  // Runs on every save and every update from the household, so spending added on
+  // another phone counts too. What was already sent this month is remembered.
+  if (billRemindersOn && model.settings.envelopeAlertsEnabled !== false) {
+    await sendEnvelopeAlerts(model, now);
+  }
+
+  // ============================================================
+  // Month-end summary: the 1st of next month at 9:00 AM
+  // ============================================================
+  if (billRemindersOn && model.settings.closeOutReminderEnabled !== false) {
+    const first = new Date(now.getFullYear(), now.getMonth() + 1, 1, 9, 0, 0, 0);
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const ended = MONTHS[now.getMonth()];
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${ended} is done`,
+        body: 'See how the month went: what came in, what went out, and where it went.',
+        data: { type: 'closeOut' },
+      },
+      trigger: { type: SchedulableTriggerInputTypes.DATE, date: first, channelId: 'bill-alerts' },
+    });
+  }
 
   // ============================================================
   // Payday nudge

@@ -115,6 +115,8 @@ function AppContent() {
   const pendingDeepLinkBillId = useRef<string | null>(null);
   // Payday nudge: which person's Income page to open ('' = the Income page itself).
   const pendingDeepLinkPayday = useRef<string | null>(null);
+  // Envelope alert -> Envelopes page; month-end summary -> the close-out report.
+  const pendingDeepLinkPage = useRef<'envelopeAlert' | 'closeOut' | null>(null);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -131,9 +133,19 @@ function AppContent() {
       pendingDeepLinkPayday.current = typeof data.personId === 'string' ? data.personId : '';
       flushPendingDeepLink();
     }
+    if (data?.type === 'envelopeAlert' || data?.type === 'closeOut') {
+      pendingDeepLinkPage.current = data.type;
+      flushPendingDeepLink();
+    }
   }
 
   function flushPendingDeepLink() {
+    if (pendingDeepLinkPage.current && navigationRef.isReady()) {
+      const page = pendingDeepLinkPage.current;
+      pendingDeepLinkPage.current = null;
+      if (page === 'envelopeAlert') navigationRef.navigate('Envelopes', undefined);
+      else navigationRef.navigate('Report', { id: 'monthly', backTitle: 'Home' });
+    }
     if (pendingDeepLinkPayday.current !== null && navigationRef.isReady()) {
       const personId = pendingDeepLinkPayday.current;
       pendingDeepLinkPayday.current = null;

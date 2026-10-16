@@ -25,6 +25,12 @@ export type Settings = {
   // Payday nudge: a 6:00 PM "Did it come in?" reminder on each expected payday that
   // hasn't been logged yet. Missing means on (needs "Notify me on this phone").
   paydayNudgeEnabled?: boolean;
+  // Envelope alerts: a notification when an envelope reaches 80% and 100% of what it has
+  // this month (once each per month). Missing means on.
+  envelopeAlertsEnabled?: boolean;
+  // Month-end summary: on the 1st at 9:00 AM, "<last month> is done" opening the close-out.
+  // Missing means on.
+  closeOutReminderEnabled?: boolean;
   weeklyRecapDay: number;
   weeklyRecapHour: number;
   swipeToDeleteEnabled: boolean;

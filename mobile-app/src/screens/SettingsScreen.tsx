@@ -19,7 +19,7 @@ import { useData } from '../DataContext';
 import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
-import { requestNotificationPermission, sendTestNotification, sendTestPaydayNudge, countScheduledNotifications } from '../pushNotifications';
+import { requestNotificationPermission, sendTestNotification, sendTestPaydayNudge, sendTestMonthEnd, countScheduledNotifications } from '../pushNotifications';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -1558,6 +1558,17 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
+        <SettingsGroup label="Budget" plain footer="Envelope alerts: when an envelope reaches 80% and when it's used up (once each a month). Month-end summary: on the 1st, a look back at last month.">
+          <PlainRow
+            title="Envelope alerts"
+            right={settingSwitch(model.settings.envelopeAlertsEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, envelopeAlertsEnabled: on } }), 'settings-envelope-alerts')}
+          />
+          <PlainRow
+            title="Month-end summary"
+            right={settingSwitch(model.settings.closeOutReminderEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, closeOutReminderEnabled: on } }), 'settings-closeout-reminder')}
+          />
+        </SettingsGroup>
+
         <SettingsGroup label="Weekly spending recap" plain>
           <PlainRow title="Weekly recap" right={settingSwitch(!!model.settings.weeklyRecapEnabled, () => toggleWeeklyRecap())} />
           {model.settings.weeklyRecapEnabled && (
@@ -1614,6 +1625,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               onPress={async () => {
                 const r = await sendTestPaydayNudge(model);
                 setTestNotifMsg(r === 'sent' ? 'Payday nudge coming in 10 seconds. Tap it to open that Income page.' : r === 'no-income' ? 'Add an income source first.' : 'Notifications are turned off for Finance Flow in the phone settings.');
+              }}
+            />
+            <PlainRow
+              title="Send a test month-end summary"
+              accent
+              testID="settings-test-monthend"
+              onPress={async () => {
+                const ok = await sendTestMonthEnd();
+                setTestNotifMsg(ok ? 'Month-end summary coming in 10 seconds. Tap it to open the close-out.' : 'Notifications are turned off for Finance Flow in the phone settings.');
               }}
             />
           </SettingsGroup>
