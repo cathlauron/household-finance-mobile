@@ -1,7 +1,8 @@
 ﻿Household Finance Mobile App — Progress Log (Phase D: Apple-Inspired Design Polish Pass, the H series Home redesign, and the V series visual-system pass: mint base, accessible colors, shared components)
 
 >>> START HERE: The redesign code is on the `redesign` branch; read the two design artifacts listed in PROGRESS6.md's R series section first.
->>> NEWEST (2026-10-16): see "R SERIES, SESSION 4" and the NEWEST ▶️ Next step bullet (security review → transitions → merge + EAS build).
+>>> NEWEST (2026-10-16, later): see "R SERIES, SESSION 5" and the NEWEST ▶️ Next step bullet (test the Finance Flow 2 build → forms check → transitions → merge).
+>>> (older) 2026-10-16: see "R SERIES, SESSION 4".
 >>> (older) 2026-10-15: see "R SERIES, SESSION 3".
 
 This file picks up from PROGRESS5.md. PROGRESS5.md is now PAUSED, not closed for good —
@@ -693,6 +694,99 @@ older "Forms Redesign" canvas belongs to a different account and could not be op
   Transfer, Insights, Subscriptions, Recurring, SharedExpenses) and the clean-up across
   most screens. package.json: expo-location.
 
+🔐 R SERIES, SESSION 5 (2026-10-16): security fixes 1-3, keyboard sweep, softer rays,
+"Add" buttons, trip checklist notes/colours, the six add forms, version 2.0.0 and the
+first side-by-side EAS build
+=====================================================================
+Same way of working as session 4 (Claude Code edits `redesign`, tsc clean, commits and
+pushes; Cath tests in Expo Go). 10 commits, d31bd35 to c814819.
+
+🔗 Design canvas for this session: "Finance Flow — Softer rays & matching forms"
+https://claude.ai/artifact/ASpENC4rLibfoA3QJd1Tvy (rows: Home rays today / A softer /
+B beams / A dark; the six add forms; top-right + vs Add; New transaction today vs with
+Trip). Also "Every screen" mockup https://claude.ai/artifact/SLMt6JRrmWzxccwqRvSBrm.
+
+✅ Done this session (all on `redesign`)
+- Security 1 (d31bd35, device-tested): joining a household needs a live invite code for
+  that household (lastJoinCode checked against linkCodes.existingHouseholdId, 15 min).
+- Keyboard sweep + fix 2 (345bd02, ac88b7b, device-tested): new
+  components/KeyboardAwareScrollView keeps the field being typed above the keyboard
+  (Android edge-to-edge: keyboard height excludes the nav bar); BottomSheet keeps keyboard
+  room outside its height limit. Used in BottomSheet and ~18 screens.
+- Security 2 (ac88b7b, device-tested): ownerless fallbacks removed from the rules;
+  loadWrappedHouseholdKey self-heals a missing ownerUid. Cath confirmed every household
+  has an ownerUid.
+- Security 3 (ca203ef): usernames/{username} = {uid, createdAt} claimed once; sign-up
+  claims before saving anything (taken → the new sign-in account is deleted and an error
+  shown); existing accounts claim quietly on data load (ensureUsernameClaim); rules:
+  householdKeys, profileBackups and recoveryKeys can only be CREATED under a claimed
+  username. Cath published the rules in Firebase Console and device-tested sign-in.
+- Polish batch 1 (838938e, device-tested): afternoon rays = option A (three wide blurry
+  beams, outer + inner wedge, radial fade, no hard lines; light and dark); top-right +
+  became the word "Add" on Accounts, Income, Travel, Savings, Events, Shared expenses,
+  Groceries, Goals (empty-state hints say "Tap Add"); the round + on Home/Transactions
+  stays; trip checklist items have an optional note (types.ts TravelChecklistItem.note)
+  and show blue (planned) or crossed out in red (paid); reminder notes on New transaction
+  (Money out), Travel and Savings: trip items are ticked on Travel, savings added from the
+  pot page, so nothing counts twice.
+- Header alignment (ccd6ab4, 3f9e413): one shared navigation/LargeHeader
+  headerButtonText (17pt, lineHeight 22, semibold, no Android font padding) for the back
+  label and Add/Edit/Move money/Approve all. Measured Cath's screenshots: they were
+  already level to the pixel; the thin-vs-bold mismatch made them look uneven, so all are
+  semibold now. Not yet confirmed by Cath.
+- Polish batch 2 (e5a28fe): the six add forms (trip, event, goal, pot, grocery item,
+  meal) rebuilt as grouped bottom sheets in the New transaction style (SheetBar, BigAmount
+  or new BigTotal, FormGroup rows, PickerRow choices, new GroupLabel). Trip: budget adds
+  up from the checklist; event: month chips + day strip / calendar instead of typed
+  numbers; goal: Track progress / Checklist toggle + Follow row; pot: Kept in + Add every
+  payday (runs applyAutoSavings on save), History of contributions only when editing;
+  delete asks first for trip/event/goal. NOT device-tested: Cath could not see the
+  changes in Expo Go (cause not found; her checkout was confirmed at 8825b62 afterwards)
+  and PARKED it.
+- Version 2.0.0 (8825b62): app.json version 2.0.0, android.versionCode 2,
+  SettingsScreen APP_VERSION '2.0.0' (keep both in step).
+- Side-by-side build (c814819): mobile-app/app.config.js + eas.json profile
+  "preview-v2" (extends preview, env APP_VARIANT=v2) build a SEPARATE app "Finance Flow 2"
+  (com.cathlauron.householdfinance.v2) so version 1 stays installed. Normal builds are
+  unchanged. EAS generated a new keystore for the v2 ID. Build finished:
+  https://expo.dev/accounts/cathlauron/projects/mobile-app/builds/c35f77f6-677e-451d-b6a0-eac340b27b81
+  Cath downloaded it; not opened/tested yet.
+
+📌 Decisions (session 5)
+- Rays: option A (softer rays), not B (light beams).
+- Top-right button is the word "Add" everywhere it was a +.
+- New transaction stays as it is (no Trip/Savings choice in it; too busy with long
+  checklists). Instead, notes tell people to tick trip items on Travel and add savings on
+  the pot page. Balances already stay right: ticking an item logs the expense, pot
+  contributions move money from the "kept in" account.
+- Trip budget = the whole checklist added up (blue, a projection); a ticked item is
+  crossed out in red and counts as money out.
+- Test version 2 as a separate app next to version 1 until Cath finalises; then a normal
+  "preview" build updates the original Finance Flow to 2.0.0 and Finance Flow 2 can be
+  uninstalled. No merge to main needed to test.
+- Firestore emulator can't be downloaded in Claude's container, so rules are checked by
+  review plus Cath's device tests.
+
+⚠️ Known issues / open problems (session 5)
+- The six new forms are unverified on a device (parked); the Finance Flow 2 build
+  contains them, so check them there.
+- Finance Flow 2 shares the same household data as version 1 (same Firebase account);
+  test with small entries. It has its own PIN/settings on the phone.
+- New grocery item has no Quantity row (the app doesn't store quantity for list items).
+- Header semibold change not yet confirmed by Cath.
+- Still open from session 4: transfers list/undo (not requested), page transitions not
+  started, iPhone checks. Security review is now DONE (fixes 1-3).
+- eas-cli 25.0.0 is available (Cath is on an older one; works).
+
+📁 Files (session 5, under mobile-app unless noted)
+- New: src/components/KeyboardAwareScrollView.tsx, src/usernameClaim.ts, app.config.js.
+- Changed: firestore.rules, eas.json, app.json, src/types.ts, src/household.ts,
+  src/linking.ts, src/DataContext.tsx, src/components/BottomSheet.tsx, SkyGlow.tsx,
+  SimpleForm.tsx (GroupLabel, BigTotal), src/navigation/LargeHeader.tsx
+  (headerButtonText), screens: Travel, Events, Goals, Savings, Groceries, Accounts,
+  Income, SharedExpenses, Transactions, CreateProfile, Settings, PotDetail, PayDetail,
+  CardDetail, TransactionDetail, Review, plus the keyboard-sweep screens.
+
 📌 Decisions (R series)
 - Exact-match sweep scope: "Everything, including features"; full pages instead of rows.
 - Wallet: a corner lift (not a curl, not a cut-off card); the held card stays whole and
@@ -758,7 +852,13 @@ older "Forms Redesign" canvas belongs to a different account and could not be op
   mobile-app/App.tsx).
 
 ▶️ Next step
-- NEWEST (R series session 4, 2026-10-16): everything in "R SERIES, SESSION 4" is done on `redesign` (through 82ccaeb). Next, in this order:
+- NEWEST (R series session 5, 2026-10-16): see "R SERIES, SESSION 5" (through c814819). Next:
+  (1) Install and open Finance Flow 2 (build c35f77f6, link in session 5); sign in, set a PIN, check Settings › About says 2.0.0, and compare it with version 1.
+  (2) In Finance Flow 2, check the six new add forms (trip, event, goal, pot, grocery item, meal) and the semibold header buttons; fix what Cath finds.
+  (3) Tab and page transitions (ebook page-turn feel); show options first; judge speed in the build.
+  (4) When Cath finalises: normal "preview" build (updates the original app to 2.0.0), merge `redesign` into main, App Check.
+  Also: resume PROGRESS5.md's Quick Unlock Step 6 checklist on a build; optional transfers list with undo; archive session 2-4 logs.
+- (superseded by NEWEST above) NEWEST (R series session 4, 2026-10-16): everything in "R SERIES, SESSION 4" is done on `redesign` (through 82ccaeb). Next, in this order:
   (1) Security review of the Firestore rules (mobile-app/firestore.rules): sign-in required, the ownerUid fallback, join-a-household-by-ID, username squatting, link-code guessability, open sign-up. Findings first, then fixes Cath approves; test in the Firebase Rules Playground before deploying.
   (2) Tab and page transitions: an ebook page-turn feel (slide left/right, not a 3D flip); show options first. Judge speed in a release build, not Expo Go.
   (3) Merge `redesign` into main and make the new EAS build (needed for react-native-svg, expo-linear-gradient, expo-network, expo-location); re-test the lag there.
