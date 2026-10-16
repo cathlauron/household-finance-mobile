@@ -3,6 +3,9 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> START HERE (2026-10-16): This is the ACTIVE progress log. Version 2.0.0 is finished and
 >>> merged into `main` (merge commit 9ae00f9). ALL new work happens on the `v3` branch.
 >>> Read the "▶️ Next step" section at the bottom first.
+>>> NEWEST (2026-10-16, later): the whole Version 3 plan is in V3-PLAN.md (repo root, on
+>>> `main`). Read it before building anything; Cath's answers to its 13 questions decide
+>>> the details. It also lists three data risks found in today's code (fix those first).
 
 This file picks up from PROGRESS6.md, which is now CLOSED (kept for reference, no longer
 updated). PROGRESS6.md holds the full detail of the design polish pass, the H and V series,
@@ -165,6 +168,42 @@ Testing
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
+Found 2026-10-16 while planning version 3 (details and fixes in V3-PLAN.md, "Everything
+that could go wrong"). NONE of these are fixed yet:
+- RISK 1 (urgent): receipt photos are stored as full-resolution base64 (ImagePicker
+  quality 0.5, no resize; TransactionsScreen) inside the ONE shared household document.
+  Firestore's limit is 1 MiB per document, so one photo can make every household save
+  fail ("Sync Failed") until it is removed. Cath told: don't attach receipt photos for now.
+- RISK 2: the whole household model is one encrypted string in households/{id}.data
+  (1 MiB ceiling). Estimate: a busy household (~8 entries/day) hits it in about a year.
+  Saved profile photos (avatars.ts: up to 80,000 base64 chars each, 4 per person) use
+  ~105 KB each once encrypted, so two full photo sets use ~80% of the space.
+- RISK 3: saves overwrite the whole household doc (saveHouseholdData); the live listener
+  REPLACES the local model with the incoming one (no merge); syncPendingChanges pushes
+  the local model after being offline without fetching first. Two people saving close
+  together, or one coming back online, can lose the other person's change.
+- No "Delete account" anywhere (Google Play requires in-app deletion + a web link for
+  apps with accounts). Needed before publishing / Premium.
+- Settings "Export backup" writes the full model as PLAIN JSON to the cache folder, never
+  deletes it, and there is no restore from it.
+- Email is never verified at sign-up (no sendEmailVerification); no password reset exists
+  yet (no sendPasswordResetEmail), although recovery.ts was designed for it.
+- Payday nudge time is hard-coded to 18:00 (pushNotifications.ts); model.settings is
+  household-wide, so a per-person time must be stored per username.
+- Quick unlock footer in Settings still says "Open the app with your fingerprint or a PIN
+  instead of your password" (out of date since sign in once).
+- Joining a household has no online check and no time limit (ProfileScreen joinBusy).
+- Offline banner can't be dismissed; log out / switch account doesn't warn about
+  unsynced changes.
+- Pay sheets (bills, debts via markPaid; loans in PayDetailScreen LoanBody; pot
+  contributions) always use today's date; markPaid already accepts a date parameter.
+  Back-dated items before balanceAccounts.asOfDate never change balances (silently).
+- CSV import gaps: negative amounts rejected, debit/credit columns unsupported, only
+  YYYY-MM-DD and MM/DD/YYYY dates (day-first files land in wrong months), no header-row
+  detection, no account, everything "Imported", duplicates only vs manual transactions,
+  no undo, cached file not deleted.
+- Profile shows the username with an "@" (ProfileScreen lines ~737 and ~748).
+
 Unverified from version 2 (check first in the Finance Flow 2 build)
 - The six rebuilt add forms (trip, event, goal, savings pot, grocery item, meal, commit
   e5a28fe) were never seen on a device: Cath couldn't see them in Expo Go (cause never
@@ -223,6 +262,7 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
 Repo root (on `main`): PROGRESS.md, PROGRESS1.md, PROGRESS2.md, PROGRESS2-ARCHIVE-1.md,
 PROGRESS3.md, PROGRESS4.md, PROGRESS4-ARCHIVE-1.md, PROGRESS5.md, PROGRESS6.md (closed),
 PROGRESS6-ARCHIVE-1.md, PROGRESS6-ARCHIVE-2.md, PROGRESS7.md (this file, active),
+V3-PLAN.md (the Version 3 plan, 2026-10-16; copy of the plan doc),
 2-PROJECT-INSTRUCTIONS.md, 3-ROADMAP.md, 4-REMAINING-WORK-ROADMAP.md, README.md,
 firebase.json, household-finance-app (3).html (the original web app),
 household-finance-app-spec-and-scale.md, skills-lock.json, mobile-app\.
@@ -278,10 +318,27 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   is final: `redesign` merged into `main` (9ae00f9, no conflicts, code identical to
   c814819), new branch `v3`, PROGRESS6.md closed with a pointer, PROGRESS7.md started.
   Cath will send her notes and version 3 ideas next.
+- 2026-10-16 (session 1, later): Cath sent her version 3 notes (back-dating, the "@",
+  Google/Apple/email sign-in and Forgot password, member note, payday nudge time,
+  support/FAQ, CSV import, the "avoid looking at money" focus, smart predictions,
+  bill payoff priority, Add button alignment, offline join/banner/online-only list,
+  Quick unlock/PIN/Auto-lock purpose, Premium tier and a loss-aversion free trial).
+  Claude read the code for each and wrote the plan doc "Finance Flow — Version 3 Plan"
+  (Claude Docs artifact https://claude.ai/code/artifact/e76ba69d-f14f-4c0c-878a-284001cafe88,
+  may only open in the account that made it) and saved a copy as V3-PLAN.md. It has 13
+  questions for Cath. While reading the code Claude found the three data risks now listed
+  in Known issues. No app code changed.
 
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-16, later): Cath answers the 13 questions at the end of V3-PLAN.md (or
+  in the plan doc). Record her answers under 📌 Decisions. Then follow the plan's
+  "Proposed order of work": (1) Cath checks the Finance Flow 2 build and the six add forms
+  (no code); (2) fix the three data risks first: receipt photos (shrink, keep out of the
+  main data, size guard), a storage meter + compress before encrypting, then merge before
+  saving + the log-out warning; (3) the quick fixes; and so on. Ask before anything that
+  touches encryption or the security rules.
 - NEWEST (2026-10-16): On her computer Cath switches to `v3`:
     cd C:\Projects\household-finance-mobile
     git fetch
