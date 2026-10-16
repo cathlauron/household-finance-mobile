@@ -26,6 +26,20 @@ export async function markBellRead(username: string, itemKey: string): Promise<s
   }
 }
 
+// "Mark all as read": adds every given key in one write.
+export async function markAllBellRead(username: string, itemKeys: string[]): Promise<string[]> {
+  try {
+    const current = await loadBellRead(username);
+    const next = Array.from(new Set([...current, ...itemKeys]));
+    if (next.length !== current.length) {
+      await AsyncStorage.setItem(keyFor(username), JSON.stringify(next));
+    }
+    return next;
+  } catch {
+    return [];
+  }
+}
+
 // Drops read marks for items that no longer exist, so the list can't grow forever.
 export async function pruneBellRead(username: string, validKeys: string[]): Promise<string[]> {
   try {

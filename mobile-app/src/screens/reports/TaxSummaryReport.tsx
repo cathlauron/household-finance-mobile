@@ -14,7 +14,8 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
@@ -24,6 +25,7 @@ import type { HouseholdModel } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
+import GradientFill from '../../components/GradientFill';
 
 const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
 
@@ -116,10 +118,12 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
     <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.yearNavRow}>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year - 1)}>
+          <GradientFill match={styles.yearNavBtn} />
           <Ionicons name="chevron-back" size={18} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.yearNavLabel}>{year}</Text>
         <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year + 1)}>
+          <GradientFill match={styles.yearNavBtn} />
           <Ionicons name="chevron-forward" size={18} color={colors.ink} />
         </TouchableOpacity>
       </View>
@@ -130,14 +134,17 @@ export default function TaxSummaryReport({ activeTag }: Props = {}) {
 
       <View style={styles.statGrid}>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Income</Text>
           <Text style={[styles.statCardAmount, { color: colors.ok }]}>{formatPeso(yearTotals.totalIn)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Expenses</Text>
           <Text style={[styles.statCardAmount, { color: colors.error }]}>{formatPeso(yearTotals.totalOut)}</Text>
         </View>
         <View style={styles.statCard}>
+          <GradientFill match={styles.statCard} />
           <Text style={styles.statCardLabel}>Total Saved</Text>
           <Text style={styles.statCardAmount}>{formatPeso(totalSaved)}</Text>
         </View>
@@ -202,13 +209,12 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    yearNavBtnText: { fontSize: 18, color: colors.ink, fontWeight: '700' },
     yearNavLabel: { fontSize: 18, fontWeight: '700', color: colors.ink, minWidth: 60, textAlign: 'center' },
-    introNote: { fontSize: 12, color: colors.inkDim, lineHeight: 17, marginBottom: 14, textAlign: 'center' },
+    introNote: { fontSize: 13, color: colors.inkDim, lineHeight: 17, marginBottom: 14, textAlign: 'center' },
     statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
     statCard: { flexGrow: 1, flexBasis: '30%', backgroundColor: colors.navy3, borderRadius: 10, padding: 14 },
     statCardLabel: {
-      fontSize: 11,
+      fontSize: 13,
       color: colors.inkFaint,
       marginBottom: 4,
       textTransform: 'uppercase',
@@ -216,7 +222,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     statCardAmount: { fontSize: 17, fontWeight: '700', color: colors.ink },
     cardLabel: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '700',
       textTransform: 'uppercase',
       letterSpacing: 1,
@@ -232,14 +238,14 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       padding: 14,
     },
     feesBannerLabel: { fontSize: 13, fontWeight: '700', color: colors.ink },
-    feesBannerNote: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
+    feesBannerNote: { fontSize: 13, color: colors.inkFaint, marginTop: 2 },
     feesBannerAmount: { fontSize: 18, fontWeight: '700' },
-    footerNote: { fontSize: 11, color: colors.inkFaint, marginTop: 10, lineHeight: 16 },
+    footerNote: { fontSize: 13, color: colors.inkFaint, marginTop: 10, lineHeight: 16 },
     emptyText: { fontSize: 13, color: colors.inkFaint },
     categoryRow: { marginTop: 12 },
     categoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     categoryName: { fontSize: 13, color: colors.ink, flex: 1, marginRight: 8 },
-    categoryAmount: { fontSize: 12, color: colors.inkDim },
+    categoryAmount: { fontSize: 13, color: colors.inkDim },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
     progressFill: { height: '100%', borderRadius: 999 },
   });

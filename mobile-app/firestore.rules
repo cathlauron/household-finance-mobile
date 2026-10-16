@@ -2,6 +2,29 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Security (2026-10-16): true when the signed-in account has claimed this username
+    // (usernames/{username}.uid). Records filed under a username can only be CREATED by
+    // the account that claimed it, so nobody can grab someone else's username first.
+    function ownsUsername(username) {
+      return exists(/databases/$(database)/documents/usernames/$(username))
+        && get(/databases/$(database)/documents/usernames/$(username)).data.uid == request.auth.uid;
+    }
+
+    // Username claims: created once by the account that owns the username, never changed.
+    // Any signed-in account can check whether a username is taken (it only shows an
+    // account id, nothing else).
+    match /usernames/{username} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && username.size() > 0 && username.size() <= 60;
+      allow update: if false;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow list: if false;
+    }
+
     match /linkCodes/{code} {
       // A code is only readable for a short window after it's created — after
       // that, Firestore denies the read outright, so an old code sitting in a
@@ -52,10 +75,11 @@ service cloud.firestore {
         && request.resource.data.data is string
         && request.resource.data.updatedAt is number
         && request.resource.data.members is list
-        && request.resource.data.members.size() <= 5
+        // Security (2026-10-16): a new household starts with only its creator in it;
+        // others join through an invite code (rule below).
+        && request.resource.data.members == [request.auth.uid]
         && request.resource.data.owner is string
         && request.resource.data.owner == request.auth.uid
-        && request.auth.uid in request.resource.data.members
         && (!('memberUsernames' in request.resource.data)
             || (request.resource.data.memberUsernames is map
                 && request.resource.data.memberUsernames.keys().hasOnly([request.auth.uid])
@@ -72,14 +96,20 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number;
       // Lets someone who isn't a member yet join by adding their own uid to
       // the members list — this is what addMemberToHousehold() does when the
-      // host finishes linking into a household the joiner already created.
-      // Only the members field is allowed to change here, and the person can
-      // only add themselves, not anyone else.
+      // joiner finishes linking into the host's household. Only the members
+      // field (plus the code used) may change, the person can only add
+      // themselves, and (security, 2026-10-16) they must name a live invite
+      // code — under 15 minutes old — that was made for THIS household.
+      // Knowing a household's ID alone is not enough to join it.
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberUsernames'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberUsernames', 'lastJoinCode'])
         && request.auth.uid in request.resource.data.members
         && request.resource.data.members.size() <= 5
         && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+        && request.resource.data.lastJoinCode is string
+        && exists(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode))
+        && get(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode)).data.existingHouseholdId == householdId
+        && request.time < get(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode)).data.createdAt + duration.value(15, 'm')
         && (!('memberUsernames' in request.resource.data)
             || (request.resource.data.memberUsernames is map
                 && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])
@@ -144,10 +174,13 @@ service cloud.firestore {
     }
 
     match /householdKeys/{username} {
+      // Security (2026-10-16): every record now has an owner, so the old "no owner =
+      // anyone signed in" fallback is gone. Only the owner can read or change it.
       allow get: if request.auth != null
-        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid;
+        && resource.data.ownerUid == request.auth.uid;
 
       allow create: if request.auth != null
+        && ownsUsername(username)
         && request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt', 'ownerUid'])
         && request.resource.data.householdId is string
         && request.resource.data.wrappedKey is string
@@ -155,7 +188,7 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow update: if request.auth != null
-        && request.auth.uid == resource.data.get('ownerUid', request.auth.uid)
+        && request.auth.uid == resource.data.ownerUid
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['householdId', 'wrappedKey', 'updatedAt', 'ownerUid'])
         && request.resource.data.householdId is string
@@ -176,9 +209,10 @@ service cloud.firestore {
       // Pre-Phase-B Tier 1 fix: ownerUid field added on create and required
       // on update so only the owning user can modify their backup.
       allow get: if request.auth != null
-        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid;
+        && resource.data.ownerUid == request.auth.uid;
 
       allow create: if request.auth != null
+        && ownsUsername(username)
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['salt', 'updatedAt', 'ownerUid'])
         && request.resource.data.ownerUid is string
@@ -205,6 +239,7 @@ service cloud.firestore {
       allow get: if request.auth != null && resource.data.ownerUid == request.auth.uid;
 
       allow create: if request.auth != null
+        && ownsUsername(username)
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['ownerUid', 'recoverySalt', 'wrappedKey', 'isHouseholdKey', 'updatedAt'])
         && request.resource.data.ownerUid is string
@@ -214,7 +249,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number;
 
       allow update: if request.auth != null
-        && resource.data.get('ownerUid', request.auth.uid) == request.auth.uid
+        && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.keys().hasAll(['ownerUid', 'recoverySalt', 'wrappedKey', 'isHouseholdKey', 'updatedAt'])
         && request.resource.data.ownerUid is string

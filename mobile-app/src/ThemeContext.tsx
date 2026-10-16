@@ -13,7 +13,7 @@ type ThemeContextValue = {
   setMode: (m: ColorMode) => void;
 };
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function resolveIsDark(mode: ColorMode): boolean {
   if (mode === 'dark') return true;

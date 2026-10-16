@@ -2,15 +2,31 @@ import { Platform } from 'react-native';
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabs from './MainTabs';
+import DeferredContent from './DeferredContent';
 import ProfileScreen from '../screens/ProfileScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import AccountsScreen from '../screens/AccountsScreen';
 import IncomeScreen from '../screens/IncomeScreen';
 import SavingsScreen from '../screens/SavingsScreen';
-import PlanningScreen from '../screens/PlanningScreen';
-import ReportsScreen from '../screens/ReportsScreen';
+import InsightsScreen from '../screens/InsightsScreen';
+import ReportDetailScreen, { MoreReportsScreen } from '../screens/ReportDetailScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
+import TransactionDetailScreen from '../screens/TransactionDetailScreen';
+import SearchScreen from '../screens/SearchScreen';
+import SharedExpensesScreen from '../screens/SharedExpensesScreen';
+import ReviewScreen from '../screens/ReviewScreen';
+import RecurringScreen from '../screens/RecurringScreen';
+import EnvelopesScreen from '../screens/EnvelopesScreen';
+import PayDetailScreen from '../screens/PayDetailScreen';
+import SubscriptionsScreen from '../screens/SubscriptionsScreen';
+import CardDetailScreen from '../screens/CardDetailScreen';
+import PotDetailScreen from '../screens/PotDetailScreen';
+import GroceriesScreen from '../screens/GroceriesScreen';
+import TravelScreen from '../screens/TravelScreen';
+import EventsScreen from '../screens/EventsScreen';
+import GoalsScreen from '../screens/GoalsScreen';
+import TransferScreen from '../screens/TransferScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 
@@ -20,11 +36,29 @@ export type RootStackParamList = {
   Calendar: undefined;
   Accounts: undefined;
   Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
+  IncomePerson: { personId: string };
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
-  Planning: undefined;
   Reports: undefined;
-  Settings: undefined;
+  Report: { id: string; backTitle?: string };
+  MoreReports: undefined;
+  Settings: { page?: string } | undefined;
+  SettingsPage: { subPage: string };
   Premium: undefined;
+  TransactionDetail: { id: string };
+  Search: undefined;
+  Review: undefined;
+  Recurring: undefined;
+  Envelopes: undefined;
+  Subscriptions: undefined;
+  CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string };
+  Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
+  PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
+  PotDetail: { id: string };
+  Groceries: undefined;
+  Travel: undefined;
+  Events: undefined;
+  YearlyGoals: undefined;
+  SharedExpenses: { fromTransactionId?: string; editExpenseId?: string; nonce?: number } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -42,8 +76,18 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
   return (
     <Stack.Navigator
       id={undefined}
+      // Pages build their contents a frame after the fade starts, so opening one feels
+      // instant (the tabs page is left alone).
+      screenLayout={({ children, route }) =>
+        route.name === 'Main' ? children : <DeferredContent>{children}</DeferredContent>
+      }
       screenOptions={{
         contentStyle: { backgroundColor: 'transparent' },
+        // Pages open and close with a short, soft cross-fade (Android's own 150ms page
+        // fade) instead of sliding across the screen, so there is never a half-empty
+        // screen mid-move. Matches the tabs' fade.
+        animation: 'fade',
+        animationDuration: 200, // iPhone only; Android's fade is always 150ms
         ...getSharedHeaderOptions(colors),
       }}
     >
@@ -84,11 +128,11 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen
         name="Accounts"
         component={AccountsScreen}
-        options={{ title: 'Accounts', headerBackTitle: 'More' }}
+        options={{ title: 'Accounts', headerBackTitle: 'Home' }}
       />
       <Stack.Screen
         name="Income"
-        options={{ title: 'Income', headerBackTitle: 'More' }}
+        options={{ title: 'Income', headerBackTitle: 'Transactions' }}
       >
         {({ route }) => (
           <IncomeScreen
@@ -97,9 +141,13 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
           />
         )}
       </Stack.Screen>
+      {/* One person's income: their paydays this month and their sources. */}
+      <Stack.Screen name="IncomePerson" options={{ title: '', headerBackTitle: 'Income' }}>
+        {({ route }) => <IncomeScreen personId={route.params.personId} />}
+      </Stack.Screen>
       <Stack.Screen
         name="Savings"
-        options={{ title: 'Savings', headerBackTitle: 'More' }}
+        options={{ title: 'Savings', headerBackTitle: 'Plan' }}
       >
         {({ route }) => (
           <SavingsScreen
@@ -109,25 +157,47 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         )}
       </Stack.Screen>
       <Stack.Screen
-        name="Planning"
-        component={PlanningScreen}
-        options={{ title: 'Planning', headerBackTitle: 'More' }}
-      />
-      <Stack.Screen
         name="Reports"
-        component={ReportsScreen}
-        options={{ title: 'Reports', headerBackTitle: 'More' }}
+        component={InsightsScreen}
+        options={{ title: 'Insights', headerBackTitle: 'Home' }}
       />
       <Stack.Screen
         name="Settings"
-        options={{ title: 'Settings', headerBackTitle: 'More' }}
+        options={{ title: 'Settings', headerBackTitle: 'Home' }}
       >
-        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
+        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
+      {/* A Settings sub-page (Account & Security, Appearance, ...), pushed so it fades in like other pages. */}
+      <Stack.Screen name="SettingsPage" options={{ title: '', headerBackTitle: 'Settings' }}>
+        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
+      </Stack.Screen>
+      <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
+      <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
+      <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
+      <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: '', headerBackTitle: 'Insights' }} />
+      <Stack.Screen name="MoreReports" component={MoreReportsScreen} options={{ title: 'More reports', headerBackTitle: 'Insights' }} />
+      <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: '', headerBackTitle: 'Savings' }} />
+      {/* Redesign: each Plan section is its own page, as in the mockup. */}
+      <Stack.Screen name="Groceries" component={GroceriesScreen} options={{ title: 'Groceries', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="Travel" component={TravelScreen} options={{ title: 'Travel', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="SharedExpenses" component={SharedExpensesScreen} options={{ title: 'Shared Expenses', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
+      <Stack.Screen name="Recurring" component={RecurringScreen} options={{ title: 'Recurring', headerBackTitle: 'Transactions' }} />
+      <Stack.Screen name="Envelopes" component={EnvelopesScreen} options={{ title: 'Envelopes', headerBackTitle: 'Budgeting' }} />
+      {/* Search drops down from the top itself (see SearchScreen), over the page behind it. */}
+      <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false, presentation: 'transparentModal', animation: 'none' }} />
+      <Stack.Screen
+        name="TransactionDetail"
+        component={TransactionDetailScreen}
+        options={{ title: '', headerBackTitle: 'Transactions' }}
+      />
       <Stack.Screen
         name="Premium"
         component={PremiumScreen}
-        options={{ title: 'Subscription', headerBackTitle: 'Settings' }}
+        options={{ title: 'Premium', headerBackTitle: 'Settings' }}
       />
     </Stack.Navigator>
   );

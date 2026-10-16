@@ -1,16 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  TextInput,
-  ActivityIndicator,
-
-  Image,
-  Alert,
-} from 'react-native';
+import AppSwitch from '../components/AppSwitch';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -18,8 +9,11 @@ import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
-import { getMyPersonId, subscribeToMyPersonId } from '../myPerson';
+import { usePullDownToOpen } from '../pullDownToOpen';
+import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
+import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { requestOpenBill } from '../openBillRequest';
+import { accountLabel } from '../transactionActions';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { formatPeso } from '../balanceProjection';
@@ -32,27 +26,20 @@ import {
 import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
-import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
 import { makeId } from '../utils';
-import { CollapsibleRow } from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import { hapticSelection } from '../haptics';
-import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import { reviewCount } from './ReviewScreen';
+import { idsForAccount } from './CardDetailScreen';
+import SegmentedControl from '../components/SegmentedControl';
+import GradientFill from '../components/GradientFill';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
   return p ? p.name : '';
-}
-function ownerLabel(people: Person[], owner: string, myPersonId: string | null): string {
-  if (owner === 'shared') return 'Ours';
-  if (myPersonId && owner === myPersonId) return 'Mine';
-  const name = personName(people, owner);
-  return name ? name + "'s" : 'Shared';
 }
 // Finds an existing person by name (case-insensitive), or creates a new one.
 // Mirrors IncomeScreen's behavior: typing a name that doesn't exist yet quietly
@@ -73,11 +60,6 @@ function findOrCreatePerson(
   return { people: [...people, newPerson], personId: newPerson.id };
 }
 
-function formatDateLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 const TX_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -93,13 +75,48 @@ function todayISO(): string {
 }
 
 const SOURCE_LABELS: Record<string, string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan', manual: 'Manual' };
-const DIRECTIONS: Array<'out' | 'in' | 'saving'> = ['out', 'in', 'saving'];
-const DIRECTION_LABELS: Record<string, string> = { out: 'Money out', in: 'Money in', saving: 'Savings' };
 
-function amountColor(direction: string, colors: { ok: string; orange: string; error: string }): string {
-  if (direction === 'in') return colors.ok;
-  if (direction === 'saving') return colors.orange;
-  return colors.error;
+function amountColor(direction: string, colors: { positive: string; saving: string; negative: string }): string {
+  if (direction === 'in') return colors.positive;
+  if (direction === 'saving') return colors.saving;
+  return colors.negative;
+}
+
+// Redesign: icon tile for each row, tinted by direction.
+const DIRECTION_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  in: 'arrow-down',
+  out: 'arrow-up',
+  saving: 'leaf-outline',
+};
+function tileBg(direction: string, colors: { okBg: string; errorBg: string; warnBg: string }): string {
+  if (direction === 'in') return colors.okBg;
+  if (direction === 'saving') return colors.warnBg;
+  return colors.errorBg;
+}
+
+// Redesign: transactions are shown under date headings (Today, Yesterday, Mon, Oct 12).
+// The list is already sorted, so this keeps that order and just starts a new group
+// whenever the date changes.
+function groupByDate(list: TransactionEntry[]): { date: string; items: TransactionEntry[] }[] {
+  const groups: { date: string; items: TransactionEntry[] }[] = [];
+  list.forEach((t) => {
+    const last = groups[groups.length - 1];
+    if (last && last.date === t.date) last.items.push(t);
+    else groups.push({ date: t.date, items: [t] });
+  });
+  return groups;
+}
+function dayHeading(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff === -1) return 'Tomorrow';
+  const sameYear = d.getFullYear() === today.getFullYear();
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
 // Bill-sourced TransactionEntry ids are built as 'bill-' + cycle.id
@@ -145,23 +162,74 @@ function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): 
 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel, username } = useData();
+  const { model, saveModel } = useData();
   const navigation = useNavigation();
+  // Pull the list down from the top to open Search (like the iPhone).
+  const pullToSearch = usePullDownToOpen(() => (navigation as any).navigate('Search'));
   const route = useRoute<any>();
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [monthSheetOpen, setMonthSheetOpen] = useState(false);
   const filterNonce = route.params?.filterNonce;
+  // Redesign: "See all" on a Card page filters to that card ({ accountFilter }).
+  const [accountFilter, setAccountFilter] = useState<{ key: string; name: string } | null>(null);
   useEffect(() => {
     const p = route.params;
     if (p?.categoryFilter && p?.monthFilter) {
       setCategoryFilter(p.categoryFilter);
       setMonthFilter(p.monthFilter);
     }
+    if (p?.accountFilter) {
+      setAccountFilter({ key: p.accountFilter, name: p.accountFilterName ?? 'This card' });
+      setMonthFilter('all');
+    }
   }, [filterNonce]);
+  // Redesign: the floating + button opens this tab with { addNonce } to show the
+  // "New transaction" sheet straight away.
+  const addNonce = route.params?.addNonce;
+  useEffect(() => {
+    if (addNonce) openAddModal();
+  }, [addNonce]);
+  // Redesign: search button in the title bar (opens Search).
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+          {/* Redesign: repeating transactions (Recurring page). */}
+          <TouchableOpacity
+            testID="transactions-recurring"
+            onPress={() => (navigation as any).navigate('Recurring')}
+            accessibilityRole="button"
+            accessibilityLabel="Recurring transactions"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="repeat" size={24} color={colors.gold} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="transactions-search"
+            onPress={() => (navigation as any).navigate('Search')}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="search" size={22} color={colors.gold} />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, colors.gold]);
+  // Redesign: the Transaction page's "Edit" comes back here with { editId } to open the form.
+  const editNonce = route.params?.editNonce;
+  useEffect(() => {
+    const editId = route.params?.editId;
+    if (!editNonce || !editId || !model) return;
+    const t = buildTransactionsList(model).find((x) => x.rawId === editId && x.source === 'manual');
+    if (t) openEditModal(t);
+  }, [editNonce]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setCategoryFilter(null);
+      setAccountFilter(null);
     });
     return unsubscribe;
   }, [navigation]);
@@ -175,25 +243,23 @@ export default function TransactionsScreen() {
   const [amountInput, setAmountInput] = useState<number | ''>('');
   const [dateInput, setDateInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
+  // Money in: "What is it?" (Salary logs a payday on an Income source).
+  const [incomeKindInput, setIncomeKindInput] = useState<IncomeKind | null>(null);
+  const [incomeSourceIdInput, setIncomeSourceIdInput] = useState<string | null>(null);
+  const salaryEntry = !editingId && directionInput === 'in' && incomeKindInput === 'salary';
   const [refundTrackingEnabled, setRefundTrackingEnabled] = useState(false);
   const [refundAmountInput, setRefundAmountInput] = useState<number | ''>('');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [personInput, setPersonInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
   const [tagsInput, setTagsInput] = useState('');
-  const [myPersonId, setMyPersonId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!username) return;
-    getMyPersonId(username).then(setMyPersonId);
-    const unsubscribe = subscribeToMyPersonId(setMyPersonId);
-    return unsubscribe;
-  }, [username]);
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Redesign: quick-add sheet extras.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [ruleFilled, setRuleFilled] = useState(false);
   const transactions = useMemo(() => {
     if (!model) return [];
     let list = buildTransactionsList(model);
@@ -203,8 +269,13 @@ export default function TransactionsScreen() {
     if (categoryFilter) {
       list = list.filter((t) => t.direction === 'out' && t.category === categoryFilter);
     }
+    if (accountFilter) {
+      const [g, id] = accountFilter.key.split(':');
+      const ids = idsForAccount(model, g as any, id);
+      list = list.filter((t) => ids.has(t.rawId ?? t.id) || ids.has(t.id));
+    }
     return sortTransactions(list, sortOrder);
-  }, [model, sortOrder, categoryFilter, monthFilter]);
+  }, [model, sortOrder, categoryFilter, monthFilter, accountFilter]);
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
@@ -235,6 +306,8 @@ export default function TransactionsScreen() {
     setAmountInput('');
     setDateInput(todayISO());
     setDirectionInput('out');
+    setIncomeKindInput(null);
+    setIncomeSourceIdInput(null);
     setRefundTrackingEnabled(false);
     setRefundAmountInput('');
     setReceiptPhoto(null);
@@ -246,6 +319,8 @@ export default function TransactionsScreen() {
   }
 
   function openAddModal() {
+    setMoreOpen(false);
+    setRuleFilled(false);
     setEditingId(null);
     resetForm();
     setModalOpen(true);
@@ -256,6 +331,8 @@ export default function TransactionsScreen() {
     const raw = (model?.manualTransactions || []).find((m) => m.id === t.rawId);
     if (!raw) return;
     setEditingId(raw.id);
+    setRuleFilled(false);
+    setMoreOpen(!!(raw.tags?.length || raw.receiptPhoto || (raw.owner && raw.owner !== 'shared')));
     setLabelInput(raw.label || '');
     setCategoryInput(raw.category || '');
     setPersonInput(personName(model?.people || [], raw.owner || ''));
@@ -264,6 +341,8 @@ export default function TransactionsScreen() {
     setAmountInput(typeof raw.amount === 'number' ? raw.amount : '');
     setDateInput(raw.date || todayISO());
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
+    setIncomeKindInput(raw.incomeKind ?? null);
+    setIncomeSourceIdInput(null);
     setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
     setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
     setReceiptPhoto(raw.receiptPhoto || null);
@@ -287,14 +366,14 @@ export default function TransactionsScreen() {
     if (!model || categoryInput.trim()) return;
     const amt = typeof amountInput === 'number' ? amountInput : NaN;
     const auto = computeAutoCategory(model, text, amt);
-    if (auto) setCategoryInput(auto);
+    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
   }
 
   function handleAmountChange(val: number | '') {
     setAmountInput(val);
     if (!model || categoryInput.trim()) return;
     const auto = computeAutoCategory(model, labelInput, val === '' ? NaN : val);
-    if (auto) setCategoryInput(auto);
+    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
   }
 
   async function handlePickReceipt() {
@@ -330,9 +409,51 @@ export default function TransactionsScreen() {
     setReceiptPhoto(null);
   }
 
+  // Money in › Salary: logs a payday on the chosen Income source (the same as logging
+  // it on the Income page), into the chosen account.
+  async function saveSalary() {
+    if (!model) return;
+    const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
+    if (!source) {
+      setErrorMsg('Pick which salary this is.');
+      return;
+    }
+    const trimmedDate = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      setErrorMsg('Enter date as YYYY-MM-DD.');
+      return;
+    }
+    if (amountInput === '' || amountInput <= 0) {
+      setErrorMsg('Enter an amount greater than 0.');
+      return;
+    }
+    const acctProblem = accountProblem(model, 'in', amountInput, paymentMethodInput);
+    if (acctProblem) {
+      setErrorMsg(acctProblem);
+      return;
+    }
+    const entry = { id: makeId('paylog'), date: trimmedDate, amount: amountInput, paymentMethod: paymentMethodInput, createdAt: Date.now() };
+    const updated: HouseholdModel = {
+      ...model,
+      income: (model.income || []).map((s) => (s.id === source.id ? { ...s, paymentLog: [entry, ...(s.paymentLog || [])] } : s)),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSave() {
     if (!model) return;
-    const trimmedLabel = labelInput.trim();
+    if (!editingId && directionInput === 'in' && incomeKindInput === 'salary') return saveSalary();
+    // Extra income with no description gets the kind's name (e.g. "Bonus").
+    const extraKind = directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? incomeKindInput : undefined;
+    const trimmedLabel = labelInput.trim() || (extraKind ? incomeKindLabel(extraKind) : '');
     if (!trimmedLabel) {
       setErrorMsg('Enter a label.');
       return;
@@ -347,6 +468,11 @@ export default function TransactionsScreen() {
       return;
     }
     const parsedAmount = amountInput;
+    const acctProblem = accountProblem(model, directionInput, parsedAmount, paymentMethodInput, editingId);
+    if (acctProblem) {
+      setErrorMsg(acctProblem);
+      return;
+    }
 
     const refundAmountToSave =
       directionInput === 'out' && refundTrackingEnabled && typeof refundAmountInput === 'number' && refundAmountInput > 0
@@ -375,11 +501,16 @@ export default function TransactionsScreen() {
             amount: parsedAmount,
             direction: directionInput,
             owner: personId || 'shared',
-            category: categoryInput.trim(),
+            category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
             notes: notesInput.trim(),
             tags: parsedTags.length > 0 ? parsedTags : undefined,
             paymentMethod: paymentMethodInput,
           };
+        if (extraKind) next.incomeKind = extraKind;
+        else delete next.incomeKind;
+        // Saving an edit counts as checking it.
+        delete next.needsReview;
+        delete next.reviewWhy;
         if (receiptPhoto) {
           next.receiptPhoto = receiptPhoto;
         } else {
@@ -402,12 +533,14 @@ export default function TransactionsScreen() {
           amount: parsedAmount,
           direction: directionInput,
           owner: personId || 'shared',
-          category: categoryInput.trim(),
+          category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
           notes: notesInput.trim(),
+          ...(extraKind ? { incomeKind: extraKind, createdAt: Date.now() } : {}),
           ...(parsedTags.length > 0 ? { tags: parsedTags } : {}),
           paymentMethod: paymentMethodInput,
           ...(receiptPhoto ? { receiptPhoto } : {}),
           ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
+          ...(ruleFilled && categoryInput.trim() ? { needsReview: true, reviewWhy: 'Filled in by your rule' } : {}),
         };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
     }
@@ -487,140 +620,99 @@ export default function TransactionsScreen() {
   // Marks a pending refund as received: creates a real, linked "money in" transaction for the
   // amount expected back, and stamps refundTransactionId on the original expense so we know
   // it's been resolved. Mirrors reconcileTravelChecklistTransactions / reconcileEventTransaction.
-  async function handleMarkRefundReceived(txnId: string) {
-    if (!model) return;
-    const raw = (model.manualTransactions || []).find((m) => m.id === txnId);
-    if (!raw || typeof raw.refundExpectedAmount !== 'number' || raw.refundTransactionId) return;
-
-    const newTxn: ManualTransaction = {
-      id: makeId('txn'),
-      date: new Date().toISOString().slice(0, 10),
-      label: 'Refund: ' + (raw.label || 'Transaction'),
-      amount: raw.refundExpectedAmount,
-      direction: 'in',
-      owner: raw.owner || 'shared',
-      category: raw.category || 'Refund',
-    };
-
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: [
-        ...(model.manualTransactions || []).map((t) =>
-          t.id === txnId ? { ...t, refundTransactionId: newTxn.id } : t
-        ),
-        newTxn,
-      ],
-    };
-
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
-    }
-  }
 
   // Undoes a "marked received" refund: removes the linked income transaction it created, and
   // clears refundTransactionId so it goes back to showing as Pending.
-  async function handleUndoRefund(txnId: string) {
-    if (!model) return;
-    const raw = (model.manualTransactions || []).find((m) => m.id === txnId);
-    if (!raw || !raw.refundTransactionId) return;
-    const linkedId = raw.refundTransactionId;
-
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: (model.manualTransactions || [])
-        .filter((t) => t.id !== linkedId)
-        .map((t) => (t.id === txnId ? { ...t, refundTransactionId: undefined } : t)),
-    };
-
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
-    }
-  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.statRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>TOTAL IN</Text>
-            <Text style={[styles.statAmount, { color: colors.ok }]}>{formatPeso(totals.totalIn)}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>TOTAL OUT</Text>
-            <Text style={[styles.statAmount, { color: colors.error }]}>{formatPeso(totals.totalOut)}</Text>
-          </View>
-        </View>
-        {totals.totalSaving > 0 && (
-          <View style={styles.statRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>SAVED</Text>
-              <Text style={[styles.statAmount, { color: colors.orange }]}>{formatPeso(totals.totalSaving)}</Text>
-            </View>
-          </View>
-        )}
-        <Card variant="banner" row style={{ marginBottom: 16 }}>
-          <Text style={styles.netLabel}>NET (CASH IN HAND)</Text>
-          <Text style={styles.netAmount}>{formatPeso(totals.net)}</Text>
-        </Card>
-
-        {categoryFilter && (
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshControl={pullToSearch}>
+        {/* Redesign: filter chips (month, newest/oldest, category) */}
+        <View style={styles.filterRow}>
           <TouchableOpacity
-            onPress={() => setCategoryFilter(null)}
-            accessibilityLabel="Clear filter"
-            style={{
-              alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-              borderRadius: 999,
-              backgroundColor: colors.navy3,
-              borderWidth: 1,
-              borderColor: colors.navy4,
-              marginBottom: 10,
-            }}
+            testID="transactions-month-filter"
+            style={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]}
+            onPress={() => setMonthSheetOpen(true)}
+            accessibilityRole="button"
           >
-            <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.ink }}>
-              {categoryFilter}
+            <GradientFill match={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]} />
+            <Text style={[styles.filterChipText, monthFilter !== 'all' && styles.filterChipTextOn]}>
+              {monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
             </Text>
-            <Ionicons name="close-circle" size={16} color={colors.inkDim} />
-            <Text style={{ fontSize: 12, color: colors.inkDim }}>Clear filter</Text>
+            <Ionicons name="chevron-down" size={14} color={monthFilter !== 'all' ? colors.gold : colors.inkDim} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="transactions-sort"
+            style={styles.filterChip}
+            onPress={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+            accessibilityRole="button"
+            accessibilityLabel={`Sorted ${sortOrder} first. Tap to switch.`}
+          >
+            <GradientFill match={styles.filterChip} />
+            <Text style={styles.filterChipText}>{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
+            <Ionicons name="swap-vertical" size={14} color={colors.inkDim} />
+          </TouchableOpacity>
+          {accountFilter && (
+            <TouchableOpacity
+              style={[styles.filterChip, styles.filterChipOn]}
+              onPress={() => setAccountFilter(null)}
+              accessibilityRole="button"
+              accessibilityLabel={`Showing ${accountFilter.name} only. Tap to clear.`}
+            >
+              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
+              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{accountFilter.name}</Text>
+              <Ionicons name="close-circle" size={15} color={colors.gold} />
+            </TouchableOpacity>
+          )}
+          {categoryFilter && (
+            <TouchableOpacity
+              style={[styles.filterChip, styles.filterChipOn]}
+              onPress={() => setCategoryFilter(null)}
+              accessibilityRole="button"
+              accessibilityLabel={`Showing ${categoryFilter} only. Tap to clear.`}
+            >
+              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
+              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{categoryFilter}</Text>
+              <Ionicons name="close-circle" size={15} color={colors.gold} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Redesign: "To review" card (spending whose category wasn't picked by hand). */}
+        {reviewCount(model) > 0 && (
+          <TouchableOpacity
+            testID="transactions-review"
+            style={[styles.group, styles.reviewCard]}
+            onPress={() => (navigation as any).navigate('Review')}
+            accessibilityRole="button"
+          >
+            <GradientFill match={[styles.group, styles.reviewCard]} />
+            <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+              <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
+              <Ionicons name="checkmark-done-outline" size={17} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.txnLabel}>To review</Text>
+              <Text style={styles.txnSub}>
+                {reviewCount(model)} {reviewCount(model) === 1 ? 'needs' : 'need'} a quick look
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
           </TouchableOpacity>
         )}
 
-        <View style={{ flexDirection: 'row', marginBottom: 10 }}>
-          <Pill
-            label={monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
-            icon="calendar-outline"
-            minWidth={140}
-            active={monthFilter !== 'all'}
-            onPress={() => setMonthSheetOpen(true)}
-            testID="transactions-month-filter"
-          />
+        {/* Redesign: In / Out summary (just totals; Income is reached from Accounts). */}
+        <View style={[styles.group, styles.summary]}>
+          <GradientFill match={[styles.group, styles.summary]} />
+          <View style={styles.summaryCell} accessible accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}`}>
+            <Text style={styles.summaryLabel}>In</Text>
+            <Text style={[styles.summaryAmount, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
+          </View>
+          <View style={[styles.summaryCell, styles.summaryDivider]}>
+            <Text style={styles.summaryLabel}>Out</Text>
+            <Text style={[styles.summaryAmount, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>−{formatPeso(totals.totalOut)}</Text>
+          </View>
         </View>
-
-        <View style={styles.pillRow}>
-          <Pill
-            label="Newest first"
-            fill
-            minWidth={80}
-            active={sortOrder === 'newest'}
-            onPress={() => setSortOrder('newest')}
-          />
-          <Pill
-            label="Oldest first"
-            fill
-            minWidth={80}
-            active={sortOrder === 'oldest'}
-            onPress={() => setSortOrder('oldest')}
-          />
-        </View>
-
 
         <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Filter by month">
           <TouchableOpacity
@@ -668,9 +760,13 @@ export default function TransactionsScreen() {
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 
-        {transactions.map((t: TransactionEntry) => {
+        {groupByDate(transactions).map((day) => (
+        <View key={day.date} style={styles.daySection}>
+        <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
+        <View style={styles.group}>
+          <GradientFill match={styles.group} />
+        {day.items.map((t: TransactionEntry, rowIndex: number) => {
           const isManual = t.source === 'manual';
-          const isExpanded = expandedTxnId === t.id;
           const rawManual = isManual ? (model.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
           const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
@@ -737,176 +833,194 @@ export default function TransactionsScreen() {
               onDelete={() => handleSwipeDelete(t.rawId as string)}
               viewAction={viewAction}
               testID={`txn-swipe-${t.id}`}
+              flat
             >
-            <CollapsibleRow
+            <TouchableOpacity
               testID={`txn-row-${t.id}`}
-              isExpanded={isExpanded}
-              onToggle={() => setExpandedTxnId((prev) => (prev === t.id ? null : t.id))}
-              onEdit={isManual ? () => openEditModal(t) : undefined}
-              collapsedContent={
-                <View style={styles.txnCollapsedRow}>
-                  <View style={styles.txnMain}>
-                    <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
-                    <Text style={styles.txnSub} numberOfLines={1}>
-                      {t.category} · {formatDateLabel(t.date)} · {SOURCE_LABELS[t.source]}
-                      {!isManual ? ' (linked)' : ''}
-                      {isRefundPending ? ' · Refund pending' : ''}
-                      {isRefundReceived ? ' · Refunded' : ''}
-                    </Text>
-                  </View>
-                  <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
-                    {t.direction === 'in' ? '+' : t.direction === 'saving' ? '↳ ' : '−'}{formatPeso(t.amount)}
-                  </Text>
-                </View>
-              }
-              expandedContent={
-                <View style={styles.detailContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Full Date</Text>
-                    <Text style={styles.detailValue}>{formatDateLabel(t.date)}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Type</Text>
-                    <Text style={styles.detailValue}>{SOURCE_LABELS[t.source]}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Direction</Text>
-                    <Text style={styles.detailValue}>{DIRECTION_LABELS[t.direction]}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Belongs To</Text>
-                    <Text style={styles.detailValue}>
-                      {ownerLabel(model.people, t.owner, myPersonId)}
-                    </Text>
-                  </View>
-                  {t.source === 'manual' && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Notes</Text>
-                      <Text style={styles.detailValue}>
-                        {(model.manualTransactions || []).find((m) => m.id === t.rawId)?.notes || '—'}
-                      </Text>
-                    </View>
-                  )}
-                  {isRefundPending && (
-                    <View style={{ marginTop: 4 }}>
-                      <View style={styles.refundBadge}>
-                        <Text style={styles.refundBadgeText}>
-                          REFUND PENDING · {formatPeso(refundExpected as number)} expected
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.refundActionButton}
-                        onPress={() => handleMarkRefundReceived(t.rawId as string)}
-                      >
-                        <Text style={styles.refundActionButtonText}>Mark as Received</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {isRefundReceived && (
-                    <View style={{ marginTop: 4 }}>
-                      <View style={[styles.refundBadge, styles.refundBadgeReceived]}>
-                        <Text style={styles.refundBadgeText}>
-                          REFUNDED · {formatPeso(refundExpected as number)}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.refundActionButton}
-                        onPress={() => handleUndoRefund(t.rawId as string)}
-                      >
-                        <Text style={styles.refundActionButtonText}>Undo</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {!isManual && (
-                    <Text style={styles.detailNotesText}>
-                      From another tab — edit it there.
-                    </Text>
-                  )}
-                </View>
-              }
-            />
+              style={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]}
+              activeOpacity={0.6}
+              onPress={() => (navigation as any).navigate('TransactionDetail', { id: t.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
+            >
+              <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
+              <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
+                <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
+              </View>
+              <View style={styles.txnMain}>
+                <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
+                <Text style={styles.txnSub} numberOfLines={1}>
+                  {[t.category, rawManual ? accountLabel(model, rawManual.paymentMethod) : SOURCE_LABELS[t.source]].filter(Boolean).join(' · ')}
+                  {isRefundPending ? ' · Refund pending' : ''}
+                  {isRefundReceived ? ' · Refunded' : ''}
+                </Text>
+              </View>
+              <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
+                {t.direction === 'in' ? '+' : t.direction === 'saving' ? '' : '−'}{formatPeso(t.amount)}
+              </Text>
+            </TouchableOpacity>
             </SwipeableRow>
           );
         })}
-
-        <View style={styles.addButtonRow}>
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Text style={styles.addButtonText}>+ Add transaction</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.importButton} onPress={() => setCsvModalOpen(true)}>
-            <Text style={styles.importButtonText}>Import CSV</Text>
-          </TouchableOpacity>
         </View>
+        </View>
+        ))}
+
+        {/* Redesign: adding is done with the floating + button; importing a spreadsheet
+            moved to Settings › Backup & Data. */}
       </PullToRefreshScrollView>
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
+      {/* Redesign: the quick "New transaction" sheet from the Finance Flow mockup:
+          Cancel / title / Add bar, Money out-in switch, big amount, then Description,
+          Category, Note, Account, Date and Expecting a refund. Less-used fields
+          (Belongs to, Tags, Receipt) sit under "More details". */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit transaction' : 'New transaction'}
+        header={
+          <View style={styles.sheetBar}>
+            <TouchableOpacity onPress={closeModal} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.sheetBarBtn}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.sheetBarTitle}>{editingId ? 'Edit transaction' : 'New transaction'}</Text>
+            <TouchableOpacity testID="txn-save" onPress={handleSave} disabled={saving} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              {saving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.sheetBarBtn, { fontWeight: '700' }]}>{editingId ? 'Save' : 'Add'}</Text>}
+            </TouchableOpacity>
+          </View>
+        }
       >
-                <Text style={styles.inputLabel}>Label</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Coffee, Cash gift, Market run"
-                  placeholderTextColor={colors.inkFaint}
-                  value={labelInput}
-                  onChangeText={handleLabelChange}
-                />
+        <SegmentedControl<'out' | 'in' | 'saving'>
+          accessibilityLabel="Direction"
+          options={[
+            { id: 'out', label: 'Money out' },
+            { id: 'in', label: 'Money in' },
+            ...(directionInput === 'saving' ? [{ id: 'saving' as const, label: 'Saved' }] : []),
+          ]}
+          value={directionInput}
+          onChange={setDirectionInput}
+        />
 
-                <Text style={styles.inputLabel}>Type</Text>
-                <View style={styles.pillRow}>
-                  {DIRECTIONS.map((d) => (
-                    <Pill
-                      key={d}
-                      label={DIRECTION_LABELS[d]}
-                      tone="sheet"
-                      fill
-                      minWidth={80}
-                      active={directionInput === d}
-                      onPress={() => setDirectionInput(d)}
-                    />
-                  ))}
-                </View>
-
-        <Text style={styles.inputLabel}>Amount</Text>
         <AmountInput
-          style={styles.amountInput}
+          autoFocus={!editingId}
+          centered
+          style={styles.bigAmountWrap}
+          inputStyle={[styles.bigAmountInput, { color: amountColor(directionInput, colors) }]}
           value={amountInput}
           onChangeAmount={handleAmountChange}
         />
 
-        {directionInput === 'out' && !alreadyRefunded && (
+        {/* Trip items and savings have their own places, so they aren't counted twice. */}
+        {directionInput === 'out' && !editingId && (
+          <Text style={[styles.formFooter, { textAlign: 'center' }]}>Paid for something on a trip checklist? Tick it on Travel instead. Adding to savings? Do it from the pot's page.</Text>
+        )}
+
+        {directionInput === 'in' && (
           <>
-            <TouchableOpacity
-              style={[styles.refundToggle, refundTrackingEnabled && styles.refundToggleActive]}
-              onPress={() => { hapticSelection(); setRefundTrackingEnabled((prev) => !prev); }}
-            >
-              {refundTrackingEnabled && (
-                <Ionicons name="checkmark" size={15} color={colors.navy2} style={{ marginRight: 6 }} />
-              )}
-              <Text style={[styles.refundToggleText, refundTrackingEnabled && styles.refundToggleTextActive]}>
-                {refundTrackingEnabled ? 'Expecting a refund' : 'Expecting a refund?'}
-              </Text>
-            </TouchableOpacity>
-            {refundTrackingEnabled && (
-              <>
-                <Text style={styles.inputLabel}>Expected refund</Text>
-                <AmountInput
-                  style={[styles.amountInput, { marginBottom: 16 }]}
-                  value={refundAmountInput}
-                  onChangeAmount={setRefundAmountInput}
-                />
-              </>
+            <Text style={styles.inputLabel}>What is it?</Text>
+            <View style={styles.chipRow}>
+              {INCOME_KINDS.filter((k) => k.id !== 'salary' || !editingId).map((k) => {
+                const on = incomeKindInput === k.id;
+                return (
+                  <TouchableOpacity
+                    key={k.id}
+                    testID={`txn-kind-${k.id}`}
+                    style={[styles.chip, on && { backgroundColor: colors.accentTint }]}
+                    onPress={() => { setIncomeKindInput(on ? null : k.id); setErrorMsg(''); }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.chipText, on && { color: colors.gold }]}>{k.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {incomeKindInput === 'salary' && !editingId && (
+              (model.income || []).length === 0 ? (
+                <Text style={styles.formFooter}>Add your salary on the Income page first (Home › Wallet › Add account › Income).</Text>
+              ) : (
+                <>
+                  <Text style={styles.inputLabel}>Which salary?</Text>
+                  <View style={styles.chipRow}>
+                    {(model.income || []).map((src) => {
+                      const on = incomeSourceIdInput === src.id;
+                      const who = personName(model.people || [], src.personId);
+                      return (
+                        <TouchableOpacity
+                          key={src.id}
+                          style={[styles.chip, on && { backgroundColor: colors.accentTint }]}
+                          onPress={() => {
+                            setIncomeSourceIdInput(src.id);
+                            setErrorMsg('');
+                            if (amountInput === '' && typeof src.expectedAmount === 'number') setAmountInput(src.expectedAmount);
+                            if (!paymentMethodInput && src.depositTo) setPaymentMethodInput(src.depositTo);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: on }}
+                        >
+                          <Text style={[styles.chipText, on && { color: colors.gold }]}>{src.sourceName || src.category || 'Salary'}{who ? ` · ${who}` : ''}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.formFooter}>This logs the payday on the Income page, so it replaces the expected one instead of counting twice.</Text>
+                </>
+              )
             )}
           </>
         )}
-        {directionInput === 'out' && alreadyRefunded && (
-          <Text style={[styles.detailNotesText, { marginBottom: 16 }]}>
-            Already marked as refunded. Undo it in the transaction list to change the amount.
-          </Text>
+
+        {!salaryEntry && (
+        <View style={styles.formGroup}>
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Description</Text>
+            <TextInput
+              testID="txn-label-input"
+              style={styles.formInput}
+              placeholder="e.g. SM Hypermarket"
+              placeholderTextColor={colors.inkFaint}
+              value={labelInput}
+              onChangeText={handleLabelChange}
+            />
+          </View>
+          <View style={[styles.formRow, styles.formRowLine]}>
+            <Text style={styles.formLabel}>Category</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="e.g. Groceries"
+              placeholderTextColor={colors.inkFaint}
+              value={categoryInput}
+              onChangeText={(t) => { setCategoryInput(t); setRuleFilled(false); }}
+            />
+          </View>
+          <View style={[styles.formRow, styles.formRowLine]}>
+            <Text style={styles.formLabel}>Note</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="Optional"
+              placeholderTextColor={colors.inkFaint}
+              value={notesInput}
+              onChangeText={setNotesInput}
+            />
+          </View>
+        </View>
         )}
+        {ruleFilled && !!categoryInput && (
+          <Text style={styles.formFooter}>Category was filled in by one of your rules.</Text>
+        )}
+
+        <View style={{ marginTop: 20 }}>
+          {/* Redesign: the account is required. Money out can't overdraw cash or debit. */}
+          <AccountPicker
+            model={model}
+            direction={directionInput}
+            amount={amountInput}
+            value={paymentMethodInput}
+            onChange={setPaymentMethodInput}
+            excludeTxnId={editingId}
+          />
+        </View>
 
         <DateField
           label="Date"
@@ -915,87 +1029,92 @@ export default function TransactionsScreen() {
           testID="txn-date-field"
         />
 
-                <Text style={styles.inputLabel}>Belongs to</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Miguel, Ana"
-                  placeholderTextColor={colors.inkFaint}
-                  value={personInput}
-                  onChangeText={setPersonInput}
+        {directionInput === 'out' && !alreadyRefunded && (
+          <View style={[styles.formGroup, { marginTop: 4 }]}>
+            <View style={styles.formRow}>
+              <Text style={[styles.formLabel, { flex: 1 }]}>Expecting a refund</Text>
+              <AppSwitch
+                value={refundTrackingEnabled}
+                onValueChange={(v) => { hapticSelection(); setRefundTrackingEnabled(v); }}
+                trackColor={{ true: colors.gold, false: colors.navy4 }}
+                accessibilityLabel="Expecting a refund"
+              />
+            </View>
+            {refundTrackingEnabled && (
+              <View style={[styles.formRow, styles.formRowLine]}>
+                <Text style={styles.formLabel}>Amount back</Text>
+                <AmountInput
+                  autoFocus={!refundAmountInput}
+                  style={styles.inlineAmount}
+                  value={refundAmountInput}
+                  onChangeAmount={setRefundAmountInput}
                 />
-                {model.people.length > 0 && (
-                  <View style={styles.chipRow}>
-                    {model.people.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.chip}
-                        onPress={() => setPersonInput(p.name)}
-                      >
-                        <Text style={styles.chipText}>{p.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+              </View>
+            )}
+          </View>
+        )}
+        {directionInput === 'out' && alreadyRefunded && (
+          <Text style={styles.formFooter}>Already marked as refunded. Undo it on the transaction's page to change the amount.</Text>
+        )}
 
-        <Text style={styles.inputLabel}>Category (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Groceries, Transportation"
-          placeholderTextColor={colors.inkFaint}
-          value={categoryInput}
-          onChangeText={setCategoryInput}
-        />
-
-        <Text style={styles.inputLabel}>Notes (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Split with Ana, reimbursed later"
-          placeholderTextColor={colors.inkFaint}
-          value={notesInput}
-          onChangeText={setNotesInput}
-        />
-
-        <Text style={styles.inputLabel}>Tags (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. vacation, tax-deductible"
-          placeholderTextColor={colors.inkFaint}
-          value={tagsInput}
-          onChangeText={setTagsInput}
-        />
-        <Text style={{ fontSize: 12, color: colors.inkFaint, marginTop: -6, marginBottom: 8 }}>
-          Separate tags with commas.
-        </Text>
-
-                <PaymentMethodPicker
-                  value={paymentMethodInput}
-                  onChange={setPaymentMethodInput}
-                  debitAccounts={model.balanceAccounts.debit}
-                  creditAccounts={model.balanceAccounts.credit}
-                />
-
-                <Text style={styles.inputLabel}>Receipt photo (optional)</Text>
-                {receiptPhoto ? (
-                  <View style={styles.receiptPreviewWrap}>
-                    <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
-                    <TouchableOpacity style={styles.receiptRemoveButton} onPress={handleRemoveReceipt}>
-                      <Text style={styles.receiptRemoveButtonText}>Remove photo</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
-                    <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
-                    <Text style={styles.receiptPickButtonText}>Attach receipt</Text>
+        {!salaryEntry && (
+        <TouchableOpacity style={styles.moreToggle} onPress={() => setMoreOpen((v) => !v)} accessibilityRole="button">
+          <Text style={styles.moreToggleText}>More details</Text>
+          <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.gold} />
+        </TouchableOpacity>
+        )}
+        {moreOpen && !salaryEntry && (
+          <>
+            <Text style={styles.inputLabel}>Belongs to</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Miguel, Ana"
+              placeholderTextColor={colors.inkFaint}
+              value={personInput}
+              onChangeText={setPersonInput}
+            />
+            {model.people.length > 0 && (
+              <View style={styles.chipRow}>
+                {model.people.map((p) => (
+                  <TouchableOpacity key={p.id} style={styles.chip} onPress={() => setPersonInput(p.name)}>
+                    <Text style={styles.chipText}>{p.name}</Text>
                   </TouchableOpacity>
-                )}
+                ))}
+              </View>
+            )}
+            <Text style={styles.inputLabel}>Tags</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. vacation, tax-deductible"
+              placeholderTextColor={colors.inkFaint}
+              value={tagsInput}
+              onChangeText={setTagsInput}
+            />
+            <Text style={styles.formFooter}>Separate tags with commas.</Text>
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Receipt photo</Text>
+            {receiptPhoto ? (
+              <View style={styles.receiptPreviewWrap}>
+                <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
+                <TouchableOpacity style={styles.receiptRemoveButton} onPress={handleRemoveReceipt}>
+                  <Text style={styles.receiptRemoveButtonText}>Remove photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
+                <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
+                <Text style={styles.receiptPickButtonText}>Attach receipt</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete transaction" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {editingId && (
+          <TouchableOpacity style={[styles.formGroup, styles.deleteRow]} onPress={handleDelete} accessibilityRole="button">
+            <Text style={{ fontSize: 17, color: colors.negative }}>Delete transaction</Text>
+          </TouchableOpacity>
+        )}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -1008,58 +1127,64 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    statRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-    statCard: {
-      flex: 1,
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      paddingVertical: 14,
-      paddingHorizontal: 14,
-    },
-    statLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    statAmount: { fontSize: 17, fontWeight: '700' },
-    netLabel: { fontSize: 11, letterSpacing: 1, color: colors.inkDim },
-    netAmount: { fontSize: 20, fontWeight: '700', color: colors.ink },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
-    emptyText: { fontSize: 12, color: colors.inkFaint, fontStyle: 'italic', marginTop: 6, marginBottom: 12 },
-    txnCollapsedRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    detailContainer: { gap: 8 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 12, color: colors.inkDim },
-    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
-    detailNotesText: { fontSize: 11.5, color: colors.inkFaint, fontStyle: 'italic', marginTop: 4 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
+    // Redesign styles
+    filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+    filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 34, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.navy3 },
+    filterChipOn: { backgroundColor: colors.accentTint },
+    filterChipText: { fontSize: 15, fontWeight: '500', color: colors.ink },
+    filterChipTextOn: { color: colors.gold, fontWeight: '600' },
+    group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
+    summary: { flexDirection: 'row', marginBottom: 20 },
+    summaryCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 16 },
+    summaryDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
+    summaryLabel: { fontSize: 13, color: colors.inkDim },
+    summaryAmount: { fontSize: 17, fontWeight: '600', marginTop: 2 },
+    daySection: { marginBottom: 20 },
+    dayHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
+    tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginTop: 6, marginBottom: 12, textAlign: 'center' },
     txnMain: { flex: 1, marginRight: 10 },
-    txnLabel: { fontSize: 13.5, fontWeight: '600', color: colors.ink },
-    txnSub: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
-    txnAmount: { fontSize: 13.5, fontWeight: '700' },
-    addButtonRow: { flexDirection: 'row', gap: 16, marginTop: 4, flexWrap: 'wrap' },
-    addButton: { paddingVertical: 8, paddingHorizontal: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    importButton: { paddingVertical: 8, paddingHorizontal: 4 },
-    importButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
+    reviewCard: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 12 },
+    // Quick-add sheet
+    sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
+    sheetBarBtn: { fontSize: 17, color: colors.gold },
+    sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    bigAmountWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 16, marginBottom: 16, minHeight: 64 },
+    bigAmountInput: { fontSize: 40, fontWeight: '700', textAlign: 'center', flex: 0, minWidth: 120 },
+    // Grey groups on the white sheet, matching the other fields (date, account).
+    formGroup: { backgroundColor: colors.navy2, borderRadius: 12, overflow: 'hidden' },
+    formRow: { flexDirection: 'row', alignItems: 'center', minHeight: 50, paddingHorizontal: 16 },
+    formRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    formLabel: { fontSize: 17, color: colors.ink, width: 112 },
+    formInput: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
+    formFooter: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginHorizontal: 16 },
+    inlineAmount: { flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, justifyContent: 'flex-end' },
+    moreToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 12, marginTop: 8 },
+    moreToggleText: { fontSize: 15, fontWeight: '600', color: colors.gold },
+    deleteRow: { minHeight: 50, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+    txnRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.navy3 },
+    txnRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    txnLabel: { fontSize: 17, fontWeight: '500', color: colors.ink },
+    txnSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    txnAmount: { fontSize: 17, fontWeight: '600' },
     inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      // Redesign: sentence-case grey labels, like iPhone forms.
+      fontSize: 13,
+      fontWeight: '600',
+      marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
     },
     input: {
       backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      minHeight: 48,
+      fontSize: 17,
       color: colors.ink,
       marginBottom: 14,
-    },
-    amountInput: {
-      backgroundColor: colors.navy2,
     },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
     chip: {
@@ -1090,38 +1215,5 @@ function makeStyles(colors: any) {
     receiptRemoveButton: { alignSelf: 'flex-start' },
     receiptRemoveButtonText: { fontSize: 12, color: colors.error, fontWeight: '600' },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-
-    refundToggle: {
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 16,
-    },
-    refundToggleActive: { backgroundColor: colors.orange },
-    refundToggleText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
-    refundToggleTextActive: { color: colors.navy2 },
-    refundBadge: {
-      alignSelf: 'flex-start',
-      backgroundColor: colors.orange,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      marginTop: 6,
-    },
-    refundBadgeReceived: { backgroundColor: colors.ok },
-    refundBadgeText: { fontSize: 11, fontWeight: '700', color: colors.navy2 },
-    refundActionButton: {
-      marginTop: 10,
-      alignSelf: 'flex-start',
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-    },
-    refundActionButtonText: { fontSize: 12.5, fontWeight: '700', color: colors.ink },
   });
 }

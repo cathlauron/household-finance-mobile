@@ -11,19 +11,13 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Pressable,
-  TextInput,
-  ScrollView,
-} from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import { computeFiScenario, FiScenarioInputs } from '../fiScenario';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   visible: boolean;
@@ -83,7 +77,8 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <GradientFill match={styles.card} />
+          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Compare Scenarios</Text>
             <Text style={styles.sub}>
               Base Plan is your saved plan. Change fields below to compare a What-If Plan. Nothing here changes what's saved.
@@ -181,7 +176,7 @@ export default function SavingsFiComparisonModal({ visible, onClose, colors, bas
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -206,7 +201,7 @@ function makeStyles(colors: any) {
       padding: 20,
     },
     title: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
+    sub: { fontSize: 15, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
     statRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
     statCard: {
       flex: 1,
@@ -217,30 +212,32 @@ function makeStyles(colors: any) {
       borderColor: 'transparent',
     },
     statCardActive: { borderColor: colors.gold },
-    statLabel: { fontSize: 11, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 13, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
     statValue: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statNote: { fontSize: 11, color: colors.inkFaint, marginTop: 3 },
-    hintText: { fontSize: 11.5, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
+    statNote: { fontSize: 13, color: colors.inkFaint, marginTop: 3 },
+    hintText: { fontSize: 15, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
     sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 6, marginBottom: 10 },
     inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      // Redesign: sentence-case grey labels, like iPhone forms.
+      fontSize: 13,
+      fontWeight: '600',
+      marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
     },
     amountInput: { backgroundColor: colors.navy2, marginBottom: 12 },
     input: {
       backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      minHeight: 48,
+      fontSize: 17,
       color: colors.ink,
       marginBottom: 12,
     },
     resetButton: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
-    resetButtonText: { fontSize: 12.5, color: colors.gold, fontWeight: '600' },
+    resetButtonText: { fontSize: 15, color: colors.gold, fontWeight: '600' },
     closeButton: { alignItems: 'center', paddingVertical: 12, marginTop: 8 },
     closeButtonText: { fontSize: 13, color: colors.inkDim, fontWeight: '600' },
   });

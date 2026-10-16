@@ -1,14 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Pressable,
-} from 'react-native';
+import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { Text } from '../components/AppText';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +20,7 @@ import {
 import type { ManualTransaction, HouseholdModel } from '../types';
 import { makeId } from '../utils';
 import { hapticLight } from '../haptics';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   visible: boolean;
@@ -185,6 +178,8 @@ export default function CsvImportModal({ visible, onClose }: Props) {
         direction: r.direction,
         owner: 'shared',
         category: 'Imported',
+        needsReview: true,
+        reviewWhy: 'Imported from a spreadsheet',
       }));
       const updated: HouseholdModel = {
         ...model,
@@ -207,6 +202,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <Pressable style={styles.overlay} onPress={handleClose}>
         <Pressable style={styles.card} onPress={() => {}}>
+          <GradientFill match={styles.card} />
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Import from CSV</Text>
             <Text style={styles.helpText}>
@@ -291,6 +287,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
                                 }
                               >
                                 <View style={[styles.checkbox, !excluded && styles.checkboxChecked]}>
+                                  <GradientFill match={[styles.checkbox, !excluded && styles.checkboxChecked]} />
                                   {!excluded && <Ionicons name="checkmark" size={12} color={colors.navy2} />}
                                 </View>
                                 <Text style={styles.checkboxText}>{excluded ? 'Include' : 'Exclude'}</Text>
@@ -329,6 +326,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
                         onPress={() => { hapticLight(); handleConfirmImport(); }}
                         disabled={importing}
                       >
+                        <GradientFill match={styles.importConfirmButton} />
                         {importing ? (
                           <ActivityIndicator color={colors.navy2} />
                         ) : (
@@ -353,6 +351,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       <Modal visible={mappingMenuOpen} transparent animationType="fade" onRequestClose={() => setMappingMenuOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setMappingMenuOpen(false)}>
           <Pressable style={styles.mappingModalCard} onPress={() => {}}>
+            <GradientFill match={styles.mappingModalCard} />
             <Text style={styles.title}>Choose field</Text>
             <TouchableOpacity style={styles.optionButton} onPress={() => setHeaderTarget(null)}>
               <Text style={styles.optionText}>Unmapped</Text>
@@ -451,8 +450,7 @@ function makeStyles(colors: any) {
       justifyContent: 'center',
       marginRight: 6,
     },
-    checkboxChecked: { backgroundColor: colors.gold, borderColor: colors.gold },
-    checkboxMark: { fontSize: 10, color: colors.navy2, fontWeight: '700' },
+    checkboxChecked: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
     checkboxText: { fontSize: 11.5, color: colors.inkDim },
     moreText: { fontSize: 11.5, color: colors.inkFaint, marginTop: 6, marginBottom: 10 },
     invalidBox: {
@@ -464,13 +462,13 @@ function makeStyles(colors: any) {
     invalidTitle: { fontSize: 11.5, color: colors.inkDim, fontWeight: '700', marginBottom: 4 },
     invalidLine: { fontSize: 11.5, color: colors.error, marginTop: 2 },
     importConfirmButton: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: 10,
       paddingVertical: 12,
       alignItems: 'center',
       marginTop: 12,
     },
-    importConfirmButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.navy2 },
+    importConfirmButtonText: { fontSize: 13.5, fontWeight: '700', color: colors.onButton },
     closeButton: { marginTop: 12, alignItems: 'center' },
     closeButtonText: { fontSize: 13, fontWeight: '600', color: colors.inkDim },
     mappingModalCard: {

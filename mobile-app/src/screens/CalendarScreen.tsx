@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
-import { computeRunningBalances, totalLiquidBalance, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
+import { computeRunningBalances, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
 import {
   CalendarViewMode,
   CalendarNavMode,
@@ -15,32 +16,73 @@ import {
   setCalendarNavMode,
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
-import Card from '../components/Card';
+import GradientFill from '../components/GradientFill';
+import { hapticSelection } from '../haptics';
 
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOW_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-// One color per kind of item, used for the small dots on each day and the
-// dot next to each row in the day popup.
-function getEventDotColors(colors: any): Record<CalendarEvent['type'], string> {
-  return {
-    bill: colors.error,
-    debt: colors.orange,
-    loan: colors.indigo,
-    income: colors.ok,
-    saving: colors.gold,
-    manual: colors.decor,
-  };
+// One colour per kind of item, used for the small dots under each day and the dot next
+// to each row in the day panel. Matches the Finance Flow mockup: bills red, income green,
+// loans blue, savings in the saving colour; your own entries follow their direction.
+function eventColor(ev: CalendarEvent, colors: any): string {
+  switch (ev.type) {
+    case 'bill':
+      return colors.negative;
+    case 'debt':
+      return colors.orange;
+    case 'loan':
+      return colors.indigo;
+    case 'income':
+      return colors.positive;
+    case 'saving':
+      return colors.saving;
+    default:
+      if (ev.direction === 'in') return colors.positive;
+      if (ev.direction === 'saving') return colors.saving;
+      return colors.planned;
+  }
 }
 
-const VIEW_MODE_ICONS: Record<CalendarViewMode, keyof typeof Ionicons.glyphMap> = {
+// The small grey second line under each item in the day panel.
+function eventKind(ev: CalendarEvent): string {
+  switch (ev.type) {
+    case 'bill':
+      return 'Bill';
+    case 'debt':
+      return 'Debt payment';
+    case 'loan':
+      return 'Loan payment';
+    case 'income':
+      return 'Income';
+    case 'saving':
+      return ev.amount < 0 ? 'Moved out of savings' : 'Saving';
+    default:
+      if (ev.direction === 'in') return 'Money in';
+      if (ev.direction === 'saving') return 'Saving';
+      return 'Spent';
+  }
+}
+
+// The amount on the right of each row: + for money in, − for money out, no sign for
+// money set aside (shown in the saving colour).
+function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: string } {
+  const abs = formatPeso(Math.abs(ev.amount));
+  const isSaving = ev.type === 'saving' || (ev.type === 'manual' && ev.direction === 'saving');
+  if (isSaving) return { text: abs, color: colors.saving };
+  const isIn = ev.type === 'income' || (ev.type === 'manual' && ev.direction === 'in');
+  if (isIn) return { text: '+' + abs, color: colors.positive };
+  return { text: '−' + abs, color: colors.negative };
+}
+
+const VIEW_MODE_ICONS: Record<'compact' | 'stacked' | 'details', keyof typeof Ionicons.glyphMap> = {
   compact: 'grid-outline',
   stacked: 'layers-outline',
   details: 'reader-outline',
-  list: 'list-outline',
 };
 
 const NAV_MODE_ICONS: Record<CalendarNavMode, keyof typeof Ionicons.glyphMap> = {
@@ -65,7 +107,7 @@ type MonthViewProps = {
   year: number;
   month: number;
   viewMode: CalendarViewMode;
-  effectivePreviewDay: number | null;
+  selectedDay: number | null;
   onDayPress: (day: number, year: number, month: number) => void;
 };
 
@@ -75,23 +117,17 @@ const MonthView = React.memo(function MonthView({
   year,
   month,
   viewMode,
-  effectivePreviewDay,
+  selectedDay,
   onDayPress,
 }: MonthViewProps) {
   const { colors } = useTheme();
   const { model } = useData();
   const today = new Date();
   const styles = makeStyles(colors);
-  const EVENT_DOT_COLORS = getEventDotColors(colors);
 
   const monthEvents = useMemo(() => {
     if (!model) return {} as Record<number, CalendarEvent[]>;
     return computeMonthEvents(model, year, month);
-  }, [model, year, month]);
-
-  const projectedBalances = useMemo(() => {
-    if (!model) return {} as Record<number, number>;
-    return computeRunningBalances(model, year, month);
   }, [model, year, month]);
 
   type GridCell = { day: number; month: number; year: number; isCurrentMonth: boolean };
@@ -131,8 +167,7 @@ const MonthView = React.memo(function MonthView({
         <View key={rowIndex} style={styles.weekRow}>
           {row.map((cell, colIndex) => {
             const isToday = isCurrentYearMonth && cell.isCurrentMonth && cell.day === today.getDate();
-            const isSelected =
-              viewMode === 'list' && cell.isCurrentMonth && cell.day === effectivePreviewDay && !isToday;
+            const isSelected = cell.isCurrentMonth && cell.day === selectedDay;
             const evs = cell.isCurrentMonth ? monthEvents[cell.day] : undefined;
             const hasEvs = !!evs && evs.length > 0;
             return (
@@ -141,63 +176,61 @@ const MonthView = React.memo(function MonthView({
                 disabled={!cell.isCurrentMonth}
                 onPress={() => onDayPress(cell.day, cell.year, cell.month)}
                 activeOpacity={0.6}
+                accessibilityLabel={`${MONTHS[cell.month]} ${cell.day}`}
                 style={[
                   styles.dayCell,
-                  viewMode === 'details' ? styles.dayCellDetails : viewMode === 'list' ? styles.dayCellList : styles.dayCellSquare,
+                  viewMode === 'details' && styles.dayCellDetails,
                   !cell.isCurrentMonth && styles.dayCellOutOfMonth,
-                  isToday && styles.dayCellToday,
-                  isSelected && styles.dayCellSelected,
                 ]}
               >
-                <Text
+                <View
                   style={[
-                    styles.dayText,
-                    !cell.isCurrentMonth && styles.dayTextOutOfMonth,
-                    isToday && styles.dayTextToday,
+                    styles.numCircle,
+                    isSelected && styles.numCircleSelected,
+                    isSelected && isToday && styles.numCircleTodaySelected,
                   ]}
                 >
-                  {cell.day}
-                </Text>
-                {hasEvs && viewMode === 'stacked' && (
+                  <Text
+                    style={[
+                      styles.numText,
+                      !cell.isCurrentMonth && styles.numTextOutOfMonth,
+                      isToday && styles.numTextToday,
+                      isSelected && styles.numTextSelected,
+                      isSelected && isToday && styles.numTextTodaySelected,
+                    ]}
+                  >
+                    {cell.day}
+                  </Text>
+                </View>
+                {viewMode === 'stacked' ? (
                   <View style={styles.stackWrap}>
-                    {evs!.slice(0, 3).map((ev, i) => (
-                      <View
-                        key={i}
-                        style={[styles.stackBar, { backgroundColor: isToday ? '#FFFFFF' : EVENT_DOT_COLORS[ev.type] }]}
-                      />
-                    ))}
+                    {hasEvs &&
+                      evs!.slice(0, 3).map((ev, i) => (
+                        <View key={i} style={[styles.stackBar, { backgroundColor: eventColor(ev, colors) }]} />
+                      ))}
                   </View>
-                )}
-                {hasEvs && viewMode === 'details' && (
+                ) : viewMode === 'details' ? (
                   <View style={styles.pillWrap}>
-                    {evs!.slice(0, 2).map((ev, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.pill,
-                          { backgroundColor: isToday ? 'rgba(255,255,255,0.25)' : EVENT_DOT_COLORS[ev.type] + '26' },
-                        ]}
-                      >
-                        <Text style={[styles.pillText, isToday && { color: '#FFFFFF' }]} numberOfLines={1}>
-                          {ev.label}
-                        </Text>
-                      </View>
-                    ))}
-                    {evs!.length > 2 && (
-                      <Text style={[styles.pillMore, isToday && { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
+                    {hasEvs &&
+                      evs!.slice(0, 2).map((ev, i) => (
+                        <View key={i} style={[styles.pill, { backgroundColor: eventColor(ev, colors) + '26' }]}>
+                          <Text style={styles.pillText} numberOfLines={1}>
+                            {ev.label}
+                          </Text>
+                        </View>
+                      ))}
+                    {hasEvs && evs!.length > 2 && (
+                      <Text style={styles.pillMore} numberOfLines={1}>
                         +{evs!.length - 2}
                       </Text>
                     )}
                   </View>
-                )}
-                {hasEvs && viewMode !== 'stacked' && viewMode !== 'details' && (
+                ) : (
                   <View style={styles.dotRow}>
-                    {evs!.slice(0, 4).map((ev, i) => (
-                      <View
-                        key={i}
-                        style={[styles.dot, { backgroundColor: isToday ? '#FFFFFF' : EVENT_DOT_COLORS[ev.type] }]}
-                      />
-                    ))}
+                    {hasEvs &&
+                      evs!.slice(0, 3).map((ev, i) => (
+                        <View key={i} style={[styles.dot, { backgroundColor: eventColor(ev, colors) }]} />
+                      ))}
                   </View>
                 )}
               </TouchableOpacity>
@@ -216,22 +249,25 @@ export default function CalendarScreen() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
-  // The day the popup is open for. Remembers its own month and year so this
-  // keeps working once several months can be on screen at the same time.
+  // The day showing in the panel under the grid. Remembers its own month and year;
+  // when another month is on screen the panel falls back to today (this month) or the 1st.
   const [selectedDate, setSelectedDate] = useState<{ year: number; month: number; day: number } | null>(null);
-  
-  // View style (Compact / Stacked / Details / List) and how months move
-  // (Scroll / Swipe) — both remembered between app launches.
-  const [viewMode, setViewMode] = useState<CalendarViewMode>(DEFAULT_VIEW_MODE);
+
+  // View style (Compact / Stacked / Details) and how months move (Scroll / Swipe),
+  // both remembered between app launches. An old saved 'list' choice shows as Compact,
+  // because the day panel is now always visible.
+  const [savedViewMode, setSavedViewMode] = useState<CalendarViewMode>(DEFAULT_VIEW_MODE);
+  const viewMode: CalendarViewMode = savedViewMode === 'list' ? 'compact' : savedViewMode;
   const [navMode, setNavMode] = useState<CalendarNavMode>(DEFAULT_NAV_MODE);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Which day is showing in the List-mode preview panel under the grid.
-  // null = default (today if we're on the current month, otherwise the 1st).
-  const [previewDate, setPreviewDate] = useState<{ year: number; month: number; day: number } | null>(null);
+  // Month & year picker, opened by tapping the month title. pickerYear is the year the
+  // picker is showing (it can differ from the year on screen until a month is chosen).
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(today.getFullYear());
 
-    // Swipe mode: one page per month, sized to the screen minus the 12pt side padding.
+  // Swipe mode: one page per month, sized to the screen minus the 10pt side padding.
   const { width: screenWidth } = useWindowDimensions();
-  const pageWidth = screenWidth - 24;
+  const pageWidth = screenWidth - 20;
   const monthPages = useMemo(() => buildMonthPages(), []);
   const swipeListRef = useRef<FlatList<{ year: number; month: number }>>(null);
   const nowForIndex = new Date();
@@ -246,7 +282,6 @@ export default function CalendarScreen() {
     swipeListRef.current?.scrollToIndex({ index: pageIndex, animated: true });
   }, [pageIndex, navMode]);
 
-  
   // Scroll mode: a tall vertical list of months, reusing the same page list as Swipe.
   const verticalListRef = useRef<FlatList<{ year: number; month: number }>>(null);
   const skipNextScrollSync = useRef(false);
@@ -281,31 +316,23 @@ export default function CalendarScreen() {
   }, [pageIndex, navMode]);
 
   useEffect(() => {
-    getCalendarViewMode().then(setViewMode);
+    getCalendarViewMode().then(setSavedViewMode);
     getCalendarNavMode().then(setNavMode);
   }, []);
 
-  // Every bill/debt/loan/income/manual-transaction/savings item due in the
-  // currently-viewed month, keyed by day number — used for both the small
-  // dot indicators on each day and the full list in the day popup.
+  // Every bill/debt/loan/income/manual-transaction/savings item in the month on
+  // screen, keyed by day number, for the day panel.
   const monthEvents = useMemo(() => {
-    if (!model) return {};
+    if (!model) return {} as Record<number, CalendarEvent[]>;
     return computeMonthEvents(model, year, month);
   }, [model, year, month]);
-  
-  // Events and projected balances for the month of whichever day the popup is open for.
-  const selectedMonthEvents = useMemo(() => {
-    if (!model || !selectedDate) return {} as Record<number, CalendarEvent[]>;
-    return computeMonthEvents(model, selectedDate.year, selectedDate.month);
-  }, [model, selectedDate]);
 
-  const selectedMonthBalances = useMemo(() => {
-    if (!model || !selectedDate) return {} as Record<number, number>;
-    return computeRunningBalances(model, selectedDate.year, selectedDate.month);
-  }, [model, selectedDate]);
+  const projectedBalances = useMemo(() => {
+    if (!model) return {} as Record<number, number>;
+    return computeRunningBalances(model, year, month);
+  }, [model, year, month]);
 
   const styles = makeStyles(colors);
-  const EVENT_DOT_COLORS = getEventDotColors(colors);
 
   // Data hasn't finished loading into memory yet (this is usually near-instant, right
   // after signing in or unlocking) — show a spinner instead of a blank/broken calendar.
@@ -340,9 +367,10 @@ export default function CalendarScreen() {
   function goToday() {
     setYear(today.getFullYear());
     setMonth(today.getMonth());
+    setSelectedDate({ year: today.getFullYear(), month: today.getMonth(), day: today.getDate() });
   }
 
-    function handleSwipeEnd(e: any) {
+  function handleSwipeEnd(e: any) {
     const index = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
     const page = monthPages[index];
     if (page && (page.year !== year || page.month !== month)) {
@@ -352,20 +380,34 @@ export default function CalendarScreen() {
   }
 
   function handleDayPress(day: number, dayYear: number, dayMonth: number) {
-    const picked = { year: dayYear, month: dayMonth, day };
-    if (viewMode === 'list') {
-      setPreviewDate(picked);
-    } else {
-      setSelectedDate(picked);
-    }
+    hapticSelection();
+    setSelectedDate({ year: dayYear, month: dayMonth, day });
   }
 
-  function closeDayModal() {
-    setSelectedDate(null);
+  // Month & year picker. Only months inside the calendar's range (24 months either
+  // side of today) can be picked, so the grid always has a page to show.
+  const firstPage = monthPages[0];
+  const lastPage = monthPages[monthPages.length - 1];
+  const pageKey = (y: number, m: number) => y * 12 + m;
+  const firstKey = pageKey(firstPage.year, firstPage.month);
+  const lastKey = pageKey(lastPage.year, lastPage.month);
+
+  function openPicker() {
+    setPickerYear(year);
+    setPickerOpen(true);
   }
-  
+
+  function pickMonth(m: number) {
+    const key = pageKey(pickerYear, m);
+    if (key < firstKey || key > lastKey) return;
+    hapticSelection();
+    setYear(pickerYear);
+    setMonth(m);
+    setPickerOpen(false);
+  }
+
   function chooseViewMode(mode: CalendarViewMode) {
-    setViewMode(mode);
+    setSavedViewMode(mode);
     setCalendarViewMode(mode);
     setMenuOpen(false);
   }
@@ -377,102 +419,92 @@ export default function CalendarScreen() {
   }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
 
-  // The actual balance math — see src/balanceProjection.ts for how this is calculated.
-  const totalBalance = totalLiquidBalance(model);
-  const projectedBalances = computeRunningBalances(model, year, month);
-
-  // Full, friendly label for whichever day is currently selected, e.g.
-  // "Friday, August 22, 2026" — used in the popup title.
-  const selectedDateLabel = selectedDate
-    ? new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '';
-
-  const selectedDayBalance = selectedDate ? selectedMonthBalances[selectedDate.day] ?? null : null;
-  const selectedDayEvents = selectedDate ? selectedMonthEvents[selectedDate.day] || [] : [];
-  
-  // List-mode preview panel values
-  const effectivePreviewDay = Math.min(
-    previewDate && previewDate.year === year && previewDate.month === month
-      ? previewDate.day
-      : (isCurrentMonth ? today.getDate() : 1),
+  // The day in the panel: the tapped day if it is in the month on screen, otherwise
+  // today (on this month) or the 1st.
+  const selDay = Math.min(
+    selectedDate && selectedDate.year === year && selectedDate.month === month
+      ? selectedDate.day
+      : isCurrentMonth
+        ? today.getDate()
+        : 1,
     daysInMonth
   );
-  const previewEvents = monthEvents[effectivePreviewDay] || [];
-  const previewBalance = projectedBalances[effectivePreviewDay] ?? null;
-  const previewDateLabel = new Date(year, month, effectivePreviewDay).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const selIsToday = isCurrentMonth && selDay === today.getDate();
+  const selEvents = monthEvents[selDay] || [];
+  const selBalance = projectedBalances[selDay] ?? null;
+  const selWeekday = DOW_SHORT[new Date(year, month, selDay).getDay()];
+  const selLabel = `${selIsToday ? 'Today · ' : ''}${selWeekday}, ${MONTHS[month].slice(0, 3)} ${selDay}`;
+
+  const atStart = pageIndex <= 0;
+  const atEnd = pageIndex >= monthPages.length - 1;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.sheetHeader}>
-        <View style={styles.sheetHeaderSide} />
-        <Text style={styles.sheetTitle}>Calendar</Text>
-        <View style={[styles.sheetHeaderSide, { alignItems: 'flex-end' }]}>
-          {Platform.OS === 'android' && (
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.closeBtnCircle}
-              accessibilityLabel="Close calendar"
-            >
-              <Ionicons name="close" size={18} color={colors.ink} />
-            </TouchableOpacity>
-          )}
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          onPress={openPicker}
+          style={styles.monthTitleBtn}
+          activeOpacity={0.6}
+          accessibilityLabel={`${MONTHS[month]} ${year}. Choose a month`}
+        >
+          <Text style={styles.monthTitle} numberOfLines={1}>
+            {MONTHS[month]} {year}
+          </Text>
+          <Ionicons
+            name={pickerOpen ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.accent}
+            style={styles.monthTitleChevron}
+          />
+        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={goPrevMonth}
+            style={[styles.iconBtn, atStart && { opacity: 0.35 }]}
+            accessibilityLabel="Previous month"
+          >
+            <Ionicons name="chevron-back" size={18} color={colors.ink} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={goNextMonth}
+            style={[styles.iconBtn, atEnd && { opacity: 0.35 }]}
+            accessibilityLabel="Next month"
+          >
+            <Ionicons name="chevron-forward" size={18} color={colors.ink} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.iconBtn} accessibilityLabel="View options">
+            <Ionicons name="filter-outline" size={18} color={colors.ink} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} accessibilityLabel="Close calendar">
+            <Ionicons name="close" size={18} color={colors.ink} />
+          </TouchableOpacity>
         </View>
       </View>
-      <Card variant="banner" style={{ marginBottom: 14 }}>
-        <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-        <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
-      </Card>
 
-      <View style={styles.toolbarRow}>
-        <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.menuButton}>
-          <Ionicons name="ellipsis-horizontal-circle-outline" size={26} color={colors.gold} />
+      <View style={styles.subRow}>
+        <Text style={styles.subLabel}>Projected balance</Text>
+        <TouchableOpacity onPress={goToday} style={styles.todayChip} accessibilityLabel="Go to today">
+          <Text style={styles.todayChipText}>Today</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={goPrevMonth} style={[styles.navButton, pageIndex <= 0 && { opacity: 0.35 }]}>
-          <Ionicons name="chevron-back" size={20} color={colors.ink} />
-        </TouchableOpacity>
-
-        <Text style={styles.monthLabel}>
-          {MONTHS[month]} {year}
-        </Text>
-
-        <TouchableOpacity onPress={goNextMonth} style={[styles.navButton, pageIndex >= monthPages.length - 1 && { opacity: 0.35 }]}>
-          <Ionicons name="chevron-forward" size={20} color={colors.ink} />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity onPress={goToday} style={styles.todayButton}>
-        <Text style={styles.todayButtonText}>Today</Text>
-      </TouchableOpacity>
-
-      <View style={styles.dowRow}>
-        {DOW.map((d) => (
-          <View key={d} style={styles.dowCell}>
-            <Text style={styles.dowText}>{d}</Text>
-          </View>
-        ))}
+      <View style={styles.gridWrap}>
+        <View style={styles.dowRow}>
+          {DOW_LETTERS.map((d, i) => (
+            <View key={i} style={styles.dowCell}>
+              <Text style={styles.dowText}>{d}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       {navMode === 'swipe' ? (
         <FlatList
           key="swipe-list"
           ref={swipeListRef}
-          style={{ flexGrow: 0 }}
+          style={styles.swipeList}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -489,7 +521,7 @@ export default function CalendarScreen() {
                 year={item.year}
                 month={item.month}
                 viewMode={viewMode}
-                effectivePreviewDay={item.year === year && item.month === month ? effectivePreviewDay : null}
+                selectedDay={item.year === year && item.month === month ? selDay : null}
                 onDayPress={handleDayPress}
               />
             </View>
@@ -499,7 +531,7 @@ export default function CalendarScreen() {
         <FlatList
           key="scroll-list"
           ref={verticalListRef}
-          style={{ flex: 1 }}
+          style={styles.scrollList}
           data={monthPages}
           keyExtractor={(item) => `${item.year}-${item.month}`}
           initialScrollIndex={pageIndex}
@@ -518,7 +550,7 @@ export default function CalendarScreen() {
                 year={item.year}
                 month={item.month}
                 viewMode={viewMode}
-                effectivePreviewDay={item.year === year && item.month === month ? effectivePreviewDay : null}
+                selectedDay={item.year === year && item.month === month ? selDay : null}
                 onDayPress={handleDayPress}
               />
             </View>
@@ -526,33 +558,116 @@ export default function CalendarScreen() {
         />
       )}
 
-      {viewMode === 'list' && (
-        <View style={styles.previewPanel}>
-          <Text style={styles.previewTitle}>{previewDateLabel}</Text>
-          {previewBalance !== null && (
-            <Text style={styles.previewBalance}>
-              Projected balance: {formatPeso(previewBalance)}
-            </Text>
-          )}
-          {previewEvents.length > 0 ? (
-            <ScrollView>
-              {previewEvents.map((ev, i) => (
-                <View key={i} style={styles.modalEventRow}>
-                  <View
-                    style={[styles.modalEventDot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
-                  />
-                  <Text style={styles.modalEventLabel} numberOfLines={1}>
-                    {ev.label}
-                  </Text>
-                  <Text style={styles.modalEventAmount}>{formatPeso(ev.amount)}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.previewEmpty}>Nothing due on this date.</Text>
-          )}
+      <View style={[styles.dayPanel, navMode === 'scroll' && styles.dayPanelScrollMode]}>
+        <View style={styles.dayPanelHeader}>
+          <Text style={styles.dayPanelTitle} numberOfLines={1}>
+            {selLabel}
+          </Text>
+          {selBalance !== null && <Text style={styles.dayPanelBalance}>Balance {formatPeso(selBalance)}</Text>}
         </View>
-      )}
+        <ScrollView style={styles.dayPanelScroll} contentContainerStyle={styles.dayPanelScrollContent}>
+          {selEvents.length > 0 ? (
+            <View style={styles.group}>
+              <GradientFill match={styles.group} />
+              {selEvents.map((ev, i) => {
+                const amt = eventAmount(ev, colors);
+                return (
+                  <View key={i} style={[styles.groupRow, i > 0 && styles.groupRowDivider]}>
+                    <View style={[styles.groupDot, { backgroundColor: eventColor(ev, colors) }]} />
+                    <View style={styles.groupText}>
+                      <Text style={styles.groupTitle} numberOfLines={1}>
+                        {ev.label}
+                      </Text>
+                      <Text style={styles.groupSub} numberOfLines={1}>
+                        {eventKind(ev)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.groupAmount, { color: amt.color }]}>{amt.text}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={[styles.group, styles.groupEmpty]}>
+              <GradientFill match={[styles.group, styles.groupEmpty]} />
+              <Text style={styles.groupEmptyText}>Nothing planned for this day.</Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+
+      <Modal
+        visible={pickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <Pressable style={styles.pickerOverlay} onPress={() => setPickerOpen(false)}>
+          <Pressable style={styles.pickerCard} onPress={() => {}}>
+            <GradientFill match={styles.pickerCard} />
+            <View style={styles.pickerYearRow}>
+              <TouchableOpacity
+                onPress={() => setPickerYear(pickerYear - 1)}
+                disabled={pickerYear <= firstPage.year}
+                style={[styles.iconBtn, pickerYear <= firstPage.year && { opacity: 0.35 }]}
+                accessibilityLabel="Previous year"
+              >
+                <Ionicons name="chevron-back" size={18} color={colors.ink} />
+              </TouchableOpacity>
+              <Text style={styles.pickerYearText}>{pickerYear}</Text>
+              <TouchableOpacity
+                onPress={() => setPickerYear(pickerYear + 1)}
+                disabled={pickerYear >= lastPage.year}
+                style={[styles.iconBtn, pickerYear >= lastPage.year && { opacity: 0.35 }]}
+                accessibilityLabel="Next year"
+              >
+                <Ionicons name="chevron-forward" size={18} color={colors.ink} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerGrid}>
+              {MONTHS.map((name, m) => {
+                const key = pageKey(pickerYear, m);
+                const outOfRange = key < firstKey || key > lastKey;
+                const isShown = pickerYear === year && m === month;
+                const isThisMonth = pickerYear === today.getFullYear() && m === today.getMonth();
+                return (
+                  <TouchableOpacity
+                    key={name}
+                    disabled={outOfRange}
+                    onPress={() => pickMonth(m)}
+                    style={[
+                      styles.pickerMonth,
+                      isShown && styles.pickerMonthShown,
+                      outOfRange && { opacity: 0.3 },
+                    ]}
+                    accessibilityLabel={`${name} ${pickerYear}`}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerMonthText,
+                        isThisMonth && styles.pickerMonthTextThisMonth,
+                        isShown && styles.pickerMonthTextShown,
+                      ]}
+                    >
+                      {name.slice(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                goToday();
+                setPickerOpen(false);
+              }}
+              style={styles.pickerTodayBtn}
+              accessibilityLabel="Go to today"
+            >
+              <Text style={styles.pickerTodayText}>Go to today</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={menuOpen}
@@ -562,71 +677,26 @@ export default function CalendarScreen() {
       >
         <Pressable style={styles.menuOverlay} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuCard} onPress={() => {}}>
-            {(['compact', 'stacked', 'details'] as CalendarViewMode[]).map((m) => (
+            <GradientFill match={styles.menuCard} />
+            {(['compact', 'stacked', 'details'] as const).map((m) => (
               <TouchableOpacity key={m} style={styles.menuRow} onPress={() => chooseViewMode(m)}>
                 <Ionicons name={VIEW_MODE_ICONS[m]} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
                 <Text style={styles.menuRowText}>{m.charAt(0).toUpperCase() + m.slice(1)}</Text>
                 <View style={styles.menuCheckSlot}>
-                  {viewMode === m && <Ionicons name="checkmark" size={18} color={colors.gold} />}
+                  {viewMode === m && <Ionicons name="checkmark" size={18} color={colors.accent} />}
                 </View>
               </TouchableOpacity>
             ))}
-            <View style={styles.menuDivider} />
-            <TouchableOpacity style={styles.menuRow} onPress={() => chooseViewMode('list')}>
-              <Ionicons name={VIEW_MODE_ICONS.list} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
-              <Text style={styles.menuRowText}>List</Text>
-              <View style={styles.menuCheckSlot}>
-                {viewMode === 'list' && <Ionicons name="checkmark" size={18} color={colors.gold} />}
-              </View>
-            </TouchableOpacity>
             <View style={styles.menuDivider} />
             {(['swipe', 'scroll'] as CalendarNavMode[]).map((n) => (
               <TouchableOpacity key={n} style={styles.menuRow} onPress={() => chooseNavMode(n)}>
                 <Ionicons name={NAV_MODE_ICONS[n]} size={18} color={colors.inkDim} style={styles.menuItemIcon} />
                 <Text style={styles.menuRowText}>{n === 'swipe' ? 'Swipe months' : 'Scroll months'}</Text>
                 <View style={styles.menuCheckSlot}>
-                  {navMode === n && <Ionicons name="checkmark" size={18} color={colors.gold} />}
+                  {navMode === n && <Ionicons name="checkmark" size={18} color={colors.accent} />}
                 </View>
               </TouchableOpacity>
             ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Modal
-        visible={selectedDate !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={closeDayModal}
-      >
-        <Pressable style={styles.modalOverlay} onPress={closeDayModal}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>{selectedDateLabel}</Text>
-            {selectedDayBalance !== null && (
-              <Text style={styles.modalBalanceLine}>
-                Projected balance: {formatPeso(selectedDayBalance)}
-              </Text>
-            )}
-            {selectedDayEvents.length > 0 ? (
-              <ScrollView style={styles.modalEventList}>
-                {selectedDayEvents.map((ev, i) => (
-                  <View key={i} style={styles.modalEventRow}>
-                    <View
-                      style={[styles.modalEventDot, { backgroundColor: EVENT_DOT_COLORS[ev.type] }]}
-                    />
-                    <Text style={styles.modalEventLabel} numberOfLines={1}>
-                      {ev.label}
-                    </Text>
-                    <Text style={styles.modalEventAmount}>{formatPeso(ev.amount)}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <Text style={styles.modalSubtitle}>Nothing due on this date.</Text>
-            )}
-            <TouchableOpacity onPress={closeDayModal} style={styles.modalCloseButton}>
-              <Text style={styles.modalCloseButtonText}>Close</Text>
-            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -636,71 +706,170 @@ export default function CalendarScreen() {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    // The sheet itself: plain white surface, like the mockup.
     container: {
       flex: 1,
-      backgroundColor: colors.navy2,
-      paddingHorizontal: 12,
-      paddingTop: 16,
+      backgroundColor: colors.navy3,
+      paddingTop: 8,
     },
     loadingContainer: {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    sheetHeader: {
+    headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 14,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 4,
     },
-    sheetHeaderSide: {
-      width: 44,
+    monthTitleBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 8,
+      minHeight: 44,
     },
-    sheetTitle: {
-      fontSize: 17,
+    monthTitle: {
+      flexShrink: 1,
+      fontSize: 22,
+      lineHeight: 28,
       fontWeight: '700',
       color: colors.ink,
     },
-    closeBtnCircle: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
+    monthTitleChevron: {
+      marginLeft: 4,
+      marginTop: 2,
+    },
+    pickerOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      justifyContent: 'flex-start',
+      paddingTop: 70,
+      paddingHorizontal: 16,
+    },
+    pickerCard: {
       backgroundColor: colors.navy3,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.navy4,
+      padding: 16,
+      overflow: 'hidden',
     },
-    balanceBannerLabel: {
-      fontSize: 11,
-      letterSpacing: 1,
-      color: colors.inkDim,
-      marginBottom: 4,
-    },
-    balanceBannerAmount: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.ink,
-    },
-    header: {
+    pickerYearRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 8,
+      marginBottom: 12,
     },
-    navButton: {
+    pickerYearText: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.ink,
+    },
+    pickerGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 8,
+    },
+    pickerMonth: {
+      width: '31%',
+      minHeight: 44,
+      borderRadius: 999,
+      backgroundColor: colors.navy1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pickerMonthShown: {
+      backgroundColor: colors.accent,
+    },
+    pickerMonthText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.ink,
+    },
+    pickerMonthTextThisMonth: {
+      color: colors.accent,
+      fontWeight: '700',
+    },
+    pickerMonthTextShown: {
+      color: colors.onAccent,
+    },
+    pickerTodayBtn: {
+      alignSelf: 'center',
+      marginTop: 14,
+      minHeight: 36,
+      paddingHorizontal: 14,
+      justifyContent: 'center',
+    },
+    pickerTodayText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.accent,
+    },
+    headerButtons: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    iconBtn: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.navy3,
-      borderWidth: 1,
-      borderColor: colors.navy4,
+      backgroundColor: colors.navy1,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    monthLabel: {
-      fontSize: 18,
-      fontWeight: '700',
+    subRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    subLabel: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: colors.inkFaint,
+    },
+    todayChip: {
+      minHeight: 30,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: colors.navy1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    todayChipText: {
+      fontSize: 13,
+      fontWeight: '600',
       color: colors.ink,
+    },
+    gridWrap: {
+      paddingHorizontal: 10,
+    },
+    dowRow: {
+      flexDirection: 'row',
+    },
+    dowCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingBottom: 6,
+    },
+    dowText: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '600',
+      color: colors.inkFaint,
+    },
+    swipeList: {
+      flexGrow: 0,
+      marginHorizontal: 10,
+    },
+    scrollList: {
+      flex: 1,
+      marginHorizontal: 10,
     },
     inlineMonthTitle: {
       fontSize: 15,
@@ -708,35 +877,191 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginTop: 10,
       marginBottom: 4,
+      paddingHorizontal: 6,
     },
-    todayButton: {
-      alignSelf: 'center',
-      backgroundColor: colors.navy3,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      borderRadius: 999,
-      marginBottom: 14,
-    },
-    todayButtonText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    toolbarRow: {
+    weekRow: {
       flexDirection: 'row',
-      justifyContent: 'flex-end',
       marginBottom: 4,
     },
-    menuButton: {
-      padding: 4,
+    // No box, border or background: just the number with dots under it.
+    dayCell: {
+      flex: 1,
+      height: 50,
+      alignItems: 'center',
+      paddingTop: 4,
+      gap: 3,
+    },
+    dayCellDetails: {
+      height: undefined,
+      minHeight: 84,
+      paddingHorizontal: 1,
+    },
+    dayCellOutOfMonth: {
+      opacity: 0.6,
+    },
+    numCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    numCircleSelected: {
+      backgroundColor: colors.ink,
+    },
+    numCircleTodaySelected: {
+      backgroundColor: colors.accent,
+    },
+    numText: {
+      fontSize: 17,
+      fontWeight: '500',
+      color: colors.ink,
+    },
+    numTextOutOfMonth: {
+      color: colors.inkFaint,
+    },
+    numTextToday: {
+      color: colors.accent,
+      fontWeight: '700',
+    },
+    numTextSelected: {
+      color: colors.navy3,
+      fontWeight: '600',
+    },
+    numTextTodaySelected: {
+      color: colors.onAccent,
+      fontWeight: '700',
+    },
+    dotRow: {
+      flexDirection: 'row',
+      gap: 3,
+      height: 6,
+      alignItems: 'center',
+    },
+    dot: {
+      width: 5,
+      height: 5,
+      borderRadius: 2.5,
+    },
+    stackWrap: {
+      width: '70%',
+      gap: 2,
+    },
+    stackBar: {
+      height: 3,
+      borderRadius: 1.5,
+    },
+    pillWrap: {
+      width: '100%',
+      gap: 2,
+    },
+    pill: {
+      borderRadius: 4,
+      paddingHorizontal: 3,
+      paddingVertical: 1,
+    },
+    pillText: {
+      fontSize: 11,
+      fontWeight: '500',
+      color: colors.ink,
+    },
+    pillMore: {
+      fontSize: 11,
+      color: colors.inkDim,
+      paddingLeft: 2,
+    },
+    // The always-visible day panel under the grid: grey grouped background with a line on top.
+    dayPanel: {
+      flex: 1,
+      marginTop: 8,
+      backgroundColor: colors.navy2,
+      borderTopWidth: 1,
+      borderTopColor: colors.navy4,
+      paddingTop: 16,
+      paddingHorizontal: 16,
+    },
+    dayPanelScrollMode: {
+      flex: 0,
+      height: 230,
+    },
+    dayPanelHeader: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    dayPanelTitle: {
+      flexShrink: 1,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '600',
+      color: colors.ink,
+      marginRight: 8,
+    },
+    dayPanelBalance: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: colors.inkFaint,
+    },
+    dayPanelScroll: {
+      flex: 1,
+      marginTop: 12,
+    },
+    dayPanelScrollContent: {
+      paddingBottom: 24,
+    },
+    group: {
+      backgroundColor: colors.navy3,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    groupRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 11,
+      paddingHorizontal: 16,
+      gap: 12,
+    },
+    groupRowDivider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.navy4,
+    },
+    groupDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    groupText: {
+      flex: 1,
+    },
+    groupTitle: {
+      fontSize: 17,
+      lineHeight: 22,
+      color: colors.ink,
+    },
+    groupSub: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.inkFaint,
+    },
+    groupAmount: {
+      fontSize: 17,
+      fontWeight: '600',
+    },
+    groupEmpty: {
+      paddingVertical: 20,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+    },
+    groupEmptyText: {
+      fontSize: 15,
+      lineHeight: 20,
+      color: colors.inkFaint,
     },
     menuOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.3)',
       alignItems: 'flex-end',
-      paddingTop: 110,
+      paddingTop: 70,
       paddingRight: 16,
     },
     menuCard: {
@@ -770,213 +1095,6 @@ function makeStyles(colors: any) {
       height: 1,
       backgroundColor: colors.navy4,
       marginHorizontal: 10,
-    },
-    dowRow: {
-      flexDirection: 'row',
-      marginBottom: 6,
-    },
-    dowCell: {
-      flex: 1,
-      alignItems: 'center',
-      paddingBottom: 4,
-    },
-    dowText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.inkFaint,
-      textTransform: 'uppercase',
-    },
-    weekRow: {
-      flexDirection: 'row',
-      marginBottom: 5,
-    },
-    dayCell: {
-      flex: 1,
-      margin: 2,
-      borderRadius: 10,
-      backgroundColor: colors.navy3,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    dayCellOutOfMonth: {
-      backgroundColor: 'transparent',
-      borderColor: 'transparent',
-      opacity: 0.35,
-    },
-    dayCellSquare: {
-      aspectRatio: 1,
-    },
-    dayCellList: {
-      height: 44,
-    },
-    dayCellToday: {
-      backgroundColor: colors.gold,
-      borderColor: colors.gold,
-    },
-    dayCellSelected: {
-      borderWidth: 2,
-      borderColor: colors.gold,
-    },
-    dayText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.ink,
-    },
-    dayTextOutOfMonth: {
-      color: colors.inkFaint,
-    },
-    dayTextToday: {
-      color: '#FFFFFF',
-      fontWeight: '700',
-    },
-    previewPanel: {
-      flex: 1,
-      marginTop: 10,
-      marginBottom: 8,
-      backgroundColor: colors.navy3,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      borderRadius: 14,
-      padding: 14,
-    },
-    previewTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.ink,
-      marginBottom: 4,
-    },
-    previewBalance: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.gold,
-      marginBottom: 8,
-    },
-    previewEmpty: {
-      fontSize: 13,
-      color: colors.inkDim,
-      marginTop: 6,
-    },
-    dayCellDetails: {
-      minHeight: 78,
-      justifyContent: 'flex-start',
-      paddingTop: 4,
-      paddingHorizontal: 2,
-    },
-    stackWrap: {
-      width: '85%',
-      marginTop: 3,
-      gap: 2,
-    },
-    stackBar: {
-      height: 3,
-      borderRadius: 1.5,
-    },
-    pillWrap: {
-      width: '100%',
-      marginTop: 3,
-      gap: 2,
-    },
-    pill: {
-      borderRadius: 4,
-      paddingHorizontal: 3,
-      paddingVertical: 1,
-    },
-    pillText: {
-      fontSize: 10.5,
-      fontWeight: '500',
-      color: colors.ink,
-    },
-    pillMore: {
-      fontSize: 10.5,
-      color: colors.inkDim,
-      paddingLeft: 2,
-    },
-    dotRow: {
-      flexDirection: 'row',
-      gap: 3,
-      marginTop: 2,
-      height: 5,
-      alignItems: 'center',
-    },
-    dot: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-    },
-    modalCard: {
-      width: '100%',
-      maxWidth: 360,
-      backgroundColor: colors.navy3,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      borderRadius: 14,
-      padding: 20,
-    },
-    modalTitle: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.ink,
-      marginBottom: 8,
-    },
-    modalBalanceLine: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.gold,
-      marginBottom: 10,
-    },
-    modalSubtitle: {
-      fontSize: 13,
-      color: colors.inkDim,
-      lineHeight: 19,
-      marginBottom: 18,
-    },
-    modalEventList: {
-      maxHeight: 220,
-      marginBottom: 14,
-    },
-    modalEventRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 7,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.navy4,
-    },
-    modalEventDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 3.5,
-      marginRight: 8,
-    },
-    modalEventLabel: {
-      flex: 1,
-      fontSize: 13,
-      color: colors.ink,
-    },
-    modalEventAmount: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    modalCloseButton: {
-      alignSelf: 'flex-end',
-      backgroundColor: colors.gold,
-      paddingHorizontal: 18,
-      paddingVertical: 9,
-      borderRadius: 999,
-    },
-    modalCloseButtonText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#FFFFFF',
     },
   });
 }

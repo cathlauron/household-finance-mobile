@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  TextInput,
-  ActivityIndicator,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { Text } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
@@ -18,27 +12,31 @@ import { formatPeso } from '../balanceProjection';
 import {
   Frequency,
   FREQUENCIES,
-  DOW_LABELS,
-  frequencyLabel,
-  computeNextPayDate,
-  formatShortDate,
+  DOW_LABELS, computeNextPayDate,
+  formatShortDate
 } from '../income';
-import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry } from '../types';
-import CollapsibleRow from '../components/CollapsibleRow';
+import type { IncomeSource, Person, HouseholdModel, PaymentLogEntry, PaymentMethod } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
+import { monthTotals, sourcesByPerson } from '../incomeMonth';
+import { extraIncome, incomeKindLabel } from '../incomeKinds';
+import { todayISO } from '../dateUtils';
+import { useNavigation } from '@react-navigation/native';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField } from '../components/SimpleForm';
+import { paymentMethodColor } from '../components/CardFace';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
 // doesn't get mangled, and is only parsed/validated on Save.
-type PaymentLogFormEntry = { id: string; date: string; amount: number | '' };
+type PaymentLogFormEntry = { id: string; date: string; amount: number | ''; paymentMethod?: PaymentMethod };
 
 const CATEGORY_SUGGESTIONS = ['Salary', 'Freelance / Side gig', 'Business income', 'Rental income', 'Other'];
+// Friendlier names for how often pay comes (the simple form).
+const PAY_LABEL: Record<Frequency, string> = { weekly: 'Weekly', biweekly: 'Every 2 weeks', semimonthly: 'Twice a month', monthly: 'Monthly', onetime: 'Just once' };
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -78,11 +76,19 @@ function sortByNextPayDate(sources: IncomeSource[]): IncomeSource[] {
 type IncomeScreenProps = {
   openIncomeId?: string;
   openIncomeNonce?: number;
+  // Set on one person's income page ('__none' = sources with nobody picked).
+  personId?: string;
 };
 
-export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeScreenProps = {}) {
+const NO_PERSON = '__none';
+const AVATAR_COLORS = ['#2E6B47', '#5B6CC9', '#D47A9B', '#C2410C', '#0E7490'];
+const dayOf = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const shortDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const navigation = useNavigation<any>();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -113,8 +119,55 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentLogEntries, setPaymentLogEntries] = useState<PaymentLogFormEntry[]>([]);
-  const [expandedIncomeId, setExpandedIncomeId] = useState<string | null>(null);
+  // Redesign: the account logged paydays go into (they add to its balance).
+  const [depositInput, setDepositInput] = useState<PaymentMethod | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
+  const paydayLabel = (() => {
+    if (frequencyInput === 'monthly') return monthlyDayInput ? `the ${ordinal(parseInt(monthlyDayInput, 10))}` : 'Choose';
+    if (frequencyInput === 'semimonthly') return semiDay1Input && semiDay2Input ? `${ordinal(parseInt(semiDay1Input, 10))} and ${ordinal(parseInt(semiDay2Input, 10))}` : 'Choose';
+    if (frequencyInput === 'weekly') return weeklyDowInput !== null ? `${DOW_LABELS[weeklyDowInput]}s` : 'Choose';
+    const d = frequencyInput === 'onetime' ? onetimeDateInput : biweeklyAnchorInput;
+    return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Choose';
+  })();
+  const nextPaydayText = (() => {
+    const pd =
+      frequencyInput === 'monthly' ? (monthlyDayInput ? [monthlyDayInput] : [])
+      : frequencyInput === 'semimonthly' ? (semiDay1Input && semiDay2Input ? [semiDay1Input, semiDay2Input] : [])
+      : frequencyInput === 'weekly' ? (weeklyDowInput !== null ? [String(weeklyDowInput)] : [])
+      : frequencyInput === 'onetime' ? (onetimeDateInput ? [onetimeDateInput] : [])
+      : biweeklyAnchorInput ? [biweeklyAnchorInput] : [];
+    if (!pd.length) return '';
+    const next = computeNextPayDate(frequencyInput, pd);
+    return next ? `Next payday ${next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}.` : '';
+  })();
+
+  // Logging one payday (from a row in "Paydays this month"): the same record as
+  // + › Money in › Salary, so it is counted once and shows in Transactions too.
+  const [logSheet, setLogSheet] = useState<{ sourceId: string; date: string; amount: number | ''; pm?: PaymentMethod } | null>(null);
+  const [logError, setLogError] = useState('');
+  const [logSaving, setLogSaving] = useState(false);
+  const personMode = personId !== undefined;
+  const pagePerson = personMode && personId !== NO_PERSON ? (model?.people || []).find((p) => p.id === personId) : undefined;
+
+  // Add in the header adds an income source (for this person on their page).
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      ...(personMode ? { title: pagePerson?.name || 'Not assigned', headerBackTitle: 'Income' } : {}),
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => openAddModalRef.current()}
+          accessibilityRole="button"
+          accessibilityLabel="Add income source"
+          testID="income-add"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors, personMode, pagePerson?.name]);
+  const openAddModalRef = useRef<() => void>(() => {});
 
   if (!model) {
     return (
@@ -137,12 +190,47 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
     setBiweeklyAnchorInput('');
     setErrorMsg('');
     setPaymentLogEntries([]);
+    setDepositInput(undefined);
   }
 
   function openAddModal() {
     setEditingId(null);
     resetForm();
     setModalOpen(true);
+  }
+
+  openAddModalRef.current = () => {
+    openAddModal();
+    if (pagePerson) setPersonInput(pagePerson.name);
+  };
+
+  async function saveLoggedPayday() {
+    if (!model || !logSheet) return;
+    if (logSheet.amount === '' || logSheet.amount <= 0) {
+      setLogError('Enter the amount that arrived.');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(logSheet.date)) {
+      setLogError('Pick the date it arrived.');
+      return;
+    }
+    if (!logSheet.pm) {
+      setLogError('Pick the account it went into.');
+      return;
+    }
+    const entry = { id: makeId('paylog'), date: logSheet.date, amount: logSheet.amount, paymentMethod: logSheet.pm, createdAt: Date.now() };
+    setLogSaving(true);
+    try {
+      await saveModel({
+        ...model,
+        income: (model.income || []).map((src) => (src.id === logSheet.sourceId ? { ...src, paymentLog: [entry, ...(src.paymentLog || [])] } : src)),
+      });
+      setLogSheet(null);
+    } catch {
+      setLogError('Failed to save. Please try again.');
+    } finally {
+      setLogSaving(false);
+    }
   }
 
   function openEditModal(source: IncomeSource) {
@@ -167,7 +255,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         id: e.id,
         date: e.date,
         amount: typeof e.amount === 'number' ? e.amount : '',
+        paymentMethod: e.paymentMethod,
       }))
+    );
+    setDepositInput(
+      source.depositTo ??
+        [...(source.paymentLog || [])].reverse().find((e) => e.paymentMethod?.accountId)?.paymentMethod
     );
     setErrorMsg('');
     setModalOpen(true);
@@ -253,7 +346,14 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         setErrorMsg('Enter date as YYYY-MM-DD.');
         return;
       }
-      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: entry.amount as number });
+      // A payday is real money: it goes into an account (the one chosen above, unless
+      // it was already logged into another one).
+      const pm = entry.paymentMethod?.accountId ? entry.paymentMethod : depositInput;
+      if (!pm?.accountId) {
+        setErrorMsg('Choose which account your paydays go into.');
+        return;
+      }
+      validPaymentLog.push({ id: entry.id, date: dateTrim, amount: entry.amount as number, paymentMethod: pm });
     }
 
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
@@ -276,6 +376,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
               frequency: frequencyInput,
               payDates,
               paymentLog: validPaymentLog,
+              ...(depositInput?.accountId ? { depositTo: depositInput } : {}),
             }
           : s
       );
@@ -289,6 +390,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
         frequency: frequencyInput,
         payDates,
         paymentLog: validPaymentLog,
+        ...(depositInput?.accountId ? { depositTo: depositInput } : {}),
         destinationAccountId: '',
         createdAt: Date.now(),
       };
@@ -362,285 +464,364 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
   const sources = sortByNextPayDate(model.income);
 
-  const totalMonthlyIncome = sources.reduce((sum, source) => {
-    const amount = typeof source.expectedAmount === 'number' ? source.expectedAmount : 0;
-    if (amount <= 0) return sum;
-    if (source.frequency === 'monthly') return sum + amount;
-    if (source.frequency === 'weekly') return sum + (amount * 52) / 12;
-    if (source.frequency === 'biweekly') return sum + (amount * 26) / 12;
-    if (source.frequency === 'semimonthly') return sum + (amount * 24) / 12;
-    return sum + amount;
-  }, 0);
+  // Expected this calendar month: every scheduled payday that falls in it (so a month with
+  // three bi-weekly paydays shows all three).
+  const nowDate = new Date();
+  const monthName = nowDate.toLocaleString('en-US', { month: 'long' });
+
+  const extras = extraIncome(model);
+  const ymNow = todayISO().slice(0, 7);
+  const extraMonth = extras.filter((t) => t.date.startsWith(ymNow)).reduce((sum, t) => sum + t.amount, 0);
+  const extraYear = extras.filter((t) => t.date.startsWith(ymNow.slice(0, 4))).reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Card variant="banner" style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 11, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 }}>TOTAL MONTHLY INCOME</Text>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ok }}>{formatPeso(totalMonthlyIncome)}</Text>
-        </Card>
-        {sources.length === 0 && (
-          <Text style={styles.emptyText}>No income sources yet.</Text>        )}
-
-        {sources.map((source) => {
-          const freq = (source.frequency as Frequency) || 'monthly';
-          const nextDate = computeNextPayDate(freq, source.payDates || []);
-          const person = personName(model.people, source.personId);
-          const title = source.sourceName || source.category || 'Untitled income';
-          const isExpanded = expandedIncomeId === source.id;
-          const loggedPayments = source.paymentLog || [];
-          const totalLogged = loggedPayments.reduce(
-            (sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0),
-            0
-          );
+        {(() => {
+          const now = new Date();
+          const y = now.getFullYear();
+          const mi = now.getMonth();
+          const todayIso = todayISO();
+          const pageSources = personMode
+            ? sources.filter((src) => (src.personId || NO_PERSON) === (personId || NO_PERSON) || (personId === NO_PERSON && !src.personId))
+            : sources;
+          const totals = monthTotals(pageSources, y, mi);
+          const pct = totals.expected > 0 ? Math.min(1, totals.received / totals.expected) : 0;
+          const nextOf = (list: IncomeSource[]) =>
+            list
+              .map((src) => computeNextPayDate((src.frequency as Frequency) || 'monthly', src.payDates || []))
+              .filter((d): d is Date => !!d)
+              .sort((p, q) => p.getTime() - q.getTime())[0];
           return (
-            <SwipeableRow
-              key={source.id}
-              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
-              onDelete={() => handleSwipeDelete(source)}
-              testID={`income-swipe-${source.id}`}
-            >
-            <CollapsibleRow
-              testID={`income-row-${source.id}`}
-              isExpanded={isExpanded}
-              onToggle={() => setExpandedIncomeId((prev) => (prev === source.id ? null : source.id))}
-              onEdit={() => openEditModal(source)}
-              collapsedContent={
-                <View style={styles.rowCollapsedRow}>
-                  <View style={styles.rowMain}>
-                    <Text style={styles.rowName} numberOfLines={1}>
-                      {title}
-                    </Text>
-                    <Text style={styles.rowSub} numberOfLines={1}>
-                      {(person || 'Unassigned')} · {frequencyLabel(freq)} · {formatShortDate(nextDate)}
-                    </Text>
-                  </View>
-                  <Text style={styles.rowAmount}>
-    {typeof source.expectedAmount === 'number' ? `+${formatPeso(source.expectedAmount)}` : '—'}
-  </Text>
+            <>
+              {/* Expected this month (projected, blue); received so far (real, green). */}
+              <View style={styles.heroCard}>
+                <GradientFill match={styles.heroCard} />
+                <Text style={styles.heroLabel}>EXPECTED IN {monthName.toUpperCase()}</Text>
+                <Text style={[styles.heroAmount, { color: colors.planned }]}>{formatPeso(totals.expected)}</Text>
+                <Text style={styles.heroSub}>
+                  <Text style={{ color: colors.positive, fontWeight: '700' }}>{formatPeso(totals.received)} received</Text>
+                  {` · ${formatPeso(totals.toCome)} still to come`}
+                </Text>
+                <View style={[styles.heroTrack, { backgroundColor: colors.indigoBg }]}>
+                  <View style={{ width: `${Math.round(pct * 100)}%`, height: '100%', backgroundColor: colors.positive, borderRadius: 4 }} />
                 </View>
-              }
-              expandedContent={
-                <View style={styles.detailContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Category</Text>
-                    <Text style={styles.detailValue}>{source.category || '—'}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Belongs To</Text>
-                    <Text style={styles.detailValue}>{person || 'Unassigned'}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Logged Payments</Text>
-                    <Text style={styles.detailValue}>
-                      {loggedPayments.length} logged
-                      {loggedPayments.length > 0 ? ` · ${formatPeso(totalLogged)} total` : ''}
-                    </Text>
-                  </View>
-                </View>
-              }
-            />
-            </SwipeableRow>
-          );
-        })}
+              </View>
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add income</Text>
-        </TouchableOpacity>
+              {pageSources.length === 0 && (
+                <Text style={styles.emptyText}>No income sources yet. Tap Add to add where money comes from.</Text>
+              )}
+
+              {/* Main page: one row per person (stays short for the whole household). */}
+              {!personMode && pageSources.length > 0 && (
+                <>
+                  <Text style={styles.groupLabel}>BY PERSON</Text>
+                  <View style={styles.group}>
+                    <GradientFill match={styles.group} />
+                    {sourcesByPerson({ ...model, income: pageSources }).map((g, i) => {
+                      const p = model.people.find((x) => x.id === g.personId);
+                      const name = p?.name || 'Not assigned';
+                      const t = monthTotals(g.sources, y, mi);
+                      const next = nextOf(g.sources);
+                      const names = g.sources.map((src) => src.sourceName || src.category || 'Income').join(', ');
+                      const share = t.expected > 0 ? Math.min(1, t.received / t.expected) : 0;
+                      return (
+                        <TouchableOpacity
+                          key={g.personId || NO_PERSON}
+                          style={[styles.personRow, i > 0 && styles.divider]}
+                          onPress={() => navigation.push('IncomePerson', { personId: g.personId || NO_PERSON })}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${name}, ${formatPeso(t.received)} of ${formatPeso(t.expected)} received`}
+                        >
+                          <View style={[styles.personAvatar, { backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }]}>
+                            <Text style={styles.personInitial}>{name.trim().charAt(0).toUpperCase() || '?'}</Text>
+                          </View>
+                          <View style={{ flex: 1, marginRight: 6 }}>
+                            <View style={styles.personTop}>
+                              <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
+                              <Text style={styles.personAmounts}>
+                                <Text style={{ color: colors.positive }}>{formatPeso(t.received)}</Text>
+                                <Text style={{ color: colors.inkFaint, fontWeight: '500' }}> / </Text>
+                                <Text style={{ color: colors.planned }}>{formatPeso(t.expected)}</Text>
+                              </Text>
+                            </View>
+                            <Text style={styles.rowSub} numberOfLines={1}>
+                              {names}
+                              {t.toCome <= 0 && t.expected > 0 ? ' · all in this month' : next ? ` · next ${dayOf(next)}` : ''}
+                            </Text>
+                            <View style={[styles.personTrack, { backgroundColor: colors.indigoBg }]}>
+                              <View style={{ width: `${Math.round(share * 100)}%`, height: '100%', backgroundColor: colors.positive }} />
+                            </View>
+                          </View>
+                          <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.groupFoot}>Tap someone to see their paydays and log one.</Text>
+                </>
+              )}
+
+              {/* One person's page: their paydays this month, then their sources. */}
+              {personMode && totals.rows.length > 0 && (
+                <>
+                  <Text style={styles.groupLabel}>PAYDAYS THIS MONTH</Text>
+                  <View style={styles.group}>
+                    <GradientFill match={styles.group} />
+                    {totals.rows.map((r, i) => {
+                      const src = pageSources.find((x) => x.id === r.sourceId);
+                      const srcName = src?.sourceName || src?.category || 'Income';
+                      const got = r.logged ? (r.logged.amount as number) : 0;
+                      const diff = r.logged && r.expected > 0 ? got - r.expected : 0;
+                      const note = r.logged
+                        ? r.expected === 0
+                          ? 'Extra payday'
+                          : Math.abs(diff) >= 0.01
+                          ? `${formatPeso(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than expected`
+                          : 'Received'
+                        : r.date === todayIso
+                        ? 'Today'
+                        : r.date < todayIso
+                        ? 'Not logged yet'
+                        : '';
+                      return (
+                        <TouchableOpacity
+                          key={`${r.sourceId}-${r.date}-${i}`}
+                          style={[styles.paydayRow, i > 0 && styles.divider]}
+                          disabled={!!r.logged}
+                          onPress={() => {
+                            setLogError('');
+                            setLogSheet({
+                              sourceId: r.sourceId,
+                              date: r.date,
+                              amount: r.expected || '',
+                              pm: [...(src?.paymentLog || [])].reverse().find((e) => e.paymentMethod)?.paymentMethod,
+                            });
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={r.logged ? `${srcName} ${shortDay(r.date)}, received` : `Log ${srcName} payday ${shortDay(r.date)}`}
+                        >
+                          {r.logged ? (
+                            <View style={[styles.payMark, { backgroundColor: colors.okBg }]}>
+                              <Ionicons name="checkmark" size={15} color={colors.positive} />
+                            </View>
+                          ) : (
+                            <View style={[styles.payMark, styles.payMarkOpen, { borderColor: colors.planned }]} />
+                          )}
+                          <View style={{ flex: 1, marginRight: 8 }}>
+                            <Text style={styles.rowName}>{shortDay(r.logged ? r.logged.date : r.date)}</Text>
+                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}</Text>
+                          </View>
+                          <Text style={[styles.rowAmount, { color: r.logged ? colors.positive : colors.planned }]}>
+                            +{formatPeso(r.logged ? got : r.expected)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.groupFoot}>Tap a payday when the money arrives to log it into an account.</Text>
+                </>
+              )}
+
+              {personMode && pageSources.length > 0 && (
+                <>
+                  <Text style={styles.groupLabel}>SOURCES</Text>
+                  <View style={styles.group}>
+                    <GradientFill match={styles.group} />
+                    {pageSources.map((source, i) => {
+                      const freq = (source.frequency as Frequency) || 'monthly';
+                      const nextDate = computeNextPayDate(freq, source.payDates || []);
+                      return (
+                        <SwipeableRow
+                          key={source.id}
+                          enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                          onDelete={() => handleSwipeDelete(source)}
+                          testID={`income-swipe-${source.id}`}
+                        >
+                          <TouchableOpacity
+                            testID={`income-row-${source.id}`}
+                            style={[styles.paydayRow, { backgroundColor: colors.navy3 }, i > 0 && styles.divider]}
+                            onPress={() => openEditModal(source)}
+                            accessibilityRole="button"
+                          >
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <Text style={styles.rowName} numberOfLines={1}>{source.sourceName || source.category || 'Untitled income'}</Text>
+                              <Text style={styles.rowSub} numberOfLines={1}>
+                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}
+                              </Text>
+                            </View>
+                            <Text style={[styles.rowAmount, { color: colors.ink }]}>
+                              {typeof source.expectedAmount === 'number' ? formatPeso(source.expectedAmount) : '—'}
+                            </Text>
+                            <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+                          </TouchableOpacity>
+                        </SwipeableRow>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+            </>
+          );
+        })()}
+
+        {!personMode && (<>
+        {/* Extra income: bonuses, side jobs, allowances and gifts added with the + button
+            (Money in › What is it?). Real money already in your accounts. */}
+        <Text style={styles.extraHeader}>Extra income</Text>
+        <View style={styles.extraGroup}>
+          <GradientFill match={styles.extraGroup} />
+          <View style={styles.extraTotals}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.extraMeta}>This month</Text>
+              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraMonth)}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.extraMeta}>This year</Text>
+              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraYear)}</Text>
+            </View>
+          </View>
+          {extras.length === 0 ? (
+            <Text style={[styles.extraMeta, styles.extraEmpty]}>
+              Got a bonus, side-job pay or an allowance? Tap + and choose Money in, then pick what it is. It will show up here.
+            </Text>
+          ) : (
+            extras.slice(0, 10).map((t) => (
+              <TouchableOpacity
+                key={t.id}
+                style={styles.extraRow}
+                onPress={() => navigation.navigate('TransactionDetail', { id: t.id })}
+                accessibilityRole="button"
+              >
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.rowName} numberOfLines={1}>{t.label}</Text>
+                  <Text style={styles.rowSub} numberOfLines={1}>
+                    {t.incomeKind ? incomeKindLabel(t.incomeKind) : 'Other'} · {formatShortDate(new Date(t.date + 'T00:00:00'))}
+                  </Text>
+                </View>
+                <Text style={[styles.rowAmount, { color: colors.positive }]}>+{formatPeso(t.amount)}</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+        </>)}
       </PullToRefreshScrollView>
 
+      {/* Log a payday: amount filled in with what's expected (change it to what arrived). */}
+      <BottomSheet
+        visible={!!logSheet}
+        onClose={() => setLogSheet(null)}
+        grouped
+        header={<SheetBar title="Log payday" onCancel={() => setLogSheet(null)} onDone={saveLoggedPayday} doneLabel="Save" busy={logSaving} />}
+      >
+        {!!logSheet && (
+          <>
+            <BigAmount
+              label={`What arrived from ${(model.income || []).find((x) => x.id === logSheet.sourceId)?.sourceName || 'this source'}`}
+              value={logSheet.amount}
+              onChange={(v) => setLogSheet((l) => (l ? { ...l, amount: v } : l))}
+              color={colors.positive}
+            />
+            <FormGroup>
+              <View style={styles.logDateRow}>
+                <Text style={styles.logDateLabel}>Date</Text>
+                <DateField value={logSheet.date} onChange={(d: string) => setLogSheet((l) => (l ? { ...l, date: d } : l))} style={{ flex: 1, marginBottom: 0 }} />
+              </View>
+            </FormGroup>
+            <Text style={styles.logSection}>WENT INTO</Text>
+            <AccountChoices model={model} value={logSheet.pm} onChange={(pm) => setLogSheet((l) => (l ? { ...l, pm } : l))} />
+            {!!logError && <Text style={[styles.errorText, { marginTop: 10 }]}>{logError}</Text>}
+            <View style={{ height: 16 }} />
+          </>
+        )}
+      </BottomSheet>
+
+      {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit income' : 'New income'}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit income' : 'New income'} onCancel={closeModal} onDone={handleSave} doneLabel="Save" busy={saving} />}
       >
-        <Text style={styles.inputLabel}>Belongs to</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Type a name, e.g. Miguel, Ana"
-                  placeholderTextColor={colors.inkFaint}
-                  value={personInput}
-                  onChangeText={setPersonInput}
-                />
-                {model.people.length > 0 && (
-                  <View style={styles.chipRow}>
-                    {model.people.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.chip}
-                        onPress={() => setPersonInput(p.name)}
-                      >
-                        <Text style={styles.chipText}>{p.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+        <BigAmount label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
 
-                <Text style={styles.inputLabel}>Category</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Salary, Freelance"
-                  placeholderTextColor={colors.inkFaint}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                />
-                <View style={styles.chipRow}>
-                  {CATEGORY_SUGGESTIONS.map((c) => (
-                    <TouchableOpacity key={c} style={styles.chip} onPress={() => setCategoryInput(c)}>
-                      <Text style={styles.chipText}>{c}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+        <FormGroup>
+          <InputRow label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />
+          <PickerRow label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
+            <Choices options={CATEGORY_SUGGESTIONS.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
+            <View style={{ height: 10 }} />
+            <InlineField label="Or type your own" value={CATEGORY_SUGGESTIONS.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+          </PickerRow>
+          <PickerRow label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
+            {model.people.length > 0 && (
+              <Choices options={model.people.map((p) => ({ id: p.name, label: p.name }))} value={personInput} onChange={setPersonInput} />
+            )}
+            <View style={{ height: 10 }} />
+            <InlineField label="Or type a name" value={model.people.some((p) => p.name === personInput) ? '' : personInput} onChangeText={setPersonInput} placeholder="e.g. Miguel" />
+          </PickerRow>
+          <PickerRow label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
+            <Choices options={FREQUENCIES.map((f) => ({ id: f, label: PAY_LABEL[f] }))} value={frequencyInput} onChange={(f) => setFrequencyInput(f as Frequency)} />
+          </PickerRow>
+          <PickerRow label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} onToggle={() => toggleRow('payday')}>
+            {frequencyInput === 'monthly' && <DayStrip value={parseInt(monthlyDayInput, 10) || null} onChange={(d) => setMonthlyDayInput(String(d))} />}
+            {frequencyInput === 'semimonthly' && (
+              <>
+                <Text style={styles.inlineLabel}>First payday</Text>
+                <DayStrip value={parseInt(semiDay1Input, 10) || null} onChange={(d) => setSemiDay1Input(String(d))} />
+                <Text style={[styles.inlineLabel, { marginTop: 12 }]}>Second payday</Text>
+                <DayStrip value={parseInt(semiDay2Input, 10) || null} onChange={(d) => setSemiDay2Input(String(d))} />
+              </>
+            )}
+            {frequencyInput === 'weekly' && (
+              <Choices options={DOW_LABELS.map((l, i) => ({ id: String(i), label: l }))} value={weeklyDowInput === null ? '' : String(weeklyDowInput)} onChange={(v) => setWeeklyDowInput(parseInt(v, 10))} />
+            )}
+            {frequencyInput === 'onetime' && <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="income-onetime-date-field" />}
+            {frequencyInput === 'biweekly' && <DateField value={biweeklyAnchorInput} onChange={setBiweeklyAnchorInput} placeholder="Pick your last payday" testID="income-biweekly-anchor-field" />}
+          </PickerRow>
+          <PickerRow label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <AccountChoices model={model} value={depositInput} onChange={setDepositInput} />
+          </PickerRow>
+        </FormGroup>
+        {!!nextPaydayText && <Footnote>{nextPaydayText}</Footnote>}
 
-                <Text style={styles.inputLabel}>Source name (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Freelance design, ABC Corp"
-                  placeholderTextColor={colors.inkFaint}
-                  value={sourceNameInput}
-                  onChangeText={setSourceNameInput}
-                />
-
-                <Text style={styles.inputLabel}>Expected amount</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={amountInput}
-                  onChangeAmount={setAmountInput}
-                />
-
-                <Text style={styles.inputLabel}>Frequency</Text>
-                <View style={styles.pillRow}>
-                  {FREQUENCIES.map((f) => (
-                    <Pill
-                      key={f}
-                      label={frequencyLabel(f)}
-                      tone="sheet"
-                      fill
-                      minWidth={80}
-                      active={frequencyInput === f}
-                      onPress={() => setFrequencyInput(f)}
-                    />
-                  ))}
-                </View>
-
-                {frequencyInput === 'monthly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 30"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="number-pad"
-                      value={monthlyDayInput}
-                      onChangeText={setMonthlyDayInput}
-                    />
-                  </>
-                )}
-
-                {frequencyInput === 'semimonthly' && (
-                  <View style={styles.row2}>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>First payday</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 15"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={semiDay1Input}
-                        onChangeText={setSemiDay1Input}
-                      />
-                    </View>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Second payday</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 30"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={semiDay2Input}
-                        onChangeText={setSemiDay2Input}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                {frequencyInput === 'weekly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Pay day</Text>
-                    <View style={styles.pillRow}>
-                      {DOW_LABELS.map((label, idx) => (
-                        <Pill
-                          key={label}
-                          label={label}
-                          tone="sheet"
-                          compact
-                          minWidth={42}
-                          active={weeklyDowInput === idx}
-                          onPress={() => setWeeklyDowInput(idx)}
-                        />
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {frequencyInput === 'onetime' && (
-                  <DateField
-                    label="Date"
-                    value={onetimeDateInput}
-                    onChange={setOnetimeDateInput}
-                    placeholder="2025-03-15"
-                    testID="income-onetime-date-field"
-                  />
-                )}
-
-                {frequencyInput === 'biweekly' && (
-  <DateField
-    label="Most recent payday"
-    value={biweeklyAnchorInput}
-    onChange={setBiweeklyAnchorInput}
-    placeholder="Select recent payday"
-    clearable
-    testID="income-biweekly-anchor-field"
-  />
-)}
-
-                <Text style={styles.inputLabel}>Payment log</Text>
-                <Text style={styles.hintText}>
-                  Log paydays to track in Transactions and reports.
-                </Text>
+        <Text style={styles.groupHeader}>Paydays received</Text>
+        <FormGroup>
+          <View style={{ paddingHorizontal: 16, paddingTop: paymentLogEntries.length ? 12 : 0 }}>
                 {paymentLogEntries.map((entry) => (
-                  <View key={entry.id} style={styles.paymentLogRow}>
+                  <View key={entry.id} style={styles.paymentLogEntry}>
+                    {/* Date on its own full-width line, so its calendar has room to open. */}
                     <DateField
-                      style={styles.paymentLogDateInput}
                       value={entry.date}
                       onChange={(v) => updatePaymentLogDate(entry.id, v)}
-                      placeholder="YYYY-MM-DD"
+                      placeholder="Payday date"
                     />
-                    <AmountInput
-                      style={[styles.amountInput, styles.paymentLogAmountInput]}
-                      placeholder="Amount"
-                      value={entry.amount}
-                      onChangeAmount={(v) => updatePaymentLogAmount(entry.id, v)}
-                    />
-                    <TouchableOpacity
-                      style={styles.paymentLogRemoveBtn}
-                      onPress={() => removePaymentLogEntry(entry.id)}
-                    >
-                      color={colors.error}
-                    </TouchableOpacity>
+                    <View style={styles.paymentLogRow}>
+                      <AmountInput
+                        style={[styles.amountInput, styles.paymentLogAmountInput]}
+                        placeholder="Amount received"
+                        value={entry.amount}
+                        onChangeAmount={(v) => updatePaymentLogAmount(entry.id, v)}
+                      />
+                      <TouchableOpacity
+                        style={styles.paymentLogRemoveBtn}
+                        onPress={() => removePaymentLogEntry(entry.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove this payday"
+                      >
+                        <Ionicons name="close-circle" size={24} color={colors.error} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
                 <TouchableOpacity style={styles.addPaymentLogButton} onPress={addPaymentLogEntry}>
                   <Text style={styles.addPaymentLogButtonText}>+ Log a payday</Text>
                 </TouchableOpacity>
+          </View>
+        </FormGroup>
+        <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -648,66 +829,55 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce }: IncomeSc
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    heroCard: { backgroundColor: colors.navy3, borderRadius: 20, paddingVertical: 18, paddingHorizontal: 20, marginBottom: 24, overflow: 'hidden' },
+    heroLabel: { fontSize: 13, letterSpacing: 0.3, color: colors.inkDim },
+    heroAmount: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginTop: 4 },
+    heroSub: { fontSize: 13, color: colors.inkDim, marginTop: 4 },
+    heroTrack: { height: 8, borderRadius: 4, overflow: 'hidden', marginTop: 12 },
+    groupLabel: { fontSize: 13, fontWeight: '600', letterSpacing: 0.3, color: colors.inkDim, marginLeft: 16, marginBottom: 6 },
+    group: { backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden', marginBottom: 8 },
+    groupFoot: { fontSize: 13, lineHeight: 18, color: colors.inkDim, marginHorizontal: 16, marginBottom: 24 },
+    divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    personRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 72, paddingVertical: 10, paddingHorizontal: 16 },
+    personAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    personInitial: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+    personTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    personAmounts: { fontSize: 14, fontWeight: '700' },
+    personTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: 6 },
+    paydayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16 },
+    payMark: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+    payMarkOpen: { borderWidth: 2, borderStyle: 'dashed' },
+    logDateRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, gap: 12 },
+    logDateLabel: { fontSize: 17, color: colors.ink, width: 60 },
+    logSection: { fontSize: 13, fontWeight: '600', letterSpacing: 0.3, color: colors.inkDim, marginLeft: 16, marginBottom: 8 },
     container: {
       flex: 1,
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
     scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    rowCollapsedRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    detailContainer: { gap: 8 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    detailLabel: { fontSize: 12, color: colors.inkDim },
-    detailValue: { fontSize: 12.5, fontWeight: '600', color: colors.ink, flexShrink: 1, textAlign: 'right' },
-    rowMain: { flex: 1, marginRight: 10 },
-    rowName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    rowSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    rowAmount: { fontSize: 14, fontWeight: '600', color: colors.ok },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-      color: colors.inkDim,
-      marginBottom: 6,
-    },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: colors.ink,
-      marginBottom: 10,
-    },
+    emptyText: { fontSize: 13, color: colors.inkFaint, marginBottom: 12 },
+    rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
+    rowSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
+    rowAmount: { fontSize: 15, fontWeight: '600', color: colors.planned },
+    inlineLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 },
+    groupHeader: { fontSize: 13, color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginLeft: 16 },
+    extraHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 28, marginBottom: 6, marginLeft: 4 },
+    extraGroup: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden', marginBottom: 24 },
+    extraTotals: { flexDirection: 'row', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },
+    extraMeta: { fontSize: 13, color: colors.inkDim },
+    extraTotal: { fontSize: 20, fontWeight: '700', marginTop: 2 },
+    extraEmpty: { padding: 16, lineHeight: 19 },
+    extraRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     amountInput: {
       backgroundColor: colors.navy2,
       marginBottom: 10,
     },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
-    chip: {
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 6,
-      paddingHorizontal: 12,
-    },
-    chipText: { fontSize: 11.5, fontWeight: '500', color: colors.inkDim },
-    row2: { flexDirection: 'row', gap: 10 },
-    row2Item: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-    hintText: { fontSize: 12, color: colors.inkFaint, marginBottom: 14, lineHeight: 17 },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
-    paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-    paymentLogDateInput: { flex: 1.3, marginBottom: 0 },
+    errorText: { fontSize: 13, color: colors.error, marginBottom: 10 },
+    paymentLogEntry: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.navy4 },
+    paymentLogRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     paymentLogAmountInput: { flex: 1, marginBottom: 0 },
     paymentLogRemoveBtn: { paddingHorizontal: 8, paddingVertical: 6 },
-    paymentLogRemoveText: { fontSize: 18, color: colors.error, fontWeight: '600' },
     addPaymentLogButton: {
       alignSelf: 'flex-start',
       paddingVertical: 8,

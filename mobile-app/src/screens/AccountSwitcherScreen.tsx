@@ -1,15 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import Avatar from '../components/Avatar';
@@ -186,10 +179,9 @@ export default function AccountSwitcherScreen({
       style={{ flex: 1, backgroundColor: 'transparent' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.brandWrap}>
-          <Image source={require('../../assets/logo.png')} style={s.brandLogo} resizeMode="contain" />
-          <Text style={s.brandName}>FINANCE FLOW</Text>
+          <LogoMark width={84} />
         </View>
 
         {presence === null && <ActivityIndicator color={colors.gold} style={{ marginTop: 24 }} />}
@@ -317,7 +309,7 @@ export default function AccountSwitcherScreen({
             <Text style={s.ghostBtnText}>Use another account</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -326,15 +318,13 @@ function makeStyles(colors: any) {
   return StyleSheet.create({
     content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 48, paddingBottom: 32 },
     brandWrap: { alignItems: 'center', marginBottom: 20 },
-    brandLogo: { width: 64, height: 64 },
-    brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
     bigAvatarWrap: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
     title: {
       fontSize: 28,
+      fontWeight: '700',
       color: colors.ink,
       marginBottom: 6,
       textAlign: 'center',
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
     },
     sub: { fontSize: 14, color: colors.inkDim, marginBottom: 20, lineHeight: 20, textAlign: 'center' },
     row: {
@@ -362,13 +352,13 @@ function makeStyles(colors: any) {
       letterSpacing: 6,
     },
     primaryBtn: {
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: radii.pill,
       height: 52,
       justifyContent: 'center',
       marginTop: spacing[20],
     },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     ghostBtn: { paddingVertical: 14, marginTop: 4, alignItems: 'center' },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },

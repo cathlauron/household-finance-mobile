@@ -15,7 +15,8 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
 import { getMyPersonId, subscribeToMyPersonId } from '../../myPerson';
 import { useTheme } from '../../ThemeContext';
@@ -154,15 +155,15 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     personHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     personName: { fontSize: 15, fontWeight: '700', color: colors.ink },
     personTotal: { fontSize: 15, fontWeight: '700', color: colors.ink },
-    personShareNote: { fontSize: 11, color: colors.inkFaint, marginTop: 2, marginBottom: 4 },
+    personShareNote: { fontSize: 13, color: colors.inkFaint, marginTop: 2, marginBottom: 4 },
     emptyText: { fontSize: 13, color: colors.inkFaint },
     categoryList: { marginTop: 8 },
     categoryRow: { marginTop: 10 },
     categoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     categoryName: { fontSize: 13, color: colors.ink, flex: 1, marginRight: 8 },
-    categoryAmount: { fontSize: 12, color: colors.inkDim },
+    categoryAmount: { fontSize: 13, color: colors.inkDim },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
     progressFill: { height: '100%', borderRadius: 999 },
-    footerNote: { fontSize: 11, color: colors.inkFaint, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
+    footerNote: { fontSize: 13, color: colors.inkFaint, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
   });
 }

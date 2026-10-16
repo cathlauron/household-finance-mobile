@@ -1,16 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  StyleProp,
-  ViewStyle,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
+import { Text } from './AppText';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 export type DateFieldProps = {
   value: string; // 'YYYY-MM-DD' or ''
@@ -162,6 +156,7 @@ export default function DateField({
       {/* Android: In-app themed inline calendar card */}
       {showPicker && Platform.OS === 'android' && (
         <View style={styles.androidPickerCard}>
+          <GradientFill match={styles.androidPickerCard} />
           <View style={styles.androidPickerHeader}>
             <TouchableOpacity
               onPress={goPrevMonth}
@@ -244,6 +239,7 @@ export default function DateField({
       {/* iOS: Native inline DateTimePicker inside card (unchanged) */}
       {showPicker && Platform.OS === 'ios' && (
         <View style={styles.iosPickerCard}>
+          <GradientFill match={styles.iosPickerCard} />
           <View style={styles.iosPickerHeader}>
             <TouchableOpacity onPress={() => setShowPicker(false)} style={styles.iosDoneButton}>
               <Text style={styles.iosDoneText}>Done</Text>
@@ -270,18 +266,19 @@ function makeStyles(colors: any) {
       marginBottom: 14,
     },
     inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      // Redesign: sentence-case grey labels, like iPhone forms.
+      fontSize: 13,
+      fontWeight: '600',
+      marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
     },
     inputButton: {
       backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      minHeight: 42,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -291,7 +288,7 @@ function makeStyles(colors: any) {
       borderColor: colors.accent,
     },
     valueText: {
-      fontSize: 15,
+      fontSize: 17,
       color: colors.ink,
       flex: 1,
     },
@@ -408,7 +405,7 @@ function makeStyles(colors: any) {
       fontWeight: '700',
     },
     dayTextSelected: {
-      color: colors.navy2,
+      color: colors.onButton,
       fontWeight: '700',
     },
     dayTextDisabled: {

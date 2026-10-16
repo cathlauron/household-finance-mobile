@@ -1,263 +1,159 @@
 // ============================================================
-// Household Finance App — Year in Review report (Checkpoint 10.2)
+// Household Finance App — Year in Review report
 // ============================================================
-// Whole-year rollup: total income/expenses/saved, a 12-month
-// income-vs-expenses bar chart, top spending categories, debt
-// paid down, and how many savings goals have been reached.
-//
-// Reuses buildTransactionsList()/transactionTotals() exactly
-// like Dashboard and Monthly Close-out do. "Income" here now
-// includes logged income paydays (via each IncomeSource's
-// paymentLog), not just manual "money in" entries and loan
-// repayments received.
+// Redesign: matches the Finance Flow "2026 so far" mockup — four highlight tiles,
+// the year's totals, and a way to share the highlights (no amounts).
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Text } from '../../components/AppText';
+import GradientFill from '../../components/GradientFill';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../../transactions';
-import type { TransactionEntry } from '../../transactions';
-import type { HouseholdModel } from '../../types';
-import { Ionicons } from '@expo/vector-icons';
-import Card from '../../components/Card';
 import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
-
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const CATEGORY_COLOR_KEYS = ['gold', 'orange', 'error', 'ok'] as const;
-
-function transactionsInYear(all: TransactionEntry[], year: number): TransactionEntry[] {
-  const prefix = `${year}-`;
-  return all.filter((t) => t.date.startsWith(prefix));
-}
-
-function savingsContributedInYear(model: HouseholdModel, year: number): number {
-  const prefix = `${year}-`;
-  return (model.savingsGoals || []).reduce((sum, g) => {
-    return (
-      sum +
-      (g.contributions || []).reduce((s, c) => {
-        if (!c.date || !c.date.startsWith(prefix)) return s;
-        return s + (typeof c.amount === 'number' ? c.amount : 0);
-      }, 0)
-    );
-  }, 0);
-}
+import { Group, useReportStyles } from '../../components/ReportBits';
 
 type Props = { activeTag?: string };
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function YearInReviewReport({ activeTag }: Props = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const s = useReportStyles();
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
 
   if (loading || !model) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={colors.gold} />
       </View>
     );
   }
 
-  const allTransactions = activeTag
-    ? buildTransactionsList(model).filter((t) => (t.tags || []).includes(activeTag))
-    : buildTransactionsList(model);
-  const yearTransactions = transactionsInYear(allTransactions, year);
-  const yearTotals = transactionTotals(yearTransactions);
-  const totalSaved = savingsContributedInYear(model, year);
+  const isThisYear = year === now.getFullYear();
+  const lastMonth = isThisYear ? now.getMonth() : 11;
+  const all = buildTransactionsList(model).filter((t) => t.date.startsWith(`${year}-`) && (!activeTag || (t.tags || []).includes(activeTag)));
+  const totals = transactionTotals(all);
 
-  const monthlyData = Array.from({ length: 12 }, (_, m) => {
-    const prefix = `${year}-${String(m + 1).padStart(2, '0')}`;
-    const monthTx = allTransactions.filter((t) => t.date.startsWith(prefix));
-    const totals = transactionTotals(monthTx);
-    return { label: MONTH_LABELS[m], income: totals.totalIn, expenses: totals.totalOut };
-  });
-  const maxMonthValue = Math.max(1, ...monthlyData.map((d) => Math.max(d.income, d.expenses)));
+  // Bills paid on time: paid bill/debt cycles due this year, paid on or before the due date.
+  let onTime = 0;
+  let paidCount = 0;
+  [...(model.bills || []), ...(model.debts || [])].forEach((r) =>
+    (r.cycles || []).forEach((c) => {
+      if (!(typeof c.amountPaid === 'number' && c.amountPaid > 0) || !(c.dueDate || '').startsWith(`${year}-`)) return;
+      paidCount += 1;
+      if (c.paidDate && c.dueDate && c.paidDate <= c.dueDate) onTime += 1;
+    })
+  );
 
-  const categoryMap: Record<string, number> = {};
-  yearTransactions
-    .filter((t) => t.direction === 'out')
-    .forEach((t) => {
-      const key = t.category || 'Uncategorized';
-      categoryMap[key] = (categoryMap[key] || 0) + t.amount;
-    });
-  const topCategories = Object.entries(categoryMap)
-    .map(([category, amount]) => ({ category, amount }))
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 6);
-  const maxCategoryAmount = topCategories.length > 0 ? topCategories[0].amount : 0;
+  const byCat = new Map<string, number>();
+  all.filter((t) => t.direction === 'out').forEach((t) => byCat.set(t.category || 'Other', (byCat.get(t.category || 'Other') || 0) + t.amount));
+  const biggestCat = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 
-  const debtPaid = yearTransactions.filter((t) => t.source === 'debt').reduce((sum, t) => sum + t.amount, 0);
+  // Best month: the one where the most was left after spending and saving.
+  let best: { m: number; net: number } | null = null;
+  for (let m = 0; m <= lastMonth; m++) {
+    const key = `${year}-${String(m + 1).padStart(2, '0')}`;
+    const t = transactionTotals(all.filter((x) => x.date.startsWith(key)));
+    if (t.totalIn === 0 && t.totalOut === 0) continue;
+    const net = t.totalIn - t.totalOut;
+    if (!best || net > best.net) best = { m, net };
+  }
 
-  const goals = model.savingsGoals || [];
-  const goalsReached = goals.filter((g) => {
-    const target = typeof g.targetAmount === 'number' ? g.targetAmount : 0;
-    const current = typeof g.currentAmount === 'number' ? g.currentAmount : 0;
-    return target > 0 && current >= target;
-  }).length;
+  const debtPaid = all.filter((t) => t.source === 'debt' || t.source === 'loan');
+  const debtTotal = debtPaid.reduce((sum, t) => sum + t.amount, 0);
+  const debtNames = [...new Set(debtPaid.map((t) => t.label))].slice(0, 2).join(' and ');
+  const monthsCount = lastMonth + 1;
+
+  const tiles = [
+    { label: 'Saved', value: formatPeso(totals.totalSaving), color: colors.saving },
+    { label: 'Bills paid on time', value: paidCount ? `${onTime} of ${paidCount}` : '—', color: colors.positive },
+    { label: 'Biggest category', value: biggestCat || '—', color: colors.ink },
+    { label: 'Best month', value: best ? MONTHS[best.m] : '—', color: colors.ink },
+  ];
+
+  async function share() {
+    const lines = [
+      `My ${year}${isThisYear ? ' so far' : ''} with Finance Flow`,
+      paidCount ? `Paid ${onTime} of ${paidCount} bills on time` : '',
+      best ? `Best month: ${MONTHS[best.m]}` : '',
+      biggestCat ? `Most went to: ${biggestCat}` : '',
+      totals.totalSaving > 0 ? 'Kept saving every step of the way' : '',
+    ].filter(Boolean);
+    try {
+      await Share.share({ message: lines.join('\n') });
+    } catch {
+      // Closing the share sheet isn't an error worth showing.
+    }
+  }
 
   return (
-    <PullToRefreshScrollView  style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.yearNavRow}>
-        <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year - 1)}>
-          <Ionicons name="chevron-back" size={18} color={colors.ink} />
+    <PullToRefreshScrollView contentContainerStyle={s.content}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <TouchableOpacity onPress={() => setYear((y) => y - 1)} accessibilityRole="button" accessibilityLabel="Previous year" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="chevron-back" size={22} color={colors.gold} />
         </TouchableOpacity>
-        <Text style={styles.yearNavLabel}>{year}</Text>
-        <TouchableOpacity style={styles.yearNavBtn} onPress={() => setYear(year + 1)}>
-          <Ionicons name="chevron-forward" size={18} color={colors.ink} />
+        <View style={{ alignItems: 'center' }}>
+          <Text style={s.title}>{year}{isThisYear ? ' so far' : ''}</Text>
+          <Text style={s.meta}>January to {MONTHS[lastMonth]}</Text>
+        </View>
+        <TouchableOpacity onPress={() => setYear((y) => Math.min(now.getFullYear(), y + 1))} disabled={isThisYear} accessibilityRole="button" accessibilityLabel="Next year" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="chevron-forward" size={22} color={isThisYear ? colors.navy4 : colors.gold} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.statGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>Total Income</Text>
-          <Text style={[styles.statCardAmount, { color: colors.ok }]}>{formatPeso(yearTotals.totalIn)}</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>Total Expenses</Text>
-          <Text style={[styles.statCardAmount, { color: colors.error }]}>{formatPeso(yearTotals.totalOut)}</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>Total Saved</Text>
-          <Text style={styles.statCardAmount}>{formatPeso(totalSaved)}</Text>
-        </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+        {tiles.map((t) => (
+          <Group key={t.label} style={[s.pad, { width: '47.5%', flexGrow: 1 }]}>
+            <Text style={s.meta}>{t.label}</Text>
+            <Text style={[s.title, { color: t.color }]} numberOfLines={1} adjustsFontSizeToFit>{t.value}</Text>
+          </Group>
+        ))}
       </View>
 
-      <Card>
-        <Text style={styles.cardLabel}>Income vs. Expenses, Month by Month</Text>
-        <View style={styles.chartRow}>
-          {monthlyData.map((d) => (
-            <View key={d.label} style={styles.chartCol}>
-              <View style={styles.chartBarsWrap}>
-                <View
-                  style={[
-                    styles.chartBar,
-                    { height: `${(d.income / maxMonthValue) * 100}%`, backgroundColor: colors.ok },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.chartBar,
-                    { height: `${(d.expenses / maxMonthValue) * 100}%`, backgroundColor: colors.error },
-                  ]}
-                />
-              </View>
-              <Text style={styles.chartColLabel}>{d.label.charAt(0)}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendSwatch, { backgroundColor: colors.ok }]} />
-            <Text style={styles.legendText}>Income</Text>
+      <Text style={s.header}>Totals</Text>
+      <Group>
+        <View style={s.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.body}>Money in</Text>
+            <Text style={s.meta}>{monthsCount} {monthsCount === 1 ? 'month' : 'months'}</Text>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendSwatch, { backgroundColor: colors.error }]} />
-            <Text style={styles.legendText}>Expenses</Text>
+          <Text style={[s.amount, { color: colors.positive }]}>+{formatPeso(totals.totalIn)}</Text>
+        </View>
+        <View style={[s.row, s.line]}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.body}>Money out</Text>
+            <Text style={s.meta}>{monthsCount} {monthsCount === 1 ? 'month' : 'months'}</Text>
           </View>
+          <Text style={[s.amount, { color: colors.negative }]}>−{formatPeso(totals.totalOut)}</Text>
         </View>
-      </Card>
-
-      <Card>
-        <Text style={styles.cardLabel}>Top Categories This Year</Text>
-        {topCategories.length === 0 ? (
-          <Text style={styles.emptyText}>No spending logged this year.</Text>
-        ) : (
-          topCategories.map((c, idx) => {
-            const pct = maxCategoryAmount > 0 ? (c.amount / maxCategoryAmount) * 100 : 0;
-            const colorKey = CATEGORY_COLOR_KEYS[idx % CATEGORY_COLOR_KEYS.length];
-            return (
-              <View key={c.category} style={styles.categoryRow}>
-                <View style={styles.categoryHeaderRow}>
-                  <Text style={styles.categoryName} numberOfLines={1}>
-                    {c.category}
-                  </Text>
-                  <Text style={styles.categoryAmount}>{formatPeso(c.amount)}</Text>
-                </View>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: colors[colorKey] }]} />
-                </View>
-              </View>
-            );
-          })
-        )}
-      </Card>
-
-      <View style={styles.statGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>Debt Paid Down</Text>
-          <Text style={[styles.statCardAmount, { color: colors.orange }]}>{formatPeso(debtPaid)}</Text>
-          <Text style={styles.statCardNote}>Logged debt payments this year</Text>
+        <View style={[s.row, s.line]}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.body}>Debt paid down</Text>
+            {!!debtNames && <Text style={s.meta} numberOfLines={1}>{debtNames}</Text>}
+          </View>
+          <Text style={[s.amount, { color: colors.ink }]}>{formatPeso(debtTotal)}</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>Savings Goals Reached</Text>
-          <Text style={styles.statCardAmount}>{goalsReached}</Text>
-          <Text style={styles.statCardNote}>
-            Of {goals.length} total goal{goals.length === 1 ? '' : 's'}
-          </Text>
-        </View>
-      </View>
+      </Group>
 
+      <TouchableOpacity onPress={share} accessibilityRole="button" style={{ marginTop: 20 }}>
+        <Group style={[s.pad, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+          <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <GradientFill kind="tint" color={colors.accentTint} radius={8} />
+            <Ionicons name="share-outline" size={20} color={colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.headline}>Share your year</Text>
+            <Text style={s.subhead}>Just the highlights, with no amounts.</Text>
+          </View>
+        </Group>
+      </TouchableOpacity>
     </PullToRefreshScrollView>
   );
-}
-
-function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: 'transparent',
-    },
-    contentContainer: { padding: 14, paddingBottom: 32 },
-    loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    yearNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 14, gap: 16 },
-    yearNavBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.navy3,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    yearNavBtnText: { fontSize: 18, color: colors.ink, fontWeight: '700' },
-    yearNavLabel: { fontSize: 18, fontWeight: '700', color: colors.ink, minWidth: 60, textAlign: 'center' },
-    statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
-    statCard: { flexGrow: 1, flexBasis: '30%', backgroundColor: colors.navy3, borderRadius: 10, padding: 14 },
-    statCardLabel: {
-      fontSize: 11,
-      color: colors.inkFaint,
-      marginBottom: 4,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    statCardAmount: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statCardNote: { fontSize: 11, color: colors.inkFaint, marginTop: 4 },
-    cardLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      color: colors.inkDim,
-      marginBottom: 12,
-    },
-    chartRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 130 },
-    chartCol: { flex: 1, alignItems: 'center' },
-    chartBarsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 2 },
-    chartBar: { width: 5, borderRadius: 2, minHeight: 2 },
-    chartColLabel: { fontSize: 11, color: colors.inkFaint, marginTop: 6 },
-    legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 12 },
-    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    legendSwatch: { width: 10, height: 10, borderRadius: 3 },
-    legendText: { fontSize: 11, color: colors.inkDim },
-    emptyText: { fontSize: 13, color: colors.inkFaint },
-    categoryRow: { marginTop: 12 },
-    categoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    categoryName: { fontSize: 13, color: colors.ink, flex: 1, marginRight: 8 },
-    categoryAmount: { fontSize: 12, color: colors.inkDim },
-    progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
-    progressFill: { height: '100%', borderRadius: 999 },
-    footerNote: { fontSize: 11, color: colors.inkFaint, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
-  });
 }

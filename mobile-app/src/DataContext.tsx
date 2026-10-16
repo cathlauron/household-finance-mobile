@@ -15,9 +15,11 @@
 // shared data.
 // ============================================================
 import { getCurrentFirebaseUser } from './authFirebase';
+import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import React, { createContext, useContext, useRef, useState, ReactNode } from 'react';
-import { Alert } from 'react-native';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import * as Network from 'expo-network';
+import { Alert, AppState } from 'react-native';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel } from './types';
 import { defaultModel } from './defaultModel';
@@ -93,6 +95,10 @@ type DataContextValue = {
     newPassword: string
   ) => Promise<ChangePasswordResult>;
   username: string | null;
+  // Redesign (offline banner): whether the phone has internet right now, and how many
+  // saves are waiting to reach the cloud. They are sent by themselves once it's back.
+  isOnline: boolean;
+  pendingChanges: number;
   // Checkpoint 9.2c: whether this profile is currently reading/writing
   // shared household data (true) or its own personal data (false).
   isLinked: boolean;
@@ -137,6 +143,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
   const [linkNoticeMsg, setLinkNoticeMsg] = useState<string | null>(null);
+  // ---- Offline banner (redesign) ----
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingChanges, setPendingChanges] = useState(0);
+  const onlineRef = useRef(true);
+  const latestModelRef = useRef<HouseholdModel | null>(null);
+  latestModelRef.current = model;
   const householdUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Kept outside React state (in refs) since we only need them for the next save/load
@@ -306,6 +318,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     options: { deferNotifications?: boolean } = {}
   ): Promise<HouseholdModel | null> {
     setLoading(true);
+    // Accounts made before username claims existed claim theirs now (quietly).
+    ensureUsernameClaim(username);
     cleanupHouseholdListener();
     usernameRef.current = username;
     keyRef.current = key;
@@ -423,8 +437,126 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
 
+  // Sends the latest data to the cloud after being offline (or after a failed sync).
+  const syncingRef = useRef(false);
+  async function syncPendingChanges() {
+    if (syncingRef.current) return;
+    const username = usernameRef.current;
+    const current = latestModelRef.current;
+    if (!username || !current) return;
+    syncingRef.current = true;
+    try {
+      if (householdIdRef.current && householdKeyRef.current) {
+        const encrypted = await encryptJSON(householdKeyRef.current, current);
+        await withTimeout(saveHouseholdData(householdIdRef.current, encrypted), 12000, 'Timed out syncing.');
+        lastEncryptedDataRef.current = encrypted;
+      } else if (saltRef.current && keyRef.current) {
+        const encrypted = await encryptJSON(keyRef.current, current);
+        await withTimeout(
+          backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
+          12000,
+          'Timed out syncing.'
+        );
+      }
+      setPendingChanges(0);
+    } catch (e) {
+      // Still not reachable; try again on the next change of connection.
+    } finally {
+      syncingRef.current = false;
+    }
+  }
+
+  // Online / offline. The phone's "connection changed" event doesn't always arrive (e.g.
+  // switching on airplane mode in Expo Go), so the app also re-checks every few seconds
+  // while it's open and whenever it comes back to the front.
+  function applyNetworkState(state: { isConnected?: boolean; isInternetReachable?: boolean | null }) {
+    const online = state.isConnected !== false && state.isInternetReachable !== false;
+    const cameBack = online && !onlineRef.current;
+    onlineRef.current = online;
+    setIsOnline(online);
+    if (cameBack) syncPendingChanges();
+  }
+  function recheckNetwork() {
+    Network.getNetworkStateAsync().then(applyNetworkState).catch(() => {});
+  }
+  // A sync that times out or can't reach the cloud: show the offline banner instead of an
+  // error, and let the regular re-check pick it up (and sync) once the connection is back.
+  // Returns true when it looks like the phone is offline.
+  async function treatAsOfflineIfUnreachable(): Promise<boolean> {
+    try {
+      const state = await Network.getNetworkStateAsync();
+      if (state.isConnected === false || state.isInternetReachable === false) {
+        applyNetworkState(state);
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
+  useEffect(() => {
+    recheckNetwork();
+    const sub = Network.addNetworkStateListener(applyNetworkState);
+    const appSub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') recheckNetwork();
+    });
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') recheckNetwork();
+    }, 4000);
+    return () => {
+      sub.remove();
+      appSub.remove();
+      clearInterval(timer);
+    };
+  }, []);
+
   async function saveModel(updatedModel: HouseholdModel) {
-    const sanitizedModel = sanitizeModelIds(updatedModel);
+    // Left to Spend: stamp the moment each NEW transaction is first saved (any screen
+    // that adds one: Transactions, CSV import, Travel, Events, refunds). Existing
+    // transactions are never re-stamped.
+    const knownIds = new Set((model?.manualTransactions || []).map((t) => t.id));
+    const now = Date.now();
+    // Redesign: loan payments and savings moves get the same stamp, so a card's
+    // balance can tell whether they came after its balance was last updated.
+    const knownLoanPays = new Set((model?.loans || []).flatMap((l) => (l.actualPayments || []).map((p) => p.id)));
+    const knownContribs = new Set((model?.savingsGoals || []).flatMap((g) => (g.contributions || []).map((c) => c.id)));
+    const knownPaydays = new Set((model?.income || []).flatMap((s) => (s.paymentLog || []).map((e) => e.id)));
+    const stamped: HouseholdModel = {
+      ...updatedModel,
+      manualTransactions: (updatedModel.manualTransactions || []).map((t) =>
+        t.createdAt || knownIds.has(t.id) ? t : { ...t, createdAt: now }
+      ),
+      loans: (updatedModel.loans || []).map((l) =>
+        (l.actualPayments || []).some((p) => !p.createdAt && !knownLoanPays.has(p.id))
+          ? {
+              ...l,
+              actualPayments: (l.actualPayments || []).map((p) =>
+                p.createdAt || knownLoanPays.has(p.id) ? p : { ...p, createdAt: now }
+              ),
+            }
+          : l
+      ),
+      income: (updatedModel.income || []).map((s) =>
+        (s.paymentLog || []).some((e) => !e.createdAt && !knownPaydays.has(e.id))
+          ? {
+              ...s,
+              paymentLog: (s.paymentLog || []).map((e) =>
+                e.createdAt || knownPaydays.has(e.id) ? e : { ...e, createdAt: now }
+              ),
+            }
+          : s
+      ),
+      savingsGoals: (updatedModel.savingsGoals || []).map((g) =>
+        (g.contributions || []).some((c) => !c.createdAt && !knownContribs.has(c.id))
+          ? {
+              ...g,
+              contributions: (g.contributions || []).map((c) =>
+                c.createdAt || knownContribs.has(c.id) ? c : { ...c, createdAt: now }
+              ),
+            }
+          : g
+      ),
+    };
+    const sanitizedModel = sanitizeModelIds(stamped);
     modelVersionRef.current += 1;
     setModel(sanitizedModel);
     const username = usernameRef.current;
@@ -457,18 +589,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
           });
       }
 
-      try {
-        await withTimeout(
-          saveHouseholdData(householdIdRef.current, encrypted),
-          8000,
-          'Timed out waiting for the shared household to sync.'
-        );
-        lastEncryptedDataRef.current = encrypted;
-      } catch (err) {
-        Alert.alert(
-          'Sync Failed',
-          'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
-        );
+      if (!onlineRef.current) {
+        // Offline: saved on this phone; the banner shows it and it syncs once back online.
+        setPendingChanges((n) => n + 1);
+      } else {
+        try {
+          await withTimeout(
+            saveHouseholdData(householdIdRef.current, encrypted),
+            8000,
+            'Timed out waiting for the shared household to sync.'
+          );
+          lastEncryptedDataRef.current = encrypted;
+        } catch (err) {
+          setPendingChanges((n) => n + 1);
+          if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
+            Alert.alert(
+              'Sync Failed',
+              'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
+            );
+          }
+        }
       }
 
       rescheduleBillNotifications(sanitizedModel).catch(() => {});
@@ -484,12 +624,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const key = keyRef.current;
     if (!key) return;
-    const encrypted = await encryptJSON(key, sanitizedModel);
-    await saveEncryptedProfileData(username, encrypted);
-    if (saltRef.current) await setBackupPending(username, true);
+    // Unlinked profile: save on this phone. If that fails, say so (linked profiles
+    // already show "Sync Failed"); the change stays on screen until the app closes.
+    let encrypted: string;
+    try {
+      encrypted = await encryptJSON(key, sanitizedModel);
+      await withTimeout(saveEncryptedProfileData(username, encrypted), 8000, 'Timed out saving on this phone.');
+      if (saltRef.current) await setBackupPending(username, true);
+    } catch (err) {
+      console.error('Failed to save on this phone:', err);
+      Alert.alert(
+        "Couldn't save",
+        "Your last change couldn't be saved on this phone. Please try again. If it keeps happening, restart the app."
+      );
+      return;
+    }
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
+      if (!onlineRef.current) {
+        // Offline: saved on this phone; the banner shows it and it syncs once back online.
+        setPendingChanges((n) => n + 1);
+        return;
+      }
       try {
         await withTimeout(
           backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
@@ -498,10 +655,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         );
       } catch (err) {
         console.error('Cloud backup failed:', err);
-        Alert.alert(
-          'Backup Failed',
-          'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
-        );
+        setPendingChanges((n) => n + 1);
+        if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
+          Alert.alert(
+            'Backup Failed',
+            'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
+          );
+        }
       }
     }
   }
@@ -590,6 +750,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   function clearModel() {
     cleanupHouseholdListener();
+    setPendingChanges(0);
     usernameRef.current = null;
     keyRef.current = null;
     householdIdRef.current = undefined;
@@ -934,6 +1095,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         changePassword,
         verifyPassword,
         username: usernameRef.current,
+        isOnline,
+        pendingChanges,
         isLinked,
         getPersonalKey,
         getHouseholdKey,

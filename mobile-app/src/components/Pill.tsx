@@ -1,8 +1,10 @@
 ﻿import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
+import GradientFill from './GradientFill';
 
 type Props = {
   label: string;
@@ -38,7 +40,7 @@ export default function Pill({
   style,
 }: Props) {
   const { colors } = useTheme();
-  const textColor = active ? colors.navy2 : colors.inkDim;
+  const textColor = active ? colors.onButton : colors.inkDim;
   const inactiveBg = tone === 'page' ? colors.navy3 : colors.navy2;
   return (
     <TouchableOpacity
@@ -49,13 +51,21 @@ export default function Pill({
       accessibilityLabel={accessibilityLabel ?? label}
       style={[
         styles.base,
-        { backgroundColor: active ? colors.gold : inactiveBg },
+        { backgroundColor: active ? colors.buttonFill : inactiveBg },
         fill && styles.fill,
         compact && styles.compact,
         minWidth !== undefined && { minWidth },
         style,
       ]}
     >
+      <GradientFill match={[
+        styles.base,
+        { backgroundColor: active ? colors.buttonFill : inactiveBg },
+        fill && styles.fill,
+        compact && styles.compact,
+        minWidth !== undefined && { minWidth },
+        style,
+      ]} />
       {icon ? (
         <Ionicons name={icon} size={16} color={textColor} style={styles.icon} />
       ) : null}

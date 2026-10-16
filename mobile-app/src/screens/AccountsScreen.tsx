@@ -1,30 +1,24 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Platform,
-  LayoutAnimation,
-  UIManager,
-} from 'react-native';
+import React, { useLayoutEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
+import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
-import IconLabelHint from '../components/IconLabelHint';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
-import { totalLiquidBalance, formatPeso } from '../balanceProjection';
+import { formatPeso, totalCurrentBalance, withCurrentBalance, accountCurrentBalance, bakeCurrentBalances } from '../balanceProjection';
 import type { BalanceAccountEntry, HouseholdModel } from '../types';
-import AccountCard, { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+import { DEFAULT_GROUP_COLORS, COLOR_PALETTE } from '../components/AccountCard';
+import { cardFaceColors, CardFaceFill, cardColor } from '../components/CardFace';
+import { computeNextPayDate, formatShortDate } from '../income';
 import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import AmountInput from '../components/AmountInput';
+import { todayISO } from '../dateUtils';
+import GradientFill from '../components/GradientFill';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -48,14 +42,31 @@ function makeId(): string {
 }
 
 export default function AccountsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
-  const [viewMode, setViewMode] = useState<'stacked' | 'list'>('stacked');
+  // Redesign: always a plain list here; Home's Wallet already shows the stacked cards.
+  // One Add button in the title bar asks which kind of account to add.
+  const [chooseTypeOpen, setChooseTypeOpen] = useState(false);
+  const navigation = useNavigation<any>();
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setChooseTypeOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Add an account"
+          testID="accounts-add"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors.gold]);
   // Which account card is currently expanded in stacked view, or null if all collapsed.
-  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   // Which group's add/edit form is open in the modal right now, or null if closed.
   const [activeGroup, setActiveGroup] = useState<AccountGroup | null>(null);
@@ -99,26 +110,8 @@ export default function AccountsScreen() {
     setErrorMsg('');
   }
 
-  function handleCardPress(group: AccountGroup, account: BalanceAccountEntry, isAlreadyExpanded: boolean) {
-    if (isAlreadyExpanded) {
-      // Step 2: tapping the already-expanded card opens the edit modal
-      openEditModal(group, account);
-    } else {
-      // Step 1: tapping a collapsed card brings it to front and expands it
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setExpandedAccountId(account.id);
-    }
-  }
 
-  function handleCollapse() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedAccountId(null);
-  }
 
-  function handleToggleViewMode(mode: 'stacked' | 'list') {
-    setViewMode(mode);
-    setExpandedAccountId(null);
-  }
 
   async function handleSave() {
     if (!activeGroup || !model) return;
@@ -129,15 +122,26 @@ export default function AccountsScreen() {
     }
     const parsedAmount = amountInput === '' ? 0 : amountInput;
 
+    // Redesign: balances shown here are live (saved balance + anything paid since).
+    // If the balance was changed, every spending account's saved balance becomes its
+    // live balance first, so nothing paid since the last update is lost when the
+    // "as of" moment moves to now. A name or colour change leaves balances alone.
+    const isSpendingGroup = activeGroup === 'cash' || activeGroup === 'debit' || activeGroup === 'credit';
+    const previous = editingId ? model.balanceAccounts[activeGroup].find((a) => a.id === editingId) : undefined;
+    const previousLive = previous ? accountCurrentBalance(model, activeGroup, previous) : 0;
+    const balanceChanged = !editingId || !previous || Number(previousLive) !== Number(parsedAmount || 0);
+
     const updated: HouseholdModel = {
       ...model,
-      balanceAccounts: { ...model.balanceAccounts },
+      balanceAccounts: isSpendingGroup && balanceChanged ? bakeCurrentBalances(model) : { ...model.balanceAccounts },
     };
     const currentList = updated.balanceAccounts[activeGroup];
 
     if (editingId) {
       updated.balanceAccounts[activeGroup] = currentList.map((a) =>
-        a.id === editingId ? { ...a, name: trimmedName, amount: parsedAmount, color: colorInput } : a
+        a.id === editingId
+          ? { ...a, name: trimmedName, amount: balanceChanged ? parsedAmount : a.amount, color: colorInput }
+          : a
       );
     } else {
       const newAccount: BalanceAccountEntry = {
@@ -147,6 +151,15 @@ export default function AccountsScreen() {
         color: colorInput,
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
+    }
+
+    // Left to Spend fix: remember the day the spending balances (Cash, Debit, Credit)
+    // were last brought up to date. Left to Spend treats these balances as true as of
+    // that day, so any transaction dated AFTER it moves Left to Spend until the next
+    // balance update. Same idea as the web app's "balance as of" date.
+    if (isSpendingGroup && balanceChanged) {
+      updated.balanceAccounts.asOfDate = todayISO();
+      updated.balanceAccounts.asOfAt = Date.now();
     }
 
     setSaving(true);
@@ -216,7 +229,18 @@ export default function AccountsScreen() {
     );
   }
 
-  const totalBalance = totalLiquidBalance(model);
+  const totalBalance = totalCurrentBalance(model);
+  // Money colours: green for money you have, red for money owed, grey for nothing.
+  const moneyColor = (n: number) => (n > 0.004 ? colors.positive : n < -0.004 ? colors.negative : colors.inkDim);
+  const accountCount = GROUPS.reduce((n, g) => n + model.balanceAccounts[g].length, 0);
+  const creditOwed = model.balanceAccounts.credit
+    .map((a) => accountCurrentBalance(model, 'credit', a))
+    .reduce((sum, b) => sum + (b < 0 ? -b : 0), 0);
+  // The soonest payday across all income sources.
+  const nextPay = (model.income || [])
+    .map((src) => ({ date: computeNextPayDate(src.frequency as any, src.payDates || []), amount: typeof src.expectedAmount === 'number' ? src.expectedAmount : 0 }))
+    .filter((x): x is { date: Date; amount: number } => !!x.date)
+    .sort((x, y) => x.date.getTime() - y.date.getTime())[0];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -224,68 +248,59 @@ export default function AccountsScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Card variant="banner" row style={{ marginBottom: 18 }}>
-          <View>
+        {/* Total balance: soft white card (money colours on the number), with the next
+            payday as a quiet row at the bottom that opens Income. */}
+        <View style={styles.totalCard}>
+          <GradientFill match={styles.totalCard} />
+          <View style={styles.totalTop}>
             <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-            <Text style={styles.balanceBannerAmount}>{formatPeso(totalBalance)}</Text>
+            <Text style={[styles.balanceBannerAmount, { color: moneyColor(totalBalance) }]}>{formatPeso(totalBalance)}</Text>
+            <Text style={styles.totalSub}>
+              {`Across ${accountCount} ${accountCount === 1 ? 'account' : 'accounts'}`}
+              {creditOwed > 0 ? ' · Credit owed ' : ''}
+              {creditOwed > 0 ? <Text style={{ color: colors.negative, fontWeight: '700' }}>{formatPeso(creditOwed)}</Text> : null}
+            </Text>
           </View>
-          <View style={styles.viewToggleWrap}>
-  <View style={[styles.toggleBtn, viewMode === 'stacked' && styles.toggleBtnActive]}>
-    <IconLabelHint
-      name="albums"
-      label="Stacked card view"
-      size={15}
-      color={viewMode === 'stacked' ? colors.navy2 : colors.inkDim}
-      position="below"
-      onPress={() => handleToggleViewMode('stacked')}
-    />
-  </View>
-  <View style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}>
-    <IconLabelHint
-      name="reorder-three"
-      label="List card view"
-      size={15}
-      color={viewMode === 'list' ? colors.navy2 : colors.inkDim}
-      position="below"
-      onPress={() => handleToggleViewMode('list')}
-    />
-  </View>
-          </View>
-        </Card>
+          <TouchableOpacity
+            style={styles.incomeRow}
+            onPress={() => navigation.navigate('Income')}
+            accessibilityRole="button"
+            testID="accounts-income"
+          >
+            <View style={[styles.incomeIcon, { backgroundColor: colors.indigoBg }]}>
+              <Ionicons name="trending-up" size={16} color={colors.planned} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.incomeTitle}>Income</Text>
+              <Text style={styles.incomeSub} numberOfLines={1}>
+                {nextPay ? `Next payday ${formatShortDate(nextPay.date)}` : (model.income || []).length === 0 ? 'Add where your money comes from' : 'No payday scheduled'}
+              </Text>
+            </View>
+            {!!nextPay && <Text style={[styles.incomeAmount, { color: colors.planned }]}>+{formatPeso(nextPay.amount)}</Text>}
+            <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
+          </TouchableOpacity>
+        </View>
 
         {GROUPS.map((group) => {
-          const accounts = model.balanceAccounts[group];
+          // Live balances (saved balance + anything paid from or into it since).
+          const accounts = model.balanceAccounts[group].map((a) => withCurrentBalance(model, group, a));
           const groupTotal = accounts.reduce((sum, a) => sum + accountAmountNumber(a), 0);
-          const isStackedSection = viewMode === 'stacked' && accounts.length >= 2;
-          const sectionHasExpanded = isStackedSection && accounts.some((a) => a.id === expandedAccountId);
           return (
             <View key={group} style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>{GROUP_LABELS[group]}</Text>
-                <View style={styles.sectionHeaderRight}>
-                  {sectionHasExpanded && (
-                    <IconLabelHint
-                      name="chevron-up"
-                      label="Collapse"
-                      size={15}
-                      color={colors.gold}
-                      onPress={handleCollapse}
-                      style={styles.collapseChip}
-                      testID="accounts-collapse-chip"
-                    />
-                  )}
-                  <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
-                </View>
+                <Text style={styles.sectionTitle}>{GROUP_LABELS[group].toUpperCase()}</Text>
+                <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
               </View>
-
-              {accounts.length === 0 && (
-                <Text style={styles.emptyText}>
-                  No {GROUP_LABELS[group].toLowerCase()} accounts yet.
-                </Text>
-              )}
-
-              {accounts.map((account, index) => {
-                if (!isStackedSection) {
+              <View style={styles.listGroup}>
+                <GradientFill match={styles.listGroup} />
+                {accounts.length === 0 && (
+                  <TouchableOpacity style={styles.accountRow} onPress={() => openAddModal(group)} accessibilityRole="button">
+                    <Text style={[styles.accountName, { color: colors.gold }]}>Add a {GROUP_LABELS[group].toLowerCase()} account</Text>
+                  </TouchableOpacity>
+                )}
+                {accounts.map((account, i) => {
+                  const bal = accountAmountNumber(account);
+                  const tint = cardColor(account, group);
                   return (
                     <SwipeableRow
                       key={account.id}
@@ -293,55 +308,54 @@ export default function AccountsScreen() {
                       onDelete={() => handleSwipeDeleteAccount(group, account)}
                       testID={`account-swipe-${account.id}`}
                     >
-                      <AccountCard
-                        account={account}
-                        group={group}
+                      <TouchableOpacity
+                        style={[styles.accountRow, i > 0 && styles.accountRowDivider]}
                         onPress={() => openEditModal(group, account)}
-                      />
+                        accessibilityRole="button"
+                        accessibilityLabel={`${account.name}, ${formatPeso(bal)}`}
+                      >
+                        <View style={[styles.accountChip, cardFaceColors(tint, isDark)]}>
+                          <CardFaceFill color={tint} radius={6} />
+                        </View>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.accountName} numberOfLines={1}>{account.name || GROUP_LABELS[group]}</Text>
+                          <Text style={styles.accountSub} numberOfLines={1}>{GROUP_LABELS[group]}</Text>
+                        </View>
+                        <Text style={[styles.accountAmount, { color: moneyColor(bal) }]}>{formatPeso(bal)}</Text>
+                        <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
                     </SwipeableRow>
                   );
-                }
-
-                const isExpanded = expandedAccountId === account.id;
-                const expandedIndex = accounts.findIndex((a) => a.id === expandedAccountId);
-
-                let marginTop = 0;
-                if (index > 0) {
-                  if (expandedIndex !== -1 && index === expandedIndex + 1) {
-                    marginTop = 14;
-                  } else {
-                    marginTop = -72;
-                  }
-                }
-
-                const isDimmed = expandedIndex !== -1 && !isExpanded;
-
-                return (
-                  <AccountCard
-                    key={account.id}
-                    account={account}
-                    group={group}
-                    isExpanded={isExpanded}
-                    style={{
-                      marginTop,
-                      marginBottom: index === accounts.length - 1 ? 12 : 0,
-                      zIndex: isExpanded ? 20 : index + 1,
-                      opacity: isDimmed ? 0.78 : 1,
-                    }}
-                    onPress={() => handleCardPress(group, account, isExpanded)}
-                  />
-                );
-              })}
-
-              <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(group)}>
-                <Text style={styles.addButtonText}>
-                  + Add {GROUP_LABELS[group].toLowerCase()} account
-                </Text>
-              </TouchableOpacity>
+                })}
+              </View>
             </View>
           );
         })}
       </PullToRefreshScrollView>
+
+      <BottomSheet visible={chooseTypeOpen} onClose={() => setChooseTypeOpen(false)} title="Add an account">
+        {GROUPS.map((g, i) => (
+          <TouchableOpacity
+            key={g}
+            style={[styles.typeRow, i > 0 && styles.typeRowTop]}
+            onPress={() => {
+              setChooseTypeOpen(false);
+              // Let the chooser close before the account form opens.
+              setTimeout(() => openAddModal(g), 250);
+            }}
+            accessibilityRole="button"
+            testID={`accounts-add-${g}`}
+          >
+            <Ionicons
+              name={g === 'cash' ? 'wallet-outline' : 'card-outline'}
+              size={22}
+              color={colors.gold}
+              style={{ marginRight: 12 }}
+            />
+            <Text style={styles.typeRowText}>{GROUP_LABELS[g]}</Text>
+          </TouchableOpacity>
+        ))}
+      </BottomSheet>
 
       <BottomSheet
         visible={activeGroup !== null}
@@ -354,6 +368,7 @@ export default function AccountsScreen() {
       >
         <Text style={styles.inputLabel}>Account name</Text>
         <TextInput
+          autoFocus={!editingId}
           style={styles.input}
           placeholder="e.g. GCash, BPI Savings"
           placeholderTextColor={colors.inkFaint}
@@ -415,60 +430,27 @@ function makeStyles(colors: any) {
       paddingTop: 16,
       paddingBottom: 40,
     },
-    viewToggleWrap: {
-      flexDirection: 'row',
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      padding: 3,
-    },
-    toggleBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 999,
-    },
-    toggleBtnActive: {
-      backgroundColor: colors.gold,
-    },
-    toggleBtnText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.inkDim,
-    },
-    toggleBtnTextActive: {
-      color: colors.navy2,
-      fontWeight: '700',
-    },
-    sectionHeaderRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    collapseChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 6,
-      backgroundColor: 'rgba(233,196,106,0.12)',
-    },
-    collapseChipText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.gold,
-    },
+    totalCard: { borderRadius: 20, backgroundColor: colors.navy3, marginBottom: 22, overflow: 'hidden' },
+    totalTop: { paddingTop: 18, paddingBottom: 14, paddingHorizontal: 20 },
+    totalSub: { fontSize: 13, color: colors.inkDim, marginTop: 4 },
+    incomeAmount: { fontSize: 15, fontWeight: '700', marginRight: 6 },
+    listGroup: { backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden' },
+    accountRow: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: colors.navy3 },
+    accountRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    accountChip: { width: 40, height: 28, borderRadius: 6, marginRight: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+    accountName: { fontSize: 17, color: colors.ink },
+    accountSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    accountAmount: { fontSize: 17, fontWeight: '600' },
     balanceBannerLabel: {
-      fontSize: 11,
-      letterSpacing: 1,
+      fontSize: 13,
+      letterSpacing: 0.3,
       color: colors.inkDim,
       marginBottom: 4,
     },
     balanceBannerAmount: {
-      fontSize: 22,
-      fontWeight: '700',
+      fontSize: 32,
+      fontWeight: '800',
+      letterSpacing: -0.5,
       color: colors.ink,
     },
     section: {
@@ -478,47 +460,56 @@ function makeStyles(colors: any) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
+      paddingHorizontal: 16,
     },
     sectionTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.ink,
+      fontSize: 13,
+      fontWeight: '600',
+      letterSpacing: 0.3,
+      color: colors.inkDim,
     },
     sectionTotal: {
       fontSize: 13,
       fontWeight: '600',
       color: colors.inkDim,
     },
-    emptyText: {
-      fontSize: 12,
-      color: colors.inkFaint,
-      marginBottom: 8,
-      fontStyle: 'italic',
+    incomeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.navy4,
     },
-    addButton: {
-      alignSelf: 'flex-start',
-      paddingVertical: 8,
-      paddingHorizontal: 4,
+    incomeIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
     },
-    addButtonText: {
+    incomeTitle: { fontSize: 15, color: colors.ink, fontWeight: '600' },
+    incomeSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    typeRow: { flexDirection: 'row', alignItems: 'center', minHeight: 54 },
+    typeRowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    typeRowText: { fontSize: 17, color: colors.ink },
+    inputLabel: {
+      // Redesign: sentence-case grey labels, like iPhone forms.
       fontSize: 13,
       fontWeight: '600',
-      color: colors.gold,
-    },
-    inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
     },
     input: {
       backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      minHeight: 48,
+      fontSize: 17,
       color: colors.ink,
       marginBottom: 14,
     },
@@ -542,7 +533,7 @@ function makeStyles(colors: any) {
       borderColor: colors.ink,
     },
     errorText: {
-      fontSize: 12,
+      fontSize: 13,
       color: colors.error,
       marginBottom: 10,
     },

@@ -309,7 +309,7 @@ export async function finishJoinerLink(
     // The joiner must be a member before they can write the household data.
     // If the household already has 5 members, Firestore's security rule rejects this write.
     try {
-      await addMemberToHousehold(householdId, myUsername);
+      await addMemberToHousehold(householdId, myUsername, code);
     } catch (e: any) {
       const code = e?.code;
       const msg = (e as Error)?.message || '';

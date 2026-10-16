@@ -9,7 +9,8 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
@@ -115,20 +116,20 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
     cardLabel: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '700',
       textTransform: 'uppercase',
       letterSpacing: 1,
       color: colors.inkDim,
       marginBottom: 6,
     },
-    subLabel: { fontSize: 12, color: colors.inkFaint },
+    subLabel: { fontSize: 13, color: colors.inkFaint },
     emptyText: { fontSize: 13, color: colors.inkFaint },
     merchantHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    merchantName: { fontSize: 14, fontWeight: '600', color: colors.ink, flex: 1, marginRight: 8 },
-    merchantTotal: { fontSize: 14, fontWeight: '700', color: colors.ink },
+    merchantName: { fontSize: 15, fontWeight: '600', color: colors.ink, flex: 1, marginRight: 8 },
+    merchantTotal: { fontSize: 15, fontWeight: '700', color: colors.ink },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
-    progressFill: { height: '100%', backgroundColor: colors.gold, borderRadius: 999 },
-    merchantMeta: { fontSize: 11, color: colors.inkFaint, marginTop: 8 },
+    progressFill: { height: '100%', backgroundColor: colors.buttonFill, borderRadius: 999 },
+    merchantMeta: { fontSize: 13, color: colors.inkFaint, marginTop: 8 },
   });
 }

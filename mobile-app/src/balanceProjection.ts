@@ -23,7 +23,8 @@
 // screen for logging actual paydays.
 // ============================================================
 
-import type { HouseholdModel, Bill, Debt, Loan, IncomeSource } from './types';
+import type { HouseholdModel, Bill, Debt, Loan, IncomeSource, PaymentMethod, BalanceAccountEntry } from './types';
+import { lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
 
@@ -62,6 +63,123 @@ function lastDayOfMonth(year: number, monthIndex: number): number {
 export function totalLiquidBalance(model: HouseholdModel): number {
   const groups = [model.balanceAccounts.cash, model.balanceAccounts.debit, model.balanceAccounts.credit];
   return groups.reduce((sum, group) => sum + group.reduce((s, a) => s + toNumber(a.amount), 0), 0);
+}
+
+// ---- Early / late paydays (redesign) ----
+// You might be paid a day or two before or after the expected payday. A logged payday
+// within this many days of an expected one counts as that payday, so the expected
+// amount isn't added again. The window is under half the gap between paydays, so one
+// logged payday can never stand in for two expected ones.
+function paydayWindowDays(frequency: string): number {
+  switch (frequency) {
+    case 'weekly':
+      return 3;
+    case 'biweekly':
+    case 'semimonthly':
+      return 6;
+    default:
+      return 10; // monthly, one-time
+  }
+}
+
+export function isPaydayReceived(source: IncomeSource, expectedISO: string): boolean {
+  const expected = parseISO(expectedISO);
+  if (!expected) return false;
+  const windowMs = paydayWindowDays(source.frequency) * 86400000;
+  return (source.paymentLog || []).some((e) => {
+    const got = parseISO(e.date);
+    return !!got && toNumber(e.amount) > 0 && Math.abs(stripTime(got).getTime() - stripTime(expected).getTime()) <= windowMs;
+  });
+}
+
+// ---- Live account balances (redesign) ----
+// An account's saved balance is true as of the moment the balances were last updated on
+// the Accounts page. Anything paid from or into that account since then moves it:
+// transactions, bills and debts marked paid, loan payments, and money put into or taken
+// out of savings pots. Moving money between accounts already changes the saved balances
+// directly, so transfers aren't counted again here. Items dated in the future don't
+// count yet. The saved balance itself is never changed by this; updating a balance on
+// the Accounts page folds this activity in and starts afresh.
+export type SpendingGroup = 'cash' | 'debit' | 'credit';
+
+function happenedSinceUpdate(model: HouseholdModel, date: string | undefined, at: number | undefined, today: string): boolean {
+  const asOf = model.balanceAccounts.asOfDate;
+  if (!date || !asOf || date > today) return false;
+  if (date > asOf) return true;
+  if (date === asOf) {
+    const asOfAt = model.balanceAccounts.asOfAt;
+    return !!asOfAt && !!at && at > asOfAt;
+  }
+  return false;
+}
+
+export function accountActivitySinceUpdate(model: HouseholdModel, group: SpendingGroup, accountId: string): number {
+  // Cash paid without picking a cash account counts against the first cash account.
+  const firstCashId = model.balanceAccounts.cash[0]?.id;
+  const matches = (pm?: PaymentMethod) =>
+    !!pm &&
+    pm.type === group &&
+    (pm.accountId === accountId || (group === 'cash' && !pm.accountId && accountId === firstCashId));
+  const today = toISO(new Date());
+  let delta = 0;
+  (model.manualTransactions || []).forEach((t) => {
+    if (!matches(t.paymentMethod) || !happenedSinceUpdate(model, t.date, t.createdAt, today)) return;
+    delta += t.direction === 'in' ? toNumber(t.amount) : -toNumber(t.amount);
+  });
+  [...model.bills, ...model.debts].forEach((r) =>
+    (r.cycles || []).forEach((c) => {
+      if (!c.paidDate || !matches(c.paymentMethod) || !happenedSinceUpdate(model, c.paidDate, c.paidAt, today)) return;
+      delta -= toNumber(c.amountPaid);
+    })
+  );
+  (model.loans || []).forEach((l) =>
+    (l.actualPayments || []).forEach((p) => {
+      if (!matches(p.paymentMethod) || !happenedSinceUpdate(model, p.date, p.createdAt, today)) return;
+      delta += l.direction === 'lent' ? toNumber(p.actual) : -toNumber(p.actual);
+    })
+  );
+  (model.income || []).forEach((s) =>
+    (s.paymentLog || []).forEach((e) => {
+      if (!matches(e.paymentMethod) || !happenedSinceUpdate(model, e.date, e.createdAt, today)) return;
+      delta += toNumber(e.amount); // a logged payday adds to the account it went into
+    })
+  );
+  (model.savingsGoals || []).forEach((g) =>
+    (g.contributions || []).forEach((c) => {
+      if (!matches(c.paymentMethod) || !happenedSinceUpdate(model, c.date, c.createdAt, today)) return;
+      delta -= toNumber(c.amount); // put in = leaves the account; taken out (negative) = comes back
+    })
+  );
+  return delta;
+}
+
+export function accountCurrentBalance(model: HouseholdModel, group: SpendingGroup, account: BalanceAccountEntry): number {
+  return toNumber(account.amount) + accountActivitySinceUpdate(model, group, account.id);
+}
+
+// The same account with its live balance in place of the saved one (for display).
+export function withCurrentBalance(model: HouseholdModel, group: SpendingGroup, account: BalanceAccountEntry): BalanceAccountEntry {
+  return { ...account, amount: accountCurrentBalance(model, group, account) };
+}
+
+export function totalCurrentBalance(model: HouseholdModel): number {
+  return (['cash', 'debit', 'credit'] as SpendingGroup[]).reduce(
+    (sum, g) => sum + model.balanceAccounts[g].reduce((s, a) => s + accountCurrentBalance(model, g, a), 0),
+    0
+  );
+}
+
+// Updating balances on the Accounts page: every spending account's saved balance
+// becomes its live balance, so nothing paid since the last update is lost when the
+// "as of" moment moves to now.
+export function bakeCurrentBalances(model: HouseholdModel): HouseholdModel['balanceAccounts'] {
+  const ba = model.balanceAccounts;
+  return {
+    ...ba,
+    cash: ba.cash.map((a) => withCurrentBalance(model, 'cash', a)),
+    debit: ba.debit.map((a) => withCurrentBalance(model, 'debit', a)),
+    credit: ba.credit.map((a) => withCurrentBalance(model, 'credit', a)),
+  };
 }
 
 // ---- Bill / Debt outstanding amount ----
@@ -227,7 +345,7 @@ function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): nu
 
 
 // ---- Income next-payday resolver ----
-function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex: number): number[] {
+export function incomeOccurrencesInMonth(source: IncomeSource, year: number, monthIndex: number): number[] {
   const daysInMonth = lastDayOfMonth(year, monthIndex);
   const pd = source.payDates || [];
 
@@ -291,14 +409,20 @@ export function computeMonthEvents(
 
   model.bills.forEach((bill) => {
     const amount = Math.max(0, outstandingBalance(bill));
+    // Redesign: once a bill is marked paid, its occurrences up to that paid due date
+    // are done — don't count them again (the payment itself shows as a transaction).
+    const paidUpTo = lastPaidDueDate(bill);
     nextOccurrenceInMonth(bill, year, monthIndex).forEach((day) => {
+      if (paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo) return;
       push(day, { type: 'bill', label: bill.name || 'Bill', amount, id: bill.id });
     });
   });
 
   model.debts.forEach((debt) => {
     const amount = Math.max(0, outstandingBalance(debt));
+    const paidUpTo = lastPaidDueDate(debt);
     nextOccurrenceInMonth(debt, year, monthIndex).forEach((day) => {
+      if (paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo) return;
       push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount, id: debt.id });
     });
   });
@@ -312,10 +436,35 @@ export function computeMonthEvents(
     });
   });
 
+  // Redesign: expected income is only a projection, so it counts from tomorrow on.
+  // Paydays you've logged (money actually received) count on the day they came in.
+  const todayKey = toISO(stripTime(new Date()));
   model.income.forEach((source) => {
     const amount = toNumber(source.expectedAmount);
+    const label = source.sourceName || source.category || 'Income';
     incomeOccurrencesInMonth(source, year, monthIndex).forEach((day) => {
-      push(day, { type: 'income', label: source.sourceName || source.category || 'Income', amount });
+      const key = toISO(new Date(year, monthIndex, day));
+      if (key <= todayKey) return;
+      if (isPaydayReceived(source, key)) return; // already logged a day or two early
+      push(day, { type: 'income', label, amount });
+    });
+    (source.paymentLog || []).forEach((e) => {
+      const dt = parseISO(e.date);
+      if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
+      const got = toNumber(e.amount);
+      if (got > 0) push(dt.getDate(), { type: 'income', label: `${label} (received)`, amount: got });
+    });
+  });
+
+  // Redesign: bill and debt payments marked paid in the app take money out on the day
+  // they were paid (only cycles stamped with paidAt, i.e. paid through "Mark as paid").
+  [...model.bills, ...model.debts].forEach((rec) => {
+    (rec.cycles || []).forEach((c) => {
+      if (!c.paidAt || !c.paidDate) return;
+      const dt = parseISO(c.paidDate);
+      if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
+      const label = 'name' in rec ? rec.name || 'Bill' : rec.creditorOrPerson || 'Debt';
+      push(dt.getDate(), { type: 'manual', label: `${label} payment`, amount: toNumber(c.amountPaid), direction: 'out' });
     });
   });
 
@@ -330,7 +479,7 @@ export function computeMonthEvents(
       const dt = parseISO(c.date);
       if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
       const amount = toNumber(c.amount);
-      if (amount <= 0) return;
+      if (amount === 0) return; // negative = moved back out of the pot (adds to spending money)
       push(dt.getDate(), { type: 'saving', label: `${goal.name || 'Savings'} contribution`, amount });
     });
   });
@@ -339,7 +488,7 @@ export function computeMonthEvents(
 }
 
 // How much one event moves the liquid balance: income adds, everything else subtracts.
-function eventDelta(event: CalendarEvent): number {
+export function eventDelta(event: CalendarEvent): number {
   if (event.type === 'income') return event.amount;
   if (event.type === 'manual') return event.direction === 'in' ? event.amount : -event.amount;
   return -event.amount; // bill, debt, loan, saving
@@ -364,7 +513,30 @@ export function computeRunningBalances(
   const monthStart = new Date(year, monthIndex, 1);
   const monthEnd = new Date(year, monthIndex, daysInMonth);
   const asOf = accountsAsOfDate(model);
-  const totalStart = totalLiquidBalance(model);
+  // The account totals are true as of the moment they were last updated. Transactions
+  // on that same day that were logged AFTER the update aren't in them yet, so add them
+  // on top (the day's events are otherwise treated as already included).
+  const asOfAt = model.balanceAccounts.asOfAt;
+  const asOfISO = toISO(asOf);
+  const loggedAfterUpdate =
+    asOfAt && model.balanceAccounts.asOfDate
+      ? model.manualTransactions
+          .filter((t) => t.date === asOfISO && (t.createdAt ?? 0) > asOfAt)
+          .reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0) -
+        [...model.bills, ...model.debts]
+          .flatMap((r) => r.cycles || [])
+          .filter((c) => c.paidDate === asOfISO && (c.paidAt ?? 0) > asOfAt)
+          .reduce((sum, c) => sum + toNumber(c.amountPaid), 0) -
+        (model.savingsGoals || [])
+          .flatMap((g) => g.contributions || [])
+          .filter((c) => c.date === asOfISO && (c.createdAt ?? 0) > asOfAt)
+          .reduce((sum, c) => sum + toNumber(c.amount), 0) +
+        (model.income || [])
+          .flatMap((s) => s.paymentLog || [])
+          .filter((e) => e.date === asOfISO && (e.createdAt ?? 0) > asOfAt)
+          .reduce((sum, e) => sum + toNumber(e.amount), 0)
+      : 0;
+  const totalStart = totalLiquidBalance(model) + loggedAfterUpdate;
 
   const rangeStart = asOf < monthStart ? asOf : monthStart;
   const rangeEnd = asOf > monthEnd ? asOf : monthEnd;
@@ -439,7 +611,19 @@ export type LeftToSpendResult = {
 function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): Date | null {
   let earliest: Date | null = null;
   (model.income || []).forEach((source) => {
-    const next = computeNextPayDate(source.frequency as any, source.payDates || [], today);
+    let next = computeNextPayDate(source.frequency as any, source.payDates || [], today);
+    // A payday already logged early doesn't count as the next one; use the one after.
+    let guard = 0;
+    while (next && isPaydayReceived(source, toISO(next)) && guard < 6) {
+      guard++;
+      const after = new Date(next.getFullYear(), next.getMonth(), next.getDate() + 1);
+      const following = computeNextPayDate(source.frequency as any, source.payDates || [], after);
+      if (!following || following.getTime() === next.getTime()) {
+        next = null;
+        break;
+      }
+      next = following;
+    }
     if (next && (!earliest || next < earliest)) earliest = next;
   });
   return earliest;
@@ -447,25 +631,99 @@ function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): 
 
 export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date()): LeftToSpendResult {
   const payDate = nextHouseholdPayDate(model, today);
-  const targetDate = payDate || new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  // Redesign: what you can spend UNTIL payday, so the payday's own (not yet received)
+  // income isn't counted: read the balance the day before, never earlier than today.
+  const todayStart = stripTime(today);
+  const dayBefore = payDate ? stripTime(new Date(payDate.getFullYear(), payDate.getMonth(), payDate.getDate() - 1)) : null;
+  const targetDate = dayBefore
+    ? dayBefore < todayStart
+      ? todayStart
+      : dayBefore
+    : new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const basis: 'payday' | 'endOfMonth' = payDate ? 'payday' : 'endOfMonth';
   const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
   const amount = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
   return { amount, targetDate, basis };
 }
 
+// For the "Where it comes from" page on Home's Left to Spend card: starts from what is
+// in your accounts right now, then the money planned to go out (or come in) after today
+// and up to the Left to Spend date, grouped by kind. Anything else that makes up the
+// difference (for example something due today that isn't marked paid yet) is shown as
+// "Other changes", so the lines always add up to the Left to Spend amount.
+export type LeftToSpendLine = { label: string; amount: number };
+export function leftToSpendBreakdown(model: HouseholdModel, result: LeftToSpendResult, today: Date = new Date()): {
+  now: number;
+  lines: LeftToSpendLine[];
+} {
+  const now = totalCurrentBalance(model);
+  const start = stripTime(today);
+  const end = stripTime(result.targetDate);
+  const sums: Record<string, number> = {};
+  const LABEL: Record<CalendarEvent['type'], string> = {
+    bill: 'Bills',
+    debt: 'Debts',
+    loan: 'Loans',
+    saving: 'Savings top-ups',
+    manual: 'Planned transactions',
+    income: 'Income',
+  };
+  let y = start.getFullYear();
+  let m = start.getMonth();
+  while (y < end.getFullYear() || (y === end.getFullYear() && m <= end.getMonth())) {
+    const events = computeMonthEvents(model, y, m);
+    Object.keys(events).forEach((dayStr) => {
+      const d = stripTime(new Date(y, m, parseInt(dayStr, 10)));
+      if (d <= start || d > end) return;
+      events[parseInt(dayStr, 10)].forEach((ev) => {
+        const key = LABEL[ev.type];
+        sums[key] = (sums[key] || 0) + eventDelta(ev);
+      });
+    });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  const lines: LeftToSpendLine[] = Object.keys(sums)
+    .filter((k) => Math.abs(sums[k]) >= 0.005)
+    .map((k) => ({ label: k, amount: Math.round(sums[k] * 100) / 100 }))
+    .sort((a, b) => a.amount - b.amount);
+  const counted = now + lines.reduce((sum, l) => sum + l.amount, 0);
+  const other = Math.round((result.amount - counted) * 100) / 100;
+  if (Math.abs(other) >= 0.5) lines.push({ label: 'Other changes', amount: other });
+  return { now, lines };
+}
+
 // Same three-tier red/orange/green shape as SavingsScreen's getEfStatus() — red when
-// negative, green at or above the household's caution threshold (a % of the monthly
-// obligations baseline, user-tunable in Settings), orange in between.
+// negative, green at or above the household's caution threshold, orange in between.
+// The threshold is a % (Settings › Budgeting) of your monthly budget, as in the Finance
+// Flow mockup ("At 20%, the mood turns orange below ₱7,600" for a ₱38,000 budget).
+// Without a monthly budget it falls back to a % of your typical monthly bills, debts and
+// loans (the old rule, which was often so small that it only turned orange near ₱0).
+export type LeftToSpendMood = 'good' | 'low' | 'over';
+
+export function cautionBase(model: HouseholdModel): { amount: number; kind: 'budget' | 'obligations' } {
+  const budget = model.settings.monthlySpendingBudget;
+  if (typeof budget === 'number' && budget > 0) return { amount: budget, kind: 'budget' };
+  return { amount: computeMonthlyObligationsBaseline(model.bills, model.debts, model.loans), kind: 'obligations' };
+}
+
+export function cautionThresholdAmount(model: HouseholdModel): number {
+  const thresholdPercent = model.settings.cautionThresholdPercent ?? 20;
+  return cautionBase(model).amount * (thresholdPercent / 100);
+}
+
 export function getLeftToSpendStatus(
   amount: number,
   model: HouseholdModel,
   colors: { error: string; orange: string; ok: string }
-): { color: string; label: string } {
-  if (amount < 0) return { color: colors.error, label: 'Over budget' };
-  const baseline = computeMonthlyObligationsBaseline(model.bills, model.debts, model.loans);
-  const thresholdPercent = model.settings.cautionThresholdPercent ?? 20;
-  const cautionAmount = baseline * (thresholdPercent / 100);
-  if (amount < cautionAmount) return { color: colors.orange, label: 'Cutting it close' };
-  return { color: colors.ok, label: 'Looking good' };
+): { color: string; label: string; mood: LeftToSpendMood } {
+  // Redesign: labels match the Finance Flow mockups, and `mood` drives the Home card
+  // colour (green / burnt orange / red).
+  if (amount < 0) return { color: colors.error, label: 'Overspent', mood: 'over' };
+  const cautionAmount = cautionThresholdAmount(model);
+  if (amount < cautionAmount) return { color: colors.orange, label: 'Running low', mood: 'low' };
+  return { color: colors.ok, label: 'Looking good', mood: 'good' };
 }

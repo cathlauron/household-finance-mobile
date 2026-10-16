@@ -1,34 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  TextInput,
-  ActivityIndicator,
-
-} from 'react-native';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import { useToPayAddRequest } from '../fabActions';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount } from '../components/SimpleForm';
+import { paymentMethodColor } from '../components/CardFace';
+import PayRow from '../components/PayRow';
+import { useNavigation } from '@react-navigation/native';
+import { currentCycle, withEditedCurrentCycle } from '../billPayments';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
-import { getNextDueDate, formatShortDate, recurringTypeLabel, RecurringType } from '../recurrence';
+import { getNextDueDate, RecurringType } from '../recurrence';
 import type { Debt, HouseholdModel, PaymentMethod } from '../types';
-import PaymentMethodPicker from '../components/PaymentMethodPicker';
 import BottomSheet from '../components/BottomSheet';
-import CollapsibleRow from '../components/CollapsibleRow';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
-import DateField from '../components/DateField';
-import Pill from '../components/Pill';
 import Button from '../components/Button';
-import Card from '../components/Card';
-import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
+const DEBT_TYPES = ['Credit card', 'Lending app', 'Family or friend', 'Personal loan', 'Other'];
 
 function debtAmount(debt: Debt): number {
-  const first = debt.cycles && debt.cycles[0];
+  // Redesign: the amount of the cycle that's due next (paid cycles are history).
+  const first = currentCycle(debt);
   return first && typeof first.amountDue === 'number' ? first.amountDue : 0;
 }
 
@@ -45,36 +40,7 @@ function sortByNextDue(debts: Debt[]): Debt[] {
   });
 }
 
-function paymentMethodLabel(pm: PaymentMethod | undefined, model: HouseholdModel): string {
-  if (!pm) return 'Not set';
-  if (pm.type === 'cash') return 'Cash';
-  const list = pm.type === 'debit' ? model.balanceAccounts.debit : model.balanceAccounts.credit;
-  const acct = list.find((a) => a.id === pm.accountId);
-  const label = pm.type === 'debit' ? 'Debit' : 'Credit';
-  return acct ? `${label} — ${acct.name || 'Unnamed'}` : label;
-}
 
-function fullRecurrenceDetail(debt: Debt): string {
-  const d = debt.dueDate || {};
-  if (debt.recurringType === 'monthly') {
-    return d.day ? `Every month on day ${d.day}` : 'Monthly';
-  }
-  if (debt.recurringType === 'annual') {
-    if (d.month && d.day) {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const mName = monthNames[(d.month as number) - 1] || `Month ${d.month}`;
-      return `Every year on ${mName} ${d.day}`;
-    }
-    return d.day ? `Every year on day ${d.day}` : 'Annual';
-  }
-  if (debt.recurringType === 'onetime') {
-    return d.date ? `One-time: due ${d.date}` : 'One-time debt';
-  }
-  if (debt.recurringType === 'custom') {
-    return debt.customFreq ? `Custom: every ${debt.customFreq}` : 'Custom schedule';
-  }
-  return recurringTypeLabel(debt.recurringType);
-}
 
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
@@ -84,11 +50,13 @@ type DebtsScreenProps = {
 };
 
 export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
+  // Redesign: the floating + adds a debt while this list is showing.
+  useToPayAddRequest('debts', () => openAddModal());
+  const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const styles = makeStyles(colors);
 
-  const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -117,6 +85,16 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [openRow, toggleRow] = useOpenRow(modalOpen);
+  const debtNext = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput);
+  const debtMonths =
+    recurTypeInput === 'monthly' && typeof amountInput === 'number' && typeof minPaymentInput === 'number' && minPaymentInput > 0 && amountInput > minPaymentInput
+      ? Math.ceil(amountInput / minPaymentInput)
+      : 0;
+  const debtFootnote = [
+    nextDateText(recurTypeInput === 'onetime' ? 'Due' : 'Next payment', debtNext),
+    debtMonths ? `At ${formatPeso(minPaymentInput as number)} a month it's paid off in about ${debtMonths} months.` : '',
+  ].filter(Boolean).join(' ');
 
   if (!model) {
     return (
@@ -160,8 +138,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       typeof debt.minPayment === 'number' ? debt.minPayment : ''
     );
     setNotesInput(debt.notes || '');
-        setPaymentMethodInput(debt.cycles && debt.cycles[0] ? debt.cycles[0].paymentMethod : undefined);
-    setFeesPortionInput(debt.cycles && debt.cycles[0] && debt.cycles[0].feesPortion !== undefined && debt.cycles[0].feesPortion !== '' ? debt.cycles[0].feesPortion : '');
+    const cur = currentCycle(debt);
+    setPaymentMethodInput(cur?.paymentMethod);
+    setFeesPortionInput(cur && cur.feesPortion !== undefined && cur.feesPortion !== '' ? cur.feesPortion : '');
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
     const d = debt.dueDate || {};
@@ -238,10 +217,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       updated.debts = updated.debts.map((d) => {
         if (d.id !== editingId) return d;
         const parsedFeesPortion = feesPortionInput === '' ? ('' as const) : feesPortionInput;
-        const existingCycle = d.cycles && d.cycles[0];
-        const cycle = existingCycle
-          ? { ...existingCycle, dueDate: nextDueISO, amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }
-          : { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '' as const, paidDate: '', notes: '', paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion };
+        // Redesign: keep paid history; only the current cycle changes.
+        const scheduleChanged = d.recurringType !== recurTypeInput || JSON.stringify(d.dueDate || {}) !== JSON.stringify(dueDate);
+        const cycles = withEditedCurrentCycle(d.cycles, { amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }, nextDueISO, scheduleChanged);
         return {
           ...d,
           creditorOrPerson: trimmedCreditor,
@@ -251,7 +229,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           minPayment: parsedMinPayment,
           recurringType: recurTypeInput,
           dueDate,
-          cycles: [cycle],
+          cycles,
         };
       });
     } else {
@@ -354,21 +332,21 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   return (
     <SafeAreaView style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <Card variant="banner" style={{ marginBottom: 18 }}>
-          <Text style={styles.balanceBannerLabel}>TOTAL DEBT LOGGED</Text>
+        <View style={[styles.group, styles.summaryCard]}>
+          <GradientFill match={[styles.group, styles.summaryCard]} />
+          <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
           <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
-        </Card>
+        </View>
 
         {debts.length === 0 && (
           <Text style={styles.emptyText}>No debts yet.</Text>
         )}
 
-        {debts.map((debt) => {
+        {debts.length > 0 && (
+        <View style={[styles.group, styles.section]}>
+          <GradientFill match={[styles.group, styles.section]} />
+        {debts.map((debt, rowIndex) => {
           const nextDue = getNextDueDate(debt.recurringType, debt.dueDate);
-          const firstCycle = debt.cycles && debt.cycles[0];
-          const pm = firstCycle ? firstCycle.paymentMethod : undefined;
-          const fees = firstCycle ? firstCycle.feesPortion : undefined;
-          const isExpanded = expandedDebtId === debt.id;
 
           return (
             <SwipeableRow
@@ -376,225 +354,69 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
               enabled={Boolean(model.settings.swipeToDeleteEnabled)}
               onDelete={() => handleSwipeDelete(debt)}
               testID={`debt-swipe-${debt.id}`}
+              flat
             >
-            <CollapsibleRow
+            <PayRow
               testID={`debt-row-${debt.id}`}
-              isExpanded={isExpanded}
-              onToggle={() => setExpandedDebtId((prev) => (prev === debt.id ? null : debt.id))}
-              onEdit={() => openEditModal(debt)}
-              collapsedContent={
-                <View style={styles.debtCollapsedRow}>
-                  <View style={styles.debtRowMain}>
-                    <Text style={styles.debtName} numberOfLines={1}>
-                      {debt.creditorOrPerson || 'Untitled debt'}
-                    </Text>
-                    <Text style={styles.debtSub} numberOfLines={1}>
-                      {(debt.category || 'Uncategorized')} · {recurringTypeLabel(debt.recurringType)} · {formatShortDate(nextDue)}
-                      {typeof debt.interestRate === 'number' ? ' · ' + debt.interestRate + '% APR' : ''}
-                    </Text>
-                  </View>
-                  <Text style={styles.debtAmount}>{formatPeso(debtAmount(debt))}</Text>
-                </View>
-              }
-              expandedContent={
-                <View style={styles.detailContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Schedule</Text>
-                    <Text style={styles.detailValue}>{fullRecurrenceDetail(debt)}</Text>
-                  </View>
-
-                  {typeof debt.minPayment === 'number' && debt.minPayment > 0 && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Min Payment</Text>
-                      <Text style={styles.detailValue}>{formatPeso(debt.minPayment)}</Text>
-                    </View>
-                  )}
-
-                  {typeof debt.interestRate === 'number' && debt.interestRate > 0 && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Interest Rate</Text>
-                      <Text style={styles.detailValue}>{debt.interestRate}% APR</Text>
-                    </View>
-                  )}
-
-                  {typeof fees === 'number' && fees > 0 && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Fees Portion</Text>
-                      <Text style={styles.detailValue}>{formatPeso(fees)}</Text>
-                    </View>
-                  )}
-
-                  {pm && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Payment Method</Text>
-                      <Text style={styles.detailValue}>{paymentMethodLabel(pm, model)}</Text>
-                    </View>
-                  )}
-
-                  {!!debt.notes?.trim() && (
-                    <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
-                      <Text style={styles.detailLabel}>Notes</Text>
-                      <Text style={styles.detailNotesText}>{debt.notes.trim()}</Text>
-                    </View>
-                  )}
-                </View>
-              }
+              icon="people-outline"
+              title={debt.creditorOrPerson || 'Debt'}
+              sub={(() => {
+                const cur = currentCycle(debt);
+                const d = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : nextDue;
+                return d ? `Due ${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'No date set';
+              })()}
+              amount={formatPeso(debtAmount(debt))}
+              amountColor={colors.negative}
+              divider={rowIndex > 0}
+              onPress={() => navigation.navigate('PayDetail', { kind: 'debt', id: debt.id })}
             />
             </SwipeableRow>
           );
         })}
+        </View>
+        )}
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Text style={styles.addButtonText}>+ Add debt</Text>
-        </TouchableOpacity>
       </PullToRefreshScrollView>
 
+      {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit debt' : 'New debt'}
+        grouped
+        header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <Text style={styles.inputLabel}>Creditor or person</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. BDO Credit Card, GCredit, Ate Fely"
-                  placeholderTextColor={colors.inkFaint}
-                  value={creditorInput}
-                  onChangeText={setCreditorInput}
-                />
+        <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
 
-                <Text style={styles.inputLabel}>Category</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Credit card, Lending app, Personal loan"
-                  placeholderTextColor={colors.inkFaint}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                />
+        <FormGroup>
+          <InputRow label="Owed to" value={creditorInput} onChangeText={setCreditorInput} placeholder="e.g. BDO, Ate Fely" testID="debt-creditor-input" />
+          <PickerRow label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
+            <Choices options={DEBT_TYPES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
+            <View style={{ height: 10 }} />
+            <InlineField label="Or type your own" value={DEBT_TYPES.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+          </PickerRow>
+          <AmountRow label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
+          <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+            <Choices options={REPEAT_CHOICES} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
+          </PickerRow>
+          <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+            <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="debt-due-date-field" />
+          </PickerRow>
+          <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
+          </PickerRow>
+        </FormGroup>
 
-                <Text style={styles.inputLabel}>Amount owed</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={amountInput}
-                  onChangeAmount={setAmountInput}
-                />
+        <FormGroup>
+          <PickerRow label="More details" value={[interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Interest, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
+            <InlineField label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
+            <InlineAmount label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
+            <InlineField label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />
+          </PickerRow>
+        </FormGroup>
 
-                <Text style={styles.inputLabel}>Repeats</Text>
-                <View style={styles.pillRow}>
-                  {RECUR_TYPES.map((rt) => (
-                    <Pill
-                      key={rt}
-                      label={recurringTypeLabel(rt)}
-                      tone="sheet"
-                      fill
-                      minWidth={80}
-                      active={recurTypeInput === rt}
-                      onPress={() => setRecurTypeInput(rt)}
-                    />
-                  ))}
-                </View>
-
-                {recurTypeInput === 'onetime' && (
-                  <DateField
-                    label="Due date"
-                    value={onetimeDateInput}
-                    onChange={setOnetimeDateInput}
-                    placeholder="2026-08-25"
-                    clearable
-                    testID="debt-due-date-field"
-                  />
-                )}
-
-                {recurTypeInput === 'monthly' && (
-                  <>
-                    <Text style={styles.inputLabel}>Day of month (1–31)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. 15"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="number-pad"
-                      value={dayInput}
-                      onChangeText={setDayInput}
-                    />
-                  </>
-                )}
-
-                {recurTypeInput === 'annual' && (
-                  <View style={styles.row2}>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Month (1–12)</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 3"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={monthInput}
-                        onChangeText={setMonthInput}
-                      />
-                    </View>
-                    <View style={styles.row2Item}>
-                      <Text style={styles.inputLabel}>Day</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. 15"
-                        placeholderTextColor={colors.inkFaint}
-                        keyboardType="number-pad"
-                        value={dayInput}
-                        onChangeText={setDayInput}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                <Text style={styles.inputLabel}>Interest rate (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 24"
-                  placeholderTextColor={colors.inkFaint}
-                  keyboardType="decimal-pad"
-                  value={interestRateInput}
-                  onChangeText={setInterestRateInput}
-                />
-
-                <Text style={styles.inputLabel}>Minimum payment (optional)</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  value={minPaymentInput}
-                  onChangeAmount={setMinPaymentInput}
-                />
-
-                <Text style={styles.inputLabel}>Fees portion (optional)</Text>
-                <AmountInput
-                  style={styles.amountInput}
-                  placeholder="e.g. late fee or interest charged"
-                  value={feesPortionInput}
-                  onChangeAmount={setFeesPortionInput}
-                />
-
-                <PaymentMethodPicker
-                  value={paymentMethodInput}
-                  onChange={setPaymentMethodInput}
-                  debitAccounts={model.balanceAccounts.debit}
-                  creditAccounts={model.balanceAccounts.credit}
-                />
-
-                <Text style={styles.inputLabel}>Notes (optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.notesInput]}
-                  placeholder="Optional notes"
-                  placeholderTextColor={colors.inkFaint}
-                  value={notesInput}
-                  onChangeText={setNotesInput}
-                  multiline
-                />
-
-                {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-                <Button label="Save" onPress={handleSave} loading={saving} />
-
-                {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
-
-                <Button label="Cancel" variant="quiet" onPress={closeModal} />
+        {!!debtFootnote && <Footnote>{debtFootnote}</Footnote>}
+        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -607,74 +429,14 @@ function makeStyles(colors: any) {
       backgroundColor: 'transparent',
     },
     loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-    scrollContent: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 40 },
-    balanceBannerLabel: { fontSize: 10, letterSpacing: 1, color: colors.inkDim, marginBottom: 4 },
-    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.orange },
-    emptyText: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, fontStyle: 'italic' },
-    debtCollapsedRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flex: 1,
-    },
-    debtRowMain: { flex: 1, marginRight: 10 },
-    debtName: { fontSize: 14, fontWeight: '600', color: colors.ink },
-    debtSub: { fontSize: 11.5, color: colors.inkDim, marginTop: 2 },
-    debtAmount: { fontSize: 14, fontWeight: '600', color: colors.orange },
-    detailContainer: {
-      gap: 6,
-    },
-    detailRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 2,
-    },
-    detailLabel: {
-      fontSize: 11,
-      color: colors.inkDim,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      fontWeight: '600',
-    },
-    detailValue: {
-      fontSize: 12.5,
-      color: colors.ink,
-      fontWeight: '500',
-    },
-    detailNotesText: {
-      fontSize: 12.5,
-      color: colors.inkDim,
-      lineHeight: 17,
-      flex: 1,
-      textAlign: 'right',
-      marginLeft: 12,
-    },
-    addButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginTop: 4 },
-    addButtonText: { fontSize: 13, fontWeight: '600', color: colors.gold },
-    inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-      color: colors.inkDim,
-      marginBottom: 6,
-    },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: colors.ink,
-      marginBottom: 14,
-    },
-    amountInput: {
-      backgroundColor: colors.navy2,
-    },
-    notesInput: { minHeight: 60, textAlignVertical: 'top' },
-    row2: { flexDirection: 'row', gap: 10 },
-    row2Item: { flex: 1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 96 },
+    // Redesign styles
+    group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
+    summaryCard: { padding: 16, marginBottom: 20 },
+    section: { marginBottom: 20 },
+    balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
+    balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
+    emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
   });
 }

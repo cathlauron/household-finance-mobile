@@ -1,12 +1,26 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
-import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts, updateRecentAccountIfPresent } from './src/recentAccounts';
+import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
+import { saveSession, loadSession, clearSession } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated } from 'react-native';
-LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  Nunito_300Light,
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+} from '@expo-google-fonts/nunito';
+import { setFontsReady } from './src/components/AppText';
+import LoadingView from './src/components/LoadingView';
+import { SavedToastHost } from './src/components/SavedToast';
+import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -19,7 +33,6 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import IntroScreen from './src/screens/IntroScreen';
 import IntroSlidesScreen from './src/screens/IntroSlidesScreen';
 import RootStack from './src/navigation/RootStack';
-import LeafTransitionOverlay from './src/components/LeafTransitionOverlay';
 import LeafBackground from './src/components/LeafBackground';
 import { triggerLeafTransition } from './src/leafTransition';
 import { loadProfilesIndex, loadEncryptedProfileData } from './src/storage';
@@ -32,6 +45,7 @@ import { getBiometricState } from './src/biometrics';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
+import { MoodThemeProvider } from './src/mood';
 import { DataProvider, useData } from './src/DataContext';
 import { getCurrentFirebaseUser, signOutFirebase, signInWithFirebase } from './src/authFirebase';
 import { rescheduleBillNotifications } from './src/pushNotifications';
@@ -41,6 +55,7 @@ import {
   subscribeToDeviceSession,
   updateDeviceHeartbeat,
 } from './src/sessions';
+LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
 
@@ -66,8 +81,17 @@ function AppContent() {
   const [remoteRevokeNotice, setRemoteRevokeNotice] = useState<string | null>(null);
   // Quick unlock (Step 4b)
   const [recentAccounts, setRecentAccounts] = useState<RecentAccount[]>([]);
+  // Shown over the account switcher while an unlock is worked out on the phone (it can
+  // take a few seconds offline), so the screen never looks frozen.
+  const [unlocking, setUnlocking] = useState(false);
   const [autoSignIn, setAutoSignIn] = useState<{ email: string; username: string; password: string } | null>(null);
   const [signInPrefillUsername, setSignInPrefillUsername] = useState<string | undefined>(undefined);
+  // Sign in once: true while a remembered LINKED account signs in quietly behind the
+  // opening screen (an unlinked one opens offline straight away instead).
+  const [silentSignIn, setSilentSignIn] = useState(false);
+  // Resolves when the opening animation has had its ~3 seconds, so a quick quiet
+  // sign-in never cuts the animation short.
+  const introDoneRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 3100)));
 
   const screenRef = useRef<Screen>('loading');
   // Set only by the lock screen's "Sign in to another account" button, so that
@@ -89,6 +113,10 @@ function AppContent() {
   // getLastNotificationResponseAsync() and the live listener can both fire
   // for one tap).
   const pendingDeepLinkBillId = useRef<string | null>(null);
+  // Payday nudge: which person's Income page to open ('' = the Income page itself).
+  const pendingDeepLinkPayday = useRef<string | null>(null);
+  // Envelope alert -> Envelopes page; month-end summary -> the close-out report.
+  const pendingDeepLinkPage = useRef<'envelopeAlert' | 'closeOut' | null>(null);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -101,9 +129,29 @@ function AppContent() {
       pendingDeepLinkBillId.current = data.billId;
       flushPendingDeepLink();
     }
+    if (data?.type === 'paydayNudge') {
+      pendingDeepLinkPayday.current = typeof data.personId === 'string' ? data.personId : '';
+      flushPendingDeepLink();
+    }
+    if (data?.type === 'envelopeAlert' || data?.type === 'closeOut') {
+      pendingDeepLinkPage.current = data.type;
+      flushPendingDeepLink();
+    }
   }
 
   function flushPendingDeepLink() {
+    if (pendingDeepLinkPage.current && navigationRef.isReady()) {
+      const page = pendingDeepLinkPage.current;
+      pendingDeepLinkPage.current = null;
+      if (page === 'envelopeAlert') navigationRef.navigate('Envelopes', undefined);
+      else navigationRef.navigate('Report', { id: 'monthly', backTitle: 'Home' });
+    }
+    if (pendingDeepLinkPayday.current !== null && navigationRef.isReady()) {
+      const personId = pendingDeepLinkPayday.current;
+      pendingDeepLinkPayday.current = null;
+      if (personId) navigationRef.navigate('IncomePerson', { personId });
+      else navigationRef.navigate('Income', undefined);
+    }
     if (!pendingDeepLinkBillId.current) return;
     if (!navigationRef.isReady()) return;
     const billId = pendingDeepLinkBillId.current;
@@ -177,6 +225,7 @@ function AppContent() {
     if (revoked) {
       wipeQuickUnlock(username).catch(() => {});
       removeRecentAccount(username).catch(() => {});
+      clearSession().catch(() => {});
       clearModel();
       setCurrentUsername(null);
       setDerivedKey(null);
@@ -185,6 +234,30 @@ function AppContent() {
       return;
     }
     registerAndListenDeviceSession(user.uid).catch(() => {});
+  }
+
+  // Opens an account that was unlocked offline (unlinked profiles only). Used by the
+  // account switcher and by "sign in once" when the app starts.
+  function enterWithOfflineUnlock(
+    creds: { email: string; username: string; password: string },
+    offline: { key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry }
+  ) {
+    setRemoteRevokeNotice(null);
+    setCurrentUsername(creds.username);
+    setDerivedKey(offline.key);
+    loadModel(
+      creds.username,
+      offline.key,
+      { profile: offline.profile, initialModel: offline.model },
+      { deferNotifications: true }
+    ).catch(() => {});
+    recordRecentAccount(creds.username, undefined, undefined, offline.model.avatars?.[creds.username]).catch(() => {});
+    saveSession(creds).catch(() => {});
+    setScreen('home');
+    setTimeout(() => {
+      rescheduleBillNotifications(offline.model).catch(() => {});
+    }, 0);
+    reconcileOfflineUnlockWithServer(creds.username, creds).catch(() => {});
   }
 
   async function recordRecentAccount(
@@ -235,6 +308,7 @@ function AppContent() {
       removeRecentAccount(revokedUsername).catch(() => {});
       wipeQuickUnlock(revokedUsername).catch(() => {});
     }
+    clearSession().catch(() => {});
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -271,8 +345,27 @@ function AppContent() {
 
   useEffect(() => {
     (async () => {
-      const minDelay = new Promise((resolve) => setTimeout(resolve, 1600));
-      const [profiles, recents] = await Promise.all([loadProfilesIndex(), loadRecentAccounts(), minDelay]);
+      // Redesign: long enough for the opening animation (logo draws, bar fills once
+      // and fades) to finish before moving on.
+      const [profiles, recents, saved] = await Promise.all([loadProfilesIndex(), loadRecentAccounts(), loadSession()]);
+      autoLockMinutesRef.current = await getAutoLockMinutes();
+      // Sign in once: a remembered account opens without asking for the password.
+      if (saved && profiles.some((p) => p.username === saved.username)) {
+        const offline = await attemptOfflineUnlock(saved.username, saved);
+        if (offline) {
+          await introDoneRef.current;
+          enterWithOfflineUnlock(saved, offline);
+          return;
+        }
+        // Linked household: sign in quietly behind the opening screen.
+        setRemoteRevokeNotice(null);
+        setSignInPrefillUsername(undefined);
+        setAutoSignIn(saved);
+        setSilentSignIn(true);
+        return;
+      }
+      if (saved) clearSession().catch(() => {});
+      await introDoneRef.current;
       if (!profiles.length) {
         setScreen('intro');
       } else if (recents.length) {
@@ -281,7 +374,6 @@ function AppContent() {
       } else {
         setScreen('signIn');
       }
-      autoLockMinutesRef.current = await getAutoLockMinutes();
     })();
   }, []);
 
@@ -297,6 +389,8 @@ function AppContent() {
 
   async function lockIfConfigured() {
     if (isAutoLockSuppressed()) return;
+    // Auto-lock set to Never (the default since "sign in once").
+    if (autoLockMinutesRef.current <= 0) return;
     const username = usernameRef.current;
     if (screenRef.current !== 'home' || !username) return;
     const [pinIsSetUp, biometricState] = await Promise.all([
@@ -318,6 +412,7 @@ function AppContent() {
   function resetIdleTimer() {
     clearIdleTimer();
     if (screenRef.current !== 'home') return;
+    if (autoLockMinutesRef.current <= 0) return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
       lockIfConfigured();
@@ -359,6 +454,8 @@ function AppContent() {
       removeRecentAccount(signedOutUsername).catch(() => {});
       wipeQuickUnlock(signedOutUsername).catch(() => {});
     }
+    // Log out always means the password is asked for next time.
+    clearSession().catch(() => {});
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -403,6 +500,8 @@ function AppContent() {
   // fresh and lands back on the switcher instead of a blank sign-in form.
   async function handleSwitchAccount() {
     clearIdleTimer();
+    // The next launch shows the account switcher instead of opening this account.
+    clearSession().catch(() => {});
     // 1. Unsubscribe listener FIRST (same ordering as handleFullSignOut)
     if (deviceSessionUnsubRef.current) {
       deviceSessionUnsubRef.current();
@@ -442,19 +541,43 @@ function AppContent() {
     flushPendingDeepLink();
   }
 
+  // Redesign: switching tabs is a gust of wind for the falling leaves behind the app.
+  // Moving right along the tab bar blows them left (about 150px per tab), moving left
+  // blows them right. Opening Settings is a small gust; other pages and sheets none.
   function handleNavStateChange() {
     const name = navigationRef.getCurrentRoute()?.name ?? null;
     const prevName = lastRouteNameRef.current;
-    const involvesSheet = name === 'Calendar' || prevName === 'Calendar';
-    if (name && name !== prevName && !involvesSheet) {
-      triggerLeafTransition();
+    if (name && prevName && name !== prevName) {
+      const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
+      const from = TAB_ORDER.indexOf(prevName);
+      const to = TAB_ORDER.indexOf(name);
+      if (from >= 0 && to >= 0) {
+        triggerLeafTransition(-150 * (to - from));
+      } else if (name === 'Settings') {
+        triggerLeafTransition(-60);
+      } else if (prevName === 'Settings' && to >= 0) {
+        triggerLeafTransition(60);
+      }
     }
     lastRouteNameRef.current = name;
   }
 
   function renderScreen(): React.ReactElement {
   if (screen === 'loading') {
-    return <IntroScreen />;
+    return (
+      <View style={{ flex: 1 }}>
+        {silentSignIn && autoSignIn && (
+          // Sign in once (linked households): the normal sign-in runs out of sight
+          // behind the opening screen. It never shows unless it fails.
+          <View style={{ ...StyleSheet.absoluteFillObject, opacity: 0 }} pointerEvents="none">
+            {renderSignIn(true)}
+          </View>
+        )}
+        <View style={StyleSheet.absoluteFill}>
+          <IntroScreen />
+        </View>
+      </View>
+    );
   }
 
   if (screen === 'locked' && currentUsername && derivedKey) {
@@ -464,6 +587,9 @@ function AppContent() {
           username={currentUsername}
           onUnlocked={(newUsername, newKey) => {
             if (newUsername && newKey) {
+              // Unlocked into a different account with only its password: there is no
+              // email to remember, so the next launch asks once.
+              if (newUsername !== currentUsername) clearSession().catch(() => {});
               setCurrentUsername(newUsername);
               setDerivedKey(newKey);
               loadModel(newUsername, newKey);
@@ -497,7 +623,6 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
-        <LeafTransitionOverlay />
       </View>
     );
   }
@@ -523,6 +648,7 @@ function AppContent() {
         <IntroSlidesScreen
           onDone={() => setScreen('createProfile')}
           onBack={introFromSignIn ? () => { setIntroFromSignIn(false); setScreen('signIn'); } : undefined}
+          onSignIn={() => { setIntroFromSignIn(false); setScreen('signIn'); }}
         />
       </SafeAreaView>
     );
@@ -535,35 +661,21 @@ function AppContent() {
           accounts={recentAccounts}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
+            setUnlocking(true);
             (async () => {
-              const offline = await attemptOfflineUnlock(creds.username, creds);
-              if (offline) {
+              try {
+                const offline = await attemptOfflineUnlock(creds.username, creds);
+                if (offline) {
+                  enterWithOfflineUnlock(creds, offline);
+                  return;
+                }
                 setRemoteRevokeNotice(null);
-                setCurrentUsername(creds.username);
-                setDerivedKey(offline.key);
-                loadModel(
-                  creds.username,
-                  offline.key,
-                  { profile: offline.profile, initialModel: offline.model },
-                  { deferNotifications: true }
-                ).catch(() => {});
-                recordRecentAccount(
-                  creds.username,
-                  undefined,
-                  undefined,
-                  offline.model.avatars?.[creds.username]
-                ).catch(() => {});
-                setScreen('home');
-                setTimeout(() => {
-                  rescheduleBillNotifications(offline.model).catch(() => {});
-                }, 0);
-                reconcileOfflineUnlockWithServer(creds.username, creds).catch(() => {});
-                return;
+                setSignInPrefillUsername(undefined);
+                setAutoSignIn(creds);
+                setScreen('signIn');
+              } finally {
+                setUnlocking(false);
               }
-              setRemoteRevokeNotice(null);
-              setSignInPrefillUsername(undefined);
-              setAutoSignIn(creds);
-              setScreen('signIn');
             })();
           }}
           onUsePassword={(username) => {
@@ -602,6 +714,7 @@ function AppContent() {
                 username,
                 password: credentials.password,
               }).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
             }
             setScreen('onboarding');
           }}
@@ -611,6 +724,10 @@ function AppContent() {
     );
   }
 
+  return renderSignIn(false);
+  }
+
+  function renderSignIn(silent: boolean): React.ReactElement {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
 <SignInScreen
@@ -620,12 +737,26 @@ function AppContent() {
         autoSignIn={autoSignIn ?? undefined}
         onAutoSignInFailed={(username) => {
           wipeQuickUnlock(username).catch(() => {});
+          clearSession().catch(() => {});
           setAutoSignIn(null);
           setSignInPrefillUsername(username);
           setRemoteRevokeNotice('Your saved sign-in is out of date. Sign in with your password.');
         }}
-        onSignedIn={(username, key, initialModel, profile, householdKey, credentials) => {
+        silent={silent}
+        onSilentFailed={(username) => {
+          // The quiet sign-in at launch didn't work (no connection, or the saved
+          // password changed): show the normal sign-in screen, once.
+          setSilentSignIn(false);
+          setAutoSignIn(null);
+          setSignInPrefillUsername(username);
+          setRemoteRevokeNotice((prev) => prev ?? "Couldn't sign you in automatically. Check your connection and sign in.");
+          setScreen('signIn');
+        }}
+        onSignedIn={async (username, key, initialModel, profile, householdKey, credentials) => {
           const viaQuickUnlock = autoSignIn !== null;
+          // Don't cut the opening animation short.
+          if (silent) await introDoneRef.current;
+          setSilentSignIn(false);
           setAutoSignIn(null);
           setSignInPrefillUsername(undefined);
           setRemoteRevokeNotice(null);
@@ -652,6 +783,7 @@ function AppContent() {
                 const deviceId = await getDeviceId();
                 const revoked = await isThisDeviceRevoked(user.uid, deviceId);
                 if (revoked) {
+                  clearSession().catch(() => {});
                   wipeQuickUnlock(username).catch(() => {});
                   removeRecentAccount(username).catch(() => {});
                   clearModel();
@@ -671,6 +803,9 @@ function AppContent() {
               profile?.householdId,
               initialModel ? (initialModel.avatars?.[username] ?? { type: 'initials' }) : undefined
             ).catch(() => {});
+          }
+          if (credentials) {
+            saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
           }
           if (credentials && !viaQuickUnlock) {
             saveFingerprintCopyIfPossible({
@@ -698,17 +833,50 @@ function AppContent() {
       <ScreenFade key={screen} skip={screen === 'loading'}>
         {renderScreen()}
       </ScreenFade>
+      {unlocking && screen === 'switcher' && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy2 }]}>
+          <LoadingView label="Unlocking…" testID="switcher-unlocking" />
+        </View>
+      )}
+      <SavedToastHost />
     </View>
   );
 }
 
 export default function App() {
+  // Redesign: load the rounded font (Nunito) before anything draws. See
+  // src/components/AppText.tsx. If loading fails, the app still opens, in the
+  // phone's normal font, rather than getting stuck.
+  const [fontsLoaded, fontError] = useFonts({
+    Nunito_300Light,
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+    Nunito_900Black,
+  });
+  setFontsReady(fontsLoaded);
+  // Wait for the saved Text size too, so text never jumps size on launch.
+  const [textSizeReady, setTextSizeReady] = useState(false);
+  useEffect(() => {
+    textSizeLoaded.then(() => setTextSizeReady(true));
+  }, []);
+  if ((!fontsLoaded && !fontError) || !textSizeReady) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
           <DataProvider>
-            <AppContent />
+            <MoodThemeProvider>
+              <AppContent />
+            </MoodThemeProvider>
           </DataProvider>
         </ThemeProvider>
       </GestureHandlerRootView>

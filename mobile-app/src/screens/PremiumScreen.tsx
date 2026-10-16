@@ -1,156 +1,130 @@
 ﻿import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Text } from '../components/AppText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import { hapticSelection } from '../haptics';
 
-// Static placeholder screen. No payment, paywall or subscription state exists.
-const PESO = '\u20B1';
-const BENEFITS = [
-  'Unlimited transactions',
-  'Advanced reports & insights',
-  'Multiple account support',
-  'Priority customer support',
+// Finance Flow Premium. Laid out like a live plan page, but payments aren't set up yet:
+// Subscribe only tells people it opens soon. No payment or subscription state exists.
+const BENEFITS: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; sub: string }[] = [
+  { icon: 'infinite-outline', title: 'Unlimited transactions', sub: 'Log every peso, no caps' },
+  { icon: 'bar-chart-outline', title: 'Advanced reports & insights', sub: 'See where your money really goes' },
+  { icon: 'wallet-outline', title: 'Multiple account support', sub: 'Every bank, card and e-wallet in one place' },
+  { icon: 'chatbubbles-outline', title: 'Priority support', sub: 'Get help first when you need it' },
 ];
 
 type Billing = 'monthly' | 'yearly';
+const PLANS: Record<Billing, { label: string; price: string; per: string; note: string }> = {
+  yearly: { label: 'Yearly', price: '₱950.40', per: 'a year', note: 'Just ₱79.20 a month' },
+  monthly: { label: 'Monthly', price: '₱99.00', per: 'a month', note: 'Billed every month' },
+};
 
 export default function PremiumScreen() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const [billing, setBilling] = useState<Billing>('monthly');
-  const isMonthly = billing === 'monthly';
+  const [billing, setBilling] = useState<Billing>('yearly');
+  const plan = PLANS[billing];
+
+  function subscribe() {
+    Alert.alert('Almost ready', "Premium opens very soon. We'll let you know as soon as you can subscribe.");
+  }
 
   return (
-    <PullToRefreshScrollView
-      testID="premium-screen-container"
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      <View style={styles.heroCard}>
-        <MaterialCommunityIcons name="crown" size={44} color={colors.premium} />
-        <Text style={styles.heroTitle}>Upgrade to Premium</Text>
-        <Text style={styles.heroSub}>
-          Unlock all features and get the most out of your Finance Flow.
-        </Text>
+    <PullToRefreshScrollView testID="premium-screen-container" style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.hero}>
+        <View style={[styles.crown, { backgroundColor: colors.buttonFill }]}>
+          <MaterialCommunityIcons name="crown" size={34} color="#FFFFFF" />
+        </View>
+        <Text style={styles.heroTitle}>Finance Flow Premium</Text>
+        <Text style={styles.heroSub}>Everything you need to stay ahead of your household's money.</Text>
       </View>
 
-      <View style={styles.toggleRow}>
-        <TouchableOpacity
-          testID="premium-billing-monthly"
-          activeOpacity={0.8}
-          onPress={() => setBilling('monthly')}
-          style={[styles.billingPill, isMonthly && styles.billingPillActive]}
-        >
-          <Text style={[styles.billingText, isMonthly && styles.billingTextActive]}>Monthly</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID="premium-billing-yearly"
-          activeOpacity={0.8}
-          onPress={() => setBilling('yearly')}
-          style={[styles.billingPill, !isMonthly && styles.billingPillActive]}
-        >
-          <Text style={[styles.billingText, !isMonthly && styles.billingTextActive]}>Yearly</Text>
-          <View style={styles.saveBadge}>
-            <Text style={styles.saveBadgeText}>Save 20%</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        {BENEFITS.map((b) => (
-          <View key={b} style={styles.benefitRow}>
-            <Ionicons name="checkmark" size={16} color={colors.gold} />
-            <Text style={styles.benefitText}>{b}</Text>
+      <View style={styles.group}>
+        {BENEFITS.map((b, i) => (
+          <View key={b.title} style={[styles.benefitRow, i > 0 && styles.divider]}>
+            <View style={[styles.benefitIcon, { backgroundColor: colors.accentTint }]}>
+              <Ionicons name={b.icon} size={18} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.benefitTitle}>{b.title}</Text>
+              <Text style={styles.benefitSub}>{b.sub}</Text>
+            </View>
           </View>
         ))}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.planLabel}>Premium Plan</Text>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceText}>{isMonthly ? PESO + '99.00' : PESO + '950.40'}</Text>
-          <Text style={styles.priceUnit}>{isMonthly ? ' / month' : ' / year'}</Text>
-        </View>
-        <View testID="premium-coming-soon-button" style={styles.disabledButton}>
-          <Text style={styles.disabledButtonText}>Coming soon</Text>
-        </View>
-      </View>
+      <Text style={styles.label}>Choose your plan</Text>
+      {(['yearly', 'monthly'] as Billing[]).map((id) => {
+        const p = PLANS[id];
+        const on = billing === id;
+        return (
+          <TouchableOpacity
+            key={id}
+            testID={`premium-billing-${id}`}
+            activeOpacity={0.8}
+            onPress={() => { hapticSelection(); setBilling(id); }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            style={[styles.planCard, { borderColor: on ? colors.buttonFill : 'transparent' }]}
+          >
+            <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? colors.buttonFill : colors.inkFaint} />
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.planName}>{p.label}</Text>
+                {id === 'yearly' && (
+                  <View style={[styles.badge, { backgroundColor: colors.okBg }]}>
+                    <Text style={[styles.badgeText, { color: colors.ok }]}>Save 20%</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.planNote}>{p.note}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.planPrice}>{p.price}</Text>
+              <Text style={styles.planPer}>{p.per}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      <TouchableOpacity
+        testID="premium-subscribe-button"
+        activeOpacity={0.85}
+        onPress={subscribe}
+        style={[styles.cta, { backgroundColor: colors.buttonFill }]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.ctaText, { color: colors.onButton }]}>Subscribe · {plan.price} {plan.per}</Text>
+      </TouchableOpacity>
     </PullToRefreshScrollView>
   );
 }
 
 function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: 'transparent',
-    },
-    content: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 40 },
-    heroCard: {
-      backgroundColor: colors.navy3,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      paddingVertical: 24,
-      paddingHorizontal: 20,
-      alignItems: 'center',
-      marginBottom: 14,
-    },
-    heroTitle: { fontSize: 20, fontWeight: '700', color: colors.ink, marginTop: 12, marginBottom: 6 },
-    heroSub: { fontSize: 13, color: colors.inkDim, textAlign: 'center', lineHeight: 18 },
-    toggleRow: {
-      flexDirection: 'row',
-      gap: 8,
-      backgroundColor: colors.navy3,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      padding: 4,
-      marginBottom: 14,
-    },
-    billingPill: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 11,
-      borderRadius: 999,
-    },
-    billingPillActive: { backgroundColor: colors.gold },
-    billingText: { fontSize: 14, fontWeight: '600', color: colors.inkDim },
-    billingTextActive: { color: colors.navy2 },
-    saveBadge: {
-      backgroundColor: colors.okBg,
-      borderWidth: 1,
-      borderColor: colors.ok,
-      borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-    },
-    saveBadgeText: { fontSize: 11, fontWeight: '700', color: colors.ok },
-    card: {
-      backgroundColor: colors.navy3,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      padding: 16,
-      marginBottom: 14,
-    },
-    benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
-    benefitText: { fontSize: 13.5, color: colors.ink },
-    planLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 4 },
-    priceRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 14 },
-    priceText: { fontSize: 26, fontWeight: '700', color: colors.ink },
-    priceUnit: { fontSize: 13, color: colors.inkDim },
-    disabledButton: {
-      backgroundColor: colors.navy4,
-      borderRadius: 999,
-      paddingVertical: 13,
-      alignItems: 'center',
-    },
-    disabledButtonText: { fontSize: 14, fontWeight: '700', color: colors.inkDim },
-    footerText: { fontSize: 11.5, color: colors.inkFaint, textAlign: 'center' },
+    container: { flex: 1, backgroundColor: 'transparent' },
+    content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 },
+    hero: { alignItems: 'center', paddingVertical: 16, marginBottom: 8 },
+    crown: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+    heroTitle: { fontSize: 24, fontWeight: '800', color: colors.ink, marginTop: 14 },
+    heroSub: { fontSize: 15, lineHeight: 21, color: colors.inkDim, textAlign: 'center', marginTop: 6, paddingHorizontal: 12 },
+    group: { backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden', marginBottom: 24 },
+    benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
+    divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    benefitIcon: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+    benefitTitle: { fontSize: 16, fontWeight: '600', color: colors.ink },
+    benefitSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
+    label: { fontSize: 13, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 8, marginLeft: 16 },
+    planCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.navy3, borderRadius: 16, borderWidth: 2, padding: 14, marginBottom: 10 },
+    planName: { fontSize: 17, fontWeight: '700', color: colors.ink },
+    planNote: { fontSize: 13, color: colors.inkDim, marginTop: 2 },
+    planPrice: { fontSize: 17, fontWeight: '800', color: colors.ink },
+    planPer: { fontSize: 12, color: colors.inkDim },
+    badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+    badgeText: { fontSize: 11, fontWeight: '800' },
+    cta: { borderRadius: 14, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+    ctaText: { fontSize: 17, fontWeight: '800' },
   });
 }

@@ -1,53 +1,51 @@
 // ============================================================
 // Household Finance App — Cash-Flow Forecast report (Checkpoint 10.2)
 // ============================================================
-// Projects your account balances forward 30/60/90 days by
-// stitching together computeRunningBalances() (from
-// balanceProjection.ts) across however many calendar months the
-// chosen range spans — reusing the exact same day-by-day
-// projection math the Calendar tab already uses, rather than
-// duplicating it.
+// Projects your balances forward 30/60/90 days using the same day-by-day projection
+// as the Calendar (computeRunningBalances). Redesign: matches the Finance Flow "Cash
+// flow" mockup — the lowest point and why, a line chart, and the biggest moves.
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import Pill from '../../components/Pill';
+import { View, ActivityIndicator, useWindowDimensions } from 'react-native';
+import Svg, { Line, Polyline, Circle, Text as SvgText } from 'react-native-svg';
+import { Text } from '../../components/AppText';
+import SegmentedControl from '../../components/SegmentedControl';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
-import { computeRunningBalances, formatPeso } from '../../balanceProjection';
+import { computeRunningBalances, computeMonthEvents, eventDelta, formatPeso, type CalendarEvent } from '../../balanceProjection';
 import { stripTime } from '../../recurrence';
 import type { HouseholdModel } from '../../types';
-import Card from '../../components/Card';
 import { PullToRefreshScrollView } from '../../PullToRefreshScrollView';
+import { Group, useReportStyles } from '../../components/ReportBits';
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAY_OPTIONS = [30, 60, 90];
+type Point = { date: Date; balance: number };
+type Move = { date: Date; event: CalendarEvent; delta: number };
 
 function shortDate(d: Date): string {
-  return `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function dayDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-type ForecastPoint = { date: Date; day: number; balance: number };
-
-function computeForecastSeries(model: HouseholdModel, daysAhead: number): ForecastPoint[] {
+function forecast(model: HouseholdModel, daysAhead: number): { series: Point[]; moves: Move[] } {
   const today = stripTime(new Date());
-  const endDate = new Date(today);
-  endDate.setDate(endDate.getDate() + daysAhead);
-
-  const series: ForecastPoint[] = [];
+  const end = new Date(today);
+  end.setDate(end.getDate() + daysAhead);
+  const series: Point[] = [];
+  const moves: Move[] = [];
   let y = today.getFullYear();
   let m = today.getMonth();
-  const endY = endDate.getFullYear();
-  const endM = endDate.getMonth();
-
-  while (y < endY || (y === endY && m <= endM)) {
+  while (y < end.getFullYear() || (y === end.getFullYear() && m <= end.getMonth())) {
     const balances = computeRunningBalances(model, y, m);
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateObj = stripTime(new Date(y, m, day));
-      if (dateObj < today || dateObj > endDate) continue;
-      const dayIndex = Math.round((dateObj.getTime() - today.getTime()) / 86400000);
-      series.push({ date: dateObj, day: dayIndex, balance: balances[day] ?? 0 });
+    const events = computeMonthEvents(model, y, m);
+    const dim = new Date(y, m + 1, 0).getDate();
+    for (let day = 1; day <= dim; day++) {
+      const d = stripTime(new Date(y, m, day));
+      if (d < today || d > end) continue;
+      series.push({ date: d, balance: balances[day] ?? 0 });
+      if (d > today) (events[day] || []).forEach((event) => moves.push({ date: d, event, delta: eventDelta(event) }));
     }
     m += 1;
     if (m > 11) {
@@ -55,154 +53,111 @@ function computeForecastSeries(model: HouseholdModel, daysAhead: number): Foreca
       y += 1;
     }
   }
-  return series;
-}
-
-function sampleSeries(series: ForecastPoint[], points: number): ForecastPoint[] {
-  if (series.length <= points) return series;
-  const step = (series.length - 1) / (points - 1);
-  const sampled: ForecastPoint[] = [];
-  for (let i = 0; i < points; i++) {
-    sampled.push(series[Math.round(i * step)]);
-  }
-  return sampled;
+  return { series, moves };
 }
 
 export default function CashFlowForecastReport() {
   const { model, loading } = useData();
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
-  const [days, setDays] = useState(30);
+  const s = useReportStyles();
+  const { width } = useWindowDimensions();
+  const [days, setDays] = useState<'30' | '60' | '90'>('30');
 
   if (loading || !model) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={colors.gold} />
       </View>
     );
   }
 
-  const series = computeForecastSeries(model, days);
-  const startBalance = series.length > 0 ? series[0].balance : 0;
-  const endBalance = series.length > 0 ? series[series.length - 1].balance : 0;
-  const lowestPoint = series.reduce(
-    (min, p) => (p.balance < min.balance ? p : min),
-    series[0] || { date: new Date(), day: 0, balance: 0 }
-  );
-  const maxAbs = Math.max(1, ...series.map((p) => Math.abs(p.balance)));
-  const sampled = sampleSeries(series, 15);
+  const { series, moves } = forecast(model, Number(days));
+  if (series.length === 0) return null;
+  const low = series.reduce((a, b) => (b.balance < a.balance ? b : a), series[0]);
+  const lowIdx = series.indexOf(low);
+
+  // Why it's lowest: the biggest payment in the few days before, and the next payday after.
+  const before = moves
+    .filter((mv) => mv.delta < 0 && mv.date <= low.date && (low.date.getTime() - mv.date.getTime()) / 86400000 <= 3)
+    .sort((a, b) => a.delta - b.delta)[0];
+  const payday = moves.find((mv) => mv.event.type === 'income' && mv.date > low.date);
+  const why: string[] = [];
+  if (payday) {
+    const gap = Math.round((payday.date.getTime() - low.date.getTime()) / 86400000);
+    why.push(gap === 1 ? 'The day before payday' : gap <= 7 ? `${['', '', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'][gap]} days before payday` : '');
+  }
+  if (before) why.push(`after ${before.event.label}`);
+  const whyText = why.filter(Boolean).join(', ');
+
+  const biggest = [...moves].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 5);
+
+  // Chart
+  const W = width - 64;
+  const H = 120;
+  const top = 18;
+  const bottom = 110;
+  const vals = series.map((p) => p.balance);
+  const min = Math.min(0, ...vals);
+  const max = Math.max(1, ...vals);
+  const x = (i: number) => (series.length === 1 ? 0 : (i / (series.length - 1)) * W);
+  const yv = (v: number) => bottom - ((v - min) / (max - min || 1)) * (bottom - top);
+  const points = series.map((p, i) => `${x(i).toFixed(1)},${yv(p.balance).toFixed(1)}`).join(' ');
+  const lowColor = low.balance < 0 ? colors.negative : colors.orange;
+  const lowX = Math.min(W - 30, Math.max(30, x(lowIdx)));
 
   return (
-    <PullToRefreshScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.pillRow}>
-        {DAY_OPTIONS.map((opt) => (
-          <Pill
-            key={opt}
-            label={`${opt} days`}
-            fill
-            active={days === opt}
-            onPress={() => setDays(opt)}
-          />
-        ))}
-      </View>
+    <PullToRefreshScrollView contentContainerStyle={s.content}>
+      <SegmentedControl<'30' | '60' | '90'>
+        accessibilityLabel="Range"
+        options={[
+          { id: '30', label: '30 days' },
+          { id: '60', label: '60 days' },
+          { id: '90', label: '90 days' },
+        ]}
+        value={days}
+        onChange={setDays}
+      />
+      <Group style={[s.pad, { marginTop: 20 }]}>
+        <Text style={s.meta}>Lowest point</Text>
+        <Text style={[s.title, { color: lowColor }]}>
+          {formatPeso(Math.round(low.balance))} on {shortDate(low.date)}
+        </Text>
+        {!!whyText && <Text style={s.subhead}>{whyText.charAt(0).toUpperCase() + whyText.slice(1)}.</Text>}
+        <Svg width={W} height={H + 14} style={{ marginTop: 12 }} accessibilityLabel={`Projected balance for the next ${days} days, lowest ${Math.round(low.balance)} pesos on ${shortDate(low.date)}`}>
+          <Line x1={0} y1={bottom} x2={W} y2={bottom} stroke={colors.navy4} />
+          <Polyline points={points} fill="none" stroke={colors.buttonFill} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+          <Circle cx={x(lowIdx)} cy={yv(low.balance)} r={5} fill={lowColor} />
+          <SvgText x={lowX} y={Math.max(12, yv(low.balance) - 10)} textAnchor="middle" fontSize={12} fontWeight="600" fill={lowColor}>
+            {formatPeso(Math.round(low.balance)).replace('.00', '')}
+          </SvgText>
+          <SvgText x={0} y={H + 12} fontSize={11} fill={colors.inkDim}>Today</SvgText>
+          {lowIdx > 3 && lowIdx < series.length - 4 && (
+            <SvgText x={x(lowIdx)} y={H + 12} textAnchor="middle" fontSize={11} fill={colors.inkDim}>{shortDate(low.date)}</SvgText>
+          )}
+          <SvgText x={W} y={H + 12} textAnchor="end" fontSize={11} fill={colors.inkDim}>{shortDate(series[series.length - 1].date)}</SvgText>
+        </Svg>
+      </Group>
 
-      <View style={styles.statGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>Today</Text>
-          <Text style={styles.statCardAmount}>{formatPeso(startBalance)}</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardLabel}>In {days} Days</Text>
-          <Text style={[styles.statCardAmount, { color: endBalance < 0 ? colors.error : colors.ink }]}>
-            {formatPeso(endBalance)}
-          </Text>
-        </View>
-      </View>
-
-      {lowestPoint.balance < 0 && (
-        <View style={styles.warningCard}>
-          <Text style={styles.warningText}>
-            Balance dips to {formatPeso(lowestPoint.balance)} around {shortDate(lowestPoint.date)}.
-          </Text>
-        </View>
-      )}
-
-      <Card>
-        <Text style={styles.cardLabel}>Projected Balance</Text>
-        <Text style={styles.cardSub}>Next {days} days</Text>
-        <View style={styles.chartRow}>
-          {sampled.map((p, idx) => (
-            <View key={idx} style={styles.chartCol}>
-              <View style={styles.chartBarsWrap}>
-                <View
-                  style={[
-                    styles.forecastBar,
-                    {
-                      height: `${(Math.abs(p.balance) / maxAbs) * 100}%`,
-                      backgroundColor: p.balance < 0 ? colors.error : colors.gold,
-                    },
-                  ]}
-                />
+      <Text style={s.header}>Biggest moves</Text>
+      <Group>
+        {biggest.length === 0 && <Text style={[s.meta, { padding: 16 }]}>Nothing planned in this range.</Text>}
+        {biggest.map((mv, i) => {
+          const color = mv.event.type === 'saving' ? colors.saving : mv.delta > 0 ? colors.positive : colors.negative;
+          return (
+            <View key={`${mv.date.getTime()}-${i}`} style={[s.row, i > 0 && s.line]}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.body} numberOfLines={1}>{mv.event.label}</Text>
+                <Text style={s.meta}>{dayDate(mv.date)}</Text>
               </View>
-              <Text style={styles.chartColLabel} numberOfLines={1}>
-                {idx === 0 || idx === Math.floor((sampled.length - 1) / 2) || idx === sampled.length - 1
-                  ? (p.day === 0 ? 'Today' : `+${p.day}d`)
-                  : ' '}
+              <Text style={[s.amount, { color }]}>
+                {mv.event.type === 'saving' ? '' : mv.delta > 0 ? '+' : '−'}
+                {formatPeso(Math.abs(mv.delta))}
               </Text>
             </View>
-          ))}
-        </View>
-      </Card>
-
-      <Text style={styles.footerNote}>
-        Projection based on expected income, bills, debts, and savings. Keep your Calendar balance current.
-      </Text>
+          );
+        })}
+      </Group>
+      <Text style={s.footer}>Based on your bills, loans, pay days and planned spending. Actual spending will move it.</Text>
     </PullToRefreshScrollView>
   );
-}
-
-function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: 'transparent',
-    },
-    contentContainer: { padding: 14, paddingBottom: 32 },
-    loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
-    pillRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-    statGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-    statCard: { flex: 1, backgroundColor: colors.navy3, borderRadius: 10, padding: 14 },
-    statCardLabel: {
-      fontSize: 11,
-      color: colors.inkFaint,
-      marginBottom: 4,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    statCardAmount: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    warningCard: {
-      backgroundColor: colors.navy3,
-      borderLeftWidth: 3,
-      borderLeftColor: colors.error,
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 12,
-    },
-    warningText: { fontSize: 12, color: colors.error, lineHeight: 17 },
-    cardLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      color: colors.inkDim,
-      marginBottom: 2,
-    },
-    cardSub: { fontSize: 11, color: colors.inkFaint, marginBottom: 12 },
-    chartRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 130 },
-    chartCol: { flex: 1, alignItems: 'center' },
-    chartBarsWrap: { height: 100, justifyContent: 'flex-end', width: '100%', alignItems: 'center' },
-    forecastBar: { width: 6, borderRadius: 2, minHeight: 2 },
-    chartColLabel: { fontSize: 11, color: colors.inkFaint, marginTop: 6, width: 44, textAlign: 'center' },
-    footerNote: { fontSize: 11, color: colors.inkFaint, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
-  });
 }

@@ -1,5 +1,7 @@
 ﻿import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { TouchableOpacity, ActivityIndicator, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { Text } from './AppText';
+import GradientFill from './GradientFill';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
 import { hapticLight, hapticMedium } from '../haptics';
@@ -41,7 +43,7 @@ export default function Button({
   const isSecondary = variant === 'secondary';
   const compact = size === 'compact';
   let textColor = colors.inkDim;
-  if (isPrimary) textColor = colors.navy2;
+  if (isPrimary) textColor = colors.onButton;
   else if (isSolidDanger) textColor = '#FFFFFF';
   else if (variant === 'destructive' || isOutlineDanger) textColor = colors.error;
   const inactive = disabled || loading;
@@ -58,8 +60,9 @@ export default function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       style={[
         styles.base,
-        isPrimary && { backgroundColor: colors.gold },
+        isPrimary && { backgroundColor: colors.buttonFill },
         isPrimary && styles.primary,
+        isPrimary && { overflow: 'hidden' },
         variant === 'destructive' && styles.destructive,
         variant === 'quiet' && styles.quiet,
         isSolidDanger && styles.solidDanger,
@@ -70,6 +73,7 @@ export default function Button({
         style,
       ]}
     >
+      {isPrimary && <GradientFill color={colors.buttonFill} strength={0.18} />}
       {loading ? (
         <ActivityIndicator size="small" color={textColor} />
       ) : (

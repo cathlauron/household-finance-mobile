@@ -17,7 +17,8 @@
 // ============================================================
 
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';
 import { formatPeso } from '../../balanceProjection';
@@ -153,25 +154,25 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     contentContainer: { padding: 14, paddingBottom: 32 },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy1 },
     cardLabel: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: '700',
       textTransform: 'uppercase',
       letterSpacing: 1,
       color: colors.inkDim,
       marginBottom: 8,
     },
-    subLabel: { fontSize: 12, color: colors.inkFaint, marginBottom: 12, lineHeight: 17 },
+    subLabel: { fontSize: 13, color: colors.inkFaint, marginBottom: 12, lineHeight: 17 },
     statRow: { flexDirection: 'row', justifyContent: 'space-between' },
     statBox: { flex: 1 },
-    statLabel: { fontSize: 11, color: colors.inkFaint, marginBottom: 2 },
+    statLabel: { fontSize: 13, color: colors.inkFaint, marginBottom: 2 },
     statValue: { fontSize: 15, fontWeight: '700', color: colors.ink },
     emptyText: { fontSize: 13, color: colors.inkFaint },
     billRow: { marginTop: 12 },
     billHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     billName: { fontSize: 13, color: colors.ink, fontWeight: '600' },
-    billMeta: { fontSize: 11, color: colors.inkFaint, marginTop: 1 },
+    billMeta: { fontSize: 13, color: colors.inkFaint, marginTop: 1 },
     billAmount: { fontSize: 13, color: colors.ink, fontWeight: '700' },
-    billAmountSub: { fontSize: 11, color: colors.inkFaint, marginTop: 1 },
+    billAmountSub: { fontSize: 13, color: colors.inkFaint, marginTop: 1 },
     progressTrack: { height: 8, borderRadius: 999, backgroundColor: colors.navy4, overflow: 'hidden' },
     progressFill: { height: '100%', backgroundColor: colors.orange, borderRadius: 999 },
   });

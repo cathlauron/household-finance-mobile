@@ -8,6 +8,9 @@
 // ============================================================
 
 export type Settings = {
+  // Redesign (Recurring page): when on, repeats are still added on the day but marked
+  // "To review" so you can check each one.
+  recurringAskFirst?: boolean;
   currency: string;
   notifyDaysBefore: number;
   cautionThresholdPercent: number;
@@ -19,9 +22,61 @@ export type Settings = {
   incomeToleranceDays: number;
   pushNotificationsEnabled: boolean;
   weeklyRecapEnabled: boolean;
+  // Payday nudge: a 6:00 PM "Did it come in?" reminder on each expected payday that
+  // hasn't been logged yet. Missing means on (needs "Notify me on this phone").
+  paydayNudgeEnabled?: boolean;
+  // Envelope alerts: a notification when an envelope reaches 80% and 100% of what it has
+  // this month (once each per month). Missing means on.
+  envelopeAlertsEnabled?: boolean;
+  // Month-end summary: on the 1st at 9:00 AM, "<last month> is done" opening the close-out.
+  // Missing means on.
+  closeOutReminderEnabled?: boolean;
   weeklyRecapDay: number;
   weeklyRecapHour: number;
   swipeToDeleteEnabled: boolean;
+  // Redesign: buttons, links, tabs and background leaves follow the Left to Spend mood
+  // (green / burnt orange / red). Missing means on.
+  moodColorsEnabled?: boolean;
+  // Redesign: slowly drifting background leaves. Missing means on.
+  fallingLeavesEnabled?: boolean;
+  // Redesign (onboarding): what you want to spend each month after bills, and a name
+  // for the household's wallet.
+  monthlySpendingBudget?: number | '';
+  // Redesign (Envelopes): roll what is left in each envelope into the next month,
+  // counting from envelopeRolloverFrom ("YYYY-MM", the month it was switched on).
+  envelopeRollover?: boolean;
+  envelopeRolloverFrom?: string;
+  walletName?: string;
+};
+
+// Shared Expenses: one thing someone paid for that a few people share.
+export type SharedExpense = {
+  id: string;
+  date: string;
+  label: string;
+  amount: number;
+  paidBy: string; // Person id
+  // How much each person's share is (Person id + amount); together they add up to amount.
+  shares: { personId: string; amount: number }[];
+  splitMode: 'equal' | 'custom';
+  note?: string;
+  createdAt?: number;
+  // Made from a transaction's "Split with others": that transaction's id.
+  transactionId?: string;
+};
+
+// Shared Expenses: one person paying another back ("Settle up").
+export type SharedSettlement = {
+  id: string;
+  date: string;
+  from: string; // Person id who paid
+  to: string; // Person id who was paid
+  amount: number;
+  note?: string;
+  createdAt?: number;
+  // When you paid or were paid from one of your accounts, the money in/out transaction
+  // logged with it (removed again if the payment is undone).
+  transactionId?: string;
 };
 
 export type Person = {
@@ -34,6 +89,10 @@ export type PaymentLogEntry = {
   id: string;
   date: string;
   amount: number | '';
+  // Redesign: the account this payday went into. A logged payday is real money, so it
+  // adds to that account's balance; the expected amount is only a projection.
+  paymentMethod?: PaymentMethod;
+  createdAt?: number; // when it was logged (stamped on save)
 };
 
 export type IncomeSource = {
@@ -46,6 +105,8 @@ export type IncomeSource = {
   payDates: string[];
   paymentLog: PaymentLogEntry[];
   destinationAccountId?: string;
+  // Redesign: the account paydays usually go into (preselected when logging one).
+  depositTo?: PaymentMethod;
   createdAt?: number;
 };
 
@@ -69,6 +130,18 @@ export type BillCycle = {
   notes: string;
   paymentMethod?: PaymentMethod;
   feesPortion?: number | '';
+  // Redesign: the exact moment it was marked paid (for Left to Spend's same-day check).
+  paidAt?: number;
+  // Partial debt payments (Round 3). On a cycle paid with less than was due, amountDue
+  // is lowered to what was paid (so the cycle counts as settled everywhere) and the
+  // original due amount is kept here, for history and Undo.
+  dueBefore?: number;
+  // On the NEXT cycle: how much of its amountDue is unpaid minimum plus any late fee
+  // carried over from the cycle before.
+  carriedIn?: number;
+  // A late fee the lender charged for this cycle's short or late payment (added to the
+  // next amount due).
+  lateFee?: number;
 };
 
 export type Bill = {
@@ -92,6 +165,10 @@ export type Bill = {
   // 'cancelled' = person tapped Cancel; bill stays in the list (for
   // history/reports) but stops generating future reminders.
   subscriptionStatus?: 'active' | 'cancelled';
+  // Redesign (Subscriptions page): when it was cancelled (YYYY-MM-DD), and an optional
+  // "cancel by" date the person wants to be reminded of.
+  cancelledOn?: string;
+  cancelBy?: string;
 };
 
 export type Debt = {
@@ -116,6 +193,9 @@ export type LoanPayment = {
   date: string;
   actual: number | '';
   paymentMethod?: PaymentMethod;
+  // When it was logged (stamped on save), so a card's balance knows whether it came
+  // after the balances were last updated that same day.
+  createdAt?: number;
 };
 
 export type Loan = {
@@ -139,7 +219,11 @@ export type Loan = {
 export type SavingsContribution = {
   id: string;
   date: string;
+  // Redesign: negative = money moved out of the pot.
   amount: number | '';
+  paymentMethod?: PaymentMethod;
+  auto?: boolean; // added automatically on a payday
+  createdAt?: number; // when it was logged (stamped on save)
 };
 
 export type SavingsGoal = {
@@ -150,11 +234,16 @@ export type SavingsGoal = {
   currentAmount: number;
   contributions: SavingsContribution[];
   createdAt?: number;
+  // Redesign (pots): where the money is kept, and an amount added every payday.
+  keptIn?: PaymentMethod;
+  autoAdd?: { enabled: boolean; amount: number; since: string };
+  isEmergency?: boolean;
 };
 
 export type CalculatorInputs = {
   efMonthlyExpenses: number | '';
   efCurrentSavings: number | '';
+  efTargetMonths?: number;
   fiAnnualExpenses: number | '';
   fiGuaranteedAnnualIncome: number | '';
   fiCurrentSavings: number | '';
@@ -177,6 +266,16 @@ export type GroceryCalcEntry = {
   id: string;
   label: string;
   amount: number;
+  // Redesign: quantity and price each (amount = qty × unitPrice).
+  qty?: number;
+  unitPrice?: number;
+};
+
+// Redesign: a meal idea in Groceries; it costs the total of its ingredients.
+export type MealIdea = {
+  id: string;
+  name: string;
+  ingredients: { id: string; name: string; price: number | '' }[];
 };
 
 // ---- Checkpoint 8.2: Travel ----
@@ -184,6 +283,8 @@ export type TravelChecklistItem = {
   id: string;
   title: string;
   cost: number | '';
+  // Optional short note shown under the item (booking details, what to bring...).
+  note?: string;
   checked: boolean;
   completedDate?: string;
   // Set once this item is checked (with a cost) and a matching ManualTransaction has been
@@ -234,6 +335,10 @@ export type EventItem = {
   // ManualTransaction has been logged for it — lets us find and remove that transaction
   // if it gets un-marked.
   expenseTransactionId?: string;
+  // Redesign: what the budget is made of (the budget is their total when there are any),
+  // and past years of an event that repeats every year.
+  items?: { id: string; name: string; cost: number | '' }[];
+  history?: { date: string; budget: number; spent: number }[];
 };
 
 // ---- Checkpoint 8.3: Year-End Goals ----
@@ -250,6 +355,22 @@ export type YearlyGoal = {
   targetDate: string;
   completed: boolean;
   createdAt?: number;
+  // Redesign: a progress goal can follow a savings pot (saved so far) or a debt/loan
+  // (how much of it is paid off); and when a checklist goal was ticked off.
+  linkedTo?: { kind: 'pot' | 'debt' | 'loan'; id: string };
+  completedDate?: string;
+};
+
+// Redesign (Move money): one move between two of your accounts. The balances are
+// changed when it's saved; this keeps a record of it.
+export type Transfer = {
+  id: string;
+  date: string;
+  from: string; // "debit:<accountId>" style key
+  to: string;
+  amount: number;
+  fee?: number;
+  note?: string;
 };
 
 export type BalanceAccountEntry = {
@@ -263,6 +384,9 @@ export type BalanceAccountEntry = {
 
 export type BalanceAccounts = {
   asOfDate: string;
+  // The exact moment (milliseconds since 1970) the spending balances were last updated.
+  // Pairs with asOfDate; see computeRunningBalances().
+  asOfAt?: number;
   cash: BalanceAccountEntry[];
   debit: BalanceAccountEntry[];
   credit: BalanceAccountEntry[];
@@ -293,6 +417,41 @@ export type ManualTransaction = {
   // "Refunded" rather than "Pending" — mirrors the expenseTransactionId pattern already used
   // by Travel checklist items and Events.
   refundTransactionId?: string;
+  // When this transaction was first saved (milliseconds since 1970). Lets Left to Spend
+  // tell whether spending logged on the same day as a balance update came before or
+  // after that update. Older transactions don't have it and are treated as "before".
+  createdAt?: number;
+  // Redesign ("To review"): set when the category wasn't chosen by hand — filled in by
+  // a rule, or imported from a spreadsheet — so the person can check it with one tap.
+  // reviewWhy says why, e.g. 'Filled in by your rule' or 'Imported from a spreadsheet'.
+  needsReview?: boolean;
+  reviewWhy?: string;
+  // Money in only: what kind of extra income this is (see incomeKinds.ts). Shown under
+  // "Extra income" on the Income page.
+  incomeKind?: 'bonus' | 'side' | 'allowance' | 'gift' | 'other';
+  // Redesign ("Make it repeat"): set on transactions added by a repeat, pointing at it.
+  recurringId?: string;
+};
+
+// Redesign ("Make it repeat" / Recurring page): a transaction that is added for you on a
+// schedule. Made from an existing transaction (its first occurrence). nextDate is the
+// next day one should be added; src/recurring.ts adds every one that has come due.
+export type RecurringFrequency = 'weekly' | 'every2weeks' | 'monthly' | 'yearly';
+
+export type RecurringRule = {
+  id: string;
+  label: string;
+  amount: number;
+  direction: 'in' | 'out' | 'saving';
+  owner: string;
+  category?: string;
+  notes?: string;
+  paymentMethod?: PaymentMethod;
+  frequency: RecurringFrequency;
+  startDate: string; // the first occurrence (the transaction it was made from)
+  nextDate: string; // the next date to add
+  sourceTxnId?: string;
+  createdAt?: number;
 };
 
 export type Category = {
@@ -333,6 +492,14 @@ export type AvatarConfig = {
   updatedAt?: number;
 };
 
+// A photo someone uploaded, kept so they can switch back to it later.
+export const MAX_SAVED_AVATAR_PHOTOS = 4;
+export type SavedAvatarPhoto = {
+  id: string;
+  dataUri: string;
+  addedAt: number;
+};
+
 export type HouseholdModel = {
   settings: Settings;
   people: Person[];
@@ -343,15 +510,36 @@ export type HouseholdModel = {
   savingsGoals: SavingsGoal[];
   balanceAccounts: BalanceAccounts;
   manualTransactions: ManualTransaction[];
+  // Redesign (Move money): money moved between your own accounts. Not spending.
+  transfers?: Transfer[];
+  // Redesign: the order of cards in Home's Wallet ("debit:<id>" keys), set by dragging.
+  walletOrder?: string[];
   categories: Category[];
   categoryBudgets: CategoryBudget[];
   calculatorInputs?: CalculatorInputs;
   groceries?: GroceryItem[];
   groceryCalculator?: GroceryCalcEntry[];
+  mealIdeas?: MealIdea[];
   travel?: TravelTrip[];
   events?: EventItem[];
+  recurring?: RecurringRule[];
+  // Shared Expenses (Plan): who is in the group (Person ids), what was paid and how it
+  // was split, and payments between people that settle balances.
+  sharedMembers?: string[];
+  sharedExpenses?: SharedExpense[];
+  sharedSettlements?: SharedSettlement[];
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];
   avatars?: Record<string, AvatarConfig>;
+  // Uploaded profile photos per username, newest first (encrypted and synced with the rest).
+  avatarPhotos?: Record<string, SavedAvatarPhoto[]>;
+  // "What should we call you?": the name each person wants on Home, keyed by username
+  // (encrypted and synced with the rest, like avatars).
+  preferredNames?: Record<string, PreferredName>;
+};
+
+export type PreferredName = {
+  name: string;
+  updatedAt: number;
 };

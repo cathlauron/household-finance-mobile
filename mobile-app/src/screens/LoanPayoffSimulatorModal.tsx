@@ -18,18 +18,12 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Pressable,
-  TextInput,
-  ScrollView,
-} from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { Text } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import AmountInput from '../components/AmountInput';
+import GradientFill from '../components/GradientFill';
 
 export type SimLoanInput = {
   id: string;
@@ -152,7 +146,8 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <GradientFill match={styles.card} />
+          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Loan Payoff Simulator</Text>
 
             {loans.length === 0 ? (
@@ -236,7 +231,7 @@ export default function LoanPayoffSimulatorModal({ visible, onClose, loans, colo
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -262,25 +257,17 @@ function makeStyles(colors: any) {
       padding: 20,
     },
     title: { fontSize: 17, fontWeight: '700', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 12.5, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
-    emptyText: { fontSize: 13, color: colors.inkFaint, fontStyle: 'italic', marginBottom: 16 },
+    sub: { fontSize: 15, color: colors.inkDim, marginBottom: 16, lineHeight: 18 },
+    emptyText: { fontSize: 13, color: colors.inkFaint, marginBottom: 16 },
     inputLabel: {
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      // Redesign: sentence-case grey labels, like iPhone forms.
+      fontSize: 13,
+      fontWeight: '600',
+      marginLeft: 4,
       color: colors.inkDim,
       marginBottom: 6,
     },
-    input: {
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: colors.ink,
-      marginBottom: 10,
-    },
-    hintText: { fontSize: 11.5, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
+    hintText: { fontSize: 15, color: colors.inkFaint, marginBottom: 14, lineHeight: 16 },
     statRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
     statCard: {
       flex: 1,
@@ -291,9 +278,9 @@ function makeStyles(colors: any) {
       borderColor: 'transparent',
     },
     statCardActive: { borderColor: colors.gold },
-    statLabel: { fontSize: 11, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
+    statLabel: { fontSize: 13, letterSpacing: 0.5, color: colors.inkDim, marginBottom: 4 },
     statValue: { fontSize: 17, fontWeight: '700', color: colors.ink },
-    statNote: { fontSize: 11, color: colors.inkFaint, marginTop: 3 },
+    statNote: { fontSize: 13, color: colors.inkFaint, marginTop: 3 },
     orderTitle: { fontSize: 13, fontWeight: '700', color: colors.ink, marginTop: 16, marginBottom: 8 },
     orderRow: {
       flexDirection: 'row',
@@ -303,8 +290,8 @@ function makeStyles(colors: any) {
       borderBottomWidth: 1,
       borderBottomColor: colors.navy2,
     },
-    orderRowText: { fontSize: 12.5, color: colors.inkDim, flex: 1, marginRight: 10 },
-    orderRowMonths: { fontSize: 12.5, color: colors.ink, fontWeight: '600' },
+    orderRowText: { fontSize: 15, color: colors.inkDim, flex: 1, marginRight: 10 },
+    orderRowMonths: { fontSize: 15, color: colors.ink, fontWeight: '600' },
     closeButton: { alignItems: 'center', paddingVertical: 12, marginTop: 16 },
     closeButtonText: { fontSize: 13, color: colors.inkDim, fontWeight: '600' },
   });

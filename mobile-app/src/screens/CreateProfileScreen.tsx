@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Image, Platform, KeyboardAvoidingView } from 'react-native';
+import { claimUsername } from '../usernameClaim';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
+import LogoMark from '../components/LogoMark';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -83,11 +88,29 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       // Create the real Firebase account FIRST. If this fails (e.g. the
       // email is already registered), nothing local has been created yet,
       // so there's nothing to undo.
+      let firebaseUser: Awaited<ReturnType<typeof createFirebaseAccount>>;
       try {
-        await createFirebaseAccount(email, password1);
+        firebaseUser = await createFirebaseAccount(email, password1);
       } catch (firebaseError: any) {
         setBusy(false);
         setError(friendlyFirebaseError(firebaseError));
+        return;
+      }
+
+      // Claim the username for this account before anything is saved under it. If someone
+      // on another phone already has it, undo the new sign-in account and say so.
+      try {
+        const claim = await claimUsername(username);
+        if (claim === 'taken') {
+          await firebaseUser.delete().catch(() => {});
+          setBusy(false);
+          setError('Username is taken. Choose another or sign in.');
+          return;
+        }
+      } catch {
+        await firebaseUser.delete().catch(() => {});
+        setBusy(false);
+        setError('Could not create account. Check your connection and try again.');
         return;
       }
 
@@ -145,15 +168,14 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.brandWrap}>
-          <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
-          <Text style={styles.brandName}>FINANCE FLOW</Text>
+          <LogoMark width={84} />
         </View>
         <Text style={styles.title}>Create your account</Text>
         <Text style={styles.sub}>Start your financial journey.</Text>
@@ -224,6 +246,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
+          <GradientFill color={colors.buttonFill} strength={0.18} />
           <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
           {!busy && <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
@@ -240,6 +263,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         <Modal visible={!!recoveryCode} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
+              <GradientFill match={styles.modalCard} />
               <Text style={styles.eyebrow}>CRITICAL SECURITY STEP</Text>
               <Text style={styles.modalTitle}>Secret Recovery Key</Text>
               <Text style={styles.modalSub}>
@@ -276,6 +300,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                 onPress={() => setSavedAcknowledged((prev) => !prev)}
               >
                 <View style={[styles.checkbox, savedAcknowledged && styles.checkboxActive]}>
+                  <GradientFill match={[styles.checkbox, savedAcknowledged && styles.checkboxActive]} />
                   {savedAcknowledged && <Ionicons name="checkmark" size={14} color={colors.navy2} />}
                 </View>
                 <Text style={styles.checkLabel}>
@@ -292,12 +317,13 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
                   }
                 }}
               >
+                <GradientFill color={colors.buttonFill} strength={0.18} />
                 <Text style={styles.primaryBtnText}>Continue</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -307,12 +333,10 @@ function makeStyles(colors: any) {
     container: { flex: 1, backgroundColor: 'transparent' },
     scrollContent: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40 },
     brandWrap: { alignItems: 'center', marginBottom: 16 },
-    brandLogo: { width: 56, height: 56 },
-    brandName: { marginTop: 8, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
     eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
     title: {
       fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+      fontWeight: '700',
     },
     sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 12, lineHeight: 20 },
     label: { fontSize: 12, fontWeight: '600', color: colors.ink, marginBottom: 6, marginTop: 14 },
@@ -323,11 +347,11 @@ function makeStyles(colors: any) {
       paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
-    primaryBtn: {
-      backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
+    primaryBtn: { overflow: 'hidden',
+      backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, marginTop: spacing[20],
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
     btnDisabled: { opacity: 0.4 },
     linkBtn: { paddingVertical: 14, marginTop: 10 },
     linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },
@@ -339,7 +363,7 @@ function makeStyles(colors: any) {
     },
     modalTitle: {
       fontSize: 24, textAlign: 'center', color: colors.ink, marginBottom: 8,
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
+      fontWeight: '700',
     },
     modalSub: { fontSize: 13, color: colors.inkDim, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
     codeBox: {
@@ -358,7 +382,7 @@ function makeStyles(colors: any) {
       width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.inkDim,
       alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy3,
     },
-    checkboxActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+    checkboxActive: { backgroundColor: colors.buttonFill, borderColor: colors.gold },
     checkLabel: { flex: 1, fontSize: 13, color: colors.ink, lineHeight: 18 },
   });
 }

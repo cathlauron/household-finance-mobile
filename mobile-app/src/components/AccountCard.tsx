@@ -1,10 +1,12 @@
 ﻿import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../balanceProjection';
 import type { BalanceAccountEntry } from '../types';
 import { radii, spacing } from '../tokens';
 import { useTheme } from '../ThemeContext';
+import { cardFaceColors, CardFaceFill } from './CardFace';
 
 export type AccountGroup = 'cash' | 'debit' | 'credit';
 
@@ -27,7 +29,7 @@ const GROUP_LABELS: Record<AccountGroup, string> = {
 };
 
 const GROUP_ICONS: Record<AccountGroup, keyof typeof Ionicons.glyphMap> = {
-  cash: 'wallet-outline',
+  cash: 'cash-outline',
   debit: 'card-outline',
   credit: 'card',
 };
@@ -39,16 +41,18 @@ type Props = {
   style?: ViewStyle;
   testID?: string;
   isExpanded?: boolean;
+  // No longer used: every card shows its type tag, like the Card page.
+  hideTypeBadge?: boolean;
 };
 
-export default function AccountCard({ account, group, onPress, style, testID, isExpanded }: Props) {
-  const { colors } = useTheme();
+export default function AccountCard({ account, group, onPress, style, testID, isExpanded, hideTypeBadge }: Props) {
+  const { colors, isDark } = useTheme();
   const accentColor = account.color || DEFAULT_GROUP_COLORS[group];
 
   // All text is colors.ink / colors.inkDim, so contrast never depends on the chosen colour.
   // The colour shows up as a faint tint, a border, and a dot, never as text.
-  const tintLayer = `${accentColor}14`;
-  const borderColor = `${accentColor}40`;
+  // Same colour and gradient as this card in Home's Wallet.
+  const face = cardFaceColors(accentColor, isDark);
   const badgeBg = `${accentColor}26`;
 
   const rawAmount = typeof account.amount === 'number' ? account.amount : 0;
@@ -61,37 +65,32 @@ export default function AccountCard({ account, group, onPress, style, testID, is
       onPress={onPress}
       style={[
         styles.card,
-        { backgroundColor: colors.navy3, borderColor },
+        face,
         isExpanded && [styles.cardExpanded, { borderColor: accentColor }],
         style,
       ]}
     >
-      <View pointerEvents="none" style={[styles.tintLayer, { backgroundColor: tintLayer }]} />
+      <CardFaceFill color={accentColor} radius={17} />
 
+      {/* Same layout as the Card page: colour chip and name, the type tag on the right,
+          and the balance at the bottom. */}
       <View style={styles.topRow}>
         <View style={styles.topRowLeft}>
-          <View style={[styles.badge, { backgroundColor: badgeBg }]}>
-            <View style={[styles.badgeDot, { backgroundColor: accentColor }]} />
-            <Text style={[styles.badgeText, { color: colors.ink }]}>{GROUP_LABELS[group]}</Text>
-          </View>
+          <View style={[styles.chip, { backgroundColor: accentColor }]} />
           <Text style={[styles.accountName, { color: colors.ink }]} numberOfLines={1}>
             {account.name || 'Untitled account'}
           </Text>
         </View>
-        <Text style={[styles.stripBalance, { color: colors.ink }]}>{formattedBalance}</Text>
+        <View style={[styles.typeTag, { backgroundColor: colors.navy1 }]}>
+          <Ionicons name={GROUP_ICONS[group]} size={11} color={colors.inkDim} />
+          <Text style={[styles.typeTagText, { color: colors.inkDim }]}>{GROUP_LABELS[group]}</Text>
+        </View>
       </View>
 
       <View style={styles.bottomRow}>
-        <View style={styles.bottomRowLeft}>
-          <Ionicons
-            name={GROUP_ICONS[group]}
-            size={15}
-            color={colors.inkDim}
-            style={{ marginRight: spacing[6] }}
-          />
-          <Text style={[styles.balanceLabel, { color: colors.inkDim }]}>
-            {group === 'credit' ? 'CURRENT BALANCE / OWED' : 'CURRENT BALANCE'}
-          </Text>
+        <View>
+          <Text style={[styles.balanceLabel, { color: colors.inkDim }]}>Balance</Text>
+          <Text style={[styles.balance, { color: rawAmount < 0 ? colors.negative : colors.positive }]}>{formattedBalance}</Text>
         </View>
         {isExpanded && (
           <View style={[styles.editHintBadge, { backgroundColor: badgeBg }]}>
@@ -106,22 +105,17 @@ export default function AccountCard({ account, group, onPress, style, testID, is
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii[16],
-    paddingHorizontal: spacing[16],
-    paddingVertical: spacing[12],
+    height: 190,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: spacing[12],
-    minHeight: 120,
     justifyContent: 'space-between',
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowRadius: 12,
     elevation: 3,
-  },
-  tintLayer: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radii[16] - 1,
   },
   cardExpanded: {
     borderWidth: 1.5,
@@ -129,59 +123,15 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 7,
   },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  topRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[8],
-    flex: 1,
-    marginRight: spacing[8],
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[8],
-    paddingVertical: 2,
-    borderRadius: radii.pill,
-  },
-  badgeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing[6],
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  accountName: {
-    fontSize: 14,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-  stripBalance: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing[12],
-  },
-  bottomRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  balanceLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  topRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 },
+  chip: { width: 12, height: 12, borderRadius: 3 },
+  accountName: { fontSize: 17, fontWeight: '600', flexShrink: 1 },
+  typeTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  typeTagText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase' },
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  balanceLabel: { fontSize: 13 },
+  balance: { fontSize: 30, lineHeight: 36, fontWeight: '700' },
   editHintBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -189,8 +139,5 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radii[6],
   },
-  editHintText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
+  editHintText: { fontSize: 11, fontWeight: '600' },
 });

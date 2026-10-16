@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-} from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Text } from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
@@ -15,6 +11,9 @@ import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { getBiometricState, getBiometricLabel } from '../biometrics';
 import { markOnboardingCompleted } from '../onboarding';
 import PinField from '../components/PinField';
+import GradientFill from '../components/GradientFill';
+import OnboardSetup from '../components/OnboardSetup';
+import { useLeafGustOnStep } from '../leafTransition';
 
 type Props = {
   username: string;
@@ -30,6 +29,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<2 | 3>(2);
+  useLeafGustOnStep(step);
 
   // Step 2 PIN state
   const [pin1, setPin1] = useState('');
@@ -53,9 +53,9 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
 
   const styles = makeStyles(colors);
 
+  // Skipping Quick Unlock moves on to the setup steps (it doesn't end onboarding).
   async function handleSkip() {
-    await markOnboardingCompleted(username);
-    onFinish();
+    setStep(3);
   }
 
   async function handleSavePin() {
@@ -92,11 +92,20 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
     onFinish();
   }
 
+  // Redesign: after Quick Unlock come the three setup steps from the mockups.
+  if (step === 3) {
+    return (
+      <View style={styles.container}>
+        <OnboardSetup onDone={handleFinish} topInset={insets.top} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Top Header Row with Progress and Skip */}
       <View style={[styles.headerRow, { paddingTop: 16 + insets.top }]}>
-        <Text style={styles.stepBadge}>STEP {step - 1} OF 2</Text>
+        <Text style={styles.stepBadge}>BEFORE WE START</Text>
         {step < 3 ? (
           <TouchableOpacity testID="onboarding-skip-button" onPress={handleSkip} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={styles.skipText}>Skip</Text>
@@ -106,7 +115,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
         {/* STEP 2: QUICK UNLOCK */}
         {step === 2 && (
@@ -118,6 +127,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
 
             {biometricsAvailable ? (
               <View style={styles.biometricActiveCard}>
+                <GradientFill match={styles.biometricActiveCard} />
                 <Ionicons name="scan-outline" size={24} color={colors.accent} style={{ marginRight: 12, marginTop: 2 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.biometricActiveTitle}>{biometricLabel} Enabled</Text>
@@ -128,6 +138,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
               </View>
             ) : (
               <View style={styles.comingSoonBanner}>
+                <GradientFill match={styles.comingSoonBanner} />
                 <Ionicons name="information-circle-outline" size={20} color={colors.inkDim} style={{ marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.comingSoonSub}>Biometrics aren't available on this device. Set a PIN below for quick access.</Text>
@@ -160,6 +171,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
                 onPress={handleSavePin}
                 disabled={busy}
               >
+                <GradientFill match={styles.primaryBtn} />
                 <Text style={styles.primaryBtnText}>{busy ? 'Saving PIN…' : 'Save PIN & Continue'}</Text>
               </TouchableOpacity>
 
@@ -177,48 +189,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
           </View>
         )}
 
-        {/* STEP 3: READY */}
-        {step === 3 && (
-          <View style={styles.stepContainer}>
-            <View style={styles.readyIconFrame}>
-              <Ionicons name="checkmark-circle-outline" size={64} color={colors.accent} />
-            </View>
-
-            <Text style={styles.title}>You're all set!</Text>
-            <Text style={styles.sub}>Your profile is ready to go.</Text>
-
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-              {biometricsAvailable && (
-                <View style={styles.pinConfirmedBadge}>
-                  <Ionicons name="scan-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.pinConfirmedText}>{biometricLabel} enabled</Text>
-                </View>
-              )}
-              {pinSaved && (
-                <View style={styles.pinConfirmedBadge}>
-                  <Ionicons name="lock-closed" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-                  <Text style={styles.pinConfirmedText}>Quick PIN enabled</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.tipCard}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.gold} style={{ marginRight: 10 }} />
-              <Text style={styles.tipText}>
-                Tip: Add your accounts, log recurring bills, or explore Settings to customize preferences.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              testID="onboarding-finish-button"
-              style={styles.primaryBtn}
-              onPress={handleFinish}
-            >
-              <Text style={styles.primaryBtnText}>Go to Home</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }
@@ -257,43 +228,6 @@ function makeStyles(colors: any) {
     stepContainer: {
       alignItems: 'center',
     },
-    logoFrame: {
-      width: 76,
-      height: 76,
-      borderRadius: 20,
-      borderWidth: 1,
-      backgroundColor: colors.navy3,
-      borderColor: colors.navy4,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 20,
-    },
-    lockWrap: {
-      alignItems: 'center',
-    },
-    shackle: {
-      width: 22,
-      height: 15,
-      borderTopLeftRadius: 11,
-      borderTopRightRadius: 11,
-      borderWidth: 3.5,
-      borderBottomWidth: 0,
-      borderColor: LOCK_SHACKLE_GREEN,
-      marginBottom: -2,
-    },
-    lockBody: {
-      width: 36,
-      height: 28,
-      borderRadius: 6,
-      backgroundColor: LOCK_BODY_GREEN,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    currencySymbol: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
     title: {
       fontSize: 24,
       fontWeight: '700',
@@ -307,38 +241,6 @@ function makeStyles(colors: any) {
       textAlign: 'center',
       lineHeight: 20,
       marginBottom: 24,
-    },
-    featureCards: {
-      width: '100%',
-      gap: 12,
-      marginBottom: 32,
-    },
-    featureCard: {
-      flexDirection: 'row',
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      padding: 16,
-      alignItems: 'flex-start',
-    },
-    featureIconWrap: {
-      marginRight: 14,
-      marginTop: 2,
-    },
-    featureTextWrap: {
-      flex: 1,
-    },
-    featureTitle: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.ink,
-      marginBottom: 4,
-    },
-    featureDesc: {
-      fontSize: 13,
-      color: colors.inkDim,
-      lineHeight: 18,
     },
     biometricActiveCard: {
       width: '100%',
@@ -373,12 +275,6 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       marginBottom: 24,
     },
-    comingSoonTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.ink,
-      marginBottom: 2,
-    },
     comingSoonSub: {
       fontSize: 12,
       color: colors.inkDim,
@@ -412,52 +308,15 @@ function makeStyles(colors: any) {
       textAlign: 'center',
       marginTop: 14,
     },
-    readyIconFrame: {
-      marginTop: 20,
-      marginBottom: 16,
-    },
-    pinConfirmedBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy3,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      marginBottom: 20,
-    },
-    pinConfirmedText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.accent,
-    },
-    tipCard: {
-      width: '100%',
-      flexDirection: 'row',
-      backgroundColor: colors.navy3,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.navy4,
-      padding: 16,
-      marginBottom: 32,
-      alignItems: 'flex-start',
-    },
-    tipText: {
-      flex: 1,
-      fontSize: 13,
-      color: colors.inkDim,
-      lineHeight: 19,
-    },
     primaryBtn: {
       width: '100%',
-      backgroundColor: colors.gold,
+      backgroundColor: colors.buttonFill,
       borderRadius: 8,
       paddingVertical: 14,
       marginTop: 16,
     },
     primaryBtnText: {
-      color: colors.navy2,
+      color: colors.onButton,
       textAlign: 'center',
       fontWeight: '600',
       fontSize: 15,

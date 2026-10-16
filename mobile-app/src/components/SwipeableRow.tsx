@@ -4,9 +4,12 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { hapticMedium, hapticSelection } from '../haptics';
+import GradientFill from './GradientFill';
 
 export type SwipeableRowProps = {
   children: React.ReactNode;
+  // Redesign: inside a grouped list the action button fills the row height exactly.
+  flat?: boolean;
   enabled: boolean;
   onDelete: () => void;
   testID?: string;
@@ -21,7 +24,7 @@ export type SwipeableRowProps = {
   };
 };
 
-export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }: SwipeableRowProps) {
+export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, flat }: SwipeableRowProps) {
   const { colors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -38,7 +41,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
     if (viewAction) {
       return (
         <TouchableOpacity
-          style={[styles.deleteAction, { backgroundColor: colors.gold }]}
+          style={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: colors.buttonFill }]}
           activeOpacity={0.8}
           onPress={() => {
             hapticSelection();
@@ -48,6 +51,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
           accessibilityRole="button"
           accessibilityLabel={viewAction.label}
         >
+          <GradientFill match={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: colors.buttonFill }]} />
           <Animated.View style={{ transform: [{ scale }] }}>
             <Ionicons name={viewAction.icon} size={20} color={colors.navy2} />
           </Animated.View>
@@ -56,7 +60,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction }
     }
     return (
       <TouchableOpacity
-        style={[styles.deleteAction, { backgroundColor: '#C81E43' }]}
+        style={[styles.deleteAction, flat && styles.flatAction, { backgroundColor: '#C81E43' }]}
         activeOpacity={0.8}
         onPress={() => {
           hapticMedium();
@@ -97,4 +101,5 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 10,
   },
+  flatAction: { marginBottom: 0, borderRadius: 0 },
 });

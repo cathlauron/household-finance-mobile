@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '../components/AppText';
+import GradientFill from '../components/GradientFill';
+import LogoMark from '../components/LogoMark';
 import { Ionicons } from '@expo/vector-icons';
 import { verifyPin, hasPinSetUp } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
@@ -37,6 +41,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
   const inFlightRef = useRef(false);
 
+  const [unlockedTick, setUnlockedTick] = useState(false);
+
   async function runBiometricAuth(isManual = false) {
     if (inFlightRef.current) return;
     if (isLockedOut) return;
@@ -48,7 +54,9 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
       const result = await attemptBiometricAuth('Unlock Finance Flow');
       if (result.success) {
         await resetPinFailures(username);
-        onUnlocked();
+        // Redesign: a quick tick to show it worked, then straight into the app.
+        setUnlockedTick(true);
+        setTimeout(onUnlocked, 450);
       } else {
         const msg = biometricErrorMessage(result.error, biometricLabel);
         if (msg) setError(msg);
@@ -130,9 +138,19 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>LOCKED</Text>
+    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[styles.container, { flex: undefined, flexGrow: 1 }]}>
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <LogoMark width={72} />
+      </View>
       <Text style={styles.title}>Welcome back, {selectedUsername}</Text>
+      {unlockedTick && (
+        <View style={{ alignItems: 'center', marginVertical: 24 }} accessibilityLiveRegion="polite" accessibilityLabel="Unlocked">
+          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="checkmark" size={48} color={colors.gold} />
+          </View>
+          <Text style={[styles.sub, { marginTop: 12 }]}>Unlocked</Text>
+        </View>
+      )}
 
       {usePasswordMode && (
         <>
@@ -151,6 +169,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             onPress={handlePasswordUnlock}
             disabled={busy || !passwordInput}
           >
+            <GradientFill color={colors.buttonFill} strength={0.18} />
             {busy ? <ActivityIndicator color={colors.navy2} /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
           </TouchableOpacity>
           {!isLockedOut && (
@@ -195,12 +214,14 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
               onPress={handleUnlock}
               disabled={busy || pin.length < 4}
             >
+              <GradientFill color={colors.buttonFill} strength={0.18} />
               <Text style={styles.primaryBtnText}>Unlock</Text>
             </TouchableOpacity>
           )}
 
           {biometricState === 'ENABLED' && hasPin === false && (
             <TouchableOpacity testID="retry-biometrics-button" style={styles.primaryBtn} onPress={() => runBiometricAuth(true)}>
+              <GradientFill color={colors.buttonFill} strength={0.18} />
               <Text style={styles.primaryBtnText}>Unlock with {biometricLabel}</Text>
             </TouchableOpacity>
           )}
@@ -217,27 +238,26 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
           </TouchableOpacity>
         </>
       )}
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 80 },
-    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
-    title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-    label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
+    container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 64 },
+    title: { fontSize: 26, fontWeight: '700', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    sub: { fontSize: 15, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+    label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     input: {
-      backgroundColor: colors.navy3, borderRadius: 8, borderWidth: 1, borderColor: colors.navy4,
-      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, textAlign: 'center', letterSpacing: 6,
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4,
+      paddingHorizontal: 14, paddingVertical: 12, minHeight: 50, fontSize: 20, color: colors.ink, textAlign: 'center', letterSpacing: 6,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    primaryBtn: { backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 14, marginTop: 24 },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtn: { overflow: 'hidden', backgroundColor: colors.buttonFill, borderRadius: 14, height: 52, justifyContent: 'center', marginTop: 24 },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 17 },
     retryBiometricBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center' },
-    retryBiometricText: { color: colors.ink, fontWeight: '600', fontSize: 14 },
+    retryBiometricText: { color: colors.gold, fontWeight: '600', fontSize: 15 },
     ghostBtn: { paddingVertical: 14, marginTop: 4 },
-    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
+    ghostBtnText: { color: colors.gold, textAlign: 'center', fontSize: 15 },
   });
 }

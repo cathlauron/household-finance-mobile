@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import GradientFill from './GradientFill';
 
 type Props = {
   children?: React.ReactNode;
@@ -26,13 +27,20 @@ export default function Card({ children, variant = 'card', row = false, testID, 
         style,
       ]}
     >
+      <GradientFill match={[
+        { backgroundColor: colors.navy3 },
+        variant === 'card' ? styles.card : styles.banner,
+        row && styles.row,
+        style,
+      ]} />
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 10, padding: 16, marginBottom: 12 },
+  // Redesign: same 12pt rounding as every other grouped block.
+  card: { borderRadius: 12, padding: 16, marginBottom: 12 },
   banner: { borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

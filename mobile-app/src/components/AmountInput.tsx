@@ -1,7 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { Text, TextInput } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';
+import CenteredAmount from './CenteredAmount';
+import GradientFill from './GradientFill';
 
 type Props = {
   value: number | '' | undefined;
@@ -15,9 +18,14 @@ type Props = {
   suffix?: string | null;
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
+  // Big centred amount (new transaction, bills, debts, loans, income): the app draws the
+  // ₱ and digits itself, always centred, with its own blinking cursor (see CenteredAmount).
+  centered?: boolean;
+  // Puts the cursor here when the field appears (see AppText's TextInput).
+  autoFocus?: boolean;
 };
 
-function formatWithCommas(num: number, allowDecimals: boolean): string {
+export function formatWithCommas(num: number, allowDecimals: boolean): string {
   if (isNaN(num)) return '';
   return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
@@ -25,7 +33,7 @@ function formatWithCommas(num: number, allowDecimals: boolean): string {
   });
 }
 
-export default function AmountInput({
+function PlainAmountInput({
   value,
   onChangeAmount,
   onBlur,
@@ -36,6 +44,7 @@ export default function AmountInput({
   suffix = null,
   style,
   inputStyle,
+  autoFocus,
 }: Props) {
   const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -97,6 +106,7 @@ export default function AmountInput({
 
   return (
     <View style={[styles.container, style]}>
+      <GradientFill match={[styles.container, style]} />
       {allowNegative ? (
         <TouchableOpacity
           onPress={toggleSign}
@@ -116,6 +126,7 @@ export default function AmountInput({
         onChangeText={handleChangeText}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        autoFocus={autoFocus}
       />
       {suffix ? <Text style={styles.affix}>{suffix}</Text> : null}
     </View>
@@ -128,13 +139,14 @@ function makeStyles(colors: any) {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.navy3,
-      borderRadius: radii[8],
-      paddingHorizontal: spacing[12],
-      paddingVertical: spacing[10],
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      minHeight: 48,
       marginBottom: spacing[14],
     },
     affix: {
-      fontSize: 15,
+      fontSize: 17,
       color: colors.inkDim,
       marginHorizontal: spacing[4],
     },
@@ -152,9 +164,15 @@ function makeStyles(colors: any) {
     },
     input: {
       flex: 1,
-      fontSize: 15,
+      fontSize: 17,
       color: colors.ink,
       padding: 0,
     },
   });
 }
+
+export default function AmountInput(props: Props) {
+  return props.centered ? <CenteredAmount {...props} /> : <PlainAmountInput {...props} />;
+}
+
+export type AmountInputProps = Props;

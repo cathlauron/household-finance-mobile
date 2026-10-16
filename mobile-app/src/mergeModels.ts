@@ -25,7 +25,10 @@ import type {
   Payee,
   CategoryBudget,
   AvatarConfig,
+  SavedAvatarPhoto,
+  PreferredName,
 } from './types';
+import { MAX_SAVED_AVATAR_PHOTOS } from './types';
 
 function normalizedName(name: string | undefined): string {
   return (name || '').trim().toLowerCase();
@@ -106,11 +109,15 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
     categoryBudgets: sanitizeIdList(model.categoryBudgets, 'budget'),
     groceries: sanitizeIdList(model.groceries ?? [], 'grocery'),
     groceryCalculator: sanitizeIdList(model.groceryCalculator ?? [], 'grocery-calc'),
+    mealIdeas: sanitizeIdList(model.mealIdeas ?? [], 'meal'),
     travel: sanitizeIdList(model.travel ?? [], 'trip').map((trip) => ({
       ...trip,
       checklist: sanitizeIdList(trip.checklist, 'travelitem', seenTravelItems),
     })),
     events: sanitizeIdList(model.events ?? [], 'event'),
+    recurring: sanitizeIdList(model.recurring ?? [], 'repeat'),
+    sharedExpenses: sanitizeIdList(model.sharedExpenses ?? [], 'shx'),
+    sharedSettlements: sanitizeIdList(model.sharedSettlements ?? [], 'shs'),
     yearlyGoals: sanitizeIdList(model.yearlyGoals ?? [], 'ygoal'),
     payees: sanitizeIdList(model.payees ?? [], 'payee'),
     categorizationRules: sanitizeIdList(model.categorizationRules ?? [], 'rule'),
@@ -146,6 +153,40 @@ function mergeAvatars(
     if (!theirs || (mine.updatedAt ?? 0) >= (theirs.updatedAt ?? 0)) {
       merged[username] = mine;
     }
+  });
+  return merged;
+}
+
+// "What should we call you?" names: for each person, the most recently changed one wins.
+function mergePreferredNames(
+  a: Record<string, PreferredName> | undefined,
+  b: Record<string, PreferredName> | undefined
+): Record<string, PreferredName> | undefined {
+  if (!a && !b) return undefined;
+  const merged: Record<string, PreferredName> = { ...(b ?? {}) };
+  Object.keys(a ?? {}).forEach((username) => {
+    const mine = (a as Record<string, PreferredName>)[username];
+    const theirs = merged[username];
+    if (!theirs || (mine.updatedAt ?? 0) >= (theirs.updatedAt ?? 0)) {
+      merged[username] = mine;
+    }
+  });
+  return merged;
+}
+
+// Saved profile photos: both sides' photos for each person, newest first, up to the limit.
+function mergeAvatarPhotos(
+  a: Record<string, SavedAvatarPhoto[]> | undefined,
+  b: Record<string, SavedAvatarPhoto[]> | undefined
+): Record<string, SavedAvatarPhoto[]> | undefined {
+  if (!a && !b) return undefined;
+  const merged: Record<string, SavedAvatarPhoto[]> = {};
+  new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})]).forEach((username) => {
+    const seen = new Set<string>();
+    merged[username] = [...(a?.[username] ?? []), ...(b?.[username] ?? [])]
+      .filter((p) => (seen.has(p.dataUri) ? false : (seen.add(p.dataUri), true)))
+      .sort((x, y) => y.addedAt - x.addedAt)
+      .slice(0, MAX_SAVED_AVATAR_PHOTOS);
   });
   return merged;
 }
@@ -221,7 +262,16 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     loans: mergedLoans,
     savingsGoals: [...a.savingsGoals, ...b.savingsGoals],
     balanceAccounts: {
-      asOfDate: a.balanceAccounts.asOfDate || b.balanceAccounts.asOfDate,
+      // Keep the more recent "balances true as of" date and its exact time, together.
+      ...(() => {
+        const pick =
+          (b.balanceAccounts.asOfDate || '') > (a.balanceAccounts.asOfDate || '') ||
+          ((b.balanceAccounts.asOfDate || '') === (a.balanceAccounts.asOfDate || '') &&
+            (b.balanceAccounts.asOfAt ?? 0) > (a.balanceAccounts.asOfAt ?? 0))
+            ? b.balanceAccounts
+            : a.balanceAccounts;
+        return { asOfDate: pick.asOfDate || '', asOfAt: pick.asOfAt };
+      })(),
       cash: [...a.balanceAccounts.cash, ...b.balanceAccounts.cash],
       debit: [...a.balanceAccounts.debit, ...b.balanceAccounts.debit],
       credit: [...a.balanceAccounts.credit, ...b.balanceAccounts.credit],
@@ -230,17 +280,52 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
       vehicle: [...(a.balanceAccounts.vehicle ?? []), ...(b.balanceAccounts.vehicle ?? [])],
     },
     manualTransactions: mergedManualTransactions,
+    // Redesign: keep moves between accounts and the Wallet card order.
+    transfers: [...(a.transfers ?? []), ...(b.transfers ?? [])],
+    walletOrder: a.walletOrder ?? b.walletOrder,
     categories: mergedCategories,
     categoryBudgets: mergedCategoryBudgets,
     calculatorInputs: a.calculatorInputs ?? b.calculatorInputs,
     groceries: [...(a.groceries ?? []), ...(b.groceries ?? [])],
     groceryCalculator: [...(a.groceryCalculator ?? []), ...(b.groceryCalculator ?? [])],
+    mealIdeas: [...(a.mealIdeas ?? []), ...(b.mealIdeas ?? [])],
     travel: [...(a.travel ?? []), ...(b.travel ?? [])],
     events: [...(a.events ?? []), ...(b.events ?? [])],
+    // The same repeat on both sides is kept once (the one further along wins), so it
+    // can't be added twice.
+    recurring: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['recurring']>[number]>();
+      [...(a.recurring ?? []), ...(b.recurring ?? [])].forEach((r) => {
+        const seen = byId.get(r.id);
+        if (!seen || r.nextDate > seen.nextDate) byId.set(r.id, r);
+      });
+      return [...byId.values()];
+    })(),
     yearlyGoals: [...(a.yearlyGoals ?? []), ...(b.yearlyGoals ?? [])],
+    // Shared Expenses: people ids from b are remapped like everything else; the same
+    // item on both sides (same id) is kept once.
+    sharedMembers: [...new Set([...(a.sharedMembers ?? []), ...(b.sharedMembers ?? []).map(remapPersonId)])],
+    sharedExpenses: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['sharedExpenses']>[number]>();
+      (a.sharedExpenses ?? []).forEach((x) => byId.set(x.id, x));
+      (b.sharedExpenses ?? []).forEach((x) => {
+        if (!byId.has(x.id)) byId.set(x.id, { ...x, paidBy: remapPersonId(x.paidBy), shares: x.shares.map((s) => ({ ...s, personId: remapPersonId(s.personId) })) });
+      });
+      return [...byId.values()];
+    })(),
+    sharedSettlements: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['sharedSettlements']>[number]>();
+      (a.sharedSettlements ?? []).forEach((x) => byId.set(x.id, x));
+      (b.sharedSettlements ?? []).forEach((x) => {
+        if (!byId.has(x.id)) byId.set(x.id, { ...x, from: remapPersonId(x.from), to: remapPersonId(x.to) });
+      });
+      return [...byId.values()];
+    })(),
     payees: mergedPayees,
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
     avatars: mergeAvatars(a.avatars, b.avatars),
+    avatarPhotos: mergeAvatarPhotos(a.avatarPhotos, b.avatarPhotos),
+    preferredNames: mergePreferredNames(a.preferredNames, b.preferredNames),
   };
 
   return sanitizeModelIds(mergedModel);

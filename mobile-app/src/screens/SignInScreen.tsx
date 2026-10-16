@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, Image, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
+import LogoMark from '../components/LogoMark';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
@@ -26,6 +29,7 @@ import PasswordField from '../components/PasswordField';
 import { withTimeout } from '../DataContext';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
+import GradientFill from '../components/GradientFill';
 
 type Props = {
   onSignedIn: (
@@ -42,14 +46,27 @@ type Props = {
   initialUsername?: string;
   autoSignIn?: { email: string; username: string; password: string };
   onAutoSignInFailed?: (username: string) => void;
+  // Sign in once: true when this screen is running out of sight behind the opening
+  // screen. If the automatic sign-in doesn't finish, onSilentFailed is called instead
+  // of showing anything here.
+  silent?: boolean;
+  onSilentFailed?: (username: string) => void;
 };
 
 export default function SignInScreen({
-  onSignedIn,
+  onSignedIn: onSignedInProp,
   onGoToCreateProfile,
   remoteRevokeNotice,
   onClearRemoteRevokeNotice, initialUsername, autoSignIn, onAutoSignInFailed,
+  silent, onSilentFailed,
 }: Props) {
+  // Remembers whether sign-in actually finished, so a quiet (silent) attempt that
+  // didn't can hand over to the visible sign-in screen.
+  const signedInRef = useRef(false);
+  const onSignedIn: Props['onSignedIn'] = (...args) => {
+    signedInRef.current = true;
+    onSignedInProp(...args);
+  };
   const { colors } = useTheme();
   const ms = makeMainStyles(colors);
   const styles = makeStyles(colors);
@@ -333,6 +350,9 @@ export default function SignInScreen({
     autoAttemptRef.current = true;
     handleSignIn().finally(() => {
       autoAttemptRef.current = false;
+      if (silent && !signedInRef.current && onSilentFailed) {
+        onSilentFailed(autoSignIn.username);
+      }
     });
   }, []);
   function friendlyFirebaseSignInError(e: any): string {
@@ -754,15 +774,15 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
   }
 
   return (
-    <View style={ms.container}>
+    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[ms.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={ms.brandWrap}>
-        <Image source={require('../../assets/logo.png')} style={ms.brandLogo} resizeMode="contain" />
-        <Text style={ms.brandName}>FINANCE FLOW</Text>
+        <LogoMark width={84} />
       </View>
       <Text style={ms.title}>Welcome back</Text>
       <Text style={ms.sub}>Sign in to your financial journey.</Text>
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+          <GradientFill match={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]} />
           <Ionicons name="warning-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
           <Text style={[styles.revokedBannerText, { flex: 1 }]}>{remoteRevokeNotice}</Text>
           {!!onClearRemoteRevokeNotice && (
@@ -867,7 +887,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
             disabled={busy}
             onPress={() => Alert.alert('Coming soon', 'Social sign-in will be available in a later update.')}
           >
-            <Ionicons name={icon} size={22} color={colors.ink} />
+            <Ionicons name={icon} size={24} color={colors.ink} />
           </TouchableOpacity>
         ))}
       </View>
@@ -879,7 +899,8 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <Modal visible={!!recoveryContext} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <GradientFill match={styles.modalCard} />
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalEyebrow}>ACCOUNT RECOVERY</Text>
               <Text style={styles.modalTitle}>Password Accepted, But Data Locked</Text>
               <Text style={styles.modalSub}>
@@ -930,6 +951,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                       onPress={handleStartPeerRecovery}
                       disabled={peerBusy || recoveryBusy}
                     >
+                      <GradientFill match={[styles.secondaryBtn, peerBusy && styles.btnDisabled]} />
                       {peerBusy ? (
                         <ActivityIndicator color={colors.ink} />
                       ) : (
@@ -938,6 +960,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.peerWaitingCard}>
+                      <GradientFill match={styles.peerWaitingCard} />
                       <ActivityIndicator color={colors.orange} style={{ marginBottom: 8 }} />
                       <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
                       <Text style={styles.peerWaitingDesc}>
@@ -977,18 +1000,17 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
               >
                 <Text style={styles.ghostBtnText}>Back to Sign In</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.navy2, padding: 24, paddingTop: 80 },
-    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
     title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
     sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
     label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
@@ -1005,7 +1027,6 @@ function makeStyles(colors: any) {
     btnDisabled: { opacity: 0.4 },
     busyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
     spinner: { marginRight: 8 },
-    slowHint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 18, paddingHorizontal: 8 },
     ghostBtn: { paddingVertical: 14, marginTop: 8 },
     ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 },
@@ -1060,34 +1081,29 @@ function makeStyles(colors: any) {
 function makeMainStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },
-    brandWrap: { alignItems: 'center', marginBottom: 20 },
-    brandLogo: { width: 64, height: 64 },
-    brandName: { marginTop: 10, fontSize: 12, letterSpacing: 4, color: colors.inkDim },
-    title: {
-      fontSize: 30, color: colors.ink, marginBottom: 6, textAlign: 'center',
-      fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
-    },
-    sub: { fontSize: 14, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
-    label: { fontSize: 12, fontWeight: '600', color: colors.ink, marginBottom: 6, marginTop: 14 },
+    brandWrap: { alignItems: 'center', marginTop: 36, marginBottom: 14 },
+    title: { fontSize: 28, fontWeight: '700', color: colors.ink, marginBottom: 6, textAlign: 'center' },
+    sub: { fontSize: 15, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
+    label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     fieldWrap: { position: 'relative', justifyContent: 'center' },
     leftIcon: { position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
     input: {
-      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
-      paddingLeft: 42, paddingRight: 14, paddingVertical: 13, fontSize: 15, color: colors.ink,
+      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4,
+      paddingLeft: 42, paddingRight: 14, minHeight: 50, paddingVertical: 13, fontSize: 17, color: colors.ink,
     },
     error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 14 },
-    primaryBtn: { backgroundColor: colors.gold, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[20] },
-    primaryBtnText: { color: colors.navy2, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtn: { backgroundColor: colors.buttonFill, borderRadius: 14, height: 52, justifyContent: 'center', marginTop: spacing[20] },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 17 },
     hint: { color: colors.inkDim, fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 18 },
     dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 16 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: colors.navy4 },
-    dividerText: { marginHorizontal: 12, fontSize: 12, color: colors.inkDim },
+    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.navy4 },
+    dividerText: { marginHorizontal: 12, fontSize: 13, color: colors.inkDim },
     socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
     socialBtn: {
-      width: 48, height: 48, borderRadius: 24, backgroundColor: colors.navy3,
-      borderWidth: 1, borderColor: colors.navy4, alignItems: 'center', justifyContent: 'center',
+      width: 56, height: 56, borderRadius: 28, backgroundColor: colors.navy3,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4, alignItems: 'center', justifyContent: 'center',
     },
     linkBtn: { paddingVertical: 14, marginTop: 10 },
-    linkText: { color: colors.gold, textAlign: 'center', fontSize: 14, fontWeight: '600' },
+    linkText: { color: colors.gold, textAlign: 'center', fontSize: 15, fontWeight: '600' },
   });
 }

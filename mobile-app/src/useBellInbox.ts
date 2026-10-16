@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getOverdueItems, OverdueItem } from './overdue';
 import { usePendingRecovery } from './usePendingRecovery';
-import { loadBellRead, markBellRead, pruneBellRead } from './bellReadState';
+import { loadBellRead, markBellRead, markAllBellRead, pruneBellRead } from './bellReadState';
 import { getUpcomingDue } from './screens/DashboardScreen';
 
 export type BellDue = {
@@ -88,6 +88,12 @@ export function useBellInbox(username: string, model: any) {
     [username]
   );
   const unreadCount = items.filter(i => !read.includes(i.key)).length;
+  const markAllRead = useCallback(() => {
+    const keys = items.map(i => i.key);
+    if (keys.length === 0) return;
+    setRead(prev => Array.from(new Set([...prev, ...keys])));
+    markAllBellRead(username, keys).then(next => { if (next.length) setRead(next); });
+  }, [items, username]);
 
-  return { items, unreadCount, isRead, markRead };
+  return { items, unreadCount, isRead, markRead, markAllRead };
 }

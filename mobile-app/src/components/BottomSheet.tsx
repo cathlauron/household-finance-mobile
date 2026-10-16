@@ -1,18 +1,10 @@
 import React from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  KeyboardAvoidingView,
-  StyleSheet,
-  Platform,
-  SafeAreaView,
-  useWindowDimensions,
-} from 'react-native';
+import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions } from 'react-native';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
-import { radii, spacing } from '../tokens';
+import { spacing } from '../tokens';
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -20,6 +12,10 @@ export type BottomSheetProps = {
   title?: string;
   children: React.ReactNode;
   testID?: string;
+  // Redesign: a custom top bar (e.g. Cancel / title / Add) instead of a plain title,
+  // and a grey "grouped" background so white form groups stand out, iPhone style.
+  header?: React.ReactNode;
+  grouped?: boolean;
 };
 
 export default function BottomSheet({
@@ -28,10 +24,41 @@ export default function BottomSheet({
   title,
   children,
   testID,
+  header,
+  grouped = false,
 }: BottomSheetProps) {
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const styles = makeStyles(colors, screenHeight);
+  // The app draws edge to edge, so the sheet runs under the phone's navigation bar too
+  // (no strip of the screen behind showing below it) and pads its content above the bar.
+  const insets = useSafeAreaInsets();
+  // Android: because the sheet runs edge to edge, the system no longer pushes it up when
+  // the keyboard opens. So we measure the keyboard ourselves and lift the sheet above it.
+  // (iPhone keeps using KeyboardAvoidingView below.)
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
+  React.useEffect(() => {
+    if (Platform.OS !== 'android' || !visible) return;
+    // How much of the screen the keyboard covers, from where its top edge actually is
+    // (its reported height leaves out the navigation bar on some phones).
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      const screenH = Dimensions.get('screen').height;
+      const { screenY, height } = e.endCoordinates ?? { screenY: 0, height: 0 };
+      const fromTop = typeof screenY === 'number' && screenY > 0 ? screenH - screenY : 0;
+      setKeyboardHeight(Math.max(height ?? 0, fromTop));
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+      setKeyboardHeight(0);
+    };
+  }, [visible]);
+  // Android reports the keyboard's height WITHOUT the navigation bar under it, and the
+  // sheet runs right to the bottom edge, so the room kept at the bottom is keyboard +
+  // navigation bar. The content above shrinks (and scrolls) to make room; the sheet never
+  // grows past the top of the screen.
+  const bottomSpace = keyboardHeight > 0 ? keyboardHeight + (Platform.OS === 'android' ? insets.bottom : 0) : insets.bottom;
 
   return (
     <Modal
@@ -40,6 +67,8 @@ export default function BottomSheet({
       animationType="slide"
       onRequestClose={onClose}
       testID={testID}
+      statusBarTranslucent
+      navigationBarTranslucent
     >
       <View style={styles.backdropWrap}>
         <Pressable
@@ -53,18 +82,25 @@ export default function BottomSheet({
           style={styles.keyboardWrap}
           pointerEvents="box-none"
         >
-          <View style={styles.sheet}>
+          <View
+            style={[
+              styles.sheet,
+              grouped && { backgroundColor: colors.navy2 },
+              keyboardHeight > 0 && { maxHeight: Math.max(200, screenHeight - insets.top - 24) },
+            ]}
+          >
             <View style={styles.handleWrap}>
               <View style={styles.handle} />
             </View>
 
-            {!!title && (
+            {header}
+            {!header && !!title && (
               <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
               </View>
             )}
 
-            <ScrollView
+            <KeyboardAwareScrollView
               style={styles.scroll}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
@@ -72,9 +108,9 @@ export default function BottomSheet({
               bounces={false}
             >
               {children}
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
-            <SafeAreaView style={styles.bottomSafeArea} />
+            <View style={{ height: bottomSpace }} />
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -86,7 +122,7 @@ function makeStyles(colors: any, screenHeight: number) {
   return StyleSheet.create({
     backdropWrap: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
       justifyContent: 'flex-end',
     },
     backdropPressable: {
@@ -98,8 +134,8 @@ function makeStyles(colors: any, screenHeight: number) {
     },
     sheet: {
       backgroundColor: colors.navy3,
-      borderTopLeftRadius: radii[20],
-      borderTopRightRadius: radii[20],
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       borderBottomLeftRadius: 0,
       borderBottomRightRadius: 0,
       maxHeight: Math.round(screenHeight * 0.85),
@@ -109,7 +145,7 @@ function makeStyles(colors: any, screenHeight: number) {
       shadowOpacity: 0.15,
       shadowRadius: 10,
       elevation: 10,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.navy4 || 'rgba(255,255,255,0.06)',
       borderBottomWidth: 0,
     },
@@ -118,27 +154,24 @@ function makeStyles(colors: any, screenHeight: number) {
       paddingTop: spacing[10],
       paddingBottom: spacing[6],
     },
-    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.decor, opacity: 0.5 },
+    handle: { width: 36, height: 5, borderRadius: 3, backgroundColor: colors.inkFaint, opacity: 0.4 },
     header: {
       paddingHorizontal: spacing[20],
       paddingTop: spacing[4],
       paddingBottom: spacing[12],
     },
     title: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: '700',
       color: colors.ink,
-      letterSpacing: 0.2,
     },
     scroll: {
       flexGrow: 0,
+      flexShrink: 1,
     },
     scrollContent: {
       paddingHorizontal: spacing[20],
       paddingBottom: Platform.OS === 'ios' ? spacing[12] : spacing[20],
-    },
-    bottomSafeArea: {
-      backgroundColor: colors.navy3,
     },
   });
 }
