@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { Modal, View, Pressable, ScrollView, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
@@ -32,6 +32,21 @@ export default function BottomSheet({
   // The app draws edge to edge, so the sheet runs under the phone's navigation bar too
   // (no strip of the screen behind showing below it) and pads its content above the bar.
   const insets = useSafeAreaInsets();
+  // Android: because the sheet runs edge to edge, the system no longer pushes it up when
+  // the keyboard opens. So we measure the keyboard ourselves and lift the sheet above it.
+  // (iPhone keeps using KeyboardAvoidingView below.)
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
+  React.useEffect(() => {
+    if (Platform.OS !== 'android' || !visible) return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates?.height ?? 0));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+      setKeyboardHeight(0);
+    };
+  }, [visible]);
+  const bottomSpace = Math.max(keyboardHeight, insets.bottom);
 
   return (
     <Modal
@@ -55,7 +70,13 @@ export default function BottomSheet({
           style={styles.keyboardWrap}
           pointerEvents="box-none"
         >
-          <View style={[styles.sheet, grouped && { backgroundColor: colors.navy2 }]}>
+          <View
+            style={[
+              styles.sheet,
+              grouped && { backgroundColor: colors.navy2 },
+              keyboardHeight > 0 && { maxHeight: Math.max(200, screenHeight - keyboardHeight - insets.top - 24) },
+            ]}
+          >
             <View style={styles.handleWrap}>
               <View style={styles.handle} />
             </View>
@@ -77,7 +98,7 @@ export default function BottomSheet({
               {children}
             </ScrollView>
 
-            <View style={{ height: insets.bottom }} />
+            <View style={{ height: bottomSpace }} />
           </View>
         </KeyboardAvoidingView>
       </View>
