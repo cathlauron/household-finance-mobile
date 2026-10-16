@@ -26,6 +26,7 @@ import { requestOpenLoan } from '../openLoanRequest';
 import { requestToPayTab } from '../openToPayTabRequest';
 import { applyAutoSavings } from '../savingsPots';
 import { applyRecurring } from '../recurring';
+import { getCallName } from '../preferredName';
 
 type Props = {
   username: string;
@@ -82,6 +83,9 @@ export default function HomeScreen({ username }: Props) {
       ? 'Good to see you'
       : 'Good evening';
 
+  // "What should we call you?": the name picked in onboarding or Profile, else the username.
+  const callName = getCallName(model, username);
+
   const hasDueSoon = useMemo(() => (model ? getUpcomingDue(model, 14).length > 0 : false), [model]);
   const [bellOpen, setBellOpen] = useState(false);
   const { items: bellItems, unreadCount, isRead, markRead } = useBellInbox(username, model);
@@ -132,7 +136,7 @@ export default function HomeScreen({ username }: Props) {
           style={hs.profilePill}
           activeOpacity={0.7}
           onPress={() => navigation.navigate('Settings')}
-          accessibilityLabel={`Hi, ${username}. ${greeting}. Open settings`}
+          accessibilityLabel={`Hi, ${callName}. ${greeting}. Open settings`}
         >
           <Avatar
             initials={getInitials(username || '')}
@@ -141,7 +145,7 @@ export default function HomeScreen({ username }: Props) {
             variant="filled"
           />
           <View style={{ flexShrink: 1 }}>
-            <Text style={hs.greeting} numberOfLines={1}>Hi, {username}</Text>
+            <Text style={hs.greeting} numberOfLines={1}>Hi, {callName}</Text>
             <Text style={hs.greetingSub} numberOfLines={1}>{greeting}</Text>
           </View>
         </TouchableOpacity>

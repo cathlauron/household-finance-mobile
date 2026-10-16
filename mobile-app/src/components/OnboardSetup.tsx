@@ -14,14 +14,18 @@ import { todayISO } from '../dateUtils';
 import { useFabSide, setFabSide } from '../fabSide';
 import type { BalanceAccountEntry } from '../types';
 import { useLeafGustOnStep } from '../leafTransition';
+import { getPreferredName, withPreferredName, MAX_PREFERRED_NAME_LENGTH } from '../preferredName';
 
-// Redesign: the 3 onboarding steps from the Finance Flow mockups, shown after a new
+// Redesign: the 4 onboarding steps from the Finance Flow mockups, shown after a new
 // profile is created (and after the Quick Unlock step):
-//   1. Where's your money?  (accounts and their balances)
-//   2. Your month           (spending target after bills, categories to watch)
-//   3. Make it yours        (wallet name, light/dark, which thumb taps +)
+//   1. What should we call you?  (the name Home greets you with)
+//   2. Where's your money?       (accounts and their balances)
+//   3. Your month                (spending target after bills, categories to watch)
+//   4. Make it yours             (wallet name, light/dark, which thumb taps +)
 
 type Group = 'cash' | 'debit' | 'credit';
+type Step = 1 | 2 | 3 | 4;
+const LAST_STEP: Step = 4;
 const QUICK: { name: string; group: Group }[] = [
   { name: 'GCash', group: 'debit' },
   { name: 'Maya', group: 'debit' },
@@ -32,16 +36,17 @@ const DEFAULT_WATCH = ['Groceries', 'Dining out', 'Transport', 'Shopping', 'Util
 
 export default function OnboardSetup({ onDone, topInset }: { onDone: () => void; topInset: number }) {
   const { colors, isDark, setMode } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, username } = useData();
   const side = useFabSide();
   const styles = makeStyles(colors);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<Step>(1);
   useLeafGustOnStep(step);
   const [sheet, setSheet] = useState<null | { name: string; group: Group }>(null);
   const [acctAmount, setAcctAmount] = useState<number | ''>('');
   const [budget, setBudget] = useState<number | ''>(model?.settings.monthlySpendingBudget ?? '');
   const [picked, setPicked] = useState<string[]>((model?.categoryBudgets || []).map((b) => b.category));
   const [walletName, setWalletName] = useState(model?.settings.walletName ?? '');
+  const [callName, setCallName] = useState(getPreferredName(model, username));
 
   if (!model) return null;
   const accounts: { e: BalanceAccountEntry; group: Group }[] = (['cash', 'debit', 'credit'] as Group[]).flatMap((g) =>
@@ -70,6 +75,12 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
     setAcctAmount('');
   }
 
+  async function saveName() {
+    if (!model || !username) return;
+    const next = withPreferredName(model, username, callName);
+    if (next) await saveModel(next);
+  }
+
   async function saveMonth() {
     if (!model) return;
     const existing = model.categoryBudgets || [];
@@ -91,14 +102,15 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
   }
 
   async function next() {
-    if (step === 2) await saveMonth();
-    if (step === 3) return finish();
-    setStep((s) => (s + 1) as 1 | 2 | 3);
+    if (step === 1) await saveName();
+    if (step === 3) await saveMonth();
+    if (step === LAST_STEP) return finish();
+    setStep((s) => (s + 1) as Step);
   }
 
   const bars = (
-    <View style={{ flexDirection: 'row', gap: 6 }} accessibilityLabel={`Step ${step} of 3`}>
-      {[1, 2, 3].map((n) => (
+    <View style={{ flexDirection: 'row', gap: 6 }} accessibilityLabel={`Step ${step} of ${LAST_STEP}`}>
+      {[1, 2, 3, 4].map((n) => (
         <View key={n} style={{ width: 28, height: 4, borderRadius: 999, backgroundColor: n <= step ? colors.buttonFill : colors.navy1 }} />
       ))}
     </View>
@@ -107,17 +119,52 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
   return (
     <View style={{ flex: 1 }}>
       <View style={[styles.top, { paddingTop: 12 + topInset }]}>
-        <TouchableOpacity onPress={() => step > 1 && setStep((s) => (s - 1) as 1 | 2 | 3)} disabled={step === 1} accessibilityRole="button" style={{ width: 52 }}>
+        <TouchableOpacity onPress={() => step > 1 && setStep((s) => (s - 1) as Step)} disabled={step === 1} accessibilityRole="button" style={{ width: 52 }}>
           <Text style={[styles.link, step === 1 && { opacity: 0 }]}>Back</Text>
         </TouchableOpacity>
         {bars}
-        <TouchableOpacity onPress={() => (step === 3 ? finish() : setStep((s) => (s + 1) as 1 | 2 | 3))} accessibilityRole="button" style={{ width: 52, alignItems: 'flex-end' }} testID="onboard-skip">
-          <Text style={[styles.link, step === 3 && { opacity: 0 }]}>Skip</Text>
+        <TouchableOpacity onPress={() => (step === LAST_STEP ? finish() : setStep((s) => (s + 1) as Step))} accessibilityRole="button" style={{ width: 52, alignItems: 'flex-end' }} testID="onboard-skip">
+          <Text style={[styles.link, step === LAST_STEP && { opacity: 0 }]}>Skip</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {step === 1 && (
+          <>
+            <Text style={styles.large}>What should we call you?</Text>
+            <Text style={styles.body}>This is the name Home greets you with. Your username stays the same.</Text>
+            <View style={[styles.group, { marginTop: 28 }]}>
+              <GradientFill match={styles.group} />
+              <View style={styles.row}>
+                <TextInput
+                  autoFocus
+                  style={[styles.title, { flex: 1 }]}
+                  placeholder={username ? `e.g. ${username.charAt(0).toUpperCase()}${username.slice(1)}` : 'Your name'}
+                  placeholderTextColor={colors.inkDim}
+                  value={callName}
+                  onChangeText={setCallName}
+                  maxLength={MAX_PREFERRED_NAME_LENGTH}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={next}
+                  accessibilityLabel="Your name"
+                  testID="onboard-name"
+                />
+              </View>
+            </View>
+            <Text style={styles.footer}>You can change it any time in Settings › Profile.</Text>
+            <View style={[styles.hero, { backgroundColor: colors.cardTealEnd }]}>
+              <GradientFill kind="solid" color={colors.cardTealEnd} strength={0.26} radius={20} />
+              <Text style={styles.heroLabel}>On Home</Text>
+              <Text style={[styles.heroAmount, { fontSize: 28, lineHeight: 34 }]} numberOfLines={1}>
+                Hi, {callName.trim() || username || 'there'}
+              </Text>
+            </View>
+          </>
+        )}
+
+        {step === 2 && (
           <>
             <Text style={styles.large}>Where's your money?</Text>
             <Text style={styles.body}>Add the accounts you use. Their balances become your starting point.</Text>
@@ -156,7 +203,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
           </>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <>
             <Text style={styles.large}>Your month</Text>
             <Text style={styles.body}>How much do you want to spend each month, after bills?</Text>
@@ -186,7 +233,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <Text style={styles.large}>Make it yours</Text>
             <View style={[styles.hero, { backgroundColor: colors.cardTealEnd }]}>
@@ -235,7 +282,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
       <View style={styles.bottom}>
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill }]} onPress={next} accessibilityRole="button" testID="onboard-continue">
           <GradientFill color={colors.buttonFill} strength={0.18} />
-          <Text style={[styles.primaryText, { color: colors.onButton }]}>{step === 3 ? 'Start using Finance Flow' : 'Continue'}</Text>
+          <Text style={[styles.primaryText, { color: colors.onButton }]}>{step === LAST_STEP ? 'Start using Finance Flow' : 'Continue'}</Text>
         </TouchableOpacity>
       </View>
 

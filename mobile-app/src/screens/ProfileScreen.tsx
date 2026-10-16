@@ -46,6 +46,8 @@ import { hapticLight } from '../haptics';
 import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
 import { SettingsGroup, PlainRow } from '../components/SettingsHub';
+import BottomSheet from '../components/BottomSheet';
+import { getPreferredName, withPreferredName, MAX_PREFERRED_NAME_LENGTH } from '../preferredName';
 
 export function getInitials(name: string): string {
   if (!name) return '?';
@@ -126,6 +128,33 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   const currentUser = getCurrentFirebaseUser();
   const userEmail = currentUser?.email || 'No email registered';
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  // "What should we call you?": the name Home greets you with.
+  const preferredName = getPreferredName(model, username);
+  const [nameSheetOpen, setNameSheetOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
+  function openNameSheet() {
+    setNameDraft(preferredName);
+    setNameSheetOpen(true);
+  }
+  async function saveName() {
+    if (!model || !username || nameSaving) return;
+    const next = withPreferredName(model, username, nameDraft);
+    if (!next) {
+      setNameSheetOpen(false);
+      return;
+    }
+    setNameSaving(true);
+    try {
+      await saveModel(next);
+      hapticLight();
+      setNameSheetOpen(false);
+    } catch (e: any) {
+      Alert.alert("Couldn't save your name", e?.message || 'Please try again.');
+    } finally {
+      setNameSaving(false);
+    }
+  }
   const memberSinceText = formatMemberSince(currentUser?.metadata?.creationTime);
 
   // Peer recovery approval state
@@ -703,11 +732,18 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               <Ionicons name="camera" size={14} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
-          <Text style={styles.usernameText}>@{username || 'user'}</Text>
+          {!!preferredName && <Text style={styles.usernameText}>{preferredName}</Text>}
+          <Text style={preferredName ? styles.handleText : styles.usernameText}>@{username || 'user'}</Text>
           <Text style={styles.emailText}>{userEmail}</Text>
         </View>
 
-        <SettingsGroup plain>
+        <SettingsGroup plain footer="What Home calls you. Your username stays the same.">
+          <PlainRow
+            testID="profile-row-name"
+            title="Name"
+            value={preferredName || 'Add'}
+            onPress={openNameSheet}
+          />
           <PlainRow title="Username" value={`@${username || 'user'}`} />
           {!!memberSinceText && <PlainRow title="Member since" value={memberSinceText} />}
         </SettingsGroup>
@@ -1235,6 +1271,43 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         photos={model?.avatarPhotos?.[username || '']}
         onSave={handleSaveAvatar}
       />
+
+      <BottomSheet
+        visible={nameSheetOpen}
+        onClose={() => setNameSheetOpen(false)}
+        grouped
+        header={
+          <View style={styles.nameSheetBar}>
+            <TouchableOpacity onPress={() => setNameSheetOpen(false)} accessibilityRole="button" style={{ minWidth: 60 }}>
+              <Text style={styles.nameSheetLink}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.nameSheetTitle}>Your name</Text>
+            <TouchableOpacity onPress={saveName} disabled={nameSaving} accessibilityRole="button" style={{ minWidth: 60, alignItems: 'flex-end' }} testID="profile-name-save">
+              {nameSaving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.nameSheetLink, { fontWeight: '700' }]}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+          <Text style={styles.nameSheetHint}>What should we call you?</Text>
+          <TextInput
+            autoFocus
+            style={styles.nameField}
+            placeholder={username ? `e.g. ${username.charAt(0).toUpperCase()}${username.slice(1)}` : 'Your name'}
+            placeholderTextColor={colors.inkDim}
+            value={nameDraft}
+            onChangeText={setNameDraft}
+            maxLength={MAX_PREFERRED_NAME_LENGTH}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={saveName}
+            accessibilityLabel="Your name"
+            testID="profile-name-input"
+          />
+          <Text style={styles.nameSheetFoot}>Home says "Hi, {nameDraft.trim() || username || 'there'}". Leave it empty to use your username.</Text>
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -1272,6 +1345,17 @@ function makeStyles(colors: any) {
       color: colors.ink,
       marginBottom: 3,
     },
+    handleText: {
+      fontSize: 15,
+      color: colors.inkDim,
+      marginBottom: 2,
+    },
+    nameSheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
+    nameSheetTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    nameSheetLink: { fontSize: 17, color: colors.gold },
+    nameSheetHint: { fontSize: 13, color: colors.inkDim, marginBottom: 8, marginLeft: 4 },
+    nameField: { backgroundColor: colors.navy3, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17, color: colors.ink },
+    nameSheetFoot: { fontSize: 13, color: colors.inkDim, marginTop: 8, marginLeft: 4 },
     emailText: {
       fontSize: 13,
       color: colors.inkDim,

@@ -26,6 +26,7 @@ import type {
   CategoryBudget,
   AvatarConfig,
   SavedAvatarPhoto,
+  PreferredName,
 } from './types';
 import { MAX_SAVED_AVATAR_PHOTOS } from './types';
 
@@ -148,6 +149,23 @@ function mergeAvatars(
   const merged: Record<string, AvatarConfig> = { ...(b ?? {}) };
   Object.keys(a ?? {}).forEach((username) => {
     const mine = (a as Record<string, AvatarConfig>)[username];
+    const theirs = merged[username];
+    if (!theirs || (mine.updatedAt ?? 0) >= (theirs.updatedAt ?? 0)) {
+      merged[username] = mine;
+    }
+  });
+  return merged;
+}
+
+// "What should we call you?" names: for each person, the most recently changed one wins.
+function mergePreferredNames(
+  a: Record<string, PreferredName> | undefined,
+  b: Record<string, PreferredName> | undefined
+): Record<string, PreferredName> | undefined {
+  if (!a && !b) return undefined;
+  const merged: Record<string, PreferredName> = { ...(b ?? {}) };
+  Object.keys(a ?? {}).forEach((username) => {
+    const mine = (a as Record<string, PreferredName>)[username];
     const theirs = merged[username];
     if (!theirs || (mine.updatedAt ?? 0) >= (theirs.updatedAt ?? 0)) {
       merged[username] = mine;
@@ -307,6 +325,7 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
     categorizationRules: [...(a.categorizationRules ?? []), ...(b.categorizationRules ?? [])],
     avatars: mergeAvatars(a.avatars, b.avatars),
     avatarPhotos: mergeAvatarPhotos(a.avatarPhotos, b.avatarPhotos),
+    preferredNames: mergePreferredNames(a.preferredNames, b.preferredNames),
   };
 
   return sanitizeModelIds(mergedModel);

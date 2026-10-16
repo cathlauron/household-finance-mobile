@@ -523,4 +523,12 @@ export type HouseholdModel = {
   avatars?: Record<string, AvatarConfig>;
   // Uploaded profile photos per username, newest first (encrypted and synced with the rest).
   avatarPhotos?: Record<string, SavedAvatarPhoto[]>;
+  // "What should we call you?": the name each person wants on Home, keyed by username
+  // (encrypted and synced with the rest, like avatars).
+  preferredNames?: Record<string, PreferredName>;
+};
+
+export type PreferredName = {
+  name: string;
+  updatedAt: number;
 };
