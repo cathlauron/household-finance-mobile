@@ -26,7 +26,7 @@ import * as Crypto from 'expo-crypto';
 import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON, bytesToHex } from './encryption';
-import { requireCurrentUid } from './authFirebase';
+import { requireCurrentUid, getCurrentFirebaseUser } from './authFirebase';
 
 // A short random ID identifying one shared household in Firestore —
 // not secret, just a "which document" pointer (like a folder name).
@@ -100,10 +100,14 @@ export async function saveHouseholdData(householdId: string, encryptedPayload: s
 // call this when a second person links into an already-existing household.
 // arrayUnion is safe to call even if the uid is already in the list (it
 // won't create a duplicate).
-export async function addMemberToHousehold(householdId: string, username?: string): Promise<void> {
+// Security: the joiner names the invite code it used (lastJoinCode). Firestore only lets
+// someone add themselves when that code is a live (under 15 minutes old) invite for THIS
+// household, so knowing a household's ID alone is no longer enough to join it.
+export async function addMemberToHousehold(householdId: string, username: string | undefined, joinCode: string): Promise<void> {
   const uid = requireCurrentUid();
   const updatePayload: Record<string, any> = {
     members: arrayUnion(uid),
+    lastJoinCode: joinCode,
   };
   if (username) {
     updatePayload[`memberUsernames.${uid}`] = username;
@@ -282,6 +286,15 @@ export async function loadWrappedHouseholdKey(
     if (!snap.exists()) return null;
     const data = snap.data();
     if (typeof data.householdId !== 'string' || typeof data.wrappedKey !== 'string') return null;
+    // Security clean-up: a key saved before records carried an owner gets one now (only its
+    // owner can read it, so whoever reads it here is the owner). Once every phone has done
+    // this, the rules can stop allowing owner-less records.
+    if (typeof data.ownerUid !== 'string') {
+      const uid = getCurrentFirebaseUser()?.uid;
+      if (uid) {
+        setDoc(doc(db, 'householdKeys', username), { ownerUid: uid, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+      }
+    }
     return { householdId: data.householdId, wrappedKey: data.wrappedKey };
   } catch (e: any) {
     const code = e?.code;
