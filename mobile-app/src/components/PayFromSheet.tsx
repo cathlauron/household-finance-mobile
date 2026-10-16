@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
@@ -40,9 +40,14 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
   const minimum = typeof minimumAmount === 'number' ? minimumAmount : full;
   const short = editableAmount && effective < minimum ? Math.round((minimum - effective) * 100) / 100 : 0;
 
+  // A second quick tap on the confirm button (while the sheet is closing) is ignored,
+  // so a payment can't be logged twice. Re-armed each time the sheet opens.
+  const confirmedRef = useRef(false);
+
   // Start from the usual account each time it opens, if that one still works.
   useEffect(() => {
     if (!visible) return;
+    confirmedRef.current = false;
     setError('');
     setPayAmount(amount);
     setLateFee('');
@@ -59,6 +64,8 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
       setError(problem);
       return;
     }
+    if (confirmedRef.current) return;
+    confirmedRef.current = true;
     onConfirm(pm as PaymentMethod, effective, editableAmount && typeof lateFee === 'number' ? lateFee : 0);
   }
 

@@ -105,7 +105,7 @@ function reconcileTravelChecklistTransactions(
     if (item.checked && !wasChecked && hasCost && !item.expenseTransactionId) {
       const newTxn: ManualTransaction = {
         id: makeId('txn'),
-        date: item.completedDate || new Date().toISOString().slice(0, 10),
+        date: item.completedDate || todayISO(),
         label: tripName + ': ' + item.title,
         amount: item.cost as number,
         direction: 'out',
@@ -320,7 +320,7 @@ export default function TravelScreen() {
     setChecklist((prev) =>
       prev.map((i) =>
         i.id === id
-          ? { ...i, checked: !i.checked, completedDate: !i.checked ? new Date().toISOString().slice(0, 10) : undefined }
+          ? { ...i, checked: !i.checked, completedDate: !i.checked ? todayISO() : undefined }
           : i
       )
     );

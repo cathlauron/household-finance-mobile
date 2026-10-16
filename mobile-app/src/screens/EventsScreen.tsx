@@ -112,7 +112,7 @@ function reconcileEventTransaction(
   if (newCompleted && !priorCompleted && hasBudget && !priorTransactionId) {
     const newTxn: ManualTransaction = {
       id: makeId('txn'),
-      date: completedDate || new Date().toISOString().slice(0, 10),
+      date: completedDate || todayISO(),
       label: eventName,
       amount: budget as number,
       direction: 'out',
@@ -375,7 +375,7 @@ export default function EventsScreen() {
       model.savingsGoals ?? []
     );
     const completedDate = completedInput
-      ? existingEvent?.completedDate ?? new Date().toISOString().slice(0, 10)
+      ? existingEvent?.completedDate ?? todayISO()
       : undefined;
     const { transactionId, transactions: reconciledTransactions } = reconcileEventTransaction(
       existingEvent?.completed ?? false,

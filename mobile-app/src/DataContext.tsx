@@ -621,9 +621,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const key = keyRef.current;
     if (!key) return;
-    const encrypted = await encryptJSON(key, sanitizedModel);
-    await saveEncryptedProfileData(username, encrypted);
-    if (saltRef.current) await setBackupPending(username, true);
+    // Unlinked profile: save on this phone. If that fails, say so (linked profiles
+    // already show "Sync Failed"); the change stays on screen until the app closes.
+    let encrypted: string;
+    try {
+      encrypted = await encryptJSON(key, sanitizedModel);
+      await withTimeout(saveEncryptedProfileData(username, encrypted), 8000, 'Timed out saving on this phone.');
+      if (saltRef.current) await setBackupPending(username, true);
+    } catch (err) {
+      console.error('Failed to save on this phone:', err);
+      Alert.alert(
+        "Couldn't save",
+        "Your last change couldn't be saved on this phone. Please try again. If it keeps happening, restart the app."
+      );
+      return;
+    }
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
