@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LoadingView from './LoadingView';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
@@ -48,7 +49,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
   const [walletName, setWalletName] = useState(model?.settings.walletName ?? '');
   const [callName, setCallName] = useState(getPreferredName(model, username));
 
-  if (!model) return null;
+  if (!model) return <LoadingView />;
   const accounts: { e: BalanceAccountEntry; group: Group }[] = (['cash', 'debit', 'credit'] as Group[]).flatMap((g) =>
     (model.balanceAccounts[g] || []).map((e) => ({ e, group: g }))
   );

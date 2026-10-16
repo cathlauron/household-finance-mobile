@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import LoadingView from '../components/LoadingView';
 import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
@@ -146,7 +147,7 @@ export default function SharedExpensesScreen() {
   const members = useMemo(() => (model ? sharedMembers(model) : []), [model]);
   const balances = useMemo(() => (model ? pairBalances(model) : []), [model]);
 
-  if (!model) return null;
+  if (!model) return <LoadingView />;
 
   const net = myNet(balances, myId);
   const others = members.filter((p) => p.id !== myId);

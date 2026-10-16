@@ -19,6 +19,8 @@ import {
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
 import { setFontsReady } from './src/components/AppText';
+import LoadingView from './src/components/LoadingView';
+import { SavedToastHost } from './src/components/SavedToast';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -79,6 +81,9 @@ function AppContent() {
   const [remoteRevokeNotice, setRemoteRevokeNotice] = useState<string | null>(null);
   // Quick unlock (Step 4b)
   const [recentAccounts, setRecentAccounts] = useState<RecentAccount[]>([]);
+  // Shown over the account switcher while an unlock is worked out on the phone (it can
+  // take a few seconds offline), so the screen never looks frozen.
+  const [unlocking, setUnlocking] = useState(false);
   const [autoSignIn, setAutoSignIn] = useState<{ email: string; username: string; password: string } | null>(null);
   const [signInPrefillUsername, setSignInPrefillUsername] = useState<string | undefined>(undefined);
   // Sign in once: true while a remembered LINKED account signs in quietly behind the
@@ -632,16 +637,21 @@ function AppContent() {
           accounts={recentAccounts}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
+            setUnlocking(true);
             (async () => {
-              const offline = await attemptOfflineUnlock(creds.username, creds);
-              if (offline) {
-                enterWithOfflineUnlock(creds, offline);
-                return;
+              try {
+                const offline = await attemptOfflineUnlock(creds.username, creds);
+                if (offline) {
+                  enterWithOfflineUnlock(creds, offline);
+                  return;
+                }
+                setRemoteRevokeNotice(null);
+                setSignInPrefillUsername(undefined);
+                setAutoSignIn(creds);
+                setScreen('signIn');
+              } finally {
+                setUnlocking(false);
               }
-              setRemoteRevokeNotice(null);
-              setSignInPrefillUsername(undefined);
-              setAutoSignIn(creds);
-              setScreen('signIn');
             })();
           }}
           onUsePassword={(username) => {
@@ -799,6 +809,12 @@ function AppContent() {
       <ScreenFade key={screen} skip={screen === 'loading'}>
         {renderScreen()}
       </ScreenFade>
+      {unlocking && screen === 'switcher' && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy2 }]}>
+          <LoadingView label="Unlocking…" testID="switcher-unlocking" />
+        </View>
+      )}
+      <SavedToastHost />
     </View>
   );
 }

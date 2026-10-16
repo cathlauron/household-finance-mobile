@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import LoadingView from '../components/LoadingView';
 import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -36,7 +37,7 @@ export default function RecurringScreen() {
     navigation.setOptions({ title: 'Recurring', headerBackTitle: 'Transactions' });
   }, [navigation]);
 
-  if (!model) return null;
+  if (!model) return <LoadingView />;
   const rules = model.recurring || [];
 
   async function save(next: typeof model) {

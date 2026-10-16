@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from 'react';
+import LoadingView from '../components/LoadingView';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Text } from '../components/AppText';
@@ -50,7 +51,7 @@ export default function SubscriptionsScreen() {
     navigation.setOptions({ headerBackTitle: 'To-Pay' });
   }, [navigation]);
 
-  if (!model) return null;
+  if (!model) return <LoadingView />;
   const subs = model.bills.filter((b) => b.isSubscription);
   const active = subs.filter((b) => b.subscriptionStatus !== 'cancelled');
   const cancelled = subs.filter((b) => b.subscriptionStatus === 'cancelled');

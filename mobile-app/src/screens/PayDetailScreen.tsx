@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { showSaved } from '../components/SavedToast';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -100,9 +101,10 @@ export default function PayDetailScreen() {
     );
   }
 
-  async function save(next: HouseholdModel) {
+  async function save(next: HouseholdModel, savedLabel?: string) {
     try {
       await saveModel(next);
+      if (savedLabel) showSaved(savedLabel);
     } catch {
       Alert.alert('Failed to save', 'Please try again.');
     }
@@ -208,7 +210,7 @@ export default function PayDetailScreen() {
         onConfirm={(pm, paidAmount, lateFee) => {
           setPayOpen(false);
           const next = kind === 'debt' ? markPaid(rec, pm, undefined, paidAmount, lateFee) : markPaid(rec, pm);
-          save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
+          save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) }, 'Payment saved');
         }}
       />
 
@@ -274,7 +276,7 @@ function Row({ styles, label, value, last }: { styles: any; label: string; value
   );
 }
 
-function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel) => void; colors: ThemeColors; styles: any }) {
+function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel, savedLabel?: string) => void; colors: ThemeColors; styles: any }) {
   const total = num(loan.totalAmount);
   const monthly = num(loan.expectedPayment);
   const payments = [...(loan.actualPayments || [])].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -299,7 +301,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
       ...loan,
       actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date: today, actual: payAmount, paymentMethod: pm }],
     };
-    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) });
+    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, lent ? 'Money received' : 'Payment saved');
   }
   function undoPayment() {
     const last = payments[0];

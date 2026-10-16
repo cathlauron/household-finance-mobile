@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { showSaved } from '../components/SavedToast';
 import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -45,6 +46,8 @@ export default function PotDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const id: string = route.params?.id;
+  // Ignores a second tap on Save while the first one is still saving.
+  const busyRef = React.useRef(false);
   const styles = makeStyles(colors);
   const goal = model?.savingsGoals?.find((g) => g.id === id);
 
@@ -111,6 +114,16 @@ export default function PotDetailScreen() {
   }
 
   async function confirm() {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      await confirmInner();
+    } finally {
+      busyRef.current = false;
+    }
+  }
+
+  async function confirmInner() {
     if (!goal || !model) return;
     if (sheet === 'add' || sheet === 'out') {
       const a = typeof amount === 'number' ? amount : 0;
@@ -127,6 +140,7 @@ export default function PotDetailScreen() {
       }
       hapticLight();
       await save(withContribution(goal, sheet === 'add' ? a : -a, pm));
+      showSaved(sheet === 'add' ? 'Added to pot' : 'Moved out');
     } else if (sheet === 'keptIn') {
       await save({ ...goal, keptIn: pm });
     } else if (sheet === 'auto') {

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import LoadingView from '../components/LoadingView';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,7 +70,7 @@ export default function InsightsScreen() {
     return { months, cats: cats.slice(0, 5), monthTotal, compare, lastMonth: last.long };
   }, [model]);
 
-  if (!model || !data) return null;
+  if (!model || !data) return <LoadingView />;
   const max = Math.max(1, ...data.months.map((m) => m.total));
 
   const reportRow = (id: ReportId | 'more', title: string, sub: string | undefined, first: boolean) => (

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { showSaved } from '../components/SavedToast';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -198,6 +199,7 @@ export default function GroceriesScreen() {
               groceries: items.filter((g) => !g.purchased),
             });
             hapticLight();
+            showSaved('Trip added to spending');
           },
         },
       ]
