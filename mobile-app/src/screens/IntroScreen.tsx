@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing, AccessibilityInfo, useWindowDimensions } from 'react-native';
 import Svg, { Path, Defs, Mask, Rect, G, RadialGradient, Stop } from 'react-native-svg';
 import { Text } from '../components/AppText';
+import Reanimated, { useSharedValue, useAnimatedProps, withTiming, cancelAnimation, Easing as REasing, SharedValue } from 'react-native-reanimated';
 
 // Redesign: the opening screen from the Finance Flow mockup.
 // - Deep green background with a soft glow in the middle, and faint veined leaves
@@ -21,7 +22,31 @@ import { Text } from '../components/AppText';
 // even while the unlock is working.
 
 const CREAM = '#F6F3E7';
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedPath = Reanimated.createAnimatedComponent(Path);
+
+// Version 2.1 fix (Cath: "the opening animation froze again"): the logo strokes now draw on
+// Reanimated's animation thread, so a busy start-up can't freeze them.
+const DRAW_END = 1.3; // seconds until the last stroke is drawn
+function IntroStroke({ d, len, at, t }: { d: string; len: number; at: number; t: SharedValue<number> }) {
+  const props = useAnimatedProps(() => {
+    const s = t.value * DRAW_END;
+    const raw = Math.min(1, Math.max(0, (s - at) / (DRAW_MS / 1000)));
+    const k = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2; // ease in-out
+    return { strokeDashoffset: len * (1 - k) };
+  });
+  return (
+    <AnimatedPath
+      d={d}
+      fill="none"
+      stroke={CREAM}
+      strokeWidth={22}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeDasharray={[len, len]}
+      animatedProps={props}
+    />
+  );
+}
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
 // The shared leaf shape (100 x 205 box): outline, stem, and the cut-out veins.
@@ -116,7 +141,11 @@ export default function IntroScreen() {
   const scale = width / 390;
   const [still, setStill] = useState(false);
 
-  const strokes = useMemo(() => LOGO.map((p) => new Animated.Value(p.len)), []);
+  const drawT = useSharedValue(0);
+  // Start drawing straight away (not after the Reduce Motion check), on the animation thread.
+  useEffect(() => {
+    drawT.value = withTiming(1, { duration: DRAW_END * 1000, easing: REasing.linear });
+  }, [drawT]);
   const word = useRef(new Animated.Value(0)).current;
   const quote = useRef(new Animated.Value(0)).current;
   const loader = useRef(new Animated.Value(0)).current;
@@ -126,45 +155,40 @@ export default function IntroScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    let swayLoop: Animated.CompositeAnimation | null = null;
+    // Start everything straight away (a busy start-up can't hold it back); the movement
+    // after the strokes runs on the native animation thread.
+    const timeline = Animated.parallel([
+      Animated.timing(word, { toValue: 1, duration: 600, delay: 1140, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }),
+      Animated.timing(quote, { toValue: 1, duration: 480, delay: 1440, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(loader, { toValue: 1, duration: 360, delay: 1620, useNativeDriver: true }),
+      Animated.timing(fill, { toValue: 1, duration: 1080, delay: 1620, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: true }),
+      Animated.timing(track, { toValue: 0, duration: 270, delay: 2820, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+    ]);
+    timeline.start();
+    const swayLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sway, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(sway, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    swayLoop.start();
+    // With Reduce Motion on, jump to the end: everything shows at once, nothing moves.
     AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
       .then((reduce) => {
-        if (cancelled) return;
-        if (reduce) {
-          setStill(true);
-          strokes.forEach((s) => s.setValue(0));
-          [word, quote, loader, fill].forEach((v) => v.setValue(1));
-          return;
-        }
-        const ease = Easing.bezier(0.65, 0, 0.35, 1);
-        // The strokes (SVG) can only be animated on the main thread.
-        Animated.parallel(
-          LOGO.map((p, i) =>
-            Animated.timing(strokes[i], { toValue: 0, duration: DRAW_MS, delay: p.at * 1000, easing: ease, useNativeDriver: false })
-          )
-        ).start();
-        // Everything else runs on the animation thread.
-        Animated.parallel([
-          Animated.timing(word, { toValue: 1, duration: 600, delay: 1140, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }),
-          Animated.timing(quote, { toValue: 1, duration: 480, delay: 1440, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-          Animated.timing(loader, { toValue: 1, duration: 360, delay: 1620, useNativeDriver: true }),
-          Animated.timing(fill, { toValue: 1, duration: 1080, delay: 1620, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: true }),
-          Animated.timing(track, { toValue: 0, duration: 270, delay: 2820, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-        ]).start();
-        swayLoop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(sway, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-            Animated.timing(sway, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          ])
-        );
-        swayLoop.start();
+        if (cancelled || !reduce) return;
+        setStill(true);
+        timeline.stop();
+        swayLoop.stop();
+        cancelAnimation(drawT);
+        drawT.value = 1;
+        [word, quote, loader, fill].forEach((v) => v.setValue(1));
       });
     return () => {
       cancelled = true;
-      swayLoop?.stop();
+      swayLoop.stop();
     };
-  }, [strokes, word, quote, loader, fill, track, sway]);
+  }, [drawT, word, quote, loader, fill, track, sway]);
 
   // "FINANCE FLOW" starts a little wider and settles in (a gentle scale, so it can run on
   // the animation thread).
@@ -190,17 +214,7 @@ export default function IntroScreen() {
       <View style={styles.center}>
         <Svg width={124} height={102} viewBox="190 240 644 530">
           {LOGO.map((p, i) => (
-            <AnimatedPath
-              key={i}
-              d={p.d}
-              fill="none"
-              stroke={CREAM}
-              strokeWidth={22}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={[p.len, p.len]}
-              strokeDashoffset={strokes[i]}
-            />
+            <IntroStroke key={i} d={p.d} len={p.len} at={p.at} t={drawT} />
           ))}
         </Svg>
         <AnimatedText
