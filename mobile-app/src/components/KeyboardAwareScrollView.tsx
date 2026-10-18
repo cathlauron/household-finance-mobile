@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { createContext, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Keyboard,
@@ -25,6 +25,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 //   while the keyboard is open does the same.
 
 const MARGIN = 24; // gap kept between the field and the keyboard
+
+// Version 2.1: lets a field inside the scroll area bring itself into view (used by
+// Guided, which jumps to a form field that still needs filling in).
+export const ScrollIntoViewContext = createContext<{ scrollIntoView: (node: any) => void } | null>(null);
 
 // Where the keyboard's top edge is on screen. On Android the reported height leaves out
 // the navigation bar under the keyboard (and screenY is just the screen's bottom when the
@@ -89,6 +93,23 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, ScrollViewProps>(f
     };
   }, [scrollFocusedIntoView]);
 
+  // Scrolls so `node` sits about a third of the way down the visible area, unless it's
+  // already fully visible (above the keyboard, if it's open).
+  const scrollIntoView = useCallback((node: any) => {
+    const sv: any = inner.current;
+    if (!node || !sv || typeof node.measureInWindow !== 'function' || typeof sv.measureInWindow !== 'function') return;
+    sv.measureInWindow((_sx: number, sy: number, _sw: number, sh: number) => {
+      node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+        const bottom = Math.min(sy + sh, keyboardTop.current ?? Number.MAX_SAFE_INTEGER) - MARGIN;
+        const top = sy + MARGIN;
+        if (y >= top && y + h <= bottom) return;
+        const target = offsetY.current + (y - sy) - Math.max(40, (Math.min(sh, bottom - sy) - h) / 3);
+        inner.current?.scrollTo({ y: Math.max(0, target), animated: true });
+      });
+    });
+  }, []);
+  const ctx = useMemo(() => ({ scrollIntoView }), [scrollIntoView]);
+
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       offsetY.current = e.nativeEvent.contentOffset.y;
@@ -110,15 +131,17 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, ScrollViewProps>(f
   const basePad = typeof base.paddingBottom === 'number' ? base.paddingBottom : typeof base.padding === 'number' ? base.padding : 0;
 
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      {...rest}
-      ref={inner}
-      onScroll={handleScroll}
-      scrollEventThrottle={scrollEventThrottle ?? 16}
-      onTouchEnd={handleTouchEnd}
-      contentContainerStyle={extra > 0 ? [contentContainerStyle, { paddingBottom: basePad + extra }] : contentContainerStyle}
-    />
+    <ScrollIntoViewContext.Provider value={ctx}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        {...rest}
+        ref={inner}
+        onScroll={handleScroll}
+        scrollEventThrottle={scrollEventThrottle ?? 16}
+        onTouchEnd={handleTouchEnd}
+        contentContainerStyle={extra > 0 ? [contentContainerStyle, { paddingBottom: basePad + extra }] : contentContainerStyle}
+      />
+    </ScrollIntoViewContext.Provider>
   );
 });
 
