@@ -58,7 +58,7 @@ const DRIFT = [
   { x: 236, y: 560, w: 30, rot: 26, dx: -1.4, dy: -5.8, ms: 12000, op: 0.035 },
 ];
 
-function VeinedLeaf({ id, opacity, withStem = false }: { id: string; opacity: number; withStem?: boolean }) {
+export function VeinedLeaf({ id, opacity, withStem = false, color = CREAM }: { id: string; opacity: number; withStem?: boolean; color?: string }) {
   return (
     <>
       <Defs>
@@ -67,8 +67,8 @@ function VeinedLeaf({ id, opacity, withStem = false }: { id: string; opacity: nu
           <Path d={LEAF_VEINS} fill="none" stroke="#000" strokeWidth={2.2} strokeLinecap="round" />
         </Mask>
       </Defs>
-      {withStem && <Path d={LEAF_STEM} fill="none" stroke={CREAM} strokeOpacity={opacity} strokeWidth={3} strokeLinecap="round" />}
-      <Path d={LEAF_OUTLINE} fill={CREAM} fillOpacity={opacity} mask={`url(#${id})`} />
+      {withStem && <Path d={LEAF_STEM} fill="none" stroke={color} strokeOpacity={opacity} strokeWidth={3} strokeLinecap="round" />}
+      <Path d={LEAF_OUTLINE} fill={color} fillOpacity={opacity} mask={`url(#${id})`} />
     </>
   );
 }

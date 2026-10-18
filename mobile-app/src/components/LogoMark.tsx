@@ -8,7 +8,7 @@ import { useTheme } from '../ThemeContext';
 // FINANCE FLOW wordmark underneath (the wordmark is part of the logo). Drawn in the
 // accent green (light) or mint (dark); no filled tile, which is only for the app icon.
 
-const LOGO_PATHS = [
+export const LOGO_PATHS = [
   'M 215 512 L 501 276 C 507 268, 517 268, 524 276 L 809 512',
   'M 268 470 V 700 C 268 726, 286 746, 307 746 H 414',
   'M 756 470 V 700 C 756 726, 738 746, 717 746 H 610',
