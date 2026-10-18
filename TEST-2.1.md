@@ -4,7 +4,7 @@ Do these in order on your phone. For each one, note "OK" or what you saw. If som
 
 ## Retests after the Oct 18 fixes (do these first)
 1. Opening: close the app fully and open it. The logo draws itself, then FINANCE FLOW, the quote, and the small leaf with its bar appear one after another. (The plain green screen before it is the app loading; in Expo Go that part is slower than in the real build.)
-2. Log out and sign in: the breathing logo with changing words shows while it works.
+2. Log out and sign in: the page behind softens under a cream veil, the deep green logo gently breathes, the little leaf sways above its bar, and the words change ("Signing you in…", "Unlocking your data…"). Same look for Quick unlock, setting a PIN, fingerprint and creating an account.
 3. Settings › Quick unlock › PIN: a bottom sheet (Password, New PIN, Confirm PIN, Save at the top right). Saving shows the breathing logo.
 4. Settings › Quick unlock › fingerprint switch on: a bottom sheet asks for your password; Turn on shows the breathing logo, then your phone may ask for your fingerprint.
 5. Add a bill with only an amount and a name (no due date): it shows on Bills under "No due date".
