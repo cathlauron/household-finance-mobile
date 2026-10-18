@@ -27,6 +27,9 @@ type Props = {
     headerBackTitle?: string;
     headerRight?: (p: { tintColor?: string; canGoBack?: boolean }) => React.ReactNode;
     headerLeft?: (p: { tintColor?: string; canGoBack?: boolean }) => React.ReactNode;
+    // Version 2.1: icons that sit on the big title's line (Transactions: Recurring, Search)
+    // instead of the short row above it.
+    headerTitleRight?: () => React.ReactNode;
   };
   back?: { title?: string } | undefined;
 };
@@ -62,9 +65,12 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
       </View>
       {/* An empty title (detail pages that show their own big heading) hides the line. */}
       {title !== '' && (
-        <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
-          {title}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
+            {title}
+          </Text>
+          {!!options.headerTitleRight && <View style={{ marginLeft: 'auto' }}>{options.headerTitleRight()}</View>}
+        </View>
       )}
       <OfflineBanner style={{ marginTop: 8, marginBottom: 4 }} />
     </View>

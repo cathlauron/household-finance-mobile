@@ -194,8 +194,9 @@ export default function TransactionsScreen() {
   }, [addNonce]);
   // Redesign: search button in the title bar (opens Search).
   React.useLayoutEffect(() => {
+    // Version 2.1 (S9): the two icons sit on the "Transactions" title line, not the empty row above.
     navigation.setOptions({
-      headerRight: () => (
+      headerTitleRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
           {/* Redesign: repeating transactions (Recurring page). */}
           <TouchableOpacity
@@ -218,7 +219,7 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         </View>
       ),
-    });
+    } as any);
   }, [navigation, colors.gold]);
   // Redesign: the Transaction page's "Edit" comes back here with { editId } to open the form.
   const editNonce = route.params?.editNonce;
