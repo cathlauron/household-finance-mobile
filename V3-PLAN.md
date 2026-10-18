@@ -753,6 +753,16 @@ Your split is right. Version 2.1 makes what already exists safe, correct and smo
 
 **After version 3:** Google and Apple sign-in (option B), the iPhone version and iPhone widgets, more currencies, paluwagan, PDF statements.
 
+## Cath's notes, 2026-10-18 (to do in version 3)
+
+- **Peel-off Appearance switches (later, before finishing version 3):** instead of a plain toggle, the setting (e.g. Light / Dark) peels off like a sticker; while peeling, the "on" look peeks from underneath; peeling it fully off turns it on, peeling it back returns to the default. Make a mockup first. Not a priority now.
+- **Swipe actions** on To-Pay (bills, debts, loans), Savings, Groceries, Events and Travel. Tap keeps working. Mockup first.
+- **Travel to-do list:** budget on the left, to-do list on the right, so trip notes live in the app. Mockup first.
+- **Time-of-day glow on every screen** (not just Home and sheets); the sun rays, rain and stars stay on Home only.
+- **Calm Home:** C1 was too wordy; keep today's Home look and find a calmer way. Welcome back (C2) after 3+ days away, merged with "Since you last looked" (C5). Weekly check-in (C3) only when reports are turned on (monthly default, quarterly option, asked once after a month). C4 "short before payday, 3 ways" shows on opening the app when Left to Spend runs out before payday, with a Settings switch.
+- **Credit cards:** K1 in the app's own colours; K3 redesigned with the Income section kept.
+- **Loading animations** for creating an account, setup and Quick unlock (done in 2.1).
+
 ## Questions for you
 
 These decide what gets built. Type your answer in the last column, or comment on a row.
