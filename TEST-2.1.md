@@ -5,6 +5,13 @@ Do these in order on your phone. For each one, note "OK" or what you saw. If som
 ## Retests after the Oct 18 fixes (do these first)
 1. Opening: close the app fully and open it. The logo draws itself, then FINANCE FLOW, the quote, and the small leaf with its bar appear one after another. (The plain green screen before it is the app loading; in Expo Go that part is slower than in the real build.)
 2. Log out and sign in: nothing covers the screen. The logo at the top draws itself like the opening (leaf, roof, walls) again and again, the line under "Welcome back" changes ("Signing you in…", "Unlocking your data…"), and the fields fade back. Same on the account list (PIN or fingerprint) and the lock screen.
+2b. Everywhere else that takes a few seconds, the logo (no circle behind it) draws itself where it already sits and the line under the title changes:
+   - Settings › Quick unlock: set a PIN, and turn on fingerprint (the icon at the top of the sheet).
+   - Settings › change password, and Recovery key.
+   - Create a new account (the logo at the top), and the Quick Unlock step right after it.
+   - Profile › Household: inviting, joining with a code, Keep theirs / Merge both, unlinking (the icon in the "Just you / Shared household" card). "Waiting for them to join…" has a small drawing logo too.
+   - Sign-in recovery pop-up: "Unlock & Restore Data", and "Waiting for approval…".
+   - Settings › Backup & data: Save a backup (a small house beside YOUR DATA), and Import from a spreadsheet.
 3. Settings › Quick unlock › PIN: a bottom sheet (Password, New PIN, Confirm PIN, Save at the top right). Saving shows the breathing logo.
 4. Settings › Quick unlock › fingerprint switch on: a bottom sheet asks for your password; Turn on shows the breathing logo, then your phone may ask for your fingerprint.
 5. Add a bill with only an amount and a name (no due date): it shows on Bills under "No due date".

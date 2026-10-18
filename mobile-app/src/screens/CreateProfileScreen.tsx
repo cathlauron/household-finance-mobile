@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { paintBusy } from '../components/BusyOverlay';
 import { claimUsername } from '../usernameClaim';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
-import LogoMark from '../components/LogoMark';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -202,18 +202,34 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
               <Ionicons name="chevron-back" size={24} color={colors.gold} style={{ marginLeft: -6 }} />
               <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>Back</Text>
             </TouchableOpacity>
+            {busy && (
+              <View style={styles.brandWrap}>
+                <DrawingLogo width={84} drawing />
+              </View>
+            )}
             <Text style={styles.title}>Save Finance Flow to your email</Text>
-            <Text style={styles.sub}>Your password locks your data. Nobody else can read it, not even us.</Text>
+            {busy ? (
+              <BusyWords messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} style={{ marginBottom: 8 }} />
+            ) : (
+              <Text style={styles.sub}>Your password locks your data. Nobody else can read it, not even us.</Text>
+            )}
           </>
         ) : (
           <>
             <View style={styles.brandWrap}>
-              <LogoMark width={84} />
+              {/* Version 2.1 (round 6): while creating, this logo draws itself like the opening. */}
+              <DrawingLogo width={84} drawing={busy} />
             </View>
             <Text style={styles.title}>Create your account</Text>
-            <Text style={styles.sub}>Start your financial journey.</Text>
+            {busy ? (
+              <BusyWords messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} style={{ marginBottom: 8 }} />
+            ) : (
+              <Text style={styles.sub}>Start your financial journey.</Text>
+            )}
           </>
         )}
+
+        <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
 
         <Text style={styles.label}>Email address</Text>
         <View style={styles.fieldWrap}>
@@ -277,13 +293,14 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
             placeholder="Re-enter password"
           />
         </View>
+        </View>
 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
           <GradientFill color={colors.buttonFill} strength={0.18} />
           <Text style={styles.primaryBtnText}>
-            {busy ? 'Saving...' : guest ? (guest.entry ? `Save and add my ${guest.entry.split(' ').pop()}` : 'Save') : 'Create profile'}
+            {busy ? (guest ? 'Saving…' : 'Creating…') : guest ? (guest.entry ? `Save and add my ${guest.entry.split(' ').pop()}` : 'Save') : 'Create profile'}
           </Text>
           {!busy && <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
@@ -362,7 +379,6 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
         </Modal>
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
-      <BusyOverlay visible={!!(busy)} messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} />
     </>
   );
 }

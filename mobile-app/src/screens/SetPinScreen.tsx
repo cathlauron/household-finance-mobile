@@ -1,8 +1,10 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Text } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
-import { SheetBar, SheetHero, FormGroup, PasswordRow, PinRow } from '../components/SimpleForm';
+import { paintBusy } from '../components/BusyOverlay';
+import { BusyHero } from '../components/DrawingLogo';
+import { View } from 'react-native';
+import { SheetBar, FormGroup, PasswordRow, PinRow } from '../components/SimpleForm';
 import { isValidPinFormat, savePin } from '../pin';
 import { useData } from '../DataContext';
 import { savePinCopy } from '../quickUnlock';
@@ -74,16 +76,23 @@ export default function SetPinSheet({ visible, username, email, onDone, onCancel
       grouped
       header={<SheetBar title="Quick unlock" onCancel={onCancel} onDone={handleSave} doneLabel="Save" busy={busy} doneDisabled={!password || !pin1 || !pin2} />}
     >
-      <SheetHero icon="keypad-outline" title="Set a PIN" sub="A short PIN to open the app quickly. Your password stays your backup." />
+      <BusyHero
+        busy={busy}
+        icon="keypad-outline"
+        title="Set a PIN"
+        sub="A short PIN to open the app quickly. Your password stays your backup."
+        words={['Checking your password…', 'Saving your PIN…', 'Setting up Quick unlock…']}
+      />
+      <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
       <FormGroup>
         <PasswordRow label="Password" value={password} onChangeText={setPassword} placeholder="Your password" autoFocus testID="set-pin-password-input" />
         <PinRow label="New PIN" value={pin1} onChangeText={setPin1} testID="pin-input" />
         <PinRow label="Confirm PIN" value={pin2} onChangeText={setPin2} testID="confirm-pin-input" />
       </FormGroup>
+      </View>
       <Text style={{ fontSize: 13, lineHeight: 18, marginHorizontal: 16, marginTop: 8, marginBottom: 16, color: error ? colors.error : colors.inkDim, fontWeight: error ? '700' : '400' }}>
-        {error || 'This can take a few seconds on some phones.'}
+        {error || (busy ? '' : 'This can take a few seconds on some phones.')}
       </Text>
-      <BusyOverlay visible={busy} messages={['Checking your password…', 'Saving your PIN…', 'Setting up Quick unlock…']} />
     </BottomSheet>
   );
 }
