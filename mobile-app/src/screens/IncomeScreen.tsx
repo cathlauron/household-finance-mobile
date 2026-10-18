@@ -22,6 +22,7 @@ import DateField from '../components/DateField';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 import { monthTotals, sourcesByPerson } from '../incomeMonth';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
 import { todayISO } from '../dateUtils';
@@ -123,6 +124,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   const [depositInput, setDepositInput] = useState<PaymentMethod | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'payday' | 'log' | 'account'>();
+  const clearFieldError = fieldErrors.clear;
   const paydayLabel = (() => {
     if (frequencyInput === 'monthly') return monthlyDayInput ? `the ${ordinal(parseInt(monthlyDayInput, 10))}` : 'Choose';
     if (frequencyInput === 'semimonthly') return semiDay1Input && semiDay2Input ? `${ordinal(parseInt(semiDay1Input, 10))} and ${ordinal(parseInt(semiDay2Input, 10))}` : 'Choose';
@@ -288,8 +292,14 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     setPaymentLogEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [monthlyDayInput, semiDay1Input, semiDay2Input, biweeklyAnchorInput, onetimeDateInput, frequencyInput, paymentLogEntries, depositInput, modalOpen, clearFieldError]);
+
   async function handleSave() {
     if (!model) return;
+    setErrorMsg('');
 
     const parsedAmount: number | '' = amountInput === '' ? '' : amountInput;
 
@@ -298,7 +308,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       if (monthlyDayInput.trim()) {
         const d = parseInt(monthlyDayInput, 10);
         if (isNaN(d) || d < 1 || d > 31) {
-          setErrorMsg('Enter a day of month between 1 and 31.');
+          fieldErrors.show('payday', 'Pick a day between 1 and 31.');
           return;
         }
       }
@@ -309,7 +319,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         if (v.trim()) {
           const d = parseInt(v, 10);
           if (isNaN(d) || d < 1 || d > 31) {
-            setErrorMsg('Enter a day between 1 and 31.');
+            fieldErrors.show('payday', 'Pick a day between 1 and 31.');
             return;
           }
         }
@@ -320,14 +330,14 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     } else if (frequencyInput === 'biweekly') {
       const trimmedDate = biweeklyAnchorInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        fieldErrors.show('payday', 'Pick a date.');
         return;
       }
       payDates = trimmedDate ? [trimmedDate] : [];
     } else if (frequencyInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        fieldErrors.show('payday', 'Pick a date.');
         return;
       }
       payDates = [trimmedDate];
@@ -339,18 +349,18 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       const hasAmt = typeof entry.amount === 'number' && !isNaN(entry.amount);
       if (!dateTrim && !hasAmt) continue; // fully blank row — quietly dropped
       if (!dateTrim || !hasAmt) {
-        setErrorMsg('Each entry requires both date and amount.');
+        fieldErrors.show('log', 'Each payday needs a date and an amount.');
         return;
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTrim)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        fieldErrors.show('log', 'Pick a date for each payday.');
         return;
       }
       // A payday is real money: it goes into an account (the one chosen above, unless
       // it was already logged into another one).
       const pm = entry.paymentMethod?.accountId ? entry.paymentMethod : depositInput;
       if (!pm?.accountId) {
-        setErrorMsg('Choose which account your paydays go into.');
+        fieldErrors.show('account', 'Choose which account your paydays go into.');
         return;
       }
       validPaymentLog.push({ id: entry.id, date: dateTrim, amount: entry.amount as number, paymentMethod: pm });
@@ -762,7 +772,8 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           <PickerRow label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
             <Choices options={FREQUENCIES.map((f) => ({ id: f, label: PAY_LABEL[f] }))} value={frequencyInput} onChange={(f) => setFrequencyInput(f as Frequency)} />
           </PickerRow>
-          <PickerRow label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} onToggle={() => toggleRow('payday')}>
+          <Guided {...fieldErrors.props('payday')} onShow={() => { if (openRow !== 'payday') toggleRow('payday'); }}>
+          <PickerRow label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} invalid={fieldErrors.field === 'payday'} onToggle={() => toggleRow('payday')}>
             {frequencyInput === 'monthly' && <DayStrip value={parseInt(monthlyDayInput, 10) || null} onChange={(d) => setMonthlyDayInput(String(d))} />}
             {frequencyInput === 'semimonthly' && (
               <>
@@ -778,14 +789,18 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
             {frequencyInput === 'onetime' && <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="income-onetime-date-field" />}
             {frequencyInput === 'biweekly' && <DateField value={biweeklyAnchorInput} onChange={setBiweeklyAnchorInput} placeholder="Pick your last payday" testID="income-biweekly-anchor-field" />}
           </PickerRow>
-          <PickerRow label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+          </Guided>
+          <Guided {...fieldErrors.props('account')} onShow={() => { if (openRow !== 'account') toggleRow('account'); }}>
+          <PickerRow label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} invalid={fieldErrors.field === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={depositInput} onChange={setDepositInput} />
           </PickerRow>
+          </Guided>
         </FormGroup>
         {!!nextPaydayText && <Footnote>{nextPaydayText}</Footnote>}
 
         <Text style={styles.groupHeader}>Paydays received</Text>
-        <FormGroup>
+        <Guided {...fieldErrors.props('log')} radius={16}>
+        <FormGroup style={fieldErrors.field === 'log' ? { marginBottom: 0, backgroundColor: 'transparent' } : undefined}>
           <View style={{ paddingHorizontal: 16, paddingTop: paymentLogEntries.length ? 12 : 0 }}>
                 {paymentLogEntries.map((entry) => (
                   <View key={entry.id} style={styles.paymentLogEntry}>
@@ -818,6 +833,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                 </TouchableOpacity>
           </View>
         </FormGroup>
+        </Guided>
         <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}

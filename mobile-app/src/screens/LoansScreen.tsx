@@ -21,6 +21,7 @@ import DateField from '../components/DateField';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 import SegmentedControl from '../components/SegmentedControl';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField } from '../components/SimpleForm';
 const LOAN_TYPES = ['Car', 'Motorcycle', 'Home', 'Personal', 'Business', 'Other'];
@@ -124,6 +125,11 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const [paymentError, setPaymentError] = useState('');
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'name' | 'due' | 'interest'>();
+  const clearFieldError = fieldErrors.clear;
+  const nameRef = useRef<any>(null);
+  const interestRef = useRef<any>(null);
   // Simple form footnote: the next payment, and for monthly loans a payoff estimate.
   const loanFootnote = (() => {
     if (recurTypeInput === 'custom') return editingId ? '' : 'After you add it, log each payment from the loan.';
@@ -247,11 +253,17 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
   }
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, interestRateInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, customStartDateInput, customOccurrenceInput, modalOpen, clearFieldError]);
+
   async function handleSave() {
     if (!model) return;
+    setErrorMsg('');
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter a name for this loan.');
+      fieldErrors.show('name', 'Give this loan a name.');
       return;
     }
     const parsedTotal: number | '' = totalAmountInput === '' ? '' : totalAmountInput;
@@ -260,7 +272,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (interestRateInput.trim() !== '') {
       const n = parseFloat(interestRateInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid interest rate.');
+        fieldErrors.show('interest', 'Type the interest as a number, e.g. 12.');
         return;
       }
       parsedRate = n;
@@ -270,14 +282,14 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (recurTypeInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        fieldErrors.show('due', 'Pick the date it\'s due.');
         return;
       }
       dueDate = { date: trimmedDate };
     } else if (recurTypeInput === 'monthly') {
       const dayNum = parseInt(dayInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day of month between 1 and 31.');
+        fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
       dueDate = { day: dayInput.trim() };
@@ -285,11 +297,11 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
       const dayNum = parseInt(dayInput, 10);
       const monthNum = parseInt(monthInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day of month between 1 and 31.');
+        fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
       if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
-        setErrorMsg('Enter a month between 1 and 12.');
+        fieldErrors.show('due', 'Pick the month it\'s due.');
         return;
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
@@ -299,13 +311,13 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (recurTypeInput === 'custom') {
       const trimmedStart = customStartDateInput.trim();
       if (!trimmedStart || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedStart)) {
-        setErrorMsg('Enter start date as YYYY-MM-DD.');
+        fieldErrors.show('due', 'Pick the date payments start.');
         return;
       }
       if (customOccurrenceInput.trim()) {
         const n = parseInt(customOccurrenceInput, 10);
         if (isNaN(n) || n <= 0) {
-          setErrorMsg('Occurrences must be a positive number.');
+          fieldErrors.show('due', 'How many payments? Type a number above 0.');
           return;
         }
         parsedOccurrenceCount = n;
@@ -528,7 +540,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         <BigAmount label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} />
 
         <FormGroup>
-          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Car loan" testID="loan-name-input" />
+          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Car loan" testID="loan-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+          </Guided>
           <PickerRow label="Type" value={loanTypeInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices options={LOAN_TYPES.map((c) => ({ id: c, label: c }))} value={loanTypeInput as any} onChange={(c) => setLoanTypeInput(c)} />
             <View style={{ height: 10 }} />
@@ -539,7 +553,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
             <Choices options={[...REPEAT_CHOICES, { id: 'custom' as RecurringType, label: 'Custom' }]} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
           </PickerRow>
           {recurTypeInput === 'custom' ? (
-            <PickerRow label="Schedule" value={`${customFreqInput.charAt(0).toUpperCase() + customFreqInput.slice(1)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+            <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+            <PickerRow label="Schedule" value={`${customFreqInput.charAt(0).toUpperCase() + customFreqInput.slice(1)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
               <Choices
                 options={['daily', 'weekly', 'biweekly', 'monthly', 'yearly'].map((f) => ({ id: f, label: f.charAt(0).toUpperCase() + f.slice(1) }))}
                 value={customFreqInput}
@@ -549,12 +564,17 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
               <DateField label="Starts on" value={customStartDateInput} onChange={setCustomStartDateInput} placeholder="Pick a date" testID="loan-start-date-field" />
               <InlineField label="How many payments (optional)" value={customOccurrenceInput} onChangeText={setCustomOccurrenceInput} placeholder="e.g. 12" keyboardType="number-pad" />
             </PickerRow>
+            </Guided>
           ) : (
-            <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+            <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+            <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
               <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="loan-due-date-field" />
             </PickerRow>
+            </Guided>
           )}
-          <InputRow label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" />
+          <Guided {...fieldErrors.props('interest')} focusRef={interestRef}>
+            <InputRow label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
+          </Guided>
         </FormGroup>
 
         {editingId && (

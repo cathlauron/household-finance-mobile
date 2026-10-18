@@ -19,6 +19,7 @@ import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 const DEBT_TYPES = ['Credit card', 'Lending app', 'Family or friend', 'Personal loan', 'Other'];
 
 function debtAmount(debt: Debt): number {
@@ -86,6 +87,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'creditor' | 'due' | 'more'>();
+  const clearFieldError = fieldErrors.clear;
+  const creditorRef = useRef<any>(null);
   const debtNext = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput);
   const debtMonths =
     recurTypeInput === 'monthly' && typeof amountInput === 'number' && typeof minPaymentInput === 'number' && minPaymentInput > 0 && amountInput > minPaymentInput
@@ -157,11 +162,17 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setErrorMsg('');
   }
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
+
   async function handleSave() {
     if (!model) return;
+    setErrorMsg('');
     const trimmedCreditor = creditorInput.trim();
     if (!trimmedCreditor) {
-      setErrorMsg('Enter who this debt is owed to.');
+      fieldErrors.show('creditor', 'Who is this owed to?');
       return;
     }
     const parsedAmount = amountInput === '' ? 0 : amountInput;
@@ -170,14 +181,14 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (recurTypeInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        fieldErrors.show('due', 'Pick the date it\'s due.');
         return;
       }
       dueDate = { date: trimmedDate };
     } else if (recurTypeInput === 'monthly') {
       const dayNum = parseInt(dayInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day between 1 and 31.');
+        fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
       dueDate = { day: dayInput.trim() };
@@ -185,11 +196,11 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       const dayNum = parseInt(dayInput, 10);
       const monthNum = parseInt(monthInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day between 1 and 31.');
+        fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
       if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
-        setErrorMsg('Enter a month between 1 and 12.');
+        fieldErrors.show('due', 'Pick the month it\'s due.');
         return;
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
@@ -199,7 +210,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (interestRateInput.trim() !== '') {
       const n = parseFloat(interestRateInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid interest rate.');
+        fieldErrors.show('more', 'Type the interest as a number, e.g. 24.');
         return;
       }
       parsedInterest = n;
@@ -388,7 +399,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
 
         <FormGroup>
-          <InputRow label="Owed to" value={creditorInput} onChangeText={setCreditorInput} placeholder="e.g. BDO, Ate Fely" testID="debt-creditor-input" />
+          <Guided {...fieldErrors.props('creditor')} focusRef={creditorRef}>
+            <InputRow label="Owed to" value={creditorInput} onChangeText={setCreditorInput} placeholder="e.g. BDO, Ate Fely" testID="debt-creditor-input" inputRef={creditorRef} invalid={fieldErrors.field === 'creditor'} />
+          </Guided>
           <PickerRow label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices options={DEBT_TYPES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
@@ -398,20 +411,24 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
             <Choices options={REPEAT_CHOICES} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
           </PickerRow>
-          <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+          <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+          <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
             <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="debt-due-date-field" />
           </PickerRow>
+          </Guided>
           <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
           </PickerRow>
         </FormGroup>
 
         <FormGroup>
-          <PickerRow label="More details" value={[interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Interest, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
+          <Guided {...fieldErrors.props('more')} onShow={() => { if (openRow !== 'more') toggleRow('more'); }}>
+          <PickerRow label="More details" value={[interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
             <InlineField label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
             <InlineAmount label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
             <InlineField label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />
           </PickerRow>
+          </Guided>
         </FormGroup>
 
         {!!debtFootnote && <Footnote>{debtFootnote}</Footnote>}
