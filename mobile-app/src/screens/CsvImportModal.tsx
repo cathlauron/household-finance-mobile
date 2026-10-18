@@ -4,6 +4,7 @@ import { Text } from '../components/AppText';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -204,10 +205,24 @@ export default function CsvImportModal({ visible, onClose }: Props) {
         <Pressable style={styles.card} onPress={() => {}}>
           <GradientFill match={styles.card} />
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.title}>Import from CSV</Text>
-            <Text style={styles.helpText}>
-              Needs date, label and amount. Optional direction: in, out, saving (default out). Dates: YYYY-MM-DD or MM/DD/YYYY.
-            </Text>
+            {/* Version 2.1 (round 6, X4): while reading or adding, the logo draws itself here. */}
+            {(loading || importing) && (
+              <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                <DrawingLogo width={64} drawing wordmark={false} />
+              </View>
+            )}
+            <Text style={styles.title}>{fileName && (loading || importing) ? fileName : 'Import from CSV'}</Text>
+            {loading || importing ? (
+              <BusyWords
+                key={importing ? 'adding' : 'reading'}
+                messages={importing ? [`Adding ${importableRows.length} transactions…`, 'Almost there…'] : ['Reading your file…', 'Matching columns…', 'Almost there…']}
+                style={{ marginBottom: 10 }}
+              />
+            ) : (
+              <Text style={styles.helpText}>
+                Needs date, label and amount. Optional direction: in, out, saving (default out). Dates: YYYY-MM-DD or MM/DD/YYYY.
+              </Text>
+            )}
 
             {!doneMsg && (
               <TouchableOpacity style={styles.pickButton} onPress={handlePickFile} disabled={loading}>
@@ -218,12 +233,6 @@ export default function CsvImportModal({ visible, onClose }: Props) {
               </TouchableOpacity>
             )}
 
-            {loading && (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={colors.accent} />
-                <Text style={styles.loadingText}>Reading file…</Text>
-              </View>
-            )}
 
             {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
             {!!doneMsg && <Text style={styles.doneText}>{doneMsg}</Text>}
@@ -327,13 +336,9 @@ export default function CsvImportModal({ visible, onClose }: Props) {
                         disabled={importing}
                       >
                         <GradientFill match={styles.importConfirmButton} />
-                        {importing ? (
-                          <ActivityIndicator color={colors.navy2} />
-                        ) : (
-                          <Text style={styles.importConfirmButtonText}>
-                            Import {importableRows.length} transaction{importableRows.length === 1 ? '' : 's'}
-                          </Text>
-                        )}
+                        <Text style={styles.importConfirmButtonText}>
+                          {importing ? `Importing ${importableRows.length}…` : `Import ${importableRows.length} transaction${importableRows.length === 1 ? '' : 's'}`}
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </>

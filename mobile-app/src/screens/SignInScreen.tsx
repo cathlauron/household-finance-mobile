@@ -145,6 +145,7 @@ export default function SignInScreen({
     }
     setRecoveryBusy(true);
     setRecoveryError('');
+    await paintBusy();
     try {
       const { key: unwrappedKey, isHouseholdKey } = await recoverKeyWithCode(
         recoveryContext.username,
@@ -916,10 +917,21 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
             <GradientFill match={styles.modalCard} />
             <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalEyebrow}>ACCOUNT RECOVERY</Text>
+              {/* Version 2.1 (round 6, X1): while the Recovery Key unlocks the data, the logo
+                  draws itself here and the line says what it's doing. */}
+              {recoveryBusy && (
+                <View style={{ alignItems: 'center', marginVertical: 8 }}>
+                  <DrawingLogo width={64} drawing wordmark={false} />
+                </View>
+              )}
               <Text style={styles.modalTitle}>Password Accepted, But Data Locked</Text>
-              <Text style={styles.modalSub}>
-                Your password was verified, but your data remains encrypted with your previous password.
-              </Text>
+              {recoveryBusy ? (
+                <BusyWords messages={['Checking your Recovery Key…', 'Unlocking your data…', 'Restoring your household…', 'Almost there…']} style={{ marginBottom: 8 }} />
+              ) : (
+                <Text style={styles.modalSub}>
+                  Your password was verified, but your data remains encrypted with your previous password.
+                </Text>
+              )}
 
               {/* Option 1: Recovery Key */}
               <View style={styles.recoverySection}>
@@ -943,11 +955,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                   onPress={handleRecoverWithKey}
                   disabled={!recoveryKeyInput.trim() || recoveryBusy || peerBusy}
                 >
-                  {recoveryBusy ? (
-                    <ActivityIndicator color={colors.navy2} />
-                  ) : (
-                    <Text style={ms.primaryBtnText}>Unlock &amp; Restore Data</Text>
-                  )}
+                  <Text style={ms.primaryBtnText}>{recoveryBusy ? 'Restoring…' : 'Unlock & Restore Data'}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -966,16 +974,15 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                       disabled={peerBusy || recoveryBusy}
                     >
                       <GradientFill match={[styles.secondaryBtn, peerBusy && styles.btnDisabled]} />
-                      {peerBusy ? (
-                        <ActivityIndicator color={colors.ink} />
-                      ) : (
-                        <Text style={styles.secondaryBtnText}>Request Member Approval</Text>
-                      )}
+                      <Text style={styles.secondaryBtnText}>{peerBusy ? 'Asking…' : 'Request Member Approval'}</Text>
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.peerWaitingCard}>
                       <GradientFill match={styles.peerWaitingCard} />
-                      <ActivityIndicator color={colors.orange} style={{ marginBottom: 8 }} />
+                      {/* Round 6 (X2): the logo draws itself while waiting, instead of a spinner. */}
+                      <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                        <DrawingLogo width={56} drawing wordmark={false} />
+                      </View>
                       <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
                       <Text style={styles.peerWaitingDesc}>
                         Ask another household member to open Settings &gt; Household and enter this code:

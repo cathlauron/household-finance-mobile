@@ -2,6 +2,8 @@ import { updateRecentAccountIfPresent } from '../recentAccounts';
 import NeedsInternetSheet, { type NeedsInternet, withNetTimeout } from '../components/NeedsInternetSheet';
 import React, { useState, useEffect, useRef } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
+import { paintBusy } from '../components/BusyOverlay';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -527,6 +529,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       return;
     }
     setJoinBusy(true);
+    await paintBusy();
     try {
       const normalizedCode = joinCodeInput.trim().toUpperCase();
       const result = await withNetTimeout(joinHouseholdLink(joinCodeInput, username));
@@ -555,6 +558,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       return;
     }
     setJoinChoiceBusy(true);
+    await paintBusy();
     setJoinChoiceMsg('');
     try {
       await finishJoinerLink(
@@ -581,11 +585,24 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   // Unlink handler
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
   const [unlinkBusy, setUnlinkBusy] = useState(false);
+  // Version 2.1 (round 6): what the household card says while it works (null = not busy).
+  const hhWords: string[] | null = joinBusy
+    ? ['Checking the code…', 'Linking your households…', 'Almost there…']
+    : joinChoiceBusy
+    ? ['Combining your data…', 'Linking your households…', 'Almost there…']
+    : unlinkBusy || transferBusy
+    ? ['Unlinking this phone…', 'Keeping a copy of your own data…', 'Almost there…']
+    : hostFinishBusy
+    ? ['Finishing the link…', 'Combining your data…', 'Almost there…']
+    : linkBusy
+    ? ['Making your code…', 'Almost there…']
+    : null;
   const [unlinkMsg, setUnlinkMsg] = useState('');
 
   async function handleUnlinkHousehold() {
     setUnlinkMsg('');
     setUnlinkBusy(true);
+    await paintBusy();
     if (linkCode) {
       cancelLinkCode(linkCode).catch(() => {});
       setLinkCode('');
@@ -705,7 +722,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         <Text selectable style={[styles.hhCode, { color: colors.ink }]}>{linkCode}</Text>
         <Text style={[styles.hhRole, { textAlign: 'center' }]}>{hint}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-          <ActivityIndicator size="small" color={colors.gold} />
+          <DrawingLogo width={22} drawing wordmark={false} />
           <Text style={styles.hhRole}>{hostFinishBusy ? 'Finishing…' : 'Waiting for them to join…'}</Text>
         </View>
         {!!hostFinishMsg && (
@@ -718,7 +735,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             disabled={linkBusy || cooldownActive}
             accessibilityRole="button"
           >
-            {linkBusy ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.hhCodeBtnText, { color: colors.gold }]}>{cooldownActive ? `New code (${cooldownSeconds}s)` : 'New code'}</Text>}
+            <Text style={[styles.hhCodeBtnText, { color: colors.gold }]}>{linkBusy ? 'Making…' : cooldownActive ? `New code (${cooldownSeconds}s)` : 'New code'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.hhCodeBtn, { backgroundColor: colors.errorBg }]}
@@ -811,16 +828,28 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         {/* Household: a status card, then plain grouped rows. */}
         <View style={styles.hhStatus}>
           <GradientFill match={styles.hhStatus} />
-          <View style={[styles.hhIcon, { backgroundColor: colors.accentTint }]}>
-            <Ionicons name="people-outline" size={24} color={colors.gold} />
-          </View>
+          {/* Version 2.1 (round 6, Q5/X3): while linking, joining, merging or unlinking,
+              the icon becomes the logo drawing itself and the line says what it's doing. */}
+          {hhWords ? (
+            <View style={[styles.hhIcon, { alignItems: 'center', justifyContent: 'center' }]}>
+              <DrawingLogo width={40} drawing wordmark={false} />
+            </View>
+          ) : (
+            <View style={[styles.hhIcon, { backgroundColor: colors.accentTint }]}>
+              <Ionicons name="people-outline" size={24} color={colors.gold} />
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.hhTitle}>{isLinked ? 'Shared household' : 'Just you'}</Text>
-            <Text style={styles.hhSub}>
-              {isLinked
-                ? `${householdMemberCount || 2} of 5 people · anything anyone adds shows up for everyone`
-                : 'Share with up to 4 others so everyone sees the same money'}
-            </Text>
+            {hhWords ? (
+              <BusyWords key={hhWords[0]} messages={hhWords} style={{ textAlign: 'left', fontSize: 15 }} />
+            ) : (
+              <Text style={styles.hhSub}>
+                {isLinked
+                  ? `${householdMemberCount || 2} of 5 people · anything anyone adds shows up for everyone`
+                  : 'Share with up to 4 others so everyone sees the same money'}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -900,7 +929,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                     })}
                     {isOwner && householdMemberCount < 5 && (
                       <TouchableOpacity style={styles.hhRow} onPress={handleStartHouseholdInvite} disabled={linkBusy} accessibilityRole="button">
-                        {linkBusy ? <ActivityIndicator color={colors.gold} /> : <Ionicons name="add" size={22} color={colors.gold} />}
+                        <Ionicons name="add" size={22} color={colors.gold} style={{ opacity: linkBusy ? 0.4 : 1 }} />
                         <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>
                           {linkBusy ? 'Making an invite code…' : 'Invite someone'}
                         </Text>
@@ -1127,7 +1156,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               <>
                 <SettingsGroup plain footer="Invite: you get a code to give them. Join: type the code from their phone.">
                   <TouchableOpacity style={styles.hhRow} onPress={handleStartLinking} disabled={linkBusy} accessibilityRole="button">
-                    {linkBusy ? <ActivityIndicator color={colors.gold} /> : <Ionicons name="add" size={22} color={colors.gold} />}
+                    <Ionicons name="add" size={22} color={colors.gold} style={{ opacity: linkBusy ? 0.4 : 1 }} />
                     <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>{linkBusy ? 'Making your code…' : 'Invite someone'}</Text>
                   </TouchableOpacity>
                   <View style={styles.hhRow}>
@@ -1141,7 +1170,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                       onChangeText={setJoinCodeInput}
                     />
                     {joinBusy ? (
-                      <ActivityIndicator color={colors.gold} />
+                      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold, opacity: 0.5 }}>Joining…</Text>
                     ) : (
                       <TouchableOpacity onPress={handleJoinWithCode} disabled={!joinCodeInput.trim()} hitSlop={8}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold, opacity: joinCodeInput.trim() ? 1 : 0.4 }}>Join</Text>
@@ -1192,7 +1221,6 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                     {joinResult.isInvite ? 'Merge mine in' : 'Merge both'}
                   </Text>
                 </TouchableOpacity>
-                {joinChoiceBusy && <ActivityIndicator color={colors.gold} />}
                 {!!joinChoiceMsg && (
                   <Text style={joinChoiceMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
                     {joinChoiceMsg}

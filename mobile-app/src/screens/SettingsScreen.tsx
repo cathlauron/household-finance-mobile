@@ -43,7 +43,8 @@ import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
 import { getBiometricState, getBiometricLabel, setBiometricsDisabled, BiometricState } from '../biometrics';
 import SetPinSheet from './SetPinScreen';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { paintBusy } from '../components/BusyOverlay';
+import { BusyHero, BusySectionTitle } from '../components/DrawingLogo';
 import CsvImportModal from './CsvImportModal';
 import {
   subscribeToUserDevices,
@@ -1055,6 +1056,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       return;
     }
     setPassChangeBusy(true);
+    await paintBusy();
     const result = await changePassword(currentPassInput, newPass1Input);
     setPassChangeBusy(false);
     if (!result.ok) {
@@ -1099,6 +1101,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     }
     setRetroactiveBusy(true);
     setRetroactiveError('');
+    await paintBusy();
     try {
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
@@ -1142,6 +1145,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     if (!model) return;
     setExportMsg('');
     setExportBusy(true);
+    await paintBusy();
     try {
       const json = JSON.stringify(model, null, 2);
       const fileUri = FileSystem.cacheDirectory + `finance-flow-backup-${Date.now()}.json`;
@@ -1827,11 +1831,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {/* ---------- Backup & Data ---------- */}
         {page === 'backup' && (
         <>
-        <SettingsGroup label="Your data" plain footer={exportMsg || 'Everything is encrypted on this phone before it is saved online.'}>
+        {/* Version 2.1 (round 6, X5): while saving a backup, a small house beside the title draws itself. */}
+        <BusySectionTitle busy={exportBusy} label="YOUR DATA" words={['Gathering your data…', 'Making your file…', 'Almost there…']} />
+        <SettingsGroup label={exportBusy ? undefined : 'Your data'} plain footer={exportMsg || 'Everything is encrypted on this phone before it is saved online.'}>
           <PlainRow
             title="Save a backup"
             onPress={exportBusy ? undefined : handleExportBackup}
-            right={exportBusy ? <ActivityIndicator size="small" color={colors.gold} /> : undefined}
+            right={undefined}
           />
           <PlainRow testID="settings-import-csv" title="Import from a spreadsheet" sub="CSV file" onPress={() => setCsvOpen(true)} />
         </SettingsGroup>
@@ -1928,7 +1934,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           </>
         ) : (
           <>
-            <SheetHero icon="lock-closed-outline" title="Change your password" sub="Used to sign in and to encrypt your data on this phone." />
+            <BusyHero
+              busy={passChangeBusy}
+              icon="lock-closed-outline"
+              title="Change your password"
+              sub="Used to sign in and to encrypt your data on this phone."
+              words={['Checking your password…', 'Locking your data with the new password…', 'Almost there…']}
+            />
+            <View style={{ opacity: passChangeBusy ? 0.45 : 1 }} pointerEvents={passChangeBusy ? 'none' : 'auto'}>
             <FormGroup>
               <PasswordRow testID="current-password-input" label="Current" value={currentPassInput} onChangeText={setCurrentPassInput} placeholder="Current password" autoFocus />
             </FormGroup>
@@ -1936,8 +1949,9 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               <PasswordRow testID="new-password-input" label="New" value={newPass1Input} onChangeText={setNewPass1Input} placeholder="New password" />
               <PasswordRow testID="confirm-new-password-input" label="Confirm" value={newPass2Input} onChangeText={setNewPass2Input} placeholder="Type it again" />
             </FormGroup>
+            </View>
             <Text style={[styles.sheetNote, passChangeMsg ? { color: colors.error } : null]}>
-              {passChangeMsg || 'At least 6 characters.'}
+              {passChangeMsg || (passChangeBusy ? '' : 'At least 6 characters.')}
             </Text>
           </>
         )}
@@ -2072,14 +2086,21 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         }
       >
-        <SheetHero icon="finger-print-outline" title={`Turn on ${biometricLabel}`} sub="Enter your account password once. After that, your fingerprint opens the app." />
-        <FormGroup>
-          <PasswordRow label="Password" value={biometricPassword} onChangeText={setBiometricPassword} placeholder="Your password" autoFocus testID="biometric-password-input" />
-        </FormGroup>
+        <BusyHero
+          busy={biometricPasswordBusy}
+          icon="finger-print-outline"
+          title={`Turn on ${biometricLabel}`}
+          sub="Enter your account password once. After that, your fingerprint opens the app."
+          words={['Checking your password…', `Setting up ${biometricLabel}…`, 'Almost there…']}
+        />
+        <View style={{ opacity: biometricPasswordBusy ? 0.45 : 1 }} pointerEvents={biometricPasswordBusy ? 'none' : 'auto'}>
+          <FormGroup>
+            <PasswordRow label="Password" value={biometricPassword} onChangeText={setBiometricPassword} placeholder="Your password" autoFocus testID="biometric-password-input" />
+          </FormGroup>
+        </View>
         <Text style={[styles.sheetNote, biometricPasswordError ? { color: colors.error } : null]}>
-          {biometricPasswordError || 'Your phone may ask for your fingerprint next.'}
+          {biometricPasswordError || (biometricPasswordBusy ? '' : 'Your phone may ask for your fingerprint next.')}
         </Text>
-        <BusyOverlay visible={biometricPasswordBusy} messages={['Checking your password…', `Setting up ${biometricLabel}…`, 'Almost there…']} />
       </BottomSheet>
 
       {/* Secret Recovery Key: enter your password (Next), then see and copy the new key (Done). */}
@@ -2104,12 +2125,20 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       >
         {!retroactiveSuccessCode ? (
           <>
-            <SheetHero icon="key-outline" title="Secret Recovery Key" sub="A 16-character key that gets you back in if you ever forget your password." />
-            <FormGroup>
-              <PasswordRow label="Password" value={retroactiveVerifyPass} onChangeText={setRetroactiveVerifyPass} placeholder="Your current password" autoFocus />
-            </FormGroup>
+            <BusyHero
+              busy={retroactiveBusy}
+              icon="key-outline"
+              title="Secret Recovery Key"
+              sub="A 16-character key that gets you back in if you ever forget your password."
+              words={['Checking your password…', 'Making your new key…', 'Almost there…']}
+            />
+            <View style={{ opacity: retroactiveBusy ? 0.45 : 1 }} pointerEvents={retroactiveBusy ? 'none' : 'auto'}>
+              <FormGroup>
+                <PasswordRow label="Password" value={retroactiveVerifyPass} onChangeText={setRetroactiveVerifyPass} placeholder="Your current password" autoFocus />
+              </FormGroup>
+            </View>
             <Text style={[styles.sheetNote, retroactiveError ? { color: colors.error } : null]}>
-              {retroactiveError || (retroactiveBusy ? 'Making your new key…' : 'Making a new key replaces your old one, which stops working.')}
+              {retroactiveError || (retroactiveBusy ? '' : 'Making a new key replaces your old one, which stops working.')}
             </Text>
           </>
         ) : (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { paintBusy } from '../components/BusyOverlay';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../components/AppText';
@@ -123,10 +124,19 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
         {/* STEP 2: QUICK UNLOCK */}
         {step === 2 && (
           <View style={styles.stepContainer}>
+            {/* Version 2.1 (round 6, Q7): the logo above the title draws itself while saving. */}
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+              <DrawingLogo width={64} drawing={busy} wordmark={false} />
+            </View>
             <Text style={styles.title}>Set up Quick Unlock</Text>
-            <Text style={styles.sub}>
-              Unlock quickly without entering your full password every time.
-            </Text>
+            {busy ? (
+              <BusyWords messages={['Saving your PIN…', 'Setting up Quick unlock…', 'Almost there…']} style={{ marginBottom: 8 }} />
+            ) : (
+              <Text style={styles.sub}>
+                Unlock quickly without entering your full password every time.
+              </Text>
+            )}
+            <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
 
             {biometricsAvailable ? (
               <View style={styles.biometricActiveCard}>
@@ -149,7 +159,9 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
               </View>
             )}
 
+            </View>
             <View style={styles.formSection}>
+              <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
               <Text style={styles.inputLabel}>Quick PIN (4–6 digits)</Text>
               <PinField
                 testID="onboarding-pin-input"
@@ -165,6 +177,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
                 value={pin2}
                 onChangeText={setPin2}
               />
+              </View>
 
               {!!pinError && <Text style={styles.errorText}>{pinError}</Text>}
 
@@ -194,7 +207,6 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
 
       </KeyboardAwareScrollView>
     </View>
-      <BusyOverlay visible={!!(busy)} messages={['Saving your PIN…', 'Setting up Quick unlock…', 'Almost there…']} />
     </>
   );
 }
