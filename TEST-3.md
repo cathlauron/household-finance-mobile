@@ -1,0 +1,39 @@
+# Version 3 test list
+
+Test on the `v3` branch (PowerShell):
+
+    cd C:\Projects\household-finance-mobile
+    git checkout v3
+    git pull
+    cd mobile-app
+    npx expo start -c
+
+Everything in TEST-2.1.md is in version 3 too. These are the version 3 extras.
+
+## 1. Hide amounts (H1b, H2b)
+1. Home: an eye sits next to "Left to spend". Tap it: the amount shows ₱ *****, and so do "of ₱…", the other two card pages, the slim bar when you scroll, and every card in the Accounts stack.
+2. Close the app fully and reopen: amounts are still hidden. Tap the eye again: they come back.
+
+## 2. Welcome back (H3b)
+The card shows after 3 or more days away. To test without waiting, a test account that hasn't been opened on this phone for 3+ days works; otherwise tell me and I'll make a quick test switch.
+1. It sits between Left to Spend and Accounts: "Welcome back", good news first (a payday, a bill paid, money saved while you were away), then "N days to catch up. No rush, nothing is lost."
+2. Quick catch-up: lists paydays that were due while away (Came in logs it into the payday's usual account) and bills that came due (tap one to pay it).
+3. Everything: opens Transactions.
+4. I'll estimate the rest: enter a rough amount and the account, Add: one "Spending while away (dates)" line appears in Transactions, category Other.
+5. ✕ closes it for this visit.
+
+## 3. Running low (H4b)
+1. When Left to Spend is Running low (orange) or Overspent (red), a card under it says "Running low until payday (date)" and "N ways to free up ₱X".
+2. Ways come from savings pots (emergency pot last), money you lent, and refunds you're waiting for. Use opens the pot's Move out sheet; the others open the loan or the transaction. Nothing moves by itself.
+3. ✕ hides it until tomorrow.
+4. Settings › Budgeting › "Heads-up when money gets tight": off hides the card; on brings it back.
+
+## 4. Credit cards (K1c, K4, K5)
+1. Open a credit card's page (from Home or Accounts; from Accounts the back button says Accounts). The card says "Available to use".
+2. The first time, "One quick question about (card)": pick "What I can still use" or "What I owe", type the limit, Save.
+   - What I can still use: the number stays the same.
+   - What I owe: the card now shows the limit minus that number as "Available to use".
+   - Ask me later hides it until you open the page again.
+3. After that, "Credit card" shows Limit, You owe, Next statement and Pay. Details sets the limit, the statement due day and the minimum; the due date and minimum then show under Next statement.
+4. Pay opens Pay card with the card under To. Paying more than you owe isn't allowed.
+5. New transaction, money out, Paid with a credit card: "Split into payments" with No / 3 / 6 / 12 appears (not for cash or debit). Pick 6 on ₱7,500: "₱1,250.00 a month for 6 months on (card). Your spending counts the whole amount today." Add it: the card page shows "Installments: (name) · 6 of 6 left · ₱1,250.00 a month".

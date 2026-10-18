@@ -332,7 +332,7 @@ export default function AccountsScreen() {
                     >
                       <TouchableOpacity
                         style={[styles.accountRow, i > 0 && styles.accountRowDivider]}
-                        onPress={() => navigation.navigate('CardDetail', { group, id: account.id })}
+                        onPress={() => navigation.navigate('CardDetail', { group, id: account.id, backTitle: 'Accounts' })}
                         onLongPress={() => openEditModal(group, account)}
                         accessibilityRole="button"
                         accessibilityLabel={`${account.name}, ${formatPeso(bal)}`}

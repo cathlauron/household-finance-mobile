@@ -262,6 +262,8 @@ export default function TransactionsScreen() {
   const [notesInput, setNotesInput] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
+  // Version 3 (approved K5): split a credit card purchase into 3, 6 or 12 payments (0 = no).
+  const [installmentsInput, setInstallmentsInput] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -328,6 +330,7 @@ export default function TransactionsScreen() {
     setNotesInput('');
     setTagsInput('');
     setPaymentMethodInput(undefined);
+    setInstallmentsInput(0);
     setErrorMsg('');
   }
 
@@ -360,6 +363,7 @@ export default function TransactionsScreen() {
     setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
     setReceiptPhoto(raw.receiptPhoto || null);
     setPaymentMethodInput(raw.paymentMethod);
+    setInstallmentsInput(raw.installments ?? 0);
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -505,6 +509,8 @@ export default function TransactionsScreen() {
       }
     }
 
+    // Only a credit card purchase can be split into payments.
+    const installmentsToSave = directionInput === 'out' && paymentMethodInput?.type === 'credit' && installmentsInput > 1 ? installmentsInput : undefined;
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
     const parsedTags = tagsInput
       .split(',')
@@ -534,6 +540,8 @@ export default function TransactionsScreen() {
           };
         if (extraKind) next.incomeKind = extraKind;
         else delete next.incomeKind;
+        if (installmentsToSave) next.installments = installmentsToSave;
+        else delete next.installments;
         // Saving an edit counts as checking it.
         delete next.needsReview;
         delete next.reviewWhy;
@@ -566,6 +574,7 @@ export default function TransactionsScreen() {
           paymentMethod: paymentMethodInput,
           ...(receiptPhoto ? { receiptPhoto } : {}),
           ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
+          ...(installmentsToSave ? { installments: installmentsToSave } : {}),
           ...(ruleFilled && categoryInput.trim() ? { needsReview: true, reviewWhy: 'Filled in by your rule' } : {}),
         };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
@@ -1054,6 +1063,41 @@ export default function TransactionsScreen() {
               excludeTxnId={editingId}
             />
           </Guided>
+          {/* Version 3 (approved K5): only when Paid with is a credit card. */}
+          {directionInput === 'out' && paymentMethodInput?.type === 'credit' && (() => {
+            const card = model.balanceAccounts.credit.find((a) => a.id === paymentMethodInput.accountId);
+            const per = typeof amountInput === 'number' && installmentsInput > 1 ? Math.round((amountInput / installmentsInput) * 100) / 100 : 0;
+            return (
+              <View style={[styles.formGroup, { marginTop: -4, marginBottom: 14 }]}>
+                <View style={[styles.formRow, { justifyContent: 'space-between' }]}>
+                  <Text style={styles.formLabel}>Split into payments</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {[0, 3, 6, 12].map((n) => {
+                      const on = installmentsInput === n;
+                      return (
+                        <TouchableOpacity
+                          key={n}
+                          onPress={() => { hapticSelection(); setInstallmentsInput(n); }}
+                          style={{ minWidth: 40, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, alignItems: 'center', backgroundColor: on ? colors.buttonFill : colors.navy4 }}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: on }}
+                          accessibilityLabel={n === 0 ? 'No split' : `${n} payments`}
+                          testID={`txn-installments-${n}`}
+                        >
+                          <Text style={{ fontSize: 15, fontWeight: '700', color: on ? colors.onButton : colors.ink }}>{n === 0 ? 'No' : n}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+                {installmentsInput > 1 && (
+                  <Text style={[styles.formFooter, { marginBottom: 8 }]}>
+                    {per > 0 ? `${formatPeso(per)} a month for ${installmentsInput} months on ${card?.name || 'this card'}. ` : ''}Your spending counts the whole amount today.
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
         </View>
 
         <Guided {...fieldErrors.props('date')} inset={false} radius={12}>

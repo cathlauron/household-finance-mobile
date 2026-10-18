@@ -1,5 +1,5 @@
-import React, { useLayoutEffect, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
@@ -13,6 +13,12 @@ import type { ThemeColors } from '../theme';
 import type { HouseholdModel, PaymentMethod } from '../types';
 import GradientFill from '../components/GradientFill';
 import { cardFaceColors, CardFaceFill } from '../components/CardFace';
+import AmountInput from '../components/AmountInput';
+import BottomSheet from '../components/BottomSheet';
+import { TextInput } from '../components/AppText';
+import { showSaved } from '../components/SavedToast';
+import { hapticSelection } from '../haptics';
+import { cardOwed, nextStatementDue, installmentsOnCard, savedBalanceAfterAnswer } from '../creditCards';
 
 // Redesign: the Card page from the Finance Flow mockup, opened by tapping a card in
 // Home's Wallet. Shows the card with its balance, how much was spent from it this
@@ -43,7 +49,15 @@ export function idsForAccount(model: HouseholdModel, group: AccountGroup, accoun
 
 export default function CardDetailScreen() {
   const { colors, isDark } = useTheme();
-  const { model } = useData();
+  const { model, saveModel } = useData();
+  // Version 3 (approved K4): the one-time question, "Ask me later" hides it for this visit.
+  const [askLater, setAskLater] = useState(false);
+  const [answer, setAnswer] = useState<'canUse' | 'owe' | null>(null);
+  const [limitInput, setLimitInput] = useState<number | ''>('');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [dLimit, setDLimit] = useState<number | ''>('');
+  const [dDueDay, setDDueDay] = useState('');
+  const [dMin, setDMin] = useState<number | ''>('');
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const group: AccountGroup = route.params?.group;
@@ -53,7 +67,7 @@ export default function CardDetailScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: '',
-      headerBackTitle: 'Home',
+      headerBackTitle: route.params?.backTitle ?? 'Home',
       headerRight: () => (
         <TouchableOpacity
           onPress={() => navigation.navigate('Transfer', group === 'credit' ? { toGroup: group, toId: accountId } : { fromGroup: group, fromId: accountId })}
@@ -99,6 +113,49 @@ export default function CardDetailScreen() {
   const amount = accountCurrentBalance(model, group, account);
   const chip = account.color || DEFAULT_GROUP_COLORS[group];
   const maxDay = Math.max(1, ...data.days.map((d) => d.v));
+  const isCredit = group === 'credit';
+  const owed = isCredit ? cardOwed(account, amount) : null;
+  const due = isCredit ? nextStatementDue(account.statementDueDay) : null;
+  const parts = isCredit ? installmentsOnCard(model, accountId) : [];
+  const short = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  function updateCard(patch: Partial<typeof account>) {
+    if (!model || !account) return Promise.resolve();
+    return saveModel({
+      ...model,
+      balanceAccounts: { ...model.balanceAccounts, credit: model.balanceAccounts.credit.map((a) => (a.id === accountId ? { ...a, ...patch } : a)) },
+    });
+  }
+
+  async function saveAnswer() {
+    if (!answer) return Alert.alert('Pick one', `Is ${formatPeso(amount)} what you can still use, or what you owe?`);
+    if (limitInput === '' || limitInput <= 0) return Alert.alert("What's the limit?", 'Your credit limit is on your statement or in the card app.');
+    if (limitInput < amount) return Alert.alert('Check the limit', `The limit can't be less than ${formatPeso(amount)}.`);
+    const saved = typeof account!.amount === 'number' ? account!.amount : 0;
+    await updateCard({ creditLimit: limitInput, amount: savedBalanceAfterAnswer(saved, amount, answer, limitInput) });
+    showSaved('Card set up');
+  }
+
+  function openDetails() {
+    setDLimit(account!.creditLimit ?? '');
+    setDDueDay(account!.statementDueDay ? String(account!.statementDueDay) : '');
+    setDMin(account!.minPayment ?? '');
+    setDetailsOpen(true);
+  }
+
+  async function saveDetails() {
+    const day = parseInt(dDueDay, 10);
+    if (dDueDay.trim() && !(day >= 1 && day <= 31)) return Alert.alert('Due day', 'Use a day of the month, 1 to 31.');
+    if (dLimit === '' || dLimit <= 0) return Alert.alert('Credit limit', 'Enter the card\'s credit limit.');
+    if (dLimit < amount) return Alert.alert('Check the limit', `The limit can't be less than the ${formatPeso(amount)} you can still use.`);
+    await updateCard({
+      creditLimit: dLimit,
+      statementDueDay: dDueDay.trim() ? day : undefined,
+      minPayment: dMin === '' || dMin <= 0 ? undefined : dMin,
+    });
+    setDetailsOpen(false);
+    showSaved('Saved');
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -116,7 +173,7 @@ export default function CardDetailScreen() {
           </View>
         </View>
         <View style={{ marginTop: 'auto' }}>
-          <Text style={styles.meta}>Balance</Text>
+          <Text style={styles.meta}>{isCredit ? 'Available to use' : 'Balance'}</Text>
           <Text style={[styles.balance, { color: amount < 0 ? colors.negative : colors.positive }]}>{formatPeso(amount)}</Text>
         </View>
       </View>
@@ -186,6 +243,134 @@ export default function CardDetailScreen() {
         )}
       </View>
 
+      {/* Version 3 (approved K4): one quick question before the credit extras show. */}
+      {isCredit && owed === null && !askLater && (
+        <View style={[styles.group, { padding: 16, marginTop: 24, gap: 10 }]} testID="card-setup">
+          <GradientFill match={[styles.group, { padding: 16, marginTop: 24 }]} />
+          <Text style={styles.qTitle}>One quick question about {account.name || 'this card'}</Text>
+          <Text style={styles.meta}>Cards now track the limit, what you owe and what you can still use. Nothing changes until you answer.</Text>
+          <Text style={[styles.rowTitle, { marginTop: 4 }]}>Is {formatPeso(amount)}…</Text>
+          {(
+            [
+              ['canUse', 'What I can still use'],
+              ['owe', 'What I owe'],
+            ] as const
+          ).map(([id, label]) => (
+            <TouchableOpacity
+              key={id}
+              onPress={() => { hapticSelection(); setAnswer(id); }}
+              style={[styles.choice, { borderColor: answer === id ? colors.gold : colors.navy4 }]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: answer === id }}
+            >
+              <Ionicons name={answer === id ? 'radio-button-on' : 'radio-button-off'} size={20} color={answer === id ? colors.gold : colors.inkFaint} />
+              <Text style={styles.rowTitle}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.inlineRow}>
+            <Text style={styles.rowTitle}>Credit limit</Text>
+            <AmountInput style={styles.inlineAmount} value={limitInput} onChangeAmount={setLimitInput} />
+          </View>
+          <TouchableOpacity onPress={saveAnswer} style={[styles.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button" testID="card-setup-save">
+            <Text style={[styles.primaryText, { color: colors.onButton }]}>Save</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setAskLater(true)} style={{ alignSelf: 'center', padding: 6 }} accessibilityRole="button">
+            <Text style={[styles.link, { fontWeight: '700' }]}>Ask me later</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Version 3 (approved K1c): the credit card extras. */}
+      {isCredit && owed !== null && (
+        <>
+          <View style={styles.sectionHead}>
+            <Text style={styles.header}>Credit card</Text>
+            <TouchableOpacity onPress={openDetails} accessibilityRole="button" testID="card-details">
+              <Text style={styles.link}>Details</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.group}>
+            <GradientFill match={styles.group} />
+            <View style={styles.kvRow}>
+              <Text style={styles.rowTitle}>Limit</Text>
+              <Text style={styles.kvVal}>{formatPeso(account.creditLimit as number)}</Text>
+            </View>
+            <View style={[styles.kvRow, styles.line]}>
+              <Text style={styles.rowTitle}>You owe</Text>
+              <Text style={styles.kvVal}>{formatPeso(owed)}</Text>
+            </View>
+            <View style={[styles.kvRow, styles.line]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Next statement</Text>
+                <Text style={styles.meta}>
+                  {due ? `${account.minPayment ? `min ${formatPeso(account.minPayment).replace('.00', '')} · ` : ''}due ${short(due)}` : 'Add the due day in Details'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Transfer', { toGroup: 'credit', toId: accountId })}
+                style={[styles.payBtn, { backgroundColor: colors.buttonFill }]}
+                accessibilityRole="button"
+                testID="card-pay"
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.onButton }}>Pay</Text>
+              </TouchableOpacity>
+            </View>
+            {parts.map((p) => (
+              <View key={p.id} style={[styles.kvRow, styles.line]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowTitle}>Installments</Text>
+                  <Text style={styles.meta}>
+                    {p.label} · {p.left} of {p.count} left · {formatPeso(p.perMonth)} a month
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      <BottomSheet
+        visible={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        grouped
+        header={
+          <View style={styles.sheetHead}>
+            <TouchableOpacity onPress={() => setDetailsOpen(false)} accessibilityRole="button" hitSlop={10}>
+              <Text style={[styles.link, { fontSize: 17, fontWeight: '400' }]}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={[styles.rowTitle, { fontWeight: '700' }]}>Card details</Text>
+            <TouchableOpacity onPress={saveDetails} accessibilityRole="button" hitSlop={10} testID="card-details-save">
+              <Text style={[styles.link, { fontSize: 17 }]}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <View style={[styles.group, { marginBottom: 8 }]}>
+          <View style={styles.inlineRow}>
+            <Text style={styles.rowTitle}>Credit limit</Text>
+            <AmountInput style={styles.inlineAmount} value={dLimit} onChangeAmount={setDLimit} />
+          </View>
+          <View style={[styles.inlineRow, styles.line]}>
+            <Text style={styles.rowTitle}>Statement due day</Text>
+            <TextInput
+              style={styles.dayInput}
+              value={dDueDay}
+              onChangeText={(t) => setDDueDay(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              keyboardType="number-pad"
+              placeholder="e.g. 5"
+              placeholderTextColor={colors.inkFaint}
+            />
+          </View>
+          <View style={[styles.inlineRow, styles.line]}>
+            <Text style={styles.rowTitle}>Minimum payment</Text>
+            <AmountInput style={styles.inlineAmount} value={dMin} onChangeAmount={setDMin} />
+          </View>
+        </View>
+        <Text style={[styles.meta, { marginHorizontal: 16, marginBottom: 16 }]}>
+          You owe is the limit minus what you can still use. Paying the card frees up the limit again.
+        </Text>
+      </BottomSheet>
+
       <TouchableOpacity style={[styles.group, styles.action]} onPress={() => navigation.navigate('Accounts', { editGroup: group, editId: accountId, nonce: Date.now() })} accessibilityRole="button">
         <GradientFill match={[styles.group, styles.action]} />
         <Text style={[styles.actionText, { color: colors.gold }]}>Edit card</Text>
@@ -234,5 +419,16 @@ function makeStyles(colors: ThemeColors) {
     rowAmount: { fontSize: 17, fontWeight: '600' },
     action: { minHeight: 50, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
     actionText: { fontSize: 17 },
+    qTitle: { fontSize: 18, fontWeight: '800', color: colors.ink },
+    choice: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
+    inlineRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 50, paddingHorizontal: 16 },
+    inlineAmount: { flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, justifyContent: 'flex-end' },
+    dayInput: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
+    primary: { borderRadius: 28, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
+    primaryText: { fontSize: 17, fontWeight: '700' },
+    kvRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 54, paddingHorizontal: 16, paddingVertical: 8 },
+    kvVal: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    payBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999 },
+    sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12, minHeight: 40 },
   });
 }

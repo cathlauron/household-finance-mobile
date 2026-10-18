@@ -53,7 +53,7 @@ export type RootStackParamList = {
   Recurring: undefined;
   Envelopes: undefined;
   Subscriptions: undefined;
-  CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string };
+  CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string; backTitle?: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
   PotDetail: { id: string; open?: 'out' };

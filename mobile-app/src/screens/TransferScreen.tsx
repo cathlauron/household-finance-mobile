@@ -8,7 +8,8 @@ import AmountInput from '../components/AmountInput';
 import DateField from '../components/DateField';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { formatPeso } from '../balanceProjection';
+import { formatPeso, accountCurrentBalance } from '../balanceProjection';
+import { cardOwed } from '../creditCards';
 import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
@@ -68,6 +69,14 @@ export default function TransferScreen() {
     if (from.key === to.key) return Alert.alert('Pick two different accounts');
     if (from.group === 'credit') return Alert.alert("A credit card can't send money", 'Pick a cash or bank account to move from.');
     if (amount === '' || amount <= 0) return Alert.alert('Enter how much to move');
+    // Version 3: a card with a limit can't be paid more than you owe on it.
+    if (to.group === 'credit') {
+      const card = model.balanceAccounts.credit.find((a) => a.id === to.id);
+      const owed = card ? cardOwed(card, accountCurrentBalance(model, 'credit', card)) : null;
+      if (owed !== null && amount > owed + 0.004) {
+        return Alert.alert(owed > 0 ? `You owe ${formatPeso(owed)} on ${to.name}` : `Nothing owed on ${to.name}`, owed > 0 ? `Pay up to ${formatPeso(owed)}.` : 'The whole limit is free to use already.');
+      }
+    }
     const feeAmt = fee === '' ? 0 : fee;
     const bump = (m: HouseholdModel, a: Acct, delta: number): HouseholdModel => ({
       ...m,

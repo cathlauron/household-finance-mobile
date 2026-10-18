@@ -385,6 +385,11 @@ export type BalanceAccountEntry = {
   currency?: string;
   owner?: string;
   color?: string;
+  // Version 3, credit cards only. `amount` stays what you can still use (approved K3);
+  // with a limit the card page also shows what you owe (limit minus what you can use).
+  creditLimit?: number;
+  statementDueDay?: number; // day of the month the statement is due (1-31)
+  minPayment?: number; // usual minimum payment
 };
 
 export type BalanceAccounts = {
@@ -422,6 +427,9 @@ export type ManualTransaction = {
   // "Refunded" rather than "Pending" — mirrors the expenseTransactionId pattern already used
   // by Travel checklist items and Events.
   refundTransactionId?: string;
+  // Version 3 (approved K5): a credit card purchase split into 3, 6 or 12 monthly payments.
+  // Spending counts the whole amount on the day of purchase; this only tracks the parts.
+  installments?: number;
   // When this transaction was first saved (milliseconds since 1970). Lets Left to Spend
   // tell whether spending logged on the same day as a balance update came before or
   // after that update. Older transactions don't have it and are treated as "before".
