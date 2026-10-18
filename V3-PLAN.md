@@ -1,8 +1,8 @@
 # Finance Flow — Version 3 Plan
 
-> Copy of the Version 3 plan doc (made 2026-10-16 in one of Cath's Claude accounts).
+> Copy of the Version 3 plan doc (made in one of Cath's Claude accounts; last copied 2026-10-17).
 > The doc itself may only open in that Claude account; this file is the copy every account can read.
-> Decisions Cath makes on the Questions list get recorded in PROGRESS7.md.
+> Decisions Cath makes on the Questions lists get recorded in PROGRESS7.md.
 
 Oct 16, 2026 · @Cath
 
@@ -440,6 +440,196 @@ What never to do: lock or hide people's own data, fake countdowns, guilt-trip bu
 - A small server-side check that someone really has Premium. That likely means Firebase's pay-as-you-go plan with a spending alert.
 - Final prices. The placeholder is ₱99 a month or ₱950.40 a year; worth comparing with similar apps before deciding.
 
+## Linked households: owner, merging and who added what
+
+Your rules work, with one change I'd suggest: instead of the owner deleting the joiner's entries after a merge, the owner approves the merge before it happens. Nothing is added and then taken away, and nobody's data disappears without warning.
+
+**How it works today (and one risk I found)**
+
+- The person who starts the household is its owner.
+- When someone joins, they pick Keep mine, Keep theirs or Merge both. **Keep mine replaces the whole household's data with the joiner's.** Someone joining an existing household could wipe out the owner's records. Under your rule, the joiner only gets Merge or Keep the household's data, so Keep mine goes away. This is a 2.1 fix.
+- When the owner leaves a household of two, the household is closed. With three or more, the owner leaves and the others carry on.
+- Nothing records who added an entry.
+
+**Joining, the new way**
+
+1. The owner makes an invite code, so the owner is clear from the start.
+2. The joiner picks Bring my data (merge) or Start fresh (keep the household's data). Their own data stays saved on their phone either way.
+3. Bring my data sends the owner a request: "Ana wants to bring 48 transactions, 3 bills and 2 accounts." The owner taps Bring all, Choose, or Don't bring, and can open the list first to spot duplicates.
+4. The joiner is told what happened: "Cath added 45 of your 48 entries. 3 were left out as duplicates." Left-out entries stay on the joiner's phone, so nothing is lost.
+5. Later removals: if the owner deletes something the joiner added, the joiner gets a small notice, and the item sits in Recently deleted for 30 days so it can be restored.
+
+**Who added what**
+
+- Every new entry saves who added it, and who last changed it.
+- Lists show a tiny avatar on each row, and the details page says "Added by Ana · Oct 17, 9:14 AM".
+- A filter on Transactions: Everyone, Me, Ana.
+- Possible duplicates get a gentle flag: "Ana logged ₱1,250 Meralco on the same day. Same payment?" with Keep both or Merge.
+- Entries made before this feature show "Added before tracking started".
+
+**When the owner leaves**
+
+| Situation | What happens |
+| --- | --- |
+| Owner leaves, other members stay | Before leaving, the owner picks the next owner. The app suggests the longest-standing member. |
+| Household of two | The other person becomes owner and the household carries on. Today it closes instead. |
+| Owner wants to step down but stay | Hand over ownership from Members at any time. |
+| Owner deletes their account | Same as leaving: pick a successor first. |
+| Owner disappears (lost phone, no reply) | After 60 days without the owner opening the app, a member can ask to take over. The owner gets a notice and 7 days to say no. |
+| Who pays for a Family plan | The owner. Members keep Premium while they're in the household. |
+
+The owner can remove members, approve merges and hand over ownership. Everyone can add and edit entries. Changing ownership needs a security rules update, so I'll show you the rules change before you publish it.
+
+## Paying part of a bill (your Meralco example)
+
+Debts already handle this: pay what you can and the unpaid part is added to the next due amount. Bills don't: Mark as paid only pays the full amount. The fix is to give bills the same "Pay part of it" option, and to show the carried amount separately so nobody confuses it with a bigger bill.
+
+**Your example, step by step** (amounts made up)
+
+|  | October bill | November bill |
+| --- | --- | --- |
+| New charges | ₱12,400 | ₱3,100 (you type it when the bill arrives) |
+| Carried from last time | — | ₱9,400 |
+| Total due | ₱12,400 | ₱12,500 |
+| You pay | ₱3,000 (Pay part of it) | whatever you can |
+| Left over | ₱9,400, carried to November | carried again if needed |
+
+What you'd see:
+
+- **The pay sheet** has two buttons: Pay all ₱12,400 and Pay part of it. Part shows: "₱9,400 will be added to your next Meralco bill."
+- **The bill page** shows the two lines (New charges, Carried from last time) and a small "Paying in parts" label, so you can see it hasn't been forgotten.
+- **When the new bill comes**, the app asks only for the new charges and adds the carried amount itself.
+- **Left to Spend and the calendar** count only what you still plan to pay, so the leftover doesn't vanish or get counted twice.
+- **A gentle check-in** when a bill has been carried 3 months in a row: "Meralco has carried a balance since August. Want a plan to catch up?" This opens the pay-off planner from A smarter app.
+- **Fees:** the existing late fee field adds any fee to the next bill.
+
+**Bills, debts and loans: how each handles part payments**
+
+| Kind | What it's for | Paying part of it |
+| --- | --- | --- |
+| Bill | Something that charges you every period (Meralco, water, internet) | New: the unpaid part is carried to the next bill |
+| Debt | Something you owe that has a minimum (credit card statement, store installment) | Already works: pay at least the minimum; the rest stays owed |
+| Loan | A fixed amount you borrowed or lent, paid down over time | Already works: every payment lowers what's left, any amount |
+
+One rule keeps it simple: a part-paid bill stays a bill. You never have to move Meralco into Debts.
+
+## Credit cards
+
+Today a card is just one number, and the app adds it to your total as if it were money you have: your Accounts page shows ₱5,855.07, which is Maribank ₱2,030.11 plus Atome ₱3,824.96. A card should instead track three things, its limit, what you owe and what's left to use, and its statement should appear in To-Pay by itself, so you never have to copy it into Debts.
+
+**What a card would show**
+
+|  | Example |
+| --- | --- |
+| Credit limit | ₱10,000 |
+| You owe | ₱10,000 |
+| Available to use | ₱0 |
+| Next statement | ₱10,000 · minimum ₱500 · due Nov 5 |
+
+The Accounts page total becomes cash plus debit only (₱2,030.11 in your screenshot). Cards get their own line: "Owed on cards ₱10,000 · Available ₱0".
+
+**Your example, step by step**
+
+1. **Spending with the card.** Each purchase is logged as spending, paid with Atome. It counts in this month's spending and envelopes when you buy. You owe more and have less available.
+2. **Statement day.** The app adds "Atome statement ₱10,000, minimum ₱500, due Nov 5" to To-Pay. Nothing to type, and no separate debt to create.
+3. **Paying it.** The pay sheet offers Pay in full ₱10,000, Pay the minimum ₱500 or Another amount, from Maribank, with an honest comparison:
+   - "Pay the minimum: ₱9,500 stays in Maribank for your other bills this month. Interest next month: about ₱300."
+   - "Pay in full: no interest."
+4. **After paying ₱500.** Maribank goes down ₱500, you owe ₱9,500, and ₱500 is available to use again: "₱500 freed up on your Atome card." The payment is not counted as new spending, since the purchases already were. That stops the card being counted twice.
+5. **Next statement.** It shows the unpaid ₱9,500, the interest, and any new purchases. Interest counts as a cost, so it shows in your spending and reports. The app estimates it from the card's monthly rate; you confirm the real number from your statement.
+6. **Paid in full.** You owe ₱0 and the whole ₱10,000 limit is available again.
+
+**Extras that make cards easier**
+
+- **Installments.** Atome and many cards split a purchase into 3, 6 or 12 payments. Log it once with "Split into 3 payments", and each statement includes that month's part.
+- **Gentle warnings.** "You've used 80% of your Atome limit", and "Using freed-up credit adds to next month's statement."
+- **Pay-off plan.** "Pay ₱1,500 a month and it's cleared by March, about ₱900 in interest." (A smarter app, part C)
+
+**Moving existing cards over.** The first time version 3 opens, it asks once per card: "Is ₱3,824.96 what you can still use, or what you owe?" and "What's the limit?" Nothing changes until you answer.
+
+## Home screen widgets
+
+Start with a quick-add widget that shows no money at all, only buttons, so nothing private sits on the home screen. A widget that shows balances comes second, with Hide amounts on by default.
+
+| Widget | What it shows | Privacy |
+| --- | --- | --- |
+| Quick add (first) | Money out · Money in · your top 2 habits ("Coffee ₱150"). Tapping opens the app straight on a filled-in form. | Shows no amounts you haven't chosen |
+| Left to Spend | "₱4,200 left until payday (Oct 30)" | Hidden until you tap, by default |
+| Next bill | "Meralco · due in 3 days" | Bill name only; amounts optional |
+
+Things to know:
+
+- Widgets don't work in Expo Go, only in a real build, so testing them needs a new build.
+- Android comes first, using a widget add-on built for Expo apps. iPhone widgets need a newer version of Expo than the app uses now, so they come with the iPhone version.
+- A locked app stays locked: tapping the widget still asks for your fingerprint or PIN first.
+- What the widget shows is a small copy kept on the phone. It updates when you use the app and every few hours.
+
+## Premium plans and codes for friends
+
+Using your answers: three plans like Spotify's, a 30-day trial with no card, and a way to give Premium to yourself and friends for free.
+
+| Plan | Who | Price |
+| --- | --- | --- |
+| Individual | 1 person | \[PRICE\] |
+| Duo | 2 people in one household | \[PRICE\] |
+| Family | 3 to 6 people in one household | \[PRICE\] |
+
+The household owner pays, and everyone in the household gets Premium. All plans include the trial.
+
+**Codes for you and close friends:** Google Play's own promo codes only give a free trial, and still ask for a payment method. For free use without paying, the better tool is the subscription service (RevenueCat), which can give Premium straight to an account with no store and no card involved.
+
+1. Your own account: given Premium permanently from the subscription dashboard.
+2. Friend codes: you make a code such as CATH-FRIENDS-01, set how many people can use it and for how long (or forever). A friend types it in Settings › Premium › Have a code?
+3. Our small server checks the code, grants Premium, and counts the uses. You can switch a code off anytime.
+
+This needs the server piece listed under "What Premium needs before it can exist", so it arrives with Premium itself.
+
+## Opening smoothly, online and offline
+
+The biggest delay is in the code, not the phone: a linked household (like yours) signs in over the internet every time the app opens, before it shows anything. Offline, it can't open at all and drops to the sign-in screen with "Couldn't sign you in automatically". Single-person accounts already open offline.
+
+**What happens at launch today**
+
+1. The opening animation plays.
+2. The saved sign-in is read from the phone.
+3. Single-person account: your password is turned into your key on the phone, your data opens from the phone, and Home shows. Works offline.
+4. Linked household: the app signs in to Google's service, downloads your keys, downloads the household's data, then shows Home. Each step waits for the internet.
+
+Step 3 also does a deliberately slow calculation that protects your password, which may cost a second or more on cheaper phones. I'll measure it before changing anything.
+
+**The fix: open from the phone first, then sync**
+
+- Every account opens straight from the copy saved on the phone, linked or not, online or offline. Home appears right after the opening animation.
+- Signing in and fetching your partner's changes happen in the background, with a small "Updating…" line that disappears when done.
+- If the phone was signed out from another device, the app still locks itself as soon as it finds out.
+- Offline, you're in with the offline banner showing, instead of the sign-in screen.
+- Each screen draws instantly from saved data and never waits on the internet. Anything slow shows a short loading animation, never a frozen screen.
+
+This touches how keys are kept on the phone, so I'll explain exactly what changes before building it.
+
+**How we'll measure "smooth"**: time from tapping the icon to seeing Home, online, offline, and on a slow connection. Target: under 2 seconds after the opening animation, and the same offline as online.
+
+## Testing on Android and iPhone
+
+Yes, most of the checking can move off your phone. Some things still need your eyes and hands, so your phone becomes the last check instead of the first.
+
+| Way | What it catches | What it needs |
+| --- | --- | --- |
+| Automatic money checks | Mistakes in the maths: carry-overs, cards, back-dating, Left to Spend, imports. I run them after every change, before you see anything. | Nothing from you. Free. |
+| Automatic tap-through tests in Expo's cloud | Screens that break or crash. Scripted taps run on an Android emulator and an iPhone simulator, with screenshots for each step. | An Expo account (you have one). Uses build time from your Expo plan; a paid plan may be needed if we run it often. No Mac needed. |
+| Android emulator on your PC | The same tap-through tests, run on your computer. | Android Studio installed, and Claude Code running on your PC or linked to this chat. |
+| A real iPhone | How it looks and feels on iPhone, Face ID, notifications | Borrow one with Expo Go (free) for quick looks. Installing real iPhone builds needs Apple's developer program ($99 a year). |
+| Your phone | Smoothness, looks, fingerprint, reminders, real offline | You, at the end of each batch |
+
+I can't run a phone emulator inside my own workspace (it doesn't have the hardware for it), which is why the cloud and your PC are the options. My suggestion: start the automatic money checks right away in 2.1, then add the cloud tap-through tests once the Expo plan question is settled. iPhone builds can wait until there's an iPhone to try them on.
+
+## Top bar alignment (from your screenshots)
+
+On all 8 pages you sent, the Add button and the back label start and end on exactly the same pixel rows (rows 145 to 173 of 2,400), so they are mathematically level. What the eye catches is the letters: "Add" is all tall letters (A, d, d), while "Plan", "Home" and "Transactions" are mostly short ones, so Add's weight sits higher.
+
+- **Fix to try in 2.1:** move only the right-side word buttons (Add, Edit, Move money, Approve all) down 1 point, about 3 pixels on your phone. Then you judge it side by side.
+- **Transactions tab:** the Recurring and Search icons sit on the empty top row, about 100 pixels above the title. They move down onto the "Transactions" title line, as iPhone apps do.
+
 ## Everything that could go wrong
 
 Three problems found in today's code matter more than anything else in this plan, because they can lose or block real data. They should be the first version 3 work, before any new feature.
@@ -529,27 +719,39 @@ The rest, grouped by area:
 | Wrong smart suggestions | Annoying or creepy | Explain why, easy to dismiss, learn from "Not today" |
 | Too many notifications | People switch them all off | A daily cap and quiet hours |
 
-## Proposed order of work
+## Proposed order of work: version 2.1, then version 3
 
-Safety first, then the quick wins, then the calm-app work that version 3 is about. Each numbered step is one or two small batches you can test on your phone before the next one starts. Anything new or visual gets a mockup for your approval first.
+Your split is right. Version 2.1 makes what already exists safe, correct and smooth, with no big new screens. Version 3 brings the new features. Each numbered step is one or two small batches you test before the next one starts, and anything new or visual gets a mockup first.
 
-1. **Check version 2 on your phone (no code).** Install Finance Flow 2, sign in, and try the six add forms and the bolder Back · Add · Edit buttons.
-2. **Fix the three data risks.**
-   1. Receipt photos: shrink them, keep them out of the main data, refuse anything too big, and check whether any existing entry already has a large photo.
-   2. A storage meter, and compressing the data before it's locked (buys a lot of room quickly).
-   3. Merge before saving, so two people's changes never overwrite each other; plus the "changes haven't synced" warning on Log out.
-3. **Quick fixes:** the "@", the member note, the Add nudge, the payday reminder time, the Quick unlock footer.
-4. **Offline messages:** swipe-away banner, the "saved on this phone" note, the "needs the internet" sheet, the join check, quiet retries on slow connections.
-5. **Back-dating:** the Date row in every pay sheet and the balance-date note; then Catch-up mode.
-6. **Lock and privacy:** the setup question, Hide amounts, blur in recent apps, fingerprint or PIN before risky actions.
-7. **The calm app (the heart of version 3):** the word pass, Calm Home, Since you last looked, the weekly check-in, the gentle daily nudge, progress first. Page-turn transitions from the version 2 list fit here too, since both change how the app feels.
-8. **The new CSV importer** (needs sample bank files from you).
-9. **Smart features:** habit suggestions, then the pay-this-off-first planner, then cut-back ideas.
-10. **Accounts:** email check at sign-up, Recovery Key at setup, Forgot password, Delete account (in the app and on a web page).
-11. **Help:** Help and FAQ, Contact us, crash reports.
-12. **Publishing and Premium:** App Check, privacy policy, Google Play listing, then Premium and the free trial.
+**Branches:** a new `v2.1` branch from `main` for the polish. It's merged into `main` as version 2.1.0, then `v3` picks up from there.
 
-**After version 3:** Google and Apple sign-in (once you choose an option), more currencies, paluwagan, PDF statements, the widget and the other ideas in Support.
+**Version 2.1: safe, correct, smooth**
+
+1. Check the Finance Flow 2 build and the six add forms on your phone (no code).
+2. The three data risks: receipt photos, data size (compress and a storage meter), and merge before saving, plus the "changes haven't synced" warning on Log out.
+3. Remove "Keep mine" when joining a household, so a joiner can never replace the household's data.
+4. Open from the phone first, so the app opens smoothly online and offline.
+5. Quick fixes: the "@", the member notes, top bar alignment (including the Transactions icons), the payday reminder time, the Quick unlock footer.
+6. Offline messages: swipe-away banner, the "saved on this phone" note, the "needs the internet" sheet, the join check, quiet retries.
+7. Pay part of a bill (Meralco), the Date row for back-dating, and the balance-date note.
+8. Page and tab transitions, from the samples you pick.
+9. Automatic money checks, running alongside every step from step 2.
+10. A Finance Flow 2 test build, then the normal build that updates your app to 2.1.0, and the merge into `main`.
+
+**Version 3: new features**
+
+1. The calm app (the focus): the word pass, Calm Home, Catch-up mode, the weekly check-in, progress first.
+2. Credit cards done properly: limit, owed, available, statements in To-Pay, installments.
+3. Linked households: approving merges, who added what, handing over ownership.
+4. Lock and privacy.
+5. The new CSV importer.
+6. Smart features: habit suggestions, the pay-off planner, cut-back ideas.
+7. Widgets (Android first).
+8. Accounts: email check, Recovery Key at setup, Forgot password, Delete account.
+9. Help and FAQ, Contact us, crash reports, cloud tap-through tests.
+10. Publishing and Premium: App Check, privacy policy, Google Play listing, plans, the free trial, friend codes.
+
+**After version 3:** Google and Apple sign-in (option B), the iPhone version and iPhone widgets, more currencies, paluwagan, PDF statements.
 
 ## Questions for you
 
@@ -557,16 +759,30 @@ These decide what gets built. Type your answer in the last column, or comment on
 
 | # | Question | My suggestion | Your answer |
 | --- | --- | --- | --- |
-| 1 | Start with the three data risks before the quick fixes? | Yes. Risk 1 can break syncing today. |  |
-| 2 | Have you or anyone in your household attached a receipt photo? | If yes, we check that entry first |  |
-| 3 | Remove the similar note in setup ("Your username stays the same") too? | Yes, remove both |  |
-| 4 | For "Add": which page, and what should it line up with? A screenshot helps. | Nudge all word buttons 1 point down, then compare |  |
-| 5 | Sign in with just email and password (the app finds your username)? Needs a security rules change. | Yes |  |
-| 6 | Google and Apple sign-in: option A, B or C? | B, after version 3 |  |
-| 7 | Ask "Do other people use your phone?" at setup to choose the lock? | Yes |  |
-| 8 | Personal spending money for couples (the partner sees one line, not every purchase)? | Worth a mockup |  |
-| 9 | Free households: 2 people free and bigger households Premium, or every size free? | 2 free, 3 or more Premium |  |
-| 10 | Free trial with no card needed? | Yes, 30 days |  |
-| 11 | Opt-in anonymous usage counts and the "How do you feel?" question? | Yes, both off until people agree |  |
-| 12 | Which banks and e-wallets should the importer know first? Can you share an export with numbers and names blanked out? | Start with the ones your household uses |  |
-| 13 | Which email address should support messages go to? | A new one just for Finance Flow |  |
+| 1 | Start with the three data risks before the quick fixes? | Yes. Risk 1 can break syncing today. | yes |
+| 2 | Have you or anyone in your household attached a receipt photo? | If yes, we check that entry first | no |
+| 3 | Remove the similar note in setup ("Your username stays the same") too? | Yes, remove both | yes |
+| 4 | For "Add": which page, and what should it line up with? A screenshot helps. | Nudge all word buttons 1 point down, then compare | i will attach a screenshot. for the add in accounts, it should be align to \<home, for the add in income, it should align to \<transactions, this is not an add button, but i would like the recurring button as well as the search button to align to transactions, the add button in savings, yearly goals, shared expenses, groceries, travel, and events should align to \<plan |
+| 5 | Sign in with just email and password (the app finds your username)? Needs a security rules change. | Yes | yes |
+| 6 | Google and Apple sign-in: option A, B or C? | B, after version 3 | agree |
+| 7 | Ask "Do other people use your phone?" at setup to choose the lock? | Yes | yes |
+| 8 | Personal spending money for couples (the partner sees one line, not every purchase)? | Worth a mockup | yes |
+| 9 | Free households: 2 people free and bigger households Premium, or every size free? | 2 free, 3 or more Premium | my idea is that there would be a different premium amount for a single user, there's a different one for due, then family plan for 3 or more, more of like how spotify premium does it, or if you have other suggestions |
+| 10 | Free trial with no card needed? | Yes, 30 days | agree |
+| 11 | Opt-in anonymous usage counts and the "How do you feel?" question? | Yes, both off until people agree | yes |
+| 12 | Which banks and e-wallets should the importer know first? Can you share an export with numbers and names blanked out? | Start with the ones your household uses | let me know how we could do this |
+| 13 | Which email address should support messages go to? | A new one just for Finance Flow | yes, let's create a specific email for this |
+
+**Sharing a bank file safely (question 12).** In your bank or e-wallet app or website, look for Download statement or Export transactions and pick CSV or Excel. Open it in Google Sheets, keep the header row and 5 to 10 rows, then replace names, account numbers and reference numbers with X. Change the amounts to made-up numbers, but keep their exact style (minus signs, commas, "CR"). Don't change the dates' style either. Attach the file here. A PDF statement is useful too, for later.
+
+**More questions (Oct 17)**
+
+| # | Question | My suggestion | Your answer |
+| --- | --- | --- | --- |
+| 14 | Start a `v2.1` branch from `main` now for the polish work? | Yes |  |
+| 15 | Which page transition and which tab transition? (see the samples canvas) | Pages: 3 Paper slide. Tabs: B Quick fade. |  |
+| 16 | When someone joins with their data, the owner approves it before it's added, instead of deleting it after? | Yes |  |
+| 17 | If the owner hasn't opened the app for 60 days, a member can ask to take over, with 7 days for the owner to say no? | Yes |  |
+| 18 | Card purchases count as spending when you buy, and paying the card is just moving money? | Yes |  |
+| 19 | Are you on Expo's free plan? Cloud tap-through tests may need a paid one. | Check at expo.dev, Billing |  |
+| 20 | Once you've made the support email, what's the address? | A Gmail just for Finance Flow |  |

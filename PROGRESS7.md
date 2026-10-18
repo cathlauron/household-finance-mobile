@@ -106,6 +106,38 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
 =====================================================================
 📌 Decisions — still active
 =====================================================================
+Cath's answers to the V3-PLAN.md questions (2026-10-17)
+- Q1 Yes: fix the three data risks before anything else.
+- Q2 No receipt photos have been attached in her household.
+- Q3 Remove BOTH notes ("What Home calls you..." on Profile and the similar setup line).
+- Q4 Top bar: Add on Accounts level with "< Home"; Add on Income level with
+  "< Transactions"; Add on Savings, Yearly Goals, Shared Expenses, Groceries, Travel, Events
+  level with "< Plan"; on the Transactions tab the Recurring and Search icons should line
+  up with the "Transactions" title. Measured from her screenshots (1080x2400): Add and the
+  back labels already share the same pixel rows (145-173), visual centres within 1 px;
+  plan = nudge right-side word buttons down 1 pt and let her judge; move the Transactions
+  tab icons onto the title line.
+- Q5 Yes: sign in with email + password only (app looks up the username; needs a rules
+  change, show it before publishing).
+- Q6 Agree: Google/Apple sign-in after version 3, option B (key stays on the phone).
+- Q7 Yes: ask "Do other people use your phone?" at setup to choose the lock.
+- Q8 Yes: mock up "personal spending money" for couples.
+- Q9 Premium plans like Spotify: Individual, Duo, Family (3+); prices not set yet.
+- Q10 Agree: 30-day trial, no card needed.
+- Q11 Yes: opt-in anonymous usage counts and the "How do you feel?" question.
+- Q12 She asked how to share bank files: answered in the plan (export CSV, blank out names
+  and numbers, keep formats).
+- Q13 Yes: a separate email just for support (she will create it).
+New decisions (2026-10-17)
+- Version split (Cath's idea, agreed): version 2.1 = make existing features safe, correct
+  and smooth; version 3 = new features. Proposed branches: `v2.1` from main, merged to
+  main as 2.1.0, then `v3` continues (waiting for her OK, question 14).
+- Joiners choose only Merge or Keep the household's data ("Keep mine" goes away; today it
+  can overwrite the owner's household data). Owner = whoever makes the invite code.
+- Owner leaving must pick the next owner; a household of two continues instead of closing.
+- Premium for Cath and close friends via RevenueCat granted entitlements + our own friend
+  codes (Play promo codes only give trials and need a payment method).
+- Widgets: quick-add first (no amounts shown), Android first.
 Workflow / project-wide
 - Version 2.0.0 is final; every remaining item below belongs to version 3 (Cath,
   2026-10-16). Work on `v3`; merge into `main` when version 3 is finalised.
@@ -203,6 +235,20 @@ that could go wrong"). NONE of these are fixed yet:
   detection, no account, everything "Imported", duplicates only vs manual transactions,
   no undo, cached file not deleted.
 - Profile shows the username with an "@" (ProfileScreen lines ~737 and ~748).
+Found 2026-10-17 (details in V3-PLAN.md):
+- Joining a household offers Keep mine / Keep theirs / Merge (linking.ts JoinChoice);
+  "Keep mine" on an EXISTING household overwrites everyone's shared data with the joiner's.
+- Linked households can't open offline: attemptOfflineUnlock skips linked profiles, the
+  launch signs in to Firebase first, and on failure shows the sign-in screen ("Couldn't
+  sign you in automatically").
+- Credit accounts are a single number added to Total balance as if it were money (no
+  limit, no owed amount, no link to the card's statement/debt).
+- Bills can't be part-paid (PayDetailScreen editableAmount only for debts), although
+  markPaid already carries the unpaid part for anything without a minimum.
+- Owner leaving a 2-person household closes it (unlinkHousehold dissolves when
+  isOwner && memberCount <= 2).
+- Pages use a 150 ms cross-fade (RootStack animation 'fade'); tabs a soft fade with a
+  small drift (TabPage).
 
 Unverified from version 2 (check first in the Finance Flow 2 build)
 - The six rebuilt add forms (trip, event, goal, savings pot, grocery item, meal, commit
@@ -318,6 +364,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   is final: `redesign` merged into `main` (9ae00f9, no conflicts, code identical to
   c814819), new branch `v3`, PROGRESS6.md closed with a pointer, PROGRESS7.md started.
   Cath will send her notes and version 3 ideas next.
+- 2026-10-17 (session 1, continued): Cath answered the plan's 13 questions and sent top bar
+  screenshots plus new notes (linked household ownership and merges, who-added-what,
+  owner leaving, Premium friend codes, widgets, transition samples, Meralco partial
+  payments, credit cards, testing on iOS/Android, smooth loading, and splitting the work
+  into 2.1 and 3). Claude measured the screenshots, read the code, added the new sections
+  and questions 14-20 to the plan, made the transitions canvas, and refreshed V3-PLAN.md.
+  Found in code: joiner "Keep mine" can overwrite a household; linked households can't
+  open offline (launch signs in online first); credit accounts are added to Total balance
+  as if they were money. No app code changed.
 - 2026-10-16 (session 1, later): Cath sent her version 3 notes (back-dating, the "@",
   Google/Apple/email sign-in and Forgot password, member note, payday nudge time,
   support/FAQ, CSV import, the "avoid looking at money" focus, smart predictions,
@@ -332,6 +387,16 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-17): Cath answered Q1-13 (recorded under 📌 Decisions). Plan updated with
+  her new notes: linked households (owner, merge approval, who-added-what, owner handover),
+  paying part of a bill (Meralco), credit cards done properly, widgets, Premium plans and
+  friend codes, smooth opening online/offline, testing on Android/iPhone, top bar
+  alignment, and the version 2.1 / version 3 order. Screen transition samples:
+  Design canvas "Finance Flow — Screen transitions" https://claude.ai/artifact/VBwphCe7kuutjU3YbxYXQ9
+  (pages 1-6, tabs A-C; suggested: pages 3 Paper slide, tabs B Quick fade).
+  Waiting on her answers to questions 14-20 (V3-PLAN.md "More questions"). Then start
+  version 2.1 step 1 (she checks the Finance Flow 2 build) and step 2 (the three data
+  risks).
 - NEWEST (2026-10-16, later): Cath answers the 13 questions at the end of V3-PLAN.md (or
   in the plan doc). Record her answers under 📌 Decisions. Then follow the plan's
   "Proposed order of work": (1) Cath checks the Finance Flow 2 build and the six add forms
