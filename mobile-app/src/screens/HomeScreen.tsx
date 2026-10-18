@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../components/AppText';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import HomeHero from '../components/HomeHero';
@@ -45,7 +45,7 @@ export default function HomeScreen({ username }: Props) {
     const next = afterRepeats ?? afterSavings;
     if (next) saveModel(next);
   }, [model, saveModel]);
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [showSlimBar, setShowSlimBar] = useState(false);
 

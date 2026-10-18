@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
 
@@ -12,9 +12,12 @@ import LargeHeader from './LargeHeader';
 // Each tab page moves itself (instead of leaving it to the tab navigator, whose own
 // animation restarted and snapped whenever anything redrew mid-change). The navigator
 // keeps every visited tab drawn; the pages that aren't showing are fully faded out.
-const FADE_MS = 240;
-const FADE_EASING = Easing.out(Easing.cubic); // starts at once, eases gently to a stop
-const DRIFT = 14; // how far a page drifts while fading, in pixels
+//
+// Version 2.1 (Cath's pick, sample C "Slide by direction"): a tab to the right slides in
+// from the right while the old one slides out to the left, side by side (they never
+// overlap, so see-through pages stay clean), like turning to the next page.
+const FADE_MS = 280;
+const FADE_EASING = Easing.bezier(0.25, 0.8, 0.25, 1); // same feel as the page slide
 
 // The tab that was showing last, so a tab opened for the first time knows which side
 // to come in from.
@@ -31,6 +34,7 @@ type Props = {
 };
 
 export default function TabPage({ routeIndex, options, navigation, route, showHeader, children }: Props) {
+  const { width } = useWindowDimensions();
   const shownIndex = useNavigationState((s) => s.index);
   // -1 = waiting off the left edge, 0 = on screen, 1 = waiting off the right edge.
   const place = Math.sign(routeIndex - shownIndex);
@@ -67,9 +71,9 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     }
   }, [place, routeIndex, x]);
 
-  const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-DRIFT, 0, DRIFT] });
-  // Only visible in the inner half, so the old tab is gone before the new one appears.
-  const opacity = x.interpolate({ inputRange: [-1, -0.5, 0, 0.5, 1], outputRange: [0, 0, 1, 0, 0] });
+  const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
+  // Fully visible while sliding; hidden only once it's off the screen.
+  const opacity = x.interpolate({ inputRange: [-1, -0.999, 0, 0.999, 1], outputRange: [0, 1, 1, 1, 0] });
 
   return (
     // The page arriving sits on top; pages that aren't showing don't catch taps.

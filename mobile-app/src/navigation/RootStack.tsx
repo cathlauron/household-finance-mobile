@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
+import { Easing } from 'react-native';
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator, type StackCardStyleInterpolator } from '@react-navigation/stack';
 import MainTabs from './MainTabs';
 import DeferredContent from './DeferredContent';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -61,7 +61,35 @@ export type RootStackParamList = {
   SharedExpenses: { fromTransactionId?: string; editExpenseId?: string; nonce?: number } | undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
+
+// Version 2.1 (Cath's pick, "Paper slide"): the new page slides in from the right over the
+// old one, which fades back as it's covered. Pages stay see-through so the leaves keep
+// showing behind them (that's why there's no drop shadow: a see-through page can't cast
+// one). Going back runs the same in reverse.
+const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => ({
+  cardStyle: {
+    transform: [
+      {
+        translateX: current.progress.interpolate({ inputRange: [0, 1], outputRange: [layouts.screen.width, 0] }),
+      },
+    ],
+    opacity: next ? next.progress.interpolate({ inputRange: [0, 0.4, 1], outputRange: [1, 0, 0] }) : 1,
+  },
+});
+const paperTiming = {
+  animation: 'timing' as const,
+  config: { duration: 280, easing: Easing.bezier(0.25, 0.8, 0.25, 1) },
+};
+// The Calendar opens as a sheet from the bottom with rounded corners over a dimmed page.
+const sheetUp: StackCardStyleInterpolator = ({ current, layouts }) => ({
+  cardStyle: {
+    transform: [
+      { translateY: current.progress.interpolate({ inputRange: [0, 1], outputRange: [layouts.screen.height, 0] }) },
+    ],
+  },
+  overlayStyle: { opacity: current.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }) },
+});
 
 type RootStackProps = {
   username: string;
@@ -82,12 +110,12 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         route.name === 'Main' ? children : <DeferredContent>{children}</DeferredContent>
       }
       screenOptions={{
-        contentStyle: { backgroundColor: 'transparent' },
-        // Pages open and close with a short, soft cross-fade (Android's own 150ms page
-        // fade) instead of sliding across the screen, so there is never a half-empty
-        // screen mid-move. Matches the tabs' fade.
-        animation: 'fade',
-        animationDuration: 200, // iPhone only; Android's fade is always 150ms
+        cardStyle: { backgroundColor: 'transparent' },
+        headerMode: 'screen',
+        cardStyleInterpolator: paperSlide,
+        transitionSpec: { open: paperTiming, close: paperTiming },
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
         ...getSharedHeaderOptions(colors),
       }}
     >
@@ -118,11 +146,12 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Calendar"
         component={CalendarScreen}
         options={{
-          presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
+          presentation: 'transparentModal',
           headerShown: false,
-          sheetAllowedDetents: [0.94],
-          sheetCornerRadius: 20,
-          sheetGrabberVisible: true,
+          cardOverlayEnabled: true,
+          cardStyleInterpolator: sheetUp,
+          gestureDirection: 'vertical',
+          cardStyle: { backgroundColor: colors.navy2, marginTop: 48, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
         }}
       />
       <Stack.Screen
@@ -172,7 +201,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
-      <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: '', headerBackTitle: 'Insights' }} />
