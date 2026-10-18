@@ -2,6 +2,16 @@
 
 Do these in order on your phone. For each one, note "OK" or what you saw. If something fails, send a screenshot (or the first line of a red error screen) and the step number.
 
+## Retests after the Oct 18 fixes (do these first)
+1. Opening: close the app fully and open it. The logo draws itself, then FINANCE FLOW, the quote, and the small leaf with its bar appear one after another. (The plain green screen before it is the app loading; in Expo Go that part is slower than in the real build.)
+2. Log out and sign in: the breathing logo with changing words shows while it works.
+3. Settings › Quick unlock › PIN: a bottom sheet (Password, New PIN, Confirm PIN, Save at the top right). Saving shows the breathing logo.
+4. Settings › Quick unlock › fingerprint switch on: a bottom sheet asks for your password; Turn on shows the breathing logo, then your phone may ask for your fingerprint.
+5. Add a bill with only an amount and a name (no due date): it shows on Bills under "No due date".
+6. New bill › Every month › pick the 15th: "Which one is due now?" shows the last few months and the next one. Pick an earlier month: it shows as overdue. Mark it paid: the next one is the month after.
+7. Bill page › Edit: the bill's edit sheet opens without flashing, and other pages open normally afterwards. Try the same from a card page (Edit card), a pot (Edit) and a transaction (Edit).
+8. Travel: under the trip there's Budget | To-do. To-do: add "Pack jackets" (optionally with a date using the calendar icon), tick it, remove one. It saves straight away.
+
 ## 0. Get the build
 
 ```powershell
