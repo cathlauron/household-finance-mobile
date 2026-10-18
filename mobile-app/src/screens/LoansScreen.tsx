@@ -126,7 +126,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
-  const fieldErrors = useFieldErrors<'name' | 'due' | 'interest'>();
+  const fieldErrors = useFieldErrors<'amount' | 'name' | 'due' | 'interest'>();
+  const amountRef = useRef<{ focus: () => void }>(null);
   const clearFieldError = fieldErrors.clear;
   const nameRef = useRef<any>(null);
   const interestRef = useRef<any>(null);
@@ -153,7 +154,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
     clearFieldError();
-  }, [nameInput, interestRateInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, customStartDateInput, customOccurrenceInput, modalOpen, clearFieldError]);
+  }, [totalAmountInput, nameInput, interestRateInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, customStartDateInput, customOccurrenceInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -261,12 +262,17 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
+    // The amount comes first, like on the form. Editing can keep ₱0 (e.g. paid off).
+    if (totalAmountInput === '' || (!editingId && totalAmountInput <= 0)) {
+      fieldErrors.show('amount', 'How much is the loan?');
+      return;
+    }
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
       fieldErrors.show('name', 'Give this loan a name.');
       return;
     }
-    const parsedTotal: number | '' = totalAmountInput === '' ? '' : totalAmountInput;
+    const parsedTotal: number | '' = totalAmountInput;
     const parsedExpected: number | '' = expectedPaymentInput === '' ? '' : expectedPaymentInput;
     let parsedRate: number | '' = '';
     if (interestRateInput.trim() !== '') {
@@ -537,7 +543,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
             onChange={setDirectionInput}
           />
         </View>
-        <BigAmount label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} />
+        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+          <BigAmount label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+        </Guided>
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>

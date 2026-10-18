@@ -88,7 +88,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
-  const fieldErrors = useFieldErrors<'creditor' | 'due' | 'more'>();
+  const fieldErrors = useFieldErrors<'amount' | 'creditor' | 'due' | 'more'>();
+  const amountRef = useRef<{ focus: () => void }>(null);
   const clearFieldError = fieldErrors.clear;
   const creditorRef = useRef<any>(null);
   const debtNext = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput);
@@ -104,7 +105,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
     clearFieldError();
-  }, [creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
+  }, [amountInput, creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -170,12 +171,17 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
+    // The amount comes first, like on the form. Editing can keep ₱0 (e.g. paid off).
+    if (amountInput === '' || (!editingId && amountInput <= 0)) {
+      fieldErrors.show('amount', 'How much is owed?');
+      return;
+    }
     const trimmedCreditor = creditorInput.trim();
     if (!trimmedCreditor) {
       fieldErrors.show('creditor', 'Who is this owed to?');
       return;
     }
-    const parsedAmount = amountInput === '' ? 0 : amountInput;
+    const parsedAmount = amountInput;
 
     let dueDate: Record<string, any> = {};
     if (recurTypeInput === 'onetime') {
@@ -396,7 +402,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         grouped
         header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
+        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+          <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+        </Guided>
 
         <FormGroup>
           <Guided {...fieldErrors.props('creditor')} focusRef={creditorRef}>

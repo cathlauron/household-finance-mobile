@@ -95,7 +95,8 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   // Simple form: which row's choices are open (one at a time).
   const [openRow, setOpenRow] = useState<string | null>(null);
   // Version 2.1: tapping Add with something missing takes the person straight to it.
-  const fieldErrors = useFieldErrors<'name' | 'due'>();
+  const fieldErrors = useFieldErrors<'amount' | 'name' | 'due'>();
+  const amountRef = useRef<{ focus: () => void }>(null);
   const nameRef = useRef<any>(null);
   const clearFieldError = fieldErrors.clear;
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
     clearFieldError();
-  }, [nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
+  }, [amountInput, nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -181,13 +182,18 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
+    // The amount comes first, like on the form. Editing can keep ₱0 (e.g. paid off).
+    if (amountInput === '' || (!editingId && amountInput <= 0)) {
+      fieldErrors.show('amount', 'How much is this bill?');
+      return;
+    }
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
       fieldErrors.show('name', 'Give this bill a name.');
       return;
     }
 
-    let parsedAmount = amountInput === '' ? 0 : amountInput;
+    let parsedAmount = amountInput;
 
     let dueDate: Record<string, any> = {};
     if (recurTypeInput === 'onetime') {
@@ -466,7 +472,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         grouped
         header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <BigAmount label="Amount due" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
+        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+          <BigAmount label="Amount due" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+        </Guided>
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
