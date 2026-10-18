@@ -82,7 +82,7 @@ export function LeafTickHost() {
           accessibilityLabel={label}
           style={[s.card, { backgroundColor: colors.navy3, opacity: card, transform: [{ scale }] }]}
         >
-          <Svg width={40} height={52} viewBox="410 470 210 300">
+          <Svg width={24} height={32} viewBox="395 455 240 320">
             {LEAF.map((p, i) => (
               <LeafStroke key={i} {...p} t={t} color={colors.gold} />
             ))}
@@ -97,18 +97,18 @@ export function LeafTickHost() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: {
-    minWidth: 104,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 14,
-    borderRadius: 20,
+    minWidth: 84,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
+    borderRadius: 18,
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 10,
   },
-  text: { fontSize: 16, fontWeight: '700' },
+  text: { fontSize: 15, fontWeight: '700' },
 });
