@@ -241,10 +241,14 @@ export default function AccountSwitcherScreen({
                   style={s.primaryBtn}
                   onPress={() => runFingerprint(selectedAccount.username)}
                 >
-                  <View style={s.btnRow}>
-                    <Ionicons name="finger-print" size={20} color={colors.navy2} style={{ marginRight: 8 }} />
-                    <Text style={s.primaryBtnText}>Use fingerprint</Text>
-                  </View>
+                  {active ? (
+                    <Text style={s.primaryBtnText}>Unlocking…</Text>
+                  ) : (
+                    <View style={s.btnRow}>
+                      <Ionicons name="finger-print" size={20} color={colors.onButton} style={{ marginRight: 8 }} />
+                      <Text style={s.primaryBtnText}>Use fingerprint</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
                 {!!selectedPresence && selectedPresence.pin && (
                   <TouchableOpacity testID="account-switcher-use-pin" style={s.ghostBtn} onPress={switchToPin}>
@@ -318,7 +322,12 @@ export default function AccountSwitcherScreen({
         )}
 
         {presence !== null && (
-          <TouchableOpacity testID="account-switcher-other-account" style={s.otherBtn} onPress={onUseOtherAccount}>
+          <TouchableOpacity
+            testID="account-switcher-other-account"
+            style={[s.otherBtn, active && { opacity: 0.45 }]}
+            onPress={onUseOtherAccount}
+            disabled={active}
+          >
             <Ionicons name="person-add-outline" size={16} color={colors.inkDim} style={{ marginRight: 6 }} />
             <Text style={s.ghostBtnText}>Use another account</Text>
           </TouchableOpacity>
@@ -373,10 +382,10 @@ function makeStyles(colors: any) {
       justifyContent: 'center',
       marginTop: spacing[20],
     },
-    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
+    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '700', fontSize: 16 },
     btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    ghostBtn: { paddingVertical: 14, marginTop: 4, alignItems: 'center' },
-    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
+    ghostBtn: { paddingVertical: 9, marginTop: 2, alignItems: 'center' },
+    ghostBtnText: { color: colors.gold, textAlign: 'center', fontSize: 15, fontWeight: '600' },
     otherBtn: {
       flexDirection: 'row',
       alignItems: 'center',
