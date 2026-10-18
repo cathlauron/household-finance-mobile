@@ -80,7 +80,7 @@ export function LeafTickHost() {
           key={run}
           accessibilityLiveRegion="polite"
           accessibilityLabel={label}
-          style={[s.card, { backgroundColor: colors.navy3, opacity: card, transform: [{ scale }] }]}
+          style={[s.card, { backgroundColor: colors.navy3 + 'A6', borderColor: colors.navy3 + 'CC', opacity: card, transform: [{ scale }] }]}
         >
           <Svg width={24} height={32} viewBox="395 455 240 320">
             {LEAF.map((p, i) => (
@@ -102,13 +102,14 @@ const s = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 12,
     borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     gap: 4,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08, // Cath: see-through card (65% white), softer shadow
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
+    elevation: 0,
   },
   text: { fontSize: 15, fontWeight: '700' },
 });
