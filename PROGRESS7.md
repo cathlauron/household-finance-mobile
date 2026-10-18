@@ -416,6 +416,12 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   MOCKUP for (a) and (b), waiting for Cath's approval before any code:
   Design canvas "Finance Flow — New start and form help"
   https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX
+  Update (2026-10-18): Cath asked for a version in the app's own look, so the canvas now
+  also has OPTION B rows (peach glow, warm brown #9A3E10, falling leaves, peach-gradient
+  cards, pill buttons): B1-B9 new start, B10-B11 missing field. Plus a "Scan a receipt"
+  row (version 3): R1 choose scan/photo, R2 live camera scan in parts for long receipts,
+  R3 filled-in form + "Keep the scan" (small cropped black-and-white scan). Waiting for
+  her pick (A or B) and approval.
 - NEWEST (2026-10-18, latest): Cath chose OPTION B for storage: split the household into
   parts (Firestore 1 MiB per document; the free plan has 1 GiB total, 50k reads and 20k
   writes a day). Step 1 DONE on `v2.1` (018efbd): src/householdParts.ts (splitModel /
