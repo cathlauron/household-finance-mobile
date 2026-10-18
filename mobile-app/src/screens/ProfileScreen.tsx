@@ -123,6 +123,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     unlinkAndTransferOwnership,
     linkNoticeMsg,
     clearLinkNoticeMsg,
+    pendingChanges,
   } = useData();
   const styles = makeStyles(colors);
 
@@ -1206,7 +1207,9 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     onPress={() => {
       Alert.alert(
         'Log out?',
-        'You will need to sign in again to access your data.',
+        pendingChanges > 0
+          ? "Some of your changes haven't reached the household yet (no connection). They stay on this phone and are sent the next time you sign in here, but until then nobody else will see them. Log out anyway?"
+          : 'You will need to sign in again to access your data.',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Yes, log out', style: 'destructive', onPress: onSignOut },
