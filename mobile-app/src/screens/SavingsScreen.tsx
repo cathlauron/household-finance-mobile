@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { SwipeTabs } from '../navigation/swipeTabs';
 import { useNavigation } from '@react-navigation/native';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
@@ -599,7 +600,15 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     </TouchableOpacity>
   );
 
+  // Version 2.1: swipe sideways between Pots, Emergency and FI.
+  const PILLS: PillTab[] = ['goals', 'ef', 'fi'];
   return (
+    <SwipeTabs
+      onSwipe={(d) => {
+        const i = PILLS.indexOf(activeTab) + d;
+        if (i >= 0 && i < PILLS.length) setActiveTab(PILLS[i]);
+      }}
+    >
     <SafeAreaView style={styles.container}>
       <View style={styles.pillRow}>
         <SegmentedControl<PillTab>
@@ -930,6 +939,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         }}
       />
     </SafeAreaView>
+    </SwipeTabs>
   );
 }
 

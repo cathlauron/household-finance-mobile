@@ -182,7 +182,7 @@ export default function CardDetailScreen() {
         )}
       </View>
 
-      <TouchableOpacity style={[styles.group, styles.action]} onPress={() => navigation.navigate('Accounts')} accessibilityRole="button">
+      <TouchableOpacity style={[styles.group, styles.action]} onPress={() => navigation.navigate('Accounts', { editGroup: group, editId: accountId, nonce: Date.now() })} accessibilityRole="button">
         <GradientFill match={[styles.group, styles.action]} />
         <Text style={[styles.actionText, { color: colors.gold }]}>Edit card</Text>
       </TouchableOpacity>
