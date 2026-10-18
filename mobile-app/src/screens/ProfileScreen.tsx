@@ -1,4 +1,5 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { showLeafTick } from '../components/LeafTick';
 import NeedsInternetSheet, { type NeedsInternet, withNetTimeout } from '../components/NeedsInternetSheet';
 import React, { useState, useEffect, useRef } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
@@ -156,7 +157,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     setNameSaving(true);
     try {
       await saveModel(next);
-      hapticLight();
+      showLeafTick('Saved');
       setNameSheetOpen(false);
     } catch (e: any) {
       Alert.alert("Couldn't save your name", e?.message || 'Please try again.');
@@ -707,6 +708,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       else delete nextPhotos[username];
     }
     await saveModel({ ...model, avatars: nextAvatars, avatarPhotos: nextPhotos });
+    showLeafTick('Saved');
     updateRecentAccountIfPresent(username, {
       avatarConfig: nextAvatars[username] ?? { type: 'initials' },
     }).catch(() => {});

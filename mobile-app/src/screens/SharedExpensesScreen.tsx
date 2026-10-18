@@ -313,7 +313,7 @@ export default function SharedExpensesScreen() {
     };
     try {
       await saveModel({ ...model, manualTransactions, sharedSettlements: [...(model.sharedSettlements ?? []), record] });
-      hapticLight();
+      showLeafTick('Settled');
       setSettleKey(null);
     } catch {
       setSettleError('Failed to save. Please try again.');

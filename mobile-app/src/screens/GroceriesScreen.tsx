@@ -201,8 +201,7 @@ export default function GroceriesScreen() {
               manualTransactions: [...(model.manualTransactions || []), txn],
               groceries: items.filter((g) => !g.purchased),
             });
-            hapticLight();
-            showSaved('Trip added to spending');
+            showLeafTick('Added');
           },
         },
       ]
