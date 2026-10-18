@@ -734,18 +734,18 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             </View>
           </TouchableOpacity>
           {!!preferredName && <Text style={styles.usernameText}>{preferredName}</Text>}
-          <Text style={preferredName ? styles.handleText : styles.usernameText}>@{username || 'user'}</Text>
+          <Text style={preferredName ? styles.handleText : styles.usernameText}>{username || 'user'}</Text>
           <Text style={styles.emailText}>{userEmail}</Text>
         </View>
 
-        <SettingsGroup plain footer="What Home calls you. Your username stays the same.">
+        <SettingsGroup plain>
           <PlainRow
             testID="profile-row-name"
             title="Name"
             value={preferredName || 'Add'}
             onPress={openNameSheet}
           />
-          <PlainRow title="Username" value={`@${username || 'user'}`} />
+          <PlainRow title="Username" value={username || 'user'} />
           {!!memberSinceText && <PlainRow title="Member since" value={memberSinceText} />}
         </SettingsGroup>
 

@@ -134,7 +134,6 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
         {step === 1 && (
           <>
             <Text style={styles.large}>What should we call you?</Text>
-            <Text style={styles.body}>This is the name Home greets you with. Your username stays the same.</Text>
             <View style={[styles.group, { marginTop: 28 }]}>
               <GradientFill match={styles.group} />
               <View style={styles.row}>

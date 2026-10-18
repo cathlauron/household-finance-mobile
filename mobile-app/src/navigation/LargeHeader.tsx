@@ -14,7 +14,10 @@ import OfflineBanner from '../components/OfflineBanner';
 // The text style for every word button in the top row (Back, Add, Edit...). They all share
 // one fixed line height with Android's extra font padding turned off, so a word on the
 // right sits on exactly the same line as the back label on the left.
-export const headerButtonText = { fontSize: 17, lineHeight: 22, fontWeight: '600', includeFontPadding: false } as const;
+const backButtonText = { fontSize: 17, lineHeight: 22, fontWeight: '600', includeFontPadding: false } as const;
+// Version 2.1 (Cath): the right-side word buttons (Add, Edit, Move money, Approve all) sit
+// 1 point lower than Back. "Add" is all tall letters, so at the same line it looked higher.
+export const headerButtonText = { ...backButtonText, top: 1 } as const;
 
 type Props = {
   navigation: any;
@@ -72,7 +75,7 @@ const styles = StyleSheet.create({
   wrap: { backgroundColor: 'transparent', paddingHorizontal: 16, paddingBottom: 4 },
   row: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { flexDirection: 'row', alignItems: 'center', maxWidth: '60%' },
-  backText: headerButtonText,
+  backText: backButtonText,
   right: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { fontSize: 32, lineHeight: 38, fontWeight: '700', letterSpacing: -0.3 },
 });

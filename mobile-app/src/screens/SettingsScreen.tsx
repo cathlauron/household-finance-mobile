@@ -1296,7 +1296,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <SettingsGroup
           label="Quick unlock"
           plain
-          footer={biometricError || 'Open the app with your fingerprint or a PIN instead of your password.'}
+          footer={biometricError || 'Use your fingerprint or a PIN instead of your password when Auto-lock has locked the app, or when you switch accounts.'}
         >
           {biometricState === 'UNAVAILABLE' ? (
             <PlainRow title="Fingerprint" value="Not available" />
