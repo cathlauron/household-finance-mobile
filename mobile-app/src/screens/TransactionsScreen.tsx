@@ -251,7 +251,7 @@ export default function TransactionsScreen() {
   const [incomeSourceIdInput, setIncomeSourceIdInput] = useState<string | null>(null);
   const salaryEntry = !editingId && directionInput === 'in' && incomeKindInput === 'salary';
   // Version 2.1: tapping Add with something missing takes the person straight to it.
-  const fieldErrors = useFieldErrors<'salary' | 'amount' | 'label' | 'date' | 'account'>();
+  const fieldErrors = useFieldErrors<'salary' | 'amount' | 'label' | 'date' | 'account' | 'refund'>();
   const clearFieldError = fieldErrors.clear;
   const amountRef = useRef<{ focus: () => void }>(null);
   const labelRef = useRef<any>(null);
@@ -493,6 +493,17 @@ export default function TransactionsScreen() {
       directionInput === 'out' && refundTrackingEnabled && typeof refundAmountInput === 'number' && refundAmountInput > 0
         ? refundAmountInput
         : undefined;
+    // Version 2.1 (Cath): a refund is the full amount or part of it, never more.
+    if (directionInput === 'out' && refundTrackingEnabled && !alreadyRefunded) {
+      if (refundAmountToSave === undefined) {
+        fieldErrors.show('refund', 'How much are you getting back?');
+        return;
+      }
+      if (refundAmountToSave > parsedAmount) {
+        fieldErrors.show('refund', `A refund can't be more than the ${formatPeso(parsedAmount)} paid.`);
+        return;
+      }
+    }
 
     const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
     const parsedTags = tagsInput
@@ -1066,15 +1077,29 @@ export default function TransactionsScreen() {
               />
             </View>
             {refundTrackingEnabled && (
-              <View style={[styles.formRow, styles.formRowLine]}>
-                <Text style={styles.formLabel}>Amount back</Text>
-                <AmountInput
-                  autoFocus={!refundAmountInput}
-                  style={styles.inlineAmount}
-                  value={refundAmountInput}
-                  onChangeAmount={setRefundAmountInput}
-                />
-              </View>
+              <Guided {...fieldErrors.props('refund')}>
+                <View style={[styles.formRow, styles.formRowLine]}>
+                  <Text style={[styles.formLabel, fieldErrors.field === 'refund' && { color: colors.error, fontWeight: '700' }]}>Amount back</Text>
+                  <AmountInput
+                    autoFocus={!refundAmountInput}
+                    style={styles.inlineAmount}
+                    value={refundAmountInput}
+                    onChangeAmount={(v) => {
+                      setRefundAmountInput(v);
+                      if (fieldErrors.field === 'refund') clearFieldError();
+                    }}
+                  />
+                </View>
+                {typeof amountInput === 'number' && amountInput > 0 && (() => {
+                  // A refund is the full amount or part of it: more than was paid turns this red.
+                  const over = typeof refundAmountInput === 'number' && refundAmountInput > amountInput;
+                  return (
+                    <Text style={[styles.formFooter, { marginTop: 4 }, over && { color: colors.error, fontWeight: '700' }]}>
+                      {over ? `Too much: a refund can be up to ${formatPeso(amountInput)}, the full amount.` : `Up to ${formatPeso(amountInput)}, the full amount.`}
+                    </Text>
+                  );
+                })()}
+              </Guided>
             )}
           </View>
         )}

@@ -55,8 +55,12 @@ export default function CardDetailScreen() {
       title: '',
       headerBackTitle: 'Home',
       headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('Transfer', { fromGroup: group, fromId: accountId })} accessibilityRole="button" testID="card-move-money">
-          <Text style={[headerButtonText, { color: colors.gold }]}>Move money</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Transfer', group === 'credit' ? { toGroup: group, toId: accountId } : { fromGroup: group, fromId: accountId })}
+          accessibilityRole="button"
+          testID="card-move-money"
+        >
+          <Text style={[headerButtonText, { color: colors.gold }]}>{group === 'credit' ? 'Pay card' : 'Move money'}</Text>
         </TouchableOpacity>
       ),
     });

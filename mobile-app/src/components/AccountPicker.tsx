@@ -54,12 +54,15 @@ type Props = {
   onChange: (pm: PaymentMethod) => void;
   excludeTxnId?: string | null;
   label?: string; // instead of "Paid from" / "Add to"
+  // Version 2.1 (Cath): money being MOVED (into a savings pot, say) can't come from a
+  // credit card, since a card's limit only pays for things. Hides credit cards.
+  noCredit?: boolean;
 };
 
-export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label }: Props) {
+export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit }: Props) {
   const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
-  const groups: SpendingGroup[] = ['cash', 'debit', 'credit'];
+  const groups: SpendingGroup[] = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
   const rows = groups.flatMap((g) => model.balanceAccounts[g].map((a) => ({ g, a })));
   const spending = direction !== 'in';
 
@@ -67,7 +70,9 @@ export default function AccountPicker({ model, direction, amount, value, onChang
     <View>
       <Text style={styles.label}>{label ?? (spending ? 'Paid from' : 'Add to')}</Text>
       {rows.length === 0 ? (
-        <Text style={styles.empty}>Add an account first (Home › Wallet, or Accounts), then come back.</Text>
+        <Text style={styles.empty}>
+          {noCredit ? 'Add a cash or bank account first (Home › Wallet, or Accounts), then come back.' : 'Add an account first (Home › Wallet, or Accounts), then come back.'}
+        </Text>
       ) : (
         <View style={styles.group}>
           <GradientFill match={styles.group} />

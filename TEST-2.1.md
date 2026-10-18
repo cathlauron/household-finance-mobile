@@ -72,6 +72,13 @@ npx expo start -c
 5. Accounts: tap a card: it opens the same card page as tapping it on Home. Its "Edit card" opens that card's edit sheet on Accounts. (Long-press a card on Accounts also opens the edit sheet.)
 6. Travel: open a trip. Budget | To-do at the top (tap or swipe). Add "Pack jackets" and "Book the bus", tick one, remove one, Save, reopen: they're still there.
 
+## 9c. Credit cards and refunds
+1. Home › a debit or cash card › Move money: under "From" there are no credit cards; under "To" there are.
+2. Pick a credit card under "To": the title says "Pay card" and the note says it frees up the card's available limit. Move ₱500: the card's available amount goes up by ₱500 and the other account goes down by ₱500.
+3. Open a credit card's page: the top-right button says "Pay card" and opens with that card already under "To".
+4. A savings pot › Add money: "Take it from" shows no credit cards. Editing a pot's "Kept in" shows no credit cards either.
+5. New transaction, money out ₱1,000, turn on "Expecting a refund": the note says "Up to ₱1,000.00, the full amount". Type 1,500: the note turns red. Tap Add: it takes you to Amount back with "A refund can't be more than the ₱1,000.00 paid." Change it to 1,000 (or less): it saves.
+
 ## 10. Earlier untested items
 1. Forms: tap Add with fields empty on New transaction, bill, debt, loan, income, pot, goal, event, trip and account: each takes you to the first missing field in red (already tested, quick re-check).
 2. Storage pieces still only switch on for usernames starting with "test" (Firebase: the test household has a parts folder; your real one doesn't).

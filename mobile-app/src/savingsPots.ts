@@ -117,7 +117,7 @@ export function applyAutoSavings(model: HouseholdModel, today: Date = new Date()
         const date = iso(new Date(y, m, d));
         if (date < auto.since || date > todayStr || done.has(date)) return;
         done.add(date);
-        added.push({ id: makeId('contrib'), date, amount: num(auto.amount), auto: true, ...(g.keptIn ? { paymentMethod: g.keptIn } : {}) });
+        added.push({ id: makeId('contrib'), date, amount: num(auto.amount), auto: true, ...(g.keptIn && g.keptIn.type !== 'credit' ? { paymentMethod: g.keptIn } : {}) /* a card can't fund a pot */ });
       });
       cursor.setMonth(cursor.getMonth() + 1);
     }

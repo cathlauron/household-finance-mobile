@@ -852,7 +852,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </PickerRow>
           </Guided>
           <PickerRow label="Kept in" value={accountName(model, keptInInput) ?? 'Choose'} open={openRow === 'kept'} onToggle={() => toggleRow('kept')}>
-            <AccountChoices model={model} value={keptInInput} onChange={setKeptInInput} optional />
+            <AccountChoices model={model} value={keptInInput} onChange={setKeptInInput} optional noCredit />
           </PickerRow>
         </FormGroup>
 

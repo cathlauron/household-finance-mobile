@@ -284,9 +284,10 @@ export function ordinal(n: number): string {
 }
 
 // A list of your accounts, each with its colour square, for "Paid from" style rows.
-export function AccountChoices({ model, value, onChange, optional }: { model: HouseholdModel; value?: PaymentMethod; onChange: (pm: PaymentMethod | undefined) => void; optional?: boolean }) {
+export function AccountChoices({ model, value, onChange, optional, noCredit }: { model: HouseholdModel; value?: PaymentMethod; onChange: (pm: PaymentMethod | undefined) => void; optional?: boolean; noCredit?: boolean }) {
   const { colors } = useTheme();
-  const groups: Array<'cash' | 'debit' | 'credit'> = ['cash', 'debit', 'credit'];
+  // noCredit: for money that's kept or moved (a savings pot), credit cards aren't offered.
+  const groups: Array<'cash' | 'debit' | 'credit'> = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
   const rows = groups.flatMap((g) => (model.balanceAccounts[g] || []).map((a) => ({ g, a })));
   if (rows.length === 0) return <Text style={{ fontSize: 15, color: colors.inkDim }}>Add an account first (Home › Accounts).</Text>;
   return (
