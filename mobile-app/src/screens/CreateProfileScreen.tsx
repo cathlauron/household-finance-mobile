@@ -53,7 +53,17 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
     if (code === 'auth/weak-password') {
       return 'Password must be at least 6 characters.';
     }
-    return 'Could not create account. Check your connection and try again.';
+    if (code === 'auth/too-many-requests') {
+      return 'Too many tries from this phone for now. Wait about an hour, then try again. (auth/too-many-requests)';
+    }
+    if (code === 'auth/network-request-failed') {
+      return 'No connection to the sign-in service. Check your internet and try again. (auth/network-request-failed)';
+    }
+    if (code === 'auth/operation-not-allowed') {
+      return 'Email sign-up is switched off in Firebase. (auth/operation-not-allowed)';
+    }
+    // Anything else: show the code so the cause can be found.
+    return `Could not create account (step 1: sign-in account). Code: ${code || e?.message || 'unknown'}`;
   }
 
   async function handleCreate() {
@@ -107,10 +117,10 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
           setError('Username is taken. Choose another or sign in.');
           return;
         }
-      } catch {
+      } catch (claimError: any) {
         await firebaseUser.delete().catch(() => {});
         setBusy(false);
-        setError('Could not create account. Check your connection and try again.');
+        setError(`Could not create account (step 2: reserving the username). Code: ${claimError?.code || claimError?.message || 'unknown'}`);
         return;
       }
 
