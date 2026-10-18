@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -52,6 +52,18 @@ export default function AccountsScreen() {
   // One Add button in the title bar asks which kind of account to add.
   const [chooseTypeOpen, setChooseTypeOpen] = useState(false);
   const navigation = useNavigation<any>();
+  // Version 2.1 (Cath): "Edit card" on a card's page comes here and opens that card's sheet.
+  const route = useRoute<any>();
+  const editNonce = route.params?.nonce;
+  React.useEffect(() => {
+    const g = route.params?.editGroup as AccountGroup | undefined;
+    const id = route.params?.editId as string | undefined;
+    if (!editNonce || !g || !id || !model) return;
+    const account = model.balanceAccounts[g]?.find((a: BalanceAccountEntry) => a.id === id);
+    if (account) openEditModal(g, account);
+    // Only when "Edit card" sends a new request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editNonce]);
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -320,7 +332,8 @@ export default function AccountsScreen() {
                     >
                       <TouchableOpacity
                         style={[styles.accountRow, i > 0 && styles.accountRowDivider]}
-                        onPress={() => openEditModal(group, account)}
+                        onPress={() => navigation.navigate('CardDetail', { group, id: account.id })}
+                        onLongPress={() => openEditModal(group, account)}
                         accessibilityRole="button"
                         accessibilityLabel={`${account.name}, ${formatPeso(bal)}`}
                       >
