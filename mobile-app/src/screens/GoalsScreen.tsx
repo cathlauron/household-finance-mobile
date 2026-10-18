@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatPeso, outstandingBalance, loanOutstandingBalance } from '../balanceProjection';
@@ -232,6 +233,7 @@ export default function GoalsScreen() {
     const updated: HouseholdModel = { ...model, yearlyGoals: updatedList };
     try {
       await saveModel(updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

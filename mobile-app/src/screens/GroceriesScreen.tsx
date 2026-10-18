@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -133,7 +134,7 @@ export default function GroceriesScreen() {
         : [...meals, { id: makeId('meal'), name, ingredients: ing }];
       await saveModel({ ...model, mealIdeas: list });
     }
-    hapticLight();
+    showLeafTick(sheet.id ? 'Saved' : 'Added');
     setSheet(null);
   }
 

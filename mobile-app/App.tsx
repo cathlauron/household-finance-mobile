@@ -20,6 +20,7 @@ import {
 import { setFontsReady } from './src/components/AppText';
 import LoadingView from './src/components/LoadingView';
 import { SavedToastHost } from './src/components/SavedToast';
+import { LeafTickHost } from './src/components/LeafTick';
 import BusyOverlay, { paintBusy } from './src/components/BusyOverlay';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -867,6 +868,7 @@ function AppContent() {
         {renderScreen()}
       </ScreenFade>
       <SavedToastHost />
+      <LeafTickHost />
     </View>
   );
 }

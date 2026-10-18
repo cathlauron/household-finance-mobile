@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { showSaved } from '../components/SavedToast';
 import AppSwitch from '../components/AppSwitch';
@@ -147,7 +148,7 @@ export default function PotDetailScreen() {
       }
       hapticLight();
       await save(withContribution(goal, sheet === 'add' ? a : -a, pm));
-      showSaved(sheet === 'add' ? 'Added to pot' : 'Moved out');
+      showLeafTick(sheet === 'add' ? 'Added' : 'Moved');
     } else if (sheet === 'keptIn') {
       await save({ ...goal, keptIn: pm });
     } else if (sheet === 'auto') {

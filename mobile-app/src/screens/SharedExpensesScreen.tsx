@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import LoadingView from '../components/LoadingView';
 import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -239,6 +240,7 @@ export default function SharedExpensesScreen() {
     try {
       await saveModel({ ...model, sharedExpenses: editingId ? list.map((x) => (x.id === editingId ? record : x)) : [...list, record] });
       hapticLight();
+      showLeafTick(editingId ? 'Saved' : 'Added');
       setSheetOpen(false);
     } catch {
       setError('Failed to save. Please try again.');
