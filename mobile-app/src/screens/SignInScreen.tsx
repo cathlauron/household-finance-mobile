@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import BusyOverlay from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -774,6 +775,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
   }
 
   return (
+    <>
     <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[ms.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={ms.brandWrap}>
         <LogoMark width={84} />
@@ -1005,6 +1007,8 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         </View>
       </Modal>
     </KeyboardAwareScrollView>
+      <BusyOverlay visible={!!(busy && !silent)} messages={['Signing you in…', 'Unlocking your data…', 'Getting your household…', 'Almost there…']} />
+    </>
   );
 }
 

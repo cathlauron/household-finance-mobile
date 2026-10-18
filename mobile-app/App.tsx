@@ -20,6 +20,7 @@ import {
 import { setFontsReady } from './src/components/AppText';
 import LoadingView from './src/components/LoadingView';
 import { SavedToastHost } from './src/components/SavedToast';
+import BusyOverlay from './src/components/BusyOverlay';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -833,11 +834,7 @@ function AppContent() {
       <ScreenFade key={screen} skip={screen === 'loading'}>
         {renderScreen()}
       </ScreenFade>
-      {unlocking && screen === 'switcher' && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy2 }]}>
-          <LoadingView label="Unlocking…" testID="switcher-unlocking" />
-        </View>
-      )}
+      <BusyOverlay visible={unlocking && screen === 'switcher'} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
       <SavedToastHost />
     </View>
   );

@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import BusyOverlay from '../components/BusyOverlay';
 import { TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
@@ -72,6 +73,7 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
   }
 
   return (
+    <>
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.eyebrow}>QUICK UNLOCK</Text>
@@ -120,6 +122,8 @@ export default function SetPinScreen({ username, email, onDone, onCancel }: Prop
         </TouchableOpacity>
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
+      <BusyOverlay visible={!!(busy)} messages={['Checking your password…', 'Saving your PIN…', 'Setting up Quick unlock…']} />
+    </>
   );
 }
 

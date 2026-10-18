@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BusyOverlay from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
@@ -138,6 +139,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   }
 
   return (
+    <>
     <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[styles.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={{ alignItems: 'center', marginBottom: 28 }}>
         <LogoMark width={72} />
@@ -239,6 +241,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
         </>
       )}
     </KeyboardAwareScrollView>
+      <BusyOverlay visible={!!(busy)} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
+    </>
   );
 }
 
