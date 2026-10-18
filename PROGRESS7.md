@@ -128,6 +128,19 @@ Cath's answers to the V3-PLAN.md questions (2026-10-17)
 - Q12 She asked how to share bank files: answered in the plan (export CSV, blank out names
   and numbers, keep formats).
 - Q13 Yes: a separate email just for support (she will create it).
+Cath's answers to questions 14-20 (2026-10-18)
+- Q14 Yes: `v2.1` branch made from main (polish work); merged into main as 2.1.0 later,
+  then `v3` continues from main.
+- Q15 Transitions: pages = 3 "Paper slide" (new page slides over the old like paper, soft
+  shadow); tabs = C "Slide by direction" (tab to the right slides in from the right).
+- Q16 Agree: when someone joins with data, the OWNER approves it before it is added.
+- Q17 Agree: owner inactive 60 days -> a member can ask to take over; owner has 7 days to
+  refuse.
+- Q18 Agree: card purchases count as spending when bought; paying the card is moving money.
+- Q19 She is on Expo's FREE plan and wants to stay free: use the free testing route
+  (automatic money checks run by Claude; Maestro on an Android emulator on her PC or on
+  GitHub Actions' free minutes; iPhone later).
+- Q20 Support email: later.
 New decisions (2026-10-17)
 - Version split (Cath's idea, agreed): version 2.1 = make existing features safe, correct
   and smooth; version 3 = new features. Proposed branches: `v2.1` from main, merged to
@@ -387,6 +400,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-18): VERSION 2.1 STARTED on branch `v2.1` (from main). Batch 1 done,
+  NOT device-tested: data risk 1, receipt photos are shrunk before saving
+  (avatars.ts makeReceiptDataUri: 1000/800/640 px steps, max 200,000 base64 chars, else a
+  clear error; TransactionsScreen handlePickReceipt uses it). Cath switches to `v2.1`
+  (git fetch; git checkout v2.1; git pull) and tests it. Then continue the 2.1 order in
+  V3-PLAN.md: data risk 2 (compress + storage meter), data risk 3 (merge before save +
+  log-out warning), remove "Keep mine" for joiners, open from the phone first, quick
+  fixes, offline messages, part-pay bills + back-dating, transitions (Paper slide / slide
+  by direction), money checks alongside.
 - NEWEST (2026-10-17): Cath answered Q1-13 (recorded under 📌 Decisions). Plan updated with
   her new notes: linked households (owner, merge approval, who-added-what, owner handover),
   paying part of a bill (Meralco), credit cards done properly, widgets, Premium plans and
