@@ -1,4 +1,5 @@
 import React from 'react';
+import SkyGlow from './SkyGlow';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions } from 'react-native';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,6 +90,8 @@ export default function BottomSheet({
               keyboardHeight > 0 && { maxHeight: Math.max(200, screenHeight - insets.top - 24) },
             ]}
           >
+            {/* Version 2.1: the same time-of-day glow as Home, without rays/rain/stars. */}
+            <SkyGlow plain />
             <View style={styles.handleWrap}>
               <View style={styles.handle} />
             </View>
@@ -137,6 +140,7 @@ function makeStyles(colors: any, screenHeight: number) {
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       borderBottomLeftRadius: 0,
+      overflow: 'hidden', // keeps the glow inside the rounded corners
       borderBottomRightRadius: 0,
       maxHeight: Math.round(screenHeight * 0.85),
       width: '100%',

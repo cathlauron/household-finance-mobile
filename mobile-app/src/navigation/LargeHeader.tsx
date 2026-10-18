@@ -1,4 +1,5 @@
 import React from 'react';
+import SkyGlow from '../components/SkyGlow';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,9 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
   const left = options.headerLeft?.({ tintColor: colors.gold, canGoBack: !!back });
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 4 }]}>
+      {/* Version 2.1 (Cath): every page gets Home's time-of-day glow; the sun rays, rain
+          and stars stay on Home only. */}
+      <SkyGlow plain />
       <View style={styles.row}>
         {left ??
           (back ? (

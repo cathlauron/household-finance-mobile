@@ -124,7 +124,9 @@ const wedge = (deg: number, spread: number) => {
 };
 const RAYS = [118, 140, 162].map((deg) => ({ outer: wedge(deg, 0.08), inner: wedge(deg, 0.035) }));
 
-export default function SkyGlow() {
+// Version 2.1 (Cath): `plain` is the same time-of-day glow without the sun rays, rain,
+// clouds and stars (those stay on Home), for every other page and the bottom sheets.
+export default function SkyGlow({ plain = false }: { plain?: boolean } = {}) {
   const { isDark } = useTheme();
   const { glowOn, rainAnimOn } = useSkyPrefs();
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -143,7 +145,7 @@ export default function SkyGlow() {
   const { width } = useWindowDimensions();
   // Rain falls only when the switch is on, Reduce Motion is off and the app is in front;
   // otherwise the drops are drawn still.
-  const rainFalls = sky === 'rain' && rainAnimOn && !reduceMotion;
+  const rainFalls = !plain && sky === 'rain' && rainAnimOn && !reduceMotion;
 
   const art = useMemo(() => {
     const mode = isDark ? 'dark' : 'light';
@@ -181,7 +183,7 @@ export default function SkyGlow() {
           </RadialGradient>
         </Defs>
         <Rect x={0} y={0} width={390} height={H} fill="url(#skyGlow)" />
-        {sky !== 'clear' && (
+        {!plain && sky !== 'clear' && (
           <>
             {CLOUD_BANK.map(([cx, cy, rx, ry], i) => (
               <React.Fragment key={i}>{wisp(cx, cy, rx, ry)}</React.Fragment>
@@ -201,13 +203,13 @@ export default function SkyGlow() {
               ))}
           </>
         )}
-        {sky === 'clear' && phase === 'morning' && (
+        {!plain && sky === 'clear' && phase === 'morning' && (
           <>
             {dots(MOTES)}
             {wisp(248, 78, 52, 12)}
           </>
         )}
-        {sky === 'clear' && phase === 'afternoon' && (
+        {!plain && sky === 'clear' && phase === 'afternoon' && (
           <>
             {RAYS.map((r, i) => (
               <React.Fragment key={i}>
@@ -219,13 +221,13 @@ export default function SkyGlow() {
             {dots(SPARKS)}
           </>
         )}
-        {sky === 'clear' && phase === 'evening' && (
+        {!plain && sky === 'clear' && phase === 'evening' && (
           <>
             {dots(DUSK)}
             <Path d={twinkle(262, 46, 4)} fill={look.tex} fillOpacity={0.7} />
           </>
         )}
-        {sky === 'clear' && phase === 'night' && (
+        {!plain && sky === 'clear' && phase === 'night' && (
           <>
             {dots(STARS, isDark ? 1 : 0.8)}
             <Path d={twinkle(232, 38, 5)} fill={look.tex} fillOpacity={0.8} />
@@ -235,7 +237,7 @@ export default function SkyGlow() {
         )}
       </>
     );
-  }, [phase, isDark, sky, rainFalls]);
+  }, [phase, isDark, sky, rainFalls, plain]);
 
   const rainColor = WEATHER_LOOKS.rain[phase === 'night' ? 'night' : 'day'][isDark ? 'dark' : 'light'].tex;
   if (!glowOn) return null;
