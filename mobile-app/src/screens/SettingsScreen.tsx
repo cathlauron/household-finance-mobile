@@ -63,6 +63,7 @@ import AmountInput from '../components/AmountInput';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useFabSide, setFabSide } from '../fabSide';
 import GradientFill from '../components/GradientFill';
+import { useTightHeadsUp } from '../components/CalmHome';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -108,6 +109,7 @@ const SECTIONS: Record<string, { title: string; parts: string[] }> = {
 export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void; onLock?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const fabSide = useFabSide();
+  const [tightHeadsUp, setTightHeadsUp] = useTightHeadsUp(); // version 3, this phone only
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const {
@@ -1724,6 +1726,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               </View>
             }
           />
+        </SettingsGroup>
+
+        <SettingsGroup
+          plain
+          footer="When Left to Spend is running low, Home shows a few ways to free up money before payday. Nothing moves until you choose. This phone only; no notification."
+        >
+          <PlainRow title="Heads-up when money gets tight" right={settingSwitch(tightHeadsUp, setTightHeadsUp, 'settings-tight-heads-up')} />
         </SettingsGroup>
 
         <SettingsGroup plain footer="Give every peso a job, and roll leftovers into next month.">

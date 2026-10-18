@@ -27,6 +27,8 @@ import { applyAutoSavings } from '../savingsPots';
 import { applyRecurring } from '../recurring';
 import { getCallName } from '../preferredName';
 import GuestPicks from '../components/GuestPicks';
+import { useHideAmounts } from '../hideAmounts';
+import { WelcomeBackCard, TightCard } from '../components/CalmHome';
 import { useTravelTime, differenceText, gmtLabel } from '../travelTime';
 import { rescheduleBillNotifications } from '../pushNotifications';
 
@@ -49,6 +51,7 @@ export default function HomeScreen({ username }: Props) {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [showSlimBar, setShowSlimBar] = useState(false);
+  const { money } = useHideAmounts();
 
   // Worked out once per data change, not on every redraw (scrolling, the bell, etc.).
   const leftToSpend = useMemo(() => (model ? computeLeftToSpend(model) : null), [model]);
@@ -217,6 +220,7 @@ export default function HomeScreen({ username }: Props) {
           onScrollY={(y) => setShowSlimBar(y > 150)}
           header={
             leftToSpend && leftToSpendStatus ? (
+              <>
               <HomeHero
                 model={model!}
                 amount={leftToSpend.amount}
@@ -229,6 +233,16 @@ export default function HomeScreen({ username }: Props) {
                 fullDate={fullDate}
                 targetDate={leftToSpend.targetDate}
               />
+              {/* Version 3 calm Home: both sit between Left to Spend and Accounts. */}
+              <TightCard
+                amount={leftToSpend.amount}
+                mood={mood}
+                statusLabel={leftToSpendStatus.label}
+                targetDate={leftToSpend.targetDate}
+                basis={leftToSpend.basis}
+              />
+              <WelcomeBackCard username={username} />
+              </>
             ) : undefined
           }
           footer={guest ? <GuestPicks /> : undefined
@@ -237,7 +251,7 @@ export default function HomeScreen({ username }: Props) {
         {showSlimBar && leftToSpend && (
           <View pointerEvents="none" style={[hs.slimBar, { backgroundColor: moodCard.start }]}>
             <Text style={[hs.slimBarLabel, { color: moodCard.dim }]}>Left to spend</Text>
-            <Text style={[hs.slimBarAmount, { color: colors.cardTealText }]}>{formatPeso(leftToSpend.amount)}</Text>
+            <Text style={[hs.slimBarAmount, { color: colors.cardTealText }]}>{money(leftToSpend.amount)}</Text>
           </View>
         )}
       </View>

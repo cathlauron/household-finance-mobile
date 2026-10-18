@@ -56,7 +56,7 @@ export type RootStackParamList = {
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
-  PotDetail: { id: string };
+  PotDetail: { id: string; open?: 'out' };
   Groceries: undefined;
   Travel: undefined;
   Events: undefined;

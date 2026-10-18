@@ -73,6 +73,16 @@ export default function PotDetailScreen() {
     });
   }, [navigation, goal?.name, colors.gold, id]);
 
+  // Version 3: opened from Home's "Running low" tips ("Use ₱1,000 from …"): straight to Move out.
+  const openedOutRef = React.useRef(false);
+  React.useEffect(() => {
+    if (route.params?.open !== 'out' || !goal || openedOutRef.current) return;
+    openedOutRef.current = true;
+    setAmount('');
+    setPm(goal.keptIn);
+    setSheet('out');
+  }, [route.params?.open, goal]);
+
   if (!model || !goal) {
     return (
       <View style={styles.empty}>

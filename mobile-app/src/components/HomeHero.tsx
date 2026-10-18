@@ -10,6 +10,8 @@ import { useTheme } from '../ThemeContext';
 import { formatPeso, LeftToSpendMood, leftToSpendBreakdown } from '../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../transactions';
 import type { HouseholdModel } from '../types';
+import { useHideAmounts } from '../hideAmounts';
+import { hapticSelection } from '../haptics';
 
 // Redesign: the Home hero card from the Finance Flow mockup. Two pages you swipe
 // between, with dots underneath:
@@ -65,6 +67,8 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
   const navigation = useNavigation<any>();
   const [width, setWidth] = useState(0);
   const [page, setPage] = useState(0);
+  // Version 3: the eye beside "Left to spend" hides the amounts (₱ *****).
+  const { hidden, toggle, money } = useHideAmounts();
 
   const cardColor = mood === 'good' ? colors.cardTealEnd : CARD[mood][isDark ? 'dark' : 'light'];
   const dim = mood === 'good' ? colors.cardTealTextDim : 'rgba(255,255,255,0.92)';
@@ -119,7 +123,22 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
           {/* Page 1: Left to spend */}
           <View style={[styles.page, { width }]}>
             <View style={styles.top}>
-              <Text style={[styles.label, { color: dim }]}>Left to spend</Text>
+              <View style={styles.labelRow}>
+                <Text style={[styles.label, { color: dim }]}>Left to spend</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    hapticSelection();
+                    toggle();
+                  }}
+                  hitSlop={12}
+                  style={styles.eye}
+                  accessibilityRole="button"
+                  accessibilityLabel={hidden ? 'Show amounts' : 'Hide amounts'}
+                  testID="home-hide-amounts"
+                >
+                  <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={19} color={dim} />
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity
                 testID="home-calendar-shortcut"
                 onPress={() => navigation.navigate('Calendar')}
@@ -131,11 +150,11 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
                 <Text style={styles.calText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>{formatPeso(amount)}</Text>
+            <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={hidden ? 'Amount hidden' : undefined}>{money(amount)}</Text>
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
               <Text style={[styles.status, { color: dim }]} numberOfLines={1}>
-                of {formatPeso(total)} · {statusLabel}
+                of {money(total)} · {statusLabel}
               </Text>
             </View>
             <View style={styles.track}>
@@ -150,7 +169,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               <View style={styles.trend}>
                 <Ionicons name={month.diff <= 0 ? 'chevron-down' : 'chevron-up'} size={12} color="#FFFFFF" />
                 <Text style={styles.trendText}>
-                  {formatPeso(Math.abs(month.diff)).replace('.00', '')} {month.diff <= 0 ? 'less' : 'more'} than last month
+                  {money(Math.abs(month.diff), { noCents: true })} {month.diff <= 0 ? 'less' : 'more'} than last month
                 </Text>
               </View>
             </View>
@@ -158,7 +177,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               width={chartW}
               height={chartH}
               style={{ marginTop: 10 }}
-              accessibilityLabel={`Spending so far this month is ${formatPeso(Math.abs(month.diff))} ${month.diff <= 0 ? 'below' : 'above'} last month at the same point`}
+              accessibilityLabel={`Spending so far this month is ${hidden ? 'hidden' : formatPeso(Math.abs(month.diff))} ${month.diff <= 0 ? 'below' : 'above'} last month at the same point`}
             >
               {thisPts.length > 1 && (
                 <Polygon points={`0,${chartH} ${thisPts.join(' ')} ${thisPts[thisPts.length - 1].split(',')[0]},${chartH}`} fill="rgba(255,255,255,0.10)" />
@@ -170,15 +189,15 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
             <View style={styles.stats}>
               <View style={styles.stat}>
                 <Text style={[styles.statLabel, { color: dim }]}>In</Text>
-                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>+{formatPeso(month.totals.totalIn).replace('.00', '')}</Text>
+                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{hidden ? '' : '+'}{money(month.totals.totalIn, { noCents: true })}</Text>
               </View>
               <View style={[styles.stat, styles.statDivider]}>
                 <Text style={[styles.statLabel, { color: dim }]}>Out</Text>
-                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>−{formatPeso(month.totals.totalOut).replace('.00', '')}</Text>
+                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{hidden ? '' : '−'}{money(month.totals.totalOut, { noCents: true })}</Text>
               </View>
               <View style={[styles.stat, styles.statDivider]}>
                 <Text style={[styles.statLabel, { color: dim }]}>Saved</Text>
-                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{formatPeso(month.totals.totalSaving).replace('.00', '')}</Text>
+                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{money(month.totals.totalSaving, { noCents: true })}</Text>
               </View>
             </View>
           </View>
@@ -189,7 +208,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
             <View style={{ marginTop: 8 }}>
               <View style={styles.bRow}>
                 <Text style={[styles.bLabel, { color: dim }]}>In your accounts now</Text>
-                <Text style={styles.bVal}>{formatPeso(breakdown.now)}</Text>
+                <Text style={styles.bVal}>{money(breakdown.now)}</Text>
               </View>
               {breakdown.lines.slice(0, 4).map((l) => (
                 <View key={l.label} style={styles.bRow}>
@@ -197,13 +216,13 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
                     {l.amount < 0 ? '− ' : '+ '}
                     {l.label} {basis === 'payday' ? 'before payday' : 'this month'}
                   </Text>
-                  <Text style={styles.bVal}>{formatPeso(Math.abs(l.amount))}</Text>
+                  <Text style={styles.bVal}>{money(Math.abs(l.amount))}</Text>
                 </View>
               ))}
               {breakdown.lines.length > 4 && (
                 <View style={styles.bRow}>
                   <Text style={[styles.bLabel, { color: dim }]}>{breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0) < 0 ? '− ' : '+ '}Everything else</Text>
-                  <Text style={styles.bVal}>{formatPeso(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
+                  <Text style={styles.bVal}>{money(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
                 </View>
               )}
               {breakdown.lines.length === 0 && (
@@ -211,7 +230,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               )}
               <View style={[styles.bRow, styles.bTotal]}>
                 <Text style={styles.bTotalLabel}>Left to spend until {untilLabel}</Text>
-                <Text style={styles.bTotalVal}>{formatPeso(amount)}</Text>
+                <Text style={styles.bTotalVal}>{money(amount)}</Text>
               </View>
             </View>
           </View>
@@ -238,6 +257,8 @@ const styles = StyleSheet.create({
   bTotalVal: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: 15, fontWeight: '600' },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eye: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginVertical: -4 },
   calBtn: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 10, paddingRight: 12, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.16)', marginTop: -6, marginRight: -6 },
   calText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   amount: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -0.5, color: '#FFFFFF', marginTop: 4 },

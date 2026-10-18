@@ -9,6 +9,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import type { ThemeColors } from '../theme';
 import { formatPeso, totalCurrentBalance, accountCurrentBalance } from '../balanceProjection';
+import { useHideAmounts } from '../hideAmounts';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
 import { hapticMedium, hapticSelection } from '../haptics';
@@ -63,6 +64,7 @@ function orderedCards(model: HouseholdModel): WalletCard[] {
 }
 
 export default function HomeWallet({ model }: { model: HouseholdModel }) {
+  const { hidden, money } = useHideAmounts(); // version 3: the Home eye hides these too
   const { colors } = useTheme();
   const { saveModel } = useData();
   const navigation = useNavigation<any>();
@@ -223,7 +225,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
 
   const total = totalCurrentBalance(model);
   const openAccounts = () => navigation.navigate('Accounts');
-  const amountColor = (n: number) => (n < 0 ? colors.negative : colors.positive);
+  const amountColor = (n: number) => (n < 0 && !hidden ? colors.negative : colors.positive); // hidden: no red that gives a minus away
 
   function gestureFor(c: WalletCard, index: number) {
     const tap = Gesture.Tap()
@@ -327,7 +329,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                   testID={`home-wallet-card-${c.account.id}`}
                   accessible
                   accessibilityRole="button"
-                  accessibilityLabel={`${c.account.name || GROUP_LABEL[c.group]}, ${GROUP_LABEL[c.group]}, ${formatPeso(amount)}`}
+                  accessibilityLabel={`${c.account.name || GROUP_LABEL[c.group]}, ${GROUP_LABEL[c.group]}, ${hidden ? 'amount hidden' : formatPeso(amount)}`}
                   accessibilityHint="Opens the card. Swipe the stack to change the front card; long-press to move it."
                   style={[
                     styles.card,
@@ -383,12 +385,12 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                         <Text style={styles.typeTagText}>{GROUP_LABEL[c.group]}</Text>
                       </View>
                     )}
-                    {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>}
+                    {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>}
                   </View>
                   {isFront && (
                     <View style={styles.front}>
                       <Text style={styles.frontLabel}>Balance</Text>
-                      <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{formatPeso(amount)}</Text>
+                      <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>
                     </View>
                   )}
                 </Animated.View>
@@ -400,7 +402,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
 
       {cards.length > 0 && (
         <Text style={styles.footer}>
-          {formatPeso(total)} across {cards.length} {cards.length === 1 ? 'account' : 'accounts'}
+          {money(total)} across {cards.length} {cards.length === 1 ? 'account' : 'accounts'}
           {cards.length > 1 ? ' · swipe to flip through, hold to move a card' : ''}
         </Text>
       )}
