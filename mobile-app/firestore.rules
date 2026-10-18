@@ -31,7 +31,11 @@ service cloud.firestore {
       // screenshot or chat log can't be used to link into someone's data
       // indefinitely.
       allow get: if request.auth != null
-        && request.time < resource.data.createdAt + duration.value(15, 'm');
+        && (request.time < resource.data.createdAt + duration.value(15, 'm')
+            // Version 2.1: the person who MADE the code can still read their own code
+            // after 15 minutes, so their phone can finish linking once the other person
+            // has joined. Nobody else gets the extra time.
+            || resource.data.hostUid == request.auth.uid);
 
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid', 'createdAt'])
