@@ -23,7 +23,7 @@
 
 import CryptoJS from 'crypto-js';
 import * as Crypto from 'expo-crypto';
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot, runTransaction } from 'firebase/firestore';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON, bytesToHex } from './encryption';
 import { requireCurrentUid, getCurrentFirebaseUser } from './authFirebase';
@@ -94,6 +94,24 @@ export async function saveHouseholdData(householdId: string, encryptedPayload: s
     },
     { merge: true }
   );
+}
+
+// Version 2.1 (merge before save): reads what is online now and writes in one step, so a
+// save from another phone can't slip in between. `build` gets the online text (or null)
+// and returns the text to write, e.g. this phone's change merged with the online copy.
+// Returns the text that was written.
+export async function saveHouseholdDataChecked(
+  householdId: string,
+  build: (onlineData: string | null) => Promise<string>
+): Promise<string> {
+  const ref = doc(db, 'households', householdId);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const online = snap.exists() && typeof snap.data().data === 'string' ? (snap.data().data as string) : null;
+    const next = await build(online);
+    tx.set(ref, { data: next, updatedAt: Date.now() }, { merge: true });
+    return next;
+  });
 }
 
 // Adds the CURRENTLY signed-in user to an existing household's members list —

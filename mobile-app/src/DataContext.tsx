@@ -37,6 +37,8 @@ import {
   loadPendingHostLink,
   clearPendingHostLink,
   type ProfileIndexEntry,
+  saveHouseholdPendingBase,
+  loadHouseholdPendingBase,
 } from './storage';
 import { cancelLinkCode, finishHostLink } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
@@ -57,7 +59,9 @@ import {
   getHouseholdOwner,
   subscribeToHousehold,
   loadHouseholdDoc,
+  saveHouseholdDataChecked,
 } from './household';
+import { mergeHouseholds } from './merge3';
 import {
   partsEnabledFor,
   afterLoad as partsAfterLoad,
@@ -68,6 +72,7 @@ import {
   removePartsBeforeDissolve,
   forgetParts,
   sameAsParts,
+  currentLayout,
 } from './householdPartsSync';
 
 type ChangePasswordResult = { ok: boolean; error?: string };
@@ -214,6 +219,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Pre-Phase-B Tier 1: tracks the last known encrypted payload for live household sync,
   // preventing echo-reloads when this device saves, while detecting remote updates.
   const lastEncryptedDataRef = useRef<string | null>(null);
+  // Version 2.1 (merge before save): the household as this phone last agreed on it with the
+  // online copy (the "base" of a three-way merge, see merge3.ts).
+  const lastSyncedModelRef = useRef<HouseholdModel | null>(null);
+  const pendingRef = useRef(0);
+  pendingRef.current = pendingChanges;
   // PC.8: bumped on every saveModel so a slow refresh can tell you saved while it
   // was waiting, and back off instead of overwriting that edit.
   const modelVersionRef = useRef(0);
@@ -262,6 +272,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await deleteWrappedHouseholdKey(username);
     } catch (e) {}
     await updateProfileHouseholdId(username, undefined);
+    // Version 2.1: changes waiting for this household no longer apply.
+    saveHouseholdPendingBase(username, null).catch(() => {});
 
     try {
       const pending = await loadPendingHostLink(username);
@@ -272,6 +284,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
     lastEncryptedDataRef.current = null;
+    lastSyncedModelRef.current = null;
     setModel(modelToSave);
     setIsLinked(false);
 
@@ -352,17 +365,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
             );
             lastEncryptedDataRef.current = snapshotData.data;
             noteStorageSize(snapshotData.data);
-            setModel(incomingModel);
+            // Version 2.1: changes on this phone that haven't been sent yet are merged with
+            // the other phone's update instead of being replaced by it.
+            const shown =
+              pendingRef.current > 0 && latestModelRef.current
+                ? sanitizeModelIds(mergeHouseholds(lastSyncedModelRef.current, latestModelRef.current, incomingModel))
+                : incomingModel;
+            lastSyncedModelRef.current = incomingModel;
+            setModel(shown);
 
             // Keep personal local backup fresh
             const username = usernameRef.current;
             const personalKey = keyRef.current;
             if (username && personalKey) {
-              encryptJSON(personalKey, incomingModel)
+              encryptJSON(personalKey, shown)
                 .then((enc) => saveEncryptedProfileData(username, enc))
                 .catch(() => {});
             }
-            rescheduleBillNotifications(incomingModel).catch(() => {});
+            rescheduleBillNotifications(shown).catch(() => {});
           } catch (err) {
             console.error('Failed to decrypt live household data update:', err);
           }
@@ -479,7 +499,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
             householdIdRef.current = householdId;
             householdKeyRef.current = householdKey;
             lastEncryptedDataRef.current = encryptedHousehold;
+            lastSyncedModelRef.current = loaded;
             noteStorageSize(encryptedHousehold);
+            // Version 2.1: changes made on this phone that never reached the household
+            // (offline, or a failed sync) are merged in instead of being thrown away.
+            const waiting = await mergeWaitingChanges(username, key, loaded);
+            if (waiting) {
+              setModel(waiting);
+              setPendingChanges(1);
+              saveEncryptedProfileData(username, await encryptJSON(key, waiting)).catch(() => {});
+              setIsLinked(true);
+              setupHouseholdListener(householdId);
+              partsAfterLoad(username, householdId, householdKey, loaded, layout).catch(() => {});
+              if (!options.deferNotifications) rescheduleBillNotifications(waiting).catch(() => {});
+              setLoading(false);
+              setTimeout(() => syncPendingChanges(), 500);
+              return waiting;
+            }
             setModel(loaded);
             setIsLinked(true);
             saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
@@ -521,6 +557,82 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 
   // Sends the latest data to the cloud after being offline (or after a failed sync).
+  // Version 2.1 (merge before save) ----
+  // Sends this phone's household to the online copy. If another phone saved since this phone
+  // last synced, the two are merged first (merge3.ts), all in one step online. Returns what
+  // was written and the household it holds.
+  async function pushHousehold(
+    householdId: string,
+    householdKey: CryptoJS.lib.WordArray,
+    mine: HouseholdModel,
+    mineEncrypted: string
+  ): Promise<{ encrypted: string; model: HouseholdModel; merged: boolean }> {
+    let result = mine;
+    const encrypted = await saveHouseholdDataChecked(householdId, async (online) => {
+      result = mine;
+      if (online && online !== lastEncryptedDataRef.current && currentLayout(householdId) < 2) {
+        try {
+          const theirs = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, online));
+          result = sanitizeModelIds(mergeHouseholds(lastSyncedModelRef.current, mine, theirs));
+        } catch (e) {
+          result = mine; // can't read the online copy: save as before
+        }
+      }
+      return result === mine ? mineEncrypted : encryptJSON(householdKey, result);
+    });
+    lastEncryptedDataRef.current = encrypted;
+    lastSyncedModelRef.current = result;
+    return { encrypted, model: result, merged: result !== mine };
+  }
+  // After a merge, show the merged household (unless something newer was saved meanwhile).
+  function showMerged(res: { model: HouseholdModel; merged: boolean }, version: number) {
+    if (!res.merged || modelVersionRef.current !== version) return;
+    setModel(res.model);
+    const username = usernameRef.current;
+    const key = keyRef.current;
+    if (username && key) {
+      encryptJSON(key, res.model).then((enc) => saveEncryptedProfileData(username, enc)).catch(() => {});
+    }
+    rescheduleBillNotifications(res.model).catch(() => {});
+  }
+  // A change couldn't be sent: remember the version both phones last agreed on, so it can be
+  // merged later even if the app is closed first.
+  function rememberWaitingBase() {
+    const username = usernameRef.current;
+    const key = keyRef.current;
+    const base = lastSyncedModelRef.current;
+    if (!username || !key || !base) return;
+    loadHouseholdPendingBase(username)
+      .then(async (existing) => {
+        if (!existing) await saveHouseholdPendingBase(username, await encryptJSON(key, base));
+      })
+      .catch(() => {});
+  }
+  function forgetWaitingBase() {
+    const username = usernameRef.current;
+    if (username) saveHouseholdPendingBase(username, null).catch(() => {});
+  }
+  // When the app opens: if changes were waiting to be sent, merge this phone's copy (kept on
+  // the phone) with the online one. Returns the merged household, or null if nothing waits.
+  async function mergeWaitingChanges(username: string, key: CryptoJS.lib.WordArray, online: HouseholdModel): Promise<HouseholdModel | null> {
+    try {
+      const baseText = await loadHouseholdPendingBase(username);
+      if (!baseText) return null;
+      const localText = await loadEncryptedProfileData(username);
+      if (!localText) return null;
+      const base = sanitizeModelIds(decryptJSON<HouseholdModel>(key, baseText));
+      const mine = sanitizeModelIds(decryptJSON<HouseholdModel>(key, localText));
+      if (JSON.stringify(mine) === JSON.stringify(base)) {
+        await saveHouseholdPendingBase(username, null);
+        return null; // nothing was actually changed here
+      }
+      return sanitizeModelIds(mergeHouseholds(base, mine, online));
+    } catch (e) {
+      console.warn('Could not merge changes that were waiting:', e);
+      return null;
+    }
+  }
+
   const syncingRef = useRef(false);
   async function syncPendingChanges() {
     if (syncingRef.current) return;
@@ -536,9 +648,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           // Version 2.1: too big for one copy, saved in parts instead.
         } else {
           if (tooBigToSync(encrypted)) return;
-          await withTimeout(saveHouseholdData(householdIdRef.current, encrypted), 12000, 'Timed out syncing.');
-          lastEncryptedDataRef.current = encrypted;
-          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, current).catch(() => {});
+          const version = modelVersionRef.current;
+          const res = await withTimeout(
+            pushHousehold(householdIdRef.current, householdKeyRef.current, current, encrypted),
+            12000,
+            'Timed out syncing.'
+          );
+          showMerged(res, version);
+          forgetWaitingBase();
+          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, res.model).catch(() => {});
         }
       } else if (saltRef.current && keyRef.current) {
         const encrypted = await encryptJSON(keyRef.current, current);
@@ -714,6 +832,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       noteStorageSize(encrypted);
       if (!onlineRef.current) {
         // Offline: saved on this phone; the banner shows it and it syncs once back online.
+        rememberWaitingBase();
         setPendingChanges((n) => n + 1);
       } else if (
         encrypted.length > STORAGE_LIMIT_CHARS &&
@@ -721,17 +840,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ) {
         // Version 2.1: too big for one copy, saved in parts instead.
       } else if (tooBigToSync(encrypted)) {
+        rememberWaitingBase();
         setPendingChanges((n) => n + 1);
       } else {
         try {
-          await withTimeout(
-            saveHouseholdData(householdIdRef.current, encrypted),
+          const version = modelVersionRef.current;
+          const res = await withTimeout(
+            pushHousehold(householdIdRef.current, householdKeyRef.current, sanitizedModel, encrypted),
             8000,
             'Timed out waiting for the shared household to sync.'
           );
-          lastEncryptedDataRef.current = encrypted;
-          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, sanitizedModel).catch(() => {});
+          showMerged(res, version);
+          // The whole household was just sent, so nothing is waiting any more.
+          setPendingChanges(0);
+          forgetWaitingBase();
+          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, res.model).catch(() => {});
         } catch (err) {
+          rememberWaitingBase();
           setPendingChanges((n) => n + 1);
           if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
             Alert.alert(
@@ -846,6 +971,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return 'cannot_decrypt';
         }
         lastEncryptedDataRef.current = encryptedHousehold;
+        // Version 2.1: keep changes that haven't been sent yet (merged, not replaced).
+        if (pendingRef.current > 0 && latestModelRef.current) {
+          incoming = sanitizeModelIds(mergeHouseholds(lastSyncedModelRef.current, latestModelRef.current, incoming));
+          lastSyncedModelRef.current = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, encryptedHousehold));
+        } else {
+          lastSyncedModelRef.current = incoming;
+        }
         noteStorageSize(encryptedHousehold);
         setModel(incoming);
         encryptJSON(key, incoming)
@@ -905,6 +1037,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
     lastEncryptedDataRef.current = null;
+    lastSyncedModelRef.current = null;
     setModel(null);
     setIsLinked(false);
     setLinkNoticeMsg(null);

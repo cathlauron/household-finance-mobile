@@ -121,6 +121,19 @@ export async function loadCloudSyncAt(username: string): Promise<number | null> 
 }
 
 // True while a local save has not yet reached the cloud backup.
+// Version 2.1 (merge before save): while a linked household has changes waiting to be sent,
+// the version both phones last agreed on is kept here (encrypted with the personal key), so
+// the waiting changes can be merged with the online copy later instead of overwriting it,
+// even after the app was closed.
+const householdPendingBaseKey = (username: string) => `householdPendingBase:${username}`;
+export async function saveHouseholdPendingBase(username: string, encrypted: string | null): Promise<void> {
+  if (encrypted) await AsyncStorage.setItem(householdPendingBaseKey(username), encrypted);
+  else await AsyncStorage.removeItem(householdPendingBaseKey(username));
+}
+export async function loadHouseholdPendingBase(username: string): Promise<string | null> {
+  return AsyncStorage.getItem(householdPendingBaseKey(username));
+}
+
 export async function setBackupPending(username: string, pending: boolean): Promise<void> {
   if (pending) await AsyncStorage.setItem(backupPendingKey(username), 'true');
   else await AsyncStorage.removeItem(backupPendingKey(username));
