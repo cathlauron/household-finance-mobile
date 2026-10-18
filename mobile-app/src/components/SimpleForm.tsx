@@ -379,14 +379,16 @@ function niceDate(d: Date): string {
 }
 
 // "the 15th", "Mar 15" or "Sun, Nov 15" for the Due on row.
-export function scheduleLabel(rt: RecurringType, date: string, day: string, month: string): string {
+export function scheduleLabel(rt: RecurringType, date: string, day: string, month: string, firstDue?: string): string {
   if (rt === 'onetime') return date ? niceDate(new Date(date + 'T00:00:00')) : 'Choose';
+  if (firstDue) return niceDate(new Date(firstDue + 'T00:00:00'));
   if (rt === 'monthly') return day ? `the ${ordinal(parseInt(day, 10))}` : 'Choose';
   return day && month ? `${MONTHS_SHORT[parseInt(month, 10) - 1] ?? ''} ${parseInt(day, 10)}` : 'Choose';
 }
 
-export function nextDateFor(rt: RecurringType, date: string, day: string, month: string): Date | null {
+export function nextDateFor(rt: RecurringType, date: string, day: string, month: string, firstDue?: string): Date | null {
   if (rt === 'onetime') return date ? new Date(date + 'T00:00:00') : null;
+  if (firstDue) return new Date(firstDue + 'T00:00:00');
   const d = getNextDueDate(rt, rt === 'monthly' ? { day } : { day, month: month ? parseInt(month, 10) : '' });
   return d && !isNaN(d.getTime()) ? d : null;
 }
@@ -396,8 +398,26 @@ export function nextDateText(prefix: string, d: Date | null): string {
 }
 
 // The choices under a "Due on" row: a date for one-time, days for monthly, month + day for yearly.
-export function ScheduleChoices({ rt, date, onDate, day, onDay, month, onMonth, testID }: { rt: RecurringType; date: string; onDate: (v: string) => void; day: string; onDay: (v: string) => void; month: string; onMonth: (v: string) => void; testID?: string }) {
+export function ScheduleChoices({ rt, date, onDate, day, onDay, month, onMonth, testID, firstDue, onFirstDue }: { rt: RecurringType; date: string; onDate: (v: string) => void; day: string; onDay: (v: string) => void; month: string; onMonth: (v: string) => void; testID?: string; firstDue?: string; onFirstDue?: (iso: string) => void }) {
   if (rt === 'onetime') return <DateField value={date} onChange={onDate} placeholder="Pick a date" testID={testID} />;
+  // Version 2.1 (Cath, round 8): repeating ones use the same date box as Once. The date
+  // picked is the first one due (any month or year); its day (and month, for yearly) repeat.
+  if (onFirstDue && (rt === 'monthly' || rt === 'annual')) {
+    return (
+      <DateField
+        value={firstDue ?? ''}
+        onChange={(iso) => {
+          onFirstDue(iso);
+          if (!iso) return;
+          const d = new Date(iso + 'T00:00:00');
+          onDay(String(d.getDate()));
+          if (rt === 'annual') onMonth(String(d.getMonth() + 1));
+        }}
+        placeholder="Pick a date"
+        testID={testID}
+      />
+    );
+  }
   return (
     <>
       {rt === 'annual' && (

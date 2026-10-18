@@ -310,6 +310,19 @@ function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): nu
   const d = loan.dueDate || {};
   const daysInMonth = lastDayOfMonth(year, monthIndex);
   const recurringType = loan.recurringType || 'onetime';
+  // Version 2.1: nothing is due before a repeating loan's first payment.
+  if ((recurringType === 'monthly' || recurringType === 'annual') && typeof d.firstDate === 'string' && d.firstDate) {
+    const days = loanOccurrenceInMonthPlain(loan, year, monthIndex);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return days.filter((day) => `${year}-${pad(monthIndex + 1)}-${pad(day)}` >= d.firstDate);
+  }
+  return loanOccurrenceInMonthPlain(loan, year, monthIndex);
+}
+
+function loanOccurrenceInMonthPlain(loan: Loan, year: number, monthIndex: number): number[] {
+  const d = loan.dueDate || {};
+  const daysInMonth = lastDayOfMonth(year, monthIndex);
+  const recurringType = loan.recurringType || 'onetime';
 
   if (recurringType === 'monthly') {
     if (!d.day) return [];

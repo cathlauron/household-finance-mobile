@@ -3,6 +3,9 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> START HERE (2026-10-16): This is the ACTIVE progress log. Version 2.0.0 is finished and
 >>> merged into `main` (merge commit 9ae00f9). ALL new work happens on the `v3` branch.
 >>> Read the "▶️ Next step" section at the bottom first.
+>>> NEWEST (2026-10-18, wrap-up): VERSION 2.1.0 IS FINAL and merged into `main` (2a3d886,
+>>> versionCode 3). Next: Cath makes the EAS build, then runs the post-build check list
+>>> (see the newest "Next step" bullet). v3 has 2.1 merged in.
 >>> NEWEST (2026-10-16, later): the whole Version 3 plan is in V3-PLAN.md (repo root, on
 >>> `main`). Read it before building anything; Cath's answers to its 13 questions decide
 >>> the details. It also lists three data risks found in today's code (fix those first).
@@ -108,6 +111,20 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   merge before saving (merge3.ts + transaction save + waiting changes kept across
   restarts); Log out warns about unsent changes; "Keep mine" removed for joiners; Paper
   slide pages (@react-navigation/stack) + slide-by-direction tabs; 19 money checks.
+
+- 2026-10-18 (v2.1, final rounds; Cath device-tested "as described": the opening no
+  longer freezes, the leaf tick save/add animation, the see-through tick card, the
+  sign-in / account switcher look): loading in place (round 5/6): the screen's own logo
+  draws itself with changing green words instead of a separate busy screen, on Sign in,
+  Account switcher, PIN unlock, Create profile, Onboarding, Set PIN (now a bottom sheet),
+  fingerprint / change password / recovery key / backup in Settings, household linking in
+  Profile, recovery in Sign in, CSV import. Opening animation moved to Reanimated + one
+  native clock (no freeze while unlocking). Leaf tick (round 7 option C) after every
+  Save/Add/Pay/Move/Settle. Fixes: no credit card as a source in Transfer/Pot; refunds
+  capped; Bills "No due date" section; edit sheets opened after the page slide
+  (afterSlide, no flashing back); swipe between tabs; Travel page Budget | To-do.
+  Round 8: date box for monthly/yearly bills, debts and loans (pick any day, month or
+  year), loan "First payment" date, calendar month-and-year shortcut. Version 2.1.0.
 
 =====================================================================
 🔧 In progress
@@ -232,6 +249,13 @@ Testing
 - 2026-10-18: Transitions: Paper slide WITHOUT drop shadow (pages stay see-through so the
   falling leaves show); Calendar is now a rounded sheet from the bottom (JS stack).
 
+- 2026-10-18: Loading = the screen's own logo drawing itself (opening animation), green
+  changing words, no circle, no extra screen. Save/Add = round 7 option C "Leaf tick",
+  see-through card (navy3 at 65%). Repeating bills/debts/loans get a date box like
+  "Once" (Cath: "just simply show me the calendar icon"). Version 2.1.0 is final; EAS
+  build next. Overspent word still open (suggested "Over budget"; Cath prefers "running
+  low" for H4b). Credit cards can't be a source of moved money, only receive payments.
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -344,6 +368,14 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
 - 2026-10-18: Live receipt reading, Google/Apple sign-in and widgets need a development
   build (not Expo Go) plus accounts only Cath can create.
 
+- 2026-10-18 (wrap-up): NOT device-tested yet (list for after the EAS build): in-place
+  loading on every screen, round 8 due dates, travel to-do page, edit-sheet flashing fix,
+  tab swipe, PIN/fingerprint sheets, household linking loading, offline A2/A3, parked
+  A4-A6 + the 20-minute invite test. Storage parts are STILL test-only in 2.1.0
+  (partsEnabledFor, usernames starting "test"); turning it on for everyone needs Cath's
+  OK (touches data). After pulling, `npm install` once (react-native-reanimated,
+  react-native-worklets).
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -404,6 +436,13 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   "Finance Flow — New start and form help" https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX
   now also has the row "Version 2.1 extras" S1-S9 (part-pay, back-dating, payday time,
   offline, Transactions icons): WAITING for Cath's approval.
+
+- 2026-10-18 (wrap-up): New files: components/DrawingLogo.tsx (DrawingLogo, BusyWords,
+  BusyHero, BusySectionTitle), components/LeafTick.tsx (showLeafTick + LeafTickHost),
+  src/afterSlide.ts; TEST-2.1.md has a Retests section (1-11, 2b). v3 only: calmHome.ts,
+  components/CalmHome.tsx, hideAmounts.ts, creditCards.ts, TEST-3.md, tests calmHome +
+  creditCards. Design canvas https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX has the
+  loading (L-rows), save-animation (round 7) and due-date (round 8) mockups.
 
 =====================================================================
 📅 Session log
@@ -544,4 +583,16 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
       into `main`, normal "preview" EAS build (updates the original Finance Flow), then
       Firebase App Check.
   Optional: Quick Unlock Step 6 checklist (confirm it's still wanted), transfers list
-  with undo, the PROGRESS5 notification loose ends, Maestro flows.
+  with undo, the PROGRESS5 notification loose ends, Maestro flows.- 2026-10-18 (session 2, final part): opening freeze found and fixed, in-place loading on
+  every slow screen, leaf tick everywhere, test-report fixes (A7, A9, A10, B5), round 8
+  due dates. Cath called it version 2.1: bumped to 2.1.0 (versionCode 3), merged v2.1
+  into main (fast-forward, 2a3d886), merged main into v3.
+- NEWEST (2026-10-18, wrap-up): VERSION 2.1.0 FINAL on `main`. Cath runs the EAS build
+  "preview-v2" (Finance Flow 2, side by side) and then the post-build check list:
+  TEST-2.1.md Retests 1-11 (+2b), offline A2/A3, parked A4 merge / A5 log-out warning /
+  A6 joining + the 20-minute invite test, travel to-do page, tab swipe, leaf tick, round 8
+  due dates, edit-sheet flashing, PIN and fingerprint sheets, household linking loading.
+  Then ask Cath before removing the storage-parts test gate. After that, version 3 on
+  `v3`: B1 new start and B5 to device-test, K2 statements in To-Pay, limit warnings and
+  pay-off plan, reports opt-in + weekly check-in, Travel to-do swipe actions, peel-off
+  Appearance, the "Overspent" word.

@@ -176,3 +176,10 @@ test('paying a bill that started in an earlier month moves on to the month after
   const after = markPaid(bill, undefined, '2026-10-18');
   assert.equal(after.cycles[1].dueDate, '2026-09-15');
 });
+
+// ---- Version 2.1 (round 8): a repeating loan that starts later ----
+test('first payment in the future is the next one due; once it has passed the schedule takes over', () => {
+  assert.equal(iso(getNextDueDate('monthly', { day: '5', firstDate: '2027-01-05' }, new Date(2026, 9, 18))), '2027-01-05');
+  assert.equal(iso(getNextDueDate('monthly', { day: '5', firstDate: '2025-01-05' }, new Date(2026, 9, 18))), '2026-11-05');
+  assert.equal(iso(getNextDueDate('annual', { day: '1', month: 3, firstDate: '2028-03-01' }, new Date(2026, 9, 18))), '2028-03-01');
+});

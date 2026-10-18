@@ -6,7 +6,7 @@ import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
-import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, DueNowChoice } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
@@ -97,7 +97,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const amountRef = useRef<{ focus: () => void }>(null);
   const clearFieldError = fieldErrors.clear;
   const creditorRef = useRef<any>(null);
-  const debtNext = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput);
+  const debtNext = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput, dueNowInput);
   const debtMonths =
     recurTypeInput === 'monthly' && typeof amountInput === 'number' && typeof minPaymentInput === 'number' && minPaymentInput > 0 && amountInput > minPaymentInput
       ? Math.ceil(amountInput / minPaymentInput)
@@ -167,7 +167,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setMonthInput(d.month ? String(d.month) : '');
     {
       const c = currentCycle(debt);
-      const was = c && !isCyclePaid(c) && c.dueDate ? c.dueDate : '';
+      const next = getNextDueDate(debt.recurringType || 'onetime', debt.dueDate);
+      const nextIso = next ? `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}` : '';
+      const was = c && !isCyclePaid(c) && c.dueDate ? c.dueDate : debt.recurringType && debt.recurringType !== 'onetime' ? nextIso : '';
       setDueNowInput(was);
       setDueNowOriginal(was);
     }
@@ -241,7 +243,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       ? nextDue.getFullYear() + '-' + String(nextDue.getMonth() + 1).padStart(2, '0') + '-' + String(nextDue.getDate()).padStart(2, '0')
       : '';
     // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
-    const dueNowISO = dueNowInput && recentOccurrences(recurTypeInput, dueDate).includes(dueNowInput) ? dueNowInput : nextDueISO;
+    // Version 2.1 (round 8): the date picked in the date box is the first one due (any month or year).
+    const dueNowISO = recurTypeInput !== 'onetime' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, debts: [...model.debts] };
 
@@ -440,9 +443,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
             <Choices options={REPEAT_CHOICES} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
           </PickerRow>
           <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
-          <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
-            <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="debt-due-date-field" />
-            <DueNowChoice rt={recurTypeInput} day={dayInput} month={monthInput} value={dueNowInput} onChange={setDueNowInput} />
+          <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, dueNowInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+            <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={dueNowInput} onFirstDue={setDueNowInput} testID="debt-due-date-field" />
           </PickerRow>
           </Guided>
           <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
