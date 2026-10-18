@@ -279,6 +279,10 @@ export type MealIdea = {
 };
 
 // ---- Checkpoint 8.2: Travel ----
+// Version 2.1 (Cath, canvas T1): a trip's to-do list, next to its budget. Plain notes with
+// tick boxes and an optional date; nothing here touches money.
+export type TravelTodo = { id: string; text: string; done: boolean; date?: string };
+
 export type TravelChecklistItem = {
   id: string;
   title: string;
@@ -298,6 +302,7 @@ export type TravelTrip = {
   startDate: string;
   endDate: string;
   checklist: TravelChecklistItem[];
+  todos?: TravelTodo[];
   // ---- Flagged follow-up: Travel savings-goal auto-sync ----
   // budget is auto-computed from the FULL checklist (every item, not just checked ones —
   // see tripFullChecklistTotal() in TravelScreen.tsx, distinct from the "committed" total

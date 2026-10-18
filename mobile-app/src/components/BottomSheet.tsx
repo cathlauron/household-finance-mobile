@@ -1,5 +1,6 @@
 import React from 'react';
 import SkyGlow from './SkyGlow';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions } from 'react-native';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,6 +72,8 @@ export default function BottomSheet({
       statusBarTranslucent
       navigationBarTranslucent
     >
+      {/* Version 2.1: a pop-up window needs its own gesture root for swipes to work on Android. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.backdropWrap}>
         <Pressable
           style={styles.backdropPressable}
@@ -117,6 +120,7 @@ export default function BottomSheet({
           </View>
         </KeyboardAvoidingView>
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { SwipeTabs } from '../navigation/swipeTabs';
+import SegmentedControl from '../components/SegmentedControl';
 import { useNavigation } from '@react-navigation/native';
 import { todayISO } from '../dateUtils';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
@@ -12,7 +14,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type {
   TravelTrip,
-  TravelChecklistItem,
+  TravelChecklistItem, TravelTodo,
   HouseholdModel,
   SavingsGoal,
   ManualTransaction,
@@ -192,6 +194,10 @@ export default function TravelScreen() {
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
   const [checklist, setChecklist] = useState<TravelChecklistItem[]>([]);
+  // Version 2.1 (T1): Budget | To-do inside the trip.
+  const [tripTab, setTripTab] = useState<'budget' | 'todo'>('budget');
+  const [todos, setTodos] = useState<TravelTodo[]>([]);
+  const [todoText, setTodoText] = useState('');
   const [itemTitleInput, setItemTitleInput] = useState('');
   const [itemCostInput, setItemCostInput] = useState<number | ''>('');
   const [itemNoteInput, setItemNoteInput] = useState('');
@@ -275,6 +281,9 @@ export default function TravelScreen() {
     setStartDateInput('');
     setEndDateInput('');
     setChecklist([]);
+    setTodos([]);
+    setTodoText('');
+    setTripTab('budget');
     setTrackInSavings(false);
     setItemTitleInput('');
     setItemCostInput('');
@@ -289,6 +298,9 @@ export default function TravelScreen() {
     setStartDateInput(trip.startDate);
     setEndDateInput(trip.endDate);
     setChecklist(trip.checklist ?? []);
+    setTodos(trip.todos ?? []);
+    setTodoText('');
+    setTripTab('budget');
     setTrackInSavings(trip.trackInSavings ?? false);
     setItemTitleInput('');
     setItemCostInput('');
@@ -371,6 +383,13 @@ export default function TravelScreen() {
     }
   }
 
+  function addTodo() {
+    const text = todoText.trim();
+    if (!text) return;
+    setTodos((list) => [...list, { id: makeId('todo'), text, done: false }]);
+    setTodoText('');
+  }
+
   async function handleSaveTrip() {
     if (!model) return;
     const trimmedName = nameInput.trim();
@@ -399,6 +418,7 @@ export default function TravelScreen() {
       startDate: startDateInput.trim(),
       endDate: endDateInput.trim(),
       checklist: reconciledChecklist,
+      ...(todos.length ? { todos } : {}),
       trackInSavings,
       savingsGoalId: priorTrip?.savingsGoalId,
       createdAt: priorTrip?.createdAt ?? Date.now(),
@@ -614,7 +634,7 @@ export default function TravelScreen() {
         header={<SheetBar title={editingId ? 'Edit trip' : 'New trip'} onCancel={closeModal} onDone={handleSaveTrip} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
         {/* The budget isn't typed: it's everything on the checklist added up (blue = planned). */}
-        <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />
+        {tripTab === 'budget' && <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />}
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
@@ -628,6 +648,69 @@ export default function TravelScreen() {
           </Guided>
         </FormGroup>
 
+        <View style={{ marginBottom: 16 }}>
+          <SegmentedControl<'budget' | 'todo'>
+            accessibilityLabel="Trip view"
+            options={[
+              { id: 'budget', label: 'Budget' },
+              { id: 'todo', label: `To-do${todos.length ? ` (${todos.filter((t) => !t.done).length})` : ''}` },
+            ]}
+            value={tripTab}
+            onChange={setTripTab}
+          />
+        </View>
+
+        <SwipeTabs inner onSwipe={(d) => setTripTab(d > 0 ? 'todo' : 'budget')}>
+        <View collapsable={false}>
+        {tripTab === 'todo' && (
+          <>
+            <FormGroup>
+              {todos.map((t) => (
+                <View key={t.id} style={styles.formItemRow}>
+                  <TouchableOpacity
+                    style={[styles.check, t.done && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
+                    onPress={() => { hapticSelection(); setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x))); }}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: t.done }}
+                    accessibilityLabel={t.text}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {t.done && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[styles.formItemTitle, { flex: 1, paddingVertical: 2 }, t.done && { color: colors.inkDim, textDecorationLine: 'line-through' }]}
+                    value={t.text}
+                    onChangeText={(text) => setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, text } : x)))}
+                    maxLength={120}
+                  />
+                  <TouchableOpacity onPress={() => setTodos((list) => list.filter((x) => x.id !== t.id))} accessibilityRole="button" accessibilityLabel={`Remove ${t.text}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+                    <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <View style={styles.formItemRow}>
+                <TextInput
+                  style={[styles.formItemTitle, { flex: 1, paddingVertical: 2 }]}
+                  value={todoText}
+                  onChangeText={setTodoText}
+                  placeholder={todos.length ? 'Add to the list' : 'e.g. Pack jackets, book the bus'}
+                  placeholderTextColor={colors.inkFaint}
+                  returnKeyType="done"
+                  blurOnSubmit={false}
+                  onSubmitEditing={addTodo}
+                  maxLength={120}
+                  testID="travel-todo-input"
+                />
+                <TouchableOpacity onPress={addTodo} accessibilityRole="button" hitSlop={8} style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, paddingVertical: 6, paddingHorizontal: 12 }]}>
+                  <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </FormGroup>
+            <Footnote>Your notes for this trip, all in one place. Ticking them never touches your money.</Footnote>
+          </>
+        )}
+        {tripTab === 'budget' && (
+        <>
         <GroupLabel>Checklist</GroupLabel>
         <FormGroup>
           {checklist.map((item) => (
@@ -679,6 +762,10 @@ export default function TravelScreen() {
           <SwitchRow label="Save for this in Savings" value={trackInSavings} onChange={setTrackInSavings} />
         </FormGroup>
         <Footnote>{trackInSavings ? 'Makes a pot for this trip that fills up before you go.' : 'Turn on to make a savings pot for this trip.'}</Footnote>
+        </>
+        )}
+        </View>
+        </SwipeTabs>
 
         {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
         {editingId && <Button label="Delete trip" variant="destructive" onPress={confirmDeleteTrip} />}
