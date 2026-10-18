@@ -38,7 +38,7 @@ import {
   clearPendingHostLink,
   type ProfileIndexEntry,
 } from './storage';
-import { cancelLinkCode } from './linking';
+import { cancelLinkCode, finishHostLink } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
 import { saveProfileCloudBackup, loadProfileCloudBackup } from './cloudBackup';
 import { sanitizeModelIds } from './mergeModels';
@@ -396,7 +396,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     forgetParts();
     try {
       const profile = bootstrap?.profile ?? (await loadProfilesIndex()).find((p) => p.username === username);
-      const householdId = bootstrap?.householdId ?? profile?.householdId;
+      let householdId = bootstrap?.householdId ?? profile?.householdId;
+      // Version 2.1 (Cath): the person who made the invite finishes linking as soon as the
+      // app opens, not only while their Profile screen happens to be open.
+      if (!householdId && !bootstrap?.initialModel) {
+        const joined = await finishPendingInvite(username, key);
+        if (joined) householdId = joined;
+      }
       // Checkpoint A.5 — remember this profile's salt for the lifetime of this session,
       // so every future save can keep the cloud backup's salt field fresh.
       saltRef.current = profile?.salt ?? null;
@@ -579,11 +585,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return false;
   }
 
+  // Version 2.1 (Cath): the person who made an invite is linked as soon as the other
+  // person finishes joining. Checked when the app opens (loadModel) and every time it comes
+  // back to the front, so they don't have to keep Profile open. Returns the household id
+  // when this account has just been linked.
+  async function finishPendingInvite(username: string, key: CryptoJS.lib.WordArray): Promise<string | null> {
+    try {
+      const pending = await loadPendingHostLink(username);
+      const uid = getCurrentFirebaseUser()?.uid;
+      if (!pending?.code || !pending.secretHex || !uid) return null;
+      const result = await finishHostLink(pending.code, username, pending.secretHex, key, uid);
+      return result.status === 'done' ? result.householdId : null;
+    } catch (e) {
+      return null; // not finished yet, offline, or the code has expired
+    }
+  }
+  const resumeLinkCheckRef = useRef<() => void>(() => {});
+  resumeLinkCheckRef.current = () => {
+    const username = usernameRef.current;
+    const key = keyRef.current;
+    if (!username || !key || householdIdRef.current) return;
+    finishPendingInvite(username, key).then(async (joined) => {
+      if (!joined || householdIdRef.current || usernameRef.current !== username) return;
+      await loadModel(username, key);
+      Alert.alert('You\'re linked', 'You now share a household. Anything either of you adds shows up for both.');
+    });
+  };
+
   useEffect(() => {
     recheckNetwork();
     const sub = Network.addNetworkStateListener(applyNetworkState);
     const appSub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') recheckNetwork();
+      if (st === 'active') {
+        recheckNetwork();
+        resumeLinkCheckRef.current();
+      }
     });
     const timer = setInterval(() => {
       if (AppState.currentState === 'active') recheckNetwork();
