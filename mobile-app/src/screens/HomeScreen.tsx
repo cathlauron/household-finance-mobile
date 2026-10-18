@@ -26,6 +26,7 @@ import { requestToPayTab } from '../openToPayTabRequest';
 import { applyAutoSavings } from '../savingsPots';
 import { applyRecurring } from '../recurring';
 import { getCallName } from '../preferredName';
+import GuestPicks from '../components/GuestPicks';
 import { useTravelTime, differenceText, gmtLabel } from '../travelTime';
 import { rescheduleBillNotifications } from '../pushNotifications';
 
@@ -35,7 +36,7 @@ type Props = {
 
 export default function HomeScreen({ username }: Props) {
   const { colors, isDark, setMode } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, guest, guestInfo } = useData();
   // Redesign: savings pots set to "add every payday", and repeating transactions
   // ("Make it repeat"), catch up when Home opens.
   React.useEffect(() => {
@@ -85,7 +86,7 @@ export default function HomeScreen({ username }: Props) {
       : 'Good evening';
 
   // "What should we call you?": the name picked in onboarding or Profile, else the username.
-  const callName = getCallName(model, username);
+  const callName = guest ? guestInfo?.name || 'there' : getCallName(model, username);
 
   // Travel time note: shown when the phone is in a different time zone from home.
   const travel = useTravelTime();
@@ -228,6 +229,8 @@ export default function HomeScreen({ username }: Props) {
                 targetDate={leftToSpend.targetDate}
               />
             ) : undefined
+          }
+          footer={guest ? <GuestPicks /> : undefined
           }
         />
         {showSlimBar && leftToSpend && (

@@ -19,7 +19,12 @@ import {
 } from '@expo-google-fonts/nunito';
 import { setFontsReady } from './src/components/AppText';
 import LoadingView from './src/components/LoadingView';
-import { SavedToastHost } from './src/components/SavedToast';
+import { SavedToastHost, showSaved } from './src/components/SavedToast';
+import WelcomeScreen from './src/screens/WelcomeScreen';
+import { markOnboardingCompleted } from './src/onboarding';
+import GuestSetupScreen from './src/screens/GuestSetupScreen';
+import GuestSaveSheet from './src/components/GuestSaveSheet';
+import { GuestSetup, emptyGuestSetup, loadGuestSetup, saveGuestSetup, clearGuestSetup, guestModel } from './src/guest';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -42,7 +47,7 @@ import { deriveKey, decryptJSON } from './src/encryption';
 import { sanitizeModelIds } from './src/mergeModels';
 import type { HouseholdModel } from './src/types';
 import { getBiometricState } from './src/biometrics';
-import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
+import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes, setAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { MoodThemeProvider } from './src/mood';
@@ -57,7 +62,7 @@ import {
 } from './src/sessions';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
-type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
+type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher' | 'welcome' | 'setup' | 'guest' | 'guestSignUp';
 
 // Each top-level screen fades in on its own Animated value that starts at 0
 // from its very first frame, so the new screen never flashes at full opacity
@@ -73,7 +78,19 @@ function ScreenFade({ skip, children }: { skip: boolean; children: React.ReactNo
 
 function AppContent() {
   const { colors } = useTheme();
-  const { loadModel, clearModel } = useData();
+  const { loadModel, clearModel, startGuest, guestRequest, model: currentModel } = useData();
+  // Version 3 (new start): answers from Welcome + the four questions, before any account.
+  const [guestSetup, setGuestSetup] = useState<GuestSetup>(emptyGuestSetup());
+  function updateGuestSetup(next: GuestSetup) {
+    setGuestSetup(next);
+    saveGuestSetup(next);
+  }
+  function enterGuestHome(setup: GuestSetup) {
+    const next = { ...setup, step: 'home' as const };
+    updateGuestSetup(next);
+    startGuest(guestModel(next), { name: next.name.trim(), helpWith: next.helpWith });
+    setScreen('guest');
+  }
   const [introFromSignIn, setIntroFromSignIn] = useState(false);
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
@@ -367,7 +384,15 @@ function AppContent() {
       if (saved) clearSession().catch(() => {});
       await introDoneRef.current;
       if (!profiles.length) {
-        setScreen('intro');
+        // Version 3: brand-new phone: Welcome, four questions, then Home without an account
+        // (picks up where they left off if the app was closed part-way).
+        const saved = await loadGuestSetup();
+        if (saved?.step === 'home') {
+          enterGuestHome(saved);
+        } else {
+          setGuestSetup(saved ?? emptyGuestSetup());
+          setScreen(saved?.step === 'setup' ? 'setup' : 'welcome');
+        }
       } else if (recents.length) {
         setRecentAccounts(recents);
         setScreen('switcher');
@@ -642,6 +667,91 @@ function AppContent() {
     );
   }
 
+  if (screen === 'welcome') {
+    return (
+      <WelcomeScreen
+        onStart={() => {
+          updateGuestSetup({ ...guestSetup, step: 'setup' });
+          setScreen('setup');
+        }}
+        onSignIn={() => setScreen('signIn')}
+      />
+    );
+  }
+
+  if (screen === 'setup') {
+    return (
+      <GuestSetupScreen
+        setup={guestSetup}
+        onChange={updateGuestSetup}
+        onBackToWelcome={() => {
+          updateGuestSetup({ ...guestSetup, step: 'welcome' });
+          setScreen('welcome');
+        }}
+        onDone={enterGuestHome}
+      />
+    );
+  }
+
+  if (screen === 'guest') {
+    return (
+      <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <NavigationContainer
+          ref={navigationRef}
+          theme={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent' } }}
+        >
+          <RootStack
+            username=""
+            onSignOut={() => {}}
+            onSwitchAccount={() => setScreen('signIn')}
+            onLock={() => {}}
+            onGuestSave={() => setScreen('guestSignUp')}
+          />
+        </NavigationContainer>
+        <GuestSaveSheet onContinue={() => setScreen('guestSignUp')} />
+      </View>
+    );
+  }
+
+  if (screen === 'guestSignUp') {
+    const pendingEntry = guestRequest?.entry ?? null;
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <CreateProfileScreen
+          guest={{
+            name: guestSetup.name.trim(),
+            model: guestRequest?.model ?? currentModel ?? guestModel(guestSetup),
+            entry: pendingEntry,
+            onBack: () => setScreen('guest'),
+          }}
+          onProfileCreated={(username, key, credentials) => {
+            setRemoteRevokeNotice(null);
+            setCurrentUsername(username);
+            setDerivedKey(key);
+            loadModel(username, key);
+            const user = getCurrentFirebaseUser();
+            if (user) {
+              registerAndListenDeviceSession(user.uid).catch(() => {});
+              recordRecentAccount(username, user.uid, undefined, undefined).catch(() => {});
+            }
+            if (credentials) {
+              saveFingerprintCopyIfPossible({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+            }
+            // "Does anyone else use your phone?" Yes: lock after a minute away.
+            if (guestSetup.othersUsePhone) setAutoLockMinutes(1).catch(() => {});
+            markOnboardingCompleted(username).catch(() => {});
+            clearGuestSetup();
+            setGuestSetup(emptyGuestSetup());
+            setScreen('home');
+            setTimeout(() => showSaved(pendingEntry ? `Signed in. Your ${pendingEntry} is saved.` : 'Signed in. Finance Flow is saved.'), 600);
+          }}
+          onGoToSignIn={() => setScreen('signIn')}
+        />
+      </SafeAreaView>
+    );
+  }
+
     if (screen === 'intro') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
@@ -821,7 +931,7 @@ function AppContent() {
             }, 0);
           }
         }}
-        onGoToCreateProfile={() => { setIntroFromSignIn(true); setScreen('intro'); }}
+        onGoToCreateProfile={() => { setIntroFromSignIn(true); setScreen('welcome'); }}
       />
     </SafeAreaView>
   );

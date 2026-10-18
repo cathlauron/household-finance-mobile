@@ -106,8 +106,9 @@ function formatDueDate(d: Date): string {
 
 export default function DashboardScreen({
   header,
+  footer,
   onScrollY,
-}: { header?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
+}: { header?: React.ReactNode; footer?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -162,6 +163,7 @@ export default function DashboardScreen({
       scrollEventThrottle={16}
     >
       {header}
+      {footer}
 
       {/* Redesign: the Wallet (Accounts' new home) */}
       <HomeWallet model={model} />

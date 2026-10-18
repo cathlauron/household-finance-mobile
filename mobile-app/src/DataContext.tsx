@@ -62,6 +62,7 @@ import {
   saveHouseholdDataChecked,
 } from './household';
 import { mergeHouseholds } from './merge3';
+import { describeNewEntry } from './guest';
 import {
   partsEnabledFor,
   afterLoad as partsAfterLoad,
@@ -135,6 +136,16 @@ type DataContextValue = {
   unlinkAndTransferOwnership: (newOwnerUid: string) => Promise<ChangePasswordResult>;
   linkNoticeMsg: string | null;
   clearLinkNoticeMsg: () => void;
+  // Version 3 (new start): using the app before having an account. Nothing is saved;
+  // the first money entry asks to save Finance Flow to an email first (see guest.ts).
+  guest: boolean;
+  guestRequest: { model: HouseholdModel; entry: string } | null;
+  guestInfo: { name: string; helpWith: string[] } | null;
+  startGuest: (model: HouseholdModel, info: { name: string; helpWith: string[] }) => void;
+  // "Not now": keep showing the entry on this phone without saving it (keep = true), or
+  // drop it (keep = false).
+  resolveGuestRequest: (keep: boolean) => void;
+  endGuest: () => void;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -164,6 +175,11 @@ const STORAGE_WARN_AT = 0.8;
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<HouseholdModel | null>(null);
+  const [guest, setGuest] = useState(false);
+  const guestRef = useRef(false);
+  guestRef.current = guest;
+  const [guestRequest, setGuestRequest] = useState<{ model: HouseholdModel; entry: string } | null>(null);
+  const [guestInfo, setGuestInfo] = useState<{ name: string; helpWith: string[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
   const [linkNoticeMsg, setLinkNoticeMsg] = useState<string | null>(null);
@@ -414,6 +430,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
     forgetParts();
+    // Signing in (or a new account) ends any guest session.
+    setGuest(false);
+    setGuestRequest(null);
     try {
       const profile = bootstrap?.profile ?? (await loadProfilesIndex()).find((p) => p.username === username);
       let householdId = bootstrap?.householdId ?? profile?.householdId;
@@ -797,6 +816,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ),
     };
     const sanitizedModel = sanitizeModelIds(stamped);
+    // Version 3: no account yet. A new money entry asks to save Finance Flow first;
+    // anything else (Home tidying up) just changes what's on screen.
+    if (guestRef.current) {
+      const entry = describeNewEntry(latestModelRef.current, sanitizedModel);
+      if (entry) setGuestRequest({ model: sanitizedModel, entry });
+      else setModel(sanitizedModel);
+      return;
+    }
     modelVersionRef.current += 1;
     setModel(sanitizedModel);
     const username = usernameRef.current;
@@ -1027,6 +1054,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       refreshInFlightRef.current = false;
     }
+  }
+
+  function startGuest(initial: HouseholdModel, info: { name: string; helpWith: string[] }) {
+    setGuestInfo(info);
+    cleanupHouseholdListener();
+    usernameRef.current = null;
+    keyRef.current = null;
+    householdIdRef.current = undefined;
+    householdKeyRef.current = null;
+    setIsLinked(false);
+    setGuestRequest(null);
+    setGuest(true);
+    setModel(initial);
+  }
+  function resolveGuestRequest(keep: boolean) {
+    setGuestRequest((req) => {
+      if (req && keep) setModel(req.model);
+      return null;
+    });
+  }
+  function endGuest() {
+    setGuest(false);
+    setGuestRequest(null);
   }
 
   function clearModel() {
@@ -1369,6 +1419,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <DataContext.Provider
       value={{
+        guest,
+        guestInfo,
+        guestRequest,
+        startGuest,
+        resolveGuestRequest,
+        endGuest,
         model,
         loading,
         loadModel,

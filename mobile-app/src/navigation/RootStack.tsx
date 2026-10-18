@@ -28,6 +28,8 @@ import EventsScreen from '../screens/EventsScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
 import { useTheme } from '../ThemeContext';
+import { useData } from '../DataContext';
+import { GuestGate } from '../components/GuestSaveSheet';
 import { getSharedHeaderOptions } from './headerOptions';
 
 export type RootStackParamList = {
@@ -96,10 +98,13 @@ type RootStackProps = {
   onLock: () => void;
   onSignOut: () => void;
   onSwitchAccount: () => void;
+  // Version 3: no account yet (guest). Settings and Profile ask to save Finance Flow first.
+  onGuestSave?: () => void;
 };
 
-export default function RootStack({ username, onLock, onSignOut, onSwitchAccount }: RootStackProps) {
+export default function RootStack({ username, onLock, onSignOut, onSwitchAccount, onGuestSave }: RootStackProps) {
   const { colors } = useTheme();
+  const { guest } = useData();
 
   return (
     <Stack.Navigator
@@ -107,7 +112,13 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       // Pages build their contents a frame after the fade starts, so opening one feels
       // instant (the tabs page is left alone).
       screenLayout={({ children, route }) =>
-        route.name === 'Main' ? children : <DeferredContent>{children}</DeferredContent>
+        route.name === 'Main' ? (
+          children
+        ) : guest && (route.name === 'Settings' || route.name === 'Profile' || route.name === 'SettingsPage') ? (
+          <GuestGate onContinue={() => onGuestSave?.()} />
+        ) : (
+          <DeferredContent>{children}</DeferredContent>
+        )
       }
       screenOptions={{
         cardStyle: { backgroundColor: 'transparent' },

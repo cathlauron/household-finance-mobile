@@ -13,6 +13,9 @@ import { sanitizeUsername } from '../auth';
 import { generateSalt, deriveKey, encryptJSON } from '../encryption';
 import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '../storage';
 import { defaultModel } from '../defaultModel';
+import { suggestUsername } from '../guest';
+import { withPreferredName } from '../preferredName';
+import type { HouseholdModel } from '../types';
 import { createFirebaseAccount } from '../authFirebase';
 import { saveProfileCloudBackup } from '../cloudBackup';
 import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
@@ -23,12 +26,16 @@ import { radii, spacing } from '../tokens';
 type Props = {
   onProfileCreated: (username: string, key: CryptoJS.lib.WordArray, credentials?: { email: string; password: string }) => void;
   onGoToSignIn: () => void;
+  // Version 3 (new start, canvas B8): saving a guest's Finance Flow. The new account starts
+  // with what they set up (and the entry they were adding), their name for Home, and a
+  // username suggested from that name.
+  guest?: { name: string; model: HouseholdModel; entry: string | null; onBack: () => void };
 };
 
-export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: Props) {
+export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, guest }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const [usernameInput, setUsernameInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState(guest ? suggestUsername(guest.name) : '');
   const [emailInput, setEmailInput] = useState('');
   const [password1, setPassword1] = useState('');
   const [password2, setPassword2] = useState('');
@@ -128,7 +135,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       // password-encrypted profile - exactly as before Phase A.
       const salt = await generateSalt();
       const key = deriveKey(password1, salt);
-      const encrypted = await encryptJSON(key, defaultModel());
+      const startModel = guest ? withPreferredName(guest.model, username, guest.name) ?? guest.model : defaultModel();
+      const encrypted = await encryptJSON(key, startModel);
       profiles.push({ username, salt });
       await saveProfilesIndex(profiles);
       await saveEncryptedProfileData(username, encrypted);
@@ -184,11 +192,24 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.brandWrap}>
-          <LogoMark width={84} />
-        </View>
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.sub}>Start your financial journey.</Text>
+        {guest ? (
+          <>
+            <TouchableOpacity onPress={guest.onBack} accessibilityRole="button" hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginBottom: 16 }}>
+              <Ionicons name="chevron-back" size={24} color={colors.gold} style={{ marginLeft: -6 }} />
+              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Save Finance Flow to your email</Text>
+            <Text style={styles.sub}>Your password locks your data. Nobody else can read it, not even us.</Text>
+          </>
+        ) : (
+          <>
+            <View style={styles.brandWrap}>
+              <LogoMark width={84} />
+            </View>
+            <Text style={styles.title}>Create your account</Text>
+            <Text style={styles.sub}>Start your financial journey.</Text>
+          </>
+        )}
 
         <Text style={styles.label}>Email address</Text>
         <View style={styles.fieldWrap}>
@@ -257,7 +278,9 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
         <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
           <GradientFill color={colors.buttonFill} strength={0.18} />
-          <Text style={styles.primaryBtnText}>{busy ? 'Creating...' : 'Create profile'}</Text>
+          <Text style={styles.primaryBtnText}>
+            {busy ? 'Saving...' : guest ? (guest.entry ? `Save and add my ${guest.entry.split(' ').pop()}` : 'Save') : 'Create profile'}
+          </Text>
           {!busy && <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
 
