@@ -44,7 +44,7 @@ const LOGO: { d: string; len: number; at: number }[] = [
 const DRAW_MS = 540;
 
 // Drifting background leaves, laid out for a 390 x 844 screen and scaled to fit.
-const DRIFT = [
+export const DRIFT = [
   { x: -150, y: -220, w: 240, rot: 135, dx: 5.6, dy: 8.3, ms: 9000, op: 0.06 },
   { x: 290, y: 560, w: 300, rot: -45, dx: -6.1, dy: -12.7, ms: 10500, op: 0.06 },
   { x: 28, y: 210, w: 54, rot: -24, dx: 3.5, dy: 2.4, ms: 12000, op: 0.05 },
@@ -73,7 +73,7 @@ export function VeinedLeaf({ id, opacity, withStem = false, color = CREAM }: { i
   );
 }
 
-function DriftLeaf({ leaf, index, scale, still }: { leaf: (typeof DRIFT)[number]; index: number; scale: number; still: boolean }) {
+export function DriftLeaf({ leaf, index, scale, still, color, opacityScale = 1, idPrefix = 'drift' }: { leaf: (typeof DRIFT)[number]; index: number; scale: number; still: boolean; color?: string; opacityScale?: number; idPrefix?: string }) {
   const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (still) return;
@@ -105,7 +105,7 @@ function DriftLeaf({ leaf, index, scale, still }: { leaf: (typeof DRIFT)[number]
       }}
     >
       <Svg width={w} height={h} viewBox="0 0 100 205">
-        <VeinedLeaf id={`drift${index}`} opacity={leaf.op} />
+        <VeinedLeaf id={`${idPrefix}${index}`} opacity={leaf.op * opacityScale} color={color} />
       </Svg>
     </Animated.View>
   );

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View, Modal } from 'react-native';
+import { Animated, Easing, StyleSheet, View, Modal, useWindowDimensions } from 'react-native';
+import { Text } from './AppText';
 import Svg, { Path, Defs, RadialGradient, Stop, Rect, G } from 'react-native-svg';
 import { LOGO_PATHS } from './LogoMark';
-import { VeinedLeaf } from '../screens/IntroScreen';
+import { VeinedLeaf, DriftLeaf, DRIFT } from '../screens/IntroScreen';
 
 // Version 2.1 (Cath): slow steps (creating an account, setting up, Quick unlock, signing in)
 // show this instead of a frozen-looking screen: the house-and-leaf logo gently breathing
@@ -20,17 +21,18 @@ export function paintBusy(): Promise<void> {
 }
 
 export default function BusyOverlay({ visible, messages }: Props) {
+  const { width } = useWindowDimensions();
+  const scale = width / 390;
   const breath = useRef(new Animated.Value(0)).current;
   const sway = useRef(new Animated.Value(0)).current;
-  const fill = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   const [i, setI] = useState(0);
 
   useEffect(() => {
     if (!visible) return;
     setI(0);
-    // All of these run on the phone's animation thread, so they keep moving while the
-    // password work keeps the app busy.
+    // These run on the phone's animation thread, so they keep moving while the password
+    // work keeps the app busy.
     const loops = [
       Animated.loop(
         Animated.sequence([
@@ -44,7 +46,6 @@ export default function BusyOverlay({ visible, messages }: Props) {
           Animated.timing(sway, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ])
       ),
-      Animated.loop(Animated.timing(fill, { toValue: 1, duration: 1800, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: true })),
     ];
     loops.forEach((l) => l.start());
     const timer = setInterval(() => {
@@ -55,41 +56,45 @@ export default function BusyOverlay({ visible, messages }: Props) {
     }, 2200);
     return () => {
       loops.forEach((l) => l.stop());
-      fill.setValue(0);
       clearInterval(timer);
     };
-  }, [visible, messages.length, breath, sway, fill, fade]);
+  }, [visible, messages.length, breath, sway, fade]);
 
-  const scale = breath.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.06] });
+  const logoScale = breath.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.06] });
   const rotate = sway.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '6deg'] });
-  // The bar fills from the left, then slides off to the right, over and over.
-  const barX = fill.interpolate({ inputRange: [0, 0.6, 1], outputRange: [-64, 0, 64] });
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      {/* Version 2.1 (Cath picked L5, without the box): the opening's colours reversed. The
-          page stays behind under a cream veil; the deep green logo breathes, the little leaf
-          sways above its bar, and the line changes every couple of seconds. */}
+      {/* Version 2.1 (Cath picked L4, without the bar): the opening's colours reversed. A
+          warm cream screen with the opening's drifting leaves in deep green, the logo gently
+          breathing, FINANCE FLOW, a line that changes every couple of seconds, and the small
+          leaf swaying near the bottom. */}
       <View style={s.wrap} accessibilityRole="progressbar" accessibilityLabel={messages[i] || 'Working'}>
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
-            <RadialGradient id="busyVeil" cx="50%" cy="46%" rx="60%" ry="40%" fx="50%" fy="46%">
-              <Stop offset="0" stopColor="#FBF9F1" stopOpacity={0.97} />
-              <Stop offset="0.55" stopColor="#F6F3E7" stopOpacity={0.94} />
-              <Stop offset="1" stopColor="#E9E3CF" stopOpacity={0.9} />
+            <RadialGradient id="busyCream" cx="50%" cy="44%" rx="60%" ry="40%" fx="50%" fy="44%">
+              <Stop offset="0" stopColor="#FBF9F1" />
+              <Stop offset="0.55" stopColor="#F6F3E7" />
+              <Stop offset="1" stopColor="#E9E3CF" />
             </RadialGradient>
           </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#busyVeil)" />
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#busyCream)" />
         </Svg>
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Svg width={96} height={79} viewBox="190 240 644 530" fill="none">
-            {LOGO_PATHS.map((d, n) => (
-              <Path key={n} d={d} stroke={INK} strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" />
-            ))}
-          </Svg>
-        </Animated.View>
-        <Animated.Text style={[s.text, { opacity: fade }]}>{messages[i] || 'Working…'}</Animated.Text>
-        <View style={s.loader}>
+        {DRIFT.map((leaf, n) => (
+          <DriftLeaf key={n} leaf={leaf} index={n} scale={scale} still={false} color={INK} opacityScale={1.4} idPrefix="busyDrift" />
+        ))}
+        <View style={s.center}>
+          <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+            <Svg width={124} height={102} viewBox="190 240 644 530" fill="none">
+              {LOGO_PATHS.map((d, n) => (
+                <Path key={n} d={d} stroke={INK} strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" />
+              ))}
+            </Svg>
+          </Animated.View>
+          <Text style={s.wordmark}>FINANCE FLOW</Text>
+          <Animated.Text style={[s.text, { opacity: fade }]}>{messages[i] || 'Working…'}</Animated.Text>
+        </View>
+        <View style={s.leafSpot} pointerEvents="none">
           <Animated.View style={{ width: 19, height: 32, transform: [{ translateY: 16 }, { rotate }, { translateY: -16 }] }}>
             <Svg width={19} height={32} viewBox="-10 0 120 205">
               <G transform="rotate(14 50 100)">
@@ -97,9 +102,6 @@ export default function BusyOverlay({ visible, messages }: Props) {
               </G>
             </Svg>
           </Animated.View>
-          <View style={s.track}>
-            <Animated.View style={[s.fill, { transform: [{ translateX: barX }] }]} />
-          </View>
         </View>
       </View>
     </Modal>
@@ -108,9 +110,9 @@ export default function BusyOverlay({ visible, messages }: Props) {
 
 const INK = '#173829';
 const s = StyleSheet.create({
-  wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 22, paddingBottom: 72 },
-  text: { fontSize: 17, fontWeight: '700', textAlign: 'center', color: INK, fontFamily: 'Nunito_700Bold' },
-  loader: { alignItems: 'center', gap: 14 },
-  track: { width: 64, height: 3, borderRadius: 999, backgroundColor: 'rgba(23,56,41,0.14)', overflow: 'hidden' },
-  fill: { width: 64, height: '100%', borderRadius: 999, backgroundColor: INK },
+  wrap: { flex: 1, backgroundColor: '#F6F3E7', overflow: 'hidden' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60, paddingHorizontal: 32 },
+  wordmark: { marginTop: 26, fontSize: 21, lineHeight: 26, fontWeight: '500', letterSpacing: 7.1, paddingLeft: 7.1, color: INK },
+  text: { marginTop: 18, fontSize: 17, fontWeight: '700', textAlign: 'center', color: INK, fontFamily: 'Nunito_700Bold' },
+  leafSpot: { position: 'absolute', left: 0, right: 0, bottom: 140, alignItems: 'center' },
 });
