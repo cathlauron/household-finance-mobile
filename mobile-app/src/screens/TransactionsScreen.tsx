@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -37,6 +37,7 @@ import { reviewCount } from './ReviewScreen';
 import { idsForAccount } from './CardDetailScreen';
 import SegmentedControl from '../components/SegmentedControl';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -248,6 +249,10 @@ export default function TransactionsScreen() {
   const [incomeKindInput, setIncomeKindInput] = useState<IncomeKind | null>(null);
   const [incomeSourceIdInput, setIncomeSourceIdInput] = useState<string | null>(null);
   const salaryEntry = !editingId && directionInput === 'in' && incomeKindInput === 'salary';
+  // Version 2.1: tapping Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'salary' | 'amount' | 'label' | 'date' | 'account'>();
+  const amountRef = useRef<{ focus: () => void }>(null);
+  const labelRef = useRef<any>(null);
   const [refundTrackingEnabled, setRefundTrackingEnabled] = useState(false);
   const [refundAmountInput, setRefundAmountInput] = useState<number | ''>('');
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
@@ -318,6 +323,12 @@ export default function TransactionsScreen() {
     setPaymentMethodInput(undefined);
     setErrorMsg('');
   }
+
+  const clearFieldError = fieldErrors.clear;
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [amountInput, labelInput, dateInput, paymentMethodInput, incomeSourceIdInput, directionInput, incomeKindInput, modalOpen, clearFieldError]);
 
   function openAddModal() {
     setMoreOpen(false);
@@ -414,22 +425,23 @@ export default function TransactionsScreen() {
   async function saveSalary() {
     if (!model) return;
     const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
+    setErrorMsg('');
     if (!source) {
-      setErrorMsg('Pick which salary this is.');
+      fieldErrors.show('salary', 'Pick which salary this is.');
+      return;
+    }
+    if (amountInput === '' || amountInput <= 0) {
+      fieldErrors.show('amount', 'How much was it?');
       return;
     }
     const trimmedDate = dateInput.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Enter date as YYYY-MM-DD.');
-      return;
-    }
-    if (amountInput === '' || amountInput <= 0) {
-      setErrorMsg('Enter an amount greater than 0.');
+      fieldErrors.show('date', 'Pick a date.');
       return;
     }
     const acctProblem = accountProblem(model, 'in', amountInput, paymentMethodInput);
     if (acctProblem) {
-      setErrorMsg(acctProblem);
+      fieldErrors.show('account', acctProblem);
       return;
     }
     const entry = { id: makeId('paylog'), date: trimmedDate, amount: amountInput, paymentMethod: paymentMethodInput, createdAt: Date.now() };
@@ -454,23 +466,25 @@ export default function TransactionsScreen() {
     // Extra income with no description gets the kind's name (e.g. "Bonus").
     const extraKind = directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? incomeKindInput : undefined;
     const trimmedLabel = labelInput.trim() || (extraKind ? incomeKindLabel(extraKind) : '');
-    if (!trimmedLabel) {
-      setErrorMsg('Enter a label.');
-      return;
-    }
-    const trimmedDate = dateInput.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Enter date as YYYY-MM-DD.');
-      return;
-    }
+    setErrorMsg('');
+    // Checked top to bottom, the same order as the form.
     if (amountInput === '' || amountInput <= 0) {
-      setErrorMsg('Enter an amount greater than 0.');
+      fieldErrors.show('amount', 'How much was it?');
+      return;
+    }
+    if (!trimmedLabel) {
+      fieldErrors.show('label', 'What was it for?');
       return;
     }
     const parsedAmount = amountInput;
     const acctProblem = accountProblem(model, directionInput, parsedAmount, paymentMethodInput, editingId);
     if (acctProblem) {
-      setErrorMsg(acctProblem);
+      fieldErrors.show('account', acctProblem);
+      return;
+    }
+    const trimmedDate = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      fieldErrors.show('date', 'Pick a date.');
       return;
     }
 
@@ -902,14 +916,17 @@ export default function TransactionsScreen() {
           onChange={setDirectionInput}
         />
 
-        <AmountInput
-          autoFocus={!editingId}
-          centered
-          style={styles.bigAmountWrap}
-          inputStyle={[styles.bigAmountInput, { color: amountColor(directionInput, colors) }]}
-          value={amountInput}
-          onChangeAmount={handleAmountChange}
-        />
+        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+          <AmountInput
+            autoFocus={!editingId}
+            centered
+            focusRef={amountRef}
+            style={styles.bigAmountWrap}
+            inputStyle={[styles.bigAmountInput, { color: fieldErrors.field === 'amount' ? colors.error : amountColor(directionInput, colors) }]}
+            value={amountInput}
+            onChangeAmount={handleAmountChange}
+          />
+        </Guided>
 
         {/* Trip items and savings have their own places, so they aren't counted twice. */}
         {directionInput === 'out' && !editingId && (
@@ -940,8 +957,8 @@ export default function TransactionsScreen() {
               (model.income || []).length === 0 ? (
                 <Text style={styles.formFooter}>Add your salary on the Income page first (Home › Wallet › Add account › Income).</Text>
               ) : (
-                <>
-                  <Text style={styles.inputLabel}>Which salary?</Text>
+                <Guided {...fieldErrors.props('salary')} inset={false} radius={12}>
+                  <Text style={[styles.inputLabel, fieldErrors.field === 'salary' && { color: colors.error, fontWeight: '700' }]}>Which salary?</Text>
                   <View style={styles.chipRow}>
                     {(model.income || []).map((src) => {
                       const on = incomeSourceIdInput === src.id;
@@ -965,7 +982,7 @@ export default function TransactionsScreen() {
                     })}
                   </View>
                   <Text style={styles.formFooter}>This logs the payday on the Income page, so it replaces the expected one instead of counting twice.</Text>
-                </>
+                </Guided>
               )
             )}
           </>
@@ -973,9 +990,11 @@ export default function TransactionsScreen() {
 
         {!salaryEntry && (
         <View style={styles.formGroup}>
+          <Guided {...fieldErrors.props('label')} focusRef={labelRef}>
           <View style={styles.formRow}>
-            <Text style={styles.formLabel}>Description</Text>
+            <Text style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]}>Description</Text>
             <TextInput
+              ref={labelRef}
               testID="txn-label-input"
               style={styles.formInput}
               placeholder="e.g. SM Hypermarket"
@@ -984,6 +1003,7 @@ export default function TransactionsScreen() {
               onChangeText={handleLabelChange}
             />
           </View>
+          </Guided>
           <View style={[styles.formRow, styles.formRowLine]}>
             <Text style={styles.formLabel}>Category</Text>
             <TextInput
@@ -1012,22 +1032,26 @@ export default function TransactionsScreen() {
 
         <View style={{ marginTop: 20 }}>
           {/* Redesign: the account is required. Money out can't overdraw cash or debit. */}
-          <AccountPicker
-            model={model}
-            direction={directionInput}
-            amount={amountInput}
-            value={paymentMethodInput}
-            onChange={setPaymentMethodInput}
-            excludeTxnId={editingId}
-          />
+          <Guided {...fieldErrors.props('account')} inset={false} radius={12}>
+            <AccountPicker
+              model={model}
+              direction={directionInput}
+              amount={amountInput}
+              value={paymentMethodInput}
+              onChange={setPaymentMethodInput}
+              excludeTxnId={editingId}
+            />
+          </Guided>
         </View>
 
-        <DateField
-          label="Date"
-          value={dateInput}
-          onChange={setDateInput}
-          testID="txn-date-field"
-        />
+        <Guided {...fieldErrors.props('date')} inset={false} radius={12}>
+          <DateField
+            label="Date"
+            value={dateInput}
+            onChange={setDateInput}
+            testID="txn-date-field"
+          />
+        </Guided>
 
         {directionInput === 'out' && !alreadyRefunded && (
           <View style={[styles.formGroup, { marginTop: 4 }]}>

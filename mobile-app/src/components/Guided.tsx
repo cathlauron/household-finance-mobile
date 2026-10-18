@@ -28,6 +28,7 @@ export default function Guided({
   focusRef,
   onShow,
   inset = true,
+  radius = 0,
   children,
 }: {
   error?: string;
@@ -37,6 +38,8 @@ export default function Guided({
   onShow?: () => void;
   // true inside a white form group (message lines up with the row's text).
   inset?: boolean;
+  // Rounds the soft red background (e.g. 22 for the big amount on its own).
+  radius?: number;
   children: React.ReactNode;
 }) {
   const { colors } = useTheme();
@@ -56,16 +59,17 @@ export default function Guided({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errorKey]);
   return (
-    <View ref={ref} collapsable={false}>
+    // Approved Option B look: a soft red background behind the field while it needs fixing.
+    <View ref={ref} collapsable={false} style={error ? { backgroundColor: colors.errorBg, borderRadius: radius } : undefined}>
       {children}
       {!!error && (
         <View
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: inset ? 16 : 0, paddingTop: 2, paddingBottom: 10 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: inset ? 16 : 0, justifyContent: inset ? 'flex-start' : 'center', paddingTop: 2, paddingBottom: 10 }}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
           <Ionicons name="alert-circle" size={16} color={colors.error} />
-          <Text style={{ flex: 1, color: colors.error, fontSize: 14, fontWeight: '600' }}>{error}</Text>
+          <Text style={{ flexShrink: 1, color: colors.error, fontSize: 14, fontWeight: '700' }}>{error}</Text>
         </View>
       )}
     </View>

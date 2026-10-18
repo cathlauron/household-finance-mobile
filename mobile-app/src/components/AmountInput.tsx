@@ -23,6 +23,8 @@ type Props = {
   centered?: boolean;
   // Puts the cursor here when the field appears (see AppText's TextInput).
   autoFocus?: boolean;
+  // Lets a form put the cursor here (e.g. when the amount is missing). Big amounts only.
+  focusRef?: React.Ref<{ focus: () => void }>;
 };
 
 export function formatWithCommas(num: number, allowDecimals: boolean): string {

@@ -84,13 +84,14 @@ const bar = StyleSheet.create({
 });
 
 // The one big number at the top of the form.
-export function BigAmount({ label, value, onChange, color, autoFocus }: { label: string; value: number | ''; onChange: (v: number | '') => void; color: string; autoFocus?: boolean }) {
+export function BigAmount({ label, value, onChange, color, autoFocus, focusRef, invalid }: { label: string; value: number | ''; onChange: (v: number | '') => void; color: string; autoFocus?: boolean; focusRef?: React.Ref<{ focus: () => void }>; invalid?: boolean }) {
   const { colors } = useTheme();
   return (
     <View style={{ alignItems: 'center', paddingTop: 4, paddingBottom: 16 }}>
-      <Text style={{ fontSize: 13, color: colors.inkDim }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: invalid ? colors.error : colors.inkDim, fontWeight: invalid ? '700' : undefined }}>{label}</Text>
       <AmountInput
         autoFocus={autoFocus}
+        focusRef={focusRef}
         centered
         value={value}
         onChangeAmount={onChange}
@@ -116,13 +117,14 @@ export function FormGroup({ children, style }: { children: React.ReactNode; styl
   );
 }
 
-export function InputRow({ label, value, onChangeText, placeholder, autoFocus, keyboardType, testID }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; autoFocus?: boolean; keyboardType?: KeyboardTypeOptions; testID?: string }) {
+export function InputRow({ label, value, onChangeText, placeholder, autoFocus, keyboardType, testID, inputRef, invalid }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; autoFocus?: boolean; keyboardType?: KeyboardTypeOptions; testID?: string; inputRef?: React.Ref<any>; invalid?: boolean }) {
   const { colors } = useTheme();
   const s = rowStyles(colors);
   return (
     <View style={s.row}>
-      <Text style={s.label}>{label}</Text>
+      <Text style={[s.label, invalid && { color: colors.error, fontWeight: '700' }]}>{label}</Text>
       <TextInput
+        ref={inputRef}
         testID={testID}
         autoFocus={autoFocus}
         style={s.input}
@@ -162,9 +164,11 @@ export function PickerRow({
   onToggle,
   children,
   testID,
+  invalid,
 }: {
   label: string;
   value: string;
+  invalid?: boolean;
   dot?: string | null;
   open: boolean;
   onToggle: () => void;
@@ -176,7 +180,7 @@ export function PickerRow({
   return (
     <View>
       <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
-        <Text style={[s.label, { flex: 1 }]}>{label}</Text>
+        <Text style={[s.label, { flex: 1 }, invalid && { color: colors.error, fontWeight: '700' }]}>{label}</Text>
         {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
         <Text style={s.value} numberOfLines={1}>{value}</Text>
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={colors.inkFaint} style={{ marginLeft: 6 }} />

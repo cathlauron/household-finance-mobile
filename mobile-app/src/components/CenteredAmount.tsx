@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { Text, TextInput } from './AppText';
 import { useTheme } from '../ThemeContext';
@@ -17,6 +17,8 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
   autoFocus?: boolean;
+  // Lets a form put the cursor here (e.g. when the amount is missing).
+  focusRef?: React.Ref<{ focus: () => void }>;
 };
 
 function withCommas(raw: string): string {
@@ -30,7 +32,7 @@ function fromValue(value: number | '' | undefined): string {
   return typeof value === 'number' && !isNaN(value) ? String(Math.round(value * 100) / 100) : '';
 }
 
-export default function CenteredAmount({ value, onChangeAmount, onBlur, placeholder = '0.00', allowDecimals = true, style, inputStyle, autoFocus }: Props) {
+export default function CenteredAmount({ value, onChangeAmount, onBlur, placeholder = '0.00', allowDecimals = true, style, inputStyle, autoFocus, focusRef }: Props) {
   const { colors } = useTheme();
   const flat = StyleSheet.flatten(inputStyle) || {};
   const size = (flat.fontSize as number) || 40;
@@ -38,6 +40,7 @@ export default function CenteredAmount({ value, onChangeAmount, onBlur, placehol
   const [focused, setFocused] = useState(false);
   const [buffer, setBuffer] = useState(fromValue(value));
   const inputRef = useRef<any>(null);
+  useImperativeHandle(focusRef, () => ({ focus: () => inputRef.current?.focus() }), []);
 
   // Follow the parent's value while not typing (e.g. opening an existing bill).
   useEffect(() => {

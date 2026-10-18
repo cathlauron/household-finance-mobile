@@ -20,6 +20,7 @@ import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, pa
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
@@ -93,6 +94,10 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const [saving, setSaving] = useState(false);
   // Simple form: which row's choices are open (one at a time).
   const [openRow, setOpenRow] = useState<string | null>(null);
+  // Version 2.1: tapping Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'name' | 'due'>();
+  const nameRef = useRef<any>(null);
+  const clearFieldError = fieldErrors.clear;
   useEffect(() => {
     if (!modalOpen) setOpenRow(null);
   }, [modalOpen]);
@@ -168,11 +173,17 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   }
 
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
+
   async function handleSave() {
     if (!model) return;
+    setErrorMsg('');
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter a name for this bill.');
+      fieldErrors.show('name', 'Give this bill a name.');
       return;
     }
 
@@ -182,14 +193,14 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     if (recurTypeInput === 'onetime') {
       const trimmedDate = onetimeDateInput.trim();
       if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        fieldErrors.show('due', 'Pick the date it\'s due.');
         return;
       }
       dueDate = { date: trimmedDate };
     } else if (recurTypeInput === 'monthly') {
       const dayNum = parseInt(dayInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day between 1 and 31.');
+        fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
       dueDate = { day: dayInput.trim() };
@@ -197,11 +208,11 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       const dayNum = parseInt(dayInput, 10);
       const monthNum = parseInt(monthInput, 10);
       if (dayInput.trim() && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) {
-        setErrorMsg('Enter a day between 1 and 31.');
+        fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
       if (monthInput.trim() && (isNaN(monthNum) || monthNum < 1 || monthNum > 12)) {
-        setErrorMsg('Enter a month between 1 and 12.');
+        fieldErrors.show('due', 'Pick the month it\'s due.');
         return;
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
@@ -458,7 +469,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         <BigAmount label="Amount due" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} />
 
         <FormGroup>
-          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" />
+          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+          </Guided>
           <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
             <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <TextInput
@@ -476,7 +489,8 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
               onChange={(v) => setRecurTypeInput(v as RecurringType)}
             />
           </PickerRow>
-          <PickerRow label="Due on" value={dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')}>
+          <Guided {...fieldErrors.props('due')} onShow={() => setOpenRow('due')}>
+          <PickerRow label="Due on" value={dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
             {recurTypeInput === 'onetime' ? (
               <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
             ) : (
@@ -490,6 +504,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
               </>
             )}
           </PickerRow>
+          </Guided>
           <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
           </PickerRow>
