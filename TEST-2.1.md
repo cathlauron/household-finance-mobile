@@ -64,6 +64,14 @@ npx expo start -c
 5. Transactions: the Recurring and Search icons sit on the "Transactions" title line.
 6. Profile shows your username without "@", no grey note under Name/Username.
 
+## 9b. Swiping and cards
+1. On Home, swipe the page sideways (not on the Left to Spend card or the cards stack): it moves to Transactions; keep swiping to To-Pay and Plan, and back. Tapping the tabs still works.
+2. Swiping on the Left to Spend card still turns its pages; swiping the cards stack still changes the front card.
+3. To-Pay: swipe between Bills, Debts and Loans. Past Loans it goes on to Plan; before Bills, back to Transactions.
+4. Savings: swipe between Pots, Emergency and FI.
+5. Accounts: tap a card: it opens the same card page as tapping it on Home. Its "Edit card" opens that card's edit sheet on Accounts. (Long-press a card on Accounts also opens the edit sheet.)
+6. Travel: open a trip. Budget | To-do at the top (tap or swipe). Add "Pack jackets" and "Book the bus", tick one, remove one, Save, reopen: they're still there.
+
 ## 10. Earlier untested items
 1. Forms: tap Add with fields empty on New transaction, bill, debt, loan, income, pot, goal, event, trip and account: each takes you to the first missing field in red (already tested, quick re-check).
 2. Storage pieces still only switch on for usernames starting with "test" (Firebase: the test household has a parts folder; your real one doesn't).
