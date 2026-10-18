@@ -11,6 +11,7 @@ Do these in order on your phone. For each one, note "OK" or what you saw. If som
 6. New bill › Every month › pick the 15th: "Which one is due now?" shows the last few months and the next one. Pick an earlier month: it shows as overdue. Mark it paid: the next one is the month after.
 7. Bill page › Edit: the bill's edit sheet opens without flashing, and other pages open normally afterwards. Try the same from a card page (Edit card), a pot (Edit) and a transaction (Edit).
 8. Travel: under the trip there's Budget | To-do. To-do: add "Pack jackets" (optionally with a date using the calendar icon), tick it, remove one. It saves straight away.
+9. Swipe along the bottom tab bar (left or right): it moves between Home, Transactions, To-Pay and Plan from any of them. On To-Pay, swiping the page still changes Bills / Debts / Loans. Tapping the tabs still works.
 
 ## 0. Get the build
 

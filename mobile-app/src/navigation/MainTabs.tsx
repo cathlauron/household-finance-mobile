@@ -6,7 +6,7 @@ import { useFabSide } from '../fabSide';
 import { useToPaySub, requestToPayAdd } from '../fabActions';
 import { hapticLight } from '../haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createBottomTabNavigator, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabNavigationOptions, BottomTabBar } from '@react-navigation/bottom-tabs';
 
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
@@ -187,6 +187,21 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
       // whatever tab was already showing.
       key={initialOpenBillId ? `open-bill-${initialOpenBillId}` : 'default'}
       initialRouteName={initialOpenBillId ? 'To-Pay' : undefined}
+      // Version 2.1 (Cath, option A): swiping along the bottom tab bar always changes the
+      // main tab, from any screen (handy on To-Pay, where swiping the page changes Bills /
+      // Debts / Loans). Tapping the tabs works as before.
+      tabBar={(props) => (
+        <SwipeTabs
+          onSwipe={(d) => {
+            const next = TAB_ORDER[TAB_ORDER.indexOf(props.state.routes[props.state.index].name) + d];
+            if (next) props.navigation.navigate(next);
+          }}
+        >
+          <View collapsable={false}>
+            <BottomTabBar {...props} />
+          </View>
+        </SwipeTabs>
+      )}
       screenListeners={screenListeners}
       // Every visited tab stays drawn; TabPage keeps the hidden ones just off screen and
       // fades them in and out.
