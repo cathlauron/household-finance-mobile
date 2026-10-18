@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import BusyOverlay from '../components/BusyOverlay';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
 import { claimUsername } from '../usernameClaim';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
@@ -95,6 +95,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
       return;
     }
     setBusy(true);
+    await paintBusy();
     try {
       const profiles = await loadProfilesIndex();
       if (profiles.some((p) => p.username === username)) {
@@ -160,6 +161,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
               text: 'Retry',
               onPress: async () => {
                 setBusy(true);
+                await paintBusy();
                 try {
                   await saveRecoveryKey(username, key, false, code);
                   Alert.alert('Saved', 'Secret Recovery Key saved.');

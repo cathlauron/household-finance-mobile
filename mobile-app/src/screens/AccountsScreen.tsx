@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { afterSlide } from '../afterSlide';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
@@ -60,7 +61,7 @@ export default function AccountsScreen() {
     const id = route.params?.editId as string | undefined;
     if (!editNonce || !g || !id || !model) return;
     const account = model.balanceAccounts[g]?.find((a: BalanceAccountEntry) => a.id === id);
-    if (account) openEditModal(g, account);
+    if (account) afterSlide(() => openEditModal(g, account));
     // Only when "Edit card" sends a new request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editNonce]);

@@ -161,3 +161,18 @@ test('a back-dated payment keeps the date it was paid', () => {
   const b = markPaid(bill(), undefined, '2026-10-02');
   assert.equal(b.cycles[0].paidDate, '2026-10-02');
 });
+
+// ---- Version 2.1: starting a repeating bill in an earlier month ----
+import { recentOccurrences } from '../src/recurrence.ts';
+test('which one is due now: the past 4 months and the next due date, oldest first', () => {
+  assert.deepEqual(recentOccurrences('monthly', { day: '15' }, new Date(2026, 9, 18)), ['2026-07-15', '2026-08-15', '2026-09-15', '2026-10-15', '2026-11-15']);
+  assert.deepEqual(recentOccurrences('monthly', { day: '31' }, new Date(2026, 2, 5)), ['2025-11-30', '2025-12-31', '2026-01-31', '2026-02-28', '2026-03-31']);
+  assert.deepEqual(recentOccurrences('annual', { day: '1', month: 3 }, new Date(2026, 9, 18)), ['2026-03-01', '2027-03-01']);
+  assert.deepEqual(recentOccurrences('monthly', { day: '' }), []);
+  assert.deepEqual(recentOccurrences('onetime', { date: '2026-10-01' }), []);
+});
+test('paying a bill that started in an earlier month moves on to the month after it', () => {
+  const bill = { id: 'b', name: 'Meralco', recurringType: 'monthly', dueDate: { day: '15' }, cycles: [{ id: 'c', dueDate: '2026-08-15', amountDue: 3100, amountPaid: '', paidDate: '' }] };
+  const after = markPaid(bill, undefined, '2026-10-18');
+  assert.equal(after.cycles[1].dueDate, '2026-09-15');
+});

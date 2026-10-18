@@ -1,20 +1,21 @@
-﻿import React, { useState } from 'react';
-import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import BusyOverlay from '../components/BusyOverlay';
-import { TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+﻿import React, { useEffect, useState } from 'react';
 import { Text } from '../components/AppText';
-import GradientFill from '../components/GradientFill';
+import BottomSheet from '../components/BottomSheet';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { SheetBar, SheetHero, FormGroup, PasswordRow, PinRow } from '../components/SimpleForm';
 import { isValidPinFormat, savePin } from '../pin';
-import PinField from '../components/PinField';
-import PasswordField from '../components/PasswordField';
 import { useData } from '../DataContext';
 import { savePinCopy } from '../quickUnlock';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { hapticLight } from '../haptics';
-import { radii, spacing } from '../tokens';
 import { useTheme } from '../ThemeContext';
 
+// Settings › Quick unlock: set or change the PIN.
+// Version 2.1 (Cath): the same bottom sheet as the rest of the app (it used to be a full
+// page), and the breathing logo while the password is checked and the PIN saved.
+
 type Props = {
+  visible: boolean;
   username: string;
   // The account's email. Used only to save the PIN copy for quick unlock after a full app close.
   email?: string;
@@ -22,131 +23,67 @@ type Props = {
   onCancel: () => void;
 };
 
-export default function SetPinScreen({ username, email, onDone, onCancel }: Props) {
+export default function SetPinSheet({ visible, username, email, onDone, onCancel }: Props) {
   const { verifyPassword } = useData();
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
   const [password, setPassword] = useState('');
   const [pin1, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [showSlowHint, setShowSlowHint] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setPassword('');
+    setPin1('');
+    setPin2('');
+    setError('');
+    setBusy(false);
+  }, [visible]);
 
   async function handleSave() {
     setError('');
-    if (!password) {
-      setError('Enter your account password.');
-      return;
-    }
-    if (!isValidPinFormat(pin1)) {
-      setError('PIN must be 4 to 6 digits.');
-      return;
-    }
-    if (pin1 !== pin2) {
-      setError("PINs don't match.");
-      return;
-    }
+    if (!password) return setError('Enter your account password.');
+    if (!isValidPinFormat(pin1)) return setError('The PIN needs 4 to 6 digits.');
+    if (pin1 !== pin2) return setError("The two PINs don't match.");
+    hapticLight();
     setBusy(true);
-    setShowSlowHint(true);
+    await paintBusy();
     try {
       const passwordOk = await verifyPassword(password);
       if (!passwordOk) {
-        setShowSlowHint(false);
         setBusy(false);
-        setError('Incorrect password.');
+        setError('That password is not right.');
         return;
       }
       await savePin(username, pin1);
       updateRecentAccountIfPresent(username, { hasPin: true }).catch(() => {});
-      if (email) {
-      await savePinCopy({ email, username, password }, pin1);
-      }
-      setShowSlowHint(false);
+      if (email) await savePinCopy({ email, username, password }, pin1);
       setBusy(false);
       onDone();
-    } catch (e) {
-      setShowSlowHint(false);
+    } catch {
       setBusy(false);
-      setError('Could not save PIN. Please try again.');
+      setError("Couldn't save the PIN. Please try again.");
     }
   }
 
   return (
-    <>
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.eyebrow}>QUICK UNLOCK</Text>
-        <Text style={styles.title}>Set a PIN</Text>
-        <Text style={styles.sub}>
-          A short PIN for quick unlock. Your password remains your backup.
-        </Text>
-
-        <Text style={styles.label}>Account password</Text>
-        <PasswordField
-          testID="set-pin-password-input"
-          style={styles.passwordInput}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Your password"
-        />
-
-        <Text style={styles.label}>Choose a PIN (4–6 digits)</Text>
-        <PinField
-          testID="pin-input"
-          style={styles.input}
-          value={pin1}
-          onChangeText={setPin1}
-        />
-
-        <Text style={styles.label}>Confirm PIN</Text>
-        <PinField
-          testID="confirm-pin-input"
-          style={styles.input}
-          value={pin2}
-          onChangeText={setPin2}
-        />
-
-        {showSlowHint && !error && (
-          <Text style={styles.sub}>This can take a little while on some phones — hang tight.</Text>
-        )}
-        {!!error && <Text style={styles.error}>{error}</Text>}
-
-        <TouchableOpacity testID="save-pin-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleSave(); }} disabled={busy}>
-          <GradientFill color={colors.buttonFill} strength={0.18} />
-          <Text style={styles.primaryBtnText}>{busy ? 'Saving…' : 'Save PIN'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.ghostBtn} onPress={onCancel}>
-          <Text style={styles.ghostBtnText}>Cancel</Text>
-        </TouchableOpacity>
-      </KeyboardAwareScrollView>
-    </KeyboardAvoidingView>
-      <BusyOverlay visible={!!(busy)} messages={['Checking your password…', 'Saving your PIN…', 'Setting up Quick unlock…']} />
-    </>
+    <BottomSheet
+      visible={visible}
+      onClose={() => !busy && onCancel()}
+      grouped
+      header={<SheetBar title="Quick unlock" onCancel={onCancel} onDone={handleSave} doneLabel="Save" busy={busy} doneDisabled={!password || !pin1 || !pin2} />}
+    >
+      <SheetHero icon="keypad-outline" title="Set a PIN" sub="A short PIN to open the app quickly. Your password stays your backup." />
+      <FormGroup>
+        <PasswordRow label="Password" value={password} onChangeText={setPassword} placeholder="Your password" autoFocus testID="set-pin-password-input" />
+        <PinRow label="New PIN" value={pin1} onChangeText={setPin1} testID="pin-input" />
+        <PinRow label="Confirm PIN" value={pin2} onChangeText={setPin2} testID="confirm-pin-input" />
+      </FormGroup>
+      <Text style={{ fontSize: 13, lineHeight: 18, marginHorizontal: 16, marginTop: 8, marginBottom: 16, color: error ? colors.error : colors.inkDim, fontWeight: error ? '700' : '400' }}>
+        {error || 'This can take a few seconds on some phones.'}
+      </Text>
+      <BusyOverlay visible={busy} messages={['Checking your password…', 'Saving your PIN…', 'Setting up Quick unlock…']} />
+    </BottomSheet>
   );
-}
-
-function makeStyles(colors: any) {
-  return StyleSheet.create({
-    flex: { flex: 1, backgroundColor: colors.navy2 },
-    container: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 120 },
-    eyebrow: { fontSize: 11, letterSpacing: 2, color: colors.inkDim, textAlign: 'center', marginBottom: 8 },
-    title: { fontSize: 22, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
-    sub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-    label: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: colors.inkDim, marginBottom: 6, marginTop: 14 },
-    input: {
-      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
-      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink, textAlign: 'center', letterSpacing: 6,
-    },
-    passwordInput: {
-      backgroundColor: colors.navy3, borderRadius: 12, borderWidth: 1, borderColor: colors.navy4,
-      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.ink,
-    },
-    error: { color: colors.error, fontSize: 13, textAlign: 'center', marginTop: 16 },
-    primaryBtn: { overflow: 'hidden', backgroundColor: colors.buttonFill, borderRadius: radii.pill, height: 52, justifyContent: 'center', marginTop: spacing[24] },
-    primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '600', fontSize: 15 },
-    ghostBtn: { paddingVertical: 14, marginTop: 4 },
-    ghostBtnText: { color: colors.inkDim, textAlign: 'center', fontSize: 13 },
-  });
 }

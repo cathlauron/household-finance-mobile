@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { afterSlide } from '../afterSlide';
 import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -227,7 +228,7 @@ export default function TransactionsScreen() {
     const editId = route.params?.editId;
     if (!editNonce || !editId || !model) return;
     const t = buildTransactionsList(model).find((x) => x.rawId === editId && x.source === 'manual');
-    if (t) openEditModal(t);
+    if (t) afterSlide(() => openEditModal(t));
   }, [editNonce]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {

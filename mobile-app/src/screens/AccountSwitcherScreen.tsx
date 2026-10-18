@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import BusyOverlay from '../components/BusyOverlay';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import LogoMark from '../components/LogoMark';
@@ -130,8 +130,8 @@ export default function AccountSwitcherScreen({
     if (!selected || busy) return;
     setError('');
     setBusy(true);
+    await paintBusy();
     // Let the spinner draw before the slow key work starts.
-    await new Promise((resolve) => setTimeout(resolve, 50));
     const result = await attemptPinUnlock(selected, pin);
     if (!mountedRef.current) return;
     if (result.status === 'ok') {

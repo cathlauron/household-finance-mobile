@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { afterSlide } from '../afterSlide';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -100,7 +101,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     const target = (model.loans || []).find((l) => l.id === openLoanId);
     if (target) {
       openedLoanRef.current = { id: openLoanId, nonce: openLoanNonce };
-      openEditModal(target);
+      afterSlide(() => openEditModal(target));
     }
   }, [model, openLoanId, openLoanNonce]);
   const [nameInput, setNameInput] = useState('');

@@ -25,7 +25,7 @@ import { markOnboardingCompleted } from './src/onboarding';
 import GuestSetupScreen from './src/screens/GuestSetupScreen';
 import GuestSaveSheet from './src/components/GuestSaveSheet';
 import { GuestSetup, emptyGuestSetup, loadGuestSetup, saveGuestSetup, clearGuestSetup, guestModel } from './src/guest';
-import BusyOverlay from './src/components/BusyOverlay';
+import BusyOverlay, { paintBusy } from './src/components/BusyOverlay';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -114,6 +114,9 @@ function AppContent() {
   // Resolves when the opening animation has had its ~3 seconds, so a quick quiet
   // sign-in never cuts the animation short.
   const introDoneRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 3100)));
+  // Version 2.1: the opening logo draws on the main thread for about 1.3 s; unlocking data
+  // waits for it, so the drawing isn't frozen half-way (see IntroScreen).
+  const introDrawnRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 1300)));
 
   const screenRef = useRef<Screen>('loading');
   // Set only by the lock screen's "Sign in to another account" button, so that
@@ -395,6 +398,7 @@ function AppContent() {
       autoLockMinutesRef.current = await getAutoLockMinutes();
       // Sign in once: a remembered account opens without asking for the password.
       if (saved && profiles.some((p) => p.username === saved.username)) {
+        await introDrawnRef.current;
         const offline = await attemptOfflineUnlock(saved.username, saved);
         if (offline) {
           await introDoneRef.current;
@@ -800,6 +804,7 @@ function AppContent() {
             resetPinFailures(creds.username).catch(() => {});
             setUnlocking(true);
             (async () => {
+              await paintBusy(); // let the unlocking animation appear first
               try {
                 const offline = await attemptOfflineUnlock(creds.username, creds);
                 if (offline) {
