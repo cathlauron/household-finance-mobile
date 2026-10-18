@@ -89,11 +89,20 @@ service cloud.firestore {
       // list must stay exactly as it was; joining/leaving is handled by the
       // two rules below instead, so this one can no longer be used to
       // sneak a membership change through alongside a data edit.
+      // Version 2.1 (storage in parts): the same edit may also set `layout` (1 = the
+      // household is stored in parts, see below) and the member's OWN entry in
+      // `memberVersions` (which app version each member's phone runs). A member can never
+      // change another member's entry.
       allow update: if request.auth != null
         && request.auth.uid in resource.data.members
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt', 'layout', 'memberVersions'])
         && request.resource.data.data is string
-        && request.resource.data.updatedAt is number;
+        && request.resource.data.updatedAt is number
+        && (!('layout' in request.resource.data) || request.resource.data.layout is int)
+        && (!('memberVersions' in request.resource.data)
+            || (request.resource.data.memberVersions is map
+                && request.resource.data.memberVersions.diff(resource.data.get('memberVersions', {})).affectedKeys().hasOnly([request.auth.uid])
+                && request.resource.data.memberVersions[request.auth.uid] is string));
       // Lets someone who isn't a member yet join by adding their own uid to
       // the members list — this is what addMemberToHousehold() does when the
       // joiner finishes linking into the host's household. Only the members
@@ -171,6 +180,29 @@ service cloud.firestore {
         && (resource.data.members.size() == 1 || (resource.data.members.size() <= 2 && resource.data.get('owner', null) == request.auth.uid));
 
       allow list: if false;
+    }
+
+    // Version 2.1 (storage in parts): the household saved as several smaller encrypted
+    // documents, because one Firestore document can hold at most 1 MiB. Only members of
+    // the household can read, write or delete its parts. Each part is encrypted on the
+    // phone first, just like the single `data` copy, and must stay under 1,000,000
+    // characters. Parts must be deleted BEFORE the household document when a household
+    // is dissolved (after that nobody is a member any more).
+    match /households/{householdId}/parts/{partId} {
+      function isHouseholdMember() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/households/$(householdId))
+          && request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
+      }
+      allow get, list: if isHouseholdMember();
+      allow create, update: if isHouseholdMember()
+        && partId.size() <= 80
+        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 1000000
+        && request.resource.data.updatedAt is number
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if isHouseholdMember();
     }
 
     match /householdKeys/{username} {
