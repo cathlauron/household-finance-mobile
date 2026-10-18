@@ -25,6 +25,7 @@ import { markOnboardingCompleted } from './src/onboarding';
 import GuestSetupScreen from './src/screens/GuestSetupScreen';
 import GuestSaveSheet from './src/components/GuestSaveSheet';
 import { GuestSetup, emptyGuestSetup, loadGuestSetup, saveGuestSetup, clearGuestSetup, guestModel } from './src/guest';
+import BusyOverlay from './src/components/BusyOverlay';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -40,7 +41,8 @@ import IntroSlidesScreen from './src/screens/IntroSlidesScreen';
 import RootStack from './src/navigation/RootStack';
 import LeafBackground from './src/components/LeafBackground';
 import { triggerLeafTransition } from './src/leafTransition';
-import { loadProfilesIndex, loadEncryptedProfileData } from './src/storage';
+import { loadProfilesIndex, loadEncryptedProfileData, loadCachedHouseholdKey } from './src/storage';
+import { unwrapHouseholdKey } from './src/household';
 import type { ProfileIndexEntry } from './src/storage';
 import { hasPinSetUp } from './src/pin';
 import { deriveKey, decryptJSON } from './src/encryption';
@@ -78,7 +80,10 @@ function ScreenFade({ skip, children }: { skip: boolean; children: React.ReactNo
 
 function AppContent() {
   const { colors } = useTheme();
-  const { loadModel, clearModel, startGuest, guestRequest, model: currentModel } = useData();
+  const { loadModel, clearModel, startGuest, guestRequest, model: currentModel, goOnline, isOnline } = useData();
+  // Version 2.1 (open from the phone first): the account opened from the phone's copy and
+  // still needs its quiet online sign-in (retried when the connection comes back).
+  const pendingReconcileRef = useRef<{ username: string; creds: { email: string; password: string } } | null>(null);
   // Version 3 (new start): answers from Welcome + the four questions, before any account.
   const [guestSetup, setGuestSetup] = useState<GuestSetup>(emptyGuestSetup());
   function updateGuestSetup(next: GuestSetup) {
@@ -204,15 +209,23 @@ function AppContent() {
   async function attemptOfflineUnlock(
     username: string,
     creds: { email: string; password: string }
-  ): Promise<{ key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry } | null> {
+  ): Promise<{ key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry; householdKey?: CryptoJS.lib.WordArray } | null> {
     try {
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
-      if (!profile || profile.householdId) return null;
+      if (!profile) return null;
       const key = deriveKey(creds.password, profile.salt);
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) return null;
       const model = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+      if (profile.householdId) {
+        // Version 2.1: a linked household opens from the phone too, using this phone's
+        // password-locked copy of the household key (kept since the last online open).
+        const cached = await loadCachedHouseholdKey(username);
+        if (!cached || cached.householdId !== profile.householdId) return null;
+        const householdKey = unwrapHouseholdKey(cached.wrappedKey, key);
+        return { key, model, profile, householdKey };
+      }
       return { key, model, profile };
     } catch (e) {
       return null;
@@ -251,13 +264,16 @@ function AppContent() {
       return;
     }
     registerAndListenDeviceSession(user.uid).catch(() => {});
+    pendingReconcileRef.current = null;
+    // Signed in: now the household's live link can start (see DataContext.goOnline).
+    goOnline();
   }
 
   // Opens an account that was unlocked offline (unlinked profiles only). Used by the
   // account switcher and by "sign in once" when the app starts.
   function enterWithOfflineUnlock(
     creds: { email: string; username: string; password: string },
-    offline: { key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry }
+    offline: { key: CryptoJS.lib.WordArray; model: HouseholdModel; profile: ProfileIndexEntry; householdKey?: CryptoJS.lib.WordArray }
   ) {
     setRemoteRevokeNotice(null);
     setCurrentUsername(creds.username);
@@ -265,8 +281,10 @@ function AppContent() {
     loadModel(
       creds.username,
       offline.key,
-      { profile: offline.profile, initialModel: offline.model },
-      { deferNotifications: true }
+      offline.householdKey
+        ? { profile: offline.profile, initialModel: offline.model, householdId: offline.profile.householdId, householdKey: offline.householdKey }
+        : { profile: offline.profile, initialModel: offline.model },
+      { deferNotifications: true, offlineStart: !!offline.householdKey }
     ).catch(() => {});
     recordRecentAccount(creds.username, undefined, undefined, offline.model.avatars?.[creds.username]).catch(() => {});
     saveSession(creds).catch(() => {});
@@ -274,8 +292,17 @@ function AppContent() {
     setTimeout(() => {
       rescheduleBillNotifications(offline.model).catch(() => {});
     }, 0);
+    pendingReconcileRef.current = { username: creds.username, creds };
     reconcileOfflineUnlockWithServer(creds.username, creds).catch(() => {});
   }
+
+  // Opened offline: try the quiet sign-in again as soon as the connection is back.
+  useEffect(() => {
+    const p = pendingReconcileRef.current;
+    if (isOnline && p && usernameRef.current === p.username) {
+      reconcileOfflineUnlockWithServer(p.username, p.creds).catch(() => {});
+    }
+  }, [isOnline]);
 
   async function recordRecentAccount(
     username: string,
@@ -943,11 +970,7 @@ function AppContent() {
       <ScreenFade key={screen} skip={screen === 'loading'}>
         {renderScreen()}
       </ScreenFade>
-      {unlocking && screen === 'switcher' && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy2 }]}>
-          <LoadingView label="Unlocking…" testID="switcher-unlocking" />
-        </View>
-      )}
+      <BusyOverlay visible={unlocking && screen === 'switcher'} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
       <SavedToastHost />
     </View>
   );

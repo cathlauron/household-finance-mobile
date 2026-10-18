@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import BusyOverlay from '../components/BusyOverlay';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
 import LogoMark from '../components/LogoMark';
@@ -174,6 +175,7 @@ export default function AccountSwitcherScreen({
   const selectedPresence = selected && presence ? presence[selected] : undefined;
 
   return (
+    <>
     <KeyboardAvoidingView
       testID="account-switcher-container"
       style={{ flex: 1, backgroundColor: 'transparent' }}
@@ -311,6 +313,8 @@ export default function AccountSwitcherScreen({
         )}
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
+      <BusyOverlay visible={!!(busy)} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
+    </>
   );
 }
 

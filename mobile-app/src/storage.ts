@@ -121,6 +121,25 @@ export async function loadCloudSyncAt(username: string): Promise<number | null> 
 }
 
 // True while a local save has not yet reached the cloud backup.
+// Version 2.1 (open from the phone first, Cath approved): this phone's own copy of its
+// household key, still locked with the account password (the same "wrapped" key that is
+// stored online). It lets a linked household open straight from the phone, even offline;
+// without the password it is useless. Removed when the household is left or dissolved.
+const cachedHouseholdKeyKey = (username: string) => `wrappedHouseholdKey:${username}`;
+export async function saveCachedHouseholdKey(username: string, value: { householdId: string; wrappedKey: string } | null): Promise<void> {
+  if (value) await AsyncStorage.setItem(cachedHouseholdKeyKey(username), JSON.stringify(value));
+  else await AsyncStorage.removeItem(cachedHouseholdKeyKey(username));
+}
+export async function loadCachedHouseholdKey(username: string): Promise<{ householdId: string; wrappedKey: string } | null> {
+  try {
+    const raw = await AsyncStorage.getItem(cachedHouseholdKeyKey(username));
+    const v = raw ? JSON.parse(raw) : null;
+    return v && typeof v.householdId === 'string' && typeof v.wrappedKey === 'string' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 // Version 2.1 (merge before save): while a linked household has changes waiting to be sent,
 // the version both phones last agreed on is kept here (encrypted with the personal key), so
 // the waiting changes can be merged with the online copy later instead of overwriting it,

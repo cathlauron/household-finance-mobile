@@ -15,6 +15,7 @@
 // shared data.
 // ============================================================
 import { getCurrentFirebaseUser } from './authFirebase';
+import { showSaved } from './components/SavedToast';
 import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
@@ -39,6 +40,7 @@ import {
   type ProfileIndexEntry,
   saveHouseholdPendingBase,
   loadHouseholdPendingBase,
+  saveCachedHouseholdKey,
 } from './storage';
 import { cancelLinkCode, finishHostLink } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
@@ -101,8 +103,11 @@ type DataContextValue = {
     username: string,
     key: CryptoJS.lib.WordArray,
     bootstrap?: LoadModelBootstrap,
-    options?: { deferNotifications?: boolean }
+    options?: { deferNotifications?: boolean; offlineStart?: boolean }
   ) => Promise<HouseholdModel | null>;
+  // Version 2.1: after opening from the phone, start the live household link once the
+  // background sign-in has worked (before that Firebase would refuse it).
+  goOnline: () => void;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
   clearModel: () => void;
   refreshModel: () => Promise<RefreshOutcome>;
@@ -238,6 +243,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Version 2.1 (merge before save): the household as this phone last agreed on it with the
   // online copy (the "base" of a three-way merge, see merge3.ts).
   const lastSyncedModelRef = useRef<HouseholdModel | null>(null);
+  const awaitingOnlineRef = useRef<string | null>(null);
   const pendingRef = useRef(0);
   pendingRef.current = pendingChanges;
   // PC.8: bumped on every saveModel so a slow refresh can tell you saved while it
@@ -290,6 +296,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await updateProfileHouseholdId(username, undefined);
     // Version 2.1: changes waiting for this household no longer apply.
     saveHouseholdPendingBase(username, null).catch(() => {});
+    saveCachedHouseholdKey(username, null).catch(() => {});
 
     try {
       const pending = await loadPendingHostLink(username);
@@ -419,7 +426,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     username: string,
     key: CryptoJS.lib.WordArray,
     bootstrap?: LoadModelBootstrap,
-    options: { deferNotifications?: boolean } = {}
+    options: { deferNotifications?: boolean; offlineStart?: boolean } = {}
   ): Promise<HouseholdModel | null> {
     setLoading(true);
     // Accounts made before username claims existed claim theirs now (quietly).
@@ -453,7 +460,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setModel(loaded);
         setIsLinked(true);
         saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
-        setupHouseholdListener(householdId);
+        if (options.offlineStart) {
+          // Opened from the phone's copy. Changes that were waiting from last time keep
+          // waiting (merged with the online copy once connected, never replaced by it).
+          awaitingOnlineRef.current = householdId;
+          lastSyncedModelRef.current = loaded;
+          try {
+            const baseText = await loadHouseholdPendingBase(username);
+            if (baseText) {
+              lastSyncedModelRef.current = sanitizeModelIds(decryptJSON<HouseholdModel>(key, baseText));
+              setPendingChanges(1);
+            }
+          } catch {}
+        } else {
+          setupHouseholdListener(householdId);
+        }
         if (!options.deferNotifications) {
           rescheduleBillNotifications(loaded).catch(() => {});
         }
@@ -479,6 +500,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const wrapped = await loadWrappedHouseholdKey(username);
         if (wrapped && wrapped.householdId === householdId) {
           const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
+          saveCachedHouseholdKey(username, wrapped).catch(() => {});
           let encryptedHousehold: string | null = null;
           let layout = 0;
           try {
@@ -653,11 +675,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const syncingRef = useRef(false);
+  // Version 2.1 (S6): the first save made offline says where it went, once per stretch
+  // offline (not on every tap).
+  const offlineNoteShownRef = useRef(false);
+  function noteSavedOffline() {
+    if (offlineNoteShownRef.current) return;
+    offlineNoteShownRef.current = true;
+    showSaved("Saved on this phone. It'll sync when you're back online.");
+  }
   async function syncPendingChanges() {
     if (syncingRef.current) return;
     const username = usernameRef.current;
     const current = latestModelRef.current;
-    if (!username || !current) return;
+    if (!username || !current || awaitingOnlineRef.current) return;
     syncingRef.current = true;
     try {
       if (householdIdRef.current && householdKeyRef.current) {
@@ -687,6 +717,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           'Timed out syncing.'
         );
       }
+      // Version 2.1 (S8): a light note when waiting changes reach the cloud.
+      if (pendingRef.current > 0) {
+        const n = pendingRef.current;
+        showSaved(`Back online. ${n} ${n === 1 ? 'change' : 'changes'} synced.`);
+      }
       setPendingChanges(0);
     } catch (e) {
       // Still not reachable; try again on the next change of connection.
@@ -701,6 +736,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function applyNetworkState(state: { isConnected?: boolean; isInternetReachable?: boolean | null }) {
     const online = state.isConnected !== false && state.isInternetReachable !== false;
     const cameBack = online && !onlineRef.current;
+    if (!online) offlineNoteShownRef.current = false;
     onlineRef.current = online;
     setIsOnline(online);
     if (cameBack) syncPendingChanges();
@@ -857,8 +893,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       noteStorageSize(encrypted);
-      if (!onlineRef.current) {
-        // Offline: saved on this phone; the banner shows it and it syncs once back online.
+      if (!onlineRef.current || awaitingOnlineRef.current) {
+        // Offline (or still signing in after opening from the phone): saved on this phone;
+        // it syncs once connected.
+        if (!onlineRef.current) noteSavedOffline();
         rememberWaitingBase();
         setPendingChanges((n) => n + 1);
       } else if (
@@ -926,6 +964,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     if (saltRef.current) {
       noteStorageSize(encrypted);
+      if (!onlineRef.current) noteSavedOffline();
       if (!onlineRef.current || tooBigToSync(encrypted)) {
         // Offline (or too big to send): saved on this phone; it syncs once it can.
         setPendingChanges((n) => n + 1);
@@ -1079,7 +1118,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setGuestRequest(null);
   }
 
+  function goOnline() {
+    const id = awaitingOnlineRef.current;
+    if (!id || householdIdRef.current !== id) return;
+    awaitingOnlineRef.current = null;
+    setupHouseholdListener(id);
+    refreshModel()
+      .catch(() => 'failed')
+      .finally(() => {
+        if (pendingRef.current > 0) syncPendingChanges();
+      });
+  }
+
   function clearModel() {
+    awaitingOnlineRef.current = null;
     cleanupHouseholdListener();
     setPendingChanges(0);
     usernameRef.current = null;
@@ -1322,6 +1374,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // untouched, so the other linked person's access is completely unaffected.
       const reWrapped = await wrapHouseholdKey(householdKeyRef.current, newKey);
       await saveWrappedHouseholdKey(username, householdIdRef.current, reWrapped);
+      saveCachedHouseholdKey(username, { householdId: householdIdRef.current, wrappedKey: reWrapped }).catch(() => {});
       await updateProfileSalt(username, newSalt);
 
       saltRef.current = newSalt;
@@ -1425,6 +1478,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         startGuest,
         resolveGuestRequest,
         endGuest,
+        goOnline,
         model,
         loading,
         loadModel,

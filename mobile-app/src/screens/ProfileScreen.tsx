@@ -1,4 +1,5 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import NeedsInternetSheet, { type NeedsInternet, withNetTimeout } from '../components/NeedsInternetSheet';
 import React, { useState, useEffect, useRef } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
@@ -124,7 +125,11 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     linkNoticeMsg,
     clearLinkNoticeMsg,
     pendingChanges,
+    isOnline,
   } = useData();
+  // Version 2.1 (S7): household steps need the internet; say so instead of spinning.
+  const [needsNet, setNeedsNet] = useState<NeedsInternet>(null);
+  const JOIN_WHY = 'The invite code and the keys that lock your shared data are swapped online.';
   const styles = makeStyles(colors);
 
   const currentUser = getCurrentFirebaseUser();
@@ -407,6 +412,10 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
   // Handlers
   async function handleStartLinking() {
+    if (!isOnline) {
+      setNeedsNet({ title: 'Making an invite needs the internet', why: 'The invite code and the keys that lock your shared data are swapped online.', retry: handleStartLinking });
+      return;
+    }
     if (!model || !username) return;
     setLinkErrorMsg('');
     setLinkBusy(true);
@@ -425,6 +434,10 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   }
 
   async function handleStartHouseholdInvite() {
+    if (!isOnline) {
+      setNeedsNet({ title: 'Making an invite needs the internet', why: 'The invite code and the keys that lock your shared data are swapped online.', retry: handleStartHouseholdInvite });
+      return;
+    }
     if (!model || !username || !isLinked) return;
     const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
     const personalKey = getPersonalKey();
@@ -499,6 +512,10 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   }
 
   async function handleJoinWithCode() {
+    if (!isOnline) {
+      setNeedsNet({ title: 'Joining a household needs the internet', why: JOIN_WHY, retry: handleJoinWithCode });
+      return;
+    }
     setJoinErrorMsg('');
     setJoinChoiceMsg('');
     if (!joinCodeInput.trim()) {
@@ -512,10 +529,15 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     setJoinBusy(true);
     try {
       const normalizedCode = joinCodeInput.trim().toUpperCase();
-      const result = await joinHouseholdLink(joinCodeInput, username);
+      const result = await withNetTimeout(joinHouseholdLink(joinCodeInput, username));
       setJoinResult(result);
       setJoinedCode(normalizedCode);
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.code === 'net-timeout') {
+        setJoinBusy(false);
+        setNeedsNet({ title: 'The connection is too slow right now', why: 'Joining a household needs the internet. ' + JOIN_WHY, retry: handleJoinWithCode });
+        return;
+      }
       setJoinErrorMsg("That code doesn't look right, or it's expired — check it and try again.");
     }
     setJoinBusy(false);
@@ -523,6 +545,10 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
   async function handleJoinChoice(choice: JoinChoice) {
     if (!model || !username || !joinResult || !joinedCode) return;
+    if (!isOnline) {
+      setNeedsNet({ title: 'Joining a household needs the internet', why: JOIN_WHY, retry: () => handleJoinChoice(choice) });
+      return;
+    }
     const personalKey = getPersonalKey();
     if (!personalKey) {
       setJoinChoiceMsg('Something went wrong — please try again.');
@@ -713,6 +739,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       : 'This gives you a separate copy going forward. Others stay linked with each other.';
 
   return (
+    <>
     <SafeAreaView style={styles.container}>
       <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         {section === 'profile' && (<>
@@ -1305,6 +1332,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         </View>
       </BottomSheet>
     </SafeAreaView>
+      <NeedsInternetSheet value={needsNet} onClose={() => setNeedsNet(null)} />
+    </>
   );
 }
 

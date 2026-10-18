@@ -47,6 +47,19 @@ function shortDate(iso: string): string {
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
 }
+// Version 2.1 (canvas S4): "It isn't included, take it off my balance": a payment dated before
+// balances were last updated is otherwise treated as already in them, so take it off the
+// saved balance of the account it was paid from.
+function takeOffSavedBalance<M extends HouseholdModel>(model: M, pm: PaymentMethod, amount: number): M {
+  const group = pm.type as 'cash' | 'debit' | 'credit';
+  const list = (model.balanceAccounts as any)[group] as { id: string; amount: number | '' }[] | undefined;
+  if (!list || !list.length) return model;
+  const targetId = pm.accountId || (group === 'cash' ? list[0].id : undefined);
+  if (!targetId) return model;
+  const nextList = list.map((a) => (a.id === targetId ? { ...a, amount: Math.round(((Number(a.amount) || 0) - amount) * 100) / 100 } : a));
+  return { ...model, balanceAccounts: { ...model.balanceAccounts, [group]: nextList } };
+}
+
 function scheduleText(r: { recurringType?: string; dueDate?: Record<string, any>; customFreq?: string }): string {
   const d = r.dueDate || {};
   if (r.recurringType === 'monthly') return d.day ? `Every month on the ${d.day === 'last' ? 'last day' : d.day}` : 'Every month';
@@ -127,7 +140,14 @@ export default function PayDetailScreen() {
   const days = dueISO ? daysBetween(today, dueISO) : null;
   const overdue = !curPaid && days !== null && days < 0;
   const history = paidCycles(rec);
-  const paidToday = history[0]?.paidDate === today;
+  // Paid (or logged, for a back-dated payment) today: Undo stays available.
+  const loggedToday = (() => {
+    const at = history[0]?.paidAt;
+    if (!at) return false;
+    const d = new Date(at);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === today;
+  })();
+  const paidToday = history[0]?.paidDate === today || loggedToday;
   const icon = kind === 'debt' ? 'people-outline' : (rec as Bill).isSubscription ? 'repeat' : 'flash-outline';
 
   // Last 6 months: what was paid each month, with this month's due amount if unpaid.
@@ -153,6 +173,20 @@ export default function PayDetailScreen() {
         </View>
         <Text style={styles.name}>{name}</Text>
         <Text style={[styles.amount, { color: colors.negative }]}>{formatPeso(amount)}</Text>
+        {/* Version 2.1 (canvas S3): a bill paid in parts shows what's new and what was carried. */}
+        {kind === 'bill' && !curPaid && carried > 0 && (
+          <View style={{ alignSelf: 'stretch', marginTop: 10, gap: 6 }}>
+            <Text style={[styles.badge, { alignSelf: 'center', color: colors.orange, backgroundColor: colors.warnBg }]}>Paying in parts</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={styles.nextDue}>New charges</Text>
+              <Text style={styles.nextDue}>{formatPeso(Math.max(0, amount - carried))}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={styles.nextDue}>Carried from last time</Text>
+              <Text style={styles.nextDue}>{formatPeso(carried)}</Text>
+            </View>
+          </View>
+        )}
         {kind === 'debt' && !curPaid && (minDue < amount || carried > 0) && (
           <Text style={styles.nextDue}>
             {minDue < amount ? `Minimum ${formatPeso(minDue)}` : ''}
@@ -208,10 +242,17 @@ export default function PayDetailScreen() {
         editableAmount={kind === 'debt'}
         fullAmount={amount}
         minimumAmount={minDue}
-        onConfirm={(pm, paidAmount, lateFee) => {
+        partOption={kind === 'bill' ? { name, repeats: (rec as Bill).recurringType !== 'onetime' } : undefined}
+        dueText={dueISO ? `Paying the ${shortDate(dueISO)} ${kind === 'bill' ? 'bill' : 'payment'}` : undefined}
+        onConfirm={(pm, paidAmount, lateFee, date, takeOff) => {
           setPayOpen(false);
-          const next = kind === 'debt' ? markPaid(rec, pm, undefined, paidAmount, lateFee) : markPaid(rec, pm);
-          save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) }, 'Payment saved');
+          const next =
+            kind === 'debt'
+              ? markPaid(rec, pm, date, paidAmount, lateFee)
+              : markPaid(rec, pm, date, paidAmount < amount ? paidAmount : undefined);
+          let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
+          if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount);
+          save(updated, paidAmount < amount ? 'Part payment saved' : 'Payment saved');
         }}
       />
 
@@ -295,14 +336,16 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
   const [payOpen, setPayOpen] = useState(false);
   const payAmount = monthly > 0 ? Math.min(monthly, left || monthly) : left;
 
-  function logPayment(pm: PaymentMethod) {
+  function logPayment(pm: PaymentMethod, _amount?: number, _fee?: number, date: string = today, takeOff = false) {
     if (payAmount <= 0) return;
     setPayOpen(false);
     const next: Loan = {
       ...loan,
-      actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date: today, actual: payAmount, paymentMethod: pm }],
+      actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now() }],
     };
-    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, lent ? 'Money received' : 'Payment saved');
+    let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
+    if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, payAmount);
+    save(updated, lent ? 'Money received' : 'Payment saved');
   }
   function undoPayment() {
     const last = payments[0];

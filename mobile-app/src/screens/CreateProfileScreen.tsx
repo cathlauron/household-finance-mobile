@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import BusyOverlay from '../components/BusyOverlay';
 import { claimUsername } from '../usernameClaim';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
@@ -185,6 +186,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
   }
 
   return (
+    <>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <KeyboardAwareScrollView
         style={styles.container}
@@ -358,6 +360,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
         </Modal>
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
+      <BusyOverlay visible={!!(busy)} messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} />
+    </>
   );
 }
 

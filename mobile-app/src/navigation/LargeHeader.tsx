@@ -1,10 +1,11 @@
 import React from 'react';
+import SkyGlow from '../components/SkyGlow';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
-import OfflineBanner from '../components/OfflineBanner';
+import OfflineBanner, { OfflineCloud } from '../components/OfflineBanner';
 
 // Redesign: iPhone-style large titles, like the Finance Flow mockups. A short top row
 // holds the back button (chevron + where you came from) and any right-side buttons;
@@ -27,6 +28,9 @@ type Props = {
     headerBackTitle?: string;
     headerRight?: (p: { tintColor?: string; canGoBack?: boolean }) => React.ReactNode;
     headerLeft?: (p: { tintColor?: string; canGoBack?: boolean }) => React.ReactNode;
+    // Version 2.1: icons that sit on the big title's line (Transactions: Recurring, Search)
+    // instead of the short row above it.
+    headerTitleRight?: () => React.ReactNode;
   };
   back?: { title?: string } | undefined;
 };
@@ -40,6 +44,9 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
   const left = options.headerLeft?.({ tintColor: colors.gold, canGoBack: !!back });
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 4 }]}>
+      {/* Version 2.1 (Cath): every page gets Home's time-of-day glow; the sun rays, rain
+          and stars stay on Home only. */}
+      <SkyGlow plain />
       <View style={styles.row}>
         {left ??
           (back ? (
@@ -58,13 +65,19 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
           ) : (
             <View />
           ))}
-        <View style={styles.right}>{right}</View>
+        <View style={styles.right}>
+          <OfflineCloud />
+          {right}
+        </View>
       </View>
       {/* An empty title (detail pages that show their own big heading) hides the line. */}
       {title !== '' && (
-        <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
-          {title}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
+            {title}
+          </Text>
+          {!!options.headerTitleRight && <View style={{ marginLeft: 'auto' }}>{options.headerTitleRight()}</View>}
+        </View>
       )}
       <OfflineBanner style={{ marginTop: 8, marginBottom: 4 }} />
     </View>

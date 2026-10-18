@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BusyOverlay from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../components/AppText';
@@ -102,6 +103,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
   }
 
   return (
+    <>
     <View style={styles.container}>
       {/* Top Header Row with Progress and Skip */}
       <View style={[styles.headerRow, { paddingTop: 16 + insets.top }]}>
@@ -191,6 +193,8 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
 
       </KeyboardAwareScrollView>
     </View>
+      <BusyOverlay visible={!!(busy)} messages={['Saving your PIN…', 'Setting up Quick unlock…', 'Almost there…']} />
+    </>
   );
 }
 
