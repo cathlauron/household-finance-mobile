@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
@@ -376,6 +377,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     setSaving(true);
     try {
       await saveModel(updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

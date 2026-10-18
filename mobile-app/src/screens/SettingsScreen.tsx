@@ -1,4 +1,5 @@
 import { hapticSelection } from '../haptics';
+import { showLeafTick } from '../components/LeafTick';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } from '../paydayTime';
 import AppSwitch from '../components/AppSwitch';
@@ -737,6 +738,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     const updated: HouseholdModel = { ...model, categories: updatedCategories };
     try {
       await saveModel(updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

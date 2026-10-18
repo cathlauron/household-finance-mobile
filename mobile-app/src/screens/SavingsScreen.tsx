@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import { useNavigation } from '@react-navigation/native';
@@ -363,6 +364,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     try {
       // Fill in any payday additions that are due now that the setting is on.
       await saveModel(applyAutoSavings(updated) ?? updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import AppSwitch from '../components/AppSwitch';
 import { useNavigation } from '@react-navigation/native';
 import SegmentedControl from '../components/SegmentedControl';
@@ -440,6 +441,7 @@ export default function EventsScreen() {
     };
     try {
       await saveModel(updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -112,6 +113,7 @@ export default function TransferScreen() {
     setSaving(true);
     try {
       await saveModel(next);
+      showLeafTick(to.group === 'credit' ? 'Paid' : 'Moved');
       navigation.goBack();
     } catch {
       Alert.alert('Failed to save', 'Please try again.');

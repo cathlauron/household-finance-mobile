@@ -8,7 +8,7 @@ import GradientFill from './GradientFill';
 import BottomSheet from './BottomSheet';
 import AmountInput from './AmountInput';
 import AccountPicker, { accountProblem } from './AccountPicker';
-import { showSaved } from './SavedToast';
+import { showLeafTick } from './LeafTick';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { useHideAmounts } from '../hideAmounts';
@@ -233,7 +233,7 @@ function PaydayRow({
     hapticLight();
     const entry = { id: makeId('paylog'), date: p.date, amount: p.amount, paymentMethod: pm, createdAt: Date.now() };
     await saveModel({ ...model, income: (model.income || []).map((x) => (x.id === source.id ? { ...x, paymentLog: [entry, ...(x.paymentLog || [])] } : x)) });
-    showSaved('Payday logged');
+    showLeafTick('Added');
   }
   return (
     <View style={[s.row, !first && s.rowTop]}>
@@ -291,7 +291,7 @@ function EstimateSheet({
     setSaving(true);
     try {
       await saveModel({ ...model, manualTransactions: [...(model.manualTransactions || []), t] });
-      showSaved('Added one estimate line');
+      showLeafTick('Added');
       setAmount('');
       onClose();
     } finally {

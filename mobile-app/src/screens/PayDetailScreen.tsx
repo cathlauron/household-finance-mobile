@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -118,7 +119,7 @@ export default function PayDetailScreen() {
   async function save(next: HouseholdModel, savedLabel?: string) {
     try {
       await saveModel(next);
-      if (savedLabel) showSaved(savedLabel);
+      if (savedLabel) showLeafTick(savedLabel);
     } catch {
       Alert.alert('Failed to save', 'Please try again.');
     }
@@ -252,7 +253,7 @@ export default function PayDetailScreen() {
               : markPaid(rec, pm, date, paidAmount < amount ? paidAmount : undefined);
           let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
           if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount);
-          save(updated, paidAmount < amount ? 'Part payment saved' : 'Payment saved');
+          save(updated, paidAmount < amount ? 'Part paid' : 'Paid');
         }}
       />
 
@@ -345,7 +346,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
     };
     let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
     if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, payAmount);
-    save(updated, lent ? 'Money received' : 'Payment saved');
+    save(updated, lent ? 'Received' : 'Paid');
   }
   function undoPayment() {
     const last = payments[0];

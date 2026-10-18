@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
@@ -235,6 +236,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         ...model,
         income: (model.income || []).map((src) => (src.id === logSheet.sourceId ? { ...src, paymentLog: [entry, ...(src.paymentLog || [])] } : src)),
       });
+      showLeafTick('Added');
       setLogSheet(null);
     } catch {
       setLogError('Failed to save. Please try again.');
@@ -411,6 +413,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     setSaving(true);
     try {
       await saveModel(updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

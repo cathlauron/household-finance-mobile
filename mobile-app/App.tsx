@@ -20,6 +20,7 @@ import {
 import { setFontsReady } from './src/components/AppText';
 import LoadingView from './src/components/LoadingView';
 import { SavedToastHost, showSaved } from './src/components/SavedToast';
+import { LeafTickHost } from './src/components/LeafTick';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import { markOnboardingCompleted } from './src/onboarding';
 import GuestSetupScreen from './src/screens/GuestSetupScreen';
@@ -977,6 +978,7 @@ function AppContent() {
         {renderScreen()}
       </ScreenFade>
       <SavedToastHost />
+      <LeafTickHost />
     </View>
   );
 }

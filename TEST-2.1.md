@@ -19,6 +19,7 @@ Do these in order on your phone. For each one, note "OK" or what you saw. If som
 7. Bill page › Edit: the bill's edit sheet opens without flashing, and other pages open normally afterwards. Try the same from a card page (Edit card), a pot (Edit) and a transaction (Edit).
 8. Travel: under the trip there's Budget | To-do. To-do: add "Pack jackets" (optionally with a date using the calendar icon), tick it, remove one. It saves straight away.
 9. Swipe along the bottom tab bar (left or right): it moves between Home, Transactions, To-Pay and Plan from any of them. On To-Pay, swiping the page still changes Bills / Debts / Loans. Tapping the tabs still works.
+10. Leaf tick (round 7, option C): add or save anything (a transaction, bill, debt, loan, income, payday, pot, goal, event, trip, grocery, shared expense, account, category), pay a bill, move money or add to a pot: as the sheet closes, a small card in the middle shows the leaf drawing itself, then "Added" / "Saved" / "Paid" / "Moved", and fades away (about a second). Deleting shows nothing.
 
 ## 0. Get the build
 

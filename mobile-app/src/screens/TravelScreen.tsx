@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import SegmentedControl from '../components/SegmentedControl';
 import { useNavigation } from '@react-navigation/native';
@@ -461,6 +462,7 @@ export default function TravelScreen() {
       manualTransactions: reconciledTransactions,
     };
     await saveModel(updated);
+    showLeafTick(editingId ? 'Saved' : 'Added');
     closeModal();
   }
 

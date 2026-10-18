@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
@@ -458,6 +459,7 @@ export default function TransactionsScreen() {
     setSaving(true);
     try {
       await saveModel(updated);
+      showLeafTick('Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');
@@ -584,6 +586,7 @@ export default function TransactionsScreen() {
     setSaving(true);
     try {
       await saveModel(updated);
+      showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
       setErrorMsg('Failed to save. Please try again.');

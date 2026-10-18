@@ -17,7 +17,7 @@ import { cardFaceColors, CardFaceFill } from '../components/CardFace';
 import AmountInput from '../components/AmountInput';
 import BottomSheet from '../components/BottomSheet';
 import { TextInput } from '../components/AppText';
-import { showSaved } from '../components/SavedToast';
+import { showLeafTick } from '../components/LeafTick';
 import { hapticSelection } from '../haptics';
 import { cardOwed, nextStatementDue, installmentsOnCard, savedBalanceAfterAnswer } from '../creditCards';
 
@@ -134,7 +134,7 @@ export default function CardDetailScreen() {
     if (limitInput < amount) return Alert.alert('Check the limit', `The limit can't be less than ${formatPeso(amount)}.`);
     const saved = typeof account!.amount === 'number' ? account!.amount : 0;
     await updateCard({ creditLimit: limitInput, amount: savedBalanceAfterAnswer(saved, amount, answer, limitInput) });
-    showSaved('Card set up');
+    showLeafTick('Saved');
   }
 
   function openDetails() {
@@ -155,7 +155,7 @@ export default function CardDetailScreen() {
       minPayment: dMin === '' || dMin <= 0 ? undefined : dMin,
     });
     setDetailsOpen(false);
-    showSaved('Saved');
+    showLeafTick('Saved');
   }
 
   return (
