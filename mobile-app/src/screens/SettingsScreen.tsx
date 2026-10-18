@@ -989,6 +989,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     const updated: HouseholdModel = { ...model, categorizationRules: updatedRules };
     try {
       await saveModel(updated);
+      showLeafTick(editingRuleId ? 'Saved' : 'Added');
       closeRuleModal();
     } catch (e) {
       setRuleErrorMsg('Failed to save. Please try again.');

@@ -146,31 +146,27 @@ export default function IntroScreen() {
   useEffect(() => {
     drawT.value = withTiming(1, { duration: DRAW_END * 1000, easing: REasing.linear });
   }, [drawT]);
-  const word = useRef(new Animated.Value(0)).current;
-  const quote = useRef(new Animated.Value(0)).current;
-  const loader = useRef(new Animated.Value(0)).current;
-  const fill = useRef(new Animated.Value(0)).current;
-  const track = useRef(new Animated.Value(1)).current;
+  // Version 2.1 fix: ONE clock (milliseconds since the screen appeared) drives everything
+  // after the strokes. It runs on the native animation thread with no delays: Animated's
+  // `delay` waits on the app's main thread, which is busy unlocking your data, so the
+  // delayed steps used to fire all at once afterwards.
+  const clock = useRef(new Animated.Value(0)).current;
+  const C = 'clamp' as const;
+  const word = clock.interpolate({ inputRange: [0, 1140, 1440, 1740], outputRange: [0, 0, 0.75, 1], extrapolate: C });
+  const quote = clock.interpolate({ inputRange: [0, 1440, 1680, 1920], outputRange: [0, 0, 0.8, 1], extrapolate: C });
+  const loader = clock.interpolate({ inputRange: [0, 1620, 1980], outputRange: [0, 0, 1], extrapolate: C });
+  const fillX = clock.interpolate({ inputRange: [0, 1620, 1980, 2340, 2700], outputRange: [-64, -64, -40, -10, 0], extrapolate: C });
+  const track = clock.interpolate({ inputRange: [0, 2820, 3090], outputRange: [1, 1, 0], extrapolate: C });
   const sway = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let cancelled = false;
     // Start everything straight away (a busy start-up can't hold it back); the movement
     // after the strokes runs on the native animation thread.
-    const timeline = Animated.parallel([
-      Animated.timing(word, { toValue: 1, duration: 600, delay: 1140, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }),
-      Animated.timing(quote, { toValue: 1, duration: 480, delay: 1440, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-      Animated.timing(loader, { toValue: 1, duration: 360, delay: 1620, useNativeDriver: true }),
-      Animated.timing(fill, { toValue: 1, duration: 1080, delay: 1620, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: true }),
-      Animated.timing(track, { toValue: 0, duration: 270, delay: 2820, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-    ]);
+    const timeline = Animated.timing(clock, { toValue: 3100, duration: 3100, easing: Easing.linear, useNativeDriver: true });
     timeline.start();
-    const swayLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(sway, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(sway, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    );
+    // One timing looped natively (a sequence would restart through the busy main thread).
+    const swayLoop = Animated.loop(Animated.timing(sway, { toValue: 2, duration: 3200, easing: Easing.linear, useNativeDriver: true }));
     swayLoop.start();
     // With Reduce Motion on, jump to the end: everything shows at once, nothing moves.
     AccessibilityInfo.isReduceMotionEnabled()
@@ -182,13 +178,13 @@ export default function IntroScreen() {
         swayLoop.stop();
         cancelAnimation(drawT);
         drawT.value = 1;
-        [word, quote, loader, fill].forEach((v) => v.setValue(1));
+        clock.setValue(2800); // everything shown, the bar still there
       });
     return () => {
       cancelled = true;
       swayLoop.stop();
     };
-  }, [drawT, word, quote, loader, fill, track, sway]);
+  }, [drawT, clock, sway]);
 
   // "FINANCE FLOW" starts a little wider and settles in (a gentle scale, so it can run on
   // the animation thread).
@@ -240,7 +236,7 @@ export default function IntroScreen() {
             height: 32,
             transform: [
               { translateY: 16 },
-              { rotate: sway.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '6deg'] }) },
+              { rotate: sway.interpolate({ inputRange: [0, 0.5, 1, 1.5, 2], outputRange: ['-8deg', '-1deg', '6deg', '-1deg', '-8deg'] }) },
               { translateY: -16 },
             ],
           }}
@@ -252,7 +248,7 @@ export default function IntroScreen() {
           </Svg>
         </Animated.View>
         <Animated.View style={[styles.track, { opacity: track }]}>
-          <Animated.View style={[styles.fill, { transform: [{ translateX: fill.interpolate({ inputRange: [0, 1], outputRange: [-64, 0] }) }] }]} />
+          <Animated.View style={[styles.fill, { transform: [{ translateX: fillX }] }]} />
         </Animated.View>
       </Animated.View>
     </View>

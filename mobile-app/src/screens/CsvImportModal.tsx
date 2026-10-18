@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { showLeafTick } from '../components/LeafTick';
 import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { Text } from '../components/AppText';
 import * as DocumentPicker from 'expo-document-picker';
@@ -188,6 +189,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       };
       await saveModel(updated);
       setDoneMsg(`Imported ${newTxns.length} transaction${newTxns.length === 1 ? '' : 's'}.`);
+      showLeafTick('Added');
       setResult(null);
       setFileName(null);
       setColumnAssignments({});
