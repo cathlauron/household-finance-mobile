@@ -31,6 +31,15 @@ export const TIGHT_HEADS_UP_KEY = 'tightHeadsUpV1';
 const TIGHT_DISMISSED_KEY = 'tightDismissedV1';
 const lastLookKey = (username: string) => `lastLookV1:${username}`;
 
+// For testing (usernames starting with "test" only, in Settings › About & Help): pretend
+// Home was last looked at 6 days ago, so Welcome back shows the next time the app opens.
+export async function pretendAwaySixDays(username: string): Promise<void> {
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  await AsyncStorage.setItem(lastLookKey(username), iso);
+}
+
 let headsUpOn = true;
 let headsUpLoaded = false;
 const headsUpListeners = new Set<(v: boolean) => void>();

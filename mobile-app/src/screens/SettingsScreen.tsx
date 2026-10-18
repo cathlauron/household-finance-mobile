@@ -63,7 +63,7 @@ import AmountInput from '../components/AmountInput';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useFabSide, setFabSide } from '../fabSide';
 import GradientFill from '../components/GradientFill';
-import { useTightHeadsUp } from '../components/CalmHome';
+import { useTightHeadsUp, pretendAwaySixDays } from '../components/CalmHome';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -1889,6 +1889,19 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
           <PlainRow title="Help & guides" value="Coming soon" />
         </SettingsGroup>
+        {/^test/i.test(username || '') && (
+          <SettingsGroup plain footer="Test accounts only. Close the app fully and open it again: Welcome back shows on Home.">
+            <PlainRow
+              testID="settings-test-away"
+              title="Test: pretend I was away 6 days"
+              onPress={() => {
+                pretendAwaySixDays(username!)
+                  .then(() => Alert.alert('Done', 'Now close the app fully and open it again.'))
+                  .catch(() => {});
+              }}
+            />
+          </SettingsGroup>
+        )}
         </>
         )}
       </PullToRefreshScrollView>

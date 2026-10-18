@@ -10,12 +10,19 @@ Test on the `v3` branch (PowerShell):
 
 Everything in TEST-2.1.md is in version 3 too. These are the version 3 extras.
 
+## 0. The new start (no account until the first money entry)
+1. Sign-in screen › "Create a new account": three Welcome screens (swipe or Next), Skip top-right.
+2. Four questions: name, what you want help with, the look (Light / Dark / Like my phone, falling leaves, mood colours), whether others use your phone. "See my Home".
+3. Home opens with no account. Settings or Profile shows "Save Finance Flow first".
+4. Add a ₱50 transaction: "Keep your first entry safe" sheet. Continue with email › finish sign-up (use a username starting with "test"): the ₱50 entry is in the new account.
+5. "Not now" instead keeps it on screen only.
+
 ## 1. Hide amounts (H1b, H2b)
 1. Home: an eye sits next to "Left to spend". Tap it: the amount shows ₱ *****, and so do "of ₱…", the other two card pages, the slim bar when you scroll, and every card in the Accounts stack.
 2. Close the app fully and reopen: amounts are still hidden. Tap the eye again: they come back.
 
 ## 2. Welcome back (H3b)
-The card shows after 3 or more days away. To test without waiting, a test account that hasn't been opened on this phone for 3+ days works; otherwise tell me and I'll make a quick test switch.
+The card shows after 3 or more days away. To test now: on a test account, Settings › About & Help › "Test: pretend I was away 6 days", then close the app fully and open it again.
 1. It sits between Left to Spend and Accounts: "Welcome back", good news first (a payday, a bill paid, money saved while you were away), then "N days to catch up. No rush, nothing is lost."
 2. Quick catch-up: lists paydays that were due while away (Came in logs it into the payday's usual account) and bills that came due (tap one to pay it).
 3. Everything: opens Transactions.
