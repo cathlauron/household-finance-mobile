@@ -286,8 +286,10 @@ export async function finishJoinerLink(
   myPersonalKey: CryptoJS.lib.WordArray,
   existingHouseholdId?: string
 ): Promise<FinishJoinerResult> {
+  // Version 2.1: "Keep mine" is gone, so a joiner can never replace the other person's
+  // data. An old 'mine' choice is treated as a merge (nothing from either side is lost).
   const baseChosenModel: HouseholdModel =
-    choice === 'mine' ? myModel : choice === 'theirs' ? hostModel : mergeModels(myModel, hostModel);
+    choice === 'theirs' ? hostModel : mergeModels(myModel, hostModel);
   const chosenModel: HouseholdModel = sanitizeModelIds(baseChosenModel);
   const householdKey = CryptoJS.enc.Hex.parse(secretHex);
 

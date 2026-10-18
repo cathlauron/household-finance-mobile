@@ -1128,7 +1128,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             )}
 
             {!!linkCode && (
-              inviteCard("On their phone: Join with a code. Then come back here to finish.")
+              inviteCard("On their phone: Join with a code. This phone links by itself once they finish.")
             )}
 
             {!!joinResult && model && (
@@ -1143,16 +1143,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                   Choose what the shared vault starts with — this can't be undone, so confirm with the
   other phone first.
                 </Text>
-                {!joinResult.isInvite && (
-                  <TouchableOpacity
-                    style={styles.dataButton}
-                    onPress={() => handleJoinChoice('mine')}
-                    disabled={joinChoiceBusy}
-                  >
-                    <GradientFill match={styles.dataButton} />
-                    <Text style={styles.dataButtonText}>Keep mine</Text>
-                  </TouchableOpacity>
-                )}
+                {/* Version 2.1: no "Keep mine". The person joining can never replace the other
+                    person's data; they start from it or merge theirs in. */}
                 <TouchableOpacity
                   style={styles.dataButton}
                   onPress={() => handleJoinChoice('theirs')}
