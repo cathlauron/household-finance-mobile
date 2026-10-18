@@ -15,6 +15,7 @@
 // shared data.
 // ============================================================
 import { getCurrentFirebaseUser } from './authFirebase';
+import { showSaved } from './components/SavedToast';
 import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
@@ -655,6 +656,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const syncingRef = useRef(false);
+  // Version 2.1 (S6): the first save made offline says where it went, once per stretch
+  // offline (not on every tap).
+  const offlineNoteShownRef = useRef(false);
+  function noteSavedOffline() {
+    if (offlineNoteShownRef.current) return;
+    offlineNoteShownRef.current = true;
+    showSaved("Saved on this phone. It'll sync when you're back online.");
+  }
   async function syncPendingChanges() {
     if (syncingRef.current) return;
     const username = usernameRef.current;
@@ -689,6 +698,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           'Timed out syncing.'
         );
       }
+      // Version 2.1 (S8): a light note when waiting changes reach the cloud.
+      if (pendingRef.current > 0) {
+        const n = pendingRef.current;
+        showSaved(`Back online. ${n} ${n === 1 ? 'change' : 'changes'} synced.`);
+      }
       setPendingChanges(0);
     } catch (e) {
       // Still not reachable; try again on the next change of connection.
@@ -703,6 +717,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function applyNetworkState(state: { isConnected?: boolean; isInternetReachable?: boolean | null }) {
     const online = state.isConnected !== false && state.isInternetReachable !== false;
     const cameBack = online && !onlineRef.current;
+    if (!online) offlineNoteShownRef.current = false;
     onlineRef.current = online;
     setIsOnline(online);
     if (cameBack) syncPendingChanges();
@@ -854,6 +869,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!onlineRef.current || awaitingOnlineRef.current) {
         // Offline (or still signing in after opening from the phone): saved on this phone;
         // it syncs once connected.
+        if (!onlineRef.current) noteSavedOffline();
         rememberWaitingBase();
         setPendingChanges((n) => n + 1);
       } else if (
@@ -921,6 +937,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     if (saltRef.current) {
       noteStorageSize(encrypted);
+      if (!onlineRef.current) noteSavedOffline();
       if (!onlineRef.current || tooBigToSync(encrypted)) {
         // Offline (or too big to send): saved on this phone; it syncs once it can.
         setPendingChanges((n) => n + 1);

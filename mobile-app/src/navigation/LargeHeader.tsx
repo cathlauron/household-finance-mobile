@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
-import OfflineBanner from '../components/OfflineBanner';
+import OfflineBanner, { OfflineCloud } from '../components/OfflineBanner';
 
 // Redesign: iPhone-style large titles, like the Finance Flow mockups. A short top row
 // holds the back button (chevron + where you came from) and any right-side buttons;
@@ -61,7 +61,10 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
           ) : (
             <View />
           ))}
-        <View style={styles.right}>{right}</View>
+        <View style={styles.right}>
+          <OfflineCloud />
+          {right}
+        </View>
       </View>
       {/* An empty title (detail pages that show their own big heading) hides the line. */}
       {title !== '' && (

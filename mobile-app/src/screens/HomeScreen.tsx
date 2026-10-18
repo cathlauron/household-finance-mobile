@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import HomeHero from '../components/HomeHero';
 import DashboardScreen from './DashboardScreen';
-import OfflineBanner from '../components/OfflineBanner';
+import OfflineBanner, { OfflineCloud } from '../components/OfflineBanner';
 import SkyGlow from '../components/SkyGlow';
 import { useSkyPhase } from '../sky';
 import { hapticSelection } from '../haptics';
@@ -167,6 +167,7 @@ export default function HomeScreen({ username }: Props) {
         </TouchableOpacity>
 
         <View style={hs.headerRight}>
+          <OfflineCloud />
           {/* Quick light/dark switch (sets Light or Dark; Settings → Appearance can go back to Auto). */}
           <TouchableOpacity
             testID="home-theme-toggle"

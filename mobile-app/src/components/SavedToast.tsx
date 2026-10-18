@@ -33,7 +33,7 @@ export function SavedToastHost() {
         Animated.timing(opacity, { toValue: 0, duration: 220, useNativeDriver: true }).start(({ finished }) => {
           if (finished) setLabel(null);
         });
-      }, 1400);
+      }, Math.min(4000, 1400 + Math.max(0, text.length - 12) * 45)); // longer messages stay longer
     };
     return () => {
       listener = null;
@@ -54,7 +54,8 @@ export function SavedToastHost() {
           gap: 8,
           paddingHorizontal: 16,
           paddingVertical: 10,
-          borderRadius: 999,
+          borderRadius: 22,
+          maxWidth: '88%',
           backgroundColor: colors.navy3,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.navy4,
@@ -66,7 +67,7 @@ export function SavedToastHost() {
         }}
       >
         <Ionicons name="checkmark-circle" size={20} color={colors.positive} />
-        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{label}</Text>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink, flexShrink: 1 }}>{label}</Text>
       </Animated.View>
     </View>
   );
