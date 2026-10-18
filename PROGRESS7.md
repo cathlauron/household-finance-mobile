@@ -400,6 +400,25 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-18, latest): Cath chose OPTION B for storage: split the household into
+  parts (Firestore 1 MiB per document; the free plan has 1 GiB total, 50k reads and 20k
+  writes a day). Step 1 DONE on `v2.1` (018efbd): src/householdParts.ts (splitModel /
+  joinParts / partTexts / changedParts; parts = core, txn-YYYY-MM, txn-undated,
+  rcpt-<txn id>, avatars-<username>) + tests/householdParts.test.mjs (8 checks, `npm test`,
+  Node 22 strip-types; no new packages). Not used by the app yet. Plan for the next steps
+  (each tested before the next):
+  (2) Firestore: households/{id}/parts/{partId} = {data (encrypted), updatedAt, updatedBy};
+      rules draft for Cath to publish (members of the household may read/write/delete its
+      parts; household doc may also gain `layout` and `memberVersions`); also delete parts
+      when a household is dissolved.
+  (3) Saving/loading in parts with a SAFE migration: the first 2.1 phone copies the
+      household into parts, reads them back and checks they match before switching
+      (households/{id}.layout = 1); the old single `data` field stays and keeps being
+      written while it fits, until every member's phone reports 2.1+ (memberVersions);
+      local copy on the phone also stored in parts (AsyncStorage size limits).
+  (4) Test first on a THROWAWAY household (two test accounts) before Cath's real one.
+  (5) Then merge-before-save inside each part (data risk 3) and the log-out warning.
+  Still waiting: Cath's device test of batches 1-2 and her "Space used" number.
 - NEWEST (2026-10-18, later): Cath said "next" without a device test of batch 1, so batch 1
   (receipt photos) is still NOT device-tested. Batch 2 on `v2.1`, NOT device-tested: data
   risk 2 part 1: DataContext measures the encrypted size on every save/load/incoming
