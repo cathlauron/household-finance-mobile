@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { holdTabSwipe } from '../navigation/swipeTabs';
 import { View, TouchableOpacity, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -307,7 +308,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
           <Text style={styles.emptySub}>Cash, debit or credit. Left to Spend starts from these.</Text>
         </TouchableOpacity>
       ) : (
-        <View style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0) }}>
+        <View {...holdTabSwipe} style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0) }}>
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;

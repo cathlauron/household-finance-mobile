@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { holdTabSwipe } from '../navigation/swipeTabs';
 import GradientFill from './GradientFill';
 import { View, ScrollView, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -103,6 +104,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
 
   return (
     <View
+      {...holdTabSwipe}
       style={[styles.card, { backgroundColor: cardColor }, mood === 'good' && !isDark && styles.shadow]}
       onLayout={onLayout}
     >

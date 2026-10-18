@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { SwipeTabs } from '../navigation/swipeTabs';
+import { useNavigation } from '@react-navigation/native';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
@@ -87,7 +89,16 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
     setToPaySub(activeSubTab);
   }, [activeSubTab]);
   const styles = makeStyles(colors);
+  const navigation = useNavigation<any>();
+  // Version 2.1: swipe between Bills, Debts and Loans; past either end it carries on to
+  // the next tab (Transactions / Plan).
+  function swipeSub(d: 1 | -1) {
+    const i = TOPAY_TABS.findIndex((t) => t.id === activeSubTab) + d;
+    if (i >= 0 && i < TOPAY_TABS.length) setActiveSubTab(TOPAY_TABS[i].id);
+    else navigation.navigate(d > 0 ? 'Plan' : 'Transactions');
+  }
   return (
+    <SwipeTabs inner onSwipe={swipeSub}>
     <SafeAreaView style={styles.container}>
       <View style={styles.switcherRow}>
         <SegmentedControl<SubTab>
@@ -118,6 +129,7 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
         )}
       </View>
     </SafeAreaView>
+    </SwipeTabs>
   );
 }
 function makeStyles(colors: any) {

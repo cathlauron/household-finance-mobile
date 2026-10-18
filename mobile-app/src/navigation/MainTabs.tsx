@@ -1,4 +1,5 @@
 import React from 'react';
+import { SwipeTabs } from './swipeTabs';
 import { View, Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
@@ -199,7 +200,17 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
           navigation={navigation}
           showHeader={options.headerShown !== false}
         >
-          {children}
+          {/* Version 2.1: swipe the page sideways to the next / previous tab. */}
+          <SwipeTabs
+            onSwipe={(d) => {
+              const next = TAB_ORDER[TAB_ORDER.indexOf(route.name) + d];
+              if (next) navigation.navigate(next);
+            }}
+          >
+            <View style={{ flex: 1 }} collapsable={false}>
+              {children}
+            </View>
+          </SwipeTabs>
         </TabPage>
       )}
       screenOptions={screenOptions}

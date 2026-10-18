@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { Animated, StyleSheet, TouchableOpacity } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { holdTabSwipe } from '../navigation/swipeTabs';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -78,6 +79,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, 
   }
 
   return (
+    <View {...holdTabSwipe}>
     <Swipeable
       ref={swipeableRef}
       renderRightActions={renderRightActions}
@@ -88,6 +90,7 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, 
     >
       {children}
     </Swipeable>
+    </View>
   );
 }
 
