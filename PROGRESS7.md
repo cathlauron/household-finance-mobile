@@ -400,6 +400,22 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-18, night): Cath device-tested batches 1-2 (receipt shrink, storage meter)
+  "as described", and fixed the account-creation "permission-denied" by re-publishing
+  mobile-app/firestore.rules in the Firebase console (her console rules had been reset when
+  she deleted all data to start fresh). Create account now shows which step failed + the
+  Firebase code (1e1f0a8). New requests:
+  (a) "Take me to the missing field" on Add (2.1): groundwork pushed (519df31:
+      components/Guided.tsx + useFieldErrors; KeyboardAwareScrollView ScrollIntoViewContext),
+      no form uses it yet. Next: wire New transaction + New bill, then the other forms.
+  (b) New start of the app (version 3, her idea): set up first (welcome x3, name, help
+      with, look, who uses the phone), then sign in at the FIRST money entry; email now,
+      Google/Apple/Facebook later; "Look around with sample data"; accounts right after
+      sign-in. Added to V3-PLAN.
+  (c) Reading receipts (version 3): on-phone text recognition fills total/shop/date.
+  MOCKUP for (a) and (b), waiting for Cath's approval before any code:
+  Design canvas "Finance Flow — New start and form help"
+  https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX
 - NEWEST (2026-10-18, latest): Cath chose OPTION B for storage: split the household into
   parts (Firestore 1 MiB per document; the free plan has 1 GiB total, 50k reads and 20k
   writes a day). Step 1 DONE on `v2.1` (018efbd): src/householdParts.ts (splitModel /
