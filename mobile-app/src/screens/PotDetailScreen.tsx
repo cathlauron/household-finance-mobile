@@ -111,7 +111,8 @@ export default function PotDetailScreen() {
 
   function open(which: Sheet) {
     setAmount(which === 'auto' ? (autoAmt || '') : '');
-    setPm(goal?.keptIn);
+    // A pot can't be filled from (or kept in) a credit card, so an old credit choice isn't reused.
+    setPm(goal?.keptIn?.type === 'credit' && which !== 'out' ? undefined : goal?.keptIn);
     setSheet(which);
   }
 
@@ -135,7 +136,11 @@ export default function PotDetailScreen() {
         return;
       }
       // Redesign: the account is required; adding to a pot can't overdraw cash or debit.
-      const problem = accountProblem(model, sheet === 'add' ? 'out' : 'in', a, pm);
+      // Version 2.1: and it can't come from a credit card (a card can't send money).
+      const problem =
+        sheet === 'add' && pm?.type === 'credit'
+          ? "A credit card can't send money. Pick a cash or bank account."
+          : accountProblem(model, sheet === 'add' ? 'out' : 'in', a, pm);
       if (problem) {
         Alert.alert(sheet === 'add' ? 'Choose where it comes from' : 'Choose where it goes', problem);
         return;
@@ -313,6 +318,7 @@ export default function PotDetailScreen() {
                 label={sheet === 'add' ? 'Take it from' : sheet === 'out' ? 'Put it into' : 'Where this money is kept'}
                 value={pm}
                 onChange={setPm}
+                noCredit={sheet !== 'out'}
               />
             </>
           )}

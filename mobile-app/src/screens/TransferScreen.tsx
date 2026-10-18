@@ -20,6 +20,10 @@ import { cardColor, cardChipColors } from '../components/CardFace';
 // own accounts (e.g. BPI Savings to Cash at an ATM). It isn't spending, so Left to
 // Spend doesn't change; only an ATM or transfer fee counts, and that's saved as a
 // small "Fees" transaction paid from the first account.
+//
+// Version 2.1 (Cath): a credit card can't send money to another account (its limit only
+// pays for things), but it can RECEIVE money: that's paying the card, and it frees up the
+// card's available limit. So credit cards are only offered under "To".
 
 type Group = 'cash' | 'debit' | 'credit';
 type Acct = { key: string; group: Group; id: string; name: string; amount: number; color: string };
@@ -43,9 +47,13 @@ export default function TransferScreen() {
   const styles = makeStyles(colors);
   const accounts = useMemo(() => (model ? accountsOf(model) : []), [model]);
 
-  const startKey = route.params?.fromGroup ? `${route.params.fromGroup}:${route.params.fromId}` : accounts[0]?.key;
+  const senders = accounts.filter((a) => a.group !== 'credit');
+  // Opened from a credit card's page ("Pay card"): the card is where the money goes.
+  const payCardKey = route.params?.toGroup === 'credit' ? `credit:${route.params.toId}` : undefined;
+  const asked = route.params?.fromGroup && route.params.fromGroup !== 'credit' ? `${route.params.fromGroup}:${route.params.fromId}` : undefined;
+  const startKey = asked ?? senders[0]?.key;
   const [fromKey, setFromKey] = useState<string | undefined>(startKey);
-  const [toKey, setToKey] = useState<string | undefined>(accounts.find((a) => a.key !== startKey)?.key);
+  const [toKey, setToKey] = useState<string | undefined>(payCardKey ?? accounts.find((a) => a.key !== startKey)?.key);
   const [amount, setAmount] = useState<number | ''>('');
   const [fee, setFee] = useState<number | ''>('');
   const [note, setNote] = useState('');
@@ -58,6 +66,7 @@ export default function TransferScreen() {
   async function move() {
     if (!model || !from || !to) return;
     if (from.key === to.key) return Alert.alert('Pick two different accounts');
+    if (from.group === 'credit') return Alert.alert("A credit card can't send money", 'Pick a cash or bank account to move from.');
     if (amount === '' || amount <= 0) return Alert.alert('Enter how much to move');
     const feeAmt = fee === '' ? 0 : fee;
     const bump = (m: HouseholdModel, a: Acct, delta: number): HouseholdModel => ({
@@ -102,11 +111,11 @@ export default function TransferScreen() {
     }
   }
 
-  const Picker = ({ label, value, onPick, exclude }: { label: string; value?: string; onPick: (k: string) => void; exclude?: string }) => (
+  const Picker = ({ label, value, onPick, exclude, list }: { label: string; value?: string; onPick: (k: string) => void; exclude?: string; list: Acct[] }) => (
     <View style={styles.pickWrap}>
       <Text style={styles.pickLabel}>{label}</Text>
       <View style={styles.pickChips}>
-        {accounts.filter((a) => a.key !== exclude).map((a) => (
+        {list.filter((a) => a.key !== exclude).map((a) => (
           <TouchableOpacity key={a.key} style={[styles.pickChip, cardChipColors(a.color, isDark, value === a.key)]} onPress={() => onPick(a.key)} accessibilityRole="button" accessibilityState={{ selected: value === a.key }}>
             {/* Each chip wears its card's own colour; the chosen one is deeper with a solid border. */}
             <View style={styles.pickChipHead}>
@@ -126,22 +135,26 @@ export default function TransferScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button">
           <Text style={styles.barBtn}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.barTitle}>Move money</Text>
+        <Text style={styles.barTitle}>{to?.group === 'credit' ? 'Pay card' : 'Move money'}</Text>
         <TouchableOpacity onPress={move} disabled={saving} accessibilityRole="button" testID="transfer-move">
           {saving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.barBtn, { fontWeight: '700' }]}>Move</Text>}
         </TouchableOpacity>
       </View>
       <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {accounts.length < 2 ? (
-          <Text style={styles.footer}>Add at least two accounts (in Home's Wallet) to move money between them.</Text>
+        {accounts.length < 2 || senders.length === 0 ? (
+          <Text style={styles.footer}>
+            {accounts.length < 2
+              ? "Add at least two accounts (in Home's Wallet) to move money between them."
+              : 'Add a cash or bank account first. A credit card can receive money, but it can\'t send it.'}
+          </Text>
         ) : (
           <>
             <AmountInput style={styles.bigWrap} inputStyle={styles.bigInput} value={amount} onChangeAmount={setAmount} />
             <View style={styles.group}>
               <GradientFill match={styles.group} />
-              <Picker label="From" value={fromKey} onPick={(k) => { setFromKey(k); if (k === toKey) setToKey(accounts.find((a) => a.key !== k)?.key); }} />
+              <Picker label="From" list={senders} value={fromKey} onPick={(k) => { setFromKey(k); if (k === toKey) setToKey(accounts.find((a) => a.key !== k)?.key); }} />
               <View style={styles.line} />
-              <Picker label="To" value={toKey} onPick={setToKey} exclude={fromKey} />
+              <Picker label="To" list={accounts} value={toKey} onPick={setToKey} exclude={fromKey} />
             </View>
             <View style={[styles.group, { marginTop: 20 }]}>
               <GradientFill match={[styles.group, { marginTop: 20 }]} />
@@ -158,8 +171,11 @@ export default function TransferScreen() {
               <DateField label="Date" value={date} onChange={setDate} />
             </View>
             <Text style={styles.footer}>
-              Moving money between your own accounts is not spending, so it does not change Left to Spend. Only the fee counts.
+              {to?.group === 'credit'
+                ? `This pays ${to.name}: it frees up the card's available limit. It isn't new spending, so Left to Spend doesn't change. Only the fee counts.`
+                : 'Moving money between your own accounts is not spending, so it does not change Left to Spend. Only the fee counts.'}
             </Text>
+            <Text style={styles.footer}>Credit cards are only under "To": a card's limit pays for things, but it can't send money to another account.</Text>
           </>
         )}
       </KeyboardAwareScrollView>
