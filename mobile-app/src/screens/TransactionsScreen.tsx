@@ -3,6 +3,7 @@ import AppSwitch from '../components/AppSwitch';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
+import { makeReceiptDataUri } from '../avatars';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
@@ -389,17 +390,16 @@ export default function TransactionsScreen() {
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
-        base64: true,
+        quality: 1,
       });
       if (result.canceled || !result.assets || !result.assets[0]) return;
       const asset = result.assets[0];
-      if (!asset.base64) {
-        Alert.alert("Couldn't read that photo", 'Try picking a different one.');
-        return;
+      // Shrunk before it's kept: a full-size photo could stop the household from syncing.
+      try {
+        setReceiptPhoto(await makeReceiptDataUri(asset.uri, asset.width));
+      } catch (e: any) {
+        Alert.alert("Couldn't add that photo", e?.message || 'Try picking a different one.');
       }
-      const mime = asset.mimeType || 'image/jpeg';
-      setReceiptPhoto(`data:${mime};base64,${asset.base64}`);
     } finally {
       setAutoLockSuppressed(false);
     }

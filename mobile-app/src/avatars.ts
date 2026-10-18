@@ -58,3 +58,29 @@ export async function makeAvatarDataUri(sourceUri: string): Promise<string> {
   }
   return `data:image/jpeg;base64,${result.base64}`;
 }
+
+// ---- Receipt photos (version 2.1, data risk 1) ----
+// Receipts are saved inside the shared household data, which Firebase caps at 1 MB in
+// total. A phone photo straight from the gallery can be bigger than that on its own,
+// so every receipt is shrunk first: up to 1000 px wide (still readable), then smaller
+// and softer if it's still too big. About 150 KB of image data is the most we keep.
+export const RECEIPT_MAX_BASE64_CHARS = 200000;
+const RECEIPT_STEPS: { width: number; compress: number }[] = [
+  { width: 1000, compress: 0.5 },
+  { width: 800, compress: 0.4 },
+  { width: 640, compress: 0.35 },
+];
+
+export async function makeReceiptDataUri(sourceUri: string, sourceWidth?: number): Promise<string> {
+  for (const step of RECEIPT_STEPS) {
+    const context = ImageManipulator.manipulate(sourceUri);
+    // Never enlarge a photo that is already narrower than the step.
+    const width = sourceWidth && sourceWidth < step.width ? sourceWidth : step.width;
+    const imageRef = await context.resize({ width }).renderAsync();
+    const result = await imageRef.saveAsync({ format: SaveFormat.JPEG, compress: step.compress, base64: true });
+    if (!result.base64) throw new Error("Couldn't read that photo. Try a different one.");
+    if (__DEV__) console.log('[receipt] width', width, 'base64 chars:', result.base64.length);
+    if (result.base64.length <= RECEIPT_MAX_BASE64_CHARS) return `data:image/jpeg;base64,${result.base64}`;
+  }
+  throw new Error('That photo is too large to save, even after shrinking it. Try a closer, simpler shot of the receipt.');
+}
