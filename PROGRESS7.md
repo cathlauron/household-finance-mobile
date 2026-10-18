@@ -97,6 +97,18 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
 - 2026-10-16: `redesign` merged into `main` (9ae00f9, no conflicts); `v3` branch created.
   PROGRESS6.md closed; this PROGRESS7.md started.
 
+- 2026-10-18 (v2.1, device-tested "as described"): missing-field help on all forms
+  (Option B look: scroll, red tint + red label, message, cursor; amount first on bills,
+  debts and loans, which now need an amount for new items); quick fixes (plain username,
+  no member notes, Quick unlock footer, right-side word buttons 1 pt lower); storage
+  parts steps 2-4 on test accounts (rules published, parts copied/checked/synced on
+  testa/testb); the inviter now links as soon as the other person joins (on app open,
+  account switch and app resume); inviter can read their own code after 15 min.
+- 2026-10-18 (v2.1, built, NOT device-tested; Cath chose to test all at the end of 2.1):
+  merge before saving (merge3.ts + transaction save + waiting changes kept across
+  restarts); Log out warns about unsent changes; "Keep mine" removed for joiners; Paper
+  slide pages (@react-navigation/stack) + slide-by-direction tabs; 19 money checks.
+
 =====================================================================
 🔧 In progress
 =====================================================================
@@ -210,6 +222,16 @@ Testing
   then a normal "preview" build updates the original app and the side-by-side app can be
   uninstalled.
 
+- 2026-10-18: Option B (Finance Flow look) APPROVED for the new start (B1-B9, three
+  welcome screens B1/B1b/B1c with illustrations) and the missing-field help (B10-B11).
+- 2026-10-18: Bills, debts and loans need an amount (checked first); editing may keep 0.
+- 2026-10-18: Storage parts are switched on ONLY for usernames starting with "test" until
+  the combined 2.1 test passes; then remove the gate (householdPartsSync.partsEnabledFor).
+- 2026-10-18: Cath: "do all the other testing once 2.1 is complete"; build on without
+  waiting for device tests until then. Cath wants to reach version 3 this session.
+- 2026-10-18: Transitions: Paper slide WITHOUT drop shadow (pages stay see-through so the
+  falling leaves show); Calendar is now a rounded sheet from the bottom (JS stack).
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -315,6 +337,13 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
   Store / App Store listing).
 - App Check (Firebase) not set up yet.
 
+- 2026-10-18: The merge-before-save, transitions, Keep-mine and log-out changes are not
+  device-tested yet (combined 2.1 test list pending). After pulling, `npm install` is
+  needed once (new package @react-navigation/stack).
+- 2026-10-18: Parked: the 20-minute inviter test (teste/testf) for the 15-minute rule fix.
+- 2026-10-18: Live receipt reading, Google/Apple sign-in and widgets need a development
+  build (not Expo Go) plus accounts only Cath can create.
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -369,6 +398,13 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 "Softer rays & matching forms" https://claude.ai/artifact/ASpENC4rLibfoA3QJd1Tvy,
 "Every screen" https://claude.ai/artifact/SLMt6JRrmWzxccwqRvSBrm.
 
+- 2026-10-18: New files: src/householdCloudParts.ts, householdPartsPlan.ts,
+  householdPartsSync.ts, merge3.ts, components/Guided.tsx; tests/householdPartsPlan,
+  merge3, money tests + tests/ts-resolve.mjs (npm test, 42 checks). Design canvas
+  "Finance Flow — New start and form help" https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX
+  now also has the row "Version 2.1 extras" S1-S9 (part-pay, back-dating, payday time,
+  offline, Transactions icons): WAITING for Cath's approval.
+
 =====================================================================
 📅 Session log
 =====================================================================
@@ -397,9 +433,22 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   questions for Cath. While reading the code Claude found the three data risks now listed
   in Known issues. No app code changed.
 
+- 2026-10-18 (session 2): long session on v2.1 (see Done, Decisions, Next step for the
+  detail). Cath device-tested the form help, quick fixes and storage parts on test
+  accounts; found the inviter-never-finishes linking trap and a rules bug
+  (memberVersions without .get) which were fixed; then asked to batch all remaining
+  testing at the end of 2.1.
+
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-18, day): v2.1 built through: missing-field help, quick fixes, storage
+  parts (test accounts), auto-finish linking, merge before saving, log-out warning, no
+  Keep mine, transitions, money checks. WAITING on Cath: (1) approve mockups S1-S9;
+  (2) "yes, keep the key on the phone" for Open from the phone first (caches the
+  password-wrapped household key locally). Then: build S1-S9, open-from-phone-first,
+  ONE combined 2.1 test list, remove the parts test gate, Finance Flow 2 build, merge
+  v2.1 -> main as 2.1.0, then version 3 in plan order (onboarding Option B approved).
 - NEWEST (2026-10-18, night): Cath device-tested batches 1-2 (receipt shrink, storage meter)
   "as described", and fixed the account-creation "permission-denied" by re-publishing
   mobile-app/firestore.rules in the Firebase console (her console rules had been reset when
