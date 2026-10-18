@@ -1,4 +1,6 @@
 import { hapticSelection } from '../haptics';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } from '../paydayTime';
 import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
@@ -19,7 +21,7 @@ import { useData } from '../DataContext';
 import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
-import { requestNotificationPermission, sendTestNotification, sendTestPaydayNudge, sendTestMonthEnd, countScheduledNotifications } from '../pushNotifications';
+import { rescheduleBillNotifications, requestNotificationPermission, sendTestNotification, sendTestPaydayNudge, sendTestMonthEnd, countScheduledNotifications } from '../pushNotifications';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -128,6 +130,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [page, setPage] = useState<string | null>(fixedPage);
   const openPage = (key: string) => navigation.push('SettingsPage', { subPage: key });
   const [csvOpen, setCsvOpen] = useState(false);
+  // Version 2.1 (S5): payday nudge time, per phone.
+  const paydayTime = usePaydayNudgeTime();
+  const [paydayTimeOpen, setPaydayTimeOpen] = useState(false);
+  const [paydayPickerOpen, setPaydayPickerOpen] = useState(false);
+  function pickPaydayTime(t: ClockTime) {
+    setPaydayNudgeTime(t).then(() => {
+      if (model) rescheduleBillNotifications(model).catch(() => {});
+    });
+  }
   const scrollRef = useRef<ScrollView>(null);
 
   // Back (header, swipe or Android) closes an open page first instead of leaving Settings.
@@ -1556,12 +1567,46 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
-        <SettingsGroup label="Paydays" plain footer="At 6:00 PM on each expected payday, asks whether it came in, so you can log it. Skipped once it's logged.">
+        <SettingsGroup label="Paydays" plain footer={`At ${formatClock(paydayTime)} on each expected payday, asks whether it came in, so you can log it. Skipped once it's logged. The time is only for this phone; your partner picks their own.`}>
           <PlainRow
             title="Payday nudge"
             right={settingSwitch(model.settings.paydayNudgeEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, paydayNudgeEnabled: on } }), 'settings-payday-nudge')}
           />
+          {model.settings.paydayNudgeEnabled !== false && (
+            <PlainRow title="Remind me at" value={formatClock(paydayTime)} onPress={() => setPaydayTimeOpen((o) => !o)} testID="settings-payday-time" />
+          )}
+          {model.settings.paydayNudgeEnabled !== false && paydayTimeOpen && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4 }}>
+              {[8, 12, 18, 21].map((h) => {
+                const on = paydayTime.hour === h && paydayTime.minute === 0;
+                return (
+                  <TouchableOpacity
+                    key={h}
+                    onPress={() => pickPaydayTime({ hour: h, minute: 0 })}
+                    style={{ paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, backgroundColor: on ? colors.buttonFill : colors.accentTint }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: on ? colors.onButton : colors.gold }}>{formatClock({ hour: h, minute: 0 })}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity onPress={() => setPaydayPickerOpen(true)} style={{ paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.accentTint }} accessibilityRole="button">
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold }}>Pick a time</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </SettingsGroup>
+        {paydayPickerOpen && (
+          <DateTimePicker
+            mode="time"
+            value={new Date(2026, 0, 1, paydayTime.hour, paydayTime.minute)}
+            onChange={(event: any, d?: Date) => {
+              setPaydayPickerOpen(false);
+              if (event?.type !== 'dismissed' && d) pickPaydayTime({ hour: d.getHours(), minute: d.getMinutes() });
+            }}
+          />
+        )}
 
         <SettingsGroup label="Budget" plain footer="Envelope alerts: when an envelope reaches 80% and when it's used up (once each a month). Month-end summary: on the 1st, a look back at last month.">
           <PlainRow

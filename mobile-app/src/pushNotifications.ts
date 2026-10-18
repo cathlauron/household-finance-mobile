@@ -17,6 +17,7 @@
 // ============================================================
 
 import * as Notifications from 'expo-notifications';
+import { getPaydayNudgeTime } from './paydayTime';
 import { currentCycle } from './billPayments';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -371,9 +372,11 @@ async function rescheduleNow(model: HouseholdModel): Promise<void> {
   // Payday nudge
   // ============================================================
   // Income only counts once a payday is logged, so on each expected payday (6:00 PM) ask
-  // whether it came in. Skipped when that payday is already logged (early pay counts).
+  // whether it came in (at the time picked for this phone). Skipped when that payday is already logged (early pay counts).
   // Tapping it opens that person's Income page, where tapping the payday logs it.
   if (billRemindersOn && model.settings.paydayNudgeEnabled !== false) {
+    // Version 2.1: the time is picked per phone in Settings (6:00 PM unless changed).
+    const nudgeAt = await getPaydayNudgeTime();
     const pad = (n: number) => String(n).padStart(2, '0');
     const accountName = (pm?: { type: string; accountId?: string }) => {
       if (!pm) return '';
@@ -392,7 +395,7 @@ async function rescheduleNow(model: HouseholdModel): Promise<void> {
         for (const day of incomeOccurrencesInMonth(source, y, mi)) {
           if (scheduled >= 2) break;
           const iso = `${y}-${pad(mi + 1)}-${pad(day)}`;
-          const when = new Date(y, mi, day, 18, 0, 0, 0);
+          const when = new Date(y, mi, day, nudgeAt.hour, nudgeAt.minute, 0, 0);
           if (when.getTime() <= now.getTime()) continue;
           if (isPaydayReceived(source, iso)) continue;
           const into = accountName(source.depositTo);
