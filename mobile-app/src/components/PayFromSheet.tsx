@@ -7,6 +7,9 @@ import type { HouseholdModel, PaymentMethod } from '../types';
 import BottomSheet from './BottomSheet';
 import AccountPicker, { accountProblem } from './AccountPicker';
 import AmountInput from './AmountInput';
+import DateField from './DateField';
+import SegmentedControl from './SegmentedControl';
+import { todayISO } from '../dateUtils';
 
 // Redesign: asks which account a payment comes from (or goes into) before it's logged,
 // e.g. "Mark as paid" on a bill. Same rules as a new transaction: required, and cash or
@@ -26,16 +29,40 @@ type Props = {
   editableAmount?: boolean;
   fullAmount?: number;
   minimumAmount?: number;
-  onConfirm: (pm: PaymentMethod, amount: number, lateFee: number) => void;
+  // Version 2.1 (canvas S1-S2): bills can be paid in part; the rest is added to the next
+  // bill (or stays owed for a one-time bill).
+  partOption?: { name: string; repeats: boolean };
+  // "Paying the Oct 15 bill" under the title.
+  dueText?: string;
+  onConfirm: (pm: PaymentMethod, amount: number, lateFee: number, date: string, takeOffBalance: boolean) => void;
 };
 
-export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, onConfirm }: Props) {
+function shortISO(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function yesterdayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onConfirm }: Props) {
   const { colors } = useTheme();
   const [pm, setPm] = useState<PaymentMethod | undefined>(initial);
   const [error, setError] = useState('');
   const [payAmount, setPayAmount] = useState<number | ''>(amount);
   const [lateFee, setLateFee] = useState<number | ''>('');
-  const effective = editableAmount ? (typeof payAmount === 'number' ? payAmount : 0) : amount;
+  const [part, setPart] = useState(false);
+  const [date, setDate] = useState(todayISO());
+  const [dateMode, setDateMode] = useState<'today' | 'yesterday' | 'pick'>('today');
+  const [takeOff, setTakeOff] = useState(false);
+  const amountEditable = editableAmount || (partOption && part);
+  const effective = amountEditable ? (typeof payAmount === 'number' ? payAmount : 0) : amount;
+  // Version 2.1 (canvas S4): a payment dated before balances were last updated is already in
+  // them (the balance won't change), unless the person says it isn't.
+  const asOf = model.balanceAccounts.asOfDate;
+  const beforeBalances = direction === 'out' && !!asOf && date < asOf;
   const full = typeof fullAmount === 'number' ? fullAmount : amount;
   const minimum = typeof minimumAmount === 'number' ? minimumAmount : full;
   const short = editableAmount && effective < minimum ? Math.round((minimum - effective) * 100) / 100 : 0;
@@ -51,11 +78,23 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     setError('');
     setPayAmount(amount);
     setLateFee('');
+    setPart(false);
+    setDate(todayISO());
+    setDateMode('today');
+    setTakeOff(false);
     setPm(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? initial : undefined);
   }, [visible]);
 
   function confirm() {
-    if (editableAmount && effective <= 0) {
+    if (date > todayISO()) {
+      setError("A payment can't be dated in the future.");
+      return;
+    }
+    if (partOption && part && effective >= amount) {
+      setError(`For the whole ${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}, choose Pay all.`);
+      return;
+    }
+    if (amountEditable && effective <= 0) {
       setError('Enter how much you paid.');
       return;
     }
@@ -66,7 +105,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     }
     if (confirmedRef.current) return;
     confirmedRef.current = true;
-    onConfirm(pm as PaymentMethod, effective, editableAmount && typeof lateFee === 'number' ? lateFee : 0);
+    onConfirm(pm as PaymentMethod, effective, editableAmount && typeof lateFee === 'number' ? lateFee : 0, date, beforeBalances && takeOff);
   }
 
   return (
@@ -86,7 +125,34 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
       }
     >
       <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-        {editableAmount ? (
+        {!!dueText && <Text style={[styles.dueText, { color: colors.inkDim }]}>{dueText}</Text>}
+        {!!partOption && (
+          <SegmentedControl<'all' | 'part'>
+            accessibilityLabel="How much"
+            options={[
+              { id: 'all', label: 'Pay all' },
+              { id: 'part', label: 'Pay part of it' },
+            ]}
+            value={part ? 'part' : 'all'}
+            onChange={(v) => {
+              setPart(v === 'part');
+              setPayAmount(v === 'part' ? '' : amount);
+              setError('');
+            }}
+          />
+        )}
+        {partOption && part ? (
+          <>
+            <Text style={[styles.fieldLabel, { color: colors.inkDim, marginTop: 12 }]}>Amount paid now</Text>
+            <AmountInput autoFocus value={payAmount} onChangeAmount={(v) => { setPayAmount(v); setError(''); }} inputStyle={styles.editAmount} />
+            {effective > 0 && effective < amount && (
+              <Text style={[styles.note, { color: colors.orange }]}>
+                {formatPeso(Math.round((amount - effective) * 100) / 100)}{' '}
+                {partOption.repeats ? `will be added to your next ${partOption.name} bill.` : 'stays owed on the same due date.'}
+              </Text>
+            )}
+          </>
+        ) : editableAmount ? (
           <>
             {/* Starts at the minimum due; change it for a partial (or bigger) payment. */}
             <Text style={[styles.fieldLabel, { color: colors.inkDim }]}>Amount paid</Text>
@@ -115,6 +181,51 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             {formatPeso(amount)}
           </Text>
         )}
+        {/* Version 2.1 (canvas S1): Paid on. Today, yesterday or any past date. */}
+        <Text style={[styles.fieldLabel, { color: colors.inkDim, marginTop: 4 }]}>{direction === 'in' ? 'Received on' : 'Paid on'}</Text>
+        <View style={styles.quickRow}>
+          {(
+            [
+              ['today', 'Today'],
+              ['yesterday', 'Yesterday'],
+              ['pick', dateMode === 'pick' && date !== todayISO() && date !== yesterdayISO() ? shortISO(date) : 'Pick a date'],
+            ] as const
+          ).map(([id, label]) => {
+            const on = dateMode === id;
+            return (
+              <TouchableOpacity
+                key={id}
+                onPress={() => {
+                  setDateMode(id);
+                  setError('');
+                  if (id === 'today') setDate(todayISO());
+                  if (id === 'yesterday') setDate(yesterdayISO());
+                }}
+                style={[styles.quick, { backgroundColor: on ? colors.buttonFill : colors.navy1 }]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+              >
+                <Text style={[styles.quickText, { color: on ? colors.onButton : colors.ink }]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {dateMode === 'pick' && (
+          <DateField value={date} onChange={(d) => { if (d) setDate(d); setError(''); }} maximumDate={new Date()} placeholder="Pick a date" />
+        )}
+        {beforeBalances && (
+          <View style={[styles.balanceNote, { backgroundColor: colors.indigoBg }]}>
+            <Text style={{ fontSize: 14, lineHeight: 20, color: colors.ink }}>
+              Your balances were updated on {shortISO(asOf as string)}, so this is already in them. Your balance won't change.
+            </Text>
+            <TouchableOpacity onPress={() => setTakeOff((t) => !t)} accessibilityRole="checkbox" accessibilityState={{ checked: takeOff }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <View style={[styles.check, { borderColor: colors.gold, backgroundColor: takeOff ? colors.gold : 'transparent' }]}>
+                {takeOff && <Text style={{ color: colors.onButton, fontSize: 12, fontWeight: '800' }}>✓</Text>}
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold, flexShrink: 1 }}>It isn't included, take it off my balance</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <AccountPicker model={model} direction={direction} amount={effective} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
       </View>
@@ -134,4 +245,7 @@ const styles = StyleSheet.create({
   quick: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
   quickText: { fontSize: 14, fontWeight: '600' },
   note: { fontSize: 13, marginBottom: 10, marginLeft: 4 },
+  dueText: { fontSize: 14, textAlign: 'center', marginBottom: 10 },
+  balanceNote: { borderRadius: 14, padding: 12, marginBottom: 12 },
+  check: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });

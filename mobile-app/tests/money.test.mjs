@@ -147,3 +147,17 @@ test('Left to Spend with nothing set up is just what is in the accounts', () => 
   const m = modelWithDebit(4321, 1);
   assert.equal(Math.round(computeLeftToSpend(m).amount), 4321);
 });
+
+// ---- Version 2.1: paying part of a bill (Meralco) ----
+test('bill paid in part: the rest is added to next month as "carried"', () => {
+  const b = markPaid(bill(), undefined, '2026-10-14', 1000);
+  assert.equal(b.cycles[0].amountPaid, 1000);
+  const next = currentCycle(b);
+  assert.equal(next.dueDate, '2026-11-15');
+  assert.equal(next.carriedIn, 2100);
+  assert.equal(next.amountDue, 5200); // ₱3,100 new + ₱2,100 carried
+});
+test('a back-dated payment keeps the date it was paid', () => {
+  const b = markPaid(bill(), undefined, '2026-10-02');
+  assert.equal(b.cycles[0].paidDate, '2026-10-02');
+});

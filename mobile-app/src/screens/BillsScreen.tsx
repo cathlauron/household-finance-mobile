@@ -82,6 +82,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState<number | ''>('');
+  const [carriedEdit, setCarriedEdit] = useState(0);
   const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
   const [subscriptionInput, setSubscriptionInput] = useState(false);
   const [notesInput, setNotesInput] = useState('');
@@ -136,6 +137,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setNameInput('');
     setCategoryInput('');
     setAmountInput('');
+    setCarriedEdit(0);
     setPriorityInput('');
     setNotesInput('');
     setSubscriptionInput(false);
@@ -157,7 +159,13 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setEditingId(bill.id);
     setNameInput(bill.name);
     setCategoryInput(bill.category || '');
-    setAmountInput(billAmount(bill) === 0 ? '' : billAmount(bill));
+    // Version 2.1: when part of last bill was carried over, the form asks only for the new
+    // charges and adds the carried amount back itself.
+    const curCycle = currentCycle(bill);
+    const carried = curCycle && !isCyclePaid(curCycle) ? Number(curCycle.carriedIn) || 0 : 0;
+    setCarriedEdit(carried);
+    const newCharges = Math.round((billAmount(bill) - carried) * 100) / 100;
+    setAmountInput(newCharges <= 0 ? '' : newCharges);
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
     setSubscriptionInput(!!bill.isSubscription);
@@ -237,7 +245,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         // Redesign: keep paid history; only the current cycle changes, and its due date
         // only moves if the schedule changed.
         const scheduleChanged = b.recurringType !== recurTypeInput || JSON.stringify(b.dueDate || {}) !== JSON.stringify(dueDate);
-        const cycles: BillCycle[] = withEditedCurrentCycle(b.cycles, { amountDue: parsedAmount, paymentMethod: paymentMethodInput }, nextDueISO, scheduleChanged);
+        const cycles: BillCycle[] = withEditedCurrentCycle(b.cycles, { amountDue: Math.round((parsedAmount + carriedEdit) * 100) / 100, paymentMethod: paymentMethodInput }, nextDueISO, scheduleChanged);
         return {
           ...b,
           name: trimmedName,
@@ -473,7 +481,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
-          <BigAmount label="Amount due" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+          <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>
 
         <FormGroup>
@@ -532,6 +540,11 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           </PickerRow>
         </FormGroup>
 
+        {carriedEdit > 0 && (
+          <Footnote>
+            {`Plus ${formatPeso(carriedEdit)} carried from last time. Total due ${formatPeso((typeof amountInput === 'number' ? amountInput : 0) + carriedEdit)}.`}
+          </Footnote>
+        )}
         {!!nextDueText && <Footnote>{nextDueText}</Footnote>}
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
         {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
