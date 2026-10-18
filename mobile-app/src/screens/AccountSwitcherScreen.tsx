@@ -321,7 +321,8 @@ export default function AccountSwitcherScreen({
           </>
         )}
 
-        {presence !== null && (
+        {/* Only on the account list: once an account is picked, "Choose a different account" covers it. */}
+        {presence !== null && !selectedAccount && (
           <TouchableOpacity
             testID="account-switcher-other-account"
             style={[s.otherBtn, active && { opacity: 0.45 }]}
@@ -340,9 +341,9 @@ export default function AccountSwitcherScreen({
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 48, paddingBottom: 32 },
-    brandWrap: { alignItems: 'center', marginBottom: 20 },
-    bigAvatarWrap: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
+    content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 96 },
+    brandWrap: { alignItems: 'center', marginBottom: 14 },
+    bigAvatarWrap: { alignItems: 'center', marginTop: 0, marginBottom: 12 },
     title: {
       fontSize: 28,
       fontWeight: '700',
