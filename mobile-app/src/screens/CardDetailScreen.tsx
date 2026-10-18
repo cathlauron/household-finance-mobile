@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
@@ -158,7 +159,7 @@ export default function CardDetailScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* The same colour and gradient as this card in Home's Wallet. */}
       <View style={[styles.card, cardFaceColors(chip, isDark)]}>
         <CardFaceFill color={chip} radius={17} />
@@ -177,6 +178,45 @@ export default function CardDetailScreen() {
           <Text style={[styles.balance, { color: amount < 0 ? colors.negative : colors.positive }]}>{formatPeso(amount)}</Text>
         </View>
       </View>
+
+      {/* Version 3 (Cath): the question sits right under the card, above This week, so the
+          keyboard doesn't cover it. */}
+      {/* Version 3 (approved K4): one quick question before the credit extras show. */}
+      {isCredit && owed === null && !askLater && (
+        <View style={[styles.group, { padding: 16, marginTop: 20, gap: 10 }]} testID="card-setup">
+          <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
+          <Text style={styles.qTitle}>One quick question about {account.name || 'this card'}</Text>
+          <Text style={styles.meta}>Cards now track the limit, what you owe and what you can still use. Nothing changes until you answer.</Text>
+          <Text style={[styles.rowTitle, { marginTop: 4 }]}>Is {formatPeso(amount)}…</Text>
+          {(
+            [
+              ['canUse', 'What I can still use'],
+              ['owe', 'What I owe'],
+            ] as const
+          ).map(([id, label]) => (
+            <TouchableOpacity
+              key={id}
+              onPress={() => { hapticSelection(); setAnswer(id); }}
+              style={[styles.choice, { borderColor: answer === id ? colors.gold : colors.navy4 }]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: answer === id }}
+            >
+              <Ionicons name={answer === id ? 'radio-button-on' : 'radio-button-off'} size={20} color={answer === id ? colors.gold : colors.inkFaint} />
+              <Text style={styles.rowTitle}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.inlineRow}>
+            <Text style={styles.rowTitle}>Credit limit</Text>
+            <AmountInput style={styles.inlineAmount} value={limitInput} onChangeAmount={setLimitInput} />
+          </View>
+          <TouchableOpacity onPress={saveAnswer} style={[styles.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button" testID="card-setup-save">
+            <Text style={[styles.primaryText, { color: colors.onButton }]}>Save</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setAskLater(true)} style={{ alignSelf: 'center', padding: 6 }} accessibilityRole="button">
+            <Text style={[styles.link, { fontWeight: '700' }]}>Ask me later</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
         <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
@@ -242,43 +282,6 @@ export default function CardDetailScreen() {
           })
         )}
       </View>
-
-      {/* Version 3 (approved K4): one quick question before the credit extras show. */}
-      {isCredit && owed === null && !askLater && (
-        <View style={[styles.group, { padding: 16, marginTop: 24, gap: 10 }]} testID="card-setup">
-          <GradientFill match={[styles.group, { padding: 16, marginTop: 24 }]} />
-          <Text style={styles.qTitle}>One quick question about {account.name || 'this card'}</Text>
-          <Text style={styles.meta}>Cards now track the limit, what you owe and what you can still use. Nothing changes until you answer.</Text>
-          <Text style={[styles.rowTitle, { marginTop: 4 }]}>Is {formatPeso(amount)}…</Text>
-          {(
-            [
-              ['canUse', 'What I can still use'],
-              ['owe', 'What I owe'],
-            ] as const
-          ).map(([id, label]) => (
-            <TouchableOpacity
-              key={id}
-              onPress={() => { hapticSelection(); setAnswer(id); }}
-              style={[styles.choice, { borderColor: answer === id ? colors.gold : colors.navy4 }]}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: answer === id }}
-            >
-              <Ionicons name={answer === id ? 'radio-button-on' : 'radio-button-off'} size={20} color={answer === id ? colors.gold : colors.inkFaint} />
-              <Text style={styles.rowTitle}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-          <View style={styles.inlineRow}>
-            <Text style={styles.rowTitle}>Credit limit</Text>
-            <AmountInput style={styles.inlineAmount} value={limitInput} onChangeAmount={setLimitInput} />
-          </View>
-          <TouchableOpacity onPress={saveAnswer} style={[styles.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button" testID="card-setup-save">
-            <Text style={[styles.primaryText, { color: colors.onButton }]}>Save</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setAskLater(true)} style={{ alignSelf: 'center', padding: 6 }} accessibilityRole="button">
-            <Text style={[styles.link, { fontWeight: '700' }]}>Ask me later</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Version 3 (approved K1c): the credit card extras. */}
       {isCredit && owed !== null && (
@@ -375,7 +378,7 @@ export default function CardDetailScreen() {
         <GradientFill match={[styles.group, styles.action]} />
         <Text style={[styles.actionText, { color: colors.gold }]}>Edit card</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
