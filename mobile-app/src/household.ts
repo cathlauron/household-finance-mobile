@@ -175,6 +175,15 @@ export async function loadHouseholdData(householdId: string): Promise<string | n
   }
 }
 
+// Version 2.1: like loadHouseholdData, plus how the household is stored online (layout).
+// Errors are passed on to the caller in the same way.
+export async function loadHouseholdDoc(householdId: string): Promise<{ data: string | null; layout: number }> {
+  const snap = await getDoc(doc(db, 'households', householdId));
+  if (!snap.exists()) return { data: null, layout: 0 };
+  const d = snap.data();
+  return { data: typeof d.data === 'string' ? d.data : null, layout: typeof d.layout === 'number' ? d.layout : 0 };
+}
+
 // Reads just the owner field off a household document — used client-side
 // to decide whether the current user is allowed to invite/remove members.
 // Returns null if the household doesn't exist or has no owner field yet
@@ -227,6 +236,8 @@ export type HouseholdDocSnapshot = {
   pendingRecoveryRequestId?: string | null;
   data?: string;
   updatedAt?: number;
+  // Version 2.1: how the household is stored online (see householdPartsSync.ts).
+  layout?: number;
 };
 
 // Watches the household document live for membership changes, dissolutions, or revocations.
@@ -251,6 +262,7 @@ export function subscribeToHousehold(
           typeof data.pendingRecoveryRequestId === 'string' ? data.pendingRecoveryRequestId : null,
         data: typeof data.data === 'string' ? data.data : undefined,
         updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : undefined,
+        layout: typeof data.layout === 'number' ? data.layout : undefined,
       });
     },
     (error) => {

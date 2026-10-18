@@ -47,7 +47,6 @@ import {
   loadWrappedHouseholdKey,
   unwrapHouseholdKey,
   wrapHouseholdKey,
-  loadHouseholdData,
   saveHouseholdData,
   saveWrappedHouseholdKey,
   removeMemberFromHousehold,
@@ -57,7 +56,19 @@ import {
   getHouseholdMemberCount,
   getHouseholdOwner,
   subscribeToHousehold,
+  loadHouseholdDoc,
 } from './household';
+import {
+  partsEnabledFor,
+  afterLoad as partsAfterLoad,
+  afterSave as partsAfterSave,
+  saveWhenTooBig as partsSaveWhenTooBig,
+  loadModelFromParts,
+  modelFromPartsForUpdate,
+  removePartsBeforeDissolve,
+  forgetParts,
+  sameAsParts,
+} from './householdPartsSync';
 
 type ChangePasswordResult = { ok: boolean; error?: string };
 
@@ -242,6 +253,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     if (opts.deleteDoc) {
       try {
+        await removePartsBeforeDissolve(username, targetHouseholdId);
         await deleteHousehold(targetHouseholdId);
       } catch (e) {}
     }
@@ -309,6 +321,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Version 2.1: a household stored in parts (layout 2) is read from its parts; its
+        // single `data` copy is out of date then and must not be used.
+        if ((snapshotData.layout ?? 0) >= 2 && partsEnabledFor(usernameRef.current) && householdKeyRef.current) {
+          const fromParts = await modelFromPartsForUpdate(usernameRef.current, householdId, householdKeyRef.current, snapshotData.layout ?? 0);
+          if (fromParts && !sameAsParts(fromParts, latestModelRef.current)) {
+            const incomingModel = sanitizeModelIds(fromParts);
+            setModel(incomingModel);
+            const username = usernameRef.current;
+            const personalKey = keyRef.current;
+            if (username && personalKey) {
+              encryptJSON(personalKey, incomingModel)
+                .then((enc) => saveEncryptedProfileData(username, enc))
+                .catch(() => {});
+            }
+            rescheduleBillNotifications(incomingModel).catch(() => {});
+          }
+          return;
+        }
+
         // Live household sync: reload/merge in-memory model when household data was changed elsewhere
         if (
           snapshotData.data &&
@@ -362,6 +393,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     keyRef.current = key;
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
+    forgetParts();
     try {
       const profile = bootstrap?.profile ?? (await loadProfilesIndex()).find((p) => p.username === username);
       const householdId = bootstrap?.householdId ?? profile?.householdId;
@@ -403,8 +435,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (wrapped && wrapped.householdId === householdId) {
           const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
           let encryptedHousehold: string | null = null;
+          let layout = 0;
           try {
-            encryptedHousehold = await loadHouseholdData(householdId);
+            const docData = await loadHouseholdDoc(householdId);
+            encryptedHousehold = docData.data;
+            layout = docData.layout;
           } catch (err) {
             const code = (err as any)?.code;
             const msg = (err as Error)?.message || '';
@@ -421,7 +456,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }
 
           if (encryptedHousehold) {
-            const loaded = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, encryptedHousehold));
+            // Version 2.1: layout 2 = the parts are the up-to-date copy (falls back to `data`).
+            const fromParts = await loadModelFromParts(username, householdId, householdKey, layout);
+            const loaded = sanitizeModelIds(fromParts ?? decryptJSON<HouseholdModel>(householdKey, encryptedHousehold));
             const memberCount = await getHouseholdMemberCount(householdId);
             if (memberCount <= 1) {
               // Only 1 member left -> auto-dissolve
@@ -441,6 +478,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setIsLinked(true);
             saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
             setupHouseholdListener(householdId);
+            // Version 2.1 (test accounts only for now): copy into / check the parts.
+            partsAfterLoad(username, householdId, householdKey, loaded, layout).catch(() => {});
             if (!options.deferNotifications) {
               rescheduleBillNotifications(loaded).catch(() => {});
             }
@@ -487,9 +526,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (householdIdRef.current && householdKeyRef.current) {
         const encrypted = await encryptJSON(householdKeyRef.current, current);
         noteStorageSize(encrypted);
-        if (tooBigToSync(encrypted)) return;
-        await withTimeout(saveHouseholdData(householdIdRef.current, encrypted), 12000, 'Timed out syncing.');
-        lastEncryptedDataRef.current = encrypted;
+        if (encrypted.length > STORAGE_LIMIT_CHARS && (await partsSaveWhenTooBig(username, householdIdRef.current, householdKeyRef.current, current))) {
+          // Version 2.1: too big for one copy, saved in parts instead.
+        } else {
+          if (tooBigToSync(encrypted)) return;
+          await withTimeout(saveHouseholdData(householdIdRef.current, encrypted), 12000, 'Timed out syncing.');
+          lastEncryptedDataRef.current = encrypted;
+          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, current).catch(() => {});
+        }
       } else if (saltRef.current && keyRef.current) {
         const encrypted = await encryptJSON(keyRef.current, current);
         noteStorageSize(encrypted);
@@ -635,6 +679,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!onlineRef.current) {
         // Offline: saved on this phone; the banner shows it and it syncs once back online.
         setPendingChanges((n) => n + 1);
+      } else if (
+        encrypted.length > STORAGE_LIMIT_CHARS &&
+        (await partsSaveWhenTooBig(username, householdIdRef.current, householdKeyRef.current, sanitizedModel))
+      ) {
+        // Version 2.1: too big for one copy, saved in parts instead.
       } else if (tooBigToSync(encrypted)) {
         setPendingChanges((n) => n + 1);
       } else {
@@ -645,6 +694,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             'Timed out waiting for the shared household to sync.'
           );
           lastEncryptedDataRef.current = encrypted;
+          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, sanitizedModel).catch(() => {});
         } catch (err) {
           setPendingChanges((n) => n + 1);
           if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
@@ -734,8 +784,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const householdId = householdIdRef.current;
       const householdKey = householdKeyRef.current;
       if (householdId && householdKey) {
-        const encryptedHousehold = await withTimeout(loadHouseholdData(householdId), 6000, 'Refresh timed out.');
+        const docData = await withTimeout(loadHouseholdDoc(householdId), 6000, 'Refresh timed out.');
+        const encryptedHousehold = docData.data;
         if (modelVersionRef.current !== startVersion) return 'up_to_date';
+        // Version 2.1: layout 2 = read the parts (the single copy is out of date).
+        if (docData.layout >= 2 && partsEnabledFor(username)) {
+          const fromParts = await loadModelFromParts(username, householdId, householdKey, docData.layout);
+          if (fromParts) {
+            if (modelVersionRef.current !== startVersion) return 'up_to_date';
+            if (sameAsParts(fromParts, latestModelRef.current)) return 'up_to_date';
+            const incomingParts = sanitizeModelIds(fromParts);
+            setModel(incomingParts);
+            encryptJSON(key, incomingParts)
+              .then((enc) => saveEncryptedProfileData(username, enc))
+              .catch(() => {});
+            rescheduleBillNotifications(incomingParts).catch(() => {});
+            return 'updated';
+          }
+        }
         if (!encryptedHousehold || encryptedHousehold === lastEncryptedDataRef.current) return 'up_to_date';
         let incoming: HouseholdModel;
         try {
@@ -850,6 +916,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       const memberCountAfterUpdate = await getHouseholdMemberCount(householdId);
       if (memberCountAfterUpdate <= 1) {
+        await removePartsBeforeDissolve(username, householdId);
         await deleteHousehold(householdId);
       } else {
         await removeMemberFromHousehold(householdId);
