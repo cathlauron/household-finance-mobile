@@ -1,9 +1,9 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { paintBusy } from '../components/BusyOverlay';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../components/AppText';
-import LogoMark from '../components/LogoMark';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import Avatar from '../components/Avatar';
@@ -30,6 +30,8 @@ type Props = {
   onUnlocked: (creds: QuickUnlockCredentials) => void;
   onUsePassword: (username: string) => void;
   onUseOtherAccount: () => void;
+  // True while the app opens the chosen account's data (after the PIN or fingerprint).
+  working?: boolean;
 };
 
 type Presence = { fingerprint: boolean; pin: boolean };
@@ -40,6 +42,7 @@ export default function AccountSwitcherScreen({
   onUnlocked,
   onUsePassword,
   onUseOtherAccount,
+  working = false,
 }: Props) {
   const { colors } = useTheme();
   const s = makeStyles(colors);
@@ -50,6 +53,9 @@ export default function AccountSwitcherScreen({
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Version 2.1 (round 5): while unlocking, the logo at the top draws itself like the
+  // opening and the line under the name changes; nothing covers the screen.
+  const active = busy || working;
 
   const mountedRef = useRef(true);
   const fingerprintInFlightRef = useRef(false);
@@ -183,7 +189,7 @@ export default function AccountSwitcherScreen({
     >
       <KeyboardAwareScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.brandWrap}>
-          <LogoMark width={84} />
+          <DrawingLogo width={84} drawing={active} />
         </View>
 
         {presence === null && <ActivityIndicator color={colors.gold} style={{ marginTop: 24 }} />}
@@ -215,13 +221,18 @@ export default function AccountSwitcherScreen({
               <Avatar initials={getInitials(selectedAccount.username)} config={selectedAccount.avatarConfig} size={76} />
             </View>
             <Text style={s.title}>{selectedAccount.username}</Text>
-            <Text style={s.sub}>
-              {mode === 'fingerprint'
-                ? 'Unlock with your fingerprint.'
-                : mode === 'pin'
-                ? 'Enter your PIN.'
-                : 'Sign in with your password.'}
-            </Text>
+            {active ? (
+              <BusyWords messages={['Unlocking…', 'Opening your data…', 'Almost there…']} style={{ marginBottom: 8 }} />
+            ) : (
+              <Text style={s.sub}>
+                {mode === 'fingerprint'
+                  ? 'Unlock with your fingerprint.'
+                  : mode === 'pin'
+                  ? 'Enter your PIN.'
+                  : 'Sign in with your password.'}
+              </Text>
+            )}
+            <View style={{ opacity: active ? 0.45 : 1 }} pointerEvents={active ? 'none' : 'auto'}>
 
             {mode === 'fingerprint' && (
               <>
@@ -259,7 +270,7 @@ export default function AccountSwitcherScreen({
                   onPress={handlePinUnlock}
                   disabled={busy || pin.length < 4}
                 >
-                  {busy ? <ActivityIndicator color={colors.navy2} /> : <Text style={s.primaryBtnText}>Unlock</Text>}
+                  <Text style={s.primaryBtnText}>{active ? 'Unlocking…' : 'Unlock'}</Text>
                 </TouchableOpacity>
                 {!!selectedPresence && selectedPresence.fingerprint && (
                   <TouchableOpacity style={s.ghostBtn} onPress={switchToFingerprint}>
@@ -302,6 +313,7 @@ export default function AccountSwitcherScreen({
                 <Text style={s.ghostBtnText}>Choose a different account</Text>
               </TouchableOpacity>
             )}
+            </View>
           </>
         )}
 
@@ -313,7 +325,6 @@ export default function AccountSwitcherScreen({
         )}
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
-      <BusyOverlay visible={!!(busy)} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
     </>
   );
 }

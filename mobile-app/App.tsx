@@ -690,6 +690,7 @@ function AppContent() {
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <AccountSwitcherScreen
           accounts={recentAccounts}
+          working={unlocking}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
             setUnlocking(true);
@@ -865,7 +866,6 @@ function AppContent() {
       <ScreenFade key={screen} skip={screen === 'loading'}>
         {renderScreen()}
       </ScreenFade>
-      <BusyOverlay visible={unlocking && screen === 'switcher'} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
       <SavedToastHost />
     </View>
   );
