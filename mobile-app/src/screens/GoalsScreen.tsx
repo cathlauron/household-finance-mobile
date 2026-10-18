@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatPeso, outstandingBalance, loanOutstandingBalance } from '../balanceProjection';
@@ -22,6 +22,7 @@ import DateField from '../components/DateField';
 import Button from '../components/Button';
 import { hapticSelection } from '../haptics';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
@@ -86,6 +87,10 @@ export default function GoalsScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [linkInput, setLinkInput] = useState<YearlyGoal['linkedTo']>(undefined);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'title' | 'date'>();
+  const clearFieldError = fieldErrors.clear;
+  const titleRef = useRef<any>(null);
   const navigation = useNavigation<any>();
 
   // Redesign: Add in the top bar adds a goal.
@@ -98,6 +103,11 @@ export default function GoalsScreen() {
       ),
     });
   });
+
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [titleInput, targetDateInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -168,11 +178,11 @@ export default function GoalsScreen() {
     if (!model) return;
     const trimmedTitle = titleInput.trim();
     if (!trimmedTitle) {
-      setErrorMsg('Enter a goal title.');
+      setErrorMsg(''); fieldErrors.show('title', 'Give this goal a name.');
       return;
     }
     if (!isValidDateOrEmpty(targetDateInput)) {
-      setErrorMsg('Enter date as YYYY-MM-DD.');
+      setErrorMsg(''); fieldErrors.show('date', 'Pick a target date.');
       return;
     }
 
@@ -394,7 +404,9 @@ export default function GoalsScreen() {
         header={<SheetBar title={editingId ? 'Edit goal' : 'New goal'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
         <FormGroup>
-          <InputRow label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" />
+          <Guided {...fieldErrors.props('title')} focusRef={titleRef}>
+            <InputRow label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" inputRef={titleRef} invalid={fieldErrors.field === 'title'} />
+          </Guided>
           <InputRow label="Description" value={descriptionInput} onChangeText={setDescriptionInput} placeholder="Optional" />
         </FormGroup>
 
@@ -412,9 +424,11 @@ export default function GoalsScreen() {
             <FormGroup>
               <AmountRow label="Target amount" value={targetAmountInput} onChange={setTargetAmountInput} placeholder="Optional" />
               {!linkInput && <AmountRow label="So far" value={currentAmountInput} onChange={setCurrentAmountInput} placeholder="Optional" />}
-              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+              <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
+              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
                 <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
               </PickerRow>
+              </Guided>
               <PickerRow label="Follow" value={linkLabel} open={openRow === 'follow'} onToggle={() => toggleRow('follow')}>
                 <Choices options={followOptions} value={linkInput ? `${linkInput.kind}:${linkInput.id}` : 'none'} onChange={pickFollow} />
               </PickerRow>
@@ -430,9 +444,11 @@ export default function GoalsScreen() {
         ) : (
           <>
             <FormGroup>
-              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+              <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
+              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
                 <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
               </PickerRow>
+              </Guided>
               {!!editingId && <SwitchRow label="Done" value={completedInput} onChange={setCompletedInput} />}
             </FormGroup>
             <Footnote>A simple goal you tick off when it's done.</Footnote>

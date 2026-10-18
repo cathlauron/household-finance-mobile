@@ -118,6 +118,11 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${nextDueDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
     : '';
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -172,11 +177,6 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setErrorMsg('');
   }
 
-
-  // The red message goes away as soon as the person changes something.
-  useEffect(() => {
-    clearFieldError();
-  }, [nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
 
   async function handleSave() {
     if (!model) return;

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import AppSwitch from '../components/AppSwitch';
 import { useNavigation } from '@react-navigation/native';
 import SegmentedControl from '../components/SegmentedControl';
@@ -22,6 +22,7 @@ import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 import { useStickyState } from '../stickyState';
 
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
@@ -192,6 +193,10 @@ export default function EventsScreen() {
   const [view, setView] = useStickyState<'up' | 'done'>('events.view', 'up');
   const [openId, setOpenId] = useState<string | null>(null);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'name' | 'date'>();
+  const clearFieldError = fieldErrors.clear;
+  const nameRef = useRef<any>(null);
   const navigation = useNavigation<any>();
 
   // Redesign: Add in the top bar adds an event.
@@ -210,6 +215,11 @@ export default function EventsScreen() {
     const rolled = rollOverAnnualEvents(model.events ?? [], model.manualTransactions ?? [], todayISO());
     if (rolled) saveModel({ ...model, events: rolled });
   }, [model, saveModel]);
+
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, monthInput, dayInput, onetimeDateInput, recurrenceInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -322,7 +332,7 @@ export default function EventsScreen() {
     if (!model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter an event name.');
+      setErrorMsg(''); fieldErrors.show('name', 'Give this event a name.');
       return;
     }
 
@@ -334,7 +344,7 @@ export default function EventsScreen() {
       if (monthInput.trim() !== '') {
         const m = parseInt(monthInput, 10);
         if (isNaN(m) || m < 1 || m > 12) {
-          setErrorMsg('Enter a month between 1 and 12.');
+          setErrorMsg(''); fieldErrors.show('date', 'Pick the month.');
           return;
         }
         month = m;
@@ -342,14 +352,14 @@ export default function EventsScreen() {
       if (dayInput.trim() !== '') {
         const d = parseInt(dayInput, 10);
         if (isNaN(d) || d < 1 || d > 31) {
-          setErrorMsg('Enter a day between 1 and 31.');
+          setErrorMsg(''); fieldErrors.show('date', 'Pick a day between 1 and 31.');
           return;
         }
         day = d;
       }
     } else {
       if (!isValidDateOrEmpty(onetimeDateInput)) {
-        setErrorMsg('Enter date as YYYY-MM-DD.');
+        setErrorMsg(''); fieldErrors.show('date', 'Pick a date.');
         return;
       }
       onetimeDate = onetimeDateInput.trim();
@@ -647,14 +657,17 @@ export default function EventsScreen() {
         )}
 
         <FormGroup>
-          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Mama's birthday" autoFocus={!editingId} testID="event-name-input" />
+          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Mama's birthday" autoFocus={!editingId} testID="event-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+          </Guided>
           <PickerRow label="Type" value={EVENT_TYPES.find((t) => t.id === typeInput)?.label ?? 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices<EventItem['type']> options={EVENT_TYPES} value={typeInput} onChange={(v) => setTypeInput(v)} />
           </PickerRow>
           <PickerRow label="Repeats" value={recurrenceInput === 'annual' ? 'Every year' : 'Once'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
             <Choices<EventItem['recurrence']> options={[{ id: 'annual', label: 'Every year' }, { id: 'onetime', label: 'Once' }]} value={recurrenceInput} onChange={(v) => setRecurrenceInput(v)} />
           </PickerRow>
-          <PickerRow label="Date" value={eventDateLabel} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="event-date-row">
+          <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
+          <PickerRow label="Date" value={eventDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="event-date-row">
             {recurrenceInput === 'annual' ? (
               <>
                 <View style={{ marginBottom: 10 }}>
@@ -666,6 +679,7 @@ export default function EventsScreen() {
               <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" clearable testID="event-date-field" />
             )}
           </PickerRow>
+          </Guided>
         </FormGroup>
 
         <GroupLabel>Items (optional)</GroupLabel>

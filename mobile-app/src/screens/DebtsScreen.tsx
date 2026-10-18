@@ -101,6 +101,11 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     debtMonths ? `At ${formatPeso(minPaymentInput as number)} a month it's paid off in about ${debtMonths} months.` : '',
   ].filter(Boolean).join(' ');
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -161,11 +166,6 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setEditingId(null);
     setErrorMsg('');
   }
-
-  // The red message goes away as soon as the person changes something.
-  useEffect(() => {
-    clearFieldError();
-  }, [creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
 
   async function handleSave() {
     if (!model) return;

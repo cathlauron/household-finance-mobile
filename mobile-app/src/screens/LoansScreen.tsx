@@ -150,6 +150,11 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     return parts.filter(Boolean).join(' ');
   })();
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, interestRateInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, customStartDateInput, customOccurrenceInput, modalOpen, clearFieldError]);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -252,11 +257,6 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   function handleRemovePayment(paymentId: string) {
     setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
   }
-
-  // The red message goes away as soon as the person changes something.
-  useEffect(() => {
-    clearFieldError();
-  }, [nameInput, interestRateInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, customStartDateInput, customOccurrenceInput, modalOpen, clearFieldError]);
 
   async function handleSave() {
     if (!model) return;

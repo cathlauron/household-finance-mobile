@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
@@ -19,6 +19,7 @@ import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import { todayISO } from '../dateUtils';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -73,10 +74,19 @@ export default function AccountsScreen() {
   // The id of the account being edited, or null if this is a brand-new account.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'name'>();
+  const clearFieldError = fieldErrors.clear;
+  const nameRef = useRef<any>(null);
   const [amountInput, setAmountInput] = useState<number | ''>('');
   const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, activeGroup, clearFieldError]);
 
   if (!model) {
     return (
@@ -117,7 +127,7 @@ export default function AccountsScreen() {
     if (!activeGroup || !model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter an account name.');
+      setErrorMsg(''); fieldErrors.show('name', 'Give this account a name.');
       return;
     }
     const parsedAmount = amountInput === '' ? 0 : amountInput;
@@ -366,8 +376,10 @@ export default function AccountsScreen() {
             : `New ${activeGroup ? GROUP_LABELS[activeGroup].toLowerCase() : ''} account`
         }
       >
-        <Text style={styles.inputLabel}>Account name</Text>
+        <Guided {...fieldErrors.props('name')} focusRef={nameRef} inset={false} radius={12}>
+        <Text style={[styles.inputLabel, fieldErrors.field === 'name' && { color: colors.error, fontWeight: '700' }]}>Account name</Text>
         <TextInput
+          ref={nameRef}
           autoFocus={!editingId}
           style={styles.input}
           placeholder="e.g. GCash, BPI Savings"
@@ -375,6 +387,7 @@ export default function AccountsScreen() {
           value={nameInput}
           onChangeText={setNameInput}
         />
+        </Guided>
 
         <Text style={styles.inputLabel}>Balance</Text>
           <AmountInput

@@ -173,6 +173,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   }, [navigation, colors, personMode, pagePerson?.name]);
   const openAddModalRef = useRef<() => void>(() => {});
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [monthlyDayInput, semiDay1Input, semiDay2Input, biweeklyAnchorInput, onetimeDateInput, frequencyInput, paymentLogEntries, depositInput, modalOpen, clearFieldError]);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -291,11 +296,6 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   function removePaymentLogEntry(id: string) {
     setPaymentLogEntries((prev) => prev.filter((e) => e.id !== id));
   }
-
-  // The red message goes away as soon as the person changes something.
-  useEffect(() => {
-    clearFieldError();
-  }, [monthlyDayInput, semiDay1Input, semiDay2Input, biweeklyAnchorInput, onetimeDateInput, frequencyInput, paymentLogEntries, depositInput, modalOpen, clearFieldError]);
 
   async function handleSave() {
     if (!model) return;

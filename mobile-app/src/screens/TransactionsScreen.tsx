@@ -251,6 +251,7 @@ export default function TransactionsScreen() {
   const salaryEntry = !editingId && directionInput === 'in' && incomeKindInput === 'salary';
   // Version 2.1: tapping Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'salary' | 'amount' | 'label' | 'date' | 'account'>();
+  const clearFieldError = fieldErrors.clear;
   const amountRef = useRef<{ focus: () => void }>(null);
   const labelRef = useRef<any>(null);
   const [refundTrackingEnabled, setRefundTrackingEnabled] = useState(false);
@@ -298,6 +299,11 @@ export default function TransactionsScreen() {
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
   const alreadyRefunded = !!editingRawTxn?.refundTransactionId;
 
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [amountInput, labelInput, dateInput, paymentMethodInput, incomeSourceIdInput, directionInput, incomeKindInput, modalOpen, clearFieldError]);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -323,12 +329,6 @@ export default function TransactionsScreen() {
     setPaymentMethodInput(undefined);
     setErrorMsg('');
   }
-
-  const clearFieldError = fieldErrors.clear;
-  // The red message goes away as soon as the person changes something.
-  useEffect(() => {
-    clearFieldError();
-  }, [amountInput, labelInput, dateInput, paymentMethodInput, incomeSourceIdInput, directionInput, incomeKindInput, modalOpen, clearFieldError]);
 
   function openAddModal() {
     setMoreOpen(false);

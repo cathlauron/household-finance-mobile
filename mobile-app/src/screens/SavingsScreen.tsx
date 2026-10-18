@@ -20,6 +20,7 @@ import { hapticLight } from '../haptics';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonths, applyAutoSavings } from '../savingsPots';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, SwitchRow, Footnote, GroupLabel, AccountChoices, accountName, useOpenRow } from '../components/SimpleForm';
 import { useStickyState } from '../stickyState';
@@ -154,6 +155,11 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [autoOnInput, setAutoOnInput] = useState(false);
   const [autoAmtInput, setAutoAmtInput] = useState<number | ''>('');
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'name' | 'target' | 'date' | 'history' | 'auto'>();
+  const clearFieldError = fieldErrors.clear;
+  const nameRef = useRef<any>(null);
+  const targetRef = useRef<any>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
 
@@ -172,6 +178,11 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   const [fiAccountPickerOpen, setFiAccountPickerOpen] = useState(false);
   const [fiCompareOpen, setFiCompareOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, targetAmountInput, targetDateInput, contribRows, autoOnInput, autoAmtInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -254,21 +265,21 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     if (!model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter a goal name.');
+      setErrorMsg(''); fieldErrors.show('name', 'Give this pot a name.');
       return;
     }
     let parsedTarget: number | '' = '';
     if (targetAmountInput.trim() !== '') {
       const n = parseFloat(targetAmountInput);
       if (isNaN(n)) {
-        setErrorMsg('Enter a valid target amount.');
+        setErrorMsg(''); fieldErrors.show('target', 'Type the target as a number.');
         return;
       }
       parsedTarget = n;
     }
     const trimmedDate = targetDateInput.trim();
     if (trimmedDate && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setErrorMsg('Target date must be YYYY-MM-DD, e.g. 2026-12-31.');
+      setErrorMsg(''); fieldErrors.show('date', 'Pick a target date.');
       return;
     }
 
@@ -281,14 +292,14 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
       const amountTrimmed = row.amountInput.trim();
       if (!dateTrimmed && !amountTrimmed) continue;
       if (dateTrimmed && !/^\d{4}-\d{2}-\d{2}$/.test(dateTrimmed)) {
-        setErrorMsg('Contribution date must be YYYY-MM-DD, e.g. 2026-08-20.');
+        setErrorMsg(''); fieldErrors.show('history', 'Pick a date for each entry.');
         return;
       }
       let amount: number | '' = '';
       if (amountTrimmed !== '') {
         const n = parseFloat(amountTrimmed);
         if (isNaN(n)) {
-          setErrorMsg('Enter a valid contribution amount.');
+          setErrorMsg(''); fieldErrors.show('history', 'Type each amount as a number.');
           return;
         }
         amount = n;
@@ -303,7 +314,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     );
 
     if (autoOnInput && !(typeof autoAmtInput === 'number' && autoAmtInput > 0)) {
-      setErrorMsg('Enter how much to add each payday, or turn it off.');
+      setErrorMsg(''); fieldErrors.show('auto', 'How much each payday? Or turn this off.');
       return;
     }
     // "Add every payday": keep the original start date when it was already on.
@@ -811,18 +822,26 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         grouped
         header={<SheetBar title={editingId ? 'Edit pot' : 'New pot'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        <Guided {...fieldErrors.props('target')} focusRef={targetRef} inset={false} radius={22}>
         <BigAmount
+          focusRef={targetRef}
+          invalid={fieldErrors.field === 'target'}
           label="Target"
           value={targetAmountInput === '' ? '' : parseFloat(targetAmountInput)}
           onChange={(v) => setTargetAmountInput(v === '' ? '' : String(v))}
           color={colors.saving}
         />
+        </Guided>
 
         <FormGroup>
-          <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Emergency fund" autoFocus={!editingId} testID="savings-name-input" />
-          <PickerRow label="Target date" value={targetDateInput ? new Date(targetDateInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Optional'} open={openRow === 'date'} onToggle={() => toggleRow('date')} testID="savings-target-date-row">
+          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Emergency fund" autoFocus={!editingId} testID="savings-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+          </Guided>
+          <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
+          <PickerRow label="Target date" value={targetDateInput ? new Date(targetDateInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Optional'} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="savings-target-date-row">
             <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="savings-target-date-field" />
           </PickerRow>
+          </Guided>
           <PickerRow label="Kept in" value={accountName(model, keptInInput) ?? 'Choose'} open={openRow === 'kept'} onToggle={() => toggleRow('kept')}>
             <AccountChoices model={model} value={keptInInput} onChange={setKeptInInput} optional />
           </PickerRow>
@@ -830,7 +849,9 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
         <FormGroup>
           <SwitchRow label="Add every payday" value={autoOnInput} onChange={setAutoOnInput} />
-          {autoOnInput && <AmountRow label="Each payday" value={autoAmtInput} onChange={setAutoAmtInput} />}
+          <Guided {...fieldErrors.props('auto')}>
+            {autoOnInput && <AmountRow label="Each payday" value={autoAmtInput} onChange={setAutoAmtInput} />}
+          </Guided>
         </FormGroup>
         <Footnote>You can add or move money any time from the pot's page.</Footnote>
 
@@ -838,7 +859,8 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         {!!editingId && contribRows.length > 0 && (
           <>
             <GroupLabel>History</GroupLabel>
-            <FormGroup>
+            <Guided {...fieldErrors.props('history')} radius={16}>
+            <FormGroup style={fieldErrors.field === 'history' ? { marginBottom: 0, backgroundColor: 'transparent' } : undefined}>
               {contribRows.map((row) => (
                 <View key={row.id} style={styles.contribRow}>
                   <DateField style={styles.contribDateInput} value={row.date} onChange={(v) => updateContribDate(row.id, v)} placeholder="Pick a date" />
@@ -853,6 +875,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 </View>
               ))}
             </FormGroup>
+            </Guided>
           </>
         )}
 

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { todayISO } from '../dateUtils';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
@@ -23,6 +23,7 @@ import DateField from '../components/DateField';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
+import Guided, { useFieldErrors } from '../components/Guided';
 import BottomSheet from '../components/BottomSheet';
 import { SheetBar, BigTotal, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, GroupLabel, InlineField, InlineAmount, useOpenRow } from '../components/SimpleForm';
 
@@ -198,6 +199,10 @@ export default function TravelScreen() {
   const [trackInSavings, setTrackInSavings] = useState(false);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
+  // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
+  const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
+  const clearFieldError = fieldErrors.clear;
+  const nameRef = useRef<any>(null);
   const navigation = useNavigation<any>();
 
   // Redesign: Add in the top bar adds a trip.
@@ -210,6 +215,11 @@ export default function TravelScreen() {
       ),
     });
   });
+
+  // The red message goes away as soon as the person changes something.
+  useEffect(() => {
+    clearFieldError();
+  }, [nameInput, startDateInput, endDateInput, itemTitleInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -296,7 +306,7 @@ export default function TravelScreen() {
   function handleAddChecklistItem() {
     const title = itemTitleInput.trim();
     if (!title) {
-      setErrorMsg('Enter an item title.');
+      setErrorMsg(''); fieldErrors.show('item', 'What is this item?');
       return;
     }
     const cost: number | '' = itemCostInput;
@@ -365,11 +375,11 @@ export default function TravelScreen() {
     if (!model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
-      setErrorMsg('Enter a trip name.');
+      setErrorMsg(''); fieldErrors.show('name', 'Give this trip a name.');
       return;
     }
     if (!isValidDateOrEmpty(startDateInput) || !isValidDateOrEmpty(endDateInput)) {
-      setErrorMsg('Enter dates as YYYY-MM-DD.');
+      setErrorMsg(''); fieldErrors.show('dates', 'Pick the trip dates.');
       return;
     }
 
@@ -607,11 +617,15 @@ export default function TravelScreen() {
         <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />
 
         <FormGroup>
-          <InputRow label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus={!editingId} testID="travel-name-input" />
-          <PickerRow label="Dates" value={formDates} open={openRow === 'dates'} onToggle={() => toggleRow('dates')} testID="travel-dates-row">
+          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+            <InputRow label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus={!editingId} testID="travel-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+          </Guided>
+          <Guided {...fieldErrors.props('dates')} onShow={() => { if (openRow !== 'dates') toggleRow('dates'); }}>
+          <PickerRow label="Dates" value={formDates} open={openRow === 'dates'} invalid={fieldErrors.field === 'dates'} onToggle={() => toggleRow('dates')} testID="travel-dates-row">
             <DateField label="Start" value={startDateInput} onChange={setStartDateInput} placeholder="Pick a date" clearable testID="travel-start-date-field" />
             <DateField label="End" value={endDateInput} onChange={setEndDateInput} placeholder="Pick a date" clearable testID="travel-end-date-field" />
           </PickerRow>
+          </Guided>
         </FormGroup>
 
         <GroupLabel>Checklist</GroupLabel>
@@ -649,7 +663,9 @@ export default function TravelScreen() {
             </View>
           ))}
           <PickerRow label="+ Add item" value="" open={openRow === 'item'} onToggle={() => toggleRow('item')} testID="travel-add-item-row">
-            <InlineField label="Item" value={itemTitleInput} onChangeText={setItemTitleInput} placeholder="e.g. Bus tickets, Hotel" />
+            <Guided {...fieldErrors.props('item')} inset={false}>
+              <InlineField label="Item" value={itemTitleInput} onChangeText={setItemTitleInput} placeholder="e.g. Bus tickets, Hotel" />
+            </Guided>
             <InlineAmount label="Cost (optional)" value={itemCostInput} onChange={setItemCostInput} />
             <InlineField label="Note (optional)" value={itemNoteInput} onChangeText={setItemNoteInput} placeholder="e.g. Booked on Agoda, check-in 2 PM" />
             <TouchableOpacity style={[styles.addItemButton, { backgroundColor: colors.accentTint }]} onPress={handleAddChecklistItem} accessibilityRole="button" testID="travel-add-item">
