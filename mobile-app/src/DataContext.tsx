@@ -99,6 +99,9 @@ type DataContextValue = {
   // saves are waiting to reach the cloud. They are sent by themselves once it's back.
   isOnline: boolean;
   pendingChanges: number;
+  // Version 2.1 (data risk 2): how full the online copy of this data is, from 0 to 1.
+  // Firebase stores everything in one item with a 1 MB ceiling.
+  storageUsed: number;
   // Checkpoint 9.2c: whether this profile is currently reading/writing
   // shared household data (true) or its own personal data (false).
   isLinked: boolean;
@@ -138,6 +141,11 @@ export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMe
   ]);
 }
 
+// Firebase allows 1 MB (1,048,576 bytes) per stored item. The encrypted data is plain
+// text, so its length is its size; a little room is left for the item's other fields.
+export const STORAGE_LIMIT_CHARS = 1_000_000;
+const STORAGE_WARN_AT = 0.8;
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<HouseholdModel | null>(null);
   const [loading, setLoading] = useState(false);
@@ -146,6 +154,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // ---- Offline banner (redesign) ----
   const [isOnline, setIsOnline] = useState(true);
   const [pendingChanges, setPendingChanges] = useState(0);
+  const [storageUsed, setStorageUsed] = useState(0);
+  const storageWarnedRef = useRef(false);
+  const storageFullWarnedRef = useRef(false);
+  // Records how big the online copy is, and says so once when it's getting full.
+  function noteStorageSize(encrypted: string | null | undefined) {
+    if (!encrypted) return;
+    const used = encrypted.length / STORAGE_LIMIT_CHARS;
+    setStorageUsed(used);
+    if (used >= STORAGE_WARN_AT && used < 1 && !storageWarnedRef.current) {
+      storageWarnedRef.current = true;
+      Alert.alert(
+        'Online storage is getting full',
+        `Your data is using ${Math.round(used * 100)}% of the space it has online. Everything still saves. See Settings › Backup & Data.`
+      );
+    }
+  }
+  // True when this save is too big to send. The change stays on this phone.
+  function tooBigToSync(encrypted: string): boolean {
+    if (encrypted.length <= STORAGE_LIMIT_CHARS) return false;
+    if (!storageFullWarnedRef.current) {
+      storageFullWarnedRef.current = true;
+      Alert.alert(
+        'Online storage is full',
+        'Your latest changes are saved on this phone, but they are too big to send online, so other phones won\'t see them yet. Removing photos frees the most space. We\'re working on more room in an update.'
+      );
+    }
+    return true;
+  }
   const onlineRef = useRef(true);
   const latestModelRef = useRef<HouseholdModel | null>(null);
   latestModelRef.current = model;
@@ -284,6 +320,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
               decryptJSON<HouseholdModel>(householdKeyRef.current, snapshotData.data)
             );
             lastEncryptedDataRef.current = snapshotData.data;
+            noteStorageSize(snapshotData.data);
             setModel(incomingModel);
 
             // Keep personal local backup fresh
@@ -399,6 +436,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             householdIdRef.current = householdId;
             householdKeyRef.current = householdKey;
             lastEncryptedDataRef.current = encryptedHousehold;
+            noteStorageSize(encryptedHousehold);
             setModel(loaded);
             setIsLinked(true);
             saveEncryptedProfileData(username, await encryptJSON(key, loaded)).catch(() => {});
@@ -448,10 +486,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       if (householdIdRef.current && householdKeyRef.current) {
         const encrypted = await encryptJSON(householdKeyRef.current, current);
+        noteStorageSize(encrypted);
+        if (tooBigToSync(encrypted)) return;
         await withTimeout(saveHouseholdData(householdIdRef.current, encrypted), 12000, 'Timed out syncing.');
         lastEncryptedDataRef.current = encrypted;
       } else if (saltRef.current && keyRef.current) {
         const encrypted = await encryptJSON(keyRef.current, current);
+        noteStorageSize(encrypted);
+        if (tooBigToSync(encrypted)) return;
         await withTimeout(
           backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
           12000,
@@ -589,8 +631,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           });
       }
 
+      noteStorageSize(encrypted);
       if (!onlineRef.current) {
         // Offline: saved on this phone; the banner shows it and it syncs once back online.
+        setPendingChanges((n) => n + 1);
+      } else if (tooBigToSync(encrypted)) {
         setPendingChanges((n) => n + 1);
       } else {
         try {
@@ -642,8 +687,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
     if (saltRef.current) {
-      if (!onlineRef.current) {
-        // Offline: saved on this phone; the banner shows it and it syncs once back online.
+      noteStorageSize(encrypted);
+      if (!onlineRef.current || tooBigToSync(encrypted)) {
+        // Offline (or too big to send): saved on this phone; it syncs once it can.
         setPendingChanges((n) => n + 1);
         return;
       }
@@ -698,6 +744,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return 'cannot_decrypt';
         }
         lastEncryptedDataRef.current = encryptedHousehold;
+        noteStorageSize(encryptedHousehold);
         setModel(incoming);
         encryptJSON(key, incoming)
           .then((enc) => saveEncryptedProfileData(username, enc))
@@ -1097,6 +1144,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         username: usernameRef.current,
         isOnline,
         pendingChanges,
+        storageUsed,
         isLinked,
         getPersonalKey,
         getHouseholdKey,

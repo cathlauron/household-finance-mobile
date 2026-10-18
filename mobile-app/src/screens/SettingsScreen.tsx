@@ -116,6 +116,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     isLinked,
     getHouseholdKey,
     verifyPassword,
+    storageUsed,
   } = useData();
   const styles = makeStyles(colors);
 
@@ -1785,6 +1786,22 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             right={exportBusy ? <ActivityIndicator size="small" color={colors.gold} /> : undefined}
           />
           <PlainRow testID="settings-import-csv" title="Import from a spreadsheet" sub="CSV file" onPress={() => setCsvOpen(true)} />
+        </SettingsGroup>
+
+        <SettingsGroup
+          label="Online storage"
+          plain
+          footer={
+            storageUsed >= 0.8
+              ? 'Getting full. Photos take the most space. More room is coming in an update.'
+              : 'Your encrypted data has 1 MB of space online. Photos take the most room.'
+          }
+        >
+          <PlainRow
+            testID="settings-storage-used"
+            title="Space used"
+            value={storageUsed > 0 ? `${Math.max(1, Math.round(storageUsed * 100))}%` : 'Shown after your next save'}
+          />
         </SettingsGroup>
 
         {!clearConfirmOpen ? (
