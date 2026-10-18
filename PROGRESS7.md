@@ -400,6 +400,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 =====================================================================
 ▶️ Next step
 =====================================================================
+- NEWEST (2026-10-18, later): Cath said "next" without a device test of batch 1, so batch 1
+  (receipt photos) is still NOT device-tested. Batch 2 on `v2.1`, NOT device-tested: data
+  risk 2 part 1: DataContext measures the encrypted size on every save/load/incoming
+  update (storageUsed 0-1, STORAGE_LIMIT_CHARS 1,000,000), one alert at 80%, and a save
+  over the limit is kept on the phone (pending) with a one-time "Online storage is full"
+  alert instead of a failed write; Settings > Backup & Data shows "Online storage · Space
+  used N%". WAITING ON CATH: compressing the data before encrypting (data risk 2 part 2)
+  changes the stored format, so phones on older versions (2.0.0 and the original app)
+  could not read the household until updated. Asked her before building it.
 - NEWEST (2026-10-18): VERSION 2.1 STARTED on branch `v2.1` (from main). Batch 1 done,
   NOT device-tested: data risk 1, receipt photos are shrunk before saving
   (avatars.ts makeReceiptDataUri: 1000/800/640 px steps, max 200,000 base64 chars, else a
