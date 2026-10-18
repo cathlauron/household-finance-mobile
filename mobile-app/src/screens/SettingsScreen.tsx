@@ -79,7 +79,7 @@ const COLOR_PALETTE = [
 // ---- Appearance mode options ----
 // Backed entirely by ThemeContext's existing setMode()/mode — this just gives it a UI.
 // Keep in step with "version" in app.json (shown under About).
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
   { id: 'light', label: 'Light' },

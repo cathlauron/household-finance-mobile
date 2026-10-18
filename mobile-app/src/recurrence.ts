@@ -107,6 +107,13 @@ export function getNextDueDate(
     return isNaN(dt.getTime()) ? null : dt;
   }
 
+  // Version 2.1 (Cath, round 8): a repeating loan can start later ("First payment").
+  // Before that date, the first payment is the next one due.
+  if ((recurringType === 'monthly' || recurringType === 'annual') && typeof d.firstDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.firstDate)) {
+    const first = new Date(d.firstDate + 'T00:00:00');
+    if (!isNaN(first.getTime()) && stripTime(first) >= stripTime(today)) return first;
+  }
+
   if (recurringType === 'monthly') {
     if (d.day === undefined || d.day === '') return null;
     const isLast = d.day === 'last';

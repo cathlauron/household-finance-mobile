@@ -56,6 +56,8 @@ export default function DateField({
 }: DateFieldProps) {
   const { colors, isDark } = useTheme();
   const [showPicker, setShowPicker] = useState(false);
+  // Version 2.1 (Cath, round 8): tap the month name to jump to any month and year.
+  const [pickingMonth, setPickingMonth] = useState(false);
   const styles = makeStyles(colors);
 
   const currentDateObj = value ? parseISODate(value) : new Date();
@@ -67,6 +69,7 @@ export default function DateField({
   // Whenever the picker opens or value changes, reset viewed month to current value (or today)
   useEffect(() => {
     if (showPicker) {
+      setPickingMonth(false);
       const d = value ? parseISODate(value) : new Date();
       setViewYear(d.getFullYear());
       setViewMonth(d.getMonth());
@@ -159,25 +162,61 @@ export default function DateField({
           <GradientFill match={styles.androidPickerCard} />
           <View style={styles.androidPickerHeader}>
             <TouchableOpacity
-              onPress={goPrevMonth}
+              onPress={() => (pickingMonth ? setViewYear((y) => y - 1) : goPrevMonth())}
               style={styles.androidNavButton}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={pickingMonth ? 'Previous year' : 'Previous month'}
             >
               <Ionicons name="chevron-back" size={18} color={colors.ink} />
             </TouchableOpacity>
 
-            <Text style={styles.androidMonthLabel}>
-              {MONTHS[viewMonth]} {viewYear}
-            </Text>
+            <TouchableOpacity
+              onPress={() => setPickingMonth((v) => !v)}
+              style={[styles.monthChip, { backgroundColor: colors.accentTint }]}
+              accessibilityRole="button"
+              accessibilityLabel={pickingMonth ? 'Back to the days' : 'Choose a month and year'}
+              testID="date-month-year"
+            >
+              <Text style={[styles.androidMonthLabel, { color: colors.gold }]}>
+                {pickingMonth ? viewYear : `${MONTHS[viewMonth]} ${viewYear}`}
+              </Text>
+              <Ionicons name={pickingMonth ? 'chevron-up' : 'chevron-down'} size={14} color={colors.gold} />
+            </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={goNextMonth}
+              onPress={() => (pickingMonth ? setViewYear((y) => y + 1) : goNextMonth())}
               style={styles.androidNavButton}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={pickingMonth ? 'Next year' : 'Next month'}
             >
               <Ionicons name="chevron-forward" size={18} color={colors.ink} />
             </TouchableOpacity>
           </View>
+
+          {pickingMonth && (
+            <View style={styles.monthGrid}>
+              {MONTHS.map((m, i) => {
+                const on = i === viewMonth;
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    onPress={() => {
+                      setViewMonth(i);
+                      setPickingMonth(false);
+                    }}
+                    style={[styles.monthCell, { backgroundColor: on ? colors.buttonFill : colors.navy2 }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: on ? colors.onButton : colors.ink }}>{m.slice(0, 3)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {!pickingMonth && (
+          <>
 
           <View style={styles.dowRow}>
             {DOW.map((d) => (
@@ -233,6 +272,8 @@ export default function DateField({
               })}
             </View>
           ))}
+          </>
+          )}
         </View>
       )}
 
@@ -350,6 +391,9 @@ function makeStyles(colors: any) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    monthChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+    monthGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8, paddingHorizontal: 4, paddingBottom: 6 },
+    monthCell: { width: '31%', alignItems: 'center', paddingVertical: 12, borderRadius: 12 },
     androidMonthLabel: {
       fontSize: 15,
       fontWeight: '600',

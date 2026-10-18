@@ -117,6 +117,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const [monthInput, setMonthInput] = useState('');
   const [customFreqInput, setCustomFreqInput] = useState('monthly');
   const [customStartDateInput, setCustomStartDateInput] = useState('');
+  // Version 2.1 (Cath, round 8): the first payment of a repeating loan (any month or year).
+  const [firstDateInput, setFirstDateInput] = useState('');
   const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [simulatorOpen, setSimulatorOpen] = useState(false);
@@ -136,7 +138,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   // Simple form footnote: the next payment, and for monthly loans a payoff estimate.
   const loanFootnote = (() => {
     if (recurTypeInput === 'custom') return editingId ? '' : 'After you add it, log each payment from the loan.';
-    const next = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput);
+    const next = nextDateFor(recurTypeInput, onetimeDateInput, dayInput, monthInput, firstDateInput);
     const parts = [nextDateText(recurTypeInput === 'onetime' ? 'Due' : 'Next payment', next)];
     const P = typeof totalAmountInput === 'number' ? totalAmountInput : 0;
     const A = typeof expectedPaymentInput === 'number' ? expectedPaymentInput : 0;
@@ -177,6 +179,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     setRecurTypeInput('onetime');
     setOnetimeDateInput('');
     setDayInput('');
+    setFirstDateInput('');
     setMonthInput('');
     setCustomFreqInput('monthly');
     setCustomStartDateInput('');
@@ -206,6 +209,12 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
+    {
+      // The first payment if one was picked, else the next one on the schedule.
+      const next = rt === 'monthly' || rt === 'annual' ? getNextDueDate(rt, d) : null;
+      const nextIso = next ? `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}` : '';
+      setFirstDateInput(typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : nextIso);
+    }
     setCustomFreqInput(loan.customFreq || 'monthly');
     setCustomStartDateInput(loan.customStartDate || '');
     setCustomOccurrenceInput(
@@ -300,7 +309,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         fieldErrors.show('due', 'Pick a day between 1 and 31.');
         return;
       }
-      dueDate = { day: dayInput.trim() };
+      dueDate = { day: dayInput.trim(), ...(firstDateInput ? { firstDate: firstDateInput } : {}) };
     } else if (recurTypeInput === 'annual') {
       const dayNum = parseInt(dayInput, 10);
       const monthNum = parseInt(monthInput, 10);
@@ -312,7 +321,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         fieldErrors.show('due', 'Pick the month it\'s due.');
         return;
       }
-      dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
+      dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '', ...(firstDateInput ? { firstDate: firstDateInput } : {}) };
     }
 
     let parsedOccurrenceCount: number | '' = '';
@@ -578,8 +587,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
             </Guided>
           ) : (
             <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
-            <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
-              <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="loan-due-date-field" />
+            <PickerRow label={recurTypeInput === 'monthly' || recurTypeInput === 'annual' ? 'First payment' : 'Due on'} value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, firstDateInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+              <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={firstDateInput} onFirstDue={setFirstDateInput} testID="loan-due-date-field" />
             </PickerRow>
             </Guided>
           )}

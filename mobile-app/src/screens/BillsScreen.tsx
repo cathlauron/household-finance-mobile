@@ -23,7 +23,7 @@ import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, DueNowChoice } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, ScheduleChoices } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 function billAmount(bill: Bill): number {
@@ -114,12 +114,16 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       ? onetimeDateInput
         ? new Date(onetimeDateInput + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
         : 'Choose'
+      : dueNowInput
+      ? new Date(dueNowInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : recurTypeInput === 'monthly'
       ? dayInput ? `the ${ordinal(parseInt(dayInput, 10))}` : 'Choose'
       : dayInput && monthInput ? `${MONTHS_SHORT[parseInt(monthInput, 10) - 1] ?? ''} ${parseInt(dayInput, 10)}` : 'Choose';
   const nextDueDate =
     recurTypeInput === 'onetime'
       ? (onetimeDateInput ? new Date(onetimeDateInput + 'T00:00:00') : null)
+      : dueNowInput
+      ? new Date(dueNowInput + 'T00:00:00')
       : getNextDueDate(recurTypeInput, recurTypeInput === 'monthly' ? { day: dayInput } : { day: dayInput, month: monthInput ? parseInt(monthInput, 10) : '' });
   const nextDueText = nextDueDate && !isNaN(nextDueDate.getTime())
     ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${nextDueDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
@@ -185,7 +189,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setMonthInput(d.month ? String(d.month) : '');
     {
       const c = currentCycle(bill);
-      const was = c && !isCyclePaid(c) && c.dueDate ? c.dueDate : '';
+      const next = getNextDueDate(bill.recurringType || 'onetime', bill.dueDate);
+      const nextIso = next ? `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}` : '';
+      const was = c && !isCyclePaid(c) && c.dueDate ? c.dueDate : bill.recurringType && bill.recurringType !== 'onetime' ? nextIso : '';
       setDueNowInput(was);
       setDueNowOriginal(was);
     }
@@ -250,7 +256,8 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       ? nextDue.getFullYear() + '-' + String(nextDue.getMonth() + 1).padStart(2, '0') + '-' + String(nextDue.getDate()).padStart(2, '0')
       : '';
     // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
-    const dueNowISO = dueNowInput && recentOccurrences(recurTypeInput, dueDate).includes(dueNowInput) ? dueNowInput : nextDueISO;
+    // Version 2.1 (round 8): the date picked in the date box is the first one due (any month or year).
+    const dueNowISO = recurTypeInput !== 'onetime' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, bills: [...model.bills] };
 
@@ -539,15 +546,18 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
             {recurTypeInput === 'onetime' ? (
               <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
             ) : (
-              <>
-                {recurTypeInput === 'annual' && (
-                  <View style={{ marginBottom: 10 }}>
-                    <Choices options={MONTHS_SHORT.map((m, i) => ({ id: String(i + 1), label: m }))} value={monthInput} onChange={setMonthInput} />
-                  </View>
-                )}
-                <DayStrip value={parseInt(dayInput, 10) || null} onChange={(d) => setDayInput(String(d))} />
-                <DueNowChoice rt={recurTypeInput} day={dayInput} month={monthInput} value={dueNowInput} onChange={setDueNowInput} />
-              </>
+              <ScheduleChoices
+                rt={recurTypeInput}
+                date={onetimeDateInput}
+                onDate={setOnetimeDateInput}
+                day={dayInput}
+                onDay={setDayInput}
+                month={monthInput}
+                onMonth={setMonthInput}
+                firstDue={dueNowInput}
+                onFirstDue={setDueNowInput}
+                testID="bill-first-due-field"
+              />
             )}
           </PickerRow>
           </Guided>
