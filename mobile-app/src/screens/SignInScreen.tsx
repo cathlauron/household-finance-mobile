@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
-import LogoMark from '../components/LogoMark';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
@@ -76,6 +76,7 @@ export default function SignInScreen({
   const [password, setPassword] = useState(autoSignIn?.password ?? '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const working = busy && !silent;
   // Checkpoint A.5 - true only while we're quietly creating a missing
   // Firebase account for a profile that predates Firebase Auth. Just
   // changes the button's wording so it doesn't look like a plain sign-in.
@@ -779,10 +780,16 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
     <>
     <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[ms.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={ms.brandWrap}>
-        <LogoMark width={84} />
+        {/* Version 2.1 (round 5): while signing in, this logo draws itself like the opening
+            and the line under the title changes; nothing covers the screen. */}
+        <DrawingLogo width={84} drawing={working} />
       </View>
       <Text style={ms.title}>Welcome back</Text>
-      <Text style={ms.sub}>Sign in to your financial journey.</Text>
+      {working ? (
+        <BusyWords messages={['Signing you in…', 'Unlocking your data…', 'Getting your household…', 'Almost there…']} style={{ marginBottom: 8 }} />
+      ) : (
+        <Text style={ms.sub}>Sign in to your financial journey.</Text>
+      )}
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <GradientFill match={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]} />
@@ -796,6 +803,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         </View>
       )}
 
+      <View style={{ opacity: working ? 0.45 : 1 }} pointerEvents={working ? 'none' : 'auto'}>
       <Text style={ms.label}>Email address</Text>
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
@@ -848,12 +856,13 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         />
       </View>
 
+      </View>
+
       {!!error && <Text style={ms.error}>{error}</Text>}
 
       <TouchableOpacity testID="sign-in-button" style={ms.primaryBtn} onPress={() => { hapticLight(); handleSignIn(); }} disabled={busy}>
         {busy ? (
-          <View style={styles.busyRow}>
-            <ActivityIndicator color={colors.navy2} style={styles.spinner} />
+          <View style={[styles.busyRow, { opacity: 0.7 }]}>
             <Text style={ms.primaryBtnText}>
               {isMigrating
                 ? 'Setting up sign-in...'
@@ -876,6 +885,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         </Text>
       )}
 
+      <View style={{ opacity: working ? 0.45 : 1 }}>
       <View style={ms.dividerRow}>
         <View style={ms.dividerLine} />
         <Text style={ms.dividerText}>Or continue with</Text>
@@ -898,6 +908,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       <TouchableOpacity style={ms.linkBtn} onPress={onGoToCreateProfile} disabled={busy}>
         <Text style={ms.linkText}>Create a new account</Text>
       </TouchableOpacity>
+      </View>
 
       <Modal visible={!!recoveryContext} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -1008,7 +1019,6 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         </View>
       </Modal>
     </KeyboardAwareScrollView>
-      <BusyOverlay visible={!!(busy && !silent)} messages={['Signing you in…', 'Unlocking your data…', 'Getting your household…', 'Almost there…']} />
     </>
   );
 }

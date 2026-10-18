@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
+import { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
-import LogoMark from '../components/LogoMark';
+import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
+
+const WORDS = ['Unlocking…', 'Opening your data…', 'Almost there…'];
 import { Ionicons } from '@expo/vector-icons';
 import { verifyPin, hasPinSetUp } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
@@ -144,7 +146,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     <>
     <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[styles.container, { flex: undefined, flexGrow: 1 }]}>
       <View style={{ alignItems: 'center', marginBottom: 28 }}>
-        <LogoMark width={72} />
+        {/* Version 2.1 (round 5): while unlocking, this logo draws itself like the opening. */}
+        <DrawingLogo width={72} drawing={busy} />
       </View>
       <Text style={styles.title}>Welcome back, {selectedUsername}</Text>
       {unlockedTick && (
@@ -158,7 +161,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
       {usePasswordMode && (
         <>
-          <Text style={styles.sub}>Enter your account password to unlock.</Text>
+          {busy ? <BusyWords messages={WORDS} style={{ marginBottom: 8 }} /> : <Text style={styles.sub}>Enter your account password to unlock.</Text>}
+          <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
           <Text style={styles.label}>PASSWORD</Text>
           <PasswordField
             testID="unlock-password-input"
@@ -167,6 +171,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             onChangeText={setPasswordInput}
             placeholder="••••••••"
           />
+          </View>
           {!!error && <Text style={styles.error}>{error}</Text>}
           <TouchableOpacity
             style={[styles.primaryBtn, (busy || !passwordInput) && { opacity: 0.4 }]}
@@ -174,7 +179,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
             disabled={busy || !passwordInput}
           >
             <GradientFill color={colors.buttonFill} strength={0.18} />
-            {busy ? <ActivityIndicator color={colors.navy2} /> : <Text style={styles.primaryBtnText}>Unlock</Text>}
+            <Text style={styles.primaryBtnText}>{busy ? 'Unlocking…' : 'Unlock'}</Text>
           </TouchableOpacity>
           {!isLockedOut && (
             <TouchableOpacity style={styles.ghostBtn} onPress={() => { setUsePasswordMode(false); setError(''); }}>
@@ -189,14 +194,19 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
       {!usePasswordMode && (
         <>
-          <Text style={styles.sub}>
-            {hasPin === false
-              ? `Unlock with ${biometricLabel} or enter password.`
-              : 'Enter your PIN to unlock.'}
-          </Text>
+          {busy ? (
+            <BusyWords messages={WORDS} style={{ marginBottom: 8 }} />
+          ) : (
+            <Text style={styles.sub}>
+              {hasPin === false
+                ? `Unlock with ${biometricLabel} or enter password.`
+                : 'Enter your PIN to unlock.'}
+            </Text>
+          )}
 
           {hasPin !== false && (
             <>
+              <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
               <Text style={styles.label}>PIN</Text>
               <PinField
                 testID="unlock-pin-input"
@@ -206,6 +216,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
                 centered
                 autoFocus
               />
+              </View>
             </>
           )}
 
@@ -219,7 +230,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
               disabled={busy || pin.length < 4}
             >
               <GradientFill color={colors.buttonFill} strength={0.18} />
-              <Text style={styles.primaryBtnText}>Unlock</Text>
+              <Text style={styles.primaryBtnText}>{busy ? 'Unlocking…' : 'Unlock'}</Text>
             </TouchableOpacity>
           )}
 
@@ -243,7 +254,6 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
         </>
       )}
     </KeyboardAwareScrollView>
-      <BusyOverlay visible={!!(busy)} messages={['Unlocking…', 'Opening your data…', 'Almost there…']} />
     </>
   );
 }
