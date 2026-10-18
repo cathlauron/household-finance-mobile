@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import BusyOverlay from '../components/BusyOverlay';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Text } from '../components/AppText';
@@ -70,6 +70,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
       return;
     }
     setBusy(true);
+    await paintBusy();
     try {
       await savePin(username, pin1);
       updateRecentAccountIfPresent(username, { hasPin: true }).catch(() => {});

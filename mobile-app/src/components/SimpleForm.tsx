@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AppSwitch from './AppSwitch';
 import DateField from './DateField';
-import { getNextDueDate, RecurringType } from '../recurrence';
+import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import { View, TouchableOpacity, StyleSheet, ScrollView, KeyboardTypeOptions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
@@ -63,6 +63,33 @@ export function PasswordRow({ label, value, onChangeText, placeholder, autoFocus
 }
 
 // Icon in a soft circle, a title and a line of explanation, centred at the top of a sheet.
+// A 4-6 digit PIN in a form row, with a show/hide eye (PIN setup sheet).
+export function PinRow({ label, value, onChangeText, autoFocus, testID }: { label: string; value: string; onChangeText: (t: string) => void; autoFocus?: boolean; testID?: string }) {
+  const { colors } = useTheme();
+  const s = rowStyles(colors);
+  const [hidden, setHidden] = useState(true);
+  return (
+    <View style={s.row}>
+      <Text style={[s.label, { width: 110 }]}>{label}</Text>
+      <TextInput
+        testID={testID}
+        autoFocus={autoFocus}
+        style={s.input}
+        value={value}
+        onChangeText={(t) => onChangeText(t.replace(/[^0-9]/g, '').slice(0, 6))}
+        placeholder="4 to 6 digits"
+        placeholderTextColor={colors.inkFaint}
+        secureTextEntry={hidden}
+        keyboardType="number-pad"
+        maxLength={6}
+      />
+      <TouchableOpacity onPress={() => setHidden((h) => !h)} hitSlop={10} accessibilityLabel={hidden ? 'Show PIN' : 'Hide PIN'}>
+        <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.inkFaint} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function SheetHero({ icon, title, sub, tone = 'accent' }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; sub?: string; tone?: 'accent' | 'ok' }) {
   const { colors } = useTheme();
   return (
@@ -380,6 +407,31 @@ export function ScheduleChoices({ rt, date, onDate, day, onDay, month, onMonth, 
       )}
       <DayStrip value={parseInt(day, 10) || null} onChange={(d) => onDay(String(d))} />
     </>
+  );
+}
+
+// Version 2.1: which month's bill or debt is due now. The newest (next) is picked unless you
+// choose an earlier one because you're behind; that one then shows as overdue until paid.
+export function DueNowChoice({ rt, day, month, value, onChange }: { rt: RecurringType; day: string; month: string; value: string; onChange: (iso: string) => void }) {
+  const { colors } = useTheme();
+  if (rt !== 'monthly' && rt !== 'annual') return null;
+  const opts = recentOccurrences(rt, rt === 'monthly' ? { day } : { day, month: month ? parseInt(month, 10) : '' });
+  if (opts.length < 2) return null;
+  const chosen = opts.includes(value) ? value : opts[opts.length - 1];
+  const label = (iso: string) => {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', rt === 'annual' ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' });
+  };
+  return (
+    <View style={{ marginTop: 12 }}>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }}>Which one is due now?</Text>
+      <Choices options={opts.map((o) => ({ id: o, label: label(o) }))} value={chosen} onChange={onChange} />
+      {chosen !== opts[opts.length - 1] && (
+        <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 8 }}>
+          It shows as overdue until you pay it. After that, it moves on to the next month by itself.
+        </Text>
+      )}
+    </View>
   );
 }
 

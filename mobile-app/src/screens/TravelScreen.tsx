@@ -21,6 +21,7 @@ import type {
 } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
+import { useStickyState } from '../stickyState';
 import DateField from '../components/DateField';
 import { hapticSelection } from '../haptics';
 import Button from '../components/Button';
@@ -204,6 +205,11 @@ export default function TravelScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [trackInSavings, setTrackInSavings] = useState(false);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
+  // Version 2.1 (approved T1): Budget | To-do on the Travel page itself, under the trip.
+  const [pageTab, setPageTab] = useStickyState<'budget' | 'todo'>('travel.pageTab', 'budget');
+  const [pageTodoText, setPageTodoText] = useState('');
+  const [pageTodoDate, setPageTodoDate] = useState('');
+  const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
@@ -257,6 +263,21 @@ export default function TravelScreen() {
       travel: trips.map((t) => (t.id === trip.id ? { ...t, checklist: synced } : t)),
       manualTransactions: transactions,
     });
+  }
+
+  // To-do changes on the Travel page save straight away (they never touch money).
+  async function saveTripTodos(trip: TravelTrip, next: TravelTodo[]) {
+    if (!model) return;
+    await saveModel({ ...model, travel: trips.map((t) => (t.id === trip.id ? { ...t, todos: next } : t)) });
+  }
+  async function addPageTodo(trip: TravelTrip) {
+    const text = pageTodoText.trim();
+    if (!text) return;
+    hapticSelection();
+    setPageTodoText('');
+    setPageTodoDate('');
+    setPageTodoDateOpen(false);
+    await saveTripTodos(trip, [...(trip.todos || []), { id: makeId('todo'), text, done: false, ...(pageTodoDate ? { date: pageTodoDate } : {}) }]);
   }
 
   function tripRow(trip: TravelTrip, i: number, onPress: () => void, sub: string, amount: string, amountColor: string) {
@@ -564,38 +585,118 @@ export default function TravelScreen() {
                 </View>
               </TouchableOpacity>
 
+              <View style={{ marginTop: 20, marginBottom: 4 }}>
+                <SegmentedControl<'budget' | 'todo'>
+                  accessibilityLabel="Trip view"
+                  options={[
+                    { id: 'budget', label: 'Budget' },
+                    { id: 'todo', label: `To-do${(t.todos || []).length ? ` (${(t.todos || []).filter((x) => !x.done).length})` : ''}`, testID: 'travel-page-todo-tab' },
+                  ]}
+                  value={pageTab}
+                  onChange={setPageTab}
+                />
+              </View>
+              <SwipeTabs inner onSwipe={(d) => setPageTab(d > 0 ? 'todo' : 'budget')}>
+              <View collapsable={false}>
+              {pageTab === 'budget' ? (
+              <>
               <Text style={styles.groupHeader}>Checklist</Text>
+                <View style={styles.listGroup}>
+                  <GradientFill match={styles.listGroup} />
+                  {(t.checklist || []).length === 0 && (
+                    <Text style={[styles.tripSub, { padding: 16 }]}>Nothing on this trip's checklist yet. Tap the trip above to add what it will cost.</Text>
+                  )}
+                  {(t.checklist || []).map((item, i) => (
+                    <View key={item.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
+                      <TouchableOpacity
+                        onPress={() => toggleItem(t, item)}
+                        style={[styles.check, item.checked && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: item.checked }}
+                        accessibilityLabel={`Mark ${item.title} as paid`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
+                      </TouchableOpacity>
+                      <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }} onPress={() => openEditModal(t)} accessibilityRole="button">
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={[styles.tripName, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title || 'Item'}</Text>
+                          <Text style={styles.tripSub} numberOfLines={2}>
+                            {[item.checked ? `Paid${item.completedDate ? ' ' + shortDay(item.completedDate) : ''}` : '', item.note?.trim() || ''].filter(Boolean).join(' · ') || 'Not paid yet'}
+                          </Text>
+                        </View>
+                        {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
+                        <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: colors.planned }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out. Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
+              </>
+              ) : (
+              <>
+              <Text style={styles.groupHeader}>To-do</Text>
               <View style={styles.listGroup}>
                 <GradientFill match={styles.listGroup} />
-                {(t.checklist || []).length === 0 && (
-                  <Text style={[styles.tripSub, { padding: 16 }]}>Nothing on this trip's checklist yet. Tap the trip above to add what it will cost.</Text>
-                )}
-                {(t.checklist || []).map((item, i) => (
-                  <View key={item.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
+                {(t.todos || []).map((td, i) => (
+                  <View key={td.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
                     <TouchableOpacity
-                      onPress={() => toggleItem(t, item)}
-                      style={[styles.check, item.checked && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
+                      onPress={() => { hapticSelection(); saveTripTodos(t, (t.todos || []).map((x) => (x.id === td.id ? { ...x, done: !x.done } : x))); }}
+                      style={[styles.check, td.done && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
                       accessibilityRole="checkbox"
-                      accessibilityState={{ checked: item.checked }}
-                      accessibilityLabel={`Mark ${item.title} as paid`}
+                      accessibilityState={{ checked: td.done }}
+                      accessibilityLabel={td.text}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
+                      {td.done && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                     </TouchableOpacity>
-                    <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }} onPress={() => openEditModal(t)} accessibilityRole="button">
-                      <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={[styles.tripName, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title || 'Item'}</Text>
-                        <Text style={styles.tripSub} numberOfLines={2}>
-                          {[item.checked ? `Paid${item.completedDate ? ' ' + shortDay(item.completedDate) : ''}` : '', item.note?.trim() || ''].filter(Boolean).join(' · ') || 'Not paid yet'}
-                        </Text>
-                      </View>
-                      {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
-                      <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: colors.planned }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.tripName, td.done && { color: colors.inkDim, textDecorationLine: 'line-through' }]}>{td.text}</Text>
+                      {(td.done || !!td.date) && <Text style={styles.tripSub}>{td.done ? 'Done' : shortDay(td.date as string)}</Text>}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => saveTripTodos(t, (t.todos || []).filter((x) => x.id !== td.id))}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${td.text}`}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
                     </TouchableOpacity>
                   </View>
                 ))}
+                <View style={[styles.checkRow, (t.todos || []).length > 0 && styles.rowDivider]}>
+                  <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
+                    value={pageTodoText}
+                    onChangeText={setPageTodoText}
+                    placeholder="Add to the list"
+                    placeholderTextColor={colors.inkFaint}
+                    returnKeyType="done"
+                    onSubmitEditing={() => addPageTodo(t)}
+                    maxLength={120}
+                    testID="travel-page-todo-input"
+                  />
+                  <TouchableOpacity onPress={() => setPageTodoDateOpen((v) => !v)} accessibilityRole="button" accessibilityLabel="Add a date (optional)" hitSlop={8} style={{ marginHorizontal: 8 }}>
+                    <Ionicons name="calendar-outline" size={20} color={pageTodoDate ? colors.gold : colors.inkFaint} />
+                  </TouchableOpacity>
+                  {!!pageTodoText.trim() && (
+                    <TouchableOpacity onPress={() => addPageTodo(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, paddingVertical: 6, paddingHorizontal: 12 }]}>
+                      <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {pageTodoDateOpen && (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                    <DateField label="Date (optional)" value={pageTodoDate} onChange={setPageTodoDate} placeholder="Pick a date" clearable />
+                  </View>
+                )}
               </View>
-              <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out. Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
+              <Text style={styles.groupFooter}>Plain notes with tick boxes, and an optional date. Nothing here touches your money.</Text>
+              </>
+              )}
+              </View>
+              </SwipeTabs>
             </>
           );
         })()}

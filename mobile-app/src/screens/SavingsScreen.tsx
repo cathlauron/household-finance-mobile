@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { afterSlide } from '../afterSlide';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import { useNavigation } from '@react-navigation/native';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
@@ -111,7 +112,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     const target = (model.savingsGoals || []).find((g) => g.id === openSavingsId);
     if (target) {
       openedSavingsRef.current = { id: openSavingsId, nonce: openSavingsNonce };
-      openEditModal(target);
+      afterSlide(() => openEditModal(target));
     }
   }, [model, openSavingsId, openSavingsNonce]);
   const styles = makeStyles(colors);

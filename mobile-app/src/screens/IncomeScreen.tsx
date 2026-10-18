@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { afterSlide } from '../afterSlide';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
@@ -99,7 +100,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     const target = (model.income || []).find((s) => s.id === openIncomeId);
     if (target) {
       openedIncomeRef.current = { id: openIncomeId, nonce: openIncomeNonce };
-      openEditModal(target);
+      afterSlide(() => openEditModal(target));
     }
   }, [model, openIncomeId, openIncomeNonce]);
   const styles = makeStyles(colors);

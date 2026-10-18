@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { afterSlide } from '../afterSlide';
 import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
-import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, DueNowChoice } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
-import { currentCycle, withEditedCurrentCycle } from '../billPayments';
+import { currentCycle, withEditedCurrentCycle, isCyclePaid } from '../billPayments';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
-import { getNextDueDate, RecurringType } from '../recurrence';
+import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import type { Debt, HouseholdModel, PaymentMethod } from '../types';
 import BottomSheet from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
@@ -69,7 +70,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     const target = (model.debts || []).find((d) => d.id === openDebtId);
     if (target) {
       openedDebtRef.current = { id: openDebtId, nonce: openDebtNonce };
-      openEditModal(target);
+      afterSlide(() => openEditModal(target));
     }
   }, [model, openDebtId, openDebtNonce]);
   const [creditorInput, setCreditorInput] = useState('');
@@ -83,6 +84,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
+  // Version 2.1: which due date is the current one (an earlier month when behind). '' = the next one.
+  const [dueNowInput, setDueNowInput] = useState('');
+  const [dueNowOriginal, setDueNowOriginal] = useState(''); // what it was when the form opened
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
@@ -128,6 +132,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
+    setDueNowInput('');
+    setDueNowOriginal('');
     setErrorMsg('');
   }
 
@@ -158,6 +164,12 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
+    {
+      const c = currentCycle(debt);
+      const was = c && !isCyclePaid(c) && c.dueDate ? c.dueDate : '';
+      setDueNowInput(was);
+      setDueNowOriginal(was);
+    }
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -227,6 +239,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     const nextDueISO = nextDue
       ? nextDue.getFullYear() + '-' + String(nextDue.getMonth() + 1).padStart(2, '0') + '-' + String(nextDue.getDate()).padStart(2, '0')
       : '';
+    // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
+    const dueNowISO = dueNowInput && recentOccurrences(recurTypeInput, dueDate).includes(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, debts: [...model.debts] };
 
@@ -235,8 +249,12 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         if (d.id !== editingId) return d;
         const parsedFeesPortion = feesPortionInput === '' ? ('' as const) : feesPortionInput;
         // Redesign: keep paid history; only the current cycle changes.
-        const scheduleChanged = d.recurringType !== recurTypeInput || JSON.stringify(d.dueDate || {}) !== JSON.stringify(dueDate);
-        const cycles = withEditedCurrentCycle(d.cycles, { amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }, nextDueISO, scheduleChanged);
+        const curC = currentCycle(d);
+        const scheduleChanged =
+          d.recurringType !== recurTypeInput ||
+          JSON.stringify(d.dueDate || {}) !== JSON.stringify(dueDate) ||
+          (dueNowInput !== dueNowOriginal && !!curC && !isCyclePaid(curC) && !!dueNowISO && curC.dueDate !== dueNowISO);
+        const cycles = withEditedCurrentCycle(d.cycles, { amountDue: parsedAmount, paymentMethod: paymentMethodInput, feesPortion: parsedFeesPortion }, dueNowISO, scheduleChanged);
         return {
           ...d,
           creditorOrPerson: trimmedCreditor,
@@ -259,7 +277,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         cycles: [
           {
             id: makeId('cycle'),
-            dueDate: nextDueISO,
+            dueDate: dueNowISO,
             amountDue: parsedAmount,
             amountPaid: '',
             paidDate: '',
@@ -422,6 +440,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
           <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
             <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} testID="debt-due-date-field" />
+            <DueNowChoice rt={recurTypeInput} day={dayInput} month={monthInput} value={dueNowInput} onChange={setDueNowInput} />
           </PickerRow>
           </Guided>
           <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>

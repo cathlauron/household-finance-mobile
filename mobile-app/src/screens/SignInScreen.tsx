@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import BusyOverlay from '../components/BusyOverlay';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -393,6 +393,7 @@ export default function SignInScreen({
       return;
     }
     setBusy(true);
+    await paintBusy();
     setIsMigrating(false);
     setIsRestoring(false);
     try {

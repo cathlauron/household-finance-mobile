@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { afterSlide } from '../afterSlide';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
@@ -8,7 +9,7 @@ import { useToPayAddRequest } from '../fabActions';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
-import { getNextDueDate, RecurringType } from '../recurrence';
+import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
 import BottomSheet from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
@@ -21,7 +22,7 @@ import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, DueNowChoice } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 function billAmount(bill: Bill): number {
@@ -72,7 +73,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     const target = (model.bills || []).find((b) => b.id === openBillId);
     if (target) {
       openedBillRef.current = { id: openBillId, nonce: openBillNonce };
-      openEditModal(target);
+      afterSlide(() => openEditModal(target));
     }
   }, [model, openBillId, openBillNonce]);
   const styles = makeStyles(colors);
@@ -90,6 +91,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
+  // Version 2.1: which due date is the current one (an earlier month when behind). '' = the next one.
+  const [dueNowInput, setDueNowInput] = useState('');
+  const [dueNowOriginal, setDueNowOriginal] = useState(''); // what it was when the form opened
   const [monthInput, setMonthInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
@@ -146,6 +150,8 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
+    setDueNowInput('');
+    setDueNowOriginal('');
     setErrorMsg('');
   }
 
@@ -176,6 +182,12 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
+    {
+      const c = currentCycle(bill);
+      const was = c && !isCyclePaid(c) && c.dueDate ? c.dueDate : '';
+      setDueNowInput(was);
+      setDueNowOriginal(was);
+    }
     setErrorMsg('');
     setModalOpen(true);
   }
@@ -236,6 +248,8 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     const nextDueISO = nextDue
       ? nextDue.getFullYear() + '-' + String(nextDue.getMonth() + 1).padStart(2, '0') + '-' + String(nextDue.getDate()).padStart(2, '0')
       : '';
+    // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
+    const dueNowISO = dueNowInput && recentOccurrences(recurTypeInput, dueDate).includes(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, bills: [...model.bills] };
 
@@ -244,8 +258,12 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         if (b.id !== editingId) return b;
         // Redesign: keep paid history; only the current cycle changes, and its due date
         // only moves if the schedule changed.
-        const scheduleChanged = b.recurringType !== recurTypeInput || JSON.stringify(b.dueDate || {}) !== JSON.stringify(dueDate);
-        const cycles: BillCycle[] = withEditedCurrentCycle(b.cycles, { amountDue: Math.round((parsedAmount + carriedEdit) * 100) / 100, paymentMethod: paymentMethodInput }, nextDueISO, scheduleChanged);
+        const curC = currentCycle(b);
+        const scheduleChanged =
+          b.recurringType !== recurTypeInput ||
+          JSON.stringify(b.dueDate || {}) !== JSON.stringify(dueDate) ||
+          (dueNowInput !== dueNowOriginal && !!curC && !isCyclePaid(curC) && !!dueNowISO && curC.dueDate !== dueNowISO);
+        const cycles: BillCycle[] = withEditedCurrentCycle(b.cycles, { amountDue: Math.round((parsedAmount + carriedEdit) * 100) / 100, paymentMethod: paymentMethodInput }, dueNowISO, scheduleChanged);
         return {
           ...b,
           name: trimmedName,
@@ -274,7 +292,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         owner: 'shared',
         notes: notesInput,
         cycles: [
-          { id: makeId('cycle'), dueDate: nextDueISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '', paymentMethod: paymentMethodInput },
+          { id: makeId('cycle'), dueDate: dueNowISO, amountDue: parsedAmount, amountPaid: '', paidDate: '', notes: '', paymentMethod: paymentMethodInput },
         ],
         createdAt: Date.now(),
         isSubscription: subscriptionInput,
@@ -373,6 +391,15 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     { title: 'This week', items: unpaid.filter((b) => !overdueIds.has(b.id) && daysUntil(billDue(b)) <= 7) },
     { title: 'Later this month', items: unpaid.filter((b) => !overdueIds.has(b.id) && daysUntil(billDue(b)) > 7 && (billDue(b) as Date) <= monthEnd) },
     { title: 'Coming up', items: unpaid.filter((b) => !overdueIds.has(b.id) && (billDue(b) as Date) > monthEnd && daysUntil(billDue(b)) > 7) },
+    // Version 2.1 fix: a bill saved without a due date used to be hidden. It shows here.
+    {
+      title: 'No due date',
+      items: bills.filter((b) => {
+        if (billDue(b) !== null) return false;
+        const cur = currentCycle(b);
+        return !cur || !isCyclePaid(cur);
+      }),
+    },
   ];
   const paidThisMonth = bills.filter((b) => wasPaidThisMonth(b));
   const dueThisMonth = unpaid.filter((b) => overdueIds.has(b.id) || (billDue(b) as Date) <= monthEnd);
@@ -435,7 +462,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                       testID={`bill-row-${bill.id}`}
                       icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
                       title={bill.name || 'Untitled bill'}
-                      sub={`${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
+                      sub={`${!due ? 'Add a due date anytime' : `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}`}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
                       amount={formatPeso(billAmount(bill))}
                       amountColor={colors.negative}
                       badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
@@ -517,6 +544,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                   </View>
                 )}
                 <DayStrip value={parseInt(dayInput, 10) || null} onChange={(d) => setDayInput(String(d))} />
+                <DueNowChoice rt={recurTypeInput} day={dayInput} month={monthInput} value={dueNowInput} onChange={setDueNowInput} />
               </>
             )}
           </PickerRow>

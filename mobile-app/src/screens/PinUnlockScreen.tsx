@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import BusyOverlay from '../components/BusyOverlay';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '../components/AppText';
@@ -92,6 +92,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
       return;
     }
     setBusy(true);
+    await paintBusy();
     try {
       const profile = profiles.find((p) => p.username === selectedUsername);
       if (!profile) throw new Error('Account not found on this device.');
@@ -119,6 +120,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   async function handleUnlock() {
     setError('');
     setBusy(true);
+    await paintBusy();
     const ok = await verifyPin(username, pin);
     if (ok) {
       await resetPinFailures(username);

@@ -179,3 +179,26 @@ export function recurringTypeLabel(t: string): string {
   if (t === 'custom') return 'Custom';
   return 'One-time';
 }
+
+// Version 2.1 (Cath): a repeating bill or debt can start in an earlier month, when you're
+// behind. The last few due dates up to and including the next one, oldest first
+// (YYYY-MM-DD). Monthly: the past 4 months; yearly: last year. Empty when there's no day.
+export function recentOccurrences(recurringType: RecurringType | string, dueDate: Record<string, any> | undefined, today: Date = new Date()): string[] {
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const next = getNextDueDate(recurringType, dueDate, today);
+  if (!next) return [];
+  const out: string[] = [];
+  if (recurringType === 'monthly') {
+    for (let k = 4; k >= 1; k--) {
+      const d = getNextDueDate('monthly', dueDate, new Date(next.getFullYear(), next.getMonth() - k, 1));
+      if (d) out.push(iso(d));
+    }
+  } else if (recurringType === 'annual') {
+    const d = getNextDueDate('annual', dueDate, new Date(next.getFullYear() - 1, 0, 1));
+    if (d) out.push(iso(d));
+  } else {
+    return [];
+  }
+  out.push(iso(next));
+  return Array.from(new Set(out));
+}

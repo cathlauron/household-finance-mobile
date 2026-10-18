@@ -42,7 +42,8 @@ import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../au
 import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
 import { getBiometricState, getBiometricLabel, setBiometricsDisabled, BiometricState } from '../biometrics';
-import SetPinScreen from './SetPinScreen';
+import SetPinSheet from './SetPinScreen';
+import BusyOverlay, { paintBusy } from '../components/BusyOverlay';
 import CsvImportModal from './CsvImportModal';
 import {
   subscribeToUserDevices,
@@ -315,8 +316,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     }
     setBiometricPasswordError('');
     setBiometricPasswordBusy(true);
-    // Let the spinner draw before the slow password check freezes the screen.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Let the breathing logo appear before the slow password check freezes the screen.
+    await paintBusy();
     try {
       const passwordOk = await verifyPassword(biometricPassword);
       if (!passwordOk) {
@@ -1327,18 +1328,17 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           {pinIsSet && <PlainRow testID="change-pin-button" title="Change PIN" onPress={() => setShowSetPinModal(true)} />}
         </SettingsGroup>
 
-        {showSetPinModal && username && (
-          <Modal visible={showSetPinModal} animationType="slide">
-            <SetPinScreen
-              username={username}
-              email={getCurrentFirebaseUser()?.email ?? undefined}
-              onDone={() => {
-                setShowSetPinModal(false);
-                setPinIsSet(true);
-              }}
-              onCancel={() => setShowSetPinModal(false)}
-            />
-          </Modal>
+        {!!username && (
+          <SetPinSheet
+            visible={showSetPinModal}
+            username={username}
+            email={getCurrentFirebaseUser()?.email ?? undefined}
+            onDone={() => {
+              setShowSetPinModal(false);
+              setPinIsSet(true);
+            }}
+            onCancel={() => setShowSetPinModal(false)}
+          />
         )}
 
         <SettingsGroup label="This phone" plain footer="Auto-lock needs a PIN or password set up.">
@@ -2056,54 +2056,31 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <Button label="Cancel" variant="quiet" onPress={closeRuleModal} />
       </BottomSheet>
 
-      {/* Fingerprint password Modal */}
-      <Modal
+      {/* Fingerprint: confirm the password (version 2.1: the app's usual bottom sheet). */}
+      <BottomSheet
         visible={biometricPasswordModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { if (!biometricPasswordBusy) setBiometricPasswordModalOpen(false); }}
+        onClose={() => { if (!biometricPasswordBusy) setBiometricPasswordModalOpen(false); }}
+        grouped
+        header={
+          <SheetBar
+            title="Quick unlock"
+            onCancel={() => setBiometricPasswordModalOpen(false)}
+            onDone={handleConfirmBiometricPassword}
+            doneLabel="Turn on"
+            busy={biometricPasswordBusy}
+            doneDisabled={!biometricPassword}
+          />
+        }
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => { if (!biometricPasswordBusy) setBiometricPasswordModalOpen(false); }}
-        >
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <GradientFill match={styles.modalCard} />
-            <Text style={styles.modalTitle}>Turn on {biometricLabel}</Text>
-            <Text style={styles.sectionSub}>Enter your account password.</Text>
-            <Text style={styles.inputLabel}>Password</Text>
-            <PasswordField
-              testID="biometric-password-input"
-              autoFocus
-              style={styles.input}
-              placeholder="Your password"
-              value={biometricPassword}
-              onChangeText={setBiometricPassword}
-            />
-            {!!biometricPasswordError && <Text style={styles.errorText}>{biometricPasswordError}</Text>}
-            <TouchableOpacity
-              testID="biometric-password-submit-button"
-              style={[styles.saveButton, (!biometricPassword || biometricPasswordBusy) && { opacity: 0.4 }]}
-              disabled={!biometricPassword || biometricPasswordBusy}
-              onPress={handleConfirmBiometricPassword}
-            >
-              <GradientFill match={[styles.saveButton, (!biometricPassword || biometricPasswordBusy) && { opacity: 0.4 }]} />
-              {biometricPasswordBusy ? (
-                <ActivityIndicator color={colors.navy2} />
-              ) : (
-                <Text style={styles.saveButtonText}>Turn on</Text>
-              )}
-            </TouchableOpacity>
-              <Button
-                testID="biometric-password-cancel-button"
-                variant="quiet"
-                label="Cancel"
-                disabled={biometricPasswordBusy}
-                onPress={() => setBiometricPasswordModalOpen(false)}
-              />
-          </Pressable>
-        </Pressable>
-      </Modal>
+        <SheetHero icon="finger-print-outline" title={`Turn on ${biometricLabel}`} sub="Enter your account password once. After that, your fingerprint opens the app." />
+        <FormGroup>
+          <PasswordRow label="Password" value={biometricPassword} onChangeText={setBiometricPassword} placeholder="Your password" autoFocus testID="biometric-password-input" />
+        </FormGroup>
+        <Text style={[styles.sheetNote, biometricPasswordError ? { color: colors.error } : null]}>
+          {biometricPasswordError || 'Your phone may ask for your fingerprint next.'}
+        </Text>
+        <BusyOverlay visible={biometricPasswordBusy} messages={['Checking your password…', `Setting up ${biometricLabel}…`, 'Almost there…']} />
+      </BottomSheet>
 
       {/* Secret Recovery Key: enter your password (Next), then see and copy the new key (Done). */}
       <BottomSheet

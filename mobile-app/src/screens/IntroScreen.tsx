@@ -13,6 +13,12 @@ import { Text } from '../components/AppText';
 //   away, leaving the leaf. App.tsx moves on once the app is ready (about 3 seconds).
 // Light/dark mode is ignored on purpose so launch always looks the same.
 // With Reduce Motion on, everything appears at once with no movement.
+//
+// Version 2.1 fix (Cath: "everything appears at once, the loader is gone"): unlocking your
+// data keeps the app's main thread busy for a few seconds. Only the logo strokes need that
+// thread (App.tsx waits for them, about 1.3 s, before unlocking); everything after them
+// (wordmark, quote, leaf, bar) runs on the phone's animation thread, so it plays smoothly
+// even while the unlock is working.
 
 const CREAM = '#F6F3E7';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -132,15 +138,19 @@ export default function IntroScreen() {
           return;
         }
         const ease = Easing.bezier(0.65, 0, 0.35, 1);
-        Animated.parallel([
-          ...LOGO.map((p, i) =>
+        // The strokes (SVG) can only be animated on the main thread.
+        Animated.parallel(
+          LOGO.map((p, i) =>
             Animated.timing(strokes[i], { toValue: 0, duration: DRAW_MS, delay: p.at * 1000, easing: ease, useNativeDriver: false })
-          ),
-          Animated.timing(word, { toValue: 1, duration: 600, delay: 1140, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: false }),
-          Animated.timing(quote, { toValue: 1, duration: 480, delay: 1440, easing: Easing.out(Easing.ease), useNativeDriver: false }),
-          Animated.timing(loader, { toValue: 1, duration: 360, delay: 1620, useNativeDriver: false }),
-          Animated.timing(fill, { toValue: 1, duration: 1080, delay: 1620, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: false }),
-          Animated.timing(track, { toValue: 0, duration: 270, delay: 2820, easing: Easing.in(Easing.ease), useNativeDriver: false }),
+          )
+        ).start();
+        // Everything else runs on the animation thread.
+        Animated.parallel([
+          Animated.timing(word, { toValue: 1, duration: 600, delay: 1140, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }),
+          Animated.timing(quote, { toValue: 1, duration: 480, delay: 1440, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(loader, { toValue: 1, duration: 360, delay: 1620, useNativeDriver: true }),
+          Animated.timing(fill, { toValue: 1, duration: 1080, delay: 1620, easing: Easing.bezier(0.4, 0, 0.2, 1), useNativeDriver: true }),
+          Animated.timing(track, { toValue: 0, duration: 270, delay: 2820, easing: Easing.in(Easing.ease), useNativeDriver: true }),
         ]).start();
         swayLoop = Animated.loop(
           Animated.sequence([
@@ -156,8 +166,9 @@ export default function IntroScreen() {
     };
   }, [strokes, word, quote, loader, fill, track, sway]);
 
-  // "FINANCE FLOW" starts widely spaced and settles in (0.7em -> 0.34em at 21px).
-  const spacing = word.interpolate({ inputRange: [0, 1], outputRange: [14.7, 7.1] });
+  // "FINANCE FLOW" starts a little wider and settles in (a gentle scale, so it can run on
+  // the animation thread).
+  const settle = word.interpolate({ inputRange: [0, 1], outputRange: [1.12, 1] });
 
   return (
     <View style={styles.container} accessible accessibilityLabel="Finance Flow. Small steps. Bigger dreams. Opening.">
@@ -194,7 +205,7 @@ export default function IntroScreen() {
         </Svg>
         <AnimatedText
           numberOfLines={1}
-          style={[styles.wordmark, { opacity: word, letterSpacing: spacing, paddingLeft: spacing }]}
+          style={[styles.wordmark, { opacity: word, letterSpacing: 7.1, paddingLeft: 7.1, transform: [{ scaleX: settle }] }]}
         >
           FINANCE FLOW
         </AnimatedText>
@@ -227,7 +238,7 @@ export default function IntroScreen() {
           </Svg>
         </Animated.View>
         <Animated.View style={[styles.track, { opacity: track }]}>
-          <Animated.View style={[styles.fill, { width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
+          <Animated.View style={[styles.fill, { transform: [{ translateX: fill.interpolate({ inputRange: [0, 1], outputRange: [-64, 0] }) }] }]} />
         </Animated.View>
       </Animated.View>
     </View>
@@ -241,5 +252,5 @@ const styles = StyleSheet.create({
   quote: { marginTop: 12, fontSize: 16, lineHeight: 22, color: 'rgba(246,243,231,0.82)', textAlign: 'center' },
   loader: { position: 'absolute', left: 0, right: 0, bottom: 60, alignItems: 'center', gap: 14 },
   track: { width: 64, height: 3, borderRadius: 999, backgroundColor: 'rgba(246,243,231,0.16)', overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 999, backgroundColor: CREAM },
+  fill: { width: 64, height: '100%', borderRadius: 999, backgroundColor: CREAM },
 });

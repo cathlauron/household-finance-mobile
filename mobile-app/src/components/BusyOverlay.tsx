@@ -12,6 +12,13 @@ import { useTheme } from '../ThemeContext';
 
 type Props = { visible: boolean; messages: string[] };
 
+// Version 2.1 fix (Cath didn't see the animation): locking data with a password keeps the
+// phone busy for a few seconds, so it must not start until this has appeared on screen.
+// Call `await paintBusy()` right after showing it, before the slow work.
+export function paintBusy(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 150)));
+}
+
 export default function BusyOverlay({ visible, messages }: Props) {
   const { colors } = useTheme();
   const breath = useRef(new Animated.Value(0)).current;
