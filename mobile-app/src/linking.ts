@@ -59,6 +59,7 @@ import { updateProfileHouseholdId, savePendingHostLink, loadPendingHostLink, cle
 import { saveProfileCloudBackup } from './cloudBackup';
 import { mergeModels, sanitizeModelIds } from './mergeModels';
 import { getCurrentFirebaseUser } from './authFirebase';
+import { withNetTimeout } from './netTimeout';
 
 // Chosen to avoid easy mix-ups when the code is read aloud or typed by hand
 // (no 0/O, no 1/I/L).
@@ -223,10 +224,13 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   // A code only stays readable for a short window after it's created (see
   // firestore.rules) — past that, Firestore denies the read outright, which
   // surfaces here as a thrown error rather than a "document not found."
+  // Only the two online steps have the "slow connection" timer. The key scrambling in
+  // between takes several seconds on a phone and must not count against it.
   let snap;
   try {
-    snap = await getDocFromServer(doc(db, 'linkCodes', code));
-  } catch (e) {
+    snap = await withNetTimeout(getDocFromServer(doc(db, 'linkCodes', code)));
+  } catch (e: any) {
+    if (e?.code === 'net-timeout') throw e;
     throw new Error("That code doesn't look right, or it's expired.");
   }
   if (!snap.exists()) {
@@ -251,7 +255,7 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   // Checkpoint 9.2d — record who just unlocked the host's data, right away rather than
   // only at finish time, so the host's phone can show "X wants to link" and require an
   // explicit confirm before anything is finalized.
-  await setDoc(doc(db, 'linkCodes', code), { joinerUsername: myUsername }, { merge: true });
+  await withNetTimeout(setDoc(doc(db, 'linkCodes', code), { joinerUsername: myUsername }, { merge: true }));
 
   return {
     hostUsername: data.hostUsername,

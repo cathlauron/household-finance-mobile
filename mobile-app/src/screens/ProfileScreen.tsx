@@ -1,6 +1,6 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { showLeafTick } from '../components/LeafTick';
-import NeedsInternetSheet, { type NeedsInternet, withNetTimeout } from '../components/NeedsInternetSheet';
+import NeedsInternetSheet, { type NeedsInternet } from '../components/NeedsInternetSheet';
 import React, { useState, useEffect, useRef } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
@@ -533,7 +533,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     await paintBusy();
     try {
       const normalizedCode = joinCodeInput.trim().toUpperCase();
-      const result = await withNetTimeout(joinHouseholdLink(joinCodeInput, username));
+      const result = await joinHouseholdLink(joinCodeInput, username); // the timer sits on its online steps only
       setJoinResult(result);
       setJoinedCode(normalizedCode);
     } catch (e: any) {
