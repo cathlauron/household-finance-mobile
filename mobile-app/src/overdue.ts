@@ -1,4 +1,5 @@
-﻿import { todayISO } from './dateUtils';
+﻿import { isTrackedLoan, loanCoverage } from './loanSchedule';
+import { todayISO } from './dateUtils';
 import { loanOutstandingBalance } from './balanceProjection';
 import type { Loan } from './types';
 
@@ -59,6 +60,22 @@ function scanLoans(loans: Loan[] | undefined, today: string): OverdueItem[] {
   const out: OverdueItem[] = [];
   (loans || []).forEach(l => {
     if (l.direction !== 'borrowed') return;
+    // Version 3: a repeating loan with a First payment date shows its missed payments.
+    if (isTrackedLoan(l)) {
+      const { missed } = loanCoverage(l, today);
+      const owed = loanOutstandingBalance(l);
+      if (!missed.length || owed <= 0) return;
+      const each = typeof l.expectedPayment === 'number' ? l.expectedPayment : 0;
+      out.push({
+        kind: 'loan',
+        id: l.id,
+        name: l.name || 'Loan',
+        dueDate: missed[0],
+        amountOwed: Math.min(owed, each > 0 ? each * missed.length : owed),
+        key: `overdue:loan:${l.id}:${missed[0]}`,
+      });
+      return;
+    }
     if (l.recurringType !== 'onetime') return;
     const due = l.dueDate && typeof l.dueDate.date === 'string' ? l.dueDate.date : '';
     if (!due || due >= today) return;

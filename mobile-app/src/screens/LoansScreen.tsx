@@ -1,3 +1,5 @@
+import { loanPaymentToPlace, placeLoanPayment } from '../loanSchedule';
+import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -270,6 +272,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
   }
 
+  // Version 3 (M4c): "Which payment was this?" when the first payment date moves.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
+
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
@@ -383,9 +388,34 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
       updated.loans = [...updated.loans, newLoan];
     }
 
+    let toSave = updated;
+    if (editingId) {
+      // Version 3 (canvas M4c): the first payment moved to before a logged payment: which
+      // scheduled payment was it?
+      const before = model.loans.find((x) => x.id === editingId);
+      const edited = updated.loans.find((x) => x.id === editingId);
+      const newFirst = edited?.dueDate?.firstDate;
+      const moved = !!before && !!edited && (before.dueDate?.firstDate !== newFirst || before.recurringType !== edited.recurringType);
+      const place = moved && edited && typeof newFirst === 'string' ? loanPaymentToPlace(edited, newFirst) : null;
+      if (place && edited) {
+        setPlaceAsk({
+          loan: edited,
+          placement: place,
+          onPick: (forISO) => {
+            setPlaceAsk(null);
+            commitSave({ ...updated, loans: updated.loans.map((x) => (x.id === editingId ? placeLoanPayment(edited, place, forISO) : x)) });
+          },
+        });
+        return;
+      }
+    }
+    await commitSave(toSave);
+  }
+
+  async function commitSave(toSave: HouseholdModel) {
     setSaving(true);
     try {
-      await saveModel(updated);
+      await saveModel(toSave);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
@@ -659,6 +689,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
         {editingId && <Button label="Delete loan" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
+      <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
 
       <LoanPayoffSimulatorModal
         visible={simulatorOpen}

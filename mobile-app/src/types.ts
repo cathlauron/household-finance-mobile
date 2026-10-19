@@ -192,6 +192,9 @@ export type LoanPayment = {
   id: string;
   date: string;
   actual: number | '';
+  // Version 3: which scheduled payment this covers (YYYY-MM-DD), when chosen; payments
+  // without one cover the oldest scheduled payment not yet covered (loanSchedule.ts).
+  forDate?: string;
   paymentMethod?: PaymentMethod;
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
