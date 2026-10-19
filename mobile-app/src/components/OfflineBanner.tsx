@@ -1,3 +1,4 @@
+import { holdTabSwipe } from '../navigation/swipeTabs';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, PanResponder, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,7 +53,14 @@ export default function OfflineBanner({ style }: { style?: any }) {
   }, [isOnline, isHidden, x]);
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+      // Version 3 (Cath): once the banner has the swipe, nothing else may take it over
+      // (the page's scroll or the swipe-between-tabs made it stick half way).
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderTerminate: () => {
+        Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
+      },
       onPanResponderMove: (_e, g) => x.setValue(g.dx),
       onPanResponderRelease: (_e, g) => {
         if (Math.abs(g.dx) > 90) {
@@ -70,6 +78,7 @@ export default function OfflineBanner({ style }: { style?: any }) {
       : 'Keep going. Changes are saved on this phone and will sync.';
   return (
     <Animated.View
+      {...holdTabSwipe}
       {...pan.panHandlers}
       style={[styles.wrap, { backgroundColor: colors.indigoBg, borderColor: colors.indigo + '33', transform: [{ translateX: x }] }, style]}
       accessibilityRole="alert"

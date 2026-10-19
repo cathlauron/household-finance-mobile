@@ -34,3 +34,19 @@ export function ensureUsernameClaim(username: string): void {
     })
     .catch(() => {});
 }
+
+// Version 3 (Cath, 2026-10-19): sign-in checks the typed username belongs to the email
+// that just signed in, so a mistyped username says so instead of asking for a recovery
+// key. 'other' = another account owns it; 'none' = nobody has claimed it (older
+// accounts); 'unknown' = couldn't check (offline): sign-in carries on as before.
+export async function usernameOwner(username: string): Promise<'mine' | 'other' | 'none' | 'unknown'> {
+  const uid = getCurrentFirebaseUser()?.uid;
+  if (!uid || !username) return 'unknown';
+  try {
+    const snap = await getDoc(doc(db, 'usernames', username));
+    if (!snap.exists()) return 'none';
+    return snap.data()?.uid === uid ? 'mine' : 'other';
+  } catch {
+    return 'unknown';
+  }
+}
