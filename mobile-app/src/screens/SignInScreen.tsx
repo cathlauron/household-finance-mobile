@@ -3,7 +3,8 @@ import { formatRecoveryKeyInput } from '../typingHelpers';
 import React, { useEffect, useState, useRef } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert, BackHandler } from 'react-native';
+import Avatar from '../components/Avatar';
 import { Text, TextInput } from '../components/AppText';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { useTheme } from '../ThemeContext';
@@ -54,6 +55,9 @@ type Props = {
   // of showing anything here.
   silent?: boolean;
   onSilentFailed?: (username: string) => void;
+  // Version 3 (M3): set when this screen was opened from the account list with
+  // "Use password instead". Shows "‹ Back to accounts" and keeps the picked account.
+  onBackToAccounts?: () => void;
 };
 
 export default function SignInScreen({
@@ -61,8 +65,18 @@ export default function SignInScreen({
   onGoToCreateProfile,
   remoteRevokeNotice,
   onClearRemoteRevokeNotice, initialUsername, autoSignIn, onAutoSignInFailed,
-  silent, onSilentFailed,
+  silent, onSilentFailed, onBackToAccounts,
 }: Props) {
+  // M3: the account picked on the account list stays picked ("Change" lets you type another).
+  const [accountLocked, setAccountLocked] = useState(!!onBackToAccounts && !!initialUsername);
+  useEffect(() => {
+    if (!onBackToAccounts) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onBackToAccounts();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onBackToAccounts]);
   // Remembers whether sign-in actually finished, so a quiet (silent) attempt that
   // didn't can hand over to the visible sign-in screen.
   const signedInRef = useRef(false);
@@ -793,16 +807,22 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
   return (
     <>
     <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={[ms.container, { flex: undefined, flexGrow: 1 }]}>
+      {!!onBackToAccounts && !working && (
+        <TouchableOpacity testID="sign-in-back-to-accounts" onPress={onBackToAccounts} accessibilityRole="button" hitSlop={10} style={ms.topBack}>
+          <Ionicons name="chevron-back" size={20} color={colors.gold} />
+          <Text style={ms.topBackText}>Back to accounts</Text>
+        </TouchableOpacity>
+      )}
       <View style={ms.brandWrap}>
         {/* Version 2.1 (round 5): while signing in, this logo draws itself like the opening
             and the line under the title changes; nothing covers the screen. */}
         <DrawingLogo width={84} drawing={working} />
       </View>
-      <Text style={ms.title}>Welcome back</Text>
+      <Text style={ms.title}>{accountLocked ? `Sign in as ${usernameInput}` : 'Welcome back'}</Text>
       {working ? (
         <BusyWords messages={['Signing you in…', 'Unlocking your data…', 'Getting your household…', 'Almost there…']} style={{ marginBottom: 8 }} />
       ) : (
-        <Text style={ms.sub}>Sign in to your financial journey.</Text>
+        <Text style={ms.sub}>{accountLocked ? 'Your password, just this once.' : 'Sign in to your financial journey.'}</Text>
       )}
       {!!remoteRevokeNotice && (
         <View style={[styles.revokedBanner, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
@@ -818,6 +838,18 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
       )}
 
       <View style={{ opacity: working ? 0.45 : 1 }} pointerEvents={working ? 'none' : 'auto'}>
+      {accountLocked && (
+        <>
+          <Text style={ms.label}>Account</Text>
+          <View style={[ms.input, ms.accountChip]}>
+            <Avatar initials={usernameInput.slice(0, 1).toUpperCase()} size={30} />
+            <Text style={ms.accountChipName} numberOfLines={1}>{usernameInput}</Text>
+            <TouchableOpacity onPress={() => setAccountLocked(false)} accessibilityRole="button" hitSlop={10} testID="sign-in-change-account">
+              <Text style={ms.accountChipChange}>Change</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
       <Text style={ms.label}>Email address</Text>
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
@@ -837,6 +869,8 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         />
       </View>
 
+      {!accountLocked && (
+        <>
       <Text style={ms.label}>Username</Text>
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
@@ -854,6 +888,8 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           editable={!busy}
         />
       </View>
+        </>
+      )}
 
       <Text style={ms.label}>Password</Text>
       <View style={ms.fieldWrap}>
@@ -1117,6 +1153,11 @@ function makeMainStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: 48 },
     brandWrap: { alignItems: 'center', marginTop: 36, marginBottom: 14 },
+    topBack: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: 4, marginBottom: -20, paddingVertical: 6 },
+    topBackText: { color: colors.gold, fontSize: 17, fontWeight: '600' },
+    accountChip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 12 },
+    accountChipName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.ink },
+    accountChipChange: { color: colors.gold, fontSize: 15, fontWeight: '600' },
     title: { fontSize: 28, fontWeight: '700', color: colors.ink, marginBottom: 6, textAlign: 'center' },
     sub: { fontSize: 15, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
     label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
