@@ -112,6 +112,8 @@ function AppContent() {
   // Sign in once: true while a remembered LINKED account signs in quietly behind the
   // opening screen (an unlinked one opens offline straight away instead).
   const [silentSignIn, setSilentSignIn] = useState(false);
+  // Version 3 (M2): the opening shows changing words while a saved account unlocks.
+  const [openingUnlocking, setOpeningUnlocking] = useState(false);
   // Resolves when the opening animation has had its ~3 seconds, so a quick quiet
   // sign-in never cuts the animation short.
   const introDoneRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 3100)));
@@ -399,6 +401,7 @@ function AppContent() {
       autoLockMinutesRef.current = await getAutoLockMinutes();
       // Sign in once: a remembered account opens without asking for the password.
       if (saved && profiles.some((p) => p.username === saved.username)) {
+        setOpeningUnlocking(true); // words under the little leaf while it unlocks
         await introDrawnRef.current;
         const offline = await attemptOfflineUnlock(saved.username, saved);
         if (offline) {
@@ -631,7 +634,7 @@ function AppContent() {
           </View>
         )}
         <View style={StyleSheet.absoluteFill}>
-          <IntroScreen />
+          <IntroScreen unlocking={openingUnlocking} />
         </View>
       </View>
     );
