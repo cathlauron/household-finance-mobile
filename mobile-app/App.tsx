@@ -114,6 +114,9 @@ function AppContent() {
   const [silentSignIn, setSilentSignIn] = useState(false);
   // Version 3 (M2): the opening shows changing words while a saved account unlocks.
   const [openingUnlocking, setOpeningUnlocking] = useState(false);
+  // Version 3 (M3): sign-in opened from the account list ("Use password instead") gets
+  // "‹ Back to accounts", and the phone's Back button returns to the list too.
+  const [signInFromSwitcher, setSignInFromSwitcher] = useState(false);
   // Resolves when the opening animation has had its ~3 seconds, so a quick quiet
   // sign-in never cuts the animation short.
   const introDoneRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 3100)));
@@ -496,6 +499,10 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    if (screen !== 'signIn') setSignInFromSwitcher(false);
+  }, [screen]);
+
+  useEffect(() => {
     if (screen === 'home') {
       resetIdleTimer();
       flushPendingDeepLink();
@@ -828,6 +835,7 @@ function AppContent() {
           onUsePassword={(username) => {
             setAutoSignIn(null);
             setSignInPrefillUsername(username);
+            setSignInFromSwitcher(true);
             setScreen('signIn');
           }}
           onUseOtherAccount={() => {
@@ -890,6 +898,20 @@ function AppContent() {
           setRemoteRevokeNotice('Your saved sign-in is out of date. Sign in with your password.');
         }}
         silent={silent}
+        onBackToAccounts={
+          !silent && signInFromSwitcher
+            ? () => {
+                setSignInFromSwitcher(false);
+                setSignInPrefillUsername(undefined);
+                setAutoSignIn(null);
+                setRemoteRevokeNotice(null);
+                loadRecentAccounts().then((recents) => {
+                  setRecentAccounts(recents);
+                  setScreen('switcher');
+                });
+              }
+            : undefined
+        }
         onSilentFailed={(username) => {
           // The quiet sign-in at launch didn't work (no connection, or the saved
           // password changed): show the normal sign-in screen, once.
