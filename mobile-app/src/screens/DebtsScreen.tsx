@@ -11,6 +11,8 @@ import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid } from '../billPayments';
+import { paymentToPlace, placePayment } from '../billPayments';
+import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -183,6 +185,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setErrorMsg('');
   }
 
+  // Version 3 (M4): paid, then the due date moved: ask which payment it was.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
+
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
@@ -299,9 +304,42 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       updated.debts = [...updated.debts, newDebt];
     }
 
+    let toSave = updated;
+    if (editingId) {
+      // Version 3 (M4): a payment made before the due date moved gets placed on the right payment.
+      const before = model.debts.find((x) => x.id === editingId);
+      const edited = updated.debts.find((x) => x.id === editingId);
+      const moved =
+        !!before &&
+        !!edited &&
+        (currentCycle(before)?.dueDate !== dueNowISO ||
+          before.recurringType !== edited.recurringType ||
+          JSON.stringify(before.dueDate || {}) !== JSON.stringify(edited.dueDate || {}));
+      const place = moved && edited ? paymentToPlace(edited, dueNowISO) : null;
+      if (place && edited) {
+        const swap = (rec: typeof edited) => ({ ...updated, debts: updated.debts.map((x) => (x.id === editingId ? rec : x)) });
+        if (place.other) {
+          setPlaceAsk({
+            record: edited,
+            placement: place,
+            noun: 'payment',
+            onPick: (forISO) => {
+              setPlaceAsk(null);
+              commitSave(swap(placePayment(edited, place, forISO)));
+            },
+          });
+          return;
+        }
+        toSave = swap(placePayment(edited, place, place.newDue));
+      }
+    }
+    await commitSave(toSave);
+  }
+
+  async function commitSave(toSave: HouseholdModel) {
     setSaving(true);
     try {
-      await saveModel(updated);
+      await saveModel(toSave);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
@@ -466,6 +504,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
         {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
+      <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
     </SafeAreaView>
   );
 }
