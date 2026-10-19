@@ -5,7 +5,8 @@ import BottomSheet from './BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { currentCycle, placePayment, type PaymentPlacement } from '../billPayments';
 import { todayISO } from '../dateUtils';
-import type { Bill, Debt } from '../types';
+import type { Bill, Debt, Loan } from '../types';
+import { loanCoverage, placeLoanPayment, type LoanPlacement } from '../loanSchedule';
 
 // Version 3 (Cath, canvas M4a): you paid, then moved the due date. Which bill was the
 // payment for? The new due date's bill is suggested; the other choice is the bill of the
@@ -33,7 +34,48 @@ export type PlacePaymentAsk = {
   placement: PaymentPlacement;
   noun: 'bill' | 'payment';
   onPick: (forISO: string) => void;
+} | {
+  // Loans (canvas M4c): the same question with the loan's own wording.
+  loan: Loan;
+  placement: LoanPlacement;
+  onPick: (forISO: string) => void;
 } | null;
+
+type Choice = { key: 'new' | 'other'; iso: string; title: string; sub: string; suggested: boolean };
+
+function describe(value: NonNullable<PlacePaymentAsk>): { title: string; line: string; choices: Choice[] } | null {
+  const today = todayISO();
+  if ('loan' in value) {
+    const { loan, placement: p } = value;
+    const firstOpen = (iso: string) => {
+      const c = loanCoverage(placeLoanPayment(loan, p, iso), today);
+      return c.nextOpen;
+    };
+    const nNew = firstOpen(p.newFirst);
+    const nOther = firstOpen(p.other);
+    return {
+      title: 'Which payment was this?',
+      line: `You logged ${peso(p.amount)} on ${short(p.paidDate)}. Payments now start ${short(p.newFirst)}.`,
+      choices: [
+        { key: 'new', iso: p.newFirst, suggested: true, title: `${monthName(p.newFirst)} payment`, sub: `Counts for ${short(p.newFirst)}.` + (nNew ? ` ${nNew < today ? 'Still to pay: ' + short(nNew) + ' (missed)' : 'The next one is ' + short(nNew)}.` : '') },
+        { key: 'other', iso: p.other, suggested: false, title: `${monthName(p.other)} payment`, sub: `Counts for ${short(p.other)}.` + (nOther ? ` ${nOther < today ? monthName(nOther) + ' shows as missed' : 'The next one is ' + short(nOther)}.` : '') },
+      ],
+    };
+  }
+  const { record, placement: p, noun } = value;
+  if (!p.other) return null;
+  const other = p.other;
+  const afterNew = currentCycle(placePayment(record, p, p.newDue))?.dueDate;
+  const overdue = p.newDue < today;
+  return {
+    title: noun === 'bill' ? 'Which bill was this for?' : 'Which payment was this?',
+    line: `You paid ${peso(p.amountPaid)} on ${short(p.paidDate)}. You moved the due date to ${short(p.newDue)}.`,
+    choices: [
+      { key: 'new', iso: p.newDue, suggested: true, title: `${monthName(p.newDue)} ${noun}`, sub: `Counts for ${short(p.newDue)}.` + (afterNew ? ` ${monthName(afterNew)}'s ${noun} (${short(afterNew)}) is next.` : '') },
+      { key: 'other', iso: other, suggested: false, title: `${monthName(other)} ${noun}`, sub: `Counts for ${short(other)}. ${monthName(p.newDue)} shows as ${overdue ? 'unpaid (overdue)' : 'still to pay'}.` },
+    ],
+  };
+}
 
 export default function PlacePaymentSheet({ value, onClose }: { value: PlacePaymentAsk; onClose: () => void }) {
   const { colors } = useTheme();
@@ -41,35 +83,17 @@ export default function PlacePaymentSheet({ value, onClose }: { value: PlacePaym
   useEffect(() => {
     if (value) setPick('new');
   }, [value]);
-  if (!value || !value.placement.other) return null;
-  const { record, placement: p, noun } = value;
-  const other = p.other as string;
-  const afterNew = currentCycle(placePayment(record, p, p.newDue))?.dueDate;
-  const overdue = p.newDue < todayISO();
-  const choices = [
-    {
-      key: 'new' as const,
-      title: `${monthName(p.newDue)} ${noun}`,
-      sub: `Counts for ${short(p.newDue)}.` + (afterNew ? ` ${monthName(afterNew)}'s ${noun} (${short(afterNew)}) is next.` : ''),
-      suggested: true,
-    },
-    {
-      key: 'other' as const,
-      title: `${monthName(other)} ${noun}`,
-      sub: `Counts for ${short(other)}. ${monthName(p.newDue)} shows as ${overdue ? 'unpaid (overdue)' : 'still to pay'}.`,
-      suggested: false,
-    },
-  ];
+  const d = value ? describe(value) : null;
+  if (!value || !d) return null;
+  const { choices } = d;
   return (
     <BottomSheet visible={!!value} onClose={onClose}>
       <View style={{ paddingHorizontal: 20, paddingBottom: 28 }}>
         <View style={[s.icon, { backgroundColor: colors.accentTint }]}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: colors.gold }}>₱</Text>
         </View>
-        <Text style={[s.title, { color: colors.ink }]}>{noun === 'bill' ? 'Which bill was this for?' : 'Which payment was this?'}</Text>
-        <Text style={[s.body, { color: colors.inkDim }]}>
-          You paid {peso(p.amountPaid)} on {short(p.paidDate)}. You moved the due date to {short(p.newDue)}.
-        </Text>
+        <Text style={[s.title, { color: colors.ink }]}>{d.title}</Text>
+        <Text style={[s.body, { color: colors.inkDim }]}>{d.line}</Text>
         {choices.map((c) => {
           const on = pick === c.key;
           return (
@@ -96,7 +120,7 @@ export default function PlacePaymentSheet({ value, onClose }: { value: PlacePaym
         })}
         <TouchableOpacity
           testID="place-payment-save"
-          onPress={() => value.onPick(pick === 'new' ? p.newDue : other)}
+          onPress={() => value.onPick((choices.find((c) => c.key === pick) || choices[0]).iso)}
           style={[s.primary, { backgroundColor: colors.buttonFill }]}
           accessibilityRole="button"
         >

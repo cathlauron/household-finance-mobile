@@ -1,3 +1,4 @@
+import { loanCoverage } from '../loanSchedule';
 import React, { useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
@@ -339,10 +340,15 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
 
   function logPayment(pm: PaymentMethod, _amount?: number, _fee?: number, date: string = today, takeOff = false) {
     if (payAmount <= 0) return;
+    const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
     const next: Loan = {
       ...loan,
-      actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now() }],
+      actualPayments: [
+        ...(loan.actualPayments || []),
+        // Version 3: it covers the oldest scheduled payment still open (a missed one first).
+        { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}) },
+      ],
     };
     let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
     if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, payAmount);
