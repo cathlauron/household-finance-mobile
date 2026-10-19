@@ -109,7 +109,7 @@ export function markPaid<T extends CycleRecord>(
     paymentMethod: paid.paymentMethod,
     ...(cur.feesPortion !== undefined ? { feesPortion: cur.feesPortion } : {}),
   };
-  const nextDue = nextDueAfter(record, cur.dueDate || date);
+  const nextDue = nextOpenDueAfter({ ...record, cycles } as T, cur.dueDate || date);
   if (nextDue) {
     const normal = Math.max(0, due - num(cur.carriedIn));
     const carry = Math.max(0, minimumDue(record, cur) - paidAmt) + fee;
@@ -154,4 +154,69 @@ export function withEditedCurrentCycle(
   const cur = cycles[idx];
   cycles[idx] = { ...cur, ...patch, dueDate: scheduleChanged || !cur.dueDate ? newScheduleDueISO : cur.dueDate };
   return cycles;
+}
+
+// ---- Version 3 (Cath, canvas M4): paid, then the due date moved ----
+// A payment stays tied to the due date the bill had when it was paid. When the due date
+// is moved afterwards (often from "no due date" to a real one), the app asks which bill
+// the latest payment was for, so it isn't ignored.
+
+function dayBefore(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  return toISO(d);
+}
+
+// The next due date after `afterISO` that has no paid cycle on it yet.
+export function nextOpenDueAfter(record: CycleRecord, afterISO: string): string | null {
+  const paid = new Set((record.cycles || []).filter(isCyclePaid).map((c) => c.dueDate));
+  let next = nextDueAfter(record, afterISO);
+  for (let guard = 0; next && paid.has(next) && guard < 400; guard++) next = nextDueAfter(record, next);
+  return next;
+}
+
+export type PaymentPlacement = {
+  cycleId: string; // the paid cycle being placed
+  paidDate: string;
+  amountPaid: number;
+  newDue: string; // the due date just picked (suggested)
+  other: string | null; // the bill of the month it was paid in; null = nothing to ask
+};
+
+// After an edit (record already has the new schedule and cycles), returns the payment
+// to place, or null when no payment is affected. `other` null means place it on the new
+// due date without asking (paid in that same month, or a one-time bill).
+export function paymentToPlace(record: CycleRecord, newDueISO: string): PaymentPlacement | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDueISO)) return null;
+  const paid = (record.cycles || []).filter((c) => isCyclePaid(c) && !!c.paidDate);
+  if (!paid.length) return null;
+  if (paid.some((c) => c.dueDate === newDueISO)) return null; // that bill is already paid
+  const latest = paid.reduce((a, b) => ((b.paidDate || '') > (a.paidDate || '') ? b : a));
+  const base = { cycleId: latest.id, paidDate: latest.paidDate, amountPaid: num(latest.amountPaid), newDue: newDueISO };
+  // A one-time bill is a single bill: once paid, a new date just moves the paid bill.
+  if (record.recurringType === 'onetime') return { ...base, other: null };
+  if (newDueISO > (latest.paidDate || '')) return null; // the new date is after the payment: nothing to place
+  const paidMonthStart = latest.paidDate.slice(0, 7) + '-01';
+  const other = nextDueAfter(record, dayBefore(paidMonthStart));
+  if (!other || other === newDueISO || other.slice(0, 7) === newDueISO.slice(0, 7)) return { ...base, other: null };
+  return { ...base, other };
+}
+
+// Puts the payment on `forISO` (the new due date or `other`) and sets the bill that's
+// due next: after the new due date when the payment covers it, or the new due date itself
+// (overdue) when the payment belongs to the later month.
+export function placePayment<T extends CycleRecord>(record: T, p: PaymentPlacement, forISO: string): T {
+  let cycles = (record.cycles || []).map((c) => (c.id === p.cycleId ? { ...c, dueDate: forISO } : c));
+  const withPaid = { ...record, cycles } as T;
+  let idx = -1;
+  for (let i = cycles.length - 1; i >= 0; i--) if (!isCyclePaid(cycles[i])) { idx = i; break; }
+  const nextDue = forISO === p.newDue ? nextOpenDueAfter(withPaid, forISO) : p.newDue;
+  if (idx >= 0) {
+    if (nextDue) cycles[idx] = { ...cycles[idx], dueDate: nextDue };
+    else if (num(cycles[idx].amountPaid) === 0) cycles = cycles.filter((_, i) => i !== idx); // one-time: nothing left to pay
+  } else if (nextDue) {
+    const src = cycles.find((c) => c.id === p.cycleId);
+    cycles = [...cycles, { id: makeId('cycle'), dueDate: nextDue, amountDue: num(src?.amountDue) || p.amountPaid, amountPaid: '', paidDate: '', notes: '', paymentMethod: src?.paymentMethod }];
+  }
+  return { ...record, cycles };
 }
