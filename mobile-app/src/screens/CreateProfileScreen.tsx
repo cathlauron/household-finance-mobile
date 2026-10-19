@@ -1,3 +1,4 @@
+import { isEmailFormat, emailTypoSuggestion } from '../typingHelpers';
 import React, { useState } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { claimUsername } from '../usernameClaim';
@@ -41,6 +42,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
   const [password1, setPassword1] = useState('');
   const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
+  // Version 3: "Did you mean ...@gmail.com?" asks once per typed email; Create again keeps it.
+  const [typoAskedFor, setTypoAskedFor] = useState('');
   const [busy, setBusy] = useState(false);
   const [createdInfo, setCreatedInfo] = useState<{ username: string; key: CryptoJS.lib.WordArray } | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
@@ -82,8 +85,14 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
       setError('Choose a username.');
       return;
     }
-    if (!email || !email.includes('@')) {
-      setError('Enter a valid email.');
+    if (!email || !isEmailFormat(email)) {
+      setError('Enter a valid email, like name@gmail.com.');
+      return;
+    }
+    const typoFix = emailTypoSuggestion(email);
+    if (typoFix && typoAskedFor !== email) {
+      setTypoAskedFor(email);
+      setError(`Check your email. Did you mean ${typoFix}? Tap the suggestion to fix it, or tap Create again to keep yours.`);
       return;
     }
     if (password1.length < 6) {
@@ -248,6 +257,22 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
             keyboardType="email-address"
           />
         </View>
+        {!!emailTypoSuggestion(emailInput) && (
+          <TouchableOpacity
+            testID="email-typo-fix"
+            onPress={() => {
+              const fix = emailTypoSuggestion(emailInput);
+              if (fix) setEmailInput(fix);
+              setError('');
+            }}
+            accessibilityRole="button"
+            style={{ marginTop: 6, marginBottom: 2 }}
+          >
+            <Text style={{ fontSize: 14, color: colors.gold, fontWeight: '600' }}>
+              Did you mean {emailTypoSuggestion(emailInput)}? Tap to fix
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={styles.label}>Username</Text>
         <View style={styles.fieldWrap}>

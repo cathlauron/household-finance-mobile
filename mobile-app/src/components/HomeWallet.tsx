@@ -176,7 +176,29 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
     });
   }
   function cycle(dir: 'left' | 'right', fromX = 0) {
-    if (cards.length < 2 || busy.current) return;
+    if (busy.current) return;
+    // Version 3 (Cath): with only one card it still plays: it flies off the side you
+    // swiped and comes back in, same feel as flipping through several cards.
+    if (cards.length === 1) {
+      busy.current = true;
+      hapticSelection();
+      const only = xs.get(order[0]) as Animated.Value;
+      const out =
+        dir === 'right'
+          ? curlOff(only, fromX)
+          : Animated.timing(only, { toValue: -screenW * 1.1, duration: 300, easing: EASE, useNativeDriver: true });
+      out.start(() =>
+        setTimeout(
+          () =>
+            curlIn(only, () => {
+              busy.current = false;
+            }),
+          40
+        )
+      );
+      return;
+    }
+    if (cards.length < 2) return;
     busy.current = true;
     hapticSelection();
     const keys = [...order];
@@ -403,7 +425,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       {cards.length > 0 && (
         <Text style={styles.footer}>
           {money(total)} across {cards.length} {cards.length === 1 ? 'account' : 'accounts'}
-          {cards.length > 1 ? ' · swipe to flip through, hold to move a card' : ''}
+          {cards.length > 1 ? ' · swipe to flip through, hold to move a card' : ' · swipe to flip it'}
         </Text>
       )}
     </View>

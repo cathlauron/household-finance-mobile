@@ -1,3 +1,5 @@
+import { usernameOwner } from '../usernameClaim';
+import { formatRecoveryKeyInput } from '../typingHelpers';
 import React, { useEffect, useState, useRef } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
@@ -502,6 +504,17 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         return;
       }
 
+      // Version 3: the email and password are right, but is the username theirs?
+      // Without this, someone else's username made the app ask for a recovery key.
+      if ((await usernameOwner(username)) === 'other') {
+        try {
+          await signOutFirebase();
+        } catch {}
+        setBusy(false);
+        setError("This username isn't linked to this email. Check the spelling of your username.");
+        return;
+      }
+
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
 
@@ -942,7 +955,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                 <TextInput
                   style={styles.recoveryInput}
                   value={recoveryKeyInput}
-                  onChangeText={setRecoveryKeyInput}
+                  onChangeText={(v) => setRecoveryKeyInput(formatRecoveryKeyInput(v))}
                   placeholder="e.g. 4B9X-7M2K-W8Q3-P1Z6"
                   placeholderTextColor={colors.inkFaint}
                   autoCapitalize="characters"
