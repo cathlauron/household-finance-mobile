@@ -273,9 +273,14 @@ export default function TransactionsScreen() {
   // Redesign: quick-add sheet extras.
   const [moreOpen, setMoreOpen] = useState(false);
   const [ruleFilled, setRuleFilled] = useState(false);
+  // Version 2.2 (smoothness sweep): the full list is built once per change (it was built
+  // twice), and each row finds its own record in a ready-made index instead of searching
+  // every transaction again for every row.
+  const allEntries = useMemo(() => (model ? buildTransactionsList(model) : []), [model]);
+  const manualById = useMemo(() => new Map((model?.manualTransactions || []).map((m) => [m.id, m])), [model?.manualTransactions]);
   const transactions = useMemo(() => {
     if (!model) return [];
-    let list = buildTransactionsList(model);
+    let list = allEntries;
     if (monthFilter !== 'all') {
       list = list.filter((t) => t.date.startsWith(monthFilter));
     }
@@ -288,18 +293,17 @@ export default function TransactionsScreen() {
       list = list.filter((t) => ids.has(t.rawId ?? t.id) || ids.has(t.id));
     }
     return sortTransactions(list, sortOrder);
-  }, [model, sortOrder, categoryFilter, monthFilter, accountFilter]);
+  }, [model, allEntries, sortOrder, categoryFilter, monthFilter, accountFilter]);
+  const days = useMemo(() => groupByDate(transactions), [transactions]);
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
-    if (model) {
-      for (const t of buildTransactionsList(model)) {
-        if (t.date && t.date.length >= 7) months.add(t.date.slice(0, 7));
-      }
+    for (const t of allEntries) {
+      if (t.date && t.date.length >= 7) months.add(t.date.slice(0, 7));
     }
     if (monthFilter !== 'all') months.add(monthFilter);
     return Array.from(months).sort().reverse();
-  }, [model, monthFilter]);
+  }, [allEntries, monthFilter]);
 
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
@@ -800,14 +804,14 @@ export default function TransactionsScreen() {
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 
-        {groupByDate(transactions).map((day) => (
+        {days.map((day) => (
         <View key={day.date} style={styles.daySection}>
         <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
         <View style={styles.group}>
           <GradientFill match={styles.group} />
         {day.items.map((t: TransactionEntry, rowIndex: number) => {
           const isManual = t.source === 'manual';
-          const rawManual = isManual ? (model.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
+          const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
           const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
           const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;

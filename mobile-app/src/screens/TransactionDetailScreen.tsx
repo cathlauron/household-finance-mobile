@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useState, useMemo } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,7 +54,8 @@ export default function TransactionDetailScreen() {
   const styles = makeStyles(colors);
   const [repeatOpen, setRepeatOpen] = useState(false);
 
-  const entry: TransactionEntry | undefined = model ? buildTransactionsList(model).find((t) => t.id === id) : undefined;
+  // Version 2.2 (sweep): built once per change, not on every redraw of this page.
+  const entry: TransactionEntry | undefined = useMemo(() => (model ? buildTransactionsList(model).find((t) => t.id === id) : undefined), [model, id]);
   const raw = entry?.source === 'manual' && model ? (model.manualTransactions || []).find((m) => m.id === entry.rawId) : undefined;
   const isManual = !!raw;
   const linkedShare = raw ? (model?.sharedExpenses ?? []).find((x) => x.transactionId === raw.id) : undefined;
