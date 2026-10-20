@@ -21,6 +21,7 @@ import type {
   ManualTransaction,
 } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
+import AppSwitch from '../components/AppSwitch';
 import { makeId } from '../utils';
 import { useStickyState } from '../stickyState';
 import DateField from '../components/DateField';
@@ -211,6 +212,8 @@ export default function TravelScreen() {
   const [pageTodoText, setPageTodoText] = useState('');
   const [pageTodoDate, setPageTodoDate] = useState('');
   const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
+  const [pageItemText, setPageItemText] = useState('');
+  const [pageItemCost, setPageItemCost] = useState('');
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
@@ -218,16 +221,33 @@ export default function TravelScreen() {
   const nameRef = useRef<any>(null);
   const navigation = useNavigation<any>();
 
-  // Redesign: Add in the top bar adds a trip.
+  // Version 2.2 (Cath, canvas T1-T4): Travel lists your trips; tapping one opens it (its
+  // name becomes the title, "‹ Travel" goes back to the list, Edit opens its form).
+  const openTrip = featuredId ? (model?.travel ?? []).find((x) => x.id === featuredId) : undefined;
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a trip" testID="travel-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
-        </TouchableOpacity>
-      ),
+      title: openTrip ? openTrip.name || 'Trip' : 'Travel',
+      headerBackTitle: openTrip ? 'Travel' : 'Plan',
+      headerRight: () =>
+        openTrip ? (
+          <TouchableOpacity onPress={() => openEditModal(openTrip)} accessibilityRole="button" accessibilityLabel="Edit trip" testID="travel-edit" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[headerButtonText, { color: colors.gold }]}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a trip" testID="travel-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
+          </TouchableOpacity>
+        ),
     });
   });
+  // Back (the top-left link or the phone's Back button) from a trip returns to the list.
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', (e: any) => {
+      if (!featuredId || !openTrip) return;
+      e.preventDefault();
+      setFeaturedId(null);
+    });
+  }, [navigation, featuredId, openTrip]);
 
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
@@ -248,8 +268,8 @@ export default function TravelScreen() {
   const isPast = (t: TravelTrip) => !!(t.endDate || t.startDate) && (t.endDate || t.startDate) < today;
   const upcoming = trips.filter((t) => !isPast(t)).sort((a, b) => (a.startDate || '9999') < (b.startDate || '9999') ? -1 : 1);
   const past = trips.filter(isPast).sort((a, b) => ((a.endDate || a.startDate) < (b.endDate || b.startDate) ? 1 : -1));
-  const featured = upcoming.find((t) => t.id === featuredId) ?? upcoming[0];
-  const otherUpcoming = upcoming.filter((t) => t !== featured);
+  const featured = featuredId ? trips.find((t) => t.id === featuredId) : undefined;
+  const otherUpcoming = featured ? [] : upcoming;
 
   // Ticks an item paid (or unpaid) right from the list, logging or removing its expense.
   async function toggleItem(trip: TravelTrip, item: TravelChecklistItem) {
@@ -279,6 +299,81 @@ export default function TravelScreen() {
     setPageTodoDate('');
     setPageTodoDateOpen(false);
     await saveTripTodos(trip, [...(trip.todos || []), { id: makeId('todo'), text, done: false, ...(pageTodoDate ? { date: pageTodoDate } : {}) }]);
+  }
+
+  // Canvas T2: one card per coming trip: name, dates, when, and a thin bar while saving.
+  function tripCard(trip: TravelTrip) {
+    const budget = tripFullChecklistTotal(trip);
+    const goal = trip.savingsGoalId ? (model!.savingsGoals || []).find((g) => g.id === trip.savingsGoalId) : undefined;
+    const saved = goal ? goal.contributions.reduce((s2, c) => s2 + (typeof c.amount === 'number' ? c.amount : 0), 0) : 0;
+    const pct = goal && budget > 0 ? Math.min(100, Math.round((saved / budget) * 100)) : 0;
+    const badge = tripBadge(trip, today);
+    return (
+      <SwipeableRow key={trip.id} enabled={Boolean(model!.settings.swipeToDeleteEnabled)} onDelete={() => handleSwipeDeleteTrip(trip)} testID={`trip-swipe-${trip.id}`} flat>
+        <TouchableOpacity style={[styles.listGroup, { padding: 16 }]} activeOpacity={0.8} onPress={() => setFeaturedId(trip.id)} accessibilityRole="button" accessibilityLabel={`Open ${trip.name}`}>
+          <GradientFill match={styles.listGroup} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTitle} numberOfLines={1}>{trip.name || 'Untitled trip'}</Text>
+              <Text style={styles.featureSub}>{niceRange(trip)}</Text>
+            </View>
+            {!!badge && (
+              <View style={[styles.badge, { backgroundColor: colors.accentTint, marginRight: 6 }]}>
+                <Text style={[styles.badgeText, { color: colors.gold }]}>{badge}</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={18} color={colors.inkDim} />
+          </View>
+          {goal && budget > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+              <View style={[styles.bar, { flex: 1, height: 4, marginTop: 0 }]}>
+                <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: colors.saving }]} />
+              </View>
+              <Text style={[styles.tripSub, { marginLeft: 10, marginTop: 0 }]}>{pct}% saved</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </SwipeableRow>
+    );
+  }
+
+  // Canvas T3b: the "Save for this trip in Savings?" switch on the trip page itself.
+  async function setTripSaving(trip: TravelTrip, on: boolean) {
+    if (!model) return;
+    const goal = trip.savingsGoalId ? (model.savingsGoals || []).find((g) => g.id === trip.savingsGoalId) : undefined;
+    const saved = goal ? goal.contributions.reduce((s2, c) => s2 + (typeof c.amount === 'number' ? c.amount : 0), 0) : 0;
+    const apply = async () => {
+      hapticSelection();
+      const draft: TravelTrip = { ...trip, trackInSavings: on };
+      const budget = tripFullChecklistTotal(draft);
+      const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
+      await saveModel({ ...model, savingsGoals: goals, travel: trips.map((x) => (x.id === trip.id ? { ...draft, savingsGoalId } : x)) });
+    };
+    if (!on && goal && saved > 0) {
+      // Turning it off removes the pot: ask first when there's money in it.
+      Alert.alert('Stop saving for this trip?', `This removes the "${goal.name}" pot and the ${formatPeso(saved)} recorded in it.`, [
+        { text: 'Keep saving', style: 'cancel' },
+        { text: 'Stop saving', style: 'destructive', onPress: () => { apply(); } },
+      ]);
+      return;
+    }
+    await apply();
+  }
+
+  // Canvas T3: add a checklist item right on the trip page (saved straight away).
+  async function addPageItem(trip: TravelTrip) {
+    if (!model) return;
+    const title = pageItemText.trim();
+    if (!title) return;
+    const n = parseFloat(pageItemCost);
+    const cost: number | '' = isNaN(n) || n <= 0 ? '' : Math.round(n * 100) / 100;
+    hapticSelection();
+    setPageItemText('');
+    setPageItemCost('');
+    const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), { id: makeId('travelitem'), title, cost, checked: false }] };
+    const budget = tripFullChecklistTotal(draft);
+    const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
+    await saveModel({ ...model, savingsGoals: goals, travel: trips.map((x) => (x.id === trip.id ? { ...draft, budget, savingsGoalId } : x)) });
   }
 
   function tripRow(trip: TravelTrip, i: number, onPress: () => void, sub: string, amount: string, amountColor: string) {
@@ -535,11 +630,14 @@ export default function TravelScreen() {
     <View style={styles.container}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         {trips.length === 0 && (
-          <View style={[styles.listGroup, { padding: 16 }]}>
+          <TouchableOpacity style={[styles.listGroup, { padding: 16, flexDirection: 'row', alignItems: 'center' }]} onPress={openAddModal} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Plan a trip" testID="travel-empty-add">
             <GradientFill match={styles.listGroup} />
-            <Text style={styles.tripName}>No trips yet</Text>
-            <Text style={[styles.tripSub, { marginTop: 4 }]}>Tap Add to plan one. List what it will cost and the budget adds itself up.</Text>
-          </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tripName}>No trips yet</Text>
+              <Text style={[styles.tripSub, { marginTop: 4 }]}>Tap here to plan one. List what it will cost and the budget adds itself up.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.inkDim} style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
         )}
 
         {featured && (() => {
@@ -552,42 +650,15 @@ export default function TravelScreen() {
           const badge = tripBadge(t, today);
           return (
             <>
-              <TouchableOpacity style={[styles.listGroup, { padding: 16 }]} onPress={() => openEditModal(t)} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={`${t.name}, edit trip`}>
-                <GradientFill match={styles.listGroup} />
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                  <Text style={styles.featureTitle} numberOfLines={1}>{t.name || 'Untitled trip'}</Text>
-                  {!!badge && (
-                    <View style={[styles.badge, { backgroundColor: colors.accentTint }]}>
-                      <Text style={[styles.badgeText, { color: colors.gold }]}>{badge}</Text>
-                    </View>
-                  )}
-                </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 4 }}>
                 <Text style={styles.featureSub}>{niceRange(t)}</Text>
-                {goal && budget > 0 && (
-                  <>
-                    <View style={styles.bar}>
-                      <View style={[styles.barFill, { width: `${pct}%` }]} />
-                    </View>
-                    <Text style={[styles.tripSub, { marginTop: 6 }]}>{pct}% saved in your {goal.name} pot</Text>
-                  </>
+                {!!badge && (
+                  <View style={[styles.badge, { backgroundColor: colors.accentTint }]}>
+                    <Text style={[styles.badgeText, { color: colors.gold }]}>{badge}</Text>
+                  </View>
                 )}
-                <View style={styles.trio}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.tripSub}>Budget</Text>
-                    <Text style={[styles.trioVal, { color: colors.planned }]}>{formatPeso(budget)}</Text>
-                  </View>
-                  <View style={styles.trioCell}>
-                    <Text style={styles.tripSub}>{goal ? 'Saved' : 'Left'}</Text>
-                    <Text style={[styles.trioVal, { color: colors.saving }]}>{formatPeso(goal ? saved : Math.max(0, budget - paid))}</Text>
-                  </View>
-                  <View style={styles.trioCell}>
-                    <Text style={styles.tripSub}>Paid</Text>
-                    <Text style={[styles.trioVal, { color: colors.negative }]}>{formatPeso(paid)}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              <View style={{ marginTop: 20, marginBottom: 4 }}>
+              </View>
+              <View style={{ marginTop: 14, marginBottom: 4 }}>
                 <SegmentedControl<'budget' | 'todo'>
                   accessibilityLabel="Trip view"
                   options={[
@@ -602,11 +673,45 @@ export default function TravelScreen() {
               <View collapsable={false}>
               {pageTab === 'budget' ? (
               <>
+              <View style={[styles.listGroup, { padding: 16, marginTop: 12 }]}>
+                <GradientFill match={styles.listGroup} />
+                <View style={[styles.trio, { marginTop: 0, paddingTop: 0, borderTopWidth: 0 }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tripSub}>Budget</Text>
+                    <Text style={[styles.trioVal, { color: colors.planned }]}>{formatPeso(budget)}</Text>
+                  </View>
+                  <View style={styles.trioCell}>
+                    <Text style={styles.tripSub}>Left</Text>
+                    <Text style={[styles.trioVal, { color: colors.saving }]}>{formatPeso(Math.max(0, budget - paid))}</Text>
+                  </View>
+                  <View style={styles.trioCell}>
+                    <Text style={styles.tripSub}>Paid</Text>
+                    <Text style={[styles.trioVal, { color: colors.negative }]}>{formatPeso(paid)}</Text>
+                  </View>
+                </View>
+                {/* Canvas T3a option B: a thin bar while it's saving in Savings. */}
+                {goal && budget > 0 && (
+                  <>
+                    <View style={[styles.bar, { height: 4, marginTop: 14 }]}>
+                      <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: colors.saving }]} />
+                    </View>
+                    <Text style={[styles.tripSub, { marginTop: 6 }]}>{pct}% saved in Savings</Text>
+                  </>
+                )}
+              </View>
+              {/* Canvas T3b option E: a plain line with a small switch, just under the numbers. */}
+              <View style={styles.saveLine}>
+                <Text style={[styles.tripSub, { flex: 1, fontSize: 14, marginTop: 0 }]}>Save for this trip in Savings?</Text>
+                <AppSwitch value={!!t.trackInSavings} onValueChange={(on) => setTripSaving(t, on)} accessibilityLabel="Save for this trip in Savings" />
+              </View>
+              {!!t.trackInSavings && budget <= 0 && (
+                <Text style={[styles.groupFooter, { marginTop: 0 }]}>The pot appears once the checklist has a cost.</Text>
+              )}
               <Text style={styles.groupHeader}>Checklist</Text>
                 <View style={styles.listGroup}>
                   <GradientFill match={styles.listGroup} />
                   {(t.checklist || []).length === 0 && (
-                    <Text style={[styles.tripSub, { padding: 16 }]}>Nothing on this trip's checklist yet. Tap the trip above to add what it will cost.</Text>
+                    <Text style={[styles.tripSub, { paddingHorizontal: 16, paddingTop: 14 }]}>What will it cost? Flights, hotel, food…</Text>
                   )}
                   {(t.checklist || []).map((item, i) => (
                     <View key={item.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
@@ -632,6 +737,35 @@ export default function TravelScreen() {
                       </TouchableOpacity>
                     </View>
                   ))}
+                  <View style={[styles.checkRow, (t.checklist || []).length > 0 && styles.rowDivider]}>
+                    <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
+                      value={pageItemText}
+                      onChangeText={setPageItemText}
+                      placeholder="Add an item"
+                      placeholderTextColor={colors.inkFaint}
+                      returnKeyType="next"
+                      maxLength={80}
+                      testID="travel-page-item-input"
+                    />
+                    <TextInput
+                      style={[styles.tripName, styles.costInput]}
+                      value={pageItemCost}
+                      onChangeText={(v) => setPageItemCost(v.replace(/[^0-9.]/g, ''))}
+                      placeholder="₱ Cost"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="decimal-pad"
+                      returnKeyType="done"
+                      onSubmitEditing={() => addPageItem(t)}
+                      testID="travel-page-item-cost"
+                    />
+                    {!!pageItemText.trim() && (
+                      <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 12 }]}>
+                        <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
                 <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out. Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
               </>
@@ -705,15 +839,12 @@ export default function TravelScreen() {
 
         {otherUpcoming.length > 0 && (
           <>
-            <Text style={styles.groupHeader}>Other trips</Text>
-            <View style={styles.listGroup}>
-              <GradientFill match={styles.listGroup} />
-              {otherUpcoming.map((trip, i) => tripRow(trip, i, () => setFeaturedId(trip.id), `${niceRange(trip)}${tripBadge(trip, today) ? ' · ' + tripBadge(trip, today).toLowerCase() : ''}`, formatPeso(tripFullChecklistTotal(trip)), colors.planned))}
-            </View>
+            <Text style={styles.groupHeader}>Coming up</Text>
+            {otherUpcoming.map((trip) => tripCard(trip))}
           </>
         )}
 
-        {past.length > 0 && (
+        {!featured && past.length > 0 && (
           <>
             <Text style={styles.groupHeader}>Past trips</Text>
             <View style={styles.listGroup}>
@@ -723,7 +854,7 @@ export default function TravelScreen() {
                 const paid = tripChecklistTotal(trip);
                 const diff = budget - paid;
                 const note = budget > 0 ? (diff >= 0 ? `${formatPeso(diff)} under budget` : `${formatPeso(-diff)} over budget`) : '';
-                return tripRow(trip, i, () => openEditModal(trip), [niceRange(trip), note].filter(Boolean).join(' · '), formatPeso(paid), colors.negative);
+                return tripRow(trip, i, () => setFeaturedId(trip.id), [niceRange(trip), note].filter(Boolean).join(' · '), formatPeso(paid), colors.negative);
               })}
             </View>
           </>
@@ -896,6 +1027,8 @@ function makeStyles(colors: any) {
     trio: { flexDirection: 'row', marginTop: 14, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     trioCell: { flex: 1, paddingLeft: 12, borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
     trioVal: { fontSize: 17, fontWeight: '600', marginTop: 2 },
+    saveLine: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: -2, marginBottom: 6 },
+    costInput: { width: 92, paddingVertical: 4, textAlign: 'right' },
     groupHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 12, marginBottom: 6, marginHorizontal: 16 },
     groupFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
     checkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 10 },

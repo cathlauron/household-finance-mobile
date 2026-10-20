@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { hapticLight } from '../haptics';
 
 // Redesign (Finance Flow "offline" mockup): a small strip under the page title while the
 // phone has no internet. Everything keeps working; changes are saved on the phone and
@@ -52,26 +53,28 @@ export default function OfflineBanner({ style }: { style?: any }) {
     if (isOnline) setHidden(false); // next time it goes offline, show the banner again
     x.setValue(0);
   }, [isOnline, isHidden, x]);
-  // Version 2.2 (Cath: the swipe often went to the next tab instead): the banner's swipe
-  // uses the same gesture system as the swipe-between-tabs, and starts sooner (8 px
-  // sideways instead of 24), so it wins whenever the swipe starts on the banner.
+  // Version 2.2 (Cath): swipe the banner UP to put it away, like a phone notification, so
+  // it's never confused with swiping between tabs. The ✕ on the right does the same.
+  function dismiss() {
+    hapticLight();
+    Animated.timing(x, { toValue: -140, duration: 200, useNativeDriver: true }).start(() => setHidden(true));
+  }
   const pan = useMemo(
     () =>
       Gesture.Pan()
         .runOnJS(true)
-        .activeOffsetX([-8, 8])
-        .failOffsetY([-16, 16])
-        .onUpdate((e) => x.setValue(e.translationX))
+        .activeOffsetY(-8)
+        .failOffsetY(12)
+        .failOffsetX([-24, 24])
+        .onUpdate((e) => x.setValue(Math.min(0, e.translationY)))
         .onEnd((e) => {
-          if (Math.abs(e.translationX) > 80 || Math.abs(e.velocityX) > 700) {
-            Animated.timing(x, { toValue: e.translationX > 0 ? 500 : -500, duration: 180, useNativeDriver: true }).start(() => setHidden(true));
-          } else {
-            Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
-          }
+          if (e.translationY < -28 || e.velocityY < -500) dismiss();
+          else Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
         })
         .onFinalize((_e, success) => {
           if (!success) Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
         }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [x]
   );
   if (isOnline || isHidden) return null;
@@ -83,7 +86,7 @@ export default function OfflineBanner({ style }: { style?: any }) {
     <GestureDetector gesture={pan}>
     <Animated.View
       {...holdTabSwipe}
-      style={[styles.wrap, { backgroundColor: colors.indigoBg, borderColor: colors.indigo + '33', transform: [{ translateX: x }] }, style]}
+      style={[styles.wrap, { backgroundColor: colors.indigoBg, borderColor: colors.indigo + '33', transform: [{ translateY: x }], opacity: x.interpolate({ inputRange: [-140, -40, 0], outputRange: [0, 0.6, 1], extrapolate: 'clamp' }) }, style]}
       accessibilityRole="alert"
       accessibilityLabel={`You are offline. ${detail}`}
     >
@@ -92,6 +95,9 @@ export default function OfflineBanner({ style }: { style?: any }) {
         <Text style={[styles.title, { color: colors.ink }]}>You are offline</Text>
         <Text style={[styles.detail, { color: colors.inkDim }]}>{detail}</Text>
       </View>
+      <TouchableOpacity onPress={dismiss} accessibilityRole="button" accessibilityLabel="Hide the offline message" hitSlop={10} testID="offline-banner-close" style={[styles.close, { backgroundColor: colors.indigo + '1A' }]}>
+        <Ionicons name="close" size={16} color={colors.indigo} />
+      </TouchableOpacity>
     </Animated.View>
     </GestureDetector>
   );
@@ -109,5 +115,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 15, fontWeight: '600' },
   detail: { fontSize: 13, lineHeight: 18 },
+  close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
   cloud: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
 });
