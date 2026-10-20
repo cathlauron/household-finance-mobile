@@ -1,6 +1,7 @@
 import { holdTabSwipe } from '../navigation/swipeTabs';
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Animated, PanResponder, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
@@ -51,35 +52,37 @@ export default function OfflineBanner({ style }: { style?: any }) {
     if (isOnline) setHidden(false); // next time it goes offline, show the banner again
     x.setValue(0);
   }, [isOnline, isHidden, x]);
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
-      onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
-      // Version 3 (Cath): once the banner has the swipe, nothing else may take it over
-      // (the page's scroll or the swipe-between-tabs made it stick half way).
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderTerminate: () => {
-        Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
-      },
-      onPanResponderMove: (_e, g) => x.setValue(g.dx),
-      onPanResponderRelease: (_e, g) => {
-        if (Math.abs(g.dx) > 90) {
-          Animated.timing(x, { toValue: g.dx > 0 ? 500 : -500, duration: 180, useNativeDriver: true }).start(() => setHidden(true));
-        } else {
-          Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
-        }
-      },
-    })
-  ).current;
+  // Version 2.2 (Cath: the swipe often went to the next tab instead): the banner's swipe
+  // uses the same gesture system as the swipe-between-tabs, and starts sooner (8 px
+  // sideways instead of 24), so it wins whenever the swipe starts on the banner.
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .runOnJS(true)
+        .activeOffsetX([-8, 8])
+        .failOffsetY([-16, 16])
+        .onUpdate((e) => x.setValue(e.translationX))
+        .onEnd((e) => {
+          if (Math.abs(e.translationX) > 80 || Math.abs(e.velocityX) > 700) {
+            Animated.timing(x, { toValue: e.translationX > 0 ? 500 : -500, duration: 180, useNativeDriver: true }).start(() => setHidden(true));
+          } else {
+            Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
+          }
+        })
+        .onFinalize((_e, success) => {
+          if (!success) Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
+        }),
+    [x]
+  );
   if (isOnline || isHidden) return null;
   const detail =
     pendingChanges > 0
       ? `Keep going. ${pendingChanges} ${pendingChanges === 1 ? 'change is' : 'changes are'} saved on this phone and will sync.`
       : 'Keep going. Changes are saved on this phone and will sync.';
   return (
+    <GestureDetector gesture={pan}>
     <Animated.View
       {...holdTabSwipe}
-      {...pan.panHandlers}
       style={[styles.wrap, { backgroundColor: colors.indigoBg, borderColor: colors.indigo + '33', transform: [{ translateX: x }] }, style]}
       accessibilityRole="alert"
       accessibilityLabel={`You are offline. ${detail}`}
@@ -90,6 +93,7 @@ export default function OfflineBanner({ style }: { style?: any }) {
         <Text style={[styles.detail, { color: colors.inkDim }]}>{detail}</Text>
       </View>
     </Animated.View>
+    </GestureDetector>
   );
 }
 
