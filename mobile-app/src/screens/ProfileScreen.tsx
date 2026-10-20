@@ -26,6 +26,7 @@ import {
   subscribeToLinkCode,
   cancelLinkCode,
   LINK_CODE_TTL_MS,
+  linkCodeUse,
   type JoinChoice,
 } from '../linking';
 import {
@@ -179,6 +180,9 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
   // Start linking / Host invite state
   const [linkCode, setLinkCode] = useState('');
+  // The code showing right now, for timers that run later.
+  const linkCodeRef = useRef('');
+  linkCodeRef.current = linkCode;
   const [linkSecretHex, setLinkSecretHex] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErrorMsg, setLinkErrorMsg] = useState('');
@@ -218,12 +222,24 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     }, 1000);
   }
 
-  function handleLinkCodeExpired() {
+  // Version 2.2 fix (Cath: the code stayed after its 15 minutes, even after using other
+  // accounts): when the time is up, a code nobody has used is put away for good (also on
+  // this phone's memory of it). A code someone already joined with stays, so linking can
+  // still finish.
+  async function handleLinkCodeExpired() {
     clearLinkCodeExpiryTimer();
+    const code = linkCodeRef.current;
+    const use = code ? await linkCodeUse(code) : 'unused';
+    if (use === 'used') return;
+    if (code && linkCodeRef.current !== code) return; // a new code was made meanwhile
+    if (use === 'unused' && code) {
+      cancelLinkCode(code).catch(() => {});
+      if (username) clearPendingHostLink(username).catch(() => {});
+    }
     setLinkCode('');
     setLinkSecretHex('');
     setHostFinishMsg('');
-    setLinkErrorMsg('This code expired — generate a new one.');
+    setLinkErrorMsg('That invite code ran out (15 minutes). Make a new one when you are ready.');
   }
 
   useEffect(() => {
@@ -236,12 +252,36 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   // Restores an in-progress "start linking" (code + secret) if screen opens and one was left unfinished
   useEffect(() => {
     if (!username) return;
-    loadPendingHostLink(username).then((pending) => {
-      if (pending) {
+    let alive = true;
+    loadPendingHostLink(username).then(async (pending) => {
+      if (!pending || !alive) return;
+      const left = typeof pending.at === 'number' ? pending.at + LINK_CODE_TTL_MS - Date.now() : -1;
+      if (left > 0) {
+        // Still within its 15 minutes: shown with the time that's really left.
         setLinkCode(pending.code);
         setLinkSecretHex(pending.secretHex);
+        setCodeStartedAt(pending.at as number);
+        clearLinkCodeExpiryTimer();
+        linkCodeExpiryTimerRef.current = setTimeout(handleLinkCodeExpired, left);
+        return;
+      }
+      // Past its 15 minutes (or made before codes remembered their time).
+      const use = await linkCodeUse(pending.code);
+      if (!alive) return;
+      if (use === 'used') {
+        // Someone joined with it in time: keep it so linking can finish.
+        setLinkCode(pending.code);
+        setLinkSecretHex(pending.secretHex);
+        return;
+      }
+      if (use === 'unused') {
+        cancelLinkCode(pending.code).catch(() => {});
+        clearPendingHostLink(username).catch(() => {});
       }
     });
+    return () => {
+      alive = false;
+    };
   }, [username]);
 
   // Host side finish linking state

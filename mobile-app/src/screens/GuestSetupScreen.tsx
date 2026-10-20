@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { setLookPreview } from '../lookPreview';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +35,11 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const s = makeStyles(colors);
   const first = setup.name.trim().split(' ')[0];
+  // The background follows the Falling leaves switch straight away (before anything is saved).
+  useEffect(() => {
+    setLookPreview({ fallingLeaves: setup.fallingLeaves });
+  }, [setup.fallingLeaves]);
+  useEffect(() => () => setLookPreview({}), []);
 
   function back() {
     if (step === 1) onBackToWelcome();

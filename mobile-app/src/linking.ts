@@ -422,6 +422,20 @@ export async function finishHostLink(
   return { status: 'done', householdId: data.householdId };
 }
 
+// Version 2.2: has someone already used this code (joined, or finished joining)? Used for
+// a code past its 15 minutes: an unused one is put away; a used one is kept so this phone
+// can still finish linking. 'unknown' when the check couldn't be made (e.g. offline).
+export async function linkCodeUse(code: string): Promise<'used' | 'unused' | 'unknown'> {
+  try {
+    const snap = await getDoc(doc(db, 'linkCodes', code));
+    if (!snap.exists()) return 'unused';
+    const data = snap.data() as { joinerUsername?: string; finished?: boolean };
+    return data.joinerUsername || data.finished ? 'used' : 'unused';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
 export async function cancelLinkCode(code: string): Promise<void> {
   if (!code) return;
   try {

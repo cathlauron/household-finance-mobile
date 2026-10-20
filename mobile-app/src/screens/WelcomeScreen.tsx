@@ -47,7 +47,7 @@ export default function WelcomeScreen({ onStart, onSignIn }: Props) {
       <SkyGlow />
       <View style={s.topRow}>
         <View style={s.brand} accessibilityRole="image" accessibilityLabel="Finance Flow">
-          <LogoMark width={40} />
+          <LogoMark width={40} wordmark={false} />
           <Text style={[s.wordmark, { color: colors.gold }]}>FINANCE FLOW</Text>
         </View>
         <TouchableOpacity onPress={onStart} accessibilityRole="button" hitSlop={10} testID="welcome-skip">
@@ -157,7 +157,7 @@ function PrivateCard() {
     <View style={{ width: 300, alignItems: 'center', gap: 22 }}>
       <View>
         <LinearGradient colors={DARK_GREEN} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.55, 1]} style={pic.logoTile}>
-          <LogoMark width={58} color="#FFFFFF" />
+          <LogoMark width={58} color="#FFFFFF" wordmark={false} />
         </LinearGradient>
         <View style={[pic.lockBadge, { backgroundColor: colors.navy3 }]}>
           <Ionicons name="lock-closed-outline" size={20} color={colors.gold} />

@@ -5,6 +5,7 @@ import { useTheme } from '../ThemeContext';
 import { useMood } from '../mood';
 import { useData } from '../DataContext';
 import FallingLeaves from './FallingLeaves';
+import { useLookPreview } from '../lookPreview';
 import { LEAF_OUTLINE, LEAF_STEM, LEAF_VEINS } from './leafShape';
 
 // Redesign: the faint leaf field behind every screen, from the Finance Flow mockups.
@@ -91,7 +92,8 @@ export default function LeafBackground() {
   const mood = useMood();
   const { model } = useData();
   const { width, height } = useWindowDimensions();
-  const fallingOn = model?.settings?.fallingLeavesEnabled !== false;
+  const preview = useLookPreview();
+  const fallingOn = preview.fallingLeaves ?? model?.settings?.fallingLeavesEnabled !== false;
   const [reduceMotion, setReduceMotion] = useState(false);
   const [appActive, setAppActive] = useState(AppState.currentState !== 'background');
 

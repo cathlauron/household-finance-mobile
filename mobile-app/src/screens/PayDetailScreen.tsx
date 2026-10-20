@@ -223,7 +223,7 @@ export default function PayDetailScreen() {
             accessibilityRole="button"
           >
             <GradientFill color={colors.buttonFill} strength={0.18} />
-            <Text style={[styles.primaryText, { color: colors.onButton }]}>Mark as paid</Text>
+            <Text style={[styles.primaryText, { color: colors.onButton }]}>Pay</Text>
           </TouchableOpacity>
         )}
         {paidToday && (
@@ -249,7 +249,7 @@ export default function PayDetailScreen() {
         direction="out"
         model={model}
         initial={cur?.paymentMethod}
-        confirmLabel="Paid"
+        confirmLabel="Pay"
         editableAmount={kind === 'debt'}
         fullAmount={amount}
         minimumAmount={minDue}
@@ -467,7 +467,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         direction={lent ? 'in' : 'out'}
         model={model}
         initial={payments[0]?.paymentMethod}
-        confirmLabel={lent ? 'Received' : 'Paid'}
+        confirmLabel={lent ? 'Received' : 'Pay'}
         onConfirm={logPayment}
       />
       <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />
