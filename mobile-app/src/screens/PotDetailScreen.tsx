@@ -10,6 +10,8 @@ import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
+import DeleteRow from '../components/DeleteRow';
+import { withoutSavingsPot } from '../deleteRecords';
 import AmountInput from '../components/AmountInput';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { useTheme } from '../ThemeContext';
@@ -45,7 +47,7 @@ function shortDate(iso: string): string {
 
 export default function PotDetailScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const id: string = route.params?.id;
@@ -335,6 +337,26 @@ export default function PotDetailScreen() {
           )}
         </View>
       </BottomSheet>
+      {/* Version 2.2 (Cath): Delete at the bottom of the page, same as inside Edit. */}
+      <DeleteRow
+        label="Delete savings pot"
+        testID="pot-detail-delete"
+        onPress={() =>
+          Alert.alert('Delete savings goal?', 'Permanently delete this goal and all logged contributions? This cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => {
+                const latest = getModel() ?? model;
+                if (!latest) return;
+                navigation.goBack();
+                saveModel(withoutSavingsPot(latest, id)).catch(() => Alert.alert('Failed to delete', 'Please try again.'));
+              },
+            },
+          ])
+        }
+      />
     </KeyboardAwareScrollView>
   );
 }

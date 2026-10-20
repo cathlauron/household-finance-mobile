@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { withoutSavingsPot } from '../deleteRecords';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -377,10 +378,9 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   async function performDeleteGoal() {
     if (!editingId || !model) return;
-    const updated: HouseholdModel = {
-      ...model,
-      savingsGoals: model.savingsGoals.filter((g) => g.id !== editingId),
-    };
+    // Version 2.2 (sweep): same as swipe-to-delete, a trip or event saving into this pot
+    // stops saving (before, its switch stayed on and made a new pot on its next change).
+    const updated: HouseholdModel = withoutSavingsPot(model, editingId);
     setSaving(true);
     try {
       await saveModel(updated);
@@ -405,16 +405,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   async function performDeleteGoalById(id: string) {
     if (!model) return;
-    const updated: HouseholdModel = {
-      ...model,
-      savingsGoals: model.savingsGoals.filter((g) => g.id !== id),
-      events: (model.events || []).map((ev) =>
-        ev.savingsGoalId === id ? { ...ev, savingsGoalId: undefined, trackInSavings: false } : ev
-      ),
-      travel: (model.travel || []).map((trip) =>
-        trip.savingsGoalId === id ? { ...trip, savingsGoalId: undefined, trackInSavings: false } : trip
-      ),
-    };
+    const updated: HouseholdModel = withoutSavingsPot(model, id);
     setSaving(true);
     try {
       await saveModel(updated);

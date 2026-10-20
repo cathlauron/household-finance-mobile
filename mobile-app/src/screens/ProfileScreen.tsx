@@ -52,7 +52,8 @@ import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
 import { SettingsGroup, PlainRow } from '../components/SettingsHub';
 import BottomSheet from '../components/BottomSheet';
-import { LinkWaysRows, QrInviteModal, ScanJoinModal, TimerChip, shareInvite, useInviteCountdown } from '../components/HouseholdLinkWays';
+import { onPendingJoinCode, takePendingJoinCode } from '../joinLink';
+import { LinkWaysRows, QrInviteModal, ScanJoinModal, TimerChip, askForCamera, shareInvite, useInviteCountdown } from '../components/HouseholdLinkWays';
 import { getPreferredName, withPreferredName, MAX_PREFERRED_NAME_LENGTH } from '../preferredName';
 
 export function getInitials(name: string): string {
@@ -516,8 +517,9 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     return isLinked ? handleStartHouseholdInvite() : handleStartLinking();
   }
   async function handleSendInvite() {
+    const fresh = !linkCode;
     const code = await ensureInviteCode();
-    if (code) shareInvite(code, preferredName || undefined).catch(() => {});
+    if (code) shareInvite(code, preferredName || undefined, fresh ? Date.now() : codeStartedAt).catch(() => {});
   }
   async function handleShowQr() {
     const code = await ensureInviteCode();
@@ -529,6 +531,26 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     setTypingCode(true);
     setTimeout(() => handleJoinWithCode(code), 350);
   }
+  // Version 2.2: a code from an invite link (see joinLink.ts) joins like a scanned one.
+  useEffect(() => {
+    let alive = true;
+    const check = () => {
+      takePendingJoinCode().then((code) => {
+        if (!alive || !code) return;
+        if (isLinked) {
+          Alert.alert('Already in a household', 'To join a different household, first use "Unlink this device" on this page.');
+          return;
+        }
+        handleScanned(code);
+      });
+    };
+    check();
+    const off = onPendingJoinCode(check);
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [isLinked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cancels the open invite/link code without making a new one.
   async function handleCancelInvite() {
@@ -780,7 +802,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         <Text style={[styles.hhRole, { textAlign: 'center', marginTop: 6 }]}>{hint}</Text>
         {/* Version 2.2 (canvas M5b): send it through any app, or show a QR code. */}
         <View style={[styles.hhCodeButtons, { marginTop: 10 }]}>
-          <TouchableOpacity style={[styles.hhCodeBtn, { backgroundColor: colors.buttonFill }]} onPress={() => shareInvite(linkCode, preferredName || undefined).catch(() => {})} accessibilityRole="button" testID="invite-send">
+          <TouchableOpacity style={[styles.hhCodeBtn, { backgroundColor: colors.buttonFill }]} onPress={() => shareInvite(linkCode, preferredName || undefined, codeStartedAt).catch(() => {})} accessibilityRole="button" testID="invite-send">
             <Text style={[styles.hhCodeBtnText, { color: colors.onButton }]}>Send invite</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.hhCodeBtn, { backgroundColor: colors.navy2 }]} onPress={() => setQrOpen(true)} accessibilityRole="button" testID="invite-show-qr">
@@ -1225,7 +1247,11 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                     busy={linkBusy || joinBusy}
                     onSend={handleSendInvite}
                     onShowQR={handleShowQr}
-                    onScan={() => setScanOpen(true)}
+                    onScan={async () => {
+                      // Version 2.2: ask for the camera right away (the phone's own pop-up).
+                      await askForCamera();
+                      setScanOpen(true);
+                    }}
                     onType={() => setTypingCode((v) => !v)}
                   />
                   {typingCode && (

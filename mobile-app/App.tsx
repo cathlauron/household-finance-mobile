@@ -4,7 +4,8 @@ import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
 import { saveSession, loadSession, clearSession, saveSessionKey, loadSessionKey, clearSessionKey } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet } from 'react-native';
+import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet, Linking } from 'react-native';
+import { joinCodeFromUrl, setPendingJoinCode } from './src/joinLink';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -148,6 +149,8 @@ function AppContent() {
   const pendingDeepLinkPayday = useRef<string | null>(null);
   // Envelope alert -> Envelopes page; month-end summary -> the close-out report.
   const pendingDeepLinkPage = useRef<'envelopeAlert' | 'closeOut' | null>(null);
+  // Version 2.2: an invite link (financeflow://join/ABC123) opens Household, which joins.
+  const pendingJoinOpen = useRef(false);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -171,6 +174,10 @@ function AppContent() {
   }
 
   function flushPendingDeepLink() {
+    if (pendingJoinOpen.current && navigationRef.isReady() && screenRef.current === 'home') {
+      pendingJoinOpen.current = false;
+      navigationRef.navigate('Profile', undefined);
+    }
     if (pendingDeepLinkPage.current && navigationRef.isReady()) {
       const page = pendingDeepLinkPage.current;
       pendingDeepLinkPage.current = null;
@@ -189,6 +196,21 @@ function AppContent() {
     pendingDeepLinkBillId.current = null;
     navigationRef.navigate('Main', { openBillId: billId });
   }
+
+  // Version 2.2: invite links. The code waits (joinLink.ts) until Household picks it up:
+  // straight away when signed in, or after signing in.
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      const code = joinCodeFromUrl(url);
+      if (!code) return;
+      setPendingJoinCode(code);
+      pendingJoinOpen.current = true;
+      flushPendingDeepLink();
+    };
+    Linking.getInitialURL().then(handle).catch(() => {});
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    return () => sub.remove();
+  }, []);
 
   // Cold start: the app may have been launched BY tapping the notification.
   useEffect(() => {

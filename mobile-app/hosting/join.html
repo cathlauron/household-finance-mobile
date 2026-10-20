@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Join a Finance Flow household</title>
+<meta property="og:title" content="Join a Finance Flow household">
+<meta property="og:description" content="Tap to see your invite code. It works for 15 minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#141210; --dim:#636366; --green:#2E6B47; --tint:#e6efe9; --card:rgba(255,255,255,.86); --ground:#fbfaf6; --glow:#F2BBAA55; --warn:#b3261e; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); font-family: Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { min-height: 100vh; background: radial-gradient(120% 40% at 100% 0%, var(--glow) 0%, rgba(243,242,247,0) 60%), var(--ground); }
+  main { max-width: 440px; margin: 0 auto; padding: 40px 24px 48px; text-align: center; }
+  .brand { display: flex; flex-direction: column; align-items: center; }
+  .brand span { margin-top: 11px; font-size: 13px; font-weight: 600; letter-spacing: 4px; padding-left: 4px; color: var(--green); }
+  h1 { font-size: 26px; line-height: 32px; font-weight: 800; margin: 22px 0 0; }
+  p.sub { font-size: 15px; line-height: 21px; color: var(--dim); margin: 8px 0 0; }
+  .card { background: var(--card); border-radius: 20px; padding: 18px 16px; margin: 22px 0 4px; }
+  .label { font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #5f7268; margin-bottom: 8px; }
+  .code { font-size: 34px; font-weight: 800; letter-spacing: 8px; padding-left: 8px; user-select: all; }
+  .chip { display: inline-block; margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--green); background: var(--tint); border-radius: 999px; padding: 5px 12px; }
+  .btn { display: flex; align-items: center; justify-content: center; height: 54px; border-radius: 28px; font-size: 17px; font-weight: 700; text-decoration: none; margin-top: 20px; }
+  .btn.solid { background: var(--green); color: #fff; }
+  .btn.line { border: 2px solid var(--green); color: var(--green); margin-top: 12px; }
+  .note { font-size: 14px; line-height: 20px; color: var(--dim); margin-top: 14px; }
+  .note b { color: var(--green); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand" aria-hidden="true">
+    <svg width="70" height="58" viewBox="190 240 644 530" fill="none" stroke="#2E6B47" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 512 748 V 656"/>
+      <path d="M 512 656 C 512 588, 578 508, 597 490 C 609 552, 584 636, 512 680 Z"/>
+      <path d="M 502 668 C 453 664, 432 592, 428 548 C 442 544, 486 566, 505 658"/>
+      <path d="M 512 270 C 507 270, 504 273, 501 276 L 215 512"/>
+      <path d="M 512 270 C 517 270, 520 273, 524 276 L 809 512"/>
+      <path d="M 268 470 V 700 C 268 726, 286 746, 307 746 H 414"/>
+      <path d="M 756 470 V 700 C 756 726, 738 746, 717 746 H 610"/>
+    </svg>
+    <span>FINANCE FLOW</span>
+  </div>
+
+  <!-- A live invite (canvas M6a) -->
+  <section id="live" hidden>
+    <h1 id="title">You're invited to a household</h1>
+    <p class="sub">Finance Flow keeps your household's money in one calm place.</p>
+    <div class="card">
+      <div class="label">YOUR CODE</div>
+      <div class="code" id="code">------</div>
+      <div class="chip" id="timer" hidden>Valid for 15:00 left</div>
+    </div>
+    <a class="btn solid" id="download" href="#" hidden>Download Finance Flow</a>
+    <a class="btn solid" id="open" href="#">Open Finance Flow</a>
+    <p class="note" id="steps">In Finance Flow: Settings › Household › Type a code.</p>
+  </section>
+
+  <!-- After 15 minutes (canvas M6b) -->
+  <section id="expired" hidden>
+    <h1>This invite has expired</h1>
+    <p class="sub" id="expiredText">Codes only work for 15 minutes. Open Finance Flow and ask for a new code, or start your own household.</p>
+    <a class="btn line" id="openExpired" href="financeflow://household">Open Finance Flow</a>
+  </section>
+
+  <!-- A link with no code in it -->
+  <section id="nocode" hidden>
+    <h1>Join a household</h1>
+    <p class="sub">Open Finance Flow, then Settings › Household › Type a code, and enter the 6 letters from the person who invited you.</p>
+    <a class="btn solid" href="financeflow://household">Open Finance Flow</a>
+  </section>
+</main>
+<script>
+  // Version 2.2: the page an invite link opens (canvas M6a and M6b, approved Oct 20).
+  // Everything it shows comes from the part of the link after "#", which the browser
+  // never sends anywhere: the code (c), the inviter's first name (n), and when the code
+  // was made (t, milliseconds). Nothing is looked up online.
+  var DOWNLOAD_URL = ''; // set once Finance Flow has a public download link
+  // A different invite opened in the same tab: start over with it.
+  window.addEventListener('hashchange', function () { location.reload(); });
+  var MINUTES = 15;
+  function params() {
+    var out = {};
+    var hash = (location.hash || '').replace(/^#/, '');
+    hash.split('&').forEach(function (part) {
+      var i = part.indexOf('=');
+      if (i > 0) {
+        try { out[part.slice(0, i)] = decodeURIComponent(part.slice(i + 1)); } catch (e) {}
+      }
+    });
+    // Also accept /join/ABC123 (a link typed or shortened by hand).
+    var m = location.pathname.match(/\/join\/([A-Za-z0-9]{6})\/?$/);
+    if (!out.c && m) out.c = m[1];
+    return out;
+  }
+  var p = params();
+  var code = (p.c || '').toUpperCase();
+  var valid = /^[A-HJ-NP-Z2-9]{6}$/.test(code);
+  var name = (p.n || '').replace(/[<>&"]/g, '').trim().slice(0, 40);
+  var made = parseInt(p.t || '', 10);
+  var endsAt = isFinite(made) && made > 0 ? made + MINUTES * 60 * 1000 : 0;
+  function show(id) { ['live', 'expired', 'nocode'].forEach(function (s) { document.getElementById(s).hidden = s !== id; }); }
+  function expire() {
+    show('expired');
+    if (name) document.getElementById('expiredText').textContent = 'Codes only work for 15 minutes. Open Finance Flow and ask ' + name + ' for a new code, or start your own household.';
+  }
+  if (!valid) {
+    show('nocode');
+  } else if (endsAt && Date.now() >= endsAt) {
+    expire();
+  } else {
+    show('live');
+    document.getElementById('code').textContent = code;
+    if (name) document.getElementById('title').textContent = name + ' invited you to their household';
+    var open = document.getElementById('open');
+    open.href = 'financeflow://join/' + code;
+    if (DOWNLOAD_URL) {
+      var dl = document.getElementById('download');
+      dl.href = DOWNLOAD_URL;
+      dl.hidden = false;
+      open.className = 'btn line';
+      document.getElementById('steps').innerHTML = 'Then open it › Settings › Household › Type a code.';
+    } else {
+      document.getElementById('steps').textContent = "Don't have Finance Flow yet? Ask " + (name || 'them') + ' to send you the app, then open it › Settings › Household › Type a code.';
+    }
+    if (endsAt) {
+      var timer = document.getElementById('timer');
+      timer.hidden = false;
+      var tick = function () {
+        var left = endsAt - Date.now();
+        if (left <= 0) { expire(); return; }
+        var m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+        timer.textContent = 'Valid for ' + m + ':' + (s < 10 ? '0' : '') + s + ' left';
+        setTimeout(tick, 1000);
+      };
+      tick();
+    }
+  }
+</script>
+</body>
+</html>

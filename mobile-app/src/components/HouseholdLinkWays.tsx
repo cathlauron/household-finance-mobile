@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Share, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import DrawingLogo from './DrawingLogo';
+import { codeFromScan, inviteLink } from '../joinLink';
 import { useTheme } from '../ThemeContext';
 import { hapticLight } from '../haptics';
 
@@ -19,16 +20,13 @@ export function inviteQrValue(code: string): string {
   return `financeflow://join/${code}`;
 }
 
-// Reads a code out of whatever the camera saw (our QR, a link, or just the 6 letters).
-export function codeFromScan(data: string): string | null {
-  const m = (data || '').toUpperCase().match(/([A-HJ-NP-Z2-9]{6})\s*\/?\s*$/);
-  return m ? m[1] : null;
-}
+export { codeFromScan } from '../joinLink';
 
-export async function shareInvite(code: string, fromName?: string) {
-  const who = fromName ? `${fromName} invited you to their Finance Flow household.` : 'Join my Finance Flow household!';
+// Canvas V3 (approved): the message has the code, the 15 minutes, and a link.
+export async function shareInvite(code: string, fromName?: string, madeAt?: number | null) {
+  const who = fromName ? `${fromName.trim().split(/\s+/)[0]} invited you to their Finance Flow household!` : 'Join my Finance Flow household!';
   await Share.share({
-    message: `${who} Open Finance Flow › Settings › Household › Type a code, and enter ${code}. The code works for ${INVITE_MINUTES} minutes.`,
+    message: `${who} Tap the link, or open Finance Flow › Settings › Household › Type a code and enter ${code}. The code works for ${INVITE_MINUTES} minutes.\n${inviteLink(code, fromName, madeAt)}`,
   });
 }
 
@@ -142,17 +140,32 @@ export function QrInviteModal({
   );
 }
 
+// Version 2.2 (Cath: "Scan to join" said "Allow the camera" but no pop-up came): the
+// phone is asked when "Scan to join" is tapped (see ProfileScreen), before this opens.
+// If it still isn't allowed, this screen has its own Allow camera button, or Open phone
+// settings when the phone won't ask again (after "Don't allow" twice, Android stops asking).
+export async function askForCamera(): Promise<void> {
+  try {
+    const now = await Camera.getCameraPermissionsAsync();
+    if (!now.granted && now.canAskAgain) await Camera.requestCameraPermissionsAsync();
+  } catch (e) {
+    // The scan screen shows its own button.
+  }
+}
+
 // M5e: scan their QR code with the camera.
 export function ScanJoinModal({ visible, onCode, onClose, onTypeInstead }: { visible: boolean; onCode: (code: string) => void; onClose: () => void; onTypeInstead: () => void }) {
   const insets = useSafeAreaInsets();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
   const doneRef = useRef(false);
   useEffect(() => {
     if (!visible) return;
     doneRef.current = false;
-    if (permission && !permission.granted && permission.canAskAgain) requestPermission();
-  }, [visible, permission?.granted]); // eslint-disable-line react-hooks/exhaustive-deps
+    // The answer may have just changed (asked on the way in): read it again.
+    getPermission().catch(() => {});
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   const granted = !!permission?.granted;
+  const canAsk = !permission || permission.canAskAgain;
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: '#1d1c1a' }}>
@@ -189,11 +202,20 @@ export function ScanJoinModal({ visible, onCode, onClose, onTypeInstead }: { vis
           ))}
         </View>
         <Text style={s.scanHint}>
-          {granted ? 'Hold steady. It joins by itself.' : 'Finance Flow needs the camera only to read the code.'}
+          {granted ? 'Hold steady. It joins by itself.' : canAsk ? 'Finance Flow uses the camera only to read the code.' : 'The camera is turned off for Finance Flow. Turn on Camera in the phone\'s settings, then come back.'}
         </Text>
-        {!granted && permission && !permission.canAskAgain && (
-          <TouchableOpacity onPress={() => Linking.openSettings()} style={[s.ghostBtn, { bottom: insets.top + 130 }]} accessibilityRole="button">
-            <Text style={s.ghostText}>Open phone settings</Text>
+        {!granted && (
+          <TouchableOpacity
+            onPress={() => {
+              if (canAsk) requestPermission().catch(() => {});
+              else Linking.openSettings().catch(() => {});
+            }}
+            style={[s.allowBtn, { bottom: insets.bottom + 110 }]}
+            accessibilityRole="button"
+            testID="scan-allow-camera"
+          >
+            <Ionicons name={canAsk ? 'camera-outline' : 'settings-outline'} size={20} color="#1d1c1a" />
+            <Text style={s.allowText}>{canAsk ? 'Allow camera' : 'Open phone settings'}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity onPress={onTypeInstead} style={[s.ghostBtn, { bottom: insets.bottom + 40 }]} accessibilityRole="button">
@@ -227,6 +249,8 @@ const s = StyleSheet.create({
   frame: { position: 'absolute', alignSelf: 'center', top: '30%', width: 250, height: 250 },
   corner: { position: 'absolute', width: 46, height: 46, borderColor: '#fff', borderRadius: 6 },
   scanHint: { position: 'absolute', left: 24, right: 24, top: '66%', textAlign: 'center', color: 'rgba(255,255,255,0.85)', fontSize: 15 },
+  allowBtn: { position: 'absolute', left: 24, right: 24, height: 54, borderRadius: 28, backgroundColor: '#ffffff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  allowText: { color: '#1d1c1a', fontSize: 17, fontWeight: '700' },
   ghostBtn: { position: 'absolute', left: 24, right: 24, height: 54, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.16)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   ghostText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

@@ -9,6 +9,8 @@ import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
+import DeleteRow from '../components/DeleteRow';
+import { withoutBill, withoutDebt, withoutLoan } from '../deleteRecords';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, loanOutstandingBalance } from '../balanceProjection';
@@ -73,7 +75,7 @@ function scheduleText(r: { recurringType?: string; dueDate?: Record<string, any>
 
 export default function PayDetailScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const kind: Kind = route.params?.kind;
@@ -126,7 +128,26 @@ export default function PayDetailScreen() {
     }
   }
 
-  if (kind === 'loan') return <LoanBody loan={record as Loan} model={model} save={save} colors={colors} styles={styles} />;
+  // Version 2.2 (Cath): Delete at the bottom of the page, same as inside Edit.
+  function confirmDelete() {
+    const what = kind === 'bill' ? 'bill' : kind === 'debt' ? 'debt' : 'loan';
+    Alert.alert(`Delete this ${what}?`, `Deletes the ${what} and all payment history. Cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const latest = getModel() ?? model;
+          if (!latest) return;
+          const next = kind === 'bill' ? withoutBill(latest, id) : kind === 'debt' ? withoutDebt(latest, id) : withoutLoan(latest, id);
+          navigation.goBack();
+          saveModel(next).catch(() => Alert.alert('Failed to delete', 'Please try again.'));
+        },
+      },
+    ]);
+  }
+
+  if (kind === 'loan') return <LoanBody loan={record as Loan} model={model} save={save} colors={colors} styles={styles} onDelete={confirmDelete} />;
 
   // ---------- Bill / Debt ----------
   const rec = record as Bill | Debt;
@@ -307,6 +328,7 @@ export default function PayDetailScreen() {
           </View>
         </>
       )}
+      <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </ScrollView>
   );
 }
@@ -320,7 +342,7 @@ function Row({ styles, label, value, last }: { styles: any; label: string; value
   );
 }
 
-function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel, savedLabel?: string) => void; colors: ThemeColors; styles: any }) {
+function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel, savedLabel?: string) => void; colors: ThemeColors; styles: any; onDelete: () => void }) {
   const total = num(loan.totalAmount);
   const monthly = num(loan.expectedPayment);
   const payments = [...(loan.actualPayments || [])].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -460,6 +482,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
         confirmLabel={lent ? 'Received' : 'Paid'}
         onConfirm={logPayment}
       />
+      <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />
     </ScrollView>
   );
 }

@@ -22,6 +22,8 @@ import type {
 } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import AppSwitch from '../components/AppSwitch';
+import DeleteRow from '../components/DeleteRow';
+import { withoutTrip } from '../deleteRecords';
 import { makeId } from '../utils';
 import { useStickyState } from '../stickyState';
 import DateField from '../components/DateField';
@@ -188,7 +190,7 @@ function isValidDateOrEmpty(s: string): boolean {
 
 export default function TravelScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -214,6 +216,11 @@ export default function TravelScreen() {
   const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
   const [pageItemText, setPageItemText] = useState('');
   const [pageItemCost, setPageItemCost] = useState('');
+  // Version 2.2 (Cath): tap the dates on a trip ("No dates yet") to set them right there.
+  const [datesTripId, setDatesTripId] = useState<string | null>(null);
+  const [datesStart, setDatesStart] = useState('');
+  const [datesEnd, setDatesEnd] = useState('');
+  const [datesError, setDatesError] = useState('');
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
@@ -299,6 +306,45 @@ export default function TravelScreen() {
     setPageTodoDate('');
     setPageTodoDateOpen(false);
     await saveTripTodos(trip, [...(trip.todos || []), { id: makeId('todo'), text, done: false, ...(pageTodoDate ? { date: pageTodoDate } : {}) }]);
+  }
+
+  function openTripDates(trip: TravelTrip) {
+    setDatesStart(trip.startDate || '');
+    setDatesEnd(trip.endDate || '');
+    setDatesError('');
+    setDatesTripId(trip.id);
+  }
+  function saveTripDates() {
+    const latest = getModel() ?? model;
+    const trip = latest ? (latest.travel ?? []).find((x) => x.id === datesTripId) : undefined;
+    if (!latest || !trip) {
+      setDatesTripId(null);
+      return;
+    }
+    if (datesStart && datesEnd && datesEnd < datesStart) {
+      setDatesError('The end is before the start.');
+      return;
+    }
+    hapticSelection();
+    setDatesTripId(null);
+    const next: TravelTrip = { ...trip, startDate: datesStart, endDate: datesEnd };
+    saveModel({ ...latest, travel: (latest.travel ?? []).map((x) => (x.id === trip.id ? next : x)) });
+    showLeafTick('Saved');
+  }
+  function confirmDeleteTripFromPage(trip: TravelTrip) {
+    Alert.alert('Delete this trip?', 'Deletes the trip and any linked savings goal or expenses. Cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const latest = getModel() ?? model;
+          if (!latest) return;
+          setFeaturedId(null);
+          saveModel(withoutTrip(latest, trip.id));
+        },
+      },
+    ]);
   }
 
   // Canvas T2: one card per coming trip: name, dates, when, and a thin bar while saving.
@@ -563,45 +609,14 @@ export default function TravelScreen() {
 
   async function handleDeleteTrip() {
     if (!editingId || !model) return;
-    const tripBeingDeleted = (model.travel ?? []).find((t) => t.id === editingId);
-    const linkedTxnIds = new Set(
-      (tripBeingDeleted?.checklist ?? [])
-        .map((i) => i.expenseTransactionId)
-        .filter((id): id is string => !!id)
-    );
-    const updated: HouseholdModel = {
-      ...model,
-      travel: (model.travel ?? []).filter((t) => t.id !== editingId),
-      savingsGoals: tripBeingDeleted?.savingsGoalId
-        ? (model.savingsGoals ?? []).filter((g) => g.id !== tripBeingDeleted.savingsGoalId)
-        : model.savingsGoals,
-      manualTransactions: linkedTxnIds.size
-        ? (model.manualTransactions ?? []).filter((t) => !linkedTxnIds.has(t.id))
-        : model.manualTransactions,
-    };
-    await saveModel(updated);
+    if (featuredId === editingId) setFeaturedId(null);
+    await saveModel(withoutTrip(model, editingId));
     closeModal();
   }
 
   async function performDeleteTripById(id: string) {
     if (!model) return;
-    const tripBeingDeleted = (model.travel ?? []).find((t) => t.id === id);
-    const linkedTxnIds = new Set(
-      (tripBeingDeleted?.checklist ?? [])
-        .map((i) => i.expenseTransactionId)
-        .filter((tid): tid is string => !!tid)
-    );
-    const updated: HouseholdModel = {
-      ...model,
-      travel: (model.travel ?? []).filter((t) => t.id !== id),
-      savingsGoals: tripBeingDeleted?.savingsGoalId
-        ? (model.savingsGoals ?? []).filter((g) => g.id !== tripBeingDeleted.savingsGoalId)
-        : model.savingsGoals,
-      manualTransactions: linkedTxnIds.size
-        ? (model.manualTransactions ?? []).filter((t) => !linkedTxnIds.has(t.id))
-        : model.manualTransactions,
-    };
-    await saveModel(updated);
+    await saveModel(withoutTrip(model, id));
   }
 
   function handleSwipeDeleteTrip(trip: TravelTrip) {
@@ -651,7 +666,21 @@ export default function TravelScreen() {
           return (
             <>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 4 }}>
-                <Text style={styles.featureSub}>{niceRange(t)}</Text>
+                <TouchableOpacity
+                  onPress={() => openTripDates(t)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t.startDate || t.endDate ? `Dates: ${niceRange(t)}. Change` : 'No dates yet. Add dates'}
+                  testID="travel-trip-dates"
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}
+                >
+                  <Text style={styles.featureSub}>{niceRange(t)}</Text>
+                  {!t.startDate && !t.endDate ? (
+                    <Text style={[styles.featureSub, { color: colors.gold, fontWeight: '700' }]}>· Add dates</Text>
+                  ) : (
+                    <Ionicons name="calendar-outline" size={15} color={colors.inkDim} />
+                  )}
+                </TouchableOpacity>
                 {!!badge && (
                   <View style={[styles.badge, { backgroundColor: colors.accentTint }]}>
                     <Text style={[styles.badgeText, { color: colors.gold }]}>{badge}</Text>
@@ -833,6 +862,8 @@ export default function TravelScreen() {
               )}
               </View>
               </SwipeTabs>
+              {/* Version 2.2 (Cath): Delete at the bottom of the trip, not only inside Edit. */}
+              <DeleteRow label="Delete trip" testID="travel-trip-delete" onPress={() => confirmDeleteTripFromPage(t)} />
             </>
           );
         })()}
@@ -860,6 +891,21 @@ export default function TravelScreen() {
           </>
         )}
       </PullToRefreshScrollView>
+
+      <BottomSheet
+        visible={datesTripId !== null}
+        onClose={() => setDatesTripId(null)}
+        grouped
+        header={<SheetBar title="Trip dates" onCancel={() => setDatesTripId(null)} onDone={saveTripDates} doneLabel="Save" />}
+      >
+        <FormGroup>
+          <View style={{ padding: 12, gap: 8 }}>
+            <DateField label="Start" value={datesStart} onChange={(d) => { setDatesStart(d); setDatesError(''); }} placeholder="Pick a date" clearable testID="travel-dates-start" />
+            <DateField label="End" value={datesEnd} onChange={(d) => { setDatesEnd(d); setDatesError(''); }} placeholder="Pick a date" clearable testID="travel-dates-end" minimumDate={datesStart ? new Date(datesStart + 'T00:00:00') : undefined} />
+          </View>
+        </FormGroup>
+        {!!datesError && <Text style={[styles.groupFooter, { color: colors.negative }]}>{datesError}</Text>}
+      </BottomSheet>
 
       <BottomSheet
         visible={modalOpen}

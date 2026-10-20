@@ -18,6 +18,8 @@ import AmountInput from '../components/AmountInput';
 import BottomSheet from '../components/BottomSheet';
 import { TextInput } from '../components/AppText';
 import { showLeafTick } from '../components/LeafTick';
+import DeleteRow from '../components/DeleteRow';
+import { withoutAccount } from '../deleteRecords';
 import { hapticSelection } from '../haptics';
 import { cardOwed, nextStatementDue, installmentsOnCard, savedBalanceAfterAnswer } from '../creditCards';
 
@@ -50,7 +52,7 @@ export function idsForAccount(model: HouseholdModel, group: AccountGroup, accoun
 
 export default function CardDetailScreen() {
   const { colors, isDark } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   // Version 3 (approved K4): the one-time question, "Ask me later" hides it for this visit.
   const [askLater, setAskLater] = useState(false);
   const [answer, setAnswer] = useState<'canUse' | 'owe' | null>(null);
@@ -378,6 +380,26 @@ export default function CardDetailScreen() {
         <GradientFill match={[styles.group, styles.action]} />
         <Text style={[styles.actionText, { color: colors.gold }]}>Edit card</Text>
       </TouchableOpacity>
+      {/* Version 2.2 (Cath): Remove at the bottom of the page, same as inside Edit card. */}
+      <DeleteRow
+        label="Remove account"
+        testID="card-detail-delete"
+        onPress={() =>
+          Alert.alert('Remove this account?', 'Removes the account and its balance. Cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Remove',
+              style: 'destructive',
+              onPress: () => {
+                const latest = getModel() ?? model;
+                if (!latest) return;
+                navigation.goBack();
+                saveModel(withoutAccount(latest, group, accountId)).catch(() => Alert.alert('Failed to remove', 'Please try again.'));
+              },
+            },
+          ])
+        }
+      />
     </KeyboardAwareScrollView>
   );
 }
