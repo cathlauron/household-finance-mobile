@@ -34,6 +34,9 @@ type Props = {
   partOption?: { name: string; repeats: boolean };
   // "Paying the Oct 15 bill" under the title.
   dueText?: string;
+  // Version 2.2 (Cath, canvas P1-P2): a second choice at the top, "Just mark it paid": no
+  // account, no date, nothing in spending (used by Travel's checklist).
+  justMark?: { onConfirm: () => void; note?: string };
   onConfirm: (pm: PaymentMethod, amount: number, lateFee: number, date: string, takeOffBalance: boolean) => void;
 };
 
@@ -47,7 +50,7 @@ function yesterdayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onConfirm }: Props) {
+export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, justMark, onConfirm }: Props) {
   const { colors } = useTheme();
   const [pm, setPm] = useState<PaymentMethod | undefined>(initial);
   const [error, setError] = useState('');
@@ -57,6 +60,8 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
   const [date, setDate] = useState(todayISO());
   const [dateMode, setDateMode] = useState<'today' | 'yesterday' | 'pick'>('today');
   const [takeOff, setTakeOff] = useState(false);
+  const [mode, setMode] = useState<'account' | 'mark'>('account');
+  const marking = !!justMark && mode === 'mark';
   const amountEditable = editableAmount || (partOption && part);
   const effective = amountEditable ? (typeof payAmount === 'number' ? payAmount : 0) : amount;
   // Version 2.1 (canvas S4): a payment dated before balances were last updated is already in
@@ -82,10 +87,17 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     setDate(todayISO());
     setDateMode('today');
     setTakeOff(false);
+    setMode('account');
     setPm(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? initial : undefined);
   }, [visible]);
 
   function confirm() {
+    if (marking) {
+      if (confirmedRef.current) return;
+      confirmedRef.current = true;
+      justMark?.onConfirm();
+      return;
+    }
     if (date > todayISO()) {
       setError("A payment can't be dated in the future.");
       return;
@@ -125,6 +137,40 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
       }
     >
       <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+        {!!justMark && (
+          <View style={{ marginBottom: 12 }}>
+            <SegmentedControl<'account' | 'mark'>
+              accessibilityLabel="How it was paid"
+              options={[
+                { id: 'account', label: 'Paid from an account' },
+                { id: 'mark', label: 'Just mark it paid' },
+              ]}
+              value={mode}
+              onChange={(v) => {
+                setMode(v);
+                setError('');
+              }}
+            />
+          </View>
+        )}
+        {marking ? (
+          <>
+            <Text style={[styles.amount, { color: colors.inkDim }]}>{formatPeso(amount)}</Text>
+            <View style={[styles.markCard, { backgroundColor: colors.navy2 }]}>
+              <View style={[styles.markIcon, { backgroundColor: colors.accentTint }]}>
+                <Text style={{ color: colors.gold, fontSize: 17, fontWeight: '800' }}>✓</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.markTitle, { color: colors.ink }]}>Ticked, nothing else changes</Text>
+                <Text style={[styles.markBody, { color: colors.inkDim }]}>
+                  Use this when it was paid some other way, or you already recorded it. Your account balances and spending stay the same.
+                </Text>
+              </View>
+            </View>
+            {!!justMark?.note && <Text style={[styles.markBody, { color: colors.inkDim, marginTop: 14, marginHorizontal: 4 }]}>{justMark.note}</Text>}
+          </>
+        ) : (
+        <>
         {!!dueText && <Text style={[styles.dueText, { color: colors.inkDim }]}>{dueText}</Text>}
         {!!partOption && (
           <SegmentedControl<'all' | 'part'>
@@ -227,6 +273,8 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
           </View>
         )}
         <AccountPicker model={model} direction={direction} amount={effective} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
+        </>
+        )}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
       </View>
     </BottomSheet>
@@ -248,4 +296,8 @@ const styles = StyleSheet.create({
   dueText: { fontSize: 14, textAlign: 'center', marginBottom: 10 },
   balanceNote: { borderRadius: 14, padding: 12, marginBottom: 12 },
   check: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  markCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 16, padding: 16 },
+  markIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  markTitle: { fontSize: 16, fontWeight: '700' },
+  markBody: { fontSize: 14, lineHeight: 20, marginTop: 4 },
 });

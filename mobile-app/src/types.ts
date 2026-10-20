@@ -297,6 +297,14 @@ export type TravelChecklistItem = {
   // Set once this item is checked (with a cost) and a matching ManualTransaction has been
   // logged for it — lets us find and remove that transaction if the item gets unchecked.
   expenseTransactionId?: string;
+  // Version 2.2 (Cath, canvas P1-P3): how a ticked item was paid. paidWith: the account it
+  // came off (its transaction says the same). markedOnly: "Just mark it paid", so there is
+  // no transaction and no balance or spending changes; it still counts as Paid in the trip.
+  paidWith?: PaymentMethod;
+  markedOnly?: boolean;
+  // Only on the way to being saved: "take it off my balance" for a payment dated before
+  // balances were last updated (never kept on a saved item).
+  takeOffBalance?: boolean;
 };
 
 export type TravelTrip = {

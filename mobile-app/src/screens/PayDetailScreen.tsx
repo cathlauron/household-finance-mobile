@@ -11,6 +11,7 @@ import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
 import DeleteRow from '../components/DeleteRow';
 import { withoutBill, withoutDebt, withoutLoan } from '../deleteRecords';
+import { takeOffSavedBalance } from '../takeOffBalance';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, loanOutstandingBalance } from '../balanceProjection';
@@ -51,19 +52,6 @@ function shortDate(iso: string): string {
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
 }
-// Version 2.1 (canvas S4): "It isn't included, take it off my balance": a payment dated before
-// balances were last updated is otherwise treated as already in them, so take it off the
-// saved balance of the account it was paid from.
-function takeOffSavedBalance<M extends HouseholdModel>(model: M, pm: PaymentMethod, amount: number): M {
-  const group = pm.type as 'cash' | 'debit' | 'credit';
-  const list = (model.balanceAccounts as any)[group] as { id: string; amount: number | '' }[] | undefined;
-  if (!list || !list.length) return model;
-  const targetId = pm.accountId || (group === 'cash' ? list[0].id : undefined);
-  if (!targetId) return model;
-  const nextList = list.map((a) => (a.id === targetId ? { ...a, amount: Math.round(((Number(a.amount) || 0) - amount) * 100) / 100 } : a));
-  return { ...model, balanceAccounts: { ...model.balanceAccounts, [group]: nextList } };
-}
-
 function scheduleText(r: { recurringType?: string; dueDate?: Record<string, any>; customFreq?: string }): string {
   const d = r.dueDate || {};
   if (r.recurringType === 'monthly') return d.day ? `Every month on the ${d.day === 'last' ? 'last day' : d.day}` : 'Every month';

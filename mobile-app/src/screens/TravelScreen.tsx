@@ -19,11 +19,16 @@ import type {
   HouseholdModel,
   SavingsGoal,
   ManualTransaction,
+  PaymentMethod,
 } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import AppSwitch from '../components/AppSwitch';
 import DeleteRow from '../components/DeleteRow';
 import { withoutTrip } from '../deleteRecords';
+import { takeOffSavedBalance } from '../takeOffBalance';
+import { reconcileTravelChecklistTransactions } from '../travelChecklist';
+import { accountLabel } from '../transactionActions';
+import PayFromSheet from '../components/PayFromSheet';
 import { makeId } from '../utils';
 import { useStickyState } from '../stickyState';
 import DateField from '../components/DateField';
@@ -91,72 +96,6 @@ function syncTripSavingsGoal(
   return { goals: [...allGoals, newGoal], savingsGoalId: newGoal.id };
 }
 
-// Compares a trip's checklist before and after editing, and logs (or removes) a real
-// ManualTransaction for each item as it gets checked on/off — so completing a checklist
-// item doesn't just move a savings-goal number, it also shows up in Transactions.
-// - Item newly checked (with a cost) and no transaction yet -> create one.
-// - Item unchecked, and it had a transaction -> remove that transaction.
-// - Item still checked and already has a transaction -> keep its amount/label in sync.
-function reconcileTravelChecklistTransactions(
-  priorChecklist: TravelChecklistItem[],
-  newChecklist: TravelChecklistItem[],
-  transactions: ManualTransaction[],
-  tripName: string
-): { checklist: TravelChecklistItem[]; transactions: ManualTransaction[] } {
-  let txns = [...transactions];
-  const priorById = new Map(priorChecklist.map((i) => [i.id, i]));
-
-  const updatedChecklist = newChecklist.map((item) => {
-    const prior = priorById.get(item.id);
-    const wasChecked = prior?.checked ?? false;
-    const hasCost = typeof item.cost === 'number' && item.cost > 0;
-
-    if (item.checked && !wasChecked && hasCost && !item.expenseTransactionId) {
-      const newTxn: ManualTransaction = {
-        id: makeId('txn'),
-        date: item.completedDate || todayISO(),
-        label: tripName + ': ' + item.title,
-        amount: item.cost as number,
-        direction: 'out',
-        owner: 'shared',
-        category: 'Travel',
-      };
-      txns = [...txns, newTxn];
-      return { ...item, expenseTransactionId: newTxn.id };
-    }
-
-    if (!item.checked && wasChecked && item.expenseTransactionId) {
-      txns = txns.filter((t) => t.id !== item.expenseTransactionId);
-      return { ...item, expenseTransactionId: undefined };
-    }
-
-    if (item.checked && item.expenseTransactionId && hasCost) {
-      txns = txns.map((t) =>
-        t.id === item.expenseTransactionId
-          ? { ...t, amount: item.cost as number, label: tripName + ': ' + item.title }
-          : t
-      );
-    }
-
-    return item;
-  });
-
-  // Items that existed before but are gone now were deleted outright (not just
-  // unchecked) — clean up any transaction they were linked to, the same way
-  // unchecking one does above.
-  const newIds = new Set(newChecklist.map((i) => i.id));
-  const deletedTxnIds = priorChecklist
-    .filter((i) => !newIds.has(i.id) && i.expenseTransactionId)
-    .map((i) => i.expenseTransactionId as string);
-  if (deletedTxnIds.length) {
-    const deletedSet = new Set(deletedTxnIds);
-    txns = txns.filter((t) => !deletedSet.has(t.id));
-  }
-
-  return { checklist: updatedChecklist, transactions: txns };
-}
-
-
 // Redesign helpers: "Nov 28 – 30 · 3 days", "In 46 days", "Oct 2".
 function shortDay(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -221,6 +160,9 @@ export default function TravelScreen() {
   const [datesStart, setDatesStart] = useState('');
   const [datesEnd, setDatesEnd] = useState('');
   const [datesError, setDatesError] = useState('');
+  // Version 2.2 (Cath, canvas P1-P3): "How was it paid?" for a ticked item (tripId null =
+  // an item in the trip form).
+  const [payAsk, setPayAsk] = useState<{ tripId: string | null; itemId: string } | null>(null);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
@@ -278,19 +220,72 @@ export default function TravelScreen() {
   const featured = featuredId ? trips.find((t) => t.id === featuredId) : undefined;
   const otherUpcoming = featured ? [] : upcoming;
 
-  // Ticks an item paid (or unpaid) right from the list, logging or removing its expense.
+  // Ticks an item paid (or unpaid) right from the list. Version 2.2 (canvas P1-P3): an item
+  // with a cost first asks how it was paid; unticking takes the payment back off.
   async function toggleItem(trip: TravelTrip, item: TravelChecklistItem) {
     if (!model) return;
     hapticSelection();
-    const next = (trip.checklist || []).map((i) =>
-      i.id === item.id ? { ...i, checked: !i.checked, completedDate: !i.checked ? todayISO() : i.completedDate } : i
+    if (!item.checked && typeof item.cost === 'number' && item.cost > 0) {
+      setPayAsk({ tripId: trip.id, itemId: item.id });
+      return;
+    }
+    commitChecklist(trip.id, (list) =>
+      list.map((i) => (i.id === item.id ? (i.checked ? { ...i, checked: false } : { ...i, checked: true, completedDate: todayISO() }) : i))
     );
-    const { checklist: synced, transactions } = reconcileTravelChecklistTransactions(trip.checklist || [], next, model.manualTransactions || [], trip.name);
-    await saveModel({
-      ...model,
-      travel: trips.map((t) => (t.id === trip.id ? { ...t, checklist: synced } : t)),
+  }
+
+  // Saves a trip's checklist change straight away (with its transactions and balances).
+  function commitChecklist(tripId: string, change: (list: TravelChecklistItem[]) => TravelChecklistItem[]) {
+    const latest = getModel() ?? model;
+    const trip = latest ? (latest.travel ?? []).find((x) => x.id === tripId) : undefined;
+    if (!latest || !trip) return;
+    const prior = trip.checklist || [];
+    const { checklist: synced, transactions, takeOffs } = reconcileTravelChecklistTransactions(prior, change(prior), latest.manualTransactions || [], trip.name);
+    let updated: HouseholdModel = {
+      ...latest,
+      travel: (latest.travel ?? []).map((x) => (x.id === tripId ? { ...x, checklist: synced } : x)),
       manualTransactions: transactions,
-    });
+    };
+    for (const k of takeOffs) updated = takeOffSavedBalance(updated, k.pm, k.amount);
+    saveModel(updated);
+  }
+
+  // The "How was it paid?" sheet's two answers (page or trip form).
+  function payAskItem(): TravelChecklistItem | undefined {
+    if (!payAsk) return undefined;
+    if (payAsk.tripId === null) return checklist.find((i) => i.id === payAsk.itemId);
+    return (model?.travel ?? []).find((x) => x.id === payAsk.tripId)?.checklist?.find((i) => i.id === payAsk.itemId);
+  }
+  function answerPaid(paid: Partial<TravelChecklistItem>) {
+    const ask = payAsk;
+    setPayAsk(null);
+    if (!ask) return;
+    const apply = (i: TravelChecklistItem): TravelChecklistItem => (i.id === ask.itemId ? { ...i, checked: true, paidWith: undefined, markedOnly: undefined, ...paid } : i);
+    if (ask.tripId === null) {
+      // In the trip form: kept with the rest of the form until Save.
+      setChecklist((prev) => prev.map(apply));
+      return;
+    }
+    commitChecklist(ask.tripId, (list) => list.map(apply));
+    showLeafTick('Paid');
+  }
+  // The account used last on this trip is picked to start with.
+  function lastPaidWith(list: TravelChecklistItem[]): PaymentMethod | undefined {
+    const withPm = list.filter((i) => i.checked && i.expenseTransactionId);
+    for (let k = withPm.length - 1; k >= 0; k--) {
+      const pm = (model?.manualTransactions || []).find((x) => x.id === withPm[k].expenseTransactionId)?.paymentMethod;
+      if (pm) return pm;
+    }
+    return undefined;
+  }
+  // "Paid from BPI Savings · Today", "Marked paid · not in spending" (canvas P3).
+  function paidLine(item: TravelChecklistItem): string {
+    if (item.markedOnly) return 'Marked paid · not in spending';
+    const txn = item.expenseTransactionId ? (model?.manualTransactions || []).find((x) => x.id === item.expenseTransactionId) : undefined;
+    const day = (iso?: string) => (!iso ? '' : iso === todayISO() ? 'Today' : shortDay(iso));
+    if (txn?.paymentMethod && model) return `Paid from ${accountLabel(model, txn.paymentMethod) ?? 'an account'} · ${day(txn.date)}`;
+    const when = day(item.completedDate);
+    return when ? `Paid ${when}` : 'Paid';
   }
 
   // To-do changes on the Travel page save straight away (they never touch money).
@@ -506,10 +501,18 @@ export default function TravelScreen() {
   }
 
   function handleToggleChecklistItem(id: string) {
+    const item = checklist.find((i) => i.id === id);
+    // Version 2.2 (canvas P1): ticking an item with a cost asks how it was paid.
+    if (item && !item.checked && typeof item.cost === 'number' && item.cost > 0) {
+      setPayAsk({ tripId: null, itemId: id });
+      return;
+    }
     setChecklist((prev) =>
       prev.map((i) =>
         i.id === id
-          ? { ...i, checked: !i.checked, completedDate: !i.checked ? todayISO() : undefined }
+          ? i.checked
+            ? { ...i, checked: false, completedDate: undefined, paidWith: undefined, markedOnly: undefined }
+            : { ...i, checked: true, completedDate: todayISO() }
           : i
       )
     );
@@ -567,7 +570,7 @@ export default function TravelScreen() {
 
     const currentList = model.travel ?? [];
     const priorTrip = editingId ? currentList.find((t) => t.id === editingId) : undefined;
-    const { checklist: reconciledChecklist, transactions: reconciledTransactions } =
+    const { checklist: reconciledChecklist, transactions: reconciledTransactions, takeOffs } =
       reconcileTravelChecklistTransactions(
         priorTrip?.checklist ?? [],
         // Tidy notes: trim them, and drop empty ones.
@@ -596,12 +599,13 @@ export default function TravelScreen() {
     const updatedList: TravelTrip[] = editingId
       ? currentList.map((t) => (t.id === editingId ? finalTrip : t))
       : [...currentList, finalTrip];
-    const updated: HouseholdModel = {
+    let updated: HouseholdModel = {
       ...model,
       travel: updatedList,
       savingsGoals: syncedGoals,
       manualTransactions: reconciledTransactions,
     };
+    for (const k of takeOffs) updated = takeOffSavedBalance(updated, k.pm, k.amount);
     await saveModel(updated);
     showLeafTick(editingId ? 'Saved' : 'Added');
     closeModal();
@@ -640,6 +644,22 @@ export default function TravelScreen() {
       { text: 'Delete', style: 'destructive', onPress: () => handleDeleteTrip() },
     ]);
   }
+
+  const payItem = payAskItem();
+  const paySheet = (visible: boolean, list: TravelChecklistItem[]) => (
+    <PayFromSheet
+      visible={visible}
+      onClose={() => setPayAsk(null)}
+      title={payItem?.title || 'Item'}
+      amount={typeof payItem?.cost === 'number' ? payItem.cost : 0}
+      direction="out"
+      model={model}
+      initial={lastPaidWith(list)}
+      confirmLabel="Mark paid"
+      justMark={{ onConfirm: () => answerPaid({ markedOnly: true, completedDate: todayISO() }), note: "It still counts as Paid in this trip's budget." }}
+      onConfirm={(pm, _amount, _fee, date, takeOff) => answerPaid({ paidWith: pm, completedDate: date, takeOffBalance: takeOff || undefined })}
+    />
+  );
 
   return (
     <View style={styles.container}>
@@ -758,7 +778,7 @@ export default function TravelScreen() {
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={[styles.tripName, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title || 'Item'}</Text>
                           <Text style={styles.tripSub} numberOfLines={2}>
-                            {[item.checked ? `Paid${item.completedDate ? ' ' + shortDay(item.completedDate) : ''}` : '', item.note?.trim() || ''].filter(Boolean).join(' · ') || 'Not paid yet'}
+                            {[item.checked ? paidLine(item) : '', item.note?.trim() || ''].filter(Boolean).join(' · ') || 'Not paid yet'}
                           </Text>
                         </View>
                         {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
@@ -796,7 +816,7 @@ export default function TravelScreen() {
                     )}
                   </View>
                 </View>
-                <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out. Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
+                <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid and choose the account it came from (or just mark it paid). Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
               </>
               ) : (
               <>
@@ -1036,7 +1056,7 @@ export default function TravelScreen() {
             </TouchableOpacity>
           </PickerRow>
         </FormGroup>
-        <Footnote>Blue is planned. Tick an item once it's paid: it gets crossed out and counts as money out.</Footnote>
+        <Footnote>Blue is planned. Tick an item once it's paid and choose the account it came from (or just mark it paid).</Footnote>
 
         <FormGroup>
           <SwitchRow label="Save for this in Savings" value={trackInSavings} onChange={setTrackInSavings} />
@@ -1049,7 +1069,11 @@ export default function TravelScreen() {
 
         {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
         {editingId && <Button label="Delete trip" variant="destructive" onPress={confirmDeleteTrip} />}
+        {/* Version 2.2 (canvas P1-P2): ticking an item inside the trip form asks here. */}
+        {paySheet(!!payAsk && payAsk.tripId === null, checklist)}
       </BottomSheet>
+      {/* Version 2.2 (canvas P1-P2): ticking an item on the trip page asks here. */}
+      {paySheet(!!payAsk && payAsk.tripId !== null, (model.travel ?? []).find((x) => x.id === payAsk?.tripId)?.checklist ?? [])}
     </View>
   );
 }
