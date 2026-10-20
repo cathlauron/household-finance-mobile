@@ -809,9 +809,14 @@ function AppContent() {
     if (screen === 'switcher') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+        {silentSignIn && autoSignIn && (
+          <View style={{ ...StyleSheet.absoluteFillObject, opacity: 0 }} pointerEvents="none">
+            {renderSignIn(true)}
+          </View>
+        )}
         <AccountSwitcherScreen
           accounts={recentAccounts}
-          working={unlocking}
+          working={unlocking || (silentSignIn && !!autoSignIn)}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
             setUnlocking(true);
@@ -823,10 +828,13 @@ function AppContent() {
                   enterWithOfflineUnlock(creds, offline);
                   return;
                 }
+                // Version 2.2 (Cath: "unlocks, then a Signing in screen: double wait"): the
+                // online sign-in runs out of sight behind this screen, which keeps showing
+                // "Unlocking…". It only shows the sign-in screen if it fails.
                 setRemoteRevokeNotice(null);
                 setSignInPrefillUsername(undefined);
                 setAutoSignIn(creds);
-                setScreen('signIn');
+                setSilentSignIn(true);
               } finally {
                 setUnlocking(false);
               }
