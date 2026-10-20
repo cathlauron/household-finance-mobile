@@ -373,6 +373,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const fromParts = await modelFromPartsForUpdate(usernameRef.current, householdId, householdKeyRef.current, snapshotData.layout ?? 0);
           if (fromParts && !sameAsParts(fromParts, latestModelRef.current)) {
             const incomingModel = sanitizeModelIds(fromParts);
+            remoteSeqRef.current += 1;
             setModel(incomingModel);
             const username = usernameRef.current;
             const personalKey = keyRef.current;
@@ -409,6 +410,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 ? sanitizeModelIds(mergeHouseholds(lastSyncedModelRef.current, latestModelRef.current, incomingModel))
                 : incomingModel;
             lastSyncedModelRef.current = incomingModel;
+            remoteSeqRef.current += 1;
             setModel(shown);
             latestModelRef.current = shown;
 
@@ -632,6 +634,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     baseText: string | null = lastEncryptedDataRef.current
   ): Promise<{ encrypted: string; model: HouseholdModel; merged: boolean }> {
     let result = mine;
+    const seq = remoteSeqRef.current;
     const encrypted = await saveHouseholdDataChecked(householdId, async (online) => {
       result = mine;
       if (online && online !== baseText && currentLayout(householdId) < 2) {
@@ -646,7 +649,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ownWriteRef.current = text;
       return text;
     });
-    if (householdIdRef.current === householdId) {
+    // (Not when the other phone's newer save already came in meanwhile: that one is newer.)
+    if (householdIdRef.current === householdId && remoteSeqRef.current === seq) {
       lastEncryptedDataRef.current = encrypted;
       lastSyncedModelRef.current = result;
     }
@@ -665,13 +669,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   ) {
     if (!res.merged) return;
     if (usernameRef.current !== username || keyRef.current !== key) return; // signed out / switched
-    let shown = res.model;
-    if (modelVersionRef.current !== version) {
-      const latest = latestModelRef.current;
-      if (!latest) return;
-      shown = sanitizeModelIds(mergeHouseholds(sent, latest, res.model));
-      persistDirtyRef.current = true; // the save line sends this one next
-    }
+    // What's on screen now may be newer than what was sent (changes made here meanwhile, or
+    // the other phone's newer save already shown): fold the saved result into it.
+    const latest = latestModelRef.current;
+    if (!latest) return;
+    const shown = latest === sent ? res.model : sanitizeModelIds(mergeHouseholds(sent, latest, res.model));
+    if (modelVersionRef.current !== version) persistDirtyRef.current = true; // the save line sends it next
     setModel(shown);
     latestModelRef.current = shown;
     if (key) {
@@ -866,6 +869,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const persistQueuedRef = useRef(false); // a saving turn is waiting in line or running
   // The text this phone is writing online right now, so the live listener knows it's ours.
   const ownWriteRef = useRef<string | null>(null);
+  // Goes up each time the live listener shows the other phone's save (see pushHousehold).
+  const remoteSeqRef = useRef(0);
   function inSaveLine(job: () => Promise<void>): Promise<void> {
     const run = saveLineRef.current.then(job).catch((err) => {
       console.error('Saving failed:', err);

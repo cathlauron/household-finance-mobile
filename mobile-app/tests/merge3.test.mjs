@@ -103,3 +103,14 @@ test('a newer change made while saving keeps the other phone\'s change', () => {
   // and the next save writes it as is (nothing new online since A + C)
   assert.deepEqual(mergeHouseholds(savedOnline, folded, savedOnline), folded);
 });
+
+test('a newer save from the other phone already on screen is kept when this save comes back', () => {
+  const A = clone(base); A.manualTransactions.push({ id: 'tA', label: 'Tick 1', amount: 10 });
+  const C = clone(base); C.bills[0].amount = 3200;
+  const savedOnline = mergeHouseholds(base, A, C); // this save's result: A + C
+  const D = clone(savedOnline); D.manualTransactions.push({ id: 'tD', label: 'Their taxi', amount: 90 });
+  const onScreen = mergeHouseholds(base, A, D); // the listener already showed A + C + D
+  const folded = mergeHouseholds(A, onScreen, savedOnline);
+  assert.deepEqual(folded.manualTransactions.map((t) => t.id).sort(), ['t1', 'tA', 'tD']);
+  assert.equal(folded.bills[0].amount, 3200);
+});
