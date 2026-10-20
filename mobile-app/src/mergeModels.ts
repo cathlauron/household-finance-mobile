@@ -44,14 +44,19 @@ function makeUniqueId(existing: Set<string>, prefix: string, index: number): str
   return candidate;
 }
 
+// Version 2.2 (smoothness sweep): items whose ids are fine are kept as the very same
+// objects (and a list with nothing to fix is the very same list). The values are exactly
+// what the old version gave; only needless copies are gone. Every save used to copy every
+// transaction, bill, account... which made the whole app redraw everything after each tap.
 function sanitizeIdList<T extends { id: string }>(
   items: T[] | undefined,
   prefix: string,
   seenSet?: Set<string>
 ): T[] {
-  const normalized: T[] = (items ?? []).map((item) => ({ ...item }));
+  const list = items ?? [];
   const seen = seenSet ?? new Set<string>();
-  return normalized.map((item, index) => {
+  let changed = !items;
+  const out = list.map((item, index) => {
     const raw = item.id && item.id.trim() ? item.id : makeUniqueId(seen, prefix, index);
     if (!seen.has(raw)) {
       seen.add(raw);
@@ -60,8 +65,20 @@ function sanitizeIdList<T extends { id: string }>(
 
     const uniqueId = makeUniqueId(seen, prefix, index);
     seen.add(uniqueId);
+    changed = true;
     return { ...item, id: uniqueId } as T;
   });
+  return changed ? out : list;
+}
+
+// Keeps a parent object as it is when its child list didn't change.
+function withList<P, K extends keyof P>(parent: P, key: K, next: P[K]): P {
+  return parent[key] === next ? parent : { ...parent, [key]: next };
+}
+
+// Keeps a list as it is when none of its items changed.
+function sameOr<T>(before: T[], after: T[]): T[] {
+  return after.length === before.length && after.every((x, i) => x === before[i]) ? before : after;
 }
 
 export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
@@ -72,48 +89,41 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
   const seenIncomeLogs = new Set<string>();
   const seenTravelItems = new Set<string>();
 
+  const income = sanitizeIdList(model.income, 'income');
+  const bills = sanitizeIdList(model.bills, 'bill');
+  const debts = sanitizeIdList(model.debts, 'debt');
+  const loans = sanitizeIdList(model.loans, 'loan');
+  const goals = sanitizeIdList(model.savingsGoals, 'goal');
+  const accounts = model.balanceAccounts;
+  const travel = sanitizeIdList(model.travel ?? [], 'trip');
   return {
     ...model,
     people: sanitizeIdList(model.people, 'person'),
-    income: sanitizeIdList(model.income, 'income').map((source) => ({
-      ...source,
-      paymentLog: sanitizeIdList(source.paymentLog, 'paylog', seenIncomeLogs),
-    })),
-    bills: sanitizeIdList(model.bills, 'bill').map((bill) => ({
-      ...bill,
-      cycles: sanitizeIdList(bill.cycles, 'cycle', seenBillCycles),
-    })),
-    debts: sanitizeIdList(model.debts, 'debt').map((debt) => ({
-      ...debt,
-      cycles: sanitizeIdList(debt.cycles, 'cycle', seenDebtCycles),
-    })),
-    loans: sanitizeIdList(model.loans, 'loan').map((loan) => ({
-      ...loan,
-      actualPayments: sanitizeIdList(loan.actualPayments, 'lpay', seenLoanPayments),
-    })),
-    savingsGoals: sanitizeIdList(model.savingsGoals, 'goal').map((goal) => ({
-      ...goal,
-      contributions: sanitizeIdList(goal.contributions, 'contrib', seenSavingsContribs),
-    })),
-    balanceAccounts: {
-      ...model.balanceAccounts,
-      cash: sanitizeIdList(model.balanceAccounts.cash, 'cash-account'),
-      debit: sanitizeIdList(model.balanceAccounts.debit, 'debit-account'),
-      credit: sanitizeIdList(model.balanceAccounts.credit, 'credit-account'),
-      investment: sanitizeIdList(model.balanceAccounts.investment, 'investment-account'),
-      property: sanitizeIdList(model.balanceAccounts.property, 'property-account'),
-      vehicle: sanitizeIdList(model.balanceAccounts.vehicle, 'vehicle-account'),
-    },
+    income: sameOr(income, income.map((source) => withList(source, 'paymentLog', sanitizeIdList(source.paymentLog, 'paylog', seenIncomeLogs)))),
+    bills: sameOr(bills, bills.map((bill) => withList(bill, 'cycles', sanitizeIdList(bill.cycles, 'cycle', seenBillCycles)))),
+    debts: sameOr(debts, debts.map((debt) => withList(debt, 'cycles', sanitizeIdList(debt.cycles, 'cycle', seenDebtCycles)))),
+    loans: sameOr(loans, loans.map((loan) => withList(loan, 'actualPayments', sanitizeIdList(loan.actualPayments, 'lpay', seenLoanPayments)))),
+    savingsGoals: sameOr(goals, goals.map((goal) => withList(goal, 'contributions', sanitizeIdList(goal.contributions, 'contrib', seenSavingsContribs)))),
+    balanceAccounts: (() => {
+      const next = {
+        ...accounts,
+        cash: sanitizeIdList(accounts.cash, 'cash-account'),
+        debit: sanitizeIdList(accounts.debit, 'debit-account'),
+        credit: sanitizeIdList(accounts.credit, 'credit-account'),
+        investment: sanitizeIdList(accounts.investment, 'investment-account'),
+        property: sanitizeIdList(accounts.property, 'property-account'),
+        vehicle: sanitizeIdList(accounts.vehicle, 'vehicle-account'),
+      };
+      const same = (['cash', 'debit', 'credit', 'investment', 'property', 'vehicle'] as const).every((k) => next[k] === accounts[k]);
+      return same ? accounts : next;
+    })(),
     manualTransactions: sanitizeIdList(model.manualTransactions, 'txn'),
     categories: sanitizeIdList(model.categories, 'cat'),
     categoryBudgets: sanitizeIdList(model.categoryBudgets, 'budget'),
     groceries: sanitizeIdList(model.groceries ?? [], 'grocery'),
     groceryCalculator: sanitizeIdList(model.groceryCalculator ?? [], 'grocery-calc'),
     mealIdeas: sanitizeIdList(model.mealIdeas ?? [], 'meal'),
-    travel: sanitizeIdList(model.travel ?? [], 'trip').map((trip) => ({
-      ...trip,
-      checklist: sanitizeIdList(trip.checklist, 'travelitem', seenTravelItems),
-    })),
+    travel: sameOr(travel, travel.map((trip) => withList(trip, 'checklist', sanitizeIdList(trip.checklist, 'travelitem', seenTravelItems)))),
     events: sanitizeIdList(model.events ?? [], 'event'),
     recurring: sanitizeIdList(model.recurring ?? [], 'repeat'),
     sharedExpenses: sanitizeIdList(model.sharedExpenses ?? [], 'shx'),

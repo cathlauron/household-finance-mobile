@@ -170,6 +170,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     clearFieldError();
   }, [totalAmountInput, nameInput, interestRateInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, customStartDateInput, customOccurrenceInput, modalOpen, clearFieldError]);
 
+  // Version 3 (M4c): "Which payment was this?" when the first payment date moves.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -282,9 +285,6 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
   function handleRemovePayment(paymentId: string) {
     setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
   }
-
-  // Version 3 (M4c): "Which payment was this?" when the first payment date moves.
-  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
   async function handleSave() {
     if (!model) return;

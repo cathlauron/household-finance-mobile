@@ -122,6 +122,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
     clearFieldError();
   }, [amountInput, creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
 
+  // Version 3 (M4): paid, then the due date moved: ask which payment it was.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -195,9 +198,6 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
     setEditingId(null);
     setErrorMsg('');
   }
-
-  // Version 3 (M4): paid, then the due date moved: ask which payment it was.
-  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
   async function handleSave() {
     if (!model) return;

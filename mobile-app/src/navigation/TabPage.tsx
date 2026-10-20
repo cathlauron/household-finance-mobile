@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
 import { useNavigationState } from '@react-navigation/native';
+import { Freeze } from 'react-freeze';
 import LargeHeader from './LargeHeader';
 
 // Switching tabs is a soft, minimal fade: the old tab fades out while drifting a few
@@ -71,6 +72,20 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     }
   }, [place, routeIndex, x]);
 
+  // Version 2.2 (smoothness sweep): a tab that isn't showing stops redrawing once it has
+  // slid away. Before, every tap that saved something redrew all four tabs, even the
+  // hidden ones. It catches up (with the latest numbers) the moment it's shown again.
+  const [settledAway, setSettledAway] = useState(false);
+  useEffect(() => {
+    if (place === 0) {
+      setSettledAway(false);
+      return;
+    }
+    const timer = setTimeout(() => setSettledAway(true), FADE_MS + 120);
+    return () => clearTimeout(timer);
+  }, [place]);
+  const frozen = place !== 0 && settledAway;
+
   const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
   // Fully visible while sliding; hidden only once it's off the screen.
   const opacity = x.interpolate({ inputRange: [-1, -0.999, 0, 0.999, 1], outputRange: [0, 1, 1, 1, 0] });
@@ -82,7 +97,7 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0, opacity, transform: [{ translateX }] }]}
     >
       {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
-      {children}
+      <Freeze freeze={frozen}>{children}</Freeze>
     </Animated.View>
   );
 }

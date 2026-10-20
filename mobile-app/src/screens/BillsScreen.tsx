@@ -144,6 +144,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
     clearFieldError();
   }, [amountInput, nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
 
+  // Version 3 (M4): paid, then the due date moved: ask which bill the payment was for.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -218,9 +221,6 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
     setErrorMsg('');
   }
 
-
-  // Version 3 (M4): paid, then the due date moved: ask which bill the payment was for.
-  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
   async function handleSave() {
     if (!model) return;

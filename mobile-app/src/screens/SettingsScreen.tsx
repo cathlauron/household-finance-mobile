@@ -118,6 +118,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const {
     model,
     saveModel,
+    getModel,
     changePassword,
     username,
     isLinked,
@@ -442,6 +443,52 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
 
+  // Version 2.2 (sweep): every hook sits above the loading screen's early return, so the
+  // hooks run in the same order on every draw (a must in React; breaking it can crash).
+  // Left to Spend caution threshold: relying on onBlur alone isn't reliable in React
+  // Native — a TextInput doesn't always emit a blur event before the screen is torn
+  // down (tapping Back, the swipe-back gesture, switching tabs, or fully closing the
+  // app can all skip it), so a typed value could be silently lost instead of saved.
+  // This auto-saves ~600ms after the user stops typing, as a safety net alongside the
+  // existing onBlur save. The mountedRef skips the very first render so opening this
+  // screen doesn't trigger a pointless save before anything's actually been changed.
+  const cautionThresholdMountedRef = useRef(false);
+  useEffect(() => {
+    if (!cautionThresholdMountedRef.current) {
+      cautionThresholdMountedRef.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      saveCautionThreshold();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [cautionThresholdInput]);
+  // Monthly budget: saved ~600ms after you stop typing (same safety net as above).
+  const monthlyBudgetMountedRef = useRef(false);
+  useEffect(() => {
+    if (!monthlyBudgetMountedRef.current) {
+      monthlyBudgetMountedRef.current = true;
+      return;
+    }
+    const timer = setTimeout(async () => {
+      // Version 2.2: the newest data, so a switch flipped in these 600 ms isn't undone.
+      const latest = getModel() ?? model;
+      if (!latest) return;
+      if ((latest.settings.monthlySpendingBudget ?? '') === monthlyBudgetInput) return;
+      try {
+        await saveModel({ ...latest, settings: { ...latest.settings, monthlySpendingBudget: monthlyBudgetInput } });
+      } catch (e) {
+        Alert.alert('Failed to save', 'Please try again.');
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [monthlyBudgetInput]);
+  // Which expanding row (Auto-lock, Day, Watch a category) is open; one at a time.
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const [passSheetOpen, setPassSheetOpen] = useState(false);
+  // The swipe preview only plays right after Swipe to delete is turned on here.
+  const [showSwipePreview, setShowSwipePreview] = useState(false);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -487,13 +534,16 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }
 
   async function saveCautionThreshold() {
-    if (!model) return;
+    // Version 2.2: the newest data (this also runs a moment after typing stops).
+    const latest = getModel() ?? model;
+    if (!latest) return;
     const n = parseInt(cautionThresholdInput, 10);
     const value = isNaN(n) || n < 0 ? 0 : n > 100 ? 100 : n;
     setCautionThresholdInput(String(value));
+    if (latest.settings.cautionThresholdPercent === value) return;
     const updated: HouseholdModel = {
-      ...model,
-      settings: { ...model.settings, cautionThresholdPercent: value },
+      ...latest,
+      settings: { ...latest.settings, cautionThresholdPercent: value },
     };
     try {
       await saveModel(updated);
@@ -502,42 +552,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     }
   }
 
-  // Left to Spend caution threshold: relying on onBlur alone isn't reliable in React
-  // Native — a TextInput doesn't always emit a blur event before the screen is torn
-  // down (tapping Back, the swipe-back gesture, switching tabs, or fully closing the
-  // app can all skip it), so a typed value could be silently lost instead of saved.
-  // This auto-saves ~600ms after the user stops typing, as a safety net alongside the
-  // existing onBlur save. The mountedRef skips the very first render so opening this
-  // screen doesn't trigger a pointless save before anything's actually been changed.
-  const cautionThresholdMountedRef = useRef(false);
-  useEffect(() => {
-    if (!cautionThresholdMountedRef.current) {
-      cautionThresholdMountedRef.current = true;
-      return;
-    }
-    const timer = setTimeout(() => {
-      saveCautionThreshold();
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [cautionThresholdInput]);
-  // Monthly budget: saved ~600ms after you stop typing (same safety net as above).
-  const monthlyBudgetMountedRef = useRef(false);
-  useEffect(() => {
-    if (!monthlyBudgetMountedRef.current) {
-      monthlyBudgetMountedRef.current = true;
-      return;
-    }
-    const timer = setTimeout(async () => {
-      if (!model) return;
-      if ((model.settings.monthlySpendingBudget ?? '') === monthlyBudgetInput) return;
-      try {
-        await saveModel({ ...model, settings: { ...model.settings, monthlySpendingBudget: monthlyBudgetInput } });
-      } catch (e) {
-        Alert.alert('Failed to save', 'Please try again.');
-      }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [monthlyBudgetInput]);
     async function togglePushNotifications() {
     if (!model) return;
     hapticSelection();
@@ -626,10 +640,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     }
   }
 
-  // Which expanding row (Auto-lock, Day, Watch a category) is open; one at a time.
-  const [openRow, setOpenRow] = useState<string | null>(null);
   const toggleRow = (key: string) => setOpenRow((o) => (o === key ? null : key));
-  const [passSheetOpen, setPassSheetOpen] = useState(false);
   const passDone = passChangeMsg === 'Password changed.';
   function closePassSheet() {
     setPassSheetOpen(false);
@@ -654,8 +665,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     />
   );
 
-  // The swipe preview only plays right after Swipe to delete is turned on here.
-  const [showSwipePreview, setShowSwipePreview] = useState(false);
 
   async function handleSetSwipeToDelete(enabled: boolean) {
     if (!model) return;

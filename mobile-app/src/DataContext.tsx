@@ -109,6 +109,12 @@ type DataContextValue = {
   // background sign-in has worked (before that Firebase would refuse it).
   goOnline: () => void;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
+  // Version 2.2: saveModel returns once the screen has the change; this waits (up to a
+  // few seconds) for the saving that carries on in the background. Used before signing out.
+  waitForSaves: (maxMs?: number) => Promise<void>;
+  // Version 2.2: the newest data right now (for saves that run a moment later, e.g. after
+  // typing stops, so they never undo a change made in between).
+  getModel: () => HouseholdModel | null;
   clearModel: () => void;
   refreshModel: () => Promise<RefreshOutcome>;
   verifyPassword: (password: string) => Promise<boolean>;
@@ -198,7 +204,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function noteStorageSize(encrypted: string | null | undefined) {
     if (!encrypted) return;
     const used = encrypted.length / STORAGE_LIMIT_CHARS;
-    setStorageUsed(used);
+    // Version 2.2: Settings shows a whole percent, so only a change of a percent counts.
+    // (Every save used to set a slightly different number, which redrew the whole app
+    // a second time after each tap.)
+    const rounded = Math.round(used * 100) / 100;
+    setStorageUsed((prev) => (Math.round(prev * 100) / 100 === rounded ? prev : used));
     if (used >= STORAGE_WARN_AT && used < 1 && !storageWarnedRef.current) {
       storageWarnedRef.current = true;
       Alert.alert(
@@ -804,6 +814,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Version 2.2: the last salt/household note sent online (see persistModel).
+  const cloudMetaSentRef = useRef<string | null>(null);
+  function getModel(): HouseholdModel | null {
+    return latestModelRef.current;
+  }
+  // Saves still running in the background (see saveModel).
+  const savesInFlightRef = useRef(new Set<Promise<void>>());
+  function waitForSaves(maxMs = 6000): Promise<void> {
+    const running = Array.from(savesInFlightRef.current);
+    if (!running.length) return Promise.resolve();
+    return Promise.race([
+      Promise.allSettled(running).then(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, maxMs)),
+    ]);
+  }
+
   async function saveModel(updatedModel: HouseholdModel) {
     // Left to Spend: stamp the moment each NEW transaction is first saved (any screen
     // that adds one: Transactions, CSV import, Travel, Events, refunds). Existing
@@ -864,16 +890,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setModel(sanitizedModel);
     const username = usernameRef.current;
     if (!username) return;
+    // Version 2.2 (Cath: Save and Add buttons lagged, a trip took seconds to save): what's
+    // on screen changes at once and the form can close straight away; locking the data
+    // and saving it (on the phone, then online) carries on in the background, exactly as
+    // before. Log out and Switch account wait for these saves to finish (waitForSaves).
+    const job = persistModel(sanitizedModel, username, modelVersionRef.current).catch((err) => {
+      console.error('Saving failed:', err);
+    });
+    savesInFlightRef.current.add(job);
+    job.finally(() => savesInFlightRef.current.delete(job));
+  }
 
-    if (householdIdRef.current && householdKeyRef.current) {
+  // The saving half of saveModel. The household and keys are taken as they were when the
+  // change was made, so a save that is still running finishes in the right place.
+  async function persistModel(sanitizedModel: HouseholdModel, username: string, version: number) {
+    const householdId = householdIdRef.current;
+    const householdKey = householdKeyRef.current;
+    const key = keyRef.current;
+    if (householdId && householdKey) {
       // Linked profile: save to the shared household document
-      const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
+      const encrypted = await encryptJSON(householdKey, sanitizedModel);
 
       // Continuous local snapshotting: keep an up-to-date personal copy in local storage first.
       // Deliberately not awaited — this shouldn't hold up the household sync below — but a
       // failure here is no longer swallowed silently, since this snapshot is what offline app
       // launch, household dissolution, and account recovery all fall back to reading.
-      const key = keyRef.current;
       if (key) {
         encryptJSON(key, sanitizedModel)
           .then((personalEncrypted) =>
@@ -901,7 +942,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setPendingChanges((n) => n + 1);
       } else if (
         encrypted.length > STORAGE_LIMIT_CHARS &&
-        (await partsSaveWhenTooBig(username, householdIdRef.current, householdKeyRef.current, sanitizedModel))
+        (await partsSaveWhenTooBig(username, householdId, householdKey, sanitizedModel))
       ) {
         // Version 2.1: too big for one copy, saved in parts instead.
       } else if (tooBigToSync(encrypted)) {
@@ -909,9 +950,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setPendingChanges((n) => n + 1);
       } else {
         try {
-          const version = modelVersionRef.current;
           const res = await withTimeout(
-            pushHousehold(householdIdRef.current, householdKeyRef.current, sanitizedModel, encrypted),
+            pushHousehold(householdId, householdKey, sanitizedModel, encrypted),
             8000,
             'Timed out waiting for the shared household to sync.'
           );
@@ -919,11 +959,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
           // The whole household was just sent, so nothing is waiting any more.
           setPendingChanges(0);
           forgetWaitingBase();
-          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, res.model).catch(() => {});
+          partsAfterSave(username, householdId, householdKey, res.model).catch(() => {});
         } catch (err) {
           rememberWaitingBase();
           setPendingChanges((n) => n + 1);
-          if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
+          // (Not after Log out / Switch account: that save is no longer this screen's.)
+          if (onlineRef.current && !(await treatAsOfflineIfUnreachable()) && usernameRef.current === username) {
             Alert.alert(
               'Sync Failed',
               'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
@@ -934,16 +975,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
-      if (saltRef.current) {
-        saveProfileCloudBackup(username, {
-          salt: saltRef.current,
-          householdId: householdIdRef.current,
-        }).catch(() => {});
+      // The online note of this profile's salt and household. Version 2.2: sent once,
+      // and again only when either changes (it used to be re-sent after every tap).
+      const salt = saltRef.current;
+      const meta = `${username}|${salt}|${householdId}`;
+      if (salt && cloudMetaSentRef.current !== meta) {
+        saveProfileCloudBackup(username, { salt, householdId })
+          .then(() => {
+            cloudMetaSentRef.current = meta;
+          })
+          .catch(() => {});
       }
       return;
     }
 
-    const key = keyRef.current;
     if (!key) return;
     // Unlinked profile: save on this phone. If that fails, say so (linked profiles
     // already show "Sync Failed"); the change stays on screen until the app closes.
@@ -972,14 +1017,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       try {
         await withTimeout(
-          backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
+          backupPersonalData(username, saltRef.current, encrypted, version),
           8000,
           'Timed out waiting for the cloud backup to sync.'
         );
       } catch (err) {
         console.error('Cloud backup failed:', err);
         setPendingChanges((n) => n + 1);
-        if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
+        if (onlineRef.current && !(await treatAsOfflineIfUnreachable()) && usernameRef.current === username) {
           Alert.alert(
             'Backup Failed',
             'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
@@ -1483,6 +1528,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         loading,
         loadModel,
         saveModel,
+        waitForSaves,
+        getModel,
         clearModel,
         refreshModel,
         changePassword,
