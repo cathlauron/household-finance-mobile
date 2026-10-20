@@ -2,7 +2,7 @@ import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
-import { saveSession, loadSession, clearSession } from './src/staySignedIn';
+import { saveSession, loadSession, clearSession, saveSessionKey, loadSessionKey, clearSessionKey } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -81,7 +81,7 @@ function ScreenFade({ skip, children }: { skip: boolean; children: React.ReactNo
 
 function AppContent() {
   const { colors } = useTheme();
-  const { loadModel, clearModel, startGuest, guestRequest, model: currentModel, goOnline, isOnline } = useData();
+  const { loadModel, clearModel, waitForSaves, startGuest, guestRequest, model: currentModel, goOnline, isOnline } = useData();
   // Version 2.1 (open from the phone first): the account opened from the phone's copy and
   // still needs its quiet online sign-in (retried when the connection comes back).
   const pendingReconcileRef = useRef<{ username: string; creds: { email: string; password: string } } | null>(null);
@@ -223,10 +223,26 @@ function AppContent() {
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
       if (!profile) return null;
-      const key = deriveKey(creds.password, profile.salt);
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) return null;
-      const model = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+      // Version 2.2 (Cath chose "best of both"): the remembered account's unlocked key
+      // skips the slow password-to-key step. Used only if it really opens the data;
+      // otherwise it's wiped and the key is made from the password as before.
+      let key: CryptoJS.lib.WordArray | null = null;
+      let model: HouseholdModel | null = null;
+      const rememberedKey = await loadSessionKey(username, profile.salt);
+      if (rememberedKey) {
+        try {
+          model = sanitizeModelIds(decryptJSON<HouseholdModel>(rememberedKey, encrypted));
+          key = rememberedKey;
+        } catch (e) {
+          clearSessionKey().catch(() => {});
+        }
+      }
+      if (!key || !model) {
+        key = deriveKey(creds.password, profile.salt);
+        model = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+      }
       if (profile.householdId) {
         // Version 2.1: a linked household opens from the phone too, using this phone's
         // password-locked copy of the household key (kept since the last online open).
@@ -278,6 +294,14 @@ function AppContent() {
     goOnline();
   }
 
+  // Version 2.2: keeps the remembered account's unlocked key next to its saved
+  // sign-in, so the next open skips the slow step (see staySignedIn.ts).
+  async function rememberSessionKey(username: string, key: CryptoJS.lib.WordArray) {
+    const profiles = await loadProfilesIndex();
+    const profile = profiles.find((p) => p.username === username);
+    if (profile?.salt) await saveSessionKey(username, profile.salt, key);
+  }
+
   // Opens an account that was unlocked offline (unlinked profiles only). Used by the
   // account switcher and by "sign in once" when the app starts.
   function enterWithOfflineUnlock(
@@ -297,6 +321,7 @@ function AppContent() {
     ).catch(() => {});
     recordRecentAccount(creds.username, undefined, undefined, offline.model.avatars?.[creds.username]).catch(() => {});
     saveSession(creds).catch(() => {});
+    saveSessionKey(creds.username, offline.profile.salt, offline.key).catch(() => {});
     setScreen('home');
     setTimeout(() => {
       rescheduleBillNotifications(offline.model).catch(() => {});
@@ -515,6 +540,8 @@ function AppContent() {
   async function handleFullSignOut() {
     // Read these first: the username is cleared later in this function.
     const signedOutUsername = usernameRef.current;
+    // Version 2.2: let the last change finish saving first.
+    await waitForSaves();
     const keepRecent = keepRecentOnSignOutRef.current;
     keepRecentOnSignOutRef.current = false;
     if (signedOutUsername && !keepRecent) {
@@ -567,6 +594,9 @@ function AppContent() {
   // fresh and lands back on the switcher instead of a blank sign-in form.
   async function handleSwitchAccount() {
     clearIdleTimer();
+    // Version 2.2: let the last change finish saving first (saving now carries on in the
+    // background after a form closes).
+    await waitForSaves();
     // The next launch shows the account switcher instead of opening this account.
     clearSession().catch(() => {});
     // 1. Unsubscribe listener FIRST (same ordering as handleFullSignOut)
@@ -779,6 +809,7 @@ function AppContent() {
             if (credentials) {
               saveFingerprintCopyIfPossible({ email: credentials.email, username, password: credentials.password }).catch(() => {});
               saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+              rememberSessionKey(username, key).catch(() => {});
             }
             // "Does anyone else use your phone?" Yes: lock after a minute away.
             if (guestSetup.othersUsePhone) setAutoLockMinutes(1).catch(() => {});
@@ -878,6 +909,7 @@ function AppContent() {
                 password: credentials.password,
               }).catch(() => {});
               saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+              rememberSessionKey(username, key).catch(() => {});
             }
             setScreen('onboarding');
           }}
@@ -983,6 +1015,7 @@ function AppContent() {
           }
           if (credentials) {
             saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+              rememberSessionKey(username, key).catch(() => {});
           }
           if (credentials && !viaQuickUnlock) {
             saveFingerprintCopyIfPossible({
