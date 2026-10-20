@@ -140,14 +140,25 @@ export function DriftLeaf({ leaf, index, scale, still, color, opacityScale = 1, 
 // changing words appear just below the little leaf's bar (the leaf stays where it is).
 // The unlock blocks the JS thread for seconds, so the words are driven by a native
 // clock (like everything else here), not by timers.
-const OPENING_WORDS = ['Opening your money…', 'Unlocking your household…', "Getting today's numbers…", 'Almost there…'];
+// Version 2.2 (Cath: "too fast, then stuck on Almost there"): one line every 3.2 s, and
+// they keep going round for as long as it takes, so it never sits on one line.
+const OPENING_WORDS = [
+  'Opening your money…',
+  'Unlocking your household…',
+  "Getting today's numbers…",
+  'Checking your bills…',
+  "Adding up what's left to spend…",
+  'Keeping it all locked and safe…',
+];
+const WORD_MS = 3200;
 
 export default function IntroScreen({ unlocking = false }: { unlocking?: boolean }) {
   const { width, height } = useWindowDimensions();
   const wordsClock = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!unlocking) return;
-    const run = Animated.timing(wordsClock, { toValue: 9000, duration: 9000, easing: Easing.linear, useNativeDriver: true });
+    const total = OPENING_WORDS.length * WORD_MS;
+    const run = Animated.loop(Animated.timing(wordsClock, { toValue: total, duration: total, easing: Easing.linear, useNativeDriver: true }));
     run.start();
     return () => run.stop();
   }, [unlocking, wordsClock]);
@@ -265,13 +276,12 @@ export default function IntroScreen({ unlocking = false }: { unlocking?: boolean
         </Animated.View>
       </Animated.View>
       {unlocking && (
-        <View style={styles.wordsWrap} pointerEvents="none" accessibilityLabel="Opening your money">
+        <Animated.View style={[styles.wordsWrap, { opacity: loader }]} pointerEvents="none" accessibilityLabel="Opening your money">
           {OPENING_WORDS.map((w, k) => {
-            const start = 1800 + k * 2200;
-            const last = k === OPENING_WORDS.length - 1;
+            const start = k * WORD_MS;
             const opacity = wordsClock.interpolate({
-              inputRange: last ? [0, start, start + 300] : [0, start, start + 300, start + 2000, start + 2200],
-              outputRange: last ? [0, 0, 1] : [0, 0, 1, 1, 0],
+              inputRange: [start, start + 300, start + WORD_MS - 300, start + WORD_MS],
+              outputRange: [0, 1, 1, 0],
               extrapolate: 'clamp',
             });
             return (
@@ -280,7 +290,7 @@ export default function IntroScreen({ unlocking = false }: { unlocking?: boolean
               </AnimatedText>
             );
           })}
-        </View>
+        </Animated.View>
       )}
     </View>
   );

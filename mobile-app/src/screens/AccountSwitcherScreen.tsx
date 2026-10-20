@@ -18,6 +18,7 @@ import {
 } from '../quickUnlock';
 import type { QuickUnlockCredentials } from '../quickUnlock';
 import { radii, spacing } from '../tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Shown after the app was fully closed and reopened. Lists the accounts that
 // have signed in on this phone, then unlocks the chosen one with fingerprint
@@ -46,6 +47,7 @@ export default function AccountSwitcherScreen({
 }: Props) {
   const { colors } = useTheme();
   const s = makeStyles(colors);
+  const insets = useSafeAreaInsets(); // keeps ‹ Accounts below the phone's status bar
 
   const [presence, setPresence] = useState<Record<string, Presence> | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -218,7 +220,7 @@ export default function AccountSwitcherScreen({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {presence !== null && !!selectedAccount && accounts.length > 1 && !active && (
-        <TouchableOpacity testID="account-switcher-top-back" onPress={backToList} accessibilityRole="button" hitSlop={10} style={s.topBack}>
+        <TouchableOpacity testID="account-switcher-top-back" onPress={backToList} accessibilityRole="button" hitSlop={10} style={[s.topBack, { top: insets.top + 10 }]}>
           <Ionicons name="chevron-back" size={20} color={colors.gold} />
           <Text style={s.topBackText}>Accounts</Text>
         </TouchableOpacity>
