@@ -397,8 +397,18 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           setLinkSecretHex('');
           setLinkErrorMsg('');
           setHostFinishMsg('Linked! Loading your shared data…');
-          await loadModel(username, personalKey);
           unsubscribe();
+          // Version 2.2 (Cath: the inviter stayed on "Almost there…" for minutes): linking
+          // is done at this point. Loading the shared household carries on in the
+          // background instead of holding the busy animation until it finishes.
+          hostFinishInFlightRef.current = false;
+          if (active) setHostFinishBusy(false);
+          loadModel(username, personalKey)
+            .then(() => {
+              if (active) setHostFinishMsg('Linked! You now share one household.');
+            })
+            .catch(() => {});
+          return;
         }
       } catch (e) {
         if (active) setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
@@ -573,10 +583,14 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         joinResult.existingHouseholdId
       );
       setJoinChoiceMsg('Linked! Loading your shared data…');
-      await loadModel(username, personalKey);
       setJoinResult(null);
       setJoinCodeInput('');
       setJoinedCode('');
+      // Version 2.2: linking is done; the shared household loads in the background
+      // instead of keeping "Almost there…" on screen until it has fully loaded.
+      loadModel(username, personalKey)
+        .then(() => setJoinChoiceMsg('Linked! You now share one household.'))
+        .catch(() => {});
     } catch (e) {
       setJoinChoiceMsg((e as Error)?.message || "Something went wrong — check your connection and try again.");
     }
