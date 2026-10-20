@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import { useSingleForm } from '../singleForm';
 import React, { useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -80,6 +81,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
     const target = (model.bills || []).find((b) => b.id === openBillId);
     if (target) {
       openedBillRef.current = { id: openBillId, nonce: openBillNonce };
+      if (!firstTimeOpen('bill', openBillId, openBillNonce)) return;
       afterSlide(() => openEditModal(target));
       onOpenHandled?.();
     }

@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -113,6 +114,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     const target = (model.savingsGoals || []).find((g) => g.id === openSavingsId);
     if (target) {
       openedSavingsRef.current = { id: openSavingsId, nonce: openSavingsNonce };
+      if (!firstTimeOpen('savings', openSavingsId, openSavingsNonce)) return;
       afterSlide(() => openEditModal(target));
     }
   }, [model, openSavingsId, openSavingsNonce]);

@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -101,6 +102,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     const target = (model.income || []).find((s) => s.id === openIncomeId);
     if (target) {
       openedIncomeRef.current = { id: openIncomeId, nonce: openIncomeNonce };
+      if (!firstTimeOpen('income', openIncomeId, openIncomeNonce)) return;
       afterSlide(() => openEditModal(target));
     }
   }, [model, openIncomeId, openIncomeNonce]);

@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import { useSingleForm } from '../singleForm';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -78,6 +79,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
     const target = (model.debts || []).find((d) => d.id === openDebtId);
     if (target) {
       openedDebtRef.current = { id: openDebtId, nonce: openDebtNonce };
+      if (!firstTimeOpen('debt', openDebtId, openDebtNonce)) return;
       afterSlide(() => openEditModal(target));
       onOpenHandled?.();
     }

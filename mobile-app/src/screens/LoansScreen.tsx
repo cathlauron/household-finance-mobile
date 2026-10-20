@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import { useSingleForm } from '../singleForm';
 import { loanPaymentToPlace, placeLoanPayment } from '../loanSchedule';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
@@ -109,6 +110,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     const target = (model.loans || []).find((l) => l.id === openLoanId);
     if (target) {
       openedLoanRef.current = { id: openLoanId, nonce: openLoanNonce };
+      if (!firstTimeOpen('loan', openLoanId, openLoanNonce)) return;
       afterSlide(() => openEditModal(target));
       onOpenHandled?.();
     }

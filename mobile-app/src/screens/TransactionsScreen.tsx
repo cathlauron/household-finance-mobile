@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -229,7 +230,7 @@ export default function TransactionsScreen() {
     const editId = route.params?.editId;
     if (!editNonce || !editId || !model) return;
     const t = buildTransactionsList(model).find((x) => x.rawId === editId && x.source === 'manual');
-    if (t) afterSlide(() => openEditModal(t));
+    if (t && firstTimeOpen('txn', editId, editNonce)) afterSlide(() => openEditModal(t));
   }, [editNonce]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {

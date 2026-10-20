@@ -1,3 +1,4 @@
+import { firstTimeOpen } from '../handledOpen';
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -62,7 +63,7 @@ export default function AccountsScreen() {
     const id = route.params?.editId as string | undefined;
     if (!editNonce || !g || !id || !model) return;
     const account = model.balanceAccounts[g]?.find((a: BalanceAccountEntry) => a.id === id);
-    if (account) afterSlide(() => openEditModal(g, account));
+    if (account && firstTimeOpen('account', id, editNonce)) afterSlide(() => openEditModal(g, account));
     // Only when "Edit card" sends a new request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editNonce]);
