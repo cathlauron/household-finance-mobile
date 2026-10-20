@@ -71,6 +71,14 @@
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Finance Flow uses the camera to scan a household invite QR code.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "extra": {
