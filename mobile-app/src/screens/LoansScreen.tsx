@@ -1,3 +1,4 @@
+import { useSingleForm } from '../singleForm';
 import { loanPaymentToPlace, placeLoanPayment } from '../loanSchedule';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import React, { useState, useRef, useEffect } from 'react';
@@ -27,7 +28,7 @@ import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import SegmentedControl from '../components/SegmentedControl';
-import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, OwnChoiceField } from '../components/SimpleForm';
 const LOAN_TYPES = ['Car', 'Motorcycle', 'Home', 'Personal', 'Business', 'Other'];
 
 function loanPaidTotal(loan: Loan): number {
@@ -81,11 +82,14 @@ function sortByNextDue(loans: Loan[]): Loan[] {
 }
 
 type LoansScreenProps = {
+  // Version 2.2: called once the requested item's form has opened, so the request is
+  // cleared and the form never pops up again when this list is shown again.
+  onOpenHandled?: () => void;
   openLoanId?: string;
   openLoanNonce?: number;
 };
 
-export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenProps = {}) {
+export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }: LoansScreenProps = {}) {
   // Redesign: the floating + adds a loan while this list is showing.
   useToPayAddRequest('loans', () => openAddModal());
   const navigation = useNavigation<any>();
@@ -94,6 +98,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const singleForm = useSingleForm('loan');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const openedLoanRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -105,6 +110,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
     if (target) {
       openedLoanRef.current = { id: openLoanId, nonce: openLoanNonce };
       afterSlide(() => openEditModal(target));
+      onOpenHandled?.();
     }
   }, [model, openLoanId, openLoanNonce]);
   const [nameInput, setNameInput] = useState('');
@@ -171,6 +177,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   }
 
   function openAddModal() {
+    if (!singleForm.claim()) return;
     setEditingId(null);
     setNameInput('');
     setLoanTypeInput('');
@@ -196,6 +203,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   }
 
   function openEditModal(loan: Loan) {
+    if (!singleForm.claim()) return;
     setEditingId(loan.id);
     setNameInput(loan.name);
     setLoanTypeInput(loan.loanType || '');
@@ -232,6 +240,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
   }
 
   function closeModal() {
+    singleForm.release();
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
@@ -596,7 +605,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce }: LoansScreenPr
           <PickerRow label="Type" value={loanTypeInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices options={LOAN_TYPES.map((c) => ({ id: c, label: c }))} value={loanTypeInput as any} onChange={(c) => setLoanTypeInput(c)} />
             <View style={{ height: 10 }} />
-            <InlineField label="Or type your own" value={LOAN_TYPES.includes(loanTypeInput) ? '' : loanTypeInput} onChangeText={setLoanTypeInput} />
+            <OwnChoiceField options={LOAN_TYPES} value={loanTypeInput} onChange={setLoanTypeInput} />
           </PickerRow>
           <AmountRow label={directionInput === 'lent' ? 'They pay' : 'You pay'} value={expectedPaymentInput} onChange={setExpectedPaymentInput} />
           <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>

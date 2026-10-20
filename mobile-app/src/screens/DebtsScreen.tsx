@@ -1,3 +1,4 @@
+import { useSingleForm } from '../singleForm';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -6,7 +7,7 @@ import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
-import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
@@ -50,11 +51,14 @@ function sortByNextDue(debts: Debt[]): Debt[] {
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 
 type DebtsScreenProps = {
+  // Version 2.2: called once the requested item's form has opened, so the request is
+  // cleared and the form never pops up again when this list is shown again.
+  onOpenHandled?: () => void;
   openDebtId?: string;
   openDebtNonce?: number;
 };
 
-export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
+export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }: DebtsScreenProps = {}) {
   // Redesign: the floating + adds a debt while this list is showing.
   useToPayAddRequest('debts', () => openAddModal());
   const navigation = useNavigation<any>();
@@ -63,6 +67,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const singleForm = useSingleForm('debt');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const openedDebtRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -74,6 +79,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     if (target) {
       openedDebtRef.current = { id: openDebtId, nonce: openDebtNonce };
       afterSlide(() => openEditModal(target));
+      onOpenHandled?.();
     }
   }, [model, openDebtId, openDebtNonce]);
   const [creditorInput, setCreditorInput] = useState('');
@@ -141,12 +147,14 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   }
 
   function openAddModal() {
+    if (!singleForm.claim()) return;
     setEditingId(null);
     resetForm();
     setModalOpen(true);
   }
 
   function openEditModal(debt: Debt) {
+    if (!singleForm.claim()) return;
     setEditingId(debt.id);
     setCreditorInput(debt.creditorOrPerson);
     setCategoryInput(debt.category || '');
@@ -180,6 +188,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   }
 
   function closeModal() {
+    singleForm.release();
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
@@ -474,7 +483,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           <PickerRow label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices options={DEBT_TYPES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
-            <InlineField label="Or type your own" value={DEBT_TYPES.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+            <OwnChoiceField options={DEBT_TYPES} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
           <AmountRow label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
           <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>

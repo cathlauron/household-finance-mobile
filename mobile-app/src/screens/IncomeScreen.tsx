@@ -29,7 +29,7 @@ import { monthTotals, sourcesByPerson } from '../incomeMonth';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
 import { todayISO } from '../dateUtils';
 import { useNavigation } from '@react-navigation/native';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
@@ -764,7 +764,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           <PickerRow label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
             <Choices options={CATEGORY_SUGGESTIONS.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
-            <InlineField label="Or type your own" value={CATEGORY_SUGGESTIONS.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+            <OwnChoiceField options={CATEGORY_SUGGESTIONS} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
           <PickerRow label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
             {model.people.length > 0 && (

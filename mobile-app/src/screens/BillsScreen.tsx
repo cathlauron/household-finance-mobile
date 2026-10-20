@@ -1,3 +1,4 @@
+import { useSingleForm } from '../singleForm';
 import React, { useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -25,7 +26,7 @@ import PayRow from '../components/PayRow';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, ScheduleChoices } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, ScheduleChoices, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 function billAmount(bill: Bill): number {
@@ -44,6 +45,9 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Subscription', 'School', 'Other'];
 
 type BillsScreenProps = {
+  // Version 2.2: called once the requested item's form has opened, so the request is
+  // cleared and the form never pops up again when this list is shown again.
+  onOpenHandled?: () => void;
   openBillId?: string;
   // Set only when this bill was requested via a swipe on TransactionsScreen
   // (openBillRequest.ts) — increments every request, even for the same
@@ -52,7 +56,7 @@ type BillsScreenProps = {
   openBillNonce?: number;
 };
 
-export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
+export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }: BillsScreenProps = {}) {
   // Redesign: the floating + adds a bill while this list is showing.
   useToPayAddRequest('bills', () => openAddModal());
   const navigation = useNavigation<any>();
@@ -77,11 +81,13 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     if (target) {
       openedBillRef.current = { id: openBillId, nonce: openBillNonce };
       afterSlide(() => openEditModal(target));
+      onOpenHandled?.();
     }
   }, [model, openBillId, openBillNonce]);
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const singleForm = useSingleForm('bill');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
@@ -163,12 +169,14 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   }
 
   function openAddModal() {
+    if (!singleForm.claim()) return;
     setEditingId(null);
     resetForm();
     setModalOpen(true);
   }
 
   function openEditModal(bill: Bill) {
+    if (!singleForm.claim()) return;
     setEditingId(bill.id);
     setNameInput(bill.name);
     setCategoryInput(bill.category || '');
@@ -202,6 +210,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   }
 
   function closeModal() {
+    singleForm.release();
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
@@ -564,13 +573,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           </Guided>
           <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
             <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
-            <TextInput
-              style={styles.inlineField}
-              placeholder="Or type your own"
-              placeholderTextColor={colors.inkFaint}
-              value={BILL_CATEGORIES.includes(categoryInput) ? '' : categoryInput}
-              onChangeText={setCategoryInput}
-            />
+            <OwnChoiceField style={styles.inlineField} options={BILL_CATEGORIES} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
           <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
             <Choices
