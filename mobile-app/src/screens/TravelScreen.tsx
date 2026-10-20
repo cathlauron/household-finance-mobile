@@ -519,7 +519,6 @@ export default function TravelScreen() {
   }
 
   async function handleRemoveChecklistItem(id: string) {
-    const removedItem = checklist.find((i) => i.id === id);
     const newChecklist = checklist.filter((i) => i.id !== id);
     setChecklist(newChecklist);
 
@@ -530,18 +529,27 @@ export default function TravelScreen() {
     // in the app behaves, and avoids leaving a dangling expenseTransactionId behind if the
     // person cancels out of the modal afterward instead of saving.
     if (!model || !editingId) return;
-    const currentList = model.travel ?? [];
+    const latest = getModel() ?? model;
+    const currentList = latest.travel ?? [];
     const priorTrip = currentList.find((t) => t.id === editingId);
     if (!priorTrip) return;
 
-    const updatedTrip: TravelTrip = { ...priorTrip, checklist: newChecklist };
-    const updated: HouseholdModel = {
-      ...model,
-      travel: currentList.map((t) => (t.id === editingId ? updatedTrip : t)),
-      manualTransactions: removedItem?.expenseTransactionId
-        ? (model.manualTransactions ?? []).filter((t) => t.id !== removedItem.expenseTransactionId)
-        : model.manualTransactions,
+    // Version 2.2 (review fix): only the removal is saved now, against the trip as it is
+    // saved. The rest of the form (ticks, names, costs) still waits for Save; before, the
+    // whole unsaved form was saved here, so a tick made in the form never logged its payment.
+    const savedList = priorTrip.checklist || [];
+    const { checklist: synced, transactions, takeOffs } = reconcileTravelChecklistTransactions(
+      savedList,
+      savedList.filter((i) => i.id !== id),
+      latest.manualTransactions || [],
+      priorTrip.name
+    );
+    let updated: HouseholdModel = {
+      ...latest,
+      travel: currentList.map((t) => (t.id === editingId ? { ...priorTrip, checklist: synced } : t)),
+      manualTransactions: transactions,
     };
+    for (const k of takeOffs) updated = takeOffSavedBalance(updated, k.pm, k.amount);
     try {
       await saveModel(updated);
     } catch (e) {

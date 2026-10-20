@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Share, Linking } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, Share, Linking, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
@@ -163,6 +163,11 @@ export function ScanJoinModal({ visible, onCode, onClose, onTypeInstead }: { vis
     doneRef.current = false;
     // The answer may have just changed (asked on the way in): read it again.
     getPermission().catch(() => {});
+    // ...and again when coming back from the phone's settings (review fix).
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') getPermission().catch(() => {});
+    });
+    return () => sub.remove();
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   const granted = !!permission?.granted;
   const canAsk = !permission || permission.canAskAgain;

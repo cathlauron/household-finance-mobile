@@ -525,11 +525,14 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     const code = await ensureInviteCode();
     if (code) setQrOpen(true);
   }
+  // Always the newest version of the join step (it reads the connection, data, etc.).
+  const joinWithCodeRef = useRef(handleJoinWithCode);
+  joinWithCodeRef.current = handleJoinWithCode;
   function handleScanned(code: string) {
     setScanOpen(false);
     setJoinCodeInput(code);
     setTypingCode(true);
-    setTimeout(() => handleJoinWithCode(code), 350);
+    setTimeout(() => joinWithCodeRef.current(code), 350);
   }
   // Version 2.2: a code from an invite link (see joinLink.ts) joins like a scanned one.
   useEffect(() => {

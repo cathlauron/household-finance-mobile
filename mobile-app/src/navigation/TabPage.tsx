@@ -44,6 +44,11 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     new Animated.Value(place === 0 ? Math.sign(routeIndex - lastShownIndex) : place)
   ).current;
   const lastPlace = useRef<number | null>(null);
+  // Version 2.2 (smoothness sweep): a tab that isn't showing stops redrawing once it has
+  // slid away. Before, every tap that saved something redrew all four tabs, even the
+  // hidden ones. It catches up (with the latest numbers) the moment it's shown again.
+  // Review fix: it stops only when its slide-out has really finished (not after a set time).
+  const [settledAway, setSettledAway] = useState(false);
 
   useEffect(() => {
     const before = lastPlace.current;
@@ -62,28 +67,18 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     if (before === place) return;
     if (place === 0) {
       // Arriving: fades in from the side it was waiting on.
+      setSettledAway(false);
       run(0);
     } else if (before === 0) {
-      // Leaving: fades out toward its side and waits there.
-      run(place);
+      // Leaving: fades out toward its side and waits there (then stops redrawing).
+      run(place, () => setSettledAway(true));
     } else {
       // Skipped over: stays hidden and just moves to its new side.
       x.setValue(place);
+      setSettledAway(true);
     }
   }, [place, routeIndex, x]);
 
-  // Version 2.2 (smoothness sweep): a tab that isn't showing stops redrawing once it has
-  // slid away. Before, every tap that saved something redrew all four tabs, even the
-  // hidden ones. It catches up (with the latest numbers) the moment it's shown again.
-  const [settledAway, setSettledAway] = useState(false);
-  useEffect(() => {
-    if (place === 0) {
-      setSettledAway(false);
-      return;
-    }
-    const timer = setTimeout(() => setSettledAway(true), FADE_MS + 120);
-    return () => clearTimeout(timer);
-  }, [place]);
   const frozen = place !== 0 && settledAway;
 
   const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });

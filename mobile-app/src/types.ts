@@ -302,6 +302,9 @@ export type TravelChecklistItem = {
   // no transaction and no balance or spending changes; it still counts as Paid in the trip.
   paidWith?: PaymentMethod;
   markedOnly?: boolean;
+  // How much "take it off my balance" took off paidWith's saved balance, so it can be given
+  // back if the item is unticked, answered again or removed.
+  takenOff?: number;
   // Only on the way to being saved: "take it off my balance" for a payment dated before
   // balances were last updated (never kept on a saved item).
   takeOffBalance?: boolean;

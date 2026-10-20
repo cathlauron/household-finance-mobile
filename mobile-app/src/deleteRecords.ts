@@ -1,4 +1,5 @@
 import type { HouseholdModel } from './types';
+import { takeOffSavedBalance } from './takeOffBalance';
 
 // Version 2.2 (Cath: "Delete" at the bottom of each page, not only inside Edit): one place
 // that says what deleting each kind of record removes, so the page, the edit form and
@@ -34,14 +35,21 @@ export function withoutSavingsPot(model: HouseholdModel, id: string): HouseholdM
   };
 }
 
-// A trip, with its own savings pot and the spending its ticked items logged.
+// A trip, with its own savings pot and the spending its ticked items logged. Anything a
+// ticked item took off an account's balance ("take it off my balance") is given back.
 export function withoutTrip(model: HouseholdModel, id: string): HouseholdModel {
   const trip = (model.travel ?? []).find((t) => t.id === id);
   const linkedTxnIds = new Set((trip?.checklist ?? []).map((i) => i.expenseTransactionId).filter((x): x is string => !!x));
-  return {
+  let next: HouseholdModel = {
     ...model,
     travel: (model.travel ?? []).filter((t) => t.id !== id),
     savingsGoals: trip?.savingsGoalId ? (model.savingsGoals ?? []).filter((g) => g.id !== trip.savingsGoalId) : model.savingsGoals,
     manualTransactions: linkedTxnIds.size ? (model.manualTransactions ?? []).filter((t) => !linkedTxnIds.has(t.id)) : model.manualTransactions,
   };
+  for (const item of trip?.checklist ?? []) {
+    if (item.checked && item.paidWith && typeof item.takenOff === 'number' && item.takenOff > 0) {
+      next = takeOffSavedBalance(next, item.paidWith, -item.takenOff);
+    }
+  }
+  return next;
 }

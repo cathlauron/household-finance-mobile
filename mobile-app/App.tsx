@@ -342,8 +342,10 @@ function AppContent() {
       { deferNotifications: true, offlineStart: !!offline.householdKey }
     ).catch(() => {});
     recordRecentAccount(creds.username, undefined, undefined, offline.model.avatars?.[creds.username]).catch(() => {});
-    saveSession(creds).catch(() => {});
-    saveSessionKey(creds.username, offline.profile.salt, offline.key).catch(() => {});
+    // The key is kept only once the sign-in itself is saved (review fix: in that order).
+    saveSession(creds)
+      .then(() => saveSessionKey(creds.username, offline.profile.salt, offline.key))
+      .catch(() => {});
     setScreen('home');
     setTimeout(() => {
       rescheduleBillNotifications(offline.model).catch(() => {});
@@ -830,8 +832,9 @@ function AppContent() {
             }
             if (credentials) {
               saveFingerprintCopyIfPossible({ email: credentials.email, username, password: credentials.password }).catch(() => {});
-              saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
-              rememberSessionKey(username, key).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password })
+                .then(() => rememberSessionKey(username, key))
+                .catch(() => {});
             }
             // "Does anyone else use your phone?" Yes: lock after a minute away.
             if (guestSetup.othersUsePhone) setAutoLockMinutes(1).catch(() => {});
@@ -930,8 +933,9 @@ function AppContent() {
                 username,
                 password: credentials.password,
               }).catch(() => {});
-              saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
-              rememberSessionKey(username, key).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password })
+                .then(() => rememberSessionKey(username, key))
+                .catch(() => {});
             }
             setScreen('onboarding');
           }}
@@ -1036,8 +1040,9 @@ function AppContent() {
             ).catch(() => {});
           }
           if (credentials) {
-            saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
-              rememberSessionKey(username, key).catch(() => {});
+            saveSession({ email: credentials.email, username, password: credentials.password })
+                .then(() => rememberSessionKey(username, key))
+                .catch(() => {});
           }
           if (credentials && !viaQuickUnlock) {
             saveFingerprintCopyIfPossible({

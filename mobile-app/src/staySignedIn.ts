@@ -71,6 +71,9 @@ export async function saveSessionKey(username: string, salt: string, key: Crypto
     if (!username || !salt || !key || key.sigBytes !== 32) return;
     const item: SavedKey = { username, salt, key: key.toString(CryptoJS.enc.Hex) };
     await SecureStore.setItemAsync(KEY_ITEM, JSON.stringify(item), { keychainAccessible: ACCESSIBLE });
+    // Signed out (or switched) while this was being written: don't leave the key behind.
+    const session = await loadSession();
+    if (!session || session.username !== username) await clearSessionKey();
   } catch (e) {
     // Not fatal: the next open just takes the slow path.
   }
