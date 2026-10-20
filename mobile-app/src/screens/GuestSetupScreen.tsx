@@ -155,7 +155,7 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
               <View style={[s.row, { borderTopWidth: 1, borderTopColor: colors.navy4 }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 17, color: colors.ink }}>Mood colours</Text>
-                  <Text style={{ fontSize: 14, color: colors.inkDim }}>Home's colour follows the month</Text>
+                  <Text style={{ fontSize: 14, color: colors.inkDim }}>Colours follow how much is left to spend</Text>
                 </View>
                 <AppSwitch value={setup.moodColors} onValueChange={(v) => onChange({ ...setup, moodColors: v })} trackColor={{ true: colors.buttonFill, false: colors.navy4 }} />
               </View>
