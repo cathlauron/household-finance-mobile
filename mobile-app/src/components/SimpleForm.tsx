@@ -483,3 +483,29 @@ export function InlineAmount({ label, value, onChange, placeholder }: { label: s
     </View>
   );
 }
+
+// Version 2.2 fix (Cath: typing "card" became "Car"): the "Or type your own" box keeps
+// what you type, even when it matches one of the choices above it. Picking a choice
+// clears the box. `style` set = a plain box (Bills); otherwise the labelled InlineField.
+export function OwnChoiceField({ options, value, onChange, label = 'Or type your own', style, placeholder }: { options: string[]; value: string; onChange: (v: string) => void; label?: string; style?: any; placeholder?: string }) {
+  const { colors } = useTheme();
+  const [text, setText] = React.useState(options.includes(value) ? '' : value);
+  const typed = React.useRef(text);
+  React.useEffect(() => {
+    // A choice was picked (or the form was reset/opened for another item).
+    if (value !== typed.current) {
+      const next = options.includes(value) ? '' : value;
+      typed.current = next;
+      setText(next);
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const change = (v: string) => {
+    typed.current = v;
+    setText(v);
+    onChange(v);
+  };
+  if (style) {
+    return <TextInput style={style} placeholder={placeholder ?? label} placeholderTextColor={colors.inkFaint} value={text} onChangeText={change} />;
+  }
+  return <InlineField label={label} value={text} onChangeText={change} placeholder={placeholder} />;
+}

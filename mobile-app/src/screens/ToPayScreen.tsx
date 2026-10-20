@@ -119,12 +119,14 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
           <DebtsScreen
             openDebtId={swipeOpenDebtRequest ? swipeOpenDebtRequest.debtId : undefined}
             openDebtNonce={swipeOpenDebtRequest ? swipeOpenDebtRequest.nonce : undefined}
+            onOpenHandled={() => setSwipeOpenDebtRequest(null)}
           />
         )}
         {activeSubTab === 'loans' && (
           <LoansScreen
             openLoanId={swipeOpenLoanRequest ? swipeOpenLoanRequest.loanId : undefined}
             openLoanNonce={swipeOpenLoanRequest ? swipeOpenLoanRequest.nonce : undefined}
+            onOpenHandled={() => setSwipeOpenLoanRequest(null)}
           />
         )}
       </View>
