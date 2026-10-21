@@ -253,7 +253,7 @@ export default function DateField({
                     style={[
                       styles.dayCell,
                       isToday && styles.dayCellToday,
-                      isSelected && styles.dayCellSelected,
+                      isSelected && !isToday && styles.dayCellSelected,
                       isDisabled && styles.dayCellDisabled,
                     ]}
                   >
@@ -261,7 +261,7 @@ export default function DateField({
                       style={[
                         styles.dayText,
                         isToday && styles.dayTextToday,
-                        isSelected && styles.dayTextSelected,
+                        isSelected && !isToday && styles.dayTextSelected,
                         isDisabled && styles.dayTextDisabled,
                       ]}
                     >
@@ -422,7 +422,7 @@ function makeStyles(colors: any) {
       flex: 1,
       aspectRatio: 1,
       margin: 2,
-      borderRadius: 8,
+      borderRadius: 999,
       backgroundColor: 'transparent',
       alignItems: 'center',
       justifyContent: 'center',
@@ -430,12 +430,12 @@ function makeStyles(colors: any) {
     dayCellEmpty: {
       backgroundColor: 'transparent',
     },
+    // 2.2: soft circles, same as the Calendar page (pale green today, pale grey chosen day).
     dayCellToday: {
-      borderWidth: 1.5,
-      borderColor: colors.gold,
+      backgroundColor: colors.gold + '2E',
     },
     dayCellSelected: {
-      backgroundColor: colors.accent,
+      backgroundColor: colors.ink + '1A',
     },
     dayCellDisabled: {
       opacity: 0.25,
@@ -446,11 +446,11 @@ function makeStyles(colors: any) {
     },
     dayTextToday: {
       color: colors.gold,
-      fontWeight: '700',
+      fontWeight: '800',
     },
     dayTextSelected: {
-      color: colors.onButton,
-      fontWeight: '700',
+      color: colors.ink,
+      fontWeight: '800',
     },
     dayTextDisabled: {
       color: colors.inkFaint,

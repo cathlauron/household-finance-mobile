@@ -148,7 +148,12 @@ type GridProps = {
 };
 
 // One month as week rows with a line above each, iPhone style: days outside the month are
-// left blank, weekends are grey, today is a green circle and the chosen day a dark one.
+// left blank, weekends are grey, today is a soft pale-green circle and the chosen day a
+// soft pale-grey one (2.2: lighter shades, Cath 2026-10-21).
+// See-through levels added to a colour code for the soft day circles (hex alpha).
+const TODAY_TINT = '2E'; // about 18%
+const SELECTED_TINT = '1A'; // about 10%
+
 const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, selectedDay, onDayPress }: GridProps) {
   const { colors } = useTheme();
   const { model } = useData();
@@ -184,8 +189,8 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
                 onPress={() => onDayPress(year, month, d)}
                 accessibilityLabel={`${MONTHS[month]} ${d}${evs.length ? `, ${evs.length} item${evs.length === 1 ? '' : 's'}` : ''}`}
               >
-                <View style={[s.num, isToday && { backgroundColor: colors.gold }, isSel && !isToday && { backgroundColor: colors.ink }]}>
-                  <Text style={[s.numText, { color: isToday || isSel ? colors.navy2 : weekend ? colors.inkDim : colors.ink }, (isToday || isSel) && { fontWeight: '800' }]}>{d}</Text>
+                <View style={[s.num, isToday && { backgroundColor: colors.gold + TODAY_TINT }, isSel && !isToday && { backgroundColor: colors.ink + SELECTED_TINT }]}>
+                  <Text style={[s.numText, { color: isToday ? colors.gold : isSel ? colors.ink : weekend ? colors.inkDim : colors.ink }, (isToday || isSel) && { fontWeight: '800' }]}>{d}</Text>
                 </View>
                 {mode === 'details' ? (
                   <View style={s.pills}>
@@ -230,8 +235,8 @@ const MiniMonth = React.memo(function MiniMonth({ year, month, onOpen, width }: 
             const show = d >= 1 && d <= days;
             const today = show && isThisMonth && d === now.getDate();
             return (
-              <View key={c} style={{ width: cell, height: cell, alignItems: 'center', justifyContent: 'center', borderRadius: cell / 2, backgroundColor: today ? colors.gold : 'transparent' }}>
-                {show && <Text style={{ fontSize: 9.5, fontWeight: today ? '800' : '500', color: today ? colors.navy2 : colors.ink }}>{d}</Text>}
+              <View key={c} style={{ width: cell, height: cell, alignItems: 'center', justifyContent: 'center', borderRadius: cell / 2, backgroundColor: today ? colors.gold + TODAY_TINT : 'transparent' }}>
+                {show && <Text style={{ fontSize: 9.5, fontWeight: today ? '800' : '500', color: today ? colors.gold : colors.ink }}>{d}</Text>}
               </View>
             );
           })}
@@ -775,8 +780,8 @@ function makeStyles(colors: any) {
     backRow: { flexDirection: 'row', alignItems: 'center', marginLeft: -6 },
     link: { fontSize: 18, fontWeight: '600', color: colors.gold },
     topIcons: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-    monthTitle: { fontSize: 34, fontWeight: '800', color: colors.ink, paddingHorizontal: 20, marginBottom: 6 },
-    inlineMonth: { fontSize: 20, fontWeight: '800', color: colors.ink, paddingHorizontal: 16, height: 46, lineHeight: 46 },
+    monthTitle: { fontSize: 30, fontWeight: '600', letterSpacing: -0.2, color: colors.ink, paddingHorizontal: 20, marginBottom: 6 },
+    inlineMonth: { fontSize: 20, fontWeight: '600', color: colors.ink, paddingHorizontal: 16, height: 46, lineHeight: 46 },
     dowRow: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.inkFaint },
     dowText: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '600', color: colors.inkDim },
     weekRow: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
@@ -789,11 +794,11 @@ function makeStyles(colors: any) {
     pill: { borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1, marginTop: 2 },
     pillText: { fontSize: 10, fontWeight: '700' },
     pillMore: { fontSize: 10, color: colors.inkDim, textAlign: 'center' },
-    yearTitle: { fontSize: 38, fontWeight: '800', color: colors.ink, marginTop: 10, height: 48 },
+    yearTitle: { fontSize: 34, fontWeight: '600', letterSpacing: -0.2, color: colors.ink, marginTop: 10, height: 48 },
     yearLine: { height: StyleSheet.hairlineWidth, backgroundColor: colors.inkFaint, marginTop: 0, marginBottom: 14 },
     yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 10 },
-    dayTitle: { fontSize: 18, fontWeight: '800', color: colors.ink, flexShrink: 1 },
+    dayTitle: { fontSize: 17, fontWeight: '600', color: colors.ink + 'D9', flexShrink: 1 },
     dayBal: { fontSize: 14, color: colors.inkDim, marginLeft: 8 },
     group: { backgroundColor: colors.navy3, borderRadius: 18, overflow: 'hidden' },
     empty: { fontSize: 15, color: colors.inkDim, padding: 16 },
