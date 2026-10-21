@@ -53,6 +53,7 @@ import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
 import { SettingsGroup, PlainRow } from '../components/SettingsHub';
 import BottomSheet from '../components/BottomSheet';
+import LinkChoice from '../components/LinkChoice';
 import { onPendingJoinCode, takePendingJoinCode } from '../joinLink';
 import { LinkWaysRows, QrInviteModal, ScanJoinModal, TimerChip, askForCamera, shareInvite, useInviteCountdown } from '../components/HouseholdLinkWays';
 import { getPreferredName, withPreferredName, MAX_PREFERRED_NAME_LENGTH } from '../preferredName';
@@ -1329,44 +1330,19 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             )}
 
             {!!joinResult && model && (
-              <View style={styles.linkCodeBox}>
-                <GradientFill match={styles.linkCodeBox} />
-                <Text style={styles.linkCodeLabel}>Found their data</Text>
-                <Text style={styles.hintText}>You: {summarizeModel(model)}</Text>
-                <Text style={styles.hintText}>
-                  {joinResult.hostUsername}: {summarizeModel(joinResult.hostModel)}
-                </Text>
-                <Text style={[styles.hintText, { marginTop: 8, marginBottom: 8 }]}>
-                  Choose what the shared vault starts with — this can't be undone, so confirm with the
-  other phone first.
-                </Text>
-                {/* Version 2.1: no "Keep mine". The person joining can never replace the other
-                    person's data; they start from it or merge theirs in. */}
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={() => handleJoinChoice('theirs')}
-                  disabled={joinChoiceBusy}
-                >
-                  <GradientFill match={styles.dataButton} />
-                  <Text style={styles.dataButtonText}>
-                    {joinResult.isInvite ? 'Keep household data' : 'Keep theirs'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={() => handleJoinChoice('merge')}
-                  disabled={joinChoiceBusy}
-                >
-                  <GradientFill match={styles.dataButton} />
-                  <Text style={styles.dataButtonText}>
-                    {joinResult.isInvite ? 'Merge mine in' : 'Merge both'}
-                  </Text>
-                </TouchableOpacity>
-                {!!joinChoiceMsg && (
-                  <Text style={joinChoiceMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
-                    {joinChoiceMsg}
-                  </Text>
-                )}
+              // Version 2.2 (approved LK1-LK2): both people, two choices with line icons, then a
+              // check sheet. The joiner still can't replace the other person's data (no "Keep mine").
+              <View style={{ marginHorizontal: 16, marginBottom: 24 }}>
+                <LinkChoice
+                  me={username || ''}
+                  them={joinResult.hostUsername}
+                  myModel={model}
+                  theirModel={joinResult.hostModel}
+                  isInvite={!!joinResult.isInvite}
+                  busy={joinChoiceBusy}
+                  message={joinChoiceMsg}
+                  onChoose={(c) => handleJoinChoice(c)}
+                />
               </View>
             )}
           </>
