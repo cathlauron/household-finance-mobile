@@ -130,46 +130,29 @@ function dayHeading(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
-// Bill-sourced TransactionEntry ids are built as 'bill-' + cycle.id
-// (see transactions.ts). This walks that back to the real Bill it came
-// from, so a swipe on the row can jump straight to it.
-function findBillIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const cycleId = txnId.slice(5);
-  const bill = (model.bills || []).find((b) => (b.cycles || []).some((c) => c.id === cycleId));
-  return bill ? bill.id : null;
+// Each list row that came from a bill, debt, loan, income or savings entry can jump to
+// that item. The row ids are 'bill-'/'debt-' + cycle id, 'loan-' + payment id,
+// 'income-' + payday id and 'saving-' + contribution id (see transactions.ts).
+// Speed sweep: instead of searching every bill (and every cycle) for each row, one index
+// from row id to item id is made once per version of your data and reused.
+const parentIndexCache = new WeakMap<object, Map<string, string>>();
+function parentIndex(model: HouseholdModel): Map<string, string> {
+  let idx = parentIndexCache.get(model);
+  if (idx) return idx;
+  idx = new Map();
+  (model.bills || []).forEach((b) => (b.cycles || []).forEach((c) => idx!.set(`bill-${c.id}`, b.id)));
+  (model.debts || []).forEach((d) => (d.cycles || []).forEach((c) => idx!.set(`debt-${c.id}`, d.id)));
+  (model.loans || []).forEach((l) => (l.actualPayments || []).forEach((p) => idx!.set(`loan-${p.id}`, l.id)));
+  (model.income || []).forEach((src) => (src.paymentLog || []).forEach((e) => idx!.set(`income-${e.id}`, src.id)));
+  (model.savingsGoals || []).forEach((g) => (g.contributions || []).forEach((c) => idx!.set(`saving-${c.id}`, g.id)));
+  parentIndexCache.set(model, idx);
+  return idx;
 }
-
-// Debt-sourced TransactionEntry ids are built as 'debt-' + cycle.id
-// (see transactions.ts) — same shape as bills.
-function findDebtIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const cycleId = txnId.slice(5);
-  const debt = (model.debts || []).find((d) => (d.cycles || []).some((c) => c.id === cycleId));
-  return debt ? debt.id : null;
-}
-
-// Loan-sourced TransactionEntry ids are built as 'loan-' + p.id, where p is
-// a LoanPayment inside loan.actualPayments (see transactions.ts).
-function findLoanIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const paymentId = txnId.slice(5);
-  const loan = (model.loans || []).find((l) => (l.actualPayments || []).some((p) => p.id === paymentId));
-  return loan ? loan.id : null;
-}
-
-// Income-sourced TransactionEntry ids are built as 'income-' + entry.id,
-// where entry is a PaymentLogEntry inside source.paymentLog (see transactions.ts).
-function findIncomeSourceIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const entryId = txnId.slice(7);
-  const source = (model.income || []).find((s) => (s.paymentLog || []).some((e) => e.id === entryId));
-  return source ? source.id : null;
-}
-
-// Savings-sourced TransactionEntry ids are built as 'saving-' + c.id, where c
-// is a SavingsContribution inside goal.contributions (see transactions.ts).
-function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const contribId = txnId.slice(7);
-  const goal = (model.savingsGoals || []).find((g) => (g.contributions || []).some((c) => c.id === contribId));
-  return goal ? goal.id : null;
-}
+const findBillIdForTransaction = (model: HouseholdModel, txnId: string) => parentIndex(model).get(txnId) ?? null;
+const findDebtIdForTransaction = findBillIdForTransaction;
+const findLoanIdForTransaction = findBillIdForTransaction;
+const findIncomeSourceIdForTransaction = findBillIdForTransaction;
+const findSavingsGoalIdForTransaction = findBillIdForTransaction;
 
 // Version 2.2 (Cath: Edit should open where you are): formOnly draws just the form (for
 // the Transaction page's Edit), opened on editTxnId; onFormClosed says when it closed.
@@ -288,7 +271,7 @@ export default function TransactionsScreen({
     });
     return unsubscribe;
   }, [navigation]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -348,6 +331,7 @@ export default function TransactionsScreen({
   // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
   // every key typed in the form).
   const txnIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
+  const reviewN = useMemo(() => (model ? reviewCount(model) : 0), [model]);
   const arrivedTxn = useArrival(txnIds, formOnly ? undefined : 'txn');
 
   const monthOptions = useMemo(() => {
@@ -933,7 +917,7 @@ export default function TransactionsScreen({
         </View>
 
         {/* Redesign: "To review" card (spending whose category wasn't picked by hand). */}
-        {reviewCount(model) > 0 && (
+        {reviewN > 0 && (
           <TouchableOpacity
             testID="transactions-review"
             style={[styles.group, styles.reviewCard]}
@@ -948,7 +932,7 @@ export default function TransactionsScreen({
             <View style={{ flex: 1 }}>
               <Text style={styles.txnLabel}>To review</Text>
               <Text style={styles.txnSub}>
-                {reviewCount(model)} {reviewCount(model) === 1 ? 'needs' : 'need'} a quick look
+                {reviewN} {reviewN === 1 ? 'needs' : 'need'} a quick look
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />

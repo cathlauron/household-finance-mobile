@@ -28,6 +28,7 @@ import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
 import { expectArrival } from '../arrivalFocus';
+import { salaryHandoffPending } from '../salaryHandoff';
 import { buildTransactionsList } from '../transactions';
 import { hapticSelection } from '../haptics';
 import { requestToPayTab } from '../openToPayTabRequest';
@@ -476,7 +477,12 @@ export default function CalendarScreen() {
   // opens right here over the calendar, starting on the picked day. Only after Add does
   // the app go to Transactions or To-Pay, where the new one slides in and glows.
   const [formHosts, setFormHosts] = useState<{ kind: 'txn' | 'bills' | 'debts' | 'loans'; date: string; nonce: number }[]>([]);
-  const endFormHost = (nonce: number) => setTimeout(() => setFormHosts((l) => l.filter((h) => h.nonce !== nonce)), 500);
+  // (Kept while it's off adding a salary, so it can come back with it - sweep fix.)
+  const endFormHost = (nonce: number) =>
+    setTimeout(() => {
+      if (salaryHandoffPending()) return;
+      setFormHosts((l) => l.filter((h) => h.nonce !== nonce));
+    }, 500);
   function add(kind: 'txn' | 'bill' | 'debt' | 'loan') {
     const date = isoOf(page.year, page.month, selDay);
     const k = kind === 'txn' ? 'txn' : kind === 'bill' ? 'bills' : kind === 'debt' ? 'debts' : 'loans';

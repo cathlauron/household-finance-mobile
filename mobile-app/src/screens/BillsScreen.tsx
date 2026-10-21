@@ -108,7 +108,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   // Version 2.2 (approved P4): a just-added bill slides in and glows.
-  const arrived = useArrival((model?.bills || []).map((b) => b.id), formOnly ? undefined : 'bills');
+  const arrived = useArrival(React.useMemo(() => (model?.bills || []).map((b) => b.id), [model?.bills]), formOnly ? undefined : 'bills');
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
   // reached via the subscription-reminder deep link, or via a swipe-to-
@@ -136,7 +136,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       onOpenHandled?.();
     }
   }, [model, openBillId, openBillNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const singleForm = useSingleForm('bill');

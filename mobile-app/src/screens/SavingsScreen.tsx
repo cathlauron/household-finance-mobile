@@ -135,7 +135,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
       afterSlide(() => openEditModal(target));
     }
   }, [model, openSavingsId, openSavingsNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<any>();
 
   const [activeTab, setActiveTab] = useStickyState<PillTab>('savings.tab', 'goals');

@@ -1,5 +1,6 @@
 import { Easing } from 'react-native';
 import React from 'react';
+import { reduceMotionNow } from '../reduceMotion';
 import { createStackNavigator, type StackCardStyleInterpolator } from '@react-navigation/stack';
 import MainTabs from './MainTabs';
 import DeferredContent from './DeferredContent';
@@ -70,19 +71,39 @@ const Stack = createStackNavigator<RootStackParamList>();
 // old one, which fades back as it's covered. Pages stay see-through so the leaves keep
 // showing behind them (that's why there's no drop shadow: a see-through page can't cast
 // one). Going back runs the same in reverse.
-const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => ({
-  cardStyle: {
-    transform: [
-      {
-        translateX: current.progress.interpolate({ inputRange: [0, 1], outputRange: [layouts.screen.width, 0] }),
-      },
-    ],
-    opacity: next ? next.progress.interpolate({ inputRange: [0, 0.4, 1], outputRange: [1, 0, 0] }) : 1,
-  },
-});
+//
+// Version 2.2 sweep (Cath: going BACK from Accounts > Income > a person "looks buggy"): the
+// page underneath used to be fully invisible until the very end of going back, so the
+// top page slid away over an empty background and the old page then popped in. Now the
+// page underneath stays a little visible and moves too: it drifts a fifth of the way to
+// the left and fades as it's covered, and on the way back it drifts in and fades up from
+// the first moment (also when you swipe back with your finger).
+const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => {
+  if (reduceMotionNow()) {
+    // Phone set to remove animations: a short fade, no sliding.
+    return { cardStyle: { opacity: current.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }) } };
+  }
+  return {
+    cardStyle: {
+      transform: [
+        {
+          translateX: next
+            ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [0, -layouts.screen.width * 0.2] })
+            : current.progress.interpolate({ inputRange: [0, 1], outputRange: [layouts.screen.width, 0] }),
+        },
+      ],
+      opacity: next ? next.progress.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0.15, 0] }) : 1,
+    },
+  };
+};
+// The same curve as the pop-up sheets; going back is a little quicker than going in.
 const paperTiming = {
   animation: 'timing' as const,
-  config: { duration: 280, easing: Easing.bezier(0.25, 0.8, 0.25, 1) },
+  config: { duration: 280, easing: Easing.bezier(0.32, 0.72, 0, 1) },
+};
+const paperTimingBack = {
+  animation: 'timing' as const,
+  config: { duration: 240, easing: Easing.bezier(0.32, 0.72, 0, 1) },
 };
 // The Calendar opens as a sheet from the bottom with rounded corners over a dimmed page.
 const sheetUp: StackCardStyleInterpolator = ({ current, layouts }) => ({
@@ -125,7 +146,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         cardStyle: { backgroundColor: 'transparent' },
         headerMode: 'screen',
         cardStyleInterpolator: paperSlide,
-        transitionSpec: { open: paperTiming, close: paperTiming },
+        transitionSpec: { open: paperTiming, close: paperTimingBack },
         gestureEnabled: true,
         gestureDirection: 'horizontal',
         ...getSharedHeaderOptions(colors),

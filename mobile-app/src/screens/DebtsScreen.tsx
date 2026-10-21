@@ -108,8 +108,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   // Version 2.2 (approved P4): a just-added debt slides in and glows.
-  const arrived = useArrival((model?.debts || []).map((d) => d.id), formOnly ? undefined : 'debts');
-  const styles = makeStyles(colors);
+  const arrived = useArrival(React.useMemo(() => (model?.debts || []).map((d) => d.id), [model?.debts]), formOnly ? undefined : 'debts');
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const singleForm = useSingleForm('debt');

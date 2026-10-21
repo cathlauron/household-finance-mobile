@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,11 +68,19 @@ type Props = {
   noCredit?: boolean;
 };
 
-export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit }: Props) {
+export default React.memo(AccountPicker);
+
+function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit }: Props) {
   const { colors, isDark } = useTheme();
-  const styles = makeStyles(colors);
-  const groups: SpendingGroup[] = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
-  const rows = groups.flatMap((g) => model.balanceAccounts[g].map((a) => ({ g, a })));
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  // Speed sweep: each account's balance goes through your whole history, so it's worked
+  // out once per change of your data, not again on every key typed in the form.
+  const rows = useMemo(() => {
+    const groups: SpendingGroup[] = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
+    return groups.flatMap((g) =>
+      model.balanceAccounts[g].map((a) => ({ g, a, bal: availableBalance(model, { type: g, accountId: a.id }, excludeTxnId) ?? 0 }))
+    );
+  }, [model, excludeTxnId, noCredit]);
   const spending = direction !== 'in';
 
   return (
@@ -85,9 +93,8 @@ export default function AccountPicker({ model, direction, amount, value, onChang
       ) : (
         <View style={styles.group}>
           <GradientFill match={styles.group} />
-          {rows.map(({ g, a }, i) => {
+          {rows.map(({ g, a, bal }, i) => {
             const pm: PaymentMethod = { type: g, accountId: a.id };
-            const bal = availableBalance(model, pm, excludeTxnId) ?? 0;
             const selected = value?.type === g && value?.accountId === a.id;
             const blocked = spending && (bal <= 0 || (typeof amount === 'number' && amount > bal));
             const reason = !blocked ? null : 'Insufficient balance';

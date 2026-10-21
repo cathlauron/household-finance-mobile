@@ -64,7 +64,16 @@ export function SharedSheetHost({ name }: { name: string }) {
   // A second form opened while one was showing: that's a switch. The first one closes
   // underneath (unseen), the sheet itself stays up.
   React.useEffect(() => {
-    if (openCount > 1) takeHandoff()?.();
+    if (openCount <= 1) return;
+    const handoff = takeHandoff();
+    if (handoff) return handoff();
+    // Sweep fix: no handoff waiting (it timed out) - close the older forms anyway, so an
+    // old one can never come back when the newest closes.
+    const newest = active as SharedEntry | null;
+    st.entries.forEach((e) => {
+      if (e !== newest && e.props.visible) e.props.onClose();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCount]);
   if (active) lastRef.current = (active as SharedEntry).props;
   const props = lastRef.current;
@@ -80,6 +89,9 @@ function useSharedSheet(name: string | undefined, props: BottomSheetProps): bool
   const wasVisible = React.useRef(false);
   React.useLayoutEffect(() => {
     if (!st || !useHost) return;
+    // Speed sweep: a closed form tells the sheet nothing (its screen redraws for other
+    // reasons all the time); only an open one, or one that just closed, does.
+    if (!props.visible && !wasVisible.current) return;
     const prev = st.entries.get(id.current);
     const openedAt = props.visible && !wasVisible.current ? Date.now() : prev?.openedAt ?? 0;
     wasVisible.current = props.visible;
@@ -149,7 +161,7 @@ function OwnSheet({
 }: BottomSheetProps) {
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
-  const styles = makeStyles(colors, screenHeight);
+  const styles = React.useMemo(() => makeStyles(colors, screenHeight), [colors, screenHeight]);
   // The app draws edge to edge, so the sheet runs under the phone's navigation bar too
   // (no strip of the screen behind showing below it) and pads its content above the bar.
   const insets = useSafeAreaInsets();

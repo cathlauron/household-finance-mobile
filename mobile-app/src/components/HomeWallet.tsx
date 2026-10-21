@@ -79,6 +79,9 @@ function orderedCards(model: HouseholdModel): WalletCard[] {
 const POOL = 40; // more than anyone's accounts
 const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
 const SETTLE = Easing.bezier(0.2, 0.8, 0.2, 1);
+// Version 2.2 sweep: a flip is quicker (about two thirds of a second instead of almost a
+// second), and the card leaves with an ease-out (starts moving at once).
+const EXIT = Easing.bezier(0.23, 1, 0.32, 1);
 const OUT_CUBIC = Easing.out(Easing.cubic);
 const LIFT = 22;
 
@@ -105,6 +108,12 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   useEffect(() => {
     // Don't snap back to the saved order while a newer order is waiting to be saved.
     if (!pendingKeys.current) setOrder(saved.map((c) => c.key));
+    else {
+      // Sweep fix: an account added (or removed) while a new order waits to be saved still
+      // shows up (or goes) at once.
+      const keys = new Set(saved.map((c) => c.key));
+      setOrder((o) => [...o.filter((k) => keys.has(k)), ...saved.map((c) => c.key).filter((k) => !o.includes(k))]);
+    }
   }, [saved.map((c) => c.key).join('|')]);
   const cards = order.map((k) => saved.find((c) => c.key === k)).filter(Boolean) as WalletCard[];
   const orderKey = order.join('|');
@@ -118,6 +127,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const heldSlot = useSharedValue(-1); // which card is held (or settling after a drop)
   const frontSlot = useSharedValue(0);
   const busySV = useSharedValue(0);
+  const reduceSV = useSharedValue(reduceMotionNow() ? 1 : 0);
   const dragTargetSV = useSharedValue(-1);
   // How far Home has scrolled while a card is held near the top or bottom (the held card
   // moves by the same amount, so it stays under your finger).
@@ -228,15 +238,15 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   // out and comes back in as the new front card.
   function curlOff(x: SharedValue<number>, from: number, then: () => void) {
     x.value = withSequence(
-      withTiming(from + 36, { duration: D(110), easing: Easing.out(Easing.quad) }),
-      withTiming(screenW * 1.1, { duration: D(260), easing: EASE }, (finished) => {
+      withTiming(from + 36, { duration: D(90), easing: Easing.out(Easing.quad) }),
+      withTiming(screenW * 1.1, { duration: D(200), easing: EXIT }, (finished) => {
         if (finished) runOnJS(then)();
       })
     );
   }
   function curlIn(x: SharedValue<number>, then: () => void) {
     x.value = screenW * 1.1;
-    x.value = withTiming(0, { duration: D(380), easing: SETTLE }, (finished) => {
+    x.value = withTiming(0, { duration: D(300), easing: SETTLE }, (finished) => {
       if (finished) runOnJS(then)();
     });
   }
@@ -247,7 +257,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       setBusy(true);
       hapticSelection();
       const only = xs[slotOf(order[0])];
-      const back = () => setTimeout(() => curlIn(only, () => setBusy(false)), 40);
+      const back = () => setTimeout(() => curlIn(only, () => setBusy(false)), 16);
       if (dir === 'right') curlOff(only, fromX, back);
       else
         only.value = withTiming(-screenW * 1.1, { duration: D(300), easing: EASE }, (finished) => {
@@ -270,7 +280,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
         // behind the others, then bring it in from the right.
         tops[slotOf(front)].value = 0;
         persist(next);
-        setTimeout(() => curlIn(x, finish), 40);
+        setTimeout(() => curlIn(x, finish), 16);
       });
     } else {
       const back = keys.shift() as string;
@@ -281,7 +291,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       curlOff(x, 0, () => {
         tops[slotOf(back)].value = (next.length - 1) * PEEK;
         persist(next);
-        setTimeout(() => curlIn(x, finish), 40);
+        setTimeout(() => curlIn(x, finish), 16);
       });
     }
   }
@@ -387,7 +397,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
           if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) {
             runOnJS(onCycle)(e.translationX < 0 ? 'left' : 'right', e.translationX * 0.8);
           } else if (busySV.value === 0) {
-            xs[frontSlot.value].value = withSpring(0, { damping: 16, stiffness: 220 });
+            xs[frontSlot.value].value = reduceSV.value ? 0 : withSpring(0, { damping: 16, stiffness: 220 });
           }
         });
       const drag = Gesture.Pan()
@@ -397,7 +407,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
           scrollComp.value = 0;
           edgeSV.value = 0;
           liftUp.value = 0;
-          liftUp.value = withTiming(-LIFT, { duration: 180, easing: OUT_CUBIC });
+          liftUp.value = withTiming(-LIFT, { duration: reduceSV.value ? 0 : 180, easing: OUT_CUBIC });
           heldSlot.value = slot;
           dragTargetSV.value = index;
           runOnJS(onDragStart)(key, index);
@@ -441,6 +451,15 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const openAccounts = () => navigation.navigate('Accounts');
   const amountColor = (n: number) => (n < 0 && !hidden ? colors.negative : colors.positive); // hidden: no red that gives a minus away
 
+  // Version 2.2 sweep: when a card is picked up the stack opens a gap, and the page below
+  // now slides down smoothly to make room (it used to jump), and back up after the drop.
+  const stackH = CARD_HEIGHT + PEEK * Math.max(0, cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0);
+  const stackHSV = useSharedValue(stackH);
+  useEffect(() => {
+    stackHSV.value = withTiming(stackH, { duration: D(180), easing: OUT_CUBIC });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stackH]);
+  const stackHeightStyle = useAnimatedStyle(() => ({ height: stackHSV.value }));
   // Cath: a held card stays in front of everything on Home (Due soon, Insights too), the
   // way it already did over Left to Spend.
   const raised = !!(dragging || settling);
@@ -461,7 +480,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
           <Text style={styles.emptySub}>Cash, debit or credit. Left to Spend starts from these.</Text>
         </TouchableOpacity>
       ) : (
-        <View {...holdTabSwipe} style={{ height: CARD_HEIGHT + PEEK * (cards.length - 1) + (dragging && gapAt < cards.length - 1 ? PEEK : 0) }}>
+        <Reanimated.View {...holdTabSwipe} style={stackHeightStyle}>
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
@@ -536,7 +555,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
               </GestureDetector>
             );
           })}
-        </View>
+        </Reanimated.View>
       )}
 
       {cards.length > 0 && (

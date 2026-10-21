@@ -139,7 +139,7 @@ export default function TravelScreen() {
   // Version 2.2 (approved P4): a just-added trip item slides in and glows.
   const arrived = useArrival((model?.travel || []).flatMap((t) => (t.checklist || []).map((i) => i.id)));
   const who = useWho();
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

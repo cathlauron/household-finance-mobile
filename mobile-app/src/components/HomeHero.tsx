@@ -64,7 +64,11 @@ function cumulativeOut(list: ReturnType<typeof buildTransactionsList>, ym: strin
   return out;
 }
 
-export default function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isDark, fullDate, targetDate }: Props) {
+// Speed sweep: only redraws when its own numbers change (not when Home shows the slim
+// bar while scrolling).
+export default React.memo(HomeHero);
+
+function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isDark, fullDate, targetDate }: Props) {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [width, setWidth] = useState(0);

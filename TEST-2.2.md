@@ -291,3 +291,21 @@ AB 2026-10-22 Front card, real cross-fade, one form sheet, no flash. NOT YET TES
       shows with the new entry glowing (no flash of the form on Transactions).
 - AB5 Calendar + > Bill / Debt / Loan / Transaction: form over the calendar; after Add it
       slides away, then the right list shows with the new one glowing.
+
+AC 2026-10-22 Sweep (bugs, smoothness, animation). NOT YET TESTED.
+- AC1 Go into a page and back (e.g. Home > Accounts > Income > Not assigned, then back,
+      back): the page underneath is visible and drifts back in while the top page slides
+      away (no empty moment, no pop at the end). Same when you swipe back with a finger.
+- AC2 Switching tabs feels a little quicker; everything slides with the same soft curve.
+- AC3 Home cards: a flip is quicker and starts moving at once. Pick up a card: the page
+      below glides down to make room (no jump) and glides back after the drop.
+- AC4 Typing an amount or description in New transaction / New bill / New debt / New loan
+      keeps up with your fingers, also with many accounts and a long history.
+- AC5 Transactions list and Home scroll smoothly; Home doesn't hitch where the slim
+      "Left to spend" bar appears.
+- AC6 Calendar + > Transaction > Money in > Salary with no salary set up > Add a salary,
+      add it: you come back to the calendar with the New transaction form and the salary
+      picked.
+- AC7 Bill form opened from the Calendar, switched to Debt, added: the debt is saved and
+      everything else you changed just before is still there.
+- AC8 Tap the moon/sun twice quickly: the app ends in the mode of your last tap.

@@ -177,7 +177,7 @@ function rollOverAnnualEvents(events: EventItem[], txns: ManualTransaction[], to
 export default function EventsScreen() {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

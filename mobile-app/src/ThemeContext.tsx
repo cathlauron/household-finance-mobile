@@ -70,7 +70,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setMode = (m: ColorMode) => {
     AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
     const toDark = resolveIsDark(m);
-    if (toDark === isDarkRef.current || reduceMotionNow() || pendingRef.current) {
+    // Tapped again while the fade is getting ready: the last tap wins (sweep fix).
+    if (pendingRef.current) {
+      pendingRef.current = { m, toDark };
+      return;
+    }
+    if (toDark === isDarkRef.current || reduceMotionNow()) {
       switchNow(m, toDark);
       return;
     }

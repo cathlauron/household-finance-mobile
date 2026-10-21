@@ -35,12 +35,14 @@ const DARK_PAGE: Record<LeftToSpendMood, string> = {
 // 2.2 speed sweep: working out Left to Spend goes through all your bills and spending.
 // Several parts of the app ask for the mood at once, so it's worked out once per change
 // of your data and remembered (the mood itself doesn't depend on the colours).
-let moodCache: { model: HouseholdModel; mood: LeftToSpendMood } | null = null;
+let moodCache: { model: HouseholdModel; day: string; mood: LeftToSpendMood } | null = null;
 function moodFor(model: HouseholdModel, colors: ThemeColors): LeftToSpendMood {
-  if (moodCache && moodCache.model === model) return moodCache.mood;
+  // Per day too: Left to Spend changes when a new day starts (sweep fix).
+  const day = new Date().toDateString();
+  if (moodCache && moodCache.model === model && moodCache.day === day) return moodCache.mood;
   const lts = computeLeftToSpend(model);
   const mood = getLeftToSpendStatus(lts.amount, model, colors).mood;
-  moodCache = { model, mood };
+  moodCache = { model, day, mood };
   return mood;
 }
 

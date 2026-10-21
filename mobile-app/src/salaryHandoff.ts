@@ -17,6 +17,11 @@ export function takeSalaryHandoff(): Back | null {
   return f;
 }
 
+// A form is waiting to come back with a new salary (so its form host stays around).
+export function salaryHandoffPending(): boolean {
+  return back !== null;
+}
+
 export function cancelSalaryHandoff() {
   back = null;
 }

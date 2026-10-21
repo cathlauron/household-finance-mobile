@@ -139,8 +139,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   // Version 2.2 (approved P4): a just-added loan slides in and glows.
-  const arrived = useArrival((model?.loans || []).map((l) => l.id), formOnly ? undefined : 'loans');
-  const styles = makeStyles(colors);
+  const arrived = useArrival(React.useMemo(() => (model?.loans || []).map((l) => l.id), [model?.loans]), formOnly ? undefined : 'loans');
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const singleForm = useSingleForm('loan');

@@ -154,6 +154,17 @@ export default function DashboardScreen({
     navigation.navigate('To-Pay');
   }
 
+  // Speed sweep: each watched category's spending goes through all transactions, so it's
+  // worked out once per change of your data (not again when Home redraws while scrolling).
+  const spentByCategory = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!model) return m;
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    (model.categoryBudgets || []).forEach((cb) => m.set(cb.category, computeCategorySpend(model, cb.category, prefix)));
+    return m;
+  }, [model]);
+
   if (loading || !model) {
     return (
       <View style={styles.loadingContainer}>
@@ -273,7 +284,7 @@ export default function DashboardScreen({
           <GradientFill match={styles.group} />
           {(model.categoryBudgets || []).map((cb, idx) => {
             const budget = typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0;
-            const spent = computeCategorySpend(model, cb.category, monthPrefix);
+            const spent = spentByCategory.get(cb.category) ?? computeCategorySpend(model, cb.category, monthPrefix);
             const status = getCategoryBudgetStatus(spent, budget, colors);
             return (
               <TouchableOpacity

@@ -115,7 +115,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
       afterSlide(() => openEditModal(target));
     }
   }, [model, openIncomeId, openIncomeNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

@@ -16,6 +16,7 @@ import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import TabPage from './TabPage';
+import PaySwitchHost from './PaySwitchHost';
 import { QuietWhenHidden, useData } from '../DataContext';
 import { SHEET_CLOSE_WAIT, SharedSheetHost } from '../components/BottomSheet';
 import { expectArrival } from '../arrivalFocus';
@@ -316,6 +317,7 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
     <QuickAdd />
     {/* The one sheet that shows the bill, debt and loan forms (see BottomSheet). */}
     <SharedSheetHost name="pay-form" />
+    <PaySwitchHost />
     </View>
   );
 }
