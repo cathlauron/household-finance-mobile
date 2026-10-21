@@ -74,10 +74,11 @@ function useCurrentTab(): string {
 // Version 2.2 (Cath: + on Home still felt laggy): on Home, + opens the New transaction
 // form right where you are, instead of first switching to the Transactions tab and
 // drawing its whole list. The form is kept ready after the first time, so it opens at
-// once. After Add you stay on Home (the "Added" tick shows); the entry is on Transactions.
-// On the Transactions tab itself, + works as before (the new row slides in there).
+// once. Cath: after Add it then goes to Transactions, so you see the new entry slide in
+// there. On the Transactions tab itself, + works as before.
 let quickAddOpen: (() => void) | null = null;
 function QuickAdd() {
+  const navigation = useNavigation<any>();
   const [nonce, setNonce] = React.useState(0);
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
@@ -94,7 +95,14 @@ function QuickAdd() {
     // Takes no room on the screen: only its pop-up form shows.
     <View pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
       <QuietWhenHidden active={open}>
-        <TransactionsScreen formOnly addNonceProp={nonce} onFormClosed={() => setOpen(false)} />
+        <TransactionsScreen
+          formOnly
+          addNonceProp={nonce}
+          onFormOpened={() => setOpen(true)}
+          onFormClosed={() => setOpen(false)}
+          // Cath: after Add, land on Transactions to see the new entry slide in.
+          onAdded={() => navigation.navigate('Main', { screen: 'Transactions' })}
+        />
       </QuietWhenHidden>
     </View>
   );

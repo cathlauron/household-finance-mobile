@@ -105,8 +105,11 @@ type LoansScreenProps = {
 
 export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, formOnly, onFormClosed }: LoansScreenProps = {}) {
   // Redesign: the floating + adds a loan while this list is showing.
-  useToPayAddRequest('loans', () => {
-    if (!formOnly) openAddModal();
+  useToPayAddRequest('loans', (date) => {
+    if (formOnly) return;
+    openAddModal();
+    // Version 2.2 (calendar +): starts on the day picked in the calendar.
+    if (date) setOnetimeDateInput(date);
   });
   // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
   React.useEffect(() => {

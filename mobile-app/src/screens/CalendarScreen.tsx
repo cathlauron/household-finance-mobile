@@ -22,6 +22,7 @@ import {
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
+import BottomSheet from '../components/BottomSheet';
 import { hapticSelection } from '../haptics';
 import { requestToPayTab } from '../openToPayTabRequest';
 import { requestToPayAdd } from '../fabActions';
@@ -105,9 +106,10 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
 
 type Page = { year: number; month: number };
 // Version 2.2 (Cath: the year view started at Oct 2024 with empty months before it, and
-// ended at 2028): the calendar covers whole years, from 2 years before this year to 2
-// years after it (2024 to 2028 in 2026), and says so at both ends of the year view.
-const YEARS_EACH_SIDE = 2;
+// ended at 2028): the calendar covers whole years, from 5 years before this year to 5
+// years after it (2021 to 2031 in 2026, Cath asked for 5), and says so at both ends of
+// the year view.
+const YEARS_EACH_SIDE = 5;
 
 function buildPages(): Page[] {
   const now = new Date();
@@ -460,7 +462,7 @@ export default function CalendarScreen() {
     const tab = kind === 'bill' ? 'bills' : kind === 'debt' ? 'debts' : 'loans';
     requestToPayTab(tab);
     navigation.navigate('Main', { screen: 'To-Pay' });
-    afterSlide(() => requestToPayAdd());
+    afterSlide(() => requestToPayAdd(date));
   }
 
   const selectedForList = listLayout ? { y: page.year, m: page.month, d: selDay } : null;
@@ -597,7 +599,7 @@ export default function CalendarScreen() {
         }
         ListFooterComponent={
           <Text style={s.yearRangeNote}>
-            It covers 2 years back and 2 years ahead ({years[0]} to {years[years.length - 1]}). Next year it moves forward a year.
+            It covers {YEARS_EACH_SIDE} years back and {YEARS_EACH_SIDE} years ahead ({years[0]} to {years[years.length - 1]}). Each new year it moves forward a year.
           </Text>
         }
         showsVerticalScrollIndicator={false}
@@ -778,27 +780,51 @@ export default function CalendarScreen() {
         </Pressable>
       </Modal>
 
-      {/* + : add on the day you're looking at. */}
-      <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
-        <Pressable style={s.menuBackdrop} onPress={() => setAddOpen(false)}>
-          <View style={[s.menu, { top: insets.top + 50 }]}>
-            <Text style={s.addHead}>{`Add on ${MONTHS[page.month].slice(0, 3)} ${selDay}`}</Text>
+      {/* + : add on the day you're looking at. Version 2.2 (Cath picked A): the same
+          bottom sheet as the app's forms, a white list with the pale green icon tiles and
+          one line under each saying what it is. Everything starts on this day. */}
+      <BottomSheet
+        visible={addOpen}
+        onClose={() => setAddOpen(false)}
+        grouped
+        header={
+          <View style={s.addSheetHead}>
+            <TouchableOpacity onPress={() => setAddOpen(false)} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={s.addSheetCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={s.addSheetTitle} numberOfLines={1}>
+              {`Add on ${DOW_LONG[new Date(page.year, page.month, selDay).getDay()].slice(0, 3)}, ${MONTHS[page.month].slice(0, 3)} ${selDay}`}
+            </Text>
+            <View style={{ width: 56 }} />
+          </View>
+        }
+      >
+        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+          <Text style={s.addSheetSub}>Everything you add starts on this day.</Text>
+          <View style={s.addGroup}>
+            <GradientFill match={s.addGroup} />
             {(
               [
-                ['txn', 'Transaction', 'swap-vertical-outline'],
-                ['bill', 'Bill', 'receipt-outline'],
-                ['debt', 'Debt', 'card-outline'],
-                ['loan', 'Loan', 'business-outline'],
+                ['txn', 'Transaction', 'Money that moved this day', 'swap-vertical-outline'],
+                ['bill', 'Bill', 'Comes back every month or year', 'flash-outline'],
+                ['debt', 'Debt', 'Owed and paid down over time', 'people-outline'],
+                ['loan', 'Loan', 'Set payments until an end date', 'business-outline'],
               ] as const
-            ).map(([id, title, icon]) => (
-              <TouchableOpacity key={id} onPress={() => add(id)} style={[s.menuRow, s.rowTop]}>
-                <Ionicons name={icon} size={18} color={colors.gold} style={{ width: 26 }} />
-                <Text style={[s.menuTitle, { flex: 1 }]}>{title}</Text>
+            ).map(([id, title, sub, icon], i) => (
+              <TouchableOpacity key={id} onPress={() => add(id)} style={[s.addRow, i > 0 && s.addRowTop]} accessibilityRole="button" testID={`calendar-add-${id}`}>
+                <View style={[s.addIcon, { backgroundColor: colors.accentTint }]}>
+                  <Ionicons name={icon} size={20} color={colors.gold} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.addTitle}>{title}</Text>
+                  <Text style={s.addSub}>{sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
               </TouchableOpacity>
             ))}
           </View>
-        </Pressable>
-      </Modal>
+        </View>
+      </BottomSheet>
     </View>
   );
 }
@@ -807,6 +833,16 @@ const DOW_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    addSheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 },
+    addSheetCancel: { fontSize: 17, color: colors.gold, width: 56 },
+    addSheetTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: colors.ink },
+    addSheetSub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginTop: 2, marginBottom: 14 },
+    addGroup: { backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden' },
+    addRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 64 },
+    addRowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    addIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    addTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    addSub: { fontSize: 14, color: colors.inkDim, marginTop: 1 },
     yearRangeNote: { fontSize: 13, lineHeight: 18, color: colors.inkDim, textAlign: 'center', paddingHorizontal: 32, paddingVertical: 14 },
     container: { flex: 1, backgroundColor: colors.navy2 },
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 4 },

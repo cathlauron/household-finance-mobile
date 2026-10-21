@@ -680,6 +680,10 @@ export default function TravelScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Version 2.2 (Cath: Budget / To-do on a trip didn't swipe): the whole trip page
+          swipes between Budget and To-do, not just the boxes at the top. */}
+      <SwipeTabs inner enabled={!!openTrip} onSwipe={(d) => setPageTab(d > 0 ? 'todo' : 'budget')}>
+      <View style={{ flex: 1 }} collapsable={false}>
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         {trips.length === 0 && (
           <TouchableOpacity style={[styles.listGroup, { padding: 16, flexDirection: 'row', alignItems: 'center' }]} onPress={openAddModal} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Plan a trip" testID="travel-empty-add">
@@ -735,7 +739,6 @@ export default function TravelScreen() {
                   onChange={setPageTab}
                 />
               </View>
-              <SwipeTabs inner onSwipe={(d) => setPageTab(d > 0 ? 'todo' : 'budget')}>
               <View collapsable={false}>
               {pageTab === 'budget' ? (
               <>
@@ -899,7 +902,6 @@ export default function TravelScreen() {
               </>
               )}
               </View>
-              </SwipeTabs>
               {/* Version 2.2 (Cath): Delete at the bottom of the trip, not only inside Edit. */}
               {/* Version 2.2 (W2 everywhere): who added the trip, and who last changed it. */}
               <WhoFootnote addedBy={t.addedBy} createdAt={t.createdAt} changedBy={t.changedBy} changedAt={t.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
@@ -931,6 +933,8 @@ export default function TravelScreen() {
           </>
         )}
       </PullToRefreshScrollView>
+      </View>
+      </SwipeTabs>
 
       <BottomSheet
         visible={datesTripId !== null}

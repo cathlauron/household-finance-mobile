@@ -74,8 +74,11 @@ type DebtsScreenProps = {
 
 export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, formOnly, onFormClosed }: DebtsScreenProps = {}) {
   // Redesign: the floating + adds a debt while this list is showing.
-  useToPayAddRequest('debts', () => {
-    if (!formOnly) openAddModal();
+  useToPayAddRequest('debts', (date) => {
+    if (formOnly) return;
+    openAddModal();
+    // Version 2.2 (calendar +): starts on the day picked in the calendar.
+    if (date) setOnetimeDateInput(date);
   });
   // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
   React.useEffect(() => {

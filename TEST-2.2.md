@@ -174,7 +174,7 @@ T  2026-10-21 Coffee cup icon, Insufficient balance for every account. PASSED on
       Pay: it says "Insufficient balance: <name> only has ₱X." and doesn't save. An
       account with nothing left says "Insufficient balance: <name> has no money left in it."
 
-U  2026-10-21 Code review fixes + speed sweep 2. PASSED on Cath's phone 2026-10-21.
+U  2026-10-21 Code review fixes + speed sweep 2. NOT YET TESTED (the code didn't reach GitHub until 2026-10-22; please re-test).
 - U1  Open and close any pop-up form (Cancel, Done, or drag it down): it slides away
       smoothly every time, with no flicker or quick reappearing before it goes.
 - U2  Add two things quickly one after the other (e.g. a transaction, then straight away
@@ -209,8 +209,8 @@ W  2026-10-22 Cath's video notes. NOT YET TESTED.
 - W1  Home: tap the moon/sun. The whole screen changes colour quicker than before (the
       other tabs catch up in the background; go to them: already recoloured).
 - W2  Home +: the New transaction form slides up over Home straight away (no switch to
-      Transactions first). Add: you stay on Home and see "Added"; the entry is in
-      Transactions. Cancel: you're still on Home. + on the Transactions tab works as before.
+      Transactions first). Add: "Added", then it goes to Transactions and you see the new
+      entry there (glowing). Cancel: you're still on Home. + on Transactions as before.
 - W3  With no salary set up: + > Money in > Salary. A red box says "No salary set up
       yet" with an "Add a salary" button. Tap Add without it: the red message appears
       and the form scrolls to it.
@@ -218,9 +218,9 @@ W  2026-10-22 Cath's video notes. NOT YET TESTED.
       Add a salary: you come straight back to New transaction, Money in > Salary, with the
       new salary picked (and the amount/account you typed kept).
 - W5  Calendar > year view: scroll through all years quickly: the months are drawn as
-      you scroll (no blank years). It starts at January 2024 (no empty months) with a note
-      at the top, and ends at December 2028 with a note saying it covers 2 years back and
-      2 years ahead.
+      you scroll (no blank years). No empty months at the start; a note
+      at the top, and ends at December 2031 with a note saying it covers 5 years back and
+      5 years ahead (2021 to 2031). It starts at January 2021.
 - W6  Year view: today's date still has its circle; tapping a month still opens it.
 - W7  Hold a Home card and move it up and down slowly for several seconds: it keeps
       following your finger; the page doesn't scroll while you hold it. Let go: it drops
@@ -231,3 +231,12 @@ W  2026-10-22 Cath's video notes. NOT YET TESTED.
       a trip's Budget and To-do, Savings Pots / Emergency / FI, Groceries, Events, Income,
       Accounts, a card's page, a bill's page, Subscriptions, Recurring, Search, Reports:
       all stretch like Bills, even when everything fits on the screen.
+
+X  2026-10-22 More notes. NOT YET TESTED.
+- X1  A trip's page: swipe left/right anywhere on the page (also the empty space below)
+      to move between Budget and To-do.
+- X2  Calendar +: a bottom sheet like the app's forms: "Add on Thu, Oct 22", one line
+      "Everything you add starts on this day", then Transaction / Bill / Debt / Loan with a
+      green icon tile and a short line each. Cancel closes it.
+- X3  Calendar +, pick a day (e.g. Nov 3), then Bill: the New bill form opens with Due on
+      Nov 3. Same for Debt and Loan. Transaction starts on that day too.

@@ -10,7 +10,7 @@ export type ToPaySub = 'bills' | 'debts' | 'loans';
 
 let currentSub: ToPaySub = 'bills';
 const subListeners = new Set<(s: ToPaySub) => void>();
-const addListeners = new Set<(s: ToPaySub) => void>();
+const addListeners = new Set<(s: ToPaySub, date?: string) => void>();
 
 export function setToPaySub(sub: ToPaySub) {
   currentSub = sub;
@@ -29,17 +29,18 @@ export function useToPaySub(): ToPaySub {
   return sub;
 }
 
-export function requestToPayAdd() {
-  addListeners.forEach((l) => l(currentSub));
+// date (Version 2.2, calendar +): the new bill / debt / loan starts on that day.
+export function requestToPayAdd(date?: string) {
+  addListeners.forEach((l) => l(currentSub, date));
 }
 
 // Used by Bills/Debts/Loans: runs `open` when the + is tapped while that list is showing.
-export function useToPayAddRequest(sub: ToPaySub, open: () => void) {
+export function useToPayAddRequest(sub: ToPaySub, open: (date?: string) => void) {
   const openRef = useRef(open);
   openRef.current = open;
   useEffect(() => {
-    const listener = (s: ToPaySub) => {
-      if (s === sub) openRef.current();
+    const listener = (s: ToPaySub, date?: string) => {
+      if (s === sub) openRef.current(date);
     };
     addListeners.add(listener);
     return () => {

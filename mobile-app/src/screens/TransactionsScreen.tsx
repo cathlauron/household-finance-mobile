@@ -179,6 +179,7 @@ export default function TransactionsScreen({
   onFormClosed,
   addNonceProp,
   onFormOpened,
+  onAdded,
 }: {
   formOnly?: boolean;
   editTxnId?: string;
@@ -187,6 +188,8 @@ export default function TransactionsScreen({
   // opens on each new number here (see QuickAdd in navigation/MainTabs.tsx).
   addNonceProp?: number;
   onFormOpened?: () => void;
+  // Something new was added (the quick form over Home then goes to Transactions).
+  onAdded?: () => void;
 } = {}) {
   const { colors } = useTheme();
   const { model, saveModel, isLinked, username, getModel } = useData();
@@ -664,6 +667,7 @@ export default function TransactionsScreen({
       await saveModel(updated);
       showLeafTick('Added');
       closeModal();
+      onAdded?.();
     } catch (e) {
       setErrorMsg(notSaved('this transaction'));
     } finally {
@@ -788,9 +792,11 @@ export default function TransactionsScreen({
 
     setSaving(true);
     try {
+      const wasNew = !editingId;
       await saveModel(updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      if (wasNew) onAdded?.();
     } catch (e) {
       setErrorMsg(notSaved('this transaction'));
     } finally {
