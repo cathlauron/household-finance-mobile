@@ -199,7 +199,10 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
                 onPress={() => onDayPress(year, month, d)}
                 accessibilityLabel={`${MONTHS[month]} ${d}${evs.length ? `, ${evs.length} item${evs.length === 1 ? '' : 's'}` : ''}`}
               >
-                <View style={[s.num, isToday && { backgroundColor: colors.gold + TODAY_TINT }, isSel && !isToday && { backgroundColor: colors.ink + SELECTED_TINT }]}>
+                {/* Cath: the picked day showed a square on Android. The phone drops the rounded corners
+                    when a colour is added to a plain box later, so every day starts with an
+                    invisible colour and clips to its circle. */}
+                <View style={[s.num, { backgroundColor: isToday ? colors.gold + TODAY_TINT : isSel ? colors.ink + SELECTED_TINT : 'rgba(0,0,0,0)' }]}>
                   <Text style={[s.numText, { color: isToday ? colors.gold : isSel ? colors.ink : weekend ? colors.inkDim : colors.ink }, (isToday || isSel) && { fontWeight: '800' }]}>{d}</Text>
                 </View>
                 {mode === 'details' ? (
@@ -817,8 +820,8 @@ export default function CalendarScreen() {
       >
         <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
           <Text style={s.addSheetSub}>Everything you add starts on this day.</Text>
+          {/* Cath: no white box around the choices, just a soft line between them. */}
           <View style={s.addGroup}>
-            <GradientFill match={s.addGroup} />
             {(
               [
                 ['txn', 'Transaction', 'Money that moved this day', 'swap-vertical-outline'],
@@ -827,7 +830,9 @@ export default function CalendarScreen() {
                 ['loan', 'Loan', 'Set payments until an end date', 'business-outline'],
               ] as const
             ).map(([id, title, sub, icon], i) => (
-              <TouchableOpacity key={id} onPress={() => add(id)} style={[s.addRow, i > 0 && s.addRowTop]} accessibilityRole="button" testID={`calendar-add-${id}`}>
+              <React.Fragment key={id}>
+              {i > 0 && <View style={s.addSep} />}
+              <TouchableOpacity onPress={() => add(id)} style={s.addRow} accessibilityRole="button" testID={`calendar-add-${id}`}>
                 <View style={[s.addIcon, { backgroundColor: colors.accentTint }]}>
                   <Ionicons name={icon} size={20} color={colors.gold} />
                 </View>
@@ -837,6 +842,7 @@ export default function CalendarScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
               </TouchableOpacity>
+              </React.Fragment>
             ))}
           </View>
         </View>
@@ -853,9 +859,10 @@ function makeStyles(colors: any) {
     addSheetCancel: { fontSize: 17, color: colors.gold, width: 56 },
     addSheetTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: colors.ink },
     addSheetSub: { fontSize: 14, color: colors.inkDim, textAlign: 'center', marginTop: 2, marginBottom: 14 },
-    addGroup: { backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden' },
-    addRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 64 },
-    addRowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
+    addGroup: {},
+    addRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 4, paddingVertical: 12, minHeight: 64 },
+    // The line starts under the text (not under the icon), and is faint.
+    addSep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.inkFaint + '40', marginLeft: 58 },
     addIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     addTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
     addSub: { fontSize: 14, color: colors.inkDim, marginTop: 1 },
@@ -871,7 +878,7 @@ function makeStyles(colors: any) {
     dowText: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '600', color: colors.inkDim },
     weekRow: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     cell: { flex: 1, alignItems: 'center', paddingTop: 5, minWidth: 0 },
-    num: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    num: { width: 32, height: 32, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
     numText: { fontSize: 18, fontWeight: '600' },
     dots: { flexDirection: 'row', gap: 3, marginTop: 3, height: 6 },
     dot: { width: 6, height: 6, borderRadius: 3 },

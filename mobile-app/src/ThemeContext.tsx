@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, startTransition } from 'react';
-import { Appearance } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import { Animated, Appearance, Easing, StyleSheet, View } from 'react-native';
+import { reduceMotionNow } from './reduceMotion';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, ThemeColors } from './theme';
 
@@ -40,17 +41,46 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [mode]);
 
-  // 2.2 speed fix (Cath: the light/dark button lagged): recolouring every screen is big
-  // work, so it runs as a background update; the button you tapped reacts at once.
+  // Version 2.2 (Cath: the light/dark switch still lagged after the buzz): the switch is a
+  // quick soft fade. The screen fades to the new page colour (about a seventh of a
+  // second, drawn by the phone's graphics side so it never stutters), the app recolours
+  // behind it, then the new look fades in. The recolouring can't be seen, so it no longer
+  // feels like a pause. With the phone set to remove animations it just switches.
+  const isDarkRef = useRef(isDark);
+  isDarkRef.current = isDark;
+  const fade = useRef(new Animated.Value(0)).current;
+  const [fadeColor, setFadeColor] = useState<string | null>(null);
+  const revealRef = useRef(false);
   const setMode = (m: ColorMode) => {
-    // Code review fix: the Light / Dark / Device choice itself moves at once (Settings,
-    // set-up); only the recolouring runs in the background.
-    setModeState(m);
-    startTransition(() => {
-      setIsDark(resolveIsDark(m));
-    });
     AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
+    const toDark = resolveIsDark(m);
+    if (toDark === isDarkRef.current || reduceMotionNow()) {
+      setModeState(m);
+      startTransition(() => {
+        setIsDark(toDark);
+      });
+      return;
+    }
+    setFadeColor((toDark ? darkTheme : lightTheme).navy2);
+    fade.stopAnimation();
+    Animated.timing(fade, { toValue: 1, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
+      revealRef.current = true;
+      setModeState(m);
+      setIsDark(toDark);
+    });
   };
+  // Once the new colours are on screen, fade the cover away.
+  useEffect(() => {
+    if (!revealRef.current) return;
+    revealRef.current = false;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        Animated.timing(fade, { toValue: 0, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
+          if (finished) setFadeColor(null);
+        })
+      )
+    );
+  }, [isDark, fade]);
 
   const colors = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
   // 2.2 speed sweep: the same theme object until the colours really change.
@@ -59,7 +89,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={value}>
-      {children}
+      <View style={{ flex: 1 }}>
+        {children}
+        {fadeColor && (
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: fadeColor, opacity: fade }]} />
+        )}
+      </View>
     </ThemeContext.Provider>
   );
 }

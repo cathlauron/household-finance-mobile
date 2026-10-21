@@ -249,3 +249,15 @@ Y  2026-10-22 Switch in place + year view. NOT YET TESTED.
       the list you started on, nothing added.
 - Y3  Calendar > year view: fling quickly from 2021 to 2031 and back: every year is
       drawn (no blank pages), today is a green number in a circle.
+
+Z  2026-10-22 Card stack rebuilt, smooth light/dark, calendar fixes. NOT YET TESTED.
+- Z1  Home cards: swipe right and left several times quickly; the front card follows your
+      finger exactly and flies off/comes back smoothly.
+- Z2  Hold a card and move it up and down for several seconds: it stays right under your
+      finger, the others part to show the gap, it drops cleanly. Tap a card: its page opens.
+- Z3  Flip / move cards, wait 5 seconds, close and reopen the app: the order is kept.
+- Z4  Home moon/sun: a quick soft fade to the new colour and back (no pause, no half-
+      recoloured screen). Settings > Appearance Light/Dark does the same fade.
+- Z5  Calendar: tap any day that isn't today: it gets a light grey CIRCLE (not a square).
+- Z6  Calendar +: the four choices sit on the sheet with no white box around them, just a
+      faint line between them (starting under the text).

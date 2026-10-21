@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { reduceMotionNow } from '../reduceMotion';
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import { setHomeScrollLocked } from '../homeScrollLock';
-import { View, StyleSheet, Animated, Easing, useWindowDimensions, AppState } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, AppState } from 'react-native';
+import Reanimated, { Easing, Extrapolation, interpolate, SharedValue, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { runOnJS } from 'react-native-worklets';
 import { TouchableOpacity } from './Tap';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -68,16 +70,31 @@ function orderedCards(model: HouseholdModel): WalletCard[] {
   return [...all].sort((a, b) => rank(a.key) - rank(b.key));
 }
 
-// 2.2 speed sweep (Cath: "even the card animations is lagging"): the wallet only redraws
-// when its own data changes, the moving parts of each card (slant, lift) are built once
-// instead of on every redraw (rebuilding them mid-move made the cards hitch), the swipe
-// and hold handlers are only rebuilt when the card order changes, and saving the new
-// order waits until you've stopped flipping for a few seconds.
+// Version 2.2 (Cath: "go for the card drag"): the cards now move on the phone's graphics
+// side (react-native-reanimated). Your finger moving a card, a card flying off and back,
+// the stack stepping up or down and a held card lifting all run there, so they keep up
+// with your finger even while the app is busy. The app itself is only told about the
+// moments that matter (a card picked up, the gap moving, a card dropped, a flip done).
+// Each card gets fixed "slots" of moving values from a pool, set up once.
+const POOL = 40; // more than anyone's accounts
+const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
+const SETTLE = Easing.bezier(0.2, 0.8, 0.2, 1);
+const OUT_CUBIC = Easing.out(Easing.cubic);
+const LIFT = 22;
+
+function usePool(init: number): SharedValue<number>[] {
+  const out: SharedValue<number>[] = [];
+  // Always the same number of values, so this is a fixed set of hooks.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  for (let i = 0; i < POOL; i++) out.push(useSharedValue(init));
+  return out;
+}
+
 export default React.memo(HomeWallet);
 
 function HomeWallet({ model }: { model: HouseholdModel }) {
   const { hidden, money } = useHideAmounts(); // version 3: the Home eye hides these too
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -90,65 +107,76 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
     if (!pendingKeys.current) setOrder(saved.map((c) => c.key));
   }, [saved.map((c) => c.key).join('|')]);
   const cards = order.map((k) => saved.find((c) => c.key === k)).filter(Boolean) as WalletCard[];
-
-  // Per card: an animated "top" (slides when the order changes), a sideways offset and
-  // an opacity (for the smooth swipe), so each card can move on its own.
-  const tops = useRef(new Map<string, Animated.Value>()).current;
-  const xs = useRef(new Map<string, Animated.Value>()).current;
-  const fades = useRef(new Map<string, Animated.Value>()).current;
-  // Built once per card and reused, so a redraw never swaps them out mid-move.
-  const slants = useRef(new Map<string, Animated.AnimatedInterpolation<string>>()).current;
-  const heldYs = useRef(new Map<string, Animated.AnimatedAddition<number>>()).current;
-  cards.forEach((c, i) => {
-    if (!tops.has(c.key)) tops.set(c.key, new Animated.Value(i * PEEK));
-    if (!xs.has(c.key)) xs.set(c.key, new Animated.Value(0));
-    if (!fades.has(c.key)) fades.set(c.key, new Animated.Value(1));
-  });
+  const orderKey = order.join('|');
   const { width: screenW } = useWindowDimensions();
+
+  // ---- the moving values ----
+  const tops = usePool(0); // each card's place in the stack (slides when the order changes)
+  const xs = usePool(0); // sideways (the swipe)
+  const dragY = useSharedValue(0); // the held card following your finger
+  const liftUp = useSharedValue(0); // the held card rising a little
+  const heldSlot = useSharedValue(-1); // which card is held (or settling after a drop)
+  const frontSlot = useSharedValue(0);
+  const busySV = useSharedValue(0);
+  const dragTargetSV = useSharedValue(-1);
+  const slots = useRef(new Map<string, number>()).current;
+  const slotOf = (k: string) => {
+    let s = slots.get(k);
+    if (s === undefined) {
+      const used = new Set(slots.values());
+      s = 0;
+      while (used.has(s) && s < POOL - 1) s++;
+      slots.set(k, s);
+    }
+    return s;
+  };
+  // New cards start in their place (no slide in when Home opens).
+  const placed = useRef(new Set<string>()).current;
+  useLayoutEffect(() => {
+    order.forEach((k, i) => {
+      if (placed.has(k)) return;
+      placed.add(k);
+      tops[slotOf(k)].value = i * PEEK;
+      xs[slotOf(k)].value = 0;
+    });
+    frontSlot.value = order.length ? slotOf(order[order.length - 1]) : 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderKey]);
+
   const busy = useRef(false);
   const holding = useRef(false); // a card is picked up (long-press drag)
-  const dragY = useRef(new Animated.Value(0)).current;
-  // While held, the card rises a little out of the gap. It stays whole, but it sits
-  // behind the cards in front of the gap, so mostly just its top shows: the rest
-  // looks already slid in between the cards where it will land.
-  const LIFT = 22;
-  const liftUp = useRef(new Animated.Value(0)).current;
-  // The card that was just dropped, while it settles (so its lift and slant ease out).
+  const setBusy = (b: boolean) => {
+    busy.current = b;
+    busySV.value = b ? 1 : 0;
+  };
+
   const [settling, setSettling] = useState<string | null>(null);
-  // The same slant as a swipe: bottom-left corner up, growing with the lift.
-  const liftTilt = useMemo(() => liftUp.interpolate({ inputRange: [-LIFT, 0], outputRange: ['5deg', '0deg'], extrapolate: 'clamp' }), [liftUp]);
-  cards.forEach((c) => {
-    const x = xs.get(c.key) as Animated.Value;
-    if (!slants.has(c.key)) slants.set(c.key, x.interpolate({ inputRange: [-400, 0, 30, 400], outputRange: ['-3deg', '0deg', '5deg', '9deg'], extrapolate: 'clamp' }));
-    if (!heldYs.has(c.key)) heldYs.set(c.key, Animated.add(Animated.add(tops.get(c.key) as Animated.Value, dragY), liftUp));
-  });
   const [dragging, setDragging] = useState<string | null>(null);
   const [gapAt, setGapAt] = useState<number>(-1); // where the lifted card will land
-  const dragTarget = useRef<number>(-1);
 
-  // Slides cards to their places. While dragging, `others` leaves an empty slot at
-  // `gap` so you can see where the card will go.
-  function slide(keys: string[], gap = -1, duration = 180) {
-    return keys.map((k, i) => {
+  // Slides cards to their places. While dragging, it leaves an empty slot at `gap` so
+  // you can see where the card will go.
+  function layout(keys: string[], gap = -1, duration = 180) {
+    keys.forEach((k, i) => {
       const slot = gap >= 0 && i >= gap ? i + 1 : i;
-      return Animated.timing(tops.get(k) as Animated.Value, { toValue: slot * PEEK, duration: D(duration), easing: Easing.out(Easing.cubic), useNativeDriver: true });
+      tops[slotOf(k)].value = withTiming(slot * PEEK, { duration: D(duration), easing: OUT_CUBIC });
     });
-  }
-  function layout(keys: string[], gap = -1) {
-    Animated.parallel(slide(keys, gap)).start();
   }
   useEffect(() => {
     if (!dragging) layout(order);
-  }, [order.join('|'), dragging]);
-  // Safety net: once things settle, make sure no card is left faded out or pushed aside.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderKey, dragging]);
+  // Safety net: once things settle, make sure no card is left pushed aside.
   useEffect(() => {
     const t = setTimeout(() => {
       if (busy.current || dragging) return;
-      fades.forEach((v) => v.setValue(1));
-      xs.forEach((v) => v.setValue(0));
+      order.forEach((k) => {
+        xs[slotOf(k)].value = 0;
+      });
     }, 700);
     return () => clearTimeout(t);
-  }, [order.join('|'), dragging]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderKey, dragging]);
 
   // The new order shows straight away; saving it (which encrypts and syncs your data)
   // waits until you've stopped moving cards, so it never interrupts an animation.
@@ -173,8 +201,6 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
     setOrder(keys);
     pendingKeys.current = keys;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    // Saving encrypts your data, which briefly keeps the phone busy, so it waits until
-    // you've stopped flipping (and is never done while a card is moving).
     const later = () => {
       if (busy.current || holding.current) saveTimer.current = setTimeout(later, 800);
       else flush();
@@ -192,98 +218,176 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Swipe right: the front card's bottom-left corner lifts a little (getting ready),
-  // then it slides off to the right, still tilted, while the cards behind step down.
-  // It comes back in from the right into the slot at the back (top), levelling out
-  // so both bottom corners line up as it settles; only its top strip shows.
-  // Swipe left (the undo): the card at the back lifts and slides out to the right,
-  // the stack steps up, and it comes back in from the right as the new front card,
-  // levelling out as it lands.
-  const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
-  const SETTLE = Easing.bezier(0.2, 0.8, 0.2, 1);
-  function curlOff(x: Animated.Value, from: number) {
-    x.setValue(from);
-    return Animated.sequence([
-      // the little corner lift before it goes
-      Animated.timing(x, { toValue: from + 36, duration: D(110), easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(x, { toValue: screenW * 1.1, duration: D(260), easing: EASE, useNativeDriver: true }),
-    ]);
+  // Swipe right: the front card's bottom-left corner lifts a little, then it slides off to
+  // the right while the cards behind step down. It comes back in from the right into the
+  // slot at the back, levelling out. Swipe left (the undo): the card at the back slides
+  // out and comes back in as the new front card.
+  function curlOff(x: SharedValue<number>, from: number, then: () => void) {
+    x.value = withSequence(
+      withTiming(from + 36, { duration: D(110), easing: Easing.out(Easing.quad) }),
+      withTiming(screenW * 1.1, { duration: D(260), easing: EASE }, (finished) => {
+        if (finished) runOnJS(then)();
+      })
+    );
   }
-  function curlIn(x: Animated.Value, done: () => void) {
-    x.setValue(screenW * 1.1);
-    Animated.timing(x, { toValue: 0, duration: D(380), easing: SETTLE, useNativeDriver: true }).start(() => {
-      x.setValue(0);
-      done();
+  function curlIn(x: SharedValue<number>, then: () => void) {
+    x.value = screenW * 1.1;
+    x.value = withTiming(0, { duration: D(380), easing: SETTLE }, (finished) => {
+      if (finished) runOnJS(then)();
     });
   }
   function cycle(dir: 'left' | 'right', fromX = 0) {
     if (busy.current) return;
-    // Version 3 (Cath): with only one card it still plays: it flies off the side you
-    // swiped and comes back in, same feel as flipping through several cards.
     if (cards.length === 1) {
-      busy.current = true;
+      // Version 3 (Cath): with only one card it still plays: off the side you swiped and back.
+      setBusy(true);
       hapticSelection();
-      const only = xs.get(order[0]) as Animated.Value;
-      const out =
-        dir === 'right'
-          ? curlOff(only, fromX)
-          : Animated.timing(only, { toValue: -screenW * 1.1, duration: D(300), easing: EASE, useNativeDriver: true });
-      out.start(() =>
-        setTimeout(
-          () =>
-            curlIn(only, () => {
-              busy.current = false;
-            }),
-          40
-        )
-      );
+      const only = xs[slotOf(order[0])];
+      const back = () => setTimeout(() => curlIn(only, () => setBusy(false)), 40);
+      if (dir === 'right') curlOff(only, fromX, back);
+      else
+        only.value = withTiming(-screenW * 1.1, { duration: D(300), easing: EASE }, (finished) => {
+          if (finished) runOnJS(back)();
+        });
       return;
     }
     if (cards.length < 2) return;
-    busy.current = true;
+    setBusy(true);
     hapticSelection();
     const keys = [...order];
-    const finish = () => {
-      fades.forEach((v) => v.setValue(1));
-      busy.current = false;
-    };
+    const finish = () => setBusy(false);
     if (dir === 'right') {
       const front = keys.pop() as string;
       const next = [front, ...keys];
-      const x = xs.get(front) as Animated.Value;
-      Animated.parallel([curlOff(x, fromX), ...slide(keys, 0, 300)], { stopTogether: false }).start(() => {
+      const x = xs[slotOf(front)];
+      layout(keys, 0, 300);
+      curlOff(x, fromX, () => {
         // It's off screen now: move it to the back slot, let the stack redraw so it's
         // behind the others, then bring it in from the right.
-        (tops.get(front) as Animated.Value).setValue(0);
+        tops[slotOf(front)].value = 0;
         persist(next);
         setTimeout(() => curlIn(x, finish), 40);
       });
     } else {
       const back = keys.shift() as string;
       const next = [...keys, back];
-      const x = xs.get(back) as Animated.Value;
-      const frontX = xs.get(order[order.length - 1]) as Animated.Value;
-      Animated.parallel(
-        [
-          curlOff(x, 0),
-          Animated.timing(frontX, { toValue: 0, duration: D(220), easing: EASE, useNativeDriver: true }),
-          ...slide(keys, -1, 300),
-        ],
-        { stopTogether: false }
-      ).start(() => {
-        (tops.get(back) as Animated.Value).setValue((next.length - 1) * PEEK);
+      const x = xs[slotOf(back)];
+      xs[slotOf(order[order.length - 1])].value = withTiming(0, { duration: D(220), easing: EASE });
+      layout(keys, -1, 300);
+      curlOff(x, 0, () => {
+        tops[slotOf(back)].value = (next.length - 1) * PEEK;
         persist(next);
         setTimeout(() => curlIn(x, finish), 40);
       });
     }
   }
 
+  // The app-side steps of a hold (called from the gesture running on the graphics side).
+  const cycleRef = useRef(cycle);
+  cycleRef.current = cycle;
+  const onCycle = useCallback((dir: 'left' | 'right', fromX: number) => cycleRef.current(dir, fromX), []);
+  const dragStartRef = useRef((_k: string, _i: number) => {});
+  dragStartRef.current = (k: string, index: number) => {
+    holding.current = true;
+    setHomeScrollLocked(true);
+    hapticMedium();
+    setDragging(k);
+    setGapAt(index);
+    layout(order.filter((x) => x !== k), index);
+  };
+  const onDragStart = useCallback((k: string, i: number) => dragStartRef.current(k, i), []);
+  const dragMoveRef = useRef((_k: string, _t: number) => {});
+  dragMoveRef.current = (k: string, target: number) => {
+    hapticSelection();
+    setGapAt(target);
+    layout(order.filter((x) => x !== k), target);
+  };
+  const onDragMove = useCallback((k: string, t: number) => dragMoveRef.current(k, t), []);
+  const dragEndRef = useRef((_k: string, _i: number, _t: number, _y: number) => {});
+  dragEndRef.current = (k: string, index: number, target: number, y: number) => {
+    holding.current = false;
+    setHomeScrollLocked(false);
+    const keys = order.filter((x) => x !== k);
+    keys.splice(target, 0, k);
+    const slot = slotOf(k);
+    // It drops from where you held it, levelling out as it slides into its slot.
+    tops[slot].value = index * PEEK + y;
+    dragY.value = 0;
+    setDragging(null);
+    setGapAt(-1);
+    setSettling(k);
+    tops[slot].value = withTiming(target * PEEK, { duration: D(200), easing: OUT_CUBIC });
+    liftUp.value = withTiming(0, { duration: D(200), easing: OUT_CUBIC }, (finished) => {
+      if (finished) runOnJS(settled)(k);
+    });
+    if (keys.join('|') !== order.join('|')) persist(keys);
+  };
+  const settled = useCallback((k: string) => {
+    heldSlot.value = -1;
+    setSettling((s) => (s === k ? null : s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onDragEnd = useCallback((k: string, i: number, t: number, y: number) => dragEndRef.current(k, i, t, y), []);
+  const openCard = useCallback((group: AccountGroup, id: string) => navigation.navigate('CardDetail', { group, id }), [navigation]);
+
+  // Gestures: built once per card order. The moving parts run on the graphics side.
+  const gestures = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof Gesture.Race>>();
+    const count = cards.length;
+    cards.forEach((c, index) => {
+      const slot = slotOf(c.key);
+      const key = c.key;
+      const tap = Gesture.Tap()
+        .maxDuration(340) // just under the 350ms hold that starts a drag
+        .onEnd((_e, ok) => {
+          if (ok) runOnJS(openCard)(c.group, c.account.id);
+        });
+      const swipe = Gesture.Pan()
+        .activeOffsetX([-18, 18])
+        .failOffsetY([-12, 12])
+        // The front card follows your finger, then finishes the move smoothly.
+        .onUpdate((e) => {
+          if (busySV.value === 0) xs[frontSlot.value].value = e.translationX * 0.8;
+        })
+        .onEnd((e) => {
+          if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) {
+            runOnJS(onCycle)(e.translationX < 0 ? 'left' : 'right', e.translationX * 0.8);
+          } else if (busySV.value === 0) {
+            xs[frontSlot.value].value = withSpring(0, { damping: 16, stiffness: 220 });
+          }
+        });
+      const drag = Gesture.Pan()
+        .activateAfterLongPress(350)
+        .onStart(() => {
+          dragY.value = 0;
+          liftUp.value = 0;
+          liftUp.value = withTiming(-LIFT, { duration: 180, easing: OUT_CUBIC });
+          heldSlot.value = slot;
+          dragTargetSV.value = index;
+          runOnJS(onDragStart)(key, index);
+        })
+        .onUpdate((e) => {
+          dragY.value = e.translationY;
+          const target = Math.max(0, Math.min(count - 1, Math.round((index * PEEK + e.translationY) / PEEK)));
+          if (target !== dragTargetSV.value) {
+            dragTargetSV.value = target;
+            runOnJS(onDragMove)(key, target);
+          }
+        })
+        .onFinalize(() => {
+          const target = dragTargetSV.value;
+          if (target < 0) return;
+          dragTargetSV.value = -1;
+          runOnJS(onDragEnd)(key, index, target, dragY.value);
+        });
+      m.set(key, Gesture.Race(drag, swipe, tap));
+    });
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderKey, screenW]);
+
   // A soft wash of each card's own colour (mixed into the card background), kept light
   // so the Left to Spend card and the + button stay the stars of the screen.
-  const { isDark } = useTheme();
-  // Like a real bank card: the colour deepens from the top-left corner to the
-  // bottom-right, with a faint sheen across the top. Still kept soft.
-  // A gentle range with in-between steps so it blends evenly (no dark edge).
   const cardShade = (hex: string, t: number) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.14 + t * 0.12 : 0.06 + t * 0.1);
 
   const total = useMemo(() => totalCurrentBalance(model), [model]);
@@ -294,84 +398,6 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   }, [model, saved]);
   const openAccounts = () => navigation.navigate('Accounts');
   const amountColor = (n: number) => (n < 0 && !hidden ? colors.negative : colors.positive); // hidden: no red that gives a minus away
-
-  function gestureFor(c: WalletCard, index: number) {
-    const tap = Gesture.Tap()
-      .runOnJS(true)
-      .maxDuration(340) // just under the 350ms hold that starts a drag
-      .onEnd((_e, ok) => {
-        if (ok) navigation.navigate('CardDetail', { group: c.group, id: c.account.id });
-      });
-    const swipe = Gesture.Pan()
-      .runOnJS(true)
-      .activeOffsetX([-18, 18])
-      .failOffsetY([-12, 12])
-      // The front card follows your finger, then finishes the move smoothly.
-      .onUpdate((e) => {
-        if (!busy.current) (xs.get(order[order.length - 1]) as Animated.Value).setValue(e.translationX * 0.8);
-      })
-      .onEnd((e) => {
-        const frontX = xs.get(order[order.length - 1]) as Animated.Value;
-        if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) cycle(e.translationX < 0 ? 'left' : 'right', e.translationX * 0.8);
-        else if (reduceMotionNow()) frontX.setValue(0);
-        else Animated.spring(frontX, { toValue: 0, friction: 7, useNativeDriver: true }).start();
-      });
-    const drag = Gesture.Pan()
-      .runOnJS(true)
-      .activateAfterLongPress(350)
-      .onStart(() => {
-        holding.current = true;
-        setHomeScrollLocked(true);
-        hapticMedium();
-        dragY.setValue(0);
-        liftUp.setValue(0);
-        Animated.timing(liftUp, { toValue: -LIFT, duration: D(180), easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-        dragTarget.current = index;
-        setDragging(c.key);
-        setGapAt(index);
-        layout(order.filter((k) => k !== c.key), index);
-      })
-      .onUpdate((e) => {
-        dragY.setValue(e.translationY);
-        const target = Math.max(0, Math.min(cards.length - 1, Math.round((index * PEEK + e.translationY) / PEEK)));
-        if (target !== dragTarget.current) {
-          dragTarget.current = target;
-          hapticSelection();
-          setGapAt(target);
-          layout(order.filter((k) => k !== c.key), target);
-        }
-      })
-      .onFinalize(() => {
-        holding.current = false;
-        setHomeScrollLocked(false);
-        const target = dragTarget.current;
-        if (target < 0) return;
-        const keys = order.filter((k) => k !== c.key);
-        keys.splice(target, 0, c.key);
-        const v = tops.get(c.key);
-        // Settle the lifted card into its new slot, then save the order.
-        // It drops from where you held it, levelling out as it slides into the slot.
-        v?.setValue(index * PEEK + (dragY as any)._value);
-        dragY.setValue(0);
-        dragTarget.current = -1;
-        setDragging(null);
-        setGapAt(-1);
-        setSettling(c.key);
-        Animated.parallel([
-          ...(v ? [Animated.timing(v, { toValue: target * PEEK, duration: D(200), easing: Easing.out(Easing.cubic), useNativeDriver: true })] : []),
-          Animated.timing(liftUp, { toValue: 0, duration: D(200), easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        ]).start(() => setSettling((k) => (k === c.key ? null : k)));
-        if (keys.join('|') !== order.join('|')) persist(keys);
-      });
-    return Gesture.Race(drag, swipe, tap);
-  }
-  const orderKey = order.join('|');
-  const gestures = useMemo(() => {
-    const m = new Map<string, ReturnType<typeof gestureFor>>();
-    cards.forEach((c, i) => m.set(c.key, gestureFor(c, i)));
-    return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderKey, cards.length, screenW]);
 
   return (
     <View style={styles.section}>
@@ -394,7 +420,6 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
           {cards.map((c, i) => {
             const isFront = i === cards.length - 1;
             const lifted = dragging === c.key;
-            const held = lifted || settling === c.key;
             // While dragging, the held card slots into the stack's layering at the gap:
             // above the cards behind it, below the cards in front (which hide its lower part).
             const others = dragging ? order.filter((k) => k !== dragging) : order;
@@ -402,53 +427,35 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
             const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
             // Live balance: saved balance plus anything paid from or into it since.
             const amount = amounts.get(c.key) ?? 0;
-            const top = tops.get(c.key) as Animated.Value;
+            const tint = c.account.color || DEFAULT_GROUP_COLORS[c.group];
             return (
-              <GestureDetector key={c.key} gesture={gestures.get(c.key) as ReturnType<typeof gestureFor>}>
-                <Animated.View
+              <GestureDetector key={c.key} gesture={gestures.get(c.key) as ReturnType<typeof Gesture.Race>}>
+                <MovingCard
+                  slot={slotOf(c.key)}
+                  tops={tops}
+                  xs={xs}
+                  dragY={dragY}
+                  liftUp={liftUp}
+                  heldSlot={heldSlot}
+                  lifted={lifted}
                   testID={`home-wallet-card-${c.account.id}`}
-                  accessible
-                  accessibilityRole="button"
                   accessibilityLabel={`${c.account.name || GROUP_LABEL[c.group]}, ${GROUP_LABEL[c.group]}, ${hidden ? 'amount hidden' : formatPeso(amount)}`}
-                  accessibilityHint="Opens the card. Swipe the stack to change the front card; long-press to move it."
                   style={[
                     styles.card,
                     {
-                      // Positions move with transforms so the phone's graphics engine animates
-                      // them directly (smooth even while the app is busy).
-                      top: 0,
                       zIndex: layer,
                       elevation: (lifted ? 3 : 1) + layer * 0.5,
-                      // The held card itself goes slightly see-through while you move it.
-                      opacity: lifted ? 0.7 : (fades.get(c.key) as Animated.Value),
                       // A faint border and a soft fill in the card's own colour.
-                      borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
-                      backgroundColor: cardShade(c.account.color || DEFAULT_GROUP_COLORS[c.group], 0.5),
-                      transform: [
-                        { translateY: held ? (heldYs.get(c.key) as Animated.AnimatedAddition<number>) : top },
-                        { translateX: xs.get(c.key) as Animated.Value },
-                        // The lift: as a card moves to the right, its bottom-left corner (A)
-                        // rises above its bottom-right corner (B), mostly in the first few
-                        // pixels of movement. Coming back in, it levels out until A and B
-                        // line up again as it settles.
-                        { rotate: slants.get(c.key) as Animated.AnimatedInterpolation<string> },
-                        // Held cards get the same slant, as if picked up by a corner.
-                        { rotate: held ? liftTilt : '0deg' },
-                      ],
+                      borderColor: `${tint}4D`,
+                      backgroundColor: cardShade(tint, 0.5),
                     },
                     lifted && styles.lifted,
                   ]}
                 >
-                  <GradientFill
-                    kind="card"
-                    color={c.account.color || DEFAULT_GROUP_COLORS[c.group]}
-                    surface={isDark ? '#1C1C1E' : '#FFFFFF'}
-                    isDark={isDark}
-                    radius={15}
-                  />
+                  <GradientFill kind="card" color={tint} surface={isDark ? '#1C1C1E' : '#FFFFFF'} isDark={isDark} radius={15} />
                   <View style={styles.cardHead}>
                     <View style={styles.nameRow}>
-                      <View style={[styles.chip, { backgroundColor: c.account.color || DEFAULT_GROUP_COLORS[c.group] }]} />
+                      <View style={[styles.chip, { backgroundColor: tint }]} />
                       <Text style={styles.name} numberOfLines={1}>{c.account.name || GROUP_LABEL[c.group]}</Text>
                       {/* Cards behind: the type tag sits next to the name. */}
                       {!isFront && (
@@ -479,7 +486,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
                       )}
                     </View>
                   )}
-                </Animated.View>
+                </MovingCard>
               </GestureDetector>
             );
           })}
@@ -493,6 +500,64 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
         </Text>
       )}
     </View>
+  );
+}
+
+// One card's position, worked out on the graphics side every frame.
+function MovingCard({
+  slot,
+  tops,
+  xs,
+  dragY,
+  liftUp,
+  heldSlot,
+  lifted,
+  style,
+  children,
+  testID,
+  accessibilityLabel,
+}: {
+  slot: number;
+  tops: SharedValue<number>[];
+  xs: SharedValue<number>[];
+  dragY: SharedValue<number>;
+  liftUp: SharedValue<number>;
+  heldSlot: SharedValue<number>;
+  lifted: boolean;
+  style: any;
+  children: React.ReactNode;
+  testID?: string;
+  accessibilityLabel?: string;
+}) {
+  const top = tops[slot];
+  const x = xs[slot];
+  const moving = useAnimatedStyle(() => {
+    const held = heldSlot.value === slot;
+    // The lift: as a card moves to the right, its bottom-left corner rises above its
+    // bottom-right corner, mostly in the first few pixels. Held cards get the same slant.
+    const slant = interpolate(x.value, [-400, 0, 30, 400], [-3, 0, 5, 9], Extrapolation.CLAMP);
+    const tilt = held ? interpolate(liftUp.value, [-LIFT, 0], [5, 0], Extrapolation.CLAMP) : 0;
+    return {
+      transform: [
+        { translateY: held ? top.value + dragY.value + liftUp.value : top.value },
+        { translateX: x.value },
+        { rotate: `${slant}deg` },
+        { rotate: `${tilt}deg` },
+      ] as const,
+    } as any;
+  });
+  return (
+    <Reanimated.View
+      testID={testID}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint="Opens the card. Swipe the stack to change the front card; long-press to move it."
+      // The held card itself goes slightly see-through while you move it.
+      style={[style, { top: 0, opacity: lifted ? 0.7 : 1 }, moving]}
+    >
+      {children}
+    </Reanimated.View>
   );
 }
 
