@@ -297,7 +297,7 @@ function makeStyles(colors: any) {
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24 },
     link: { fontSize: 17, fontWeight: '600', paddingVertical: 8 },
     scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 14 },
-    title: { fontSize: 32, lineHeight: 38, fontWeight: '800', letterSpacing: -0.3 },
+    title: { fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.2 },
     sub: { fontSize: 17, lineHeight: 24, marginTop: -4 },
     footnote: { fontSize: 14, lineHeight: 19, marginHorizontal: 6 },
     card: { borderRadius: 22, overflow: 'hidden', backgroundColor: colors.navy3 },

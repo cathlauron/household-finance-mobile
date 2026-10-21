@@ -204,7 +204,7 @@ function makeStyles(colors: any) {
     wordmark: { fontSize: 13, lineHeight: 13, fontWeight: '700', letterSpacing: 3, marginBottom: -1 },
     link: { fontSize: 17, fontWeight: '600', paddingVertical: 8 },
     pictureArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
-    title: { fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -0.4 },
+    title: { fontSize: 32, lineHeight: 38, fontWeight: '600', letterSpacing: -0.3 },
     body: { fontSize: 18, lineHeight: 26, marginTop: 12, marginBottom: 8 },
     dots: { flexDirection: 'row', gap: 8, marginVertical: 24 },
     dot: { height: 8, borderRadius: 4 },

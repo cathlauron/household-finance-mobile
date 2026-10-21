@@ -539,7 +539,7 @@ function makeStyles(colors: ThemeColors) {
     histTitle: { fontSize: 17, color: colors.ink },
     histAmount: { fontSize: 17, fontWeight: '600' },
     footer: { fontSize: 13, color: colors.inkDim, marginTop: 8, marginHorizontal: 16 },
-    loanTitle: { fontSize: 28, fontWeight: '700', color: colors.ink },
+    loanTitle: { fontSize: 28, fontWeight: '600', color: colors.ink },
     loanSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
     alert: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
     track: { height: 8, borderRadius: 999, backgroundColor: colors.navy1, overflow: 'hidden', marginTop: 12 },

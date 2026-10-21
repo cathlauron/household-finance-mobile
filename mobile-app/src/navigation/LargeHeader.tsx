@@ -90,5 +90,6 @@ const styles = StyleSheet.create({
   back: { flexDirection: 'row', alignItems: 'center', maxWidth: '60%' },
   backText: backButtonText,
   right: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 32, lineHeight: 38, fontWeight: '700', letterSpacing: -0.3 },
+  // 2.2 (approved P1): softer page titles, the same as the calendar's month name.
+  title: { fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.2 },
 });

@@ -236,7 +236,7 @@ const MiniMonth = React.memo(function MiniMonth({ year, month, onOpen, width }: 
             const today = show && isThisMonth && d === now.getDate();
             return (
               <View key={c} style={{ width: cell, height: cell, alignItems: 'center', justifyContent: 'center', borderRadius: cell / 2, backgroundColor: today ? colors.gold + TODAY_TINT : 'transparent' }}>
-                {show && <Text style={{ fontSize: 9.5, fontWeight: today ? '800' : '500', color: today ? colors.gold : colors.ink }}>{d}</Text>}
+                {show && <Text style={{ fontSize: 11, letterSpacing: -0.4, fontWeight: today ? '700' : '500', color: today ? colors.gold : colors.ink }}>{d}</Text>}
               </View>
             );
           })}
@@ -792,8 +792,8 @@ function makeStyles(colors: any) {
     dot: { width: 6, height: 6, borderRadius: 3 },
     pills: { alignSelf: 'stretch', paddingHorizontal: 1, marginTop: 2 },
     pill: { borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1, marginTop: 2 },
-    pillText: { fontSize: 10, fontWeight: '700' },
-    pillMore: { fontSize: 10, color: colors.inkDim, textAlign: 'center' },
+    pillText: { fontSize: 11, fontWeight: '700', letterSpacing: -0.2 },
+    pillMore: { fontSize: 11, color: colors.inkDim, textAlign: 'center' },
     yearTitle: { fontSize: 34, fontWeight: '600', letterSpacing: -0.2, color: colors.ink, marginTop: 10, height: 48 },
     yearLine: { height: StyleSheet.hairlineWidth, backgroundColor: colors.inkFaint, marginTop: 0, marginBottom: 14 },
     yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

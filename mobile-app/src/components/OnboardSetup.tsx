@@ -334,7 +334,7 @@ function makeStyles(colors: any) {
     top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, minHeight: 44 },
     link: { fontSize: 17, color: colors.gold },
     scroll: { paddingHorizontal: 16, paddingBottom: 24 },
-    large: { fontSize: 32, lineHeight: 38, fontWeight: '700', color: colors.ink, marginTop: 24, marginHorizontal: 4 },
+    large: { fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.2, color: colors.ink, marginTop: 24, marginHorizontal: 4 },
     body: { fontSize: 17, color: colors.inkDim, marginTop: 8, marginHorizontal: 4 },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
     row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, paddingVertical: 10, gap: 12 },

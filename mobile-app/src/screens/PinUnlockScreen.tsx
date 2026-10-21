@@ -261,7 +261,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 function makeStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 64 },
-    title: { fontSize: 26, fontWeight: '700', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
     sub: { fontSize: 15, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
     label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     input: {

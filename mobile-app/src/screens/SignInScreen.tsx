@@ -1158,7 +1158,7 @@ function makeMainStyles(colors: any) {
     accountChip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 12 },
     accountChipName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.ink },
     accountChipChange: { color: colors.gold, fontSize: 15, fontWeight: '600' },
-    title: { fontSize: 28, fontWeight: '700', color: colors.ink, marginBottom: 6, textAlign: 'center' },
+    title: { fontSize: 28, fontWeight: '600', color: colors.ink, marginBottom: 6, textAlign: 'center' },
     sub: { fontSize: 15, color: colors.inkDim, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
     label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     fieldWrap: { position: 'relative', justifyContent: 'center' },

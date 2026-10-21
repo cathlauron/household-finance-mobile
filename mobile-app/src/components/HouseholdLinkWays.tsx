@@ -242,7 +242,7 @@ const s = StyleSheet.create({
   full: { flex: 1, alignItems: 'center', paddingHorizontal: 20 },
   back: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 6 },
   backText: { fontSize: 17, fontWeight: '600' },
-  qrTitle: { fontSize: 28, fontWeight: '800', marginTop: 22 },
+  qrTitle: { fontSize: 28, fontWeight: '600', marginTop: 22 },
   qrSub: { fontSize: 15, marginTop: 6, textAlign: 'center' },
   qrCard: { backgroundColor: '#fff', borderRadius: 28, padding: 22, marginTop: 24, shadowColor: '#1c4130', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 3 },
   code: { fontSize: 30, fontWeight: '800', letterSpacing: 8, marginTop: 22, paddingLeft: 8 },

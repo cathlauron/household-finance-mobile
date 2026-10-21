@@ -48,12 +48,13 @@ export function nunitoFor(weight: Weight | undefined): string {
     case '700':
     case 'bold':
       return NUNITO_FAMILIES.bold;
+    // Version 2.2 (Impeccable/taste polish, Cath approved P1): no extra-bold or black
+    // anywhere; those weights draw as bold, so the app reads calmer.
     case '800':
     case 'heavy':
-      return NUNITO_FAMILIES.extrabold;
     case '900':
     case 'black':
-      return NUNITO_FAMILIES.black;
+      return NUNITO_FAMILIES.bold;
     default:
       return NUNITO_FAMILIES.regular;
   }
@@ -85,6 +86,10 @@ function fontStyleFor(style: TextProps['style'], inherited: Weight | null) {
 // line height. Text with no size of its own is React Native's default 14. Nested text
 // with no size of its own already inherits its parent's scaled size, so it is left alone.
 const RN_DEFAULT_SIZE = 14;
+
+// Version 2.2 (approved P1): every number lines up digit by digit (tabular figures), so
+// amounts in a list sit in neat columns. A style with its own fontVariant keeps it.
+const TABULAR: TextStyle = { fontVariant: ['tabular-nums'] };
 function sizeStyleFor(style: TextProps['style'], scale: number, nested: boolean) {
   if (scale === 1) return null;
   const flat = (StyleSheet.flatten(style) || {}) as TextStyle;
@@ -100,7 +105,7 @@ export const Text = forwardRef<RNText, TextProps>(function AppText({ style, ...r
   const scale = useTextScale();
   const { font, weight } = fontStyleFor(style, inherited);
   const size = sizeStyleFor(style, scale, inherited !== null);
-  const extra = font || size ? [style, font, size] : style;
+  const extra = [TABULAR, style, font, size];
   return (
     <ParentWeight.Provider value={(weight ?? '400') as Weight}>
       <RNText ref={ref} {...rest} style={extra} />
@@ -126,5 +131,5 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function AppTex
   }, [autoFocus]);
   const font = !fontsReady || flat.fontFamily ? null : { fontFamily: nunitoFor(flat.fontWeight), fontWeight: 'normal' as const };
   const size = sizeStyleFor(style, scale, false);
-  return <RNTextInput ref={innerRef} {...rest} style={font || size ? [style, font, size] : style} />;
+  return <RNTextInput ref={innerRef} {...rest} style={[TABULAR, style, font, size]} />;
 });
