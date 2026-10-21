@@ -1,6 +1,11 @@
-﻿import React from 'react';
-import { ActivityIndicator, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { TouchableOpacity } from './Tap';
+﻿import React, { useRef } from 'react';
+import { ActivityIndicator, Animated, Easing, StyleSheet, StyleProp, ViewStyle, TouchableOpacity as RNTouchableOpacity } from 'react-native';
+import { reduceMotionNow } from '../reduceMotion';
+
+// Version 2.2 (approved P1): the main buttons squeeze slightly while pressed (only here;
+// see Tap.tsx for why not on every row).
+const AnimatedTO = Animated.createAnimatedComponent(RNTouchableOpacity);
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 import { Text } from './AppText';
 import GradientFill from './GradientFill';
 import { useTheme } from '../ThemeContext';
@@ -48,8 +53,13 @@ export default function Button({
   else if (isSolidDanger) textColor = '#FFFFFF';
   else if (variant === 'destructive' || isOutlineDanger) textColor = colors.error;
   const inactive = disabled || loading;
+  const scale = useRef(new Animated.Value(1)).current;
+  const squeeze = (to: number, ms: number) => Animated.timing(scale, { toValue: to, duration: ms, easing: EASE_OUT, useNativeDriver: true }).start();
   return (
-    <TouchableOpacity
+    <AnimatedTO
+      activeOpacity={0.85}
+      onPressIn={() => !reduceMotionNow() && squeeze(0.97, 110)}
+      onPressOut={() => squeeze(1, 160)}
       testID={testID}
       onPress={() => {
         if (isPrimary) hapticLight();
@@ -72,6 +82,7 @@ export default function Button({
         compact && styles.compact,
         inactive && styles.inactive,
         style,
+        { transform: [{ scale }] },
       ]}
     >
       {isPrimary && <GradientFill color={colors.buttonFill} strength={0.18} />}
@@ -94,7 +105,7 @@ export default function Button({
           {label}
         </Text>
       )}
-    </TouchableOpacity>
+    </AnimatedTO>
   );
 }
 

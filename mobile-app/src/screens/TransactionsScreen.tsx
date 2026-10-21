@@ -338,6 +338,131 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
     clearFieldError();
   }, [amountInput, labelInput, dateInput, paymentMethodInput, incomeSourceIdInput, directionInput, incomeKindInput, modalOpen, clearFieldError]);
 
+  // 2.2 speed fix (Cath: typing an amount lagged): the list behind the form is only redrawn
+  // when what it shows changes, not on every key typed in the form. Swipe-to-delete goes
+  // through a ref so it always uses the newest data.
+  const swipeDeleteRef = useRef<(rawId: string) => void>(() => {});
+  const listBlock = useMemo(() => {
+    if (!model) return null;
+    return (
+      <>
+        {days.map((day) => (
+        <View key={day.date} style={styles.daySection}>
+        <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
+        <View style={styles.group}>
+          <GradientFill match={styles.group} />
+        {day.items.map((t: TransactionEntry, rowIndex: number) => {
+          const isManual = t.source === 'manual';
+          const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
+          const refundExpected = rawManual?.refundExpectedAmount;
+          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
+          const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
+          const billId = t.source === 'bill' ? findBillIdForTransaction(model, t.id) : null;
+          const debtId = t.source === 'debt' ? findDebtIdForTransaction(model, t.id) : null;
+          const loanId = t.source === 'loan' ? findLoanIdForTransaction(model, t.id) : null;
+          const incomeSourceId = t.source === 'income' ? findIncomeSourceIdForTransaction(model, t.id) : null;
+          const savingsGoalId = t.source === 'saving' ? findSavingsGoalIdForTransaction(model, t.id) : null;
+          const viewAction = billId
+            ? {
+                label: 'View Bill',
+                icon: 'receipt-outline' as const,
+                onPress: () => {
+                  requestOpenBill(billId);
+                  navigation.navigate('To-Pay' as never);
+                },
+              }
+            : debtId
+            ? {
+                label: 'View Debt',
+                icon: 'card-outline' as const,
+                onPress: () => {
+                  requestOpenDebt(debtId);
+                  navigation.navigate('To-Pay' as never);
+                },
+              }
+            : loanId
+            ? {
+                label: 'View Loan',
+                icon: 'business-outline' as const,
+                onPress: () => {
+                  requestOpenLoan(loanId);
+                  navigation.navigate('To-Pay' as never);
+                },
+              }
+            : incomeSourceId
+            ? {
+                label: 'View Income',
+                icon: 'cash-outline' as const,
+                onPress: () => {
+                  (navigation as any).navigate('Income', {
+                    openIncomeId: incomeSourceId,
+                    openIncomeNonce: Date.now(),
+                  });
+                },
+              }
+            : savingsGoalId
+            ? {
+                label: 'View Goal',
+                icon: 'trending-up-outline' as const,
+                onPress: () => {
+                  (navigation as any).navigate('Savings', {
+                    openSavingsId: savingsGoalId,
+                    openSavingsNonce: Date.now(),
+                  });
+                },
+              }
+            : undefined;
+          return (
+            <SwipeableRow
+              key={t.id}
+              enabled={(isManual && Boolean(model.settings.swipeToDeleteEnabled)) || Boolean(viewAction)}
+              onDelete={() => swipeDeleteRef.current(t.rawId as string)}
+              viewAction={viewAction}
+              testID={`txn-swipe-${t.id}`}
+              flat
+            >
+            <TouchableOpacity
+              testID={`txn-row-${t.id}`}
+              style={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]}
+              activeOpacity={0.6}
+              onPress={() => (navigation as any).navigate('TransactionDetail', { id: t.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
+            >
+              <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
+              {arrivedTxn === t.id && <ArrivalGlow />}
+              <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
+                <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
+                {/* Version 2.2 (canvas W1 B): a small letter when someone else in the household logged it. */}
+                {isLinked && !!rawManual?.addedBy && rawManual.addedBy !== username && (
+                  <View style={[styles.whoBadge, { backgroundColor: colors.navy3 }]} accessibilityLabel={`Logged by ${rawManual.addedBy}`}>
+                    <Text style={[styles.whoText, { color: colors.indigo ?? colors.inkDim }]}>{rawManual.addedBy.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.txnMain}>
+                <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
+                <Text style={styles.txnSub} numberOfLines={1}>
+                  {[t.category, rawManual ? accountLabel(model, rawManual.paymentMethod) : SOURCE_LABELS[t.source]].filter(Boolean).join(' · ')}
+                  {isRefundPending ? ' · Refund pending' : ''}
+                  {isRefundReceived ? ' · Refunded' : ''}
+                </Text>
+              </View>
+              <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
+                {t.direction === 'in' ? '+' : t.direction === 'saving' ? '' : '−'}{formatPeso(t.amount)}
+              </Text>
+            </TouchableOpacity>
+            </SwipeableRow>
+          );
+        })}
+        </View>
+        </View>
+        ))}
+      </>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days, model, colors, arrivedTxn, isLinked, username, manualById]);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -675,6 +800,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
     }
   }
 
+  swipeDeleteRef.current = (rawId: string) => handleSwipeDelete(rawId);
   function handleSwipeDelete(rawId: string) {
     Alert.alert(
       'Delete this transaction?',
@@ -830,118 +956,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 
-        {days.map((day) => (
-        <View key={day.date} style={styles.daySection}>
-        <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
-        <View style={styles.group}>
-          <GradientFill match={styles.group} />
-        {day.items.map((t: TransactionEntry, rowIndex: number) => {
-          const isManual = t.source === 'manual';
-          const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
-          const refundExpected = rawManual?.refundExpectedAmount;
-          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
-          const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
-          const billId = t.source === 'bill' ? findBillIdForTransaction(model, t.id) : null;
-          const debtId = t.source === 'debt' ? findDebtIdForTransaction(model, t.id) : null;
-          const loanId = t.source === 'loan' ? findLoanIdForTransaction(model, t.id) : null;
-          const incomeSourceId = t.source === 'income' ? findIncomeSourceIdForTransaction(model, t.id) : null;
-          const savingsGoalId = t.source === 'saving' ? findSavingsGoalIdForTransaction(model, t.id) : null;
-          const viewAction = billId
-            ? {
-                label: 'View Bill',
-                icon: 'receipt-outline' as const,
-                onPress: () => {
-                  requestOpenBill(billId);
-                  navigation.navigate('To-Pay' as never);
-                },
-              }
-            : debtId
-            ? {
-                label: 'View Debt',
-                icon: 'card-outline' as const,
-                onPress: () => {
-                  requestOpenDebt(debtId);
-                  navigation.navigate('To-Pay' as never);
-                },
-              }
-            : loanId
-            ? {
-                label: 'View Loan',
-                icon: 'business-outline' as const,
-                onPress: () => {
-                  requestOpenLoan(loanId);
-                  navigation.navigate('To-Pay' as never);
-                },
-              }
-            : incomeSourceId
-            ? {
-                label: 'View Income',
-                icon: 'cash-outline' as const,
-                onPress: () => {
-                  (navigation as any).navigate('Income', {
-                    openIncomeId: incomeSourceId,
-                    openIncomeNonce: Date.now(),
-                  });
-                },
-              }
-            : savingsGoalId
-            ? {
-                label: 'View Goal',
-                icon: 'trending-up-outline' as const,
-                onPress: () => {
-                  (navigation as any).navigate('Savings', {
-                    openSavingsId: savingsGoalId,
-                    openSavingsNonce: Date.now(),
-                  });
-                },
-              }
-            : undefined;
-          return (
-            <SwipeableRow
-              key={t.id}
-              enabled={(isManual && Boolean(model.settings.swipeToDeleteEnabled)) || Boolean(viewAction)}
-              onDelete={() => handleSwipeDelete(t.rawId as string)}
-              viewAction={viewAction}
-              testID={`txn-swipe-${t.id}`}
-              flat
-            >
-            <TouchableOpacity
-              testID={`txn-row-${t.id}`}
-              style={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]}
-              activeOpacity={0.6}
-              onPress={() => (navigation as any).navigate('TransactionDetail', { id: t.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
-            >
-              <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
-              {arrivedTxn === t.id && <ArrivalGlow />}
-              <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
-                <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
-                {/* Version 2.2 (canvas W1 B): a small letter when someone else in the household logged it. */}
-                {isLinked && !!rawManual?.addedBy && rawManual.addedBy !== username && (
-                  <View style={[styles.whoBadge, { backgroundColor: colors.navy3 }]} accessibilityLabel={`Logged by ${rawManual.addedBy}`}>
-                    <Text style={[styles.whoText, { color: colors.indigo ?? colors.inkDim }]}>{rawManual.addedBy.charAt(0).toUpperCase()}</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.txnMain}>
-                <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
-                <Text style={styles.txnSub} numberOfLines={1}>
-                  {[t.category, rawManual ? accountLabel(model, rawManual.paymentMethod) : SOURCE_LABELS[t.source]].filter(Boolean).join(' · ')}
-                  {isRefundPending ? ' · Refund pending' : ''}
-                  {isRefundReceived ? ' · Refunded' : ''}
-                </Text>
-              </View>
-              <Text style={[styles.txnAmount, { color: amountColor(t.direction, colors) }]}>
-                {t.direction === 'in' ? '+' : t.direction === 'saving' ? '' : '−'}{formatPeso(t.amount)}
-              </Text>
-            </TouchableOpacity>
-            </SwipeableRow>
-          );
-        })}
-        </View>
-        </View>
-        ))}
+        {listBlock}
 
         {/* Redesign: adding is done with the floating + button; importing a spreadsheet
             moved to Settings › Backup & Data. */}

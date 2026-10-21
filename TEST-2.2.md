@@ -127,3 +127,6 @@ Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). 
       bill or debt page: Pay > Pay. The sheet slides away right after you tap Pay, then
       the leaf tick shows "Paid". Saving anything should feel as quick as before the
       design update.
+- Q8  (Cath: taps didn't respond at once, typing an amount lagged.) Taps respond straight
+      away everywhere (rows just fade; only the main buttons like Save / Pay / Add squeeze).
+      In + > transaction, typing an amount and a description keeps up with your fingers.

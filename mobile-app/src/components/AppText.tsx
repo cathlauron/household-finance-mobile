@@ -100,12 +100,22 @@ function sizeStyleFor(style: TextProps['style'], scale: number, nested: boolean)
   return out;
 }
 
+// 2.2 speed fix: lined-up digits only on text that has a number in it (amounts, dates),
+// not on every word in the app.
+const HAS_DIGIT = /[0-9]/;
+function hasDigits(children: React.ReactNode): boolean {
+  if (typeof children === 'string') return HAS_DIGIT.test(children);
+  if (typeof children === 'number') return true;
+  if (Array.isArray(children)) return children.some((c) => typeof c === 'number' || (typeof c === 'string' && HAS_DIGIT.test(c)));
+  return false;
+}
+
 export const Text = forwardRef<RNText, TextProps>(function AppText({ style, ...rest }, ref) {
   const inherited = useContext(ParentWeight);
   const scale = useTextScale();
   const { font, weight } = fontStyleFor(style, inherited);
   const size = sizeStyleFor(style, scale, inherited !== null);
-  const extra = [TABULAR, style, font, size];
+  const extra = hasDigits(rest.children) ? [TABULAR, style, font, size] : font || size ? [style, font, size] : style;
   return (
     <ParentWeight.Provider value={(weight ?? '400') as Weight}>
       <RNText ref={ref} {...rest} style={extra} />
@@ -131,5 +141,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function AppTex
   }, [autoFocus]);
   const font = !fontsReady || flat.fontFamily ? null : { fontFamily: nunitoFor(flat.fontWeight), fontWeight: 'normal' as const };
   const size = sizeStyleFor(style, scale, false);
-  return <RNTextInput ref={innerRef} {...rest} style={[TABULAR, style, font, size]} />;
+  // 2.2 speed fix: no lined-up-digits setting on text boxes (changing it while typing can
+  // make typing lag on Android).
+  return <RNTextInput ref={innerRef} {...rest} style={font || size ? [style, font, size] : style} />;
 });
