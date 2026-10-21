@@ -75,3 +75,39 @@ O  2026-10-21 batch (new Claude account): calendar circles, who logged it everyw
       what each has, "Merge both" (two-people icon, Suggested, picked) and "Keep <name>'s"
       (one-person icon). Continue opens a sheet with the same icon and what the shared
       household will have. "Go back" closes it and nothing happens.
+
+P  2026-10-21 design-skills batch (taste, Emil Kowalski, Impeccable /polish): app-wide
+   polish P1-P4 and the new website (website/index.html). NOT YET TESTED.
+- P1  Page titles everywhere (Home, To-Pay, Plan, Settings...) are slightly smaller and
+      less heavy, like the calendar's month. Nothing in the app looks extra-bold now.
+- P2  Amounts in lists line up digit by digit (look at Transactions and To-Pay).
+- P3  Tap any row or button and hold: it squeezes slightly, then springs back when you let
+      go. Same feel everywhere (rows, the +, buttons, tabs, sheet buttons).
+- P4  Open any form (e.g. + > bill): the sheet leaps up and settles gently, and the dark
+      background fades in. Drag the sheet down by its top bar (where Cancel / Add are):
+      it follows your finger; let go far down and it closes, let go early and it
+      springs back. Cancel / Add / Save still work with a normal tap.
+- P5  Save something: the "Saved" leaf tick is quicker than before and gone sooner.
+- P6  Add a transaction: it slides into the list (the rows below move down smoothly) and
+      glows pale green for a moment. Same when you add a bill, a debt, a loan, a savings
+      pot, or a trip item. Switching months or opening a screen does NOT do this.
+- P7  Phone Settings > Accessibility > Remove animations ON, then back to Finance Flow:
+      sheets just appear/disappear, taps don't squeeze, wallet cards move instantly, the
+      leaf tick appears without drawing, new rows don't slide. Turn it OFF again after.
+- P8  Search: closing it no longer starts slowly.
+- P9  To-Pay: only overdue amounts are red (with the red Overdue tag); everything else is
+      black. Priority tags (High/Medium/Low) are soft filled pills, not outlines. Same
+      calm black on Home's due list, the calendar's day list (bills/debts/loans),
+      Subscriptions, and on a bill/debt/loan page (red only if overdue). Money spent in
+      Transactions is still red; money you lent is still green.
+- P10 Shared household: the small "who logged it" letter is bigger and easy to read.
+- P11 A form problem (e.g. try saving a card with 3 last digits) shows in a soft red box
+      with an icon. (The new "wasn't saved" wording only appears if saving really fails.)
+- P12 "Are you still there?" shows the leaf in the circle (no waving hand). Calendar's
+      view menu (the square button) shows a proper check icon. Pay sheet ticks are icons.
+- P13 Calendar year view: the tiny day numbers are a little bigger and still fit.
+- P14 Website: on the computer run  start website\index.html  (from the repo folder). One
+      phone at the top: swipe/drag it, tap the arrows or dots, or click it and use the
+      arrow keys; each screen plays its little animation. Slider in "Slide to today"
+      changes Left to spend, days to payday and what's still due. Make the window narrow
+      (like a phone): everything stacks and nothing scrolls sideways.
