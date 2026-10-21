@@ -716,7 +716,7 @@ export default function CalendarScreen() {
               ] as const
             ).map(([id, title, sub], i) => (
               <TouchableOpacity key={id} onPress={() => chooseView(id)} style={[s.menuRow, i > 0 && s.rowTop]}>
-                <Text style={s.menuCheck}>{viewMode === id ? '✓' : ''}</Text>
+                <View style={s.menuCheck}>{viewMode === id && <Ionicons name="checkmark" size={18} color={colors.gold} />}</View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.menuTitle}>{title}</Text>
                   <Text style={s.menuSub}>{sub}</Text>
@@ -731,7 +731,7 @@ export default function CalendarScreen() {
               ] as const
             ).map(([id, title, sub], i) => (
               <TouchableOpacity key={id} onPress={() => chooseNav(id)} style={[s.menuRow, i > 0 && s.rowTop]}>
-                <Text style={s.menuCheck}>{navMode === id ? '✓' : ''}</Text>
+                <View style={s.menuCheck}>{navMode === id && <Ionicons name="checkmark" size={18} color={colors.gold} />}</View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.menuTitle}>{title}</Text>
                   <Text style={s.menuSub}>{sub}</Text>
@@ -740,7 +740,7 @@ export default function CalendarScreen() {
             ))}
             <View style={s.menuGap} />
             <TouchableOpacity onPress={toggleBalance} style={s.menuRow}>
-              <Text style={s.menuCheck}>{showBalance ? '✓' : ''}</Text>
+              <View style={s.menuCheck}>{showBalance && <Ionicons name="checkmark" size={18} color={colors.gold} />}</View>
               <View style={{ flex: 1 }}>
                 <Text style={s.menuTitle}>Projected balance</Text>
                 <Text style={s.menuSub}>Show the balance for the day</Text>
@@ -817,7 +817,7 @@ function makeStyles(colors: any) {
     menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.18)' },
     menu: { position: 'absolute', right: 16, width: 280, backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden', elevation: 12, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
     menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11 },
-    menuCheck: { width: 22, fontSize: 16, fontWeight: '800', color: colors.gold },
+    menuCheck: { width: 22, alignItems: 'center' },
     menuTitle: { fontSize: 16, color: colors.ink },
     menuSub: { fontSize: 12, color: colors.inkDim, marginTop: 1 },
     menuGap: { height: 8, backgroundColor: colors.navy2 },

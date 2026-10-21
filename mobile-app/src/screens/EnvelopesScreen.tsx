@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { alertNotSaved } from '../messages';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
@@ -45,7 +46,7 @@ export default function EnvelopesScreen() {
     try {
       await saveModel(next);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this envelope'));
     }
   }
 

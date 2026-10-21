@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from 'react';
+import { alertNotSaved } from '../messages';
 import LoadingView from '../components/LoadingView';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -71,7 +72,7 @@ export default function SubscriptionsScreen() {
     try {
       await saveModel({ ...model, bills: model.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this subscription'));
     }
   }
 

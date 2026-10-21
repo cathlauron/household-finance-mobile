@@ -57,7 +57,8 @@ export function StillTherePopup({
       <View style={s.backdrop}>
         <View style={s.card}>
           <View style={[s.wave, { backgroundColor: colors.accentTint }]}>
-            <Text style={{ fontSize: 26 }}>👋</Text>
+            {/* 2.2 (approved P3): the app's leaf instead of the waving-hand emoji, like the cover. */}
+            <Ionicons name="leaf-outline" size={28} color={colors.gold} />
           </View>
           <Text style={s.title}>Are you still there?</Text>
           <Text style={s.body}>

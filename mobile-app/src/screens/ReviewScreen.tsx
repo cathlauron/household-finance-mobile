@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from 'react';
+import { alertNotSaved } from '../messages';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
@@ -41,7 +42,7 @@ export default function ReviewScreen() {
         }),
       });
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this change'));
     }
   }
 

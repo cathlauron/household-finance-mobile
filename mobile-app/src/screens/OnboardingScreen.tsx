@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ErrorNote from '../components/ErrorNote';
+import {  } from '../messages';
 import { paintBusy } from '../components/BusyOverlay';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
@@ -87,7 +89,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
       setStep(3);
     } catch (e) {
       setBusy(false);
-      setPinError('Failed to save PIN. Please try again.');
+      setPinError("Your PIN wasn't saved. Please try again.");
     }
   }
 
@@ -180,7 +182,7 @@ export default function OnboardingScreen({ username, onFinish, initialCredential
               />
               </View>
 
-              {!!pinError && <Text style={styles.errorText}>{pinError}</Text>}
+              <ErrorNote text={pinError} />
 
               <TouchableOpacity
                 testID="onboarding-save-pin-button"

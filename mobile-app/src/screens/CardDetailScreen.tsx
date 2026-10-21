@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { alertDidntWork } from '../messages';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -450,7 +451,7 @@ export default function CardDetailScreen() {
                 const latest = getModel() ?? model;
                 if (!latest) return;
                 navigation.goBack();
-                saveModel(withoutAccount(latest, group, accountId)).catch(() => Alert.alert('Failed to remove', 'Please try again.'));
+                saveModel(withoutAccount(latest, group, accountId)).catch(() => Alert.alert(...alertDidntWork('remove this card')));
               },
             },
           ])

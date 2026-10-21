@@ -1,4 +1,6 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, TRY_AGAIN } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import NeedsInternetSheet, { type NeedsInternet } from '../components/NeedsInternetSheet';
 import React, { useState, useEffect, useRef } from 'react';
@@ -643,7 +645,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       return;
     }
     if (!username) {
-      setJoinErrorMsg('Something went wrong — please try again.');
+      setJoinErrorMsg(TRY_AGAIN);
       return;
     }
     setJoinBusy(true);
@@ -672,7 +674,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     }
     const personalKey = getPersonalKey();
     if (!personalKey) {
-      setJoinChoiceMsg('Something went wrong — please try again.');
+      setJoinChoiceMsg(TRY_AGAIN);
       return;
     }
     setJoinChoiceBusy(true);
@@ -699,7 +701,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         .then(() => setJoinChoiceMsg('Linked! You now share one household.'))
         .catch(() => {});
     } catch (e) {
-      setJoinChoiceMsg((e as Error)?.message || "Something went wrong — check your connection and try again.");
+      setJoinChoiceMsg((e as Error)?.message || "That didn't work. Check your internet connection, then try again.");
     }
     setJoinChoiceBusy(false);
   }
@@ -733,7 +735,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     const result = await unlinkHousehold();
     setUnlinkBusy(false);
     if (!result.ok) {
-      setUnlinkMsg(result.error || 'Something went wrong. Please try again.');
+      setUnlinkMsg(result.error || TRY_AGAIN);
       return;
     }
     setUnlinkConfirmOpen(false);
@@ -758,7 +760,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setHouseholdMembers(members);
       setMemberToRemove(null);
     } catch (e: any) {
-      setRemoveMemberMsg(e?.message || 'Failed to remove member.');
+      setRemoveMemberMsg(e?.message || "Couldn't remove them. Nothing changed, so please try again in a moment.");
     } finally {
       setRemoveMemberBusy(false);
     }
@@ -777,7 +779,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     const result = await unlinkAndTransferOwnership(selectedSuccessorUid);
     setTransferBusy(false);
     if (!result.ok) {
-      setTransferMsg(result.error || 'Failed to transfer ownership.');
+      setTransferMsg(result.error || "Couldn't hand over the household. Nothing changed, so please try again in a moment.");
       return;
     }
     setTransferOwnerModalOpen(false);
@@ -1069,7 +1071,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                       </TouchableOpacity>
                     )}
                   </SettingsGroup>
-                  {!!linkErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginBottom: 16, marginHorizontal: 16 }]}>{linkErrorMsg}</Text>}
+                  <ErrorNote text={linkErrorMsg} />
 
                   {/* Remove Member Confirmation Box */}
                   {memberToRemove && (
@@ -1134,7 +1136,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                                   setMyPersonIdState(pendingPersonId);
                                   setPendingPersonId(null);
                                 } catch (e) {
-                                  setMyPersonMsg('Failed to save. Please try again.');
+                                  setMyPersonMsg(notSaved('this change'));
                                 } finally {
                                   setMyPersonBusy(false);
                                 }
@@ -1321,8 +1323,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                   </View>
                   )}
                 </SettingsGroup>
-                {!!linkErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginHorizontal: 16 }]}>{linkErrorMsg}</Text>}
-                {!!joinErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginHorizontal: 16 }]}>{joinErrorMsg}</Text>}
+                <ErrorNote text={linkErrorMsg} />
+                <ErrorNote text={joinErrorMsg} />
               </>
             )}
 
@@ -1413,7 +1415,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               onChangeText={setApprovalCodeInput}
             />
 
-            {!!approvalErrorMsg && <Text style={styles.errorText}>{approvalErrorMsg}</Text>}
+            <ErrorNote text={approvalErrorMsg} />
 
               <Button
                 label="Approve & Send Key"

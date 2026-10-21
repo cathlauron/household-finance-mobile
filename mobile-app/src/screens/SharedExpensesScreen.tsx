@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { notSaved } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import LoadingView from '../components/LoadingView';
 import { View, StyleSheet, Alert } from 'react-native';
@@ -244,7 +245,7 @@ export default function SharedExpensesScreen() {
       showLeafTick(editingId ? 'Saved' : 'Added');
       setSheetOpen(false);
     } catch {
-      setError('Failed to save. Please try again.');
+      setError(notSaved('this expense'));
     } finally {
       setSaving(false);
     }
@@ -317,7 +318,7 @@ export default function SharedExpensesScreen() {
       showLeafTick('Settled');
       setSettleKey(null);
     } catch {
-      setSettleError('Failed to save. Please try again.');
+      setSettleError(notSaved('this expense'));
     }
   }
 

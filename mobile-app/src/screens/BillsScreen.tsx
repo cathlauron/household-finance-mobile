@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted } from '../messages';
 import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import React, { useState, useEffect, useRef } from 'react';
@@ -414,7 +416,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this bill'));
     } finally {
       setSaving(false);
     }
@@ -431,7 +433,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this bill'));
     } finally {
       setSaving(false);
     }
@@ -457,7 +459,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     try {
       await saveModel(updated);
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this bill'));
     } finally {
       setSaving(false);
     }
@@ -688,7 +690,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
           </Footnote>
         )}
         {!!nextDueText && <Footnote>{nextDueText}</Footnote>}
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
       <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import ErrorNote from '../components/ErrorNote';
+import { alertDidntWork } from '../messages';
 import { useArrival } from '../useArrival';
 import ArrivalGlow from '../components/ArrivalGlow';
 import { showLeafTick } from '../components/LeafTick';
@@ -560,7 +562,7 @@ export default function TravelScreen() {
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to remove item', 'Please try again.');
+      Alert.alert(...alertDidntWork('remove this item'));
     }
   }
 
@@ -1085,7 +1087,7 @@ export default function TravelScreen() {
         </View>
         </SwipeTabs>
 
-        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete trip" variant="destructive" onPress={confirmDeleteTrip} />}
         {/* Version 2.2 (canvas P1-P2): ticking an item inside the trip form asks here. */}
         {paySheet(!!payAsk && payAsk.tripId === null, checklist)}

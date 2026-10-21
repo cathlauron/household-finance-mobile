@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { showSaved } from '../components/SavedToast';
@@ -361,7 +362,7 @@ export default function PotDetailScreen() {
                 const latest = getModel() ?? model;
                 if (!latest) return;
                 navigation.goBack();
-                saveModel(withoutSavingsPot(latest, id)).catch(() => Alert.alert('Failed to delete', 'Please try again.'));
+                saveModel(withoutSavingsPot(latest, id)).catch(() => Alert.alert(...alertNotDeleted('this pot')));
               },
             },
           ])

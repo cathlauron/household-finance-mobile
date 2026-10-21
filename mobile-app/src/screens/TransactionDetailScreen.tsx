@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState, useMemo } from 'react';
+import { alertNotSaved, alertNotDeleted } from '../messages';
 import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -117,7 +118,7 @@ export default function TransactionDetailScreen() {
     try {
       await saveModel(next);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this transaction'));
     }
   }
 
@@ -133,7 +134,7 @@ export default function TransactionDetailScreen() {
             await saveModel(deleteManualTxn(model, raw.id));
             navigation.goBack();
           } catch {
-            Alert.alert('Failed to delete', 'Please try again.');
+            Alert.alert(...alertNotDeleted('this transaction'));
           }
         },
       },

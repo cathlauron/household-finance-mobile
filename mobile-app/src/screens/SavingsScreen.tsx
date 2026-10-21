@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
 import ArrivalGlow from '../components/ArrivalGlow';
 import { useWho } from '../components/WhoLogged';
@@ -386,7 +388,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this pot'));
     } finally {
       setSaving(false);
     }
@@ -402,7 +404,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this pot'));
     } finally {
       setSaving(false);
     }
@@ -426,7 +428,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this pot'));
     } finally {
       setSaving(false);
     }
@@ -903,7 +905,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </>
         )}
 
-        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete pot" variant="destructive" onPress={handleDeleteGoal} />}
       </BottomSheet>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
@@ -159,7 +160,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             <Text style={[styles.amount, { color: colors.inkDim }]}>{formatPeso(amount)}</Text>
             <View style={[styles.markCard, { backgroundColor: colors.navy2 }]}>
               <View style={[styles.markIcon, { backgroundColor: colors.accentTint }]}>
-                <Text style={{ color: colors.gold, fontSize: 17, fontWeight: '800' }}>✓</Text>
+                <Ionicons name="checkmark" size={18} color={colors.gold} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.markTitle, { color: colors.ink }]}>Ticked, nothing else changes</Text>
@@ -267,7 +268,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             </Text>
             <TouchableOpacity onPress={() => setTakeOff((t) => !t)} accessibilityRole="checkbox" accessibilityState={{ checked: takeOff }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
               <View style={[styles.check, { borderColor: colors.gold, backgroundColor: takeOff ? colors.gold : 'transparent' }]}>
-                {takeOff && <Text style={{ color: colors.onButton, fontSize: 12, fontWeight: '800' }}>✓</Text>}
+                {takeOff && <Ionicons name="checkmark" size={13} color={colors.onButton} />}
               </View>
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold, flexShrink: 1 }}>It isn't included, take it off my balance</Text>
             </TouchableOpacity>

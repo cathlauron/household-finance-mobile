@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved } from '../messages';
 import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import { loanPaymentToPlace, placeLoanPayment } from '../loanSchedule';
@@ -454,7 +456,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this loan'));
     } finally {
       setSaving(false);
     }
@@ -471,7 +473,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this loan'));
     } finally {
       setSaving(false);
     }
@@ -498,7 +500,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     try {
       await saveModel(updated);
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this loan'));
     } finally {
       setSaving(false);
     }
@@ -736,7 +738,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
                         value={newPaymentMethod}
                         onChange={setNewPaymentMethod}
                       />
-                      {!!paymentError && <Text style={styles.errorText}>{paymentError}</Text>}
+                      <ErrorNote text={paymentError} />
                       <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>
                         <GradientFill match={styles.paymentAddButton} />
                         <Text style={styles.paymentAddButtonText}>+ Add payment</Text>
@@ -748,7 +750,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
         )}
 
         {!!loanFootnote && <Footnote>{loanFootnote}</Footnote>}
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete loan" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
       <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />

@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
 import ArrivalGlow from '../components/ArrivalGlow';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -490,7 +492,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
       showLeafTick('Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this transaction'));
     } finally {
       setSaving(false);
     }
@@ -617,7 +619,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this transaction'));
     } finally {
       setSaving(false);
     }
@@ -637,7 +639,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this transaction'));
     } finally {
       setSaving(false);
     }
@@ -667,7 +669,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this transaction'));
     } finally {
       setSaving(false);
     }
@@ -1243,7 +1245,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
           </>
         )}
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
 
         {editingId && (
           <TouchableOpacity style={[styles.formGroup, styles.deleteRow]} onPress={handleDelete} accessibilityRole="button">

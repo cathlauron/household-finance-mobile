@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import React, { useState, useRef, useEffect } from 'react';
@@ -410,7 +412,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this debt'));
     } finally {
       setSaving(false);
     }
@@ -427,7 +429,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this debt'));
     } finally {
       setSaving(false);
     }
@@ -454,7 +456,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this debt'));
     } finally {
       setSaving(false);
     }
@@ -607,7 +609,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
         </FormGroup>
 
         {!!debtFootnote && <Footnote>{debtFootnote}</Footnote>}
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
       <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />

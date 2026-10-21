@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted } from '../messages';
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -230,7 +232,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this account'));
     } finally {
       setSaving(false);
     }
@@ -250,7 +252,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this account'));
     } finally {
       setSaving(false);
     }
@@ -489,7 +491,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
           ))}
         </ScrollView>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
 
         <Button label="Save" onPress={handleSave} loading={saving} />
 

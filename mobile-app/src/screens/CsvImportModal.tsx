@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { Modal, View, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -196,7 +198,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
       setColumnAssignments({});
       setExcludedDuplicateRows(new Set());
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('the import'));
     } finally {
       setImporting(false);
     }
@@ -237,7 +239,7 @@ export default function CsvImportModal({ visible, onClose }: Props) {
             )}
 
 
-            {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+            <ErrorNote text={errorMsg} />
             {!!doneMsg && <Text style={styles.doneText}>{doneMsg}</Text>}
 
             {result && result.headerError && (

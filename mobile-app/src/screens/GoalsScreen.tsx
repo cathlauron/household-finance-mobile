@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
@@ -237,7 +239,7 @@ export default function GoalsScreen() {
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this goal'));
     }
   }
 
@@ -251,7 +253,7 @@ export default function GoalsScreen() {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this goal'));
     }
   }
 
@@ -264,7 +266,7 @@ export default function GoalsScreen() {
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this goal'));
     }
   }
 
@@ -458,7 +460,7 @@ export default function GoalsScreen() {
           </>
         )}
 
-        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete goal" variant="destructive" onPress={confirmDeleteGoal} />}
       </BottomSheet>
     </View>

@@ -1,4 +1,6 @@
 import { hapticSelection } from '../haptics';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted, alertNotSaved, alertDidntWork, TRY_AGAIN } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } from '../paydayTime';
@@ -354,7 +356,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       }
     } catch (e) {
       setBiometricPasswordBusy(false);
-      setBiometricPasswordError('Something went wrong. Try again.');
+      setBiometricPasswordError(TRY_AGAIN);
       setBiometricError("Couldn't turn on. Try again.");
     }
   }
@@ -479,7 +481,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       try {
         await saveModel({ ...latest, settings: { ...latest.settings, monthlySpendingBudget: monthlyBudgetInput } });
       } catch (e) {
-        Alert.alert('Failed to save', 'Please try again.');
+        Alert.alert(...alertNotSaved('this change'));
       }
     }, 600);
     return () => clearTimeout(timer);
@@ -530,7 +532,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -549,7 +551,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this change'));
     }
   }
 
@@ -577,7 +579,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(updated);
       setNotifStatusMsg(turningOn ? "You'll get a reminder when a bill is due soon." : 'Turned off.');
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -603,7 +605,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -628,7 +630,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                 updateRecentAccountIfPresent(username, { hasPin: false }).catch(() => {});
                 setPinIsSet(false);
               } catch (e) {
-                Alert.alert('Failed to remove PIN', 'Please try again.');
+                Alert.alert(...alertDidntWork('remove your PIN'));
               } finally {
                 setPinBusy(false);
               }
@@ -676,7 +678,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this change'));
     }
   }
 
@@ -689,7 +691,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -705,7 +707,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -751,7 +753,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this change'));
     }
   }
 
@@ -765,7 +767,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this change'));
     }
   }
 
@@ -813,7 +815,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setWatchLimitInput('');
       setWatchErrorMsg('');
     } catch (e) {
-      setWatchErrorMsg('Failed to save. Please try again.');
+      setWatchErrorMsg(notSaved('this change'));
     }
   }
 
@@ -826,7 +828,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to remove', 'Please try again.');
+      Alert.alert(...alertDidntWork('remove it'));
     }
   }
 
@@ -890,7 +892,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(updated);
       closePayeeModal();
     } catch (e) {
-      setPayeeErrorMsg('Failed to save. Please try again.');
+      setPayeeErrorMsg(notSaved('this payee'));
     }
   }
 
@@ -904,7 +906,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(updated);
       closePayeeModal();
     } catch (e) {
-      setPayeeErrorMsg('Failed to delete. Please try again.');
+      setPayeeErrorMsg(notDeleted('this payee'));
     }
   }
 
@@ -1004,7 +1006,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       showLeafTick(editingRuleId ? 'Saved' : 'Added');
       closeRuleModal();
     } catch (e) {
-      setRuleErrorMsg('Failed to save. Please try again.');
+      setRuleErrorMsg(notSaved('this rule'));
     }
   }
 
@@ -1018,7 +1020,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(updated);
       closeRuleModal();
     } catch (e) {
-      setRuleErrorMsg('Failed to delete. Please try again.');
+      setRuleErrorMsg(notDeleted('this rule'));
     }
   }
 
@@ -1046,7 +1048,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to reorder', 'Please try again.');
+      Alert.alert(...alertDidntWork('change the order'));
     }
   }
 
@@ -1075,7 +1077,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     const result = await changePassword(currentPassInput, newPass1Input);
     setPassChangeBusy(false);
     if (!result.ok) {
-      setPassChangeMsg(result.error || 'Something went wrong. Please try again.');
+      setPassChangeMsg(result.error || TRY_AGAIN);
       return;
     }
     setCurrentPassInput('');
@@ -1151,7 +1153,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setRetroactiveBusy(false);
     } catch (e: any) {
       setRetroactiveBusy(false);
-      setRetroactiveError(e?.message || 'Failed to generate recovery key.');
+      setRetroactiveError(e?.message || "Couldn't make a recovery key. Nothing changed, so please try again in a moment.");
     }
   }
 
@@ -1189,7 +1191,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(defaultModel());
       setClearConfirmOpen(false);
     } catch (e) {
-      Alert.alert('Failed to clear data', 'Please try again.');
+      Alert.alert(...alertDidntWork('clear the data'));
     } finally {
       setClearBusy(false);
     }
@@ -2023,7 +2025,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           ))}
         </View>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
 
         <Button label="Save" onPress={handleSave} />
 
@@ -2056,7 +2058,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setPayeeCategoryInput}
         />
 
-        {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
+        <ErrorNote text={payeeErrorMsg} />
 
         <Button label="Save" onPress={handleSavePayee} />
 
@@ -2096,7 +2098,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setRuleCategoryInput}
         />
 
-        {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
+        <ErrorNote text={ruleErrorMsg} />
 
         <Button label="Save" onPress={handleSaveRule} />
 
@@ -2227,7 +2229,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             <Text style={styles.sectionSub}>
     Sign out {deviceToRevoke?.deviceName}? It'll be disconnected right away and need to sign in again.
   </Text>
-            {!!revokeError && <Text style={styles.errorText}>{revokeError}</Text>}
+            <ErrorNote text={revokeError} />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
                 <Button
                   variant="solidDanger"

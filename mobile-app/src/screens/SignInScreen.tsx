@@ -1,4 +1,5 @@
 import { usernameOwner } from '../usernameClaim';
+import ErrorNote from '../components/ErrorNote';
 import { formatRecoveryKeyInput } from '../typingHelpers';
 import React, { useEffect, useState, useRef } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
@@ -999,7 +1000,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                   autoCorrect={false}
                   editable={!recoveryBusy && !peerBusy}
                 />
-                {!!recoveryError && <Text style={styles.errorText}>{recoveryError}</Text>}
+                <ErrorNote text={recoveryError} />
                 <TouchableOpacity
                   style={[ms.primaryBtn, (!recoveryKeyInput.trim() || recoveryBusy) && styles.btnDisabled]}
                   onPress={handleRecoverWithKey}
@@ -1050,7 +1051,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                       </TouchableOpacity>
                     </View>
                   )}
-                  {!!peerError && <Text style={styles.errorText}>{peerError}</Text>}
+                  <ErrorNote text={peerError} />
                 </View>
               )}
 

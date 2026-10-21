@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
 import { WhoFootnote, useWho } from '../components/WhoLogged';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -244,7 +246,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       showLeafTick('Added');
       setLogSheet(null);
     } catch {
-      setLogError('Failed to save. Please try again.');
+      setLogError(notSaved('this payday'));
     } finally {
       setLogSaving(false);
     }
@@ -421,7 +423,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this income'));
     } finally {
       setSaving(false);
     }
@@ -438,7 +440,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this income'));
     } finally {
       setSaving(false);
     }
@@ -464,7 +466,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this income'));
     } finally {
       setSaving(false);
     }
@@ -749,7 +751,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
             </FormGroup>
             <Text style={styles.logSection}>WENT INTO</Text>
             <AccountChoices model={model} value={logSheet.pm} onChange={(pm) => setLogSheet((l) => (l ? { ...l, pm } : l))} />
-            {!!logError && <Text style={[styles.errorText, { marginTop: 10 }]}>{logError}</Text>}
+            <ErrorNote text={logError} />
             <View style={{ height: 16 }} />
           </>
         )}
@@ -845,7 +847,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         </Guided>
         <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {/* Version 2.2 (W2 everywhere): who added this income, and who last changed it. */}
         {editingId && (() => {
           const src = model?.income.find((x) => x.id === editingId);

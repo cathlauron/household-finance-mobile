@@ -1,4 +1,5 @@
 import { loanCoverage } from '../loanSchedule';
+import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
@@ -132,7 +133,7 @@ export default function PayDetailScreen() {
       await saveModel(next);
       if (savedLabel) showLeafTick(savedLabel);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this payment'));
     }
   }
 
@@ -149,7 +150,7 @@ export default function PayDetailScreen() {
           if (!latest) return;
           const next = kind === 'bill' ? withoutBill(latest, id) : kind === 'debt' ? withoutDebt(latest, id) : withoutLoan(latest, id);
           navigation.goBack();
-          saveModel(next).catch(() => Alert.alert('Failed to delete', 'Please try again.'));
+          saveModel(next).catch(() => Alert.alert(...alertNotDeleted('this item')));
         },
       },
     ]);
