@@ -236,9 +236,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // its result one frame later (see saveModel), so a redraw in between (a form closing)
   // must not put the older data back here.
   const renderedModelRef = useRef<HouseholdModel | null>(null);
+  // Code review fix: data this phone saved itself never replaces the newest data here
+  // (a second save made just before the first one is shown used to be lost). Only data
+  // that came from somewhere else (loading, the other phone) does.
+  const ownSavesRef = useRef(new WeakSet<HouseholdModel>());
   if (model !== renderedModelRef.current) {
     renderedModelRef.current = model;
-    latestModelRef.current = model;
+    if (!model || !ownSavesRef.current.has(model)) latestModelRef.current = model;
   }
   const householdUnsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -849,6 +853,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     recheckNetwork();
     const sub = Network.addNetworkStateListener(applyNetworkState);
     const appSub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active') skipSaveWaitRef.current?.();
       if (st === 'active') {
         recheckNetwork();
         resumeLinkCheckRef.current();
@@ -890,6 +895,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function savesBusy(): boolean {
     return persistQueuedRef.current || persistDirtyRef.current;
   }
+  const skipSaveWaitRef = useRef<(() => void) | null>(null);
   function requestPersist() {
     persistDirtyRef.current = true;
     if (persistQueuedRef.current) return; // the turn in line takes the newest data
@@ -900,7 +906,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // (encrypting it) blocks the screen while it runs, so it now waits until the form has
         // closed and the list has redrawn (about a quarter of a second). Saves made in that
         // moment are written together. Log out / Switch account still wait for this.
-        await new Promise<void>((resolve) => InteractionManager.runAfterInteractions(() => setTimeout(resolve, 250)));
+        // Code review fix: if the app is closed or put away in that moment, it saves at once
+        // instead of waiting (a change could be lost if the phone then closed the app).
+        await new Promise<void>((resolve) => {
+          if (AppState.currentState !== 'active') return resolve();
+          skipSaveWaitRef.current = resolve;
+          InteractionManager.runAfterInteractions(() => setTimeout(resolve, 250));
+        });
+        skipSaveWaitRef.current = null;
         while (persistDirtyRef.current) {
           persistDirtyRef.current = false;
           const username = usernameRef.current;
@@ -1006,6 +1019,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       else setModel(sanitizedModel);
       return;
     }
+    // Code review fix: a late save after Log out / Switch account (no one signed in) changes
+    // nothing, so the old account's data never comes back on screen.
+    if (!usernameRef.current) return;
     modelVersionRef.current += 1;
     // Version 2.2 (Cath: the form waited with a spinner before closing): the screens redraw
     // with the new data one frame later, so a form that closes after saving starts closing
@@ -1016,6 +1032,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // The newest data straight away (review fix: a save right after another one used to
     // start from the data before it).
     latestModelRef.current = sanitizedModel;
+    ownSavesRef.current.add(sanitizedModel);
     const username = usernameRef.current;
     if (!username) return;
     // Version 2.2 (Cath: Save and Add buttons lagged, a trip took seconds to save): what's

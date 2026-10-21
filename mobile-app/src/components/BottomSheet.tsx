@@ -86,6 +86,11 @@ export default function BottomSheet({
   const y = React.useRef(new Animated.Value(offY)).current;
   const dim = React.useRef(new Animated.Value(0)).current;
   const wasVisible = React.useRef(visible);
+  // Code review fix (Android): in the very redraw where the sheet is asked to close, keep the
+  // window up. Before, Android took the window down at once (no slide), then put it back for
+  // a moment and took it down again: a flicker instead of the slide.
+  const justClosed = !visible && wasVisible.current;
+  const [, redraw] = React.useReducer((n: number) => n + 1, 0);
   const openNow = React.useCallback(() => {
     if (reduce) {
       y.setValue(0);
@@ -114,7 +119,13 @@ export default function BottomSheet({
       y.setValue(offY);
       dim.setValue(0);
     } else if (!visible && was) {
-      if (reduce) return;
+      if (reduce) {
+        // No slide: take the window down straight away.
+        y.setValue(offY);
+        dim.setValue(0);
+        redraw();
+        return;
+      }
       setClosing(true);
       Animated.parallel([
         Animated.timing(y, { toValue: offY, duration: CLOSE_MS, easing: DRAWER, useNativeDriver: true }),
@@ -146,7 +157,7 @@ export default function BottomSheet({
 
   return (
     <Modal
-      visible={visible || closing}
+      visible={visible || closing || justClosed}
       onShow={openNow}
       transparent
       animationType="none"

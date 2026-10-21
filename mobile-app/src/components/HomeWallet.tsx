@@ -105,6 +105,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   });
   const { width: screenW } = useWindowDimensions();
   const busy = useRef(false);
+  const holding = useRef(false); // a card is picked up (long-press drag)
   const dragY = useRef(new Animated.Value(0)).current;
   // While held, the card rises a little out of the gap. It stays whole, but it sits
   // behind the cards in front of the gap, so mostly just its top shows: the rest
@@ -170,7 +171,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
     // Saving encrypts your data, which briefly keeps the phone busy, so it waits until
     // you've stopped flipping (and is never done while a card is moving).
     const later = () => {
-      if (busy.current) saveTimer.current = setTimeout(later, 800);
+      if (busy.current || holding.current) saveTimer.current = setTimeout(later, 800);
       else flush();
     };
     saveTimer.current = setTimeout(later, 3000);
@@ -314,6 +315,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       .runOnJS(true)
       .activateAfterLongPress(350)
       .onStart(() => {
+        holding.current = true;
         hapticMedium();
         dragY.setValue(0);
         liftUp.setValue(0);
@@ -334,6 +336,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
         }
       })
       .onFinalize(() => {
+        holding.current = false;
         const target = dragTarget.current;
         if (target < 0) return;
         const keys = order.filter((k) => k !== c.key);

@@ -43,8 +43,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // 2.2 speed fix (Cath: the light/dark button lagged): recolouring every screen is big
   // work, so it runs as a background update; the button you tapped reacts at once.
   const setMode = (m: ColorMode) => {
+    // Code review fix: the Light / Dark / Device choice itself moves at once (Settings,
+    // set-up); only the recolouring runs in the background.
+    setModeState(m);
     startTransition(() => {
-      setModeState(m);
       setIsDark(resolveIsDark(m));
     });
     AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});

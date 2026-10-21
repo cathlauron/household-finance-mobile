@@ -173,3 +173,19 @@ T  2026-10-21 Coffee cup icon, Insufficient balance for every account. NOT YET T
 - T3  Pick an account first, then raise the amount above what it has and tap Save /
       Pay: it says "Insufficient balance: <name> only has ₱X." and doesn't save. An
       account with nothing left says "Insufficient balance: <name> has no money left in it."
+
+U  2026-10-21 Code review fixes + speed sweep 2. NOT YET TESTED.
+- U1  Open and close any pop-up form (Cancel, Done, or drag it down): it slides away
+      smoothly every time, with no flicker or quick reappearing before it goes.
+- U2  Add two things quickly one after the other (e.g. a transaction, then straight away
+      another): both are there, also after closing and reopening the app.
+- U3  Add a transaction, then immediately go to the phone's home screen and swipe the app
+      closed. Reopen it: the transaction is there.
+- U4  Settings > Appearance: tap Light / Dark / Device: the highlight moves at once, the
+      colours follow right after.
+- U5  Add a bill, then within 2 seconds delete another one: the pale green glow on the new
+      bill fades away on its own (doesn't stay stuck).
+- U6  Flip a Home card, then within 3 seconds long-press and drag a card: the drag stays
+      smooth.
+- U7  General feel: scrolling, opening forms and typing in amounts on Home, Transactions,
+      To-Pay and Plan. Tell Claude any spot that still lags.

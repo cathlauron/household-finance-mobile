@@ -318,7 +318,10 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
   }, [model, allEntries, sortOrder, categoryFilter, monthFilter, accountFilter]);
   const days = useMemo(() => groupByDate(transactions), [transactions]);
   // Version 2.2 (approved P4): a just-added transaction slides in and glows for a moment.
-  const arrivedTxn = useArrival(transactions.map((t) => t.id));
+  // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
+  // every key typed in the form).
+  const txnIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
+  const arrivedTxn = useArrival(txnIds);
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();

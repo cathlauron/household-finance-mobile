@@ -21,7 +21,7 @@ const GLOW_MS = 1700;
 export function useArrival(ids: string[]): string | null {
   const prev = useRef<Set<string> | null>(null);
   const [glow, setGlow] = useState<string | null>(null);
-  const key = ids.join('|');
+  const key = useMemo(() => ids.join('|'), [ids]);
 
   // Worked out during render (from the list as it was last shown) so the move animates
   // in this same update. The previous list is only updated after the screen shows it.
@@ -37,14 +37,23 @@ export function useArrival(ids: string[]): string | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  // Code review fix: the glow always goes away, even when the list changes again (another
+  // add, a delete) before it has faded. Before, it could stay stuck on a row.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     prev.current = new Set(ids);
     if (!arrived) return;
     setGlow(arrived);
-    const t = setTimeout(() => setGlow((g) => (g === arrived ? null : g)), GLOW_MS);
-    return () => clearTimeout(t);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setGlow((g) => (g === arrived ? null : g));
+    }, GLOW_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   return glow;
 }
