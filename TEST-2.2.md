@@ -35,3 +35,43 @@ Sections, for reference (all passed in Expo Go)
      swipe-to-delete closing / flick, Edit on transaction/pot/card pages, who logged it.
 
 Not yet tested at all (built 2026-10-21, after section N was written): nothing.
+
+O  2026-10-21 batch (new Claude account): calendar circles, who logged it everywhere,
+   mood samples, last 4 digits, leaf cover, new linking screen. NOT YET TESTED.
+- O1  Calendar page: today is a soft pale-green circle with a green number. Tap another
+      day: a soft pale-grey circle (not black). Tap today: it stays pale green. The month
+      name and the day heading under the calendar are lighter and slightly smaller. Year
+      view: today is a pale-green circle and the year title is lighter too.
+- O2  Add a bill > Due date: the pop-up calendar shows today and the chosen day as soft
+      circles (pale green / pale grey), not squares.
+- O3  Switch to Dark (Settings > Appearance) and look at O1 and O2 once: still soft, easy
+      to read.
+- O4  (Needs the other person in your household.) On their phone, add a bill, a debt, a
+      loan, a savings pot, an income source and a trip. On your phone: a small letter on
+      the bill, debt and loan icons in To-Pay (and Subscriptions); "added by <name>" under
+      the pot in Savings; "· by <name>" after the income source and under the trip name.
+- O5  On their phone: mark a bill paid, log a loan payment, add money to a pot, log a
+      payday and add a trip item. On your phone: the bill's "Paid this month" row has the
+      letter; the loan payment, the pot move, the payday and the trip item each say
+      "by <name>" (trip item: "added by <name>").
+- O6  On your phone, open each of those (bill, debt, loan, pot, trip, and Edit on the
+      income source): at the bottom, "Added by <name> · <date, time>". Change something
+      and save: "Changed by you · today, <time>" appears.
+- O7  Things YOU add never get a letter or "by" on your own phone.
+- O8  New account set-up, step 3 "Make it feel like yours": with Mood colours on, a
+      "Swipe to see how Home changes" card shows. Swipe it: Running low turns the whole
+      screen (Back, switches, dots, leaves) warm orange; Over budget turns it soft rose;
+      Plenty left brings back green. Turn Mood colours off: the samples go and the screen
+      is green. Step 4 is green again.
+- O9  A debit card > Edit: a "Last 4 digits (optional)" box. Type 4821 and Save: Home's
+      Wallet front card shows "•••• 4821" at the bottom right, on the balance line; the
+      card's own page too. Cards behind the front one don't show it. Cash accounts have
+      no box. Typing only 3 numbers and saving says "Type all 4 last digits, or leave it
+      empty." Clearing the box and saving removes it from the card.
+- O10 Auto-lock off, leave the app untouched 5 minutes, don't answer "Are you still
+      there?" for a minute: the cover shows a green leaf on a pale green circle (no 🙈).
+- O11 Linking screen (use a NEW empty test account; don't link your real one): Household >
+      Type a code (or scan) from your real account's invite. You see both of you with
+      what each has, "Merge both" (two-people icon, Suggested, picked) and "Keep <name>'s"
+      (one-person icon). Continue opens a sheet with the same icon and what the shared
+      household will have. "Go back" closes it and nothing happens.
