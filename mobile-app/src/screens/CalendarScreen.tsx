@@ -29,6 +29,7 @@ import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
 import { expectArrival } from '../arrivalFocus';
 import { salaryHandoffPending } from '../salaryHandoff';
+import { noteCalendarLeaving } from '../navigation/calendarLeaving';
 import { buildTransactionsList } from '../transactions';
 import { hapticSelection } from '../haptics';
 import { requestToPayTab } from '../openToPayTabRequest';
@@ -321,6 +322,11 @@ export default function CalendarScreen() {
   const { colors } = useTheme();
   const { model, getModel } = useData();
   const navigation = useNavigation<any>();
+  // While the calendar slides away, the page behind it stays put (see RootStack).
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', () => noteCalendarLeaving());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const s = useMemo(() => makeStyles(colors), [colors]);

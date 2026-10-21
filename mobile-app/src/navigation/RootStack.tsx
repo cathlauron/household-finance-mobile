@@ -1,6 +1,7 @@
 import { Easing } from 'react-native';
 import React from 'react';
 import { reduceMotionNow } from '../reduceMotion';
+import { calendarLeaving } from './calendarLeaving';
 import { createStackNavigator, type StackCardStyleInterpolator } from '@react-navigation/stack';
 import MainTabs from './MainTabs';
 import DeferredContent from './DeferredContent';
@@ -80,8 +81,14 @@ const Stack = createStackNavigator<RootStackParamList>();
 // the first moment (also when you swipe back with your finger).
 const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => {
   if (reduceMotionNow()) {
-    // Phone set to remove animations: a short fade, no sliding.
-    return { cardStyle: { opacity: current.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }) } };
+    // Phone set to remove animations: a short fade, no sliding; the covered page fades out.
+    return {
+      cardStyle: {
+        opacity: next
+          ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
+          : current.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
+      },
+    };
   }
   return {
     cardStyle: {
@@ -96,6 +103,14 @@ const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => {
     },
   };
 };
+const stayBehindSheet: StackCardStyleInterpolator = () => ({ cardStyle: {} });
+// The Calendar sheet is on top (or just sliding away): the page behind it stays put.
+function topRouteName(navigation: any): string | undefined {
+  const st = navigation?.getState?.();
+  const top = st?.routes?.[st.routes.length - 1]?.name;
+  return calendarLeaving() ? 'Calendar' : top;
+}
+
 // The same curve as the pop-up sheets; going back is a little quicker than going in.
 const paperTiming = {
   animation: 'timing' as const,
@@ -142,15 +157,16 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
           <DeferredContent>{children}</DeferredContent>
         )
       }
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         cardStyle: { backgroundColor: 'transparent' },
         headerMode: 'screen',
-        cardStyleInterpolator: paperSlide,
+        // The Calendar rises as a sheet over a dimmed page: the page behind it stays put.
+        cardStyleInterpolator: topRouteName(navigation) === 'Calendar' ? stayBehindSheet : paperSlide,
         transitionSpec: { open: paperTiming, close: paperTimingBack },
         gestureEnabled: true,
         gestureDirection: 'horizontal',
         ...getSharedHeaderOptions(colors),
-      }}
+      })}
     >
       <Stack.Screen
         name="Main"

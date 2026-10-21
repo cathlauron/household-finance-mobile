@@ -88,8 +88,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setTimeout(switchUnderShot, 700);
       })
       .catch(() => {
+        // No photo: just switch, to the last tapped choice.
+        const p = pendingRef.current ?? { m, toDark };
         pendingRef.current = null;
-        switchNow(m, toDark);
+        switchNow(p.m, p.toDark);
       });
   };
   // Once the new colours are on screen, the photo of the old look fades away.

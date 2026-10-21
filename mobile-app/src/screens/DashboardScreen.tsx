@@ -163,7 +163,9 @@ export default function DashboardScreen({
     const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     (model.categoryBudgets || []).forEach((cb) => m.set(cb.category, computeCategorySpend(model, cb.category, prefix)));
     return m;
-  }, [model]);
+    // (The month is part of it too, so a new month starts fresh.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, new Date().getMonth()]);
 
   if (loading || !model) {
     return (
