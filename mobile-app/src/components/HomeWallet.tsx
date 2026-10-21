@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { reduceMotionNow } from '../reduceMotion';
 import { holdTabSwipe } from '../navigation/swipeTabs';
-import { View, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Animated, Easing, useWindowDimensions, AppState } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -67,12 +67,19 @@ function orderedCards(model: HouseholdModel): WalletCard[] {
   return [...all].sort((a, b) => rank(a.key) - rank(b.key));
 }
 
-export default function HomeWallet({ model }: { model: HouseholdModel }) {
+// 2.2 speed sweep (Cath: "even the card animations is lagging"): the wallet only redraws
+// when its own data changes, the moving parts of each card (slant, lift) are built once
+// instead of on every redraw (rebuilding them mid-move made the cards hitch), the swipe
+// and hold handlers are only rebuilt when the card order changes, and saving the new
+// order waits until you've stopped flipping for a few seconds.
+export default React.memo(HomeWallet);
+
+function HomeWallet({ model }: { model: HouseholdModel }) {
   const { hidden, money } = useHideAmounts(); // version 3: the Home eye hides these too
   const { colors } = useTheme();
   const { saveModel } = useData();
   const navigation = useNavigation<any>();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const saved = useMemo(() => orderedCards(model), [model]);
   // Local order so moves feel instant; it follows the saved order when that changes.
@@ -88,6 +95,9 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const tops = useRef(new Map<string, Animated.Value>()).current;
   const xs = useRef(new Map<string, Animated.Value>()).current;
   const fades = useRef(new Map<string, Animated.Value>()).current;
+  // Built once per card and reused, so a redraw never swaps them out mid-move.
+  const slants = useRef(new Map<string, Animated.AnimatedInterpolation<string>>()).current;
+  const heldYs = useRef(new Map<string, Animated.AnimatedAddition<number>>()).current;
   cards.forEach((c, i) => {
     if (!tops.has(c.key)) tops.set(c.key, new Animated.Value(i * PEEK));
     if (!xs.has(c.key)) xs.set(c.key, new Animated.Value(0));
@@ -104,7 +114,12 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // The card that was just dropped, while it settles (so its lift and slant ease out).
   const [settling, setSettling] = useState<string | null>(null);
   // The same slant as a swipe: bottom-left corner up, growing with the lift.
-  const liftTilt = liftUp.interpolate({ inputRange: [-LIFT, 0], outputRange: ['5deg', '0deg'], extrapolate: 'clamp' });
+  const liftTilt = useMemo(() => liftUp.interpolate({ inputRange: [-LIFT, 0], outputRange: ['5deg', '0deg'], extrapolate: 'clamp' }), [liftUp]);
+  cards.forEach((c) => {
+    const x = xs.get(c.key) as Animated.Value;
+    if (!slants.has(c.key)) slants.set(c.key, x.interpolate({ inputRange: [-400, 0, 30, 400], outputRange: ['-3deg', '0deg', '5deg', '9deg'], extrapolate: 'clamp' }));
+    if (!heldYs.has(c.key)) heldYs.set(c.key, Animated.add(Animated.add(tops.get(c.key) as Animated.Value, dragY), liftUp));
+  });
   const [dragging, setDragging] = useState<string | null>(null);
   const [gapAt, setGapAt] = useState<number>(-1); // where the lifted card will land
   const dragTarget = useRef<number>(-1);
@@ -139,21 +154,37 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   const pendingKeys = useRef<string[] | null>(null);
   const latestModel = useRef(model);
   latestModel.current = model;
+  const saveRef = useRef(saveModel);
+  saveRef.current = saveModel;
   function flush() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     const keys = pendingKeys.current;
     pendingKeys.current = null;
-    if (keys) saveModel({ ...latestModel.current, walletOrder: keys }).catch(() => {});
+    if (keys) saveRef.current({ ...latestModel.current, walletOrder: keys }).catch(() => {});
   }
   function persist(keys: string[]) {
     setOrder(keys);
     pendingKeys.current = keys;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(flush, 1200);
+    // Saving encrypts your data, which briefly keeps the phone busy, so it waits until
+    // you've stopped flipping (and is never done while a card is moving).
+    const later = () => {
+      if (busy.current) saveTimer.current = setTimeout(later, 800);
+      else flush();
+    };
+    saveTimer.current = setTimeout(later, 3000);
   }
   // Leaving Home before the save happens still saves the order.
   useEffect(() => () => flush(), []);
+  // Closing or leaving the app saves it straight away too.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active') flush();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Swipe right: the front card's bottom-left corner lifts a little (getting ready),
   // then it slides off to the right, still tilted, while the cards behind step down.
@@ -249,7 +280,12 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   // A gentle range with in-between steps so it blends evenly (no dark edge).
   const cardShade = (hex: string, t: number) => mixHex(hex, isDark ? '#1C1C1E' : '#FFFFFF', isDark ? 0.14 + t * 0.12 : 0.06 + t * 0.1);
 
-  const total = totalCurrentBalance(model);
+  const total = useMemo(() => totalCurrentBalance(model), [model]);
+  const amounts = useMemo(() => {
+    const m = new Map<string, number>();
+    saved.forEach((c) => m.set(c.key, accountCurrentBalance(model, c.group, c.account)));
+    return m;
+  }, [model, saved]);
   const openAccounts = () => navigation.navigate('Accounts');
   const amountColor = (n: number) => (n < 0 && !hidden ? colors.negative : colors.positive); // hidden: no red that gives a minus away
 
@@ -319,6 +355,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       });
     return Gesture.Race(drag, swipe, tap);
   }
+  const orderKey = order.join('|');
+  const gestures = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof gestureFor>>();
+    cards.forEach((c, i) => m.set(c.key, gestureFor(c, i)));
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderKey, cards.length, screenW]);
 
   return (
     <View style={styles.section}>
@@ -348,10 +391,10 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
             const j = others.indexOf(c.key);
             const layer = !dragging ? i : lifted ? gapAt : j >= gapAt ? j + 1 : j;
             // Live balance: saved balance plus anything paid from or into it since.
-            const amount = accountCurrentBalance(model, c.group, c.account);
+            const amount = amounts.get(c.key) ?? 0;
             const top = tops.get(c.key) as Animated.Value;
             return (
-              <GestureDetector key={c.key} gesture={gestureFor(c, i)}>
+              <GestureDetector key={c.key} gesture={gestures.get(c.key) as ReturnType<typeof gestureFor>}>
                 <Animated.View
                   testID={`home-wallet-card-${c.account.id}`}
                   accessible
@@ -372,13 +415,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                       borderColor: `${c.account.color || DEFAULT_GROUP_COLORS[c.group]}4D`,
                       backgroundColor: cardShade(c.account.color || DEFAULT_GROUP_COLORS[c.group], 0.5),
                       transform: [
-                        { translateY: held ? Animated.add(Animated.add(top, dragY), liftUp) : top },
+                        { translateY: held ? (heldYs.get(c.key) as Animated.AnimatedAddition<number>) : top },
                         { translateX: xs.get(c.key) as Animated.Value },
                         // The lift: as a card moves to the right, its bottom-left corner (A)
                         // rises above its bottom-right corner (B), mostly in the first few
                         // pixels of movement. Coming back in, it levels out until A and B
                         // line up again as it settles.
-                        { rotate: (xs.get(c.key) as Animated.Value).interpolate({ inputRange: [-400, 0, 30, 400], outputRange: ['-3deg', '0deg', '5deg', '9deg'], extrapolate: 'clamp' }) },
+                        { rotate: slants.get(c.key) as Animated.AnimatedInterpolation<string> },
                         // Held cards get the same slant, as if picked up by a corner.
                         { rotate: held ? liftTilt : '0deg' },
                       ],

@@ -18,7 +18,7 @@ import { getCurrentFirebaseUser } from './authFirebase';
 import { showSaved } from './components/SavedToast';
 import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
 import { Alert, AppState, InteractionManager } from 'react-native';
 import CryptoJS from 'crypto-js';
@@ -797,7 +797,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const cameBack = online && !onlineRef.current;
     if (!online) offlineNoteShownRef.current = false;
     onlineRef.current = online;
-    setIsOnline(online);
+    // 2.2 speed sweep: only tell the app when it actually changed (this runs every few seconds).
+    setIsOnline((was) => (was === online ? was : online));
     if (cameBack) syncPendingChanges();
   }
   function recheckNetwork() {
@@ -1648,9 +1649,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }
 
-  return (
-    <DataContext.Provider
-      value={{
+  // 2.2 speed sweep (Cath: "even the card animations is lagging"): the shared data is
+  // only handed out again when something in it really changed. Before, every redraw here
+  // made every screen in the app (including the hidden tabs) redraw too. It covers every
+  // piece of state above, so the functions inside always see the latest data.
+  const username = usernameRef.current;
+  const value = useMemo(
+    () => ({
         guest,
         guestInfo,
         guestRequest,
@@ -1668,7 +1673,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         refreshModel,
         changePassword,
         verifyPassword,
-        username: usernameRef.current,
+        username,
         isOnline,
         pendingChanges,
         storageUsed,
@@ -1680,8 +1685,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         unlinkAndTransferOwnership,
         linkNoticeMsg,
         clearLinkNoticeMsg,
-      }}
-    >
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [guest, guestInfo, guestRequest, model, loading, isOnline, pendingChanges, storageUsed, isLinked, linkNoticeMsg, username]
+  );
+
+  return (
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );

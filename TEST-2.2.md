@@ -149,3 +149,17 @@ R  2026-10-21 Cath's notes (credit limit, K1 Bill | Debt | Loan, subscription ex
 - R6  Add a transaction: tapping Add responds straight away (the form closes, then the
       row slides in). Add a few things quickly one after another: all of them are there,
       also after closing and reopening the app.
+
+S  2026-10-21 Speed sweep (cards, whole-app redraws) + "Hey, are you still there?".
+   NOT YET TESTED.
+- S1  Home > Accounts cards: swipe right and left several times in a row, quickly. Each
+      card follows your finger and flies off/comes back smoothly, with no hitch halfway.
+- S2  Hold a card and drag it up and down: the gap moves smoothly, it drops in cleanly.
+- S3  Flip a few cards, wait 5 seconds, close the app fully and reopen: the card order
+      you left is still there. (Flip, then go straight to the home screen of the phone:
+      also kept.)
+- S4  Move around the app (Home, Transactions, To-Pay, Plan), add and edit a few things:
+      everything still updates as before (amounts, Left to Spend, offline banner when you
+      turn on airplane mode, back to normal when you turn it off).
+- S5  Leave the app alone until the check-in appears: it says "Hey, are you still
+      there?" and the button says "Good".

@@ -60,12 +60,12 @@ export function StillTherePopup({
             {/* 2.2 (approved P3): the app's leaf instead of the waving-hand emoji, like the cover. */}
             <Ionicons name="leaf-outline" size={28} color={colors.gold} />
           </View>
-          <Text style={s.title}>Are you still there?</Text>
+          <Text style={s.title}>Hey, are you still there?</Text>
           <Text style={s.body}>
             Your amounts will hide in <Text style={{ fontWeight: '800', color: colors.ink }}>{`0:${String(left).padStart(2, '0')}`}</Text> to keep them private.
           </Text>
           <TouchableOpacity style={[s.primary, { backgroundColor: colors.buttonFill }]} onPress={onHere} accessibilityRole="button" testID="still-there-here">
-            <Text style={[s.primaryText, { color: colors.onButton }]}>I'm here</Text>
+            <Text style={[s.primaryText, { color: colors.onButton }]}>Good</Text>
           </TouchableOpacity>
           <View style={[s.tip, { backgroundColor: colors.navy2 }]}>
             <Ionicons name="lock-closed-outline" size={20} color={colors.gold} style={{ marginTop: 2 }} />

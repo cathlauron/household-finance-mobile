@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, AccessibilityInfo, AppState } from 'react-native';
-import Svg, { Path, G, Rect } from 'react-native-svg';
+import Svg, { Path, G } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
 import { useMood } from '../mood';
 import { useData } from '../DataContext';
@@ -126,10 +126,13 @@ export default function LeafBackground() {
   const moving = !reduceMotion;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
-        <Rect x="0" y="0" width={width} height={height} fill={colors.navy2} />
-        {!moving && <G transform={`scale(${scale})`}>{leaves}</G>}
-      </Svg>
+      {/* 2.2 speed sweep: the plain page colour is a simple fill (not a full-screen drawing). */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy2 }]} />
+      {!moving && (
+        <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
+          <G transform={`scale(${scale})`}>{leaves}</G>
+        </Svg>
+      )}
       {moving && <FallingLeaves color={leaf} opacity={opacity} veinColor={colors.navy2} paused={!fallingOn || !appActive} />}
     </View>
   );
