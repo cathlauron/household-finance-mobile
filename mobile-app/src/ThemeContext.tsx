@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, startTransition } from 'react';
 import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, ThemeColors } from './theme';
@@ -40,9 +40,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [mode]);
 
+  // 2.2 speed fix (Cath: the light/dark button lagged): recolouring every screen is big
+  // work, so it runs as a background update; the button you tapped reacts at once.
   const setMode = (m: ColorMode) => {
-    setModeState(m);
-    setIsDark(resolveIsDark(m));
+    startTransition(() => {
+      setModeState(m);
+      setIsDark(resolveIsDark(m));
+    });
     AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
   };
 

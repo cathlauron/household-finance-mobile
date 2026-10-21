@@ -14,7 +14,8 @@ import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
-import { useToPayAddRequest } from '../fabActions';
+import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
+import KindSwitch from '../components/KindSwitch';
 import PayRow from '../components/PayRow';
 import PriorityPick from '../components/PriorityPick';
 import { Priority, priorityRank } from '../priority';
@@ -107,6 +108,16 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   useToPayAddRequest('loans', () => {
     if (!formOnly) openAddModal();
   });
+  // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
+  React.useEffect(() => {
+    const carry = takePendingAdd('loans');
+    if (!carry || formOnly) return;
+    openAddModal();
+    setTotalAmountInput(carry.amount);
+    setNameInput(carry.name);
+    // Only when this list first shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -634,6 +645,16 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
         grouped
         header={<SheetBar title={editingId ? 'Edit loan' : 'New loan'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        {!editingId && (
+          <KindSwitch
+            current="loans"
+            onSwitch={(to) => {
+              const carry = { amount: totalAmountInput, name: nameInput };
+              closeModal();
+              switchToPayAdd(to, carry);
+            }}
+          />
+        )}
         <View style={{ marginBottom: 12 }}>
           <SegmentedControl<'borrowed' | 'lent'>
             accessibilityLabel="Borrowed or lent"

@@ -20,7 +20,7 @@ import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, InteractionManager } from 'react-native';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel, ManualTransaction } from './types';
 import { stampHouseholdWho } from './whoStamp';
@@ -895,6 +895,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     persistQueuedRef.current = true;
     inSaveLine(async () => {
       try {
+        // Version 2.2 speed fix (Cath: tapping Add still lagged): locking the data
+        // (encrypting it) blocks the screen while it runs, so it now waits until the form has
+        // closed and the list has redrawn (about a quarter of a second). Saves made in that
+        // moment are written together. Log out / Switch account still wait for this.
+        await new Promise<void>((resolve) => InteractionManager.runAfterInteractions(() => setTimeout(resolve, 250)));
         while (persistDirtyRef.current) {
           persistDirtyRef.current = false;
           const username = usernameRef.current;

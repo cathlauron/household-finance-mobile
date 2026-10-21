@@ -12,7 +12,8 @@ import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
-import { useToPayAddRequest } from '../fabActions';
+import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
+import KindSwitch from '../components/KindSwitch';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -73,6 +74,16 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   useToPayAddRequest('bills', () => {
     if (!formOnly) openAddModal();
   });
+  // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
+  React.useEffect(() => {
+    const carry = takePendingAdd('bills');
+    if (!carry || formOnly) return;
+    openAddModal();
+    setAmountInput(carry.amount);
+    setNameInput(carry.name);
+    // Only when this list first shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -624,6 +635,16 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         grouped
         header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        {!editingId && (
+          <KindSwitch
+            current="bills"
+            onSwitch={(to) => {
+              const carry = { amount: amountInput, name: nameInput };
+              closeModal();
+              switchToPayAdd(to, carry);
+            }}
+          />
+        )}
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>
@@ -672,6 +693,10 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
 
         <FormGroup>
           <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
+          {/* 2.2 (Cath): when to tick it. */}
+          <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, paddingHorizontal: 16, paddingBottom: 12, marginTop: -4 }}>
+            Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
+          </Text>
           <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
             <Text style={styles.inlineLabel}>Priority</Text>
             <Choices

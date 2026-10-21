@@ -39,9 +39,16 @@ export function accountProblem(
   if (!pm || !pm.accountId) {
     return direction === 'in' ? 'Choose which account this goes into.' : 'Choose which account this is paid from.';
   }
-  if (direction === 'in' || pm.type === 'credit') return null;
+  if (direction === 'in') return null;
   const bal = availableBalance(model, pm, excludeTxnId) ?? 0;
   const name = model.balanceAccounts[pm.type].find((a) => a.id === pm.accountId)?.name || GROUP_LABEL[pm.type];
+  // Version 2.2 (Cath): credit cards are checked too, against what's still available to
+  // use on the card (its balance in the app is the amount you can still use).
+  if (pm.type === 'credit') {
+    if (bal <= 0) return `Insufficient balance: ${name} has nothing left to use.`;
+    if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} has ${formatPeso(bal)} available to use.`;
+    return null;
+  }
   if (bal <= 0) return `${name} has no balance left.`;
   if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} has ${formatPeso(bal)}.`;
   return null;

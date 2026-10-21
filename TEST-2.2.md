@@ -130,3 +130,22 @@ Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). 
 - Q8  (Cath: taps didn't respond at once, typing an amount lagged.) Taps respond straight
       away everywhere (rows just fade; only the main buttons like Save / Pay / Add squeeze).
       In + > transaction, typing an amount and a description keeps up with your fingers.
+
+R  2026-10-21 Cath's notes (credit limit, K1 Bill | Debt | Loan, subscription example,
+   light/dark lag, Add lag). NOT YET TESTED.
+- R1  Pay something with a credit card for more than it has available (bill Pay sheet, a
+      new transaction, a trip item): it says "Insufficient balance: <card> has ₱X available
+      to use." and doesn't save. A card with nothing left says so too. An amount within
+      what's available still works.
+- R2  To-Pay > Debts > +: "New debt" has Bill | Debt | Loan at the top (on Debt), one
+      short line under it, and a ? button. Type an amount and "Owed to", then tap Bill:
+      the New bill form opens with the same amount and name. Tap Loan: New loan, same.
+      Same from Bills and Loans. Editing an existing one does NOT show the switch.
+- R3  The ? opens a short explanation of Transaction, Bill, Debt and Loan, with "Quick way
+      to tell" at the end. Tap ? again to hide it.
+- R4  New bill: under the Subscription switch, an example says when to tick it.
+- R5  Home's moon/sun button: the icon changes the moment you tap it; the app recolours
+      right after.
+- R6  Add a transaction: tapping Add responds straight away (the form closes, then the
+      row slides in). Add a few things quickly one after another: all of them are there,
+      also after closing and reopening the app.

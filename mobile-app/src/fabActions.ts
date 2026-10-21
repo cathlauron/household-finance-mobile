@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { requestToPayTab } from './openToPayTabRequest';
 
 // Redesign: what the floating + button adds depends on where you are.
 // - On To-Pay it adds whatever sub-tab is showing: a bill, a debt or a loan.
@@ -45,4 +46,22 @@ export function useToPayAddRequest(sub: ToPaySub, open: () => void) {
       addListeners.delete(listener);
     };
   }, [sub]);
+}
+
+// Version 2.2 (canvas K1): switching a NEW bill / debt / loan form to another kind. The
+// amount and name typed so far are carried over; To-Pay shows that list, and its screen
+// opens its own add form with them.
+export type AddCarry = { amount: number | ''; name: string };
+let pendingAdd: { sub: ToPaySub; carry: AddCarry } | null = null;
+
+export function switchToPayAdd(sub: ToPaySub, carry: AddCarry) {
+  pendingAdd = { sub, carry };
+  requestToPayTab(sub);
+}
+
+export function takePendingAdd(sub: ToPaySub): AddCarry | null {
+  if (!pendingAdd || pendingAdd.sub !== sub) return null;
+  const c = pendingAdd.carry;
+  pendingAdd = null;
+  return c;
 }

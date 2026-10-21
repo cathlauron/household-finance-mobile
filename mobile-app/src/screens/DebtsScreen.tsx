@@ -10,7 +10,8 @@ import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native'
 import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
-import { useToPayAddRequest } from '../fabActions';
+import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
+import KindSwitch from '../components/KindSwitch';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
@@ -76,6 +77,16 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   useToPayAddRequest('debts', () => {
     if (!formOnly) openAddModal();
   });
+  // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
+  React.useEffect(() => {
+    const carry = takePendingAdd('debts');
+    if (!carry || formOnly) return;
+    openAddModal();
+    setAmountInput(carry.amount);
+    setCreditorInput(carry.name);
+    // Only when this list first shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -564,6 +575,16 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
         grouped
         header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        {!editingId && (
+          <KindSwitch
+            current="debts"
+            onSwitch={(to) => {
+              const carry = { amount: amountInput, name: creditorInput };
+              closeModal();
+              switchToPayAdd(to, carry);
+            }}
+          />
+        )}
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>

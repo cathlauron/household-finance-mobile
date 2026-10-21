@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -174,17 +174,7 @@ export default function HomeScreen({ username }: Props) {
         <View style={hs.headerRight}>
           <OfflineCloud />
           {/* Quick light/dark switch (sets Light or Dark; Settings → Appearance can go back to Auto). */}
-          <TouchableOpacity
-            testID="home-theme-toggle"
-            accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={hs.bellBtn}
-            onPress={() => {
-              hapticSelection();
-              setMode(isDark ? 'light' : 'dark');
-            }}
-          >
-            <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={23} color={colors.ink} />
-          </TouchableOpacity>
+          <ThemeToggle style={hs.bellBtn} />
           <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn} onPress={() => setBellOpen(true)}>
             <Ionicons name="notifications-outline" size={24} color={colors.ink} />
             {unreadCount > 0 ? (
@@ -468,4 +458,29 @@ function makeHomeStyles(colors: any) {
     slimBarLabel: { fontSize: 13, fontWeight: '600' },
     slimBarAmount: { fontSize: 15, fontWeight: '700' },
   });
+}
+
+// 2.2 speed fix (Cath: the light/dark button lagged): its own small piece, so the icon
+// flips the moment it's tapped while the whole app recolours just after.
+function ThemeToggle({ style }: { style: object }) {
+  const { colors, isDark, setMode } = useTheme();
+  const [shown, setShown] = useState<boolean | null>(null);
+  const dark = shown ?? isDark;
+  useEffect(() => {
+    setShown(null);
+  }, [isDark]);
+  return (
+    <TouchableOpacity
+      testID="home-theme-toggle"
+      accessibilityLabel={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      style={style}
+      onPress={() => {
+        hapticSelection();
+        setShown(!dark);
+        setMode(dark ? 'light' : 'dark');
+      }}
+    >
+      <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={23} color={colors.ink} />
+    </TouchableOpacity>
+  );
 }
