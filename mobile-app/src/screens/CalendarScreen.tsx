@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/AppText';
@@ -87,12 +87,16 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
 // Version 2.2 (canvas C1-C5, approved, plus Cath's additions): the calendar works like the
 // iPhone's. It slides up from the bottom as a full page, and only the months move when you
 // scroll or swipe (the page itself can't be dragged closed; Done closes it).
-// - Year: 12 small months per year; tap one to open it.
+// - Year: 12 small months per year; tap one to open it. Today scrolls to this year (and
+//   tapping Today again opens this month).
 // - Month: Scroll up and down (months follow each other) or Swipe sideways (one month per
-//   page), chosen in the view menu and remembered.
+//   page), chosen in the view menu and remembered. List follows the same choice.
 // - Compact (dots under each day), Details (names inside each day), or List (one month on
 //   top, the chosen day's items underneath). Tapping a day shows its list.
 // - Projected balance at the bottom (can be turned off in the view menu).
+// Smoothness: each month's items are worked out once per change of data (cached), months
+// only redraw when something about them changes, and only the months near the screen are
+// drawn.
 
 type Page = { year: number; month: number };
 const PAGES_EACH_SIDE = 24;
@@ -117,6 +121,23 @@ function isoOf(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+// Each month's items, worked out once per version of the household data.
+const eventCache = new WeakMap<object, Map<string, Record<number, CalendarEvent[]>>>();
+function monthEventsFor(model: any, year: number, month: number): Record<number, CalendarEvent[]> {
+  let byMonth = eventCache.get(model);
+  if (!byMonth) {
+    byMonth = new Map();
+    eventCache.set(model, byMonth);
+  }
+  const key = `${year}-${month}`;
+  let ev = byMonth.get(key);
+  if (!ev) {
+    ev = computeMonthEvents(model, year, month);
+    byMonth.set(key, ev);
+  }
+  return ev;
+}
+
 type GridProps = {
   year: number;
   month: number;
@@ -131,8 +152,8 @@ type GridProps = {
 const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, selectedDay, onDayPress }: GridProps) {
   const { colors } = useTheme();
   const { model } = useData();
-  const s = makeStyles(colors);
-  const events = useMemo(() => (model ? computeMonthEvents(model, year, month) : ({} as Record<number, CalendarEvent[]>)), [model, year, month]);
+  const s = useMemo(() => makeStyles(colors), [colors]);
+  const events = model ? monthEventsFor(model, year, month) : ({} as Record<number, CalendarEvent[]>);
   const now = new Date();
   const first = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
@@ -157,10 +178,9 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
             const evs = events[d] || [];
             const weekend = ci === 0 || ci === 6;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={ci}
                 style={s.cell}
-                activeOpacity={0.6}
                 onPress={() => onDayPress(year, month, d)}
                 accessibilityLabel={`${MONTHS[month]} ${d}${evs.length ? `, ${evs.length} item${evs.length === 1 ? '' : 's'}` : ''}`}
               >
@@ -183,7 +203,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
                     ))}
                   </View>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -192,20 +212,19 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
   );
 });
 
-// One small month for the year view.
-const MiniMonth = React.memo(function MiniMonth({ year, month, onPress, width }: { year: number; month: number; onPress: () => void; width: number }) {
+// One small month for the year view. Always 6 weeks tall, so every year is the same height.
+const MiniMonth = React.memo(function MiniMonth({ year, month, onOpen, width }: { year: number; month: number; onOpen: (y: number, m: number) => void; width: number }) {
   const { colors } = useTheme();
   const now = new Date();
   const first = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
-  const weeks = weeksIn(year, month);
   const cell = Math.floor(width / 7);
   const isThisMonth = year === now.getFullYear() && month === now.getMonth();
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.6} style={{ width, marginBottom: 18 }} accessibilityLabel={`${MONTHS[month]} ${year}`}>
+    <Pressable onPress={() => onOpen(year, month)} style={{ width, height: miniHeight(width) }} accessibilityLabel={`${MONTHS[month]} ${year}`}>
       <Text style={{ fontSize: 17, fontWeight: '800', color: isThisMonth ? colors.gold : colors.ink, marginBottom: 4 }}>{MONTHS[month].slice(0, 3)}</Text>
-      {Array.from({ length: weeks }).map((_, w) => (
-        <View key={w} style={{ flexDirection: 'row' }}>
+      {Array.from({ length: 6 }).map((_, w) => (
+        <View key={w} style={{ flexDirection: 'row', height: cell }}>
           {Array.from({ length: 7 }).map((__, c) => {
             const d = w * 7 + c - first + 1;
             const show = d >= 1 && d <= days;
@@ -218,9 +237,34 @@ const MiniMonth = React.memo(function MiniMonth({ year, month, onPress, width }:
           })}
         </View>
       ))}
-    </TouchableOpacity>
+    </Pressable>
   );
 });
+function miniHeight(width: number): number {
+  return 26 + 6 * Math.floor(width / 7) + 14;
+}
+
+const YearBlock = React.memo(function YearBlock({ year, pages, miniW, onOpen }: { year: number; pages: Page[]; miniW: number; onOpen: (y: number, m: number) => void }) {
+  const { colors } = useTheme();
+  const s = useMemo(() => makeStyles(colors), [colors]);
+  const thisYear = new Date().getFullYear();
+  return (
+    <View style={{ paddingHorizontal: 20 }}>
+      <Text style={[s.yearTitle, year === thisYear && { color: colors.gold }]}>{year}</Text>
+      <View style={s.yearLine} />
+      <View style={s.yearGrid}>
+        {Array.from({ length: 12 }).map((_, m) =>
+          pages.some((p) => p.year === year && p.month === m) ? (
+            <MiniMonth key={m} year={year} month={m} width={miniW} onOpen={onOpen} />
+          ) : (
+            <View key={m} style={{ width: miniW, height: miniHeight(miniW) }} />
+          )
+        )}
+      </View>
+    </View>
+  );
+});
+const YEAR_HEAD = 72; // title + line
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
@@ -228,7 +272,7 @@ export default function CalendarScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const s = makeStyles(colors);
+  const s = useMemo(() => makeStyles(colors), [colors]);
   const today = new Date();
   const pages = useMemo(buildPages, []);
   const todayIndex = PAGES_EACH_SIDE;
@@ -255,8 +299,6 @@ export default function CalendarScreen() {
   const page = pages[index] ?? pages[todayIndex];
   const listLayout = viewMode === 'list' || dayOpen;
   const gridMode: 'compact' | 'details' = viewMode === 'details' ? 'details' : 'compact';
-  const gridModeRef = useRef(gridMode);
-  gridModeRef.current = gridMode;
 
   const selDay =
     selected && selected.year === page.year && selected.month === page.month
@@ -264,53 +306,102 @@ export default function CalendarScreen() {
       : page.year === today.getFullYear() && page.month === today.getMonth()
       ? today.getDate()
       : 1;
-  const monthEvents = useMemo(() => (model ? computeMonthEvents(model, page.year, page.month) : ({} as Record<number, CalendarEvent[]>)), [model, page.year, page.month]);
-  const balances = useMemo(() => (model ? computeRunningBalances(model, page.year, page.month) : ({} as Record<number, number>)), [model, page.year, page.month]);
+  const balances = useMemo(
+    () => (model && showBalance ? computeRunningBalances(model, page.year, page.month) : ({} as Record<number, number>)),
+    [model, page.year, page.month, showBalance]
+  );
 
-  // ---------- the vertical (scroll) list ----------
-  const ROW_SCROLL = 62;
+  // ---------- the vertical (scroll) list of months ----------
+  const ROW_SCROLL = gridMode === 'details' ? 96 : 62;
   const LABEL_H = 46;
-  const heights = useMemo(() => pages.map((p) => LABEL_H + weeksIn(p.year, p.month) * ROW_SCROLL), [pages]);
   const offsets = useMemo(() => {
     const o: number[] = [];
     let acc = 0;
-    for (const h of heights) {
+    for (const p of pages) {
       o.push(acc);
-      acc += h;
+      acc += LABEL_H + weeksIn(p.year, p.month) * ROW_SCROLL;
     }
+    o.push(acc);
     return o;
-  }, [heights]);
-  const offsetFor = (i: number) => offsets[i] + (gridModeRef.current === 'details' ? detailsExtra(pages, i) : 0);
+  }, [pages, ROW_SCROLL]);
   const vRef = useRef<FlatList<Page>>(null);
   const hRef = useRef<FlatList<Page>>(null);
+  const indexRef = useRef(index);
+  indexRef.current = index;
   const onViewable = useRef(({ viewableItems }: any) => {
     const top = viewableItems.find((v: any) => v.isViewable);
-    if (top && typeof top.index === 'number') setIndex(top.index);
+    if (top && typeof top.index === 'number' && top.index !== indexRef.current) setIndex(top.index);
   }).current;
   const viewCfg = useRef({ itemVisiblePercentThreshold: 40 }).current;
 
-  function jumpTo(i: number, animated = true) {
-    const clamped = Math.max(0, Math.min(pages.length - 1, i));
-    setIndex(clamped);
+  // Stable, so the months on screen don't all redraw when one thing changes.
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  const onDayPress = useCallback(
+    (y: number, m: number, d: number) => {
+      hapticSelection();
+      setSelected({ year: y, month: m, day: d });
+      const i = pages.findIndex((p) => p.year === y && p.month === m);
+      if (i >= 0) setIndex(i);
+      if (viewModeRef.current !== 'list') setDayOpen(true);
+    },
+    [pages]
+  );
+
+  // List view: the month on top changes one at a time (up/down or sideways).
+  const LIST_ROW = 46;
+  const listPageH = 6 * LIST_ROW;
+
+  function scrollToPage(i: number, animated = true) {
     requestAnimationFrame(() => {
-      if (!listLayout && navMode === 'scroll') vRef.current?.scrollToOffset({ offset: offsetFor(clamped), animated });
-      else hRef.current?.scrollToOffset({ offset: clamped * width, animated });
+      if (listLayout) {
+        if (navMode === 'scroll') hRef.current?.scrollToOffset({ offset: i * listPageH, animated });
+        else hRef.current?.scrollToOffset({ offset: i * width, animated });
+      } else if (navMode === 'scroll') vRef.current?.scrollToOffset({ offset: offsets[i], animated });
+      else hRef.current?.scrollToOffset({ offset: i * width, animated });
     });
   }
 
-  function onDayPress(y: number, m: number, d: number) {
-    hapticSelection();
-    setSelected({ year: y, month: m, day: d });
-    const i = pages.findIndex((p) => p.year === y && p.month === m);
-    if (i >= 0) setIndex(i);
-    if (viewMode !== 'list') setDayOpen(true);
-  }
+  // ---------- year view ----------
+  const miniW = Math.floor((width - 40 - 20) / 3);
+  const yearH = YEAR_HEAD + 4 * miniHeight(miniW);
+  const years = useMemo(() => {
+    const ys: number[] = [];
+    for (let y = pages[0].year; y <= pages[pages.length - 1].year; y++) ys.push(y);
+    return ys;
+  }, [pages]);
+  const yearListRef = useRef<FlatList<number>>(null);
+  // Today in the year view: the first tap shows this year; a second tap opens this month.
+  const [todayArmed, setTodayArmed] = useState(false);
+  const openMonthFromYear = useCallback(
+    (y: number, m: number) => {
+      hapticSelection();
+      const i = pages.findIndex((p) => p.year === y && p.month === m);
+      if (i < 0) return;
+      setDayOpen(false);
+      setIndex(i);
+      setLevel('month');
+    },
+    [pages]
+  );
 
   function goToday() {
     hapticSelection();
+    if (level === 'year') {
+      const yi = years.indexOf(today.getFullYear());
+      if (todayArmed) {
+        setTodayArmed(false);
+        setSelected({ year: today.getFullYear(), month: today.getMonth(), day: today.getDate() });
+        openMonthFromYear(today.getFullYear(), today.getMonth());
+        return;
+      }
+      if (yi >= 0) yearListRef.current?.scrollToOffset({ offset: yi * yearH, animated: true });
+      setTodayArmed(true);
+      return;
+    }
     setSelected({ year: today.getFullYear(), month: today.getMonth(), day: today.getDate() });
-    if (level === 'year') setLevel('month');
-    jumpTo(todayIndex);
+    setIndex(todayIndex);
+    scrollToPage(todayIndex);
   }
 
   function chooseView(m: CalendarViewMode) {
@@ -345,13 +436,53 @@ export default function CalendarScreen() {
     afterSlide(() => requestToPayAdd());
   }
 
-  const visibleYears = useMemo(() => {
-    const ys: number[] = [];
-    for (let y = pages[0].year; y <= pages[pages.length - 1].year; y++) ys.push(y);
-    return ys;
-  }, [pages]);
-  const yearRef = useRef<ScrollView>(null);
-  const yearOffsets = useRef<Record<number, number>>({});
+  const selectedForList = listLayout ? { y: page.year, m: page.month, d: selDay } : null;
+  const renderHorizontal = useCallback(
+    ({ item }: { item: Page }) => (
+      <View style={{ width }}>
+        <MonthGrid
+          year={item.year}
+          month={item.month}
+          mode={gridMode}
+          rowHeight={gridMode === 'details' ? 96 : 70}
+          selectedDay={null}
+          onDayPress={onDayPress}
+        />
+      </View>
+    ),
+    [width, gridMode, onDayPress]
+  );
+  const renderVertical = useCallback(
+    ({ item }: { item: Page }) => (
+      <View>
+        <Text style={s.inlineMonth}>{item.month === 0 ? `${MONTHS[item.month]} ${item.year}` : MONTHS[item.month]}</Text>
+        <MonthGrid year={item.year} month={item.month} mode={gridMode} rowHeight={ROW_SCROLL} selectedDay={null} onDayPress={onDayPress} />
+      </View>
+    ),
+    [gridMode, ROW_SCROLL, onDayPress, s]
+  );
+  const selY = selectedForList?.y;
+  const selM = selectedForList?.m;
+  const selD = selectedForList?.d;
+  const renderListPage = useCallback(
+    ({ item }: { item: Page }) => (
+      <View style={navMode === 'scroll' ? { height: listPageH } : { width }}>
+        <MonthGrid
+          year={item.year}
+          month={item.month}
+          mode="compact"
+          rowHeight={LIST_ROW}
+          selectedDay={item.year === selY && item.month === selM ? (selD as number) : null}
+          onDayPress={onDayPress}
+        />
+      </View>
+    ),
+    [navMode, listPageH, width, selY, selM, selD, onDayPress]
+  );
+  const renderYear = useCallback(
+    ({ item }: { item: number }) => <YearBlock year={item} pages={pages} miniW={miniW} onOpen={openMonthFromYear} />,
+    [pages, miniW, openMonthFromYear]
+  );
 
   if (!model) {
     return (
@@ -364,7 +495,6 @@ export default function CalendarScreen() {
   const balanceDay = showBalance ? balances[selDay] : undefined;
   const bottomRight =
     typeof balanceDay === 'number' ? `${MONTHS[page.month].slice(0, 3)} ${selDay} · ${formatPeso(balanceDay)}` : '';
-  const miniW = Math.floor((width - 40 - 20) / 3);
 
   const header = (
     <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
@@ -378,7 +508,15 @@ export default function CalendarScreen() {
           <Text style={s.link}>{MONTHS[page.month]}</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity onPress={() => setLevel('year')} hitSlop={10} accessibilityRole="button" style={s.backRow}>
+        <TouchableOpacity
+          onPress={() => {
+            setTodayArmed(false);
+            setLevel('year');
+          }}
+          hitSlop={10}
+          accessibilityRole="button"
+          style={s.backRow}
+        >
           <Ionicons name="chevron-back" size={22} color={colors.gold} />
           <Text style={s.link}>{page.year}</Text>
         </TouchableOpacity>
@@ -409,86 +547,60 @@ export default function CalendarScreen() {
     </View>
   );
 
-  const pager = (rowHeight: number, mode: 'compact' | 'details') => (
-    <FlatList
-      key={`h-${rowHeight}-${mode}`}
-      ref={hRef}
-      horizontal
-      pagingEnabled
-      showsHorizontalScrollIndicator={false}
-      data={pages}
-      keyExtractor={(p) => `${p.year}-${p.month}`}
-      initialScrollIndex={index}
-      getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-      initialNumToRender={1}
-      windowSize={3}
-      onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
-      renderItem={({ item }) => (
-        <View style={{ width }}>
-          <MonthGrid
-            year={item.year}
-            month={item.month}
-            mode={mode}
-            rowHeight={rowHeight}
-            selectedDay={listLayout && item.year === page.year && item.month === page.month ? selDay : null}
-            onDayPress={onDayPress}
-          />
-        </View>
-      )}
-    />
-  );
-
   let body: React.ReactNode;
   if (level === 'year') {
+    const yi = Math.max(0, years.indexOf(page.year));
     body = (
-      <ScrollView
-        ref={yearRef}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+      <FlatList
+        ref={yearListRef}
+        data={years}
+        keyExtractor={(y) => String(y)}
+        renderItem={renderYear}
+        initialScrollIndex={yi}
+        getItemLayout={(_, i) => ({ length: yearH, offset: yearH * i, index: i })}
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
+        windowSize={3}
+        onScrollBeginDrag={() => setTodayArmed(false)}
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
-      >
-        {visibleYears.map((y) => (
-          <View
-            key={y}
-            onLayout={(e) => {
-              yearOffsets.current[y] = e.nativeEvent.layout.y;
-              if (y === page.year) yearRef.current?.scrollTo({ y: e.nativeEvent.layout.y, animated: false });
-            }}
-          >
-            <Text style={[s.yearTitle, y === today.getFullYear() && { color: colors.gold }]}>{y}</Text>
-            <View style={s.yearLine} />
-            <View style={s.yearGrid}>
-              {Array.from({ length: 12 }).map((_, m) => {
-                const i = pages.findIndex((p) => p.year === y && p.month === m);
-                if (i < 0) return <View key={m} style={{ width: miniW }} />;
-                return (
-                  <MiniMonth
-                    key={m}
-                    year={y}
-                    month={m}
-                    width={miniW}
-                    onPress={() => {
-                      hapticSelection();
-                      setLevel('month');
-                      setDayOpen(false);
-                      setIndex(i);
-                    }}
-                  />
-                );
-              })}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+      />
     );
   } else if (listLayout) {
-    const evs = monthEvents[selDay] || [];
+    const evs = monthEventsFor(model, page.year, page.month)[selDay] || [];
     const isToday = page.year === today.getFullYear() && page.month === today.getMonth() && selDay === today.getDate();
     const label = `${isToday ? 'Today · ' : ''}${DOW_LONG[new Date(page.year, page.month, selDay).getDay()]}, ${MONTHS[page.month].slice(0, 3)} ${selDay}`;
+    const vertical = navMode === 'scroll';
     body = (
       <View style={{ flex: 1 }}>
         <Text style={s.monthTitle}>{MONTHS[page.month]}</Text>
         {dow}
-        <View>{pager(50, 'compact')}</View>
+        <View style={{ height: listPageH }}>
+          <FlatList
+            key={vertical ? 'list-v' : 'list-h'}
+            ref={hRef}
+            horizontal={!vertical}
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            data={pages}
+            keyExtractor={(p) => `${p.year}-${p.month}`}
+            initialScrollIndex={index}
+            getItemLayout={(_, i) => {
+              const len = vertical ? listPageH : width;
+              return { length: len, offset: len * i, index: i };
+            }}
+            initialNumToRender={1}
+            maxToRenderPerBatch={2}
+            windowSize={3}
+            onMomentumScrollEnd={(e) => {
+              const off = vertical ? e.nativeEvent.contentOffset.y : e.nativeEvent.contentOffset.x;
+              const i = Math.round(off / (vertical ? listPageH : width));
+              if (i !== indexRef.current) setIndex(i);
+            }}
+            renderItem={renderListPage}
+          />
+        </View>
         <View style={s.dayHead}>
           <Text style={s.dayTitle} numberOfLines={1}>{label}</Text>
           {showBalance && typeof balances[selDay] === 'number' && <Text style={s.dayBal}>Balance {formatPeso(balances[selDay])}</Text>}
@@ -503,9 +615,7 @@ export default function CalendarScreen() {
                 const amt = eventAmount(ev, colors);
                 const open =
                   ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
-                    ? () => {
-                        navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' });
-                      }
+                    ? () => navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' })
                     : undefined;
                 return (
                   <TouchableOpacity key={i} disabled={!open} onPress={open} activeOpacity={0.6} style={[s.row, i > 0 && s.rowTop]}>
@@ -528,7 +638,25 @@ export default function CalendarScreen() {
       <View style={{ flex: 1 }}>
         <Text style={s.monthTitle}>{MONTHS[page.month]}</Text>
         {dow}
-        {pager(gridMode === 'details' ? 96 : 70, gridMode)}
+        <FlatList
+          key={`h-${gridMode}`}
+          ref={hRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          data={pages}
+          keyExtractor={(p) => `${p.year}-${p.month}`}
+          initialScrollIndex={index}
+          getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          onMomentumScrollEnd={(e) => {
+            const i = Math.round(e.nativeEvent.contentOffset.x / width);
+            if (i !== indexRef.current) setIndex(i);
+          }}
+          renderItem={renderHorizontal}
+        />
       </View>
     );
   } else {
@@ -542,18 +670,15 @@ export default function CalendarScreen() {
           data={pages}
           keyExtractor={(p) => `${p.year}-${p.month}`}
           initialScrollIndex={index}
-          getItemLayout={(_, i) => ({ length: heights[i] + (gridMode === 'details' ? weeksIn(pages[i].year, pages[i].month) * 34 : 0), offset: offsetFor(i), index: i })}
+          getItemLayout={(_, i) => ({ length: offsets[i + 1] - offsets[i], offset: offsets[i], index: i })}
           initialNumToRender={2}
+          maxToRenderPerBatch={2}
           windowSize={5}
+          removeClippedSubviews
           onViewableItemsChanged={onViewable}
           viewabilityConfig={viewCfg}
           contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={({ item }) => (
-            <View>
-              <Text style={s.inlineMonth}>{item.month === 0 ? `${MONTHS[item.month]} ${item.year}` : MONTHS[item.month]}</Text>
-              <MonthGrid year={item.year} month={item.month} mode={gridMode} rowHeight={gridMode === 'details' ? ROW_SCROLL + 34 : ROW_SCROLL} selectedDay={null} onDayPress={onDayPress} />
-            </View>
-          )}
+          renderItem={renderVertical}
         />
       </View>
     );
@@ -564,7 +689,6 @@ export default function CalendarScreen() {
       {header}
       {body}
       <View style={[s.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <GradientFill match={s.bottomBar} />
         <TouchableOpacity onPress={goToday} hitSlop={10} accessibilityRole="button">
           <Text style={s.link}>Today</Text>
         </TouchableOpacity>
@@ -642,13 +766,6 @@ export default function CalendarScreen() {
   );
 }
 
-// Extra height above month i in Details (each week row is 34 taller there).
-function detailsExtra(pages: Page[], i: number): number {
-  let extra = 0;
-  for (let k = 0; k < i; k++) extra += weeksIn(pages[k].year, pages[k].month) * 34;
-  return extra;
-}
-
 const DOW_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function makeStyles(colors: any) {
@@ -672,8 +789,8 @@ function makeStyles(colors: any) {
     pill: { borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1, marginTop: 2 },
     pillText: { fontSize: 10, fontWeight: '700' },
     pillMore: { fontSize: 10, color: colors.inkDim, textAlign: 'center' },
-    yearTitle: { fontSize: 38, fontWeight: '800', color: colors.ink, marginTop: 10 },
-    yearLine: { height: StyleSheet.hairlineWidth, backgroundColor: colors.inkFaint, marginTop: 6, marginBottom: 14 },
+    yearTitle: { fontSize: 38, fontWeight: '800', color: colors.ink, marginTop: 10, height: 48 },
+    yearLine: { height: StyleSheet.hairlineWidth, backgroundColor: colors.inkFaint, marginTop: 0, marginBottom: 14 },
     yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 10 },
     dayTitle: { fontSize: 18, fontWeight: '800', color: colors.ink, flexShrink: 1 },
@@ -686,7 +803,7 @@ function makeStyles(colors: any) {
     rowTitle: { fontSize: 16, fontWeight: '600', color: colors.ink },
     rowSub: { fontSize: 13, color: colors.inkDim },
     rowAmt: { fontSize: 15, fontWeight: '700' },
-    bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 14, backgroundColor: colors.navy3, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4, overflow: 'hidden' },
+    bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 14, backgroundColor: colors.navy3, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     bottomBal: { fontSize: 16, fontWeight: '700', color: colors.gold, marginLeft: 12, flexShrink: 1 },
     menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.18)' },
     menu: { position: 'absolute', right: 16, width: 280, backgroundColor: colors.navy3, borderRadius: 16, overflow: 'hidden', elevation: 12, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },

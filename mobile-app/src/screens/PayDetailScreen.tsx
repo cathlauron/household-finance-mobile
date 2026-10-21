@@ -10,6 +10,9 @@ import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
 import DeleteRow from '../components/DeleteRow';
+import BillsScreen from './BillsScreen';
+import DebtsScreen from './DebtsScreen';
+import LoansScreen from './LoansScreen';
 import { withoutBill, withoutDebt, withoutLoan } from '../deleteRecords';
 import { takeOffSavedBalance } from '../takeOffBalance';
 import { useTheme } from '../ThemeContext';
@@ -19,9 +22,6 @@ import { getNextDueDate, recurringTypeLabel } from '../recurrence';
 import { currentCycle, paidCycles, markPaid, undoLastPayment, isCyclePaid, minimumDue } from '../billPayments';
 import { accountLabel } from '../transactionActions';
 import { getOverdueItems } from '../overdue';
-import { requestOpenBill } from '../openBillRequest';
-import { requestOpenDebt } from '../openDebtRequest';
-import { requestOpenLoan } from '../openLoanRequest';
 import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
@@ -80,12 +80,29 @@ export default function PayDetailScreen() {
     ? model.debts.find((d) => d.id === id)
     : (model.loans || []).find((l) => l.id === id);
 
-  const openEdit = () => {
-    if (kind === 'bill') requestOpenBill(id);
-    else if (kind === 'debt') requestOpenDebt(id);
-    else requestOpenLoan(id);
-    navigation.navigate('Main', { screen: 'To-Pay' });
+  // Version 2.2 fix (Cath's video): Edit opens the form right here on this page. Before,
+  // it jumped back to To-Pay and opened the form there, and the page could slide back over
+  // it (the form flashed and closed).
+  const [editing, setEditing] = useState(false);
+  const openEdit = () => setEditing(true);
+  const onEditClosed = () => {
+    setEditing(false);
+    // Deleted from inside the form: this page has nothing left to show.
+    const latest = getModel();
+    const list: { id: string }[] = !latest ? [] : kind === 'bill' ? latest.bills : kind === 'debt' ? latest.debts : latest.loans || [];
+    if (latest && !list.some((r) => r.id === id)) navigation.goBack();
   };
+  const editor = editing ? (
+    <View style={{ position: 'absolute', width: 0, height: 0 }} pointerEvents="box-none">
+      {kind === 'bill' ? (
+        <BillsScreen formOnly openBillId={id} onFormClosed={onEditClosed} />
+      ) : kind === 'debt' ? (
+        <DebtsScreen formOnly openDebtId={id} onFormClosed={onEditClosed} />
+      ) : (
+        <LoansScreen formOnly openLoanId={id} onFormClosed={onEditClosed} />
+      )}
+    </View>
+  ) : null;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -135,7 +152,12 @@ export default function PayDetailScreen() {
     ]);
   }
 
-  if (kind === 'loan') return <LoanBody loan={record as Loan} model={model} save={save} colors={colors} styles={styles} onDelete={confirmDelete} />;
+  if (kind === 'loan') return (
+    <>
+      <LoanBody loan={record as Loan} model={model} save={save} colors={colors} styles={styles} onDelete={confirmDelete} />
+      {editor}
+    </>
+  );
 
   // ---------- Bill / Debt ----------
   const rec = record as Bill | Debt;
@@ -175,6 +197,7 @@ export default function PayDetailScreen() {
   const average = withValues.length ? withValues.reduce((s, b) => s + b.v, 0) / withValues.length : 0;
 
   return (
+    <>
     <ScrollView contentContainerStyle={styles.content}>
       <View style={[styles.group, styles.hero]}>
         <GradientFill match={[styles.group, styles.hero]} />
@@ -318,6 +341,8 @@ export default function PayDetailScreen() {
       )}
       <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </ScrollView>
+    {editor}
+    </>
   );
 }
 

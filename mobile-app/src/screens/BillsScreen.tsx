@@ -47,6 +47,11 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
 const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Subscription', 'School', 'Other'];
 
 type BillsScreenProps = {
+  // Version 2.2 fix (Cath's video: Edit on a bill's page flashed and closed): the page
+  // itself shows this bill's form, with no jump back to the list. formOnly draws just the
+  // form (and its pop-ups); onFormClosed says when it has closed.
+  formOnly?: boolean;
+  onFormClosed?: () => void;
   // Version 2.2: called once the requested item's form has opened, so the request is
   // cleared and the form never pops up again when this list is shown again.
   onOpenHandled?: () => void;
@@ -58,9 +63,11 @@ type BillsScreenProps = {
   openBillNonce?: number;
 };
 
-export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }: BillsScreenProps = {}) {
+export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, formOnly, onFormClosed }: BillsScreenProps = {}) {
   // Redesign: the floating + adds a bill while this list is showing.
-  useToPayAddRequest('bills', () => openAddModal());
+  useToPayAddRequest('bills', () => {
+    if (!formOnly) openAddModal();
+  });
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -82,6 +89,10 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
     const target = (model.bills || []).find((b) => b.id === openBillId);
     if (target) {
       openedBillRef.current = { id: openBillId, nonce: openBillNonce };
+      if (formOnly) {
+        openEditModal(target);
+        return;
+      }
       if (!firstTimeOpen('bill', openBillId, openBillNonce)) return;
       afterSlide(() => openEditModal(target));
       onOpenHandled?.();
@@ -220,6 +231,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
 
@@ -471,6 +483,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
@@ -560,6 +573,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
         )}
 
       </PullToRefreshScrollView>
+      )}
 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet

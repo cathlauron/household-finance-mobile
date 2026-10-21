@@ -86,6 +86,11 @@ function sortByNextDue(loans: Loan[]): Loan[] {
 }
 
 type LoansScreenProps = {
+  // Version 2.2 fix (Cath's video: Edit on a loan's page flashed and closed): the page
+  // itself shows this loan's form, with no jump back to the list. formOnly draws just the
+  // form (and its pop-ups); onFormClosed says when it has closed.
+  formOnly?: boolean;
+  onFormClosed?: () => void;
   // Version 2.2: called once the requested item's form has opened, so the request is
   // cleared and the form never pops up again when this list is shown again.
   onOpenHandled?: () => void;
@@ -93,9 +98,11 @@ type LoansScreenProps = {
   openLoanNonce?: number;
 };
 
-export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }: LoansScreenProps = {}) {
+export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, formOnly, onFormClosed }: LoansScreenProps = {}) {
   // Redesign: the floating + adds a loan while this list is showing.
-  useToPayAddRequest('loans', () => openAddModal());
+  useToPayAddRequest('loans', () => {
+    if (!formOnly) openAddModal();
+  });
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -113,6 +120,10 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     const target = (model.loans || []).find((l) => l.id === openLoanId);
     if (target) {
       openedLoanRef.current = { id: openLoanId, nonce: openLoanNonce };
+      if (formOnly) {
+        openEditModal(target);
+        return;
+      }
       if (!firstTimeOpen('loan', openLoanId, openLoanNonce)) return;
       afterSlide(() => openEditModal(target));
       onOpenHandled?.();
@@ -255,6 +266,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
   function handleAddPayment() {
@@ -538,6 +550,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryRow]}>
           <GradientFill match={[styles.group, styles.summaryRow]} />
@@ -604,6 +617,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
         )}
 
       </PullToRefreshScrollView>
+      )}
 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
