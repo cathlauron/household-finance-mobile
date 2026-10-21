@@ -232,7 +232,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
   const onlineRef = useRef(true);
   const latestModelRef = useRef<HouseholdModel | null>(null);
-  latestModelRef.current = model;
+  // Version 2.2 (speed fix): only when the data on screen actually changes. A save shows
+  // its result one frame later (see saveModel), so a redraw in between (a form closing)
+  // must not put the older data back here.
+  const renderedModelRef = useRef<HouseholdModel | null>(null);
+  if (model !== renderedModelRef.current) {
+    renderedModelRef.current = model;
+    latestModelRef.current = model;
+  }
   const householdUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Kept outside React state (in refs) since we only need them for the next save/load
@@ -994,7 +1001,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
     modelVersionRef.current += 1;
-    setModel(sanitizedModel);
+    // Version 2.2 (Cath: the form waited with a spinner before closing): the screens redraw
+    // with the new data one frame later, so a form that closes after saving starts closing
+    // first and the new entry is seen sliding into its list. latestModelRef (just below)
+    // has the new data at once, so another save right after starts from it, and the redraw
+    // always shows the newest data (never an older one that a sync may have replaced).
+    requestAnimationFrame(() => setModel(latestModelRef.current));
     // The newest data straight away (review fix: a save right after another one used to
     // start from the data before it).
     latestModelRef.current = sanitizedModel;

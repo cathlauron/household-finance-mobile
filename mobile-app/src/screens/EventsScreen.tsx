@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { SwipeTabs } from '../navigation/swipeTabs';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
@@ -522,6 +523,8 @@ export default function EventsScreen() {
   }
 
   return (
+    // 2.2 (Cath): swipe sideways between Upcoming and Done, like Savings.
+    <SwipeTabs onSwipe={(d) => setView(d > 0 ? 'done' : 'up')}>
     <View style={styles.container}>
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
         <SegmentedControl<'up' | 'done'>
@@ -731,6 +734,7 @@ export default function EventsScreen() {
         {editingId && <Button label="Delete event" variant="destructive" onPress={confirmDeleteEvent} />}
       </BottomSheet>
     </View>
+    </SwipeTabs>
   );
 }
 

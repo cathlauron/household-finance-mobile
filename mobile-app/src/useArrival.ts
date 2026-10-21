@@ -8,13 +8,13 @@ import { LayoutAnimation } from 'react-native';
 import { reduceMotionNow } from './reduceMotion';
 
 const ARRIVE = {
-  duration: 240,
+  duration: 280,
   create: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.opacity },
   update: { type: LayoutAnimation.Types.easeOut },
   delete: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.opacity },
 };
 
-const GLOW_MS = 1200;
+const GLOW_MS = 1700;
 
 // ids: the ids shown in the list right now. Returns the id that just arrived (for its
 // glow), or null.

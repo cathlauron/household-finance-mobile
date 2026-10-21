@@ -27,7 +27,7 @@ export type BottomSheetProps = {
 // dragged down by its top bar to close. With the phone set to remove animations it just
 // appears and disappears.
 const DRAWER = Easing.bezier(0.32, 0.72, 0, 1);
-const OPEN_MS = 300;
+const OPEN_MS = 280;
 const CLOSE_MS = 240;
 
 export default function BottomSheet({
@@ -72,37 +72,54 @@ export default function BottomSheet({
   // grows past the top of the screen.
   const bottomSpace = keyboardHeight > 0 ? keyboardHeight + (Platform.OS === 'android' ? insets.bottom : 0) : insets.bottom;
 
-  // Opening and closing. The Modal stays shown while the sheet slides away.
+  // Opening and closing. The window shows as soon as it's asked for (no extra redraw
+  // first, 2.2 speed fix); the slide starts the moment the phone has shown it. It stays
+  // shown while the sheet slides away.
   const reduce = useReduceMotion();
-  const [shown, setShown] = React.useState(visible);
+  const [closing, setClosingState] = React.useState(false);
+  const closingRef = React.useRef(false);
+  const setClosing = (v: boolean) => {
+    closingRef.current = v;
+    setClosingState(v);
+  };
   const offY = screenHeight;
   const y = React.useRef(new Animated.Value(offY)).current;
   const dim = React.useRef(new Animated.Value(0)).current;
+  const wasVisible = React.useRef(visible);
+  const openNow = React.useCallback(() => {
+    if (reduce) {
+      y.setValue(0);
+      dim.setValue(1);
+      return;
+    }
+    Animated.parallel([
+      Animated.timing(y, { toValue: 0, duration: OPEN_MS, easing: DRAWER, useNativeDriver: true }),
+      Animated.timing(dim, { toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [reduce, y, dim]);
   React.useEffect(() => {
-    if (visible) {
-      setShown(true);
-      if (reduce) {
-        y.setValue(0);
-        dim.setValue(1);
+    const was = wasVisible.current;
+    wasVisible.current = visible;
+    if (visible && !was) {
+      const stillShown = closingRef.current;
+      setClosing(false);
+      y.stopAnimation();
+      dim.stopAnimation();
+      // Reopened while it was still sliding away: the window never hid, so slide it back
+      // up from where it is (the phone won't say "shown" again).
+      if (stillShown) {
+        openNow();
         return;
       }
       y.setValue(offY);
       dim.setValue(0);
-      Animated.parallel([
-        Animated.timing(y, { toValue: 0, duration: OPEN_MS, easing: DRAWER, useNativeDriver: true }),
-        Animated.timing(dim, { toValue: 1, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      ]).start();
-    } else if (shown) {
-      if (reduce) {
-        setShown(false);
-        return;
-      }
+    } else if (!visible && was) {
+      if (reduce) return;
+      setClosing(true);
       Animated.parallel([
         Animated.timing(y, { toValue: offY, duration: CLOSE_MS, easing: DRAWER, useNativeDriver: true }),
         Animated.timing(dim, { toValue: 0, duration: CLOSE_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      ]).start(({ finished }) => {
-        if (finished) setShown(false);
-      });
+      ]).start(() => setClosing(false));
     }
     // Only when it is asked to open or close.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,7 +146,8 @@ export default function BottomSheet({
 
   return (
     <Modal
-      visible={shown}
+      visible={visible || closing}
+      onShow={openNow}
       transparent
       animationType="none"
       onRequestClose={onClose}

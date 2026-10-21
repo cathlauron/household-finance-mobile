@@ -11,7 +11,7 @@ export default function ArrivalGlow({ radius = 0 }: { radius?: number }) {
   const o = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (reduceMotionNow()) return;
-    Animated.timing(o, { toValue: 0, duration: 700, delay: 450, useNativeDriver: true }).start();
+    Animated.timing(o, { toValue: 0, duration: 800, delay: 800, useNativeDriver: true }).start();
   }, [o]);
   return (
     <Animated.View

@@ -111,3 +111,15 @@ P  2026-10-21 design-skills batch (taste, Emil Kowalski, Impeccable /polish): ap
       arrow keys; each screen plays its little animation. Slider in "Slide to today"
       changes Left to spend, days to payday and what's still due. Make the window narrow
       (like a phone): everything stacks and nothing scrolls sideways.
+
+Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). NOT YET TESTED.
+- Q1  Add a transaction: the form starts closing as soon as you tap Add (no waiting
+      spinner), then the new row slides into the list and glows pale green for about a
+      second and a half. Same for a bill, debt, loan, pot or trip item.
+- Q2  Opening any form feels as quick as before the design update (or quicker).
+- Q3  Long lists (Transactions, To-Pay) open and scroll as smoothly as before.
+- Q4  Groceries: swipe sideways to move between List, Calculator and Meal ideas.
+      Events: swipe sideways between Upcoming and Done.
+- Q5  Quickly tick two grocery items (or two trip items) one after another: both stay
+      ticked.
+- Q6  Open a form, close it, and immediately open it again: it slides up normally.

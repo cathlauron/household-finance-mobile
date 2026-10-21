@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { SwipeTabs } from '../navigation/swipeTabs';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
@@ -248,6 +249,14 @@ export default function GroceriesScreen() {
   }
 
   return (
+    // 2.2 (Cath): swipe sideways between List, Calculator and Meal ideas, like Savings.
+    <SwipeTabs
+      onSwipe={(d) => {
+        const order: Tab[] = ['list', 'calc', 'meals'];
+        const i = order.indexOf(tab) + d;
+        if (i >= 0 && i < order.length) setTab(order[i]);
+      }}
+    >
     <View style={styles.container}>
       <View style={styles.segRow}>
         <SegmentedControl<Tab>
@@ -534,6 +543,7 @@ export default function GroceriesScreen() {
         )}
       </BottomSheet>
     </View>
+    </SwipeTabs>
   );
 }
 
