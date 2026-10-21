@@ -6,6 +6,7 @@ import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
 import { setToPaySub, onToPaySwitchAdd, AddCarry } from '../fabActions';
 import { useData } from '../DataContext';
+import { SHEET_CLOSE_WAIT } from '../components/BottomSheet';
 import { expectArrival } from '../arrivalFocus';
 import { closeOpenSwipeRows } from '../components/SwipeableRow';
 import { useStickyState } from '../stickyState';
@@ -160,11 +161,13 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
               formOnly: true,
               addCarry: { ...f.carry, nonce: f.nonce },
               onFormClosed: () => endSwitchForm(f.nonce),
-              onAdded: () => {
-                setActiveSubTab(f.sub);
-                // Opened from somewhere else (the calendar): come back to To-Pay to see it.
-                navigation.navigate('Main', { screen: 'To-Pay' });
-              },
+              // After the form has slid away, show that list (the new one slides in there).
+              onAdded: () =>
+                setTimeout(() => {
+                  setActiveSubTab(f.sub);
+                  // Opened from somewhere else (the calendar): come back to To-Pay to see it.
+                  navigation.navigate('Main', { screen: 'To-Pay' });
+                }, SHEET_CLOSE_WAIT),
             };
             return f.sub === 'bills' ? (
               <BillsScreen key={f.nonce} {...common} />

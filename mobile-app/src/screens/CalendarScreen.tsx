@@ -22,7 +22,7 @@ import {
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
-import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff, SHEET_CLOSE_WAIT } from '../components/BottomSheet';
 import TransactionsScreen from './TransactionsScreen';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -487,6 +487,10 @@ export default function CalendarScreen() {
     setFormHosts((l) => [...l, { kind: k, date, nonce: Date.now() }]);
   }
   function afterFormAdded(kind: 'txn' | 'bills' | 'debts' | 'loans') {
+    // The form slides away first, then the app goes to the list.
+    setTimeout(() => goToList(kind), SHEET_CLOSE_WAIT);
+  }
+  function goToList(kind: 'txn' | 'bills' | 'debts' | 'loans') {
     if (kind === 'txn') {
       navigation.navigate('Main', { screen: 'Transactions' });
       return;

@@ -20,7 +20,82 @@ export type BottomSheetProps = {
   // and a grey "grouped" background so white form groups stand out, iPhone style.
   header?: React.ReactNode;
   grouped?: boolean;
+  // Version 2.2 (Cath: Bill / Debt / Loan should switch inside ONE sheet): sheets with
+  // the same `shared` name are all shown in a single sheet (SharedSheetHost). Switching
+  // from one to another just changes what's inside it, with no closing and reopening.
+  shared?: string;
 };
+
+// ---- shared sheets ----
+type SharedEntry = { props: BottomSheetProps; openedAt: number };
+const sharedStores = new Map<string, { entries: Map<number, SharedEntry>; listeners: Set<() => void>; hosts: number }>();
+function sharedStore(name: string) {
+  let st = sharedStores.get(name);
+  if (!st) {
+    st = { entries: new Map(), listeners: new Set(), hosts: 0 };
+    sharedStores.set(name, st);
+  }
+  return st;
+}
+let nextSharedId = 1;
+
+// Put this once, where it stays on screen (it shows the one sheet for every form named
+// `name`). Screens' own <BottomSheet shared={name}> then draw into it.
+export function SharedSheetHost({ name }: { name: string }) {
+  const st = sharedStore(name);
+  const [, bump] = React.useReducer((n: number) => n + 1, 0);
+  React.useLayoutEffect(() => {
+    st.hosts += 1;
+    st.listeners.add(bump);
+    bump();
+    return () => {
+      st.hosts -= 1;
+      st.listeners.delete(bump);
+    };
+  }, [st]);
+  // The newest open form wins; when none is open, the last one stays drawn while the
+  // sheet slides away.
+  const lastRef = React.useRef<BottomSheetProps | null>(null);
+  let active: SharedEntry | null = null;
+  st.entries.forEach((e) => {
+    if (e.props.visible && (!active || e.openedAt > active.openedAt)) active = e;
+  });
+  const openCount = Array.from(st.entries.values()).filter((e) => e.props.visible).length;
+  // A second form opened while one was showing: that's a switch. The first one closes
+  // underneath (unseen), the sheet itself stays up.
+  React.useEffect(() => {
+    if (openCount > 1) takeHandoff()?.();
+  }, [openCount]);
+  if (active) lastRef.current = (active as SharedEntry).props;
+  const props = lastRef.current;
+  if (!props) return null;
+  return <BottomSheet {...props} shared={undefined} visible={!!active} />;
+}
+
+function useSharedSheet(name: string | undefined, props: BottomSheetProps): boolean {
+  const id = React.useRef(0);
+  if (!id.current) id.current = nextSharedId++;
+  const st = name ? sharedStore(name) : null;
+  const useHost = !!st && st.hosts > 0;
+  const wasVisible = React.useRef(false);
+  React.useLayoutEffect(() => {
+    if (!st || !useHost) return;
+    const prev = st.entries.get(id.current);
+    const openedAt = props.visible && !wasVisible.current ? Date.now() : prev?.openedAt ?? 0;
+    wasVisible.current = props.visible;
+    st.entries.set(id.current, { props, openedAt });
+    st.listeners.forEach((l) => l());
+  });
+  React.useEffect(
+    () => () => {
+      if (!st) return;
+      st.entries.delete(id.current);
+      st.listeners.forEach((l) => l());
+    },
+    [st]
+  );
+  return useHost;
+}
 
 // Version 2.2 (approved P1, Emil Kowalski's drawer curve): the sheet leaps up the moment
 // it's asked for and settles gently (300 ms), the dim behind it fades, and it can be
@@ -29,6 +104,8 @@ export type BottomSheetProps = {
 const DRAWER = Easing.bezier(0.32, 0.72, 0, 1);
 const OPEN_MS = 280;
 const CLOSE_MS = 240;
+// How long to wait for a sheet to finish sliding away before moving to another screen.
+export const SHEET_CLOSE_WAIT = CLOSE_MS + 40;
 
 // Version 2.2 (Cath: switching Bill / Debt / Loan closed the sheet and opened it again):
 // a "handoff" from one sheet to the next. The next sheet appears already up (no slide),
@@ -55,7 +132,13 @@ function takeHandoff(): (() => void) | null {
   return f;
 }
 
-export default function BottomSheet({
+export default function BottomSheet(allProps: BottomSheetProps) {
+  const inHost = useSharedSheet(allProps.shared, allProps);
+  if (inHost) return null;
+  return <OwnSheet {...allProps} />;
+}
+
+function OwnSheet({
   visible,
   onClose,
   title,

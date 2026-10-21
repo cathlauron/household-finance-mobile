@@ -654,6 +654,8 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
+        // One sheet for New bill / debt / loan, so switching only changes the form.
+        shared="pay-form"
         grouped
         header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >

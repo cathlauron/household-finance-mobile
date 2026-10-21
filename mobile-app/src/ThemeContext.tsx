@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { Animated, Appearance, Easing, StyleSheet, View } from 'react-native';
 import { reduceMotionNow } from './reduceMotion';
+import { captureScreen } from 'react-native-view-shot';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, ThemeColors } from './theme';
 
@@ -41,43 +42,58 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [mode]);
 
-  // Version 2.2 (Cath: the light/dark switch still lagged after the buzz): the switch is a
-  // quick soft fade. The screen fades to the new page colour (about a seventh of a
-  // second, drawn by the phone's graphics side so it never stutters), the app recolours
-  // behind it, then the new look fades in. The recolouring can't be seen, so it no longer
-  // feels like a pause. With the phone set to remove animations it just switches.
+  // Version 2.2 (Cath: the switch lagged; then the fade went fully black/white): a real
+  // cross-fade. The screen as it looks now is photographed and laid on top, the app
+  // recolours underneath (unseen), then the photo fades away to show the new look. So
+  // it goes smoothly from the old look straight to the new one. With the phone set to
+  // remove animations (or if the photo can't be taken) it just switches.
   const isDarkRef = useRef(isDark);
   isDarkRef.current = isDark;
   const fade = useRef(new Animated.Value(0)).current;
-  const [fadeColor, setFadeColor] = useState<string | null>(null);
+  const [shot, setShot] = useState<string | null>(null);
+  const pendingRef = useRef<{ m: ColorMode; toDark: boolean } | null>(null);
   const revealRef = useRef(false);
-  const setMode = (m: ColorMode) => {
-    AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
-    const toDark = resolveIsDark(m);
-    if (toDark === isDarkRef.current || reduceMotionNow()) {
-      setModeState(m);
-      startTransition(() => {
-        setIsDark(toDark);
-      });
-      return;
-    }
-    setFadeColor((toDark ? darkTheme : lightTheme).navy2);
-    fade.stopAnimation();
-    Animated.timing(fade, { toValue: 1, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
-      revealRef.current = true;
-      setModeState(m);
+  const switchNow = (m: ColorMode, toDark: boolean) => {
+    setModeState(m);
+    startTransition(() => {
       setIsDark(toDark);
     });
   };
-  // Once the new colours are on screen, fade the cover away.
+  const switchUnderShot = () => {
+    const p = pendingRef.current;
+    if (!p) return;
+    pendingRef.current = null;
+    revealRef.current = true;
+    setModeState(p.m);
+    setIsDark(p.toDark);
+  };
+  const setMode = (m: ColorMode) => {
+    AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
+    const toDark = resolveIsDark(m);
+    if (toDark === isDarkRef.current || reduceMotionNow() || pendingRef.current) {
+      switchNow(m, toDark);
+      return;
+    }
+    pendingRef.current = { m, toDark };
+    captureScreen({ format: 'jpg', quality: 0.85, result: 'tmpfile' })
+      .then((uri) => {
+        fade.setValue(1);
+        setShot(uri);
+        // If the photo is slow to show, switch anyway.
+        setTimeout(switchUnderShot, 700);
+      })
+      .catch(() => {
+        pendingRef.current = null;
+        switchNow(m, toDark);
+      });
+  };
+  // Once the new colours are on screen, the photo of the old look fades away.
   useEffect(() => {
     if (!revealRef.current) return;
     revealRef.current = false;
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
-        Animated.timing(fade, { toValue: 0, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
-          if (finished) setFadeColor(null);
-        })
+        Animated.timing(fade, { toValue: 0, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start(() => setShot(null))
       )
     );
   }, [isDark, fade]);
@@ -91,8 +107,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider value={value}>
       <View style={{ flex: 1 }}>
         {children}
-        {fadeColor && (
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: fadeColor, opacity: fade }]} />
+        {/* Taps go through to the app underneath while it fades. */}
+        {shot && (
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Animated.Image
+              source={{ uri: shot }}
+              onLoad={() => switchUnderShot()}
+              fadeDuration={0}
+              resizeMode="stretch"
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: fade }]}
+            />
+          </View>
         )}
       </View>
     </ThemeContext.Provider>

@@ -17,6 +17,7 @@ import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import TabPage from './TabPage';
 import { QuietWhenHidden, useData } from '../DataContext';
+import { SHEET_CLOSE_WAIT, SharedSheetHost } from '../components/BottomSheet';
 import { expectArrival } from '../arrivalFocus';
 import { buildTransactionsList } from '../transactions';
 import GradientFill from '../components/GradientFill';
@@ -106,7 +107,9 @@ function QuickAdd() {
           onFormOpened={() => setOpen(true)}
           onFormClosed={() => setOpen(false)}
           // Cath: after Add, land on Transactions to see the new entry slide in.
-          onAdded={() => navigation.navigate('Main', { screen: 'Transactions' })}
+          // Cath: the form slid away while Transactions was already showing (a flash of it).
+          // Now the form finishes sliding away first, then Transactions shows.
+          onAdded={() => setTimeout(() => navigation.navigate('Main', { screen: 'Transactions' }), SHEET_CLOSE_WAIT)}
         />
       </QuietWhenHidden>
     </View>
@@ -311,6 +314,8 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
     </Tab.Navigator>
     <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} />
     <QuickAdd />
+    {/* The one sheet that shows the bill, debt and loan forms (see BottomSheet). */}
+    <SharedSheetHost name="pay-form" />
     </View>
   );
 }

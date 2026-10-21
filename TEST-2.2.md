@@ -278,3 +278,16 @@ AA 2026-10-22 One sheet for Bill/Debt/Loan, add from anywhere, see it land. NOT 
 - AA6 Hold a Home card and drag it to the very top or bottom of the screen: the page
       scrolls along while you hold it there; the card stays under your finger. Let go: it
       drops into the right place and the order is kept.
+
+AB 2026-10-22 Front card, real cross-fade, one form sheet, no flash. NOT YET TESTED.
+- AB1 Hold a Home card and drag it down over Due soon and Insights: it stays in FRONT of
+      them (like over Left to Spend). Inside the cards it behaves as before.
+- AB2 Home moon/sun: the old look fades smoothly into the new one (no all-black or
+      all-white moment). Same from Settings > Appearance.
+- AB3 To-Pay > + (bill), switch to Debt, Loan, back to Bill: it's ONE sheet; only the form
+      inside changes (the sheet may grow or shrink a little to fit). Add: the sheet slides
+      away, then To-Pay shows that list with the new one gliding in and glowing.
+- AB4 Home +: add a transaction. The form slides away over Home first, then Transactions
+      shows with the new entry glowing (no flash of the form on Transactions).
+- AB5 Calendar + > Bill / Debt / Loan / Transaction: form over the calendar; after Add it
+      slides away, then the right list shows with the new one glowing.

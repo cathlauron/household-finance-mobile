@@ -441,8 +441,11 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const openAccounts = () => navigation.navigate('Accounts');
   const amountColor = (n: number) => (n < 0 && !hidden ? colors.negative : colors.positive); // hidden: no red that gives a minus away
 
+  // Cath: a held card stays in front of everything on Home (Due soon, Insights too), the
+  // way it already did over Left to Spend.
+  const raised = !!(dragging || settling);
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, raised && { zIndex: 50, elevation: 50 }]}>
       <View style={styles.headerRow}>
         {/* "Accounts" opens the Accounts page (where accounts are added too). */}
         <TouchableOpacity onPress={openAccounts} accessibilityRole="button" accessibilityLabel="Open Accounts" testID="home-wallet-add" style={styles.headerLink}>
