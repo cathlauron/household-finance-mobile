@@ -48,7 +48,11 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, 
     openRows.delete(closeMe);
   }, [closeMe]);
 
-  if (!enabled) {
+  // Version 2.2 (Cath: "remove swipe to delete entirely"): rows no longer swipe open to a
+  // red trash button. Deleting is done from the item's own page or its Edit form (Delete
+  // at the bottom). Only the gentle "view" swipe (a row made by a bill, debt, loan…
+  // jumping to that item) is kept.
+  if (!enabled || !viewAction) {
     return <>{children}</>;
   }
 

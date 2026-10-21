@@ -279,7 +279,7 @@ AA 2026-10-22 One sheet for Bill/Debt/Loan, add from anywhere, see it land. NOT 
       scrolls along while you hold it there; the card stays under your finger. Let go: it
       drops into the right place and the order is kept.
 
-AB 2026-10-22 Front card, real cross-fade, one form sheet, no flash. NOT YET TESTED.
+AB 2026-10-22 Front card, real cross-fade, one form sheet, no flash. PASSED on Cath's phone 2026-10-22.
 - AB1 Hold a Home card and drag it down over Due soon and Insights: it stays in FRONT of
       them (like over Left to Spend). Inside the cards it behaves as before.
 - AB2 Home moon/sun: the old look fades smoothly into the new one (no all-black or
@@ -292,7 +292,7 @@ AB 2026-10-22 Front card, real cross-fade, one form sheet, no flash. NOT YET TES
 - AB5 Calendar + > Bill / Debt / Loan / Transaction: form over the calendar; after Add it
       slides away, then the right list shows with the new one glowing.
 
-AC 2026-10-22 Sweep (bugs, smoothness, animation). NOT YET TESTED.
+AC 2026-10-22 Sweep (bugs, smoothness, animation). PASSED on Cath's phone 2026-10-22 (light/dark still slow: see board AF).
 - AC1 Go into a page and back (e.g. Home > Accounts > Income > Not assigned, then back,
       back): the two pages move side by side, like the tabs. Going in, the new page pushes
       the old one out to the left; going back, the old page comes back in from the left as
@@ -314,3 +314,13 @@ AC 2026-10-22 Sweep (bugs, smoothness, animation). NOT YET TESTED.
 - AC7 Bill form opened from the Calendar, switched to Debt, added: the debt is saved and
       everything else you changed just before is still there.
 - AC8 Tap the moon/sun twice quickly: the app ends in the mode of your last tap.
+
+AE 2026-10-22 Loan switch, subscription line, no swipe-delete, calendar layer. NOT YET TESTED.
+- AE1 To-Pay > + > type an amount, switch Bill > Debt > Loan > Bill: the keyboard stays up
+      the whole time and the sheet doesn't slide down and back up (same as Bill > Debt).
+- AE2 New bill: no line between the Subscription switch and its example text.
+- AE3 Swiping a row left no longer shows a red trash button anywhere; Settings no longer
+      has "Swipe to delete". Deleting is from the item's page or its Edit form. Rows from
+      bills/debts/loans in Transactions still swipe to "view" that item.
+- AE4 Calendar > + > (any, or Cancel) > back > open the calendar again > close it: Home
+      looks normal, no calendar behind it. The calendar still rises from the bottom.

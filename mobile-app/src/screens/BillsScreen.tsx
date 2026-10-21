@@ -661,6 +661,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       >
         {!editingId && (
           <KindSwitch
+            key="pay-form-kind"
             current="bills"
             onSwitch={(to) => {
               const carry = { amount: amountInput, name: nameInput, date: onetimeDateInput || undefined };
@@ -670,7 +671,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
             }}
           />
         )}
-        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+        {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
+            box (and the keyboard stays up), even though the loan form has an extra row above. */}
+        <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>
 
@@ -717,11 +720,14 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         </FormGroup>
 
         <FormGroup>
-          <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
-          {/* 2.2 (Cath): when to tick it. */}
-          <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, paddingHorizontal: 16, paddingBottom: 12, marginTop: -4 }}>
-            Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
-          </Text>
+          {/* 2.2 (Cath): when to tick it. One piece with the switch, so no line runs
+              between the switch and its example (the line clashed with the text). */}
+          <View>
+            <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
+            <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, paddingHorizontal: 16, paddingBottom: 12 }}>
+              Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
+            </Text>
+          </View>
           <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
             <Text style={styles.inlineLabel}>Priority</Text>
             <Choices

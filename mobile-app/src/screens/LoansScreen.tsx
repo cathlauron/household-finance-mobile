@@ -668,6 +668,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       >
         {!editingId && (
           <KindSwitch
+            key="pay-form-kind"
             current="loans"
             onSwitch={(to) => {
               const carry = { amount: totalAmountInput, name: nameInput, date: onetimeDateInput || undefined };
@@ -685,7 +686,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
             onChange={setDirectionInput}
           />
         </View>
-        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+        {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
+            box (and the keyboard stays up), even though the loan form has an extra row above. */}
+        <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           <BigAmount label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>
 

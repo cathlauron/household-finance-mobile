@@ -1544,16 +1544,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
-        <SettingsGroup label="List rows" plain footer="Swipe a row left to delete it.">
-          <PlainRow
-            title="Swipe to delete"
-            right={settingSwitch(!!model.settings.swipeToDeleteEnabled, (on) => {
-              setShowSwipePreview(on);
-              handleSetSwipeToDelete(on);
-            }, 'settings-swipe-delete')}
-          />
-        </SettingsGroup>
-        {showSwipePreview && <View style={{ marginTop: -12, marginBottom: 24 }}><RowInteractionPreview /></View>}
+        {/* Version 2.2 (Cath): swipe to delete was removed entirely; delete from an item's
+            own page or its Edit form instead. */}
 
         <SettingsGroup plain footer="More languages are coming later.">
           <PlainRow title="Language" value="English" />

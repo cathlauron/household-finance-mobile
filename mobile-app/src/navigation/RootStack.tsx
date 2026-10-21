@@ -196,7 +196,11 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Calendar"
         component={CalendarScreen}
         options={{
-          presentation: 'transparentModal',
+          // Version 2.2 (Cath: after using + in the calendar, going back and opening it
+          // again, the calendar showed behind Home): it's a full, solid page, so it no longer
+          // uses the "see-through modal" mode (which keeps special layers around behind
+          // other pages). It looks the same: it rises from the bottom over a dimmed page.
+          presentation: 'card',
           headerShown: false,
           cardOverlayEnabled: true,
           cardStyleInterpolator: sheetUp,
