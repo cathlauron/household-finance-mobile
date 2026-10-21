@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import GradientFill from './GradientFill';
+import { WhoBadge } from './WhoLogged';
 
 // Redesign: one row in the To-Pay lists (Finance Flow mockup): icon tile, name,
 // "Due Fri, Oct 16" underneath, and the amount with an optional tag on the right.
@@ -21,9 +22,11 @@ type Props = {
   priority?: 'high' | 'medium' | 'low' | '';
   onPress: () => void;
   testID?: string;
+  // Version 2.2 (W1 everywhere): who added it; a small letter shows when it's someone else.
+  addedBy?: string;
 };
 
-export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID }: Props) {
+export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy }: Props) {
   const { colors } = useTheme();
   const tone = badge
     ? badge.tone === 'overdue'
@@ -47,6 +50,7 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
         <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
         <Ionicons name={icon} size={17} color={colors.gold} />
+        <WhoBadge by={addedBy} />
       </View>
       <View style={styles.main}>
         <View style={styles.titleRow}>

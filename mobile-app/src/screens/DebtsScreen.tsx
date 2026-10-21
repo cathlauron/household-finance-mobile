@@ -520,6 +520,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
             >
             <PayRow
               testID={`debt-row-${debt.id}`}
+              addedBy={debt.addedBy}
               icon="people-outline"
               title={debt.creditorOrPerson || 'Debt'}
               sub={(() => {

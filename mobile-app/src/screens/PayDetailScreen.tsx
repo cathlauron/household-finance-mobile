@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
 import DeleteRow from '../components/DeleteRow';
@@ -64,6 +65,7 @@ function scheduleText(r: { recurringType?: string; dueDate?: Record<string, any>
 export default function PayDetailScreen() {
   const { colors } = useTheme();
   const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const kind: Kind = route.params?.kind;
@@ -330,6 +332,7 @@ export default function PayDetailScreen() {
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
                       {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
+                      {who.by(c.paidBy)}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: colors.negative }]}>{formatPeso(num(c.amountPaid))}</Text>
@@ -339,6 +342,8 @@ export default function PayDetailScreen() {
           </View>
         </>
       )}
+      {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
+      <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </ScrollView>
     {editor}
@@ -356,6 +361,7 @@ function Row({ styles, label, value, last }: { styles: any; label: string; value
 }
 
 function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel, savedLabel?: string) => void; colors: ThemeColors; styles: any; onDelete: () => void }) {
+  const who = useWho();
   const total = num(loan.totalAmount);
   const monthly = num(loan.expectedPayment);
   const payments = [...(loan.actualPayments || [])].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -474,6 +480,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
                     <Text style={styles.meta}>
                       {p.date === today ? 'Paid today' : `Paid ${shortDate(p.date)}`}
                       {p.paymentMethod ? ` · ${accountLabel(model, p.paymentMethod)}` : ''}
+                      {who.by(p.addedBy)}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: lent ? colors.positive : colors.negative }]}>{formatPeso(num(p.actual))}</Text>
@@ -495,6 +502,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         confirmLabel={lent ? 'Received' : 'Pay'}
         onConfirm={logPayment}
       />
+      <WhoFootnote addedBy={loan.addedBy} createdAt={loan.createdAt} changedBy={loan.changedBy} changedAt={loan.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />
     </ScrollView>
   );

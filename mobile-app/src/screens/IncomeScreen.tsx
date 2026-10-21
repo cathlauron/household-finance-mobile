@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -92,6 +93,7 @@ const shortDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString
 export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -626,7 +628,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                           )}
                           <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={styles.rowName}>{shortDay(r.logged ? r.logged.date : r.date)}</Text>
-                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}</Text>
+                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}{who.by(r.logged?.addedBy)}</Text>
                           </View>
                           <Text style={[styles.rowAmount, { color: r.logged ? colors.positive : colors.planned }]}>
                             +{formatPeso(r.logged ? got : r.expected)}
@@ -663,7 +665,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <Text style={styles.rowName} numberOfLines={1}>{source.sourceName || source.category || 'Untitled income'}</Text>
                               <Text style={styles.rowSub} numberOfLines={1}>
-                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}
+                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}{who.by(source.addedBy)}
                               </Text>
                             </View>
                             <Text style={[styles.rowAmount, { color: colors.ink }]}>
@@ -843,6 +845,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
         {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        {/* Version 2.2 (W2 everywhere): who added this income, and who last changed it. */}
+        {editingId && (() => {
+          const src = model?.income.find((x) => x.id === editingId);
+          return src ? <WhoFootnote addedBy={src.addedBy} createdAt={src.createdAt} changedBy={src.changedBy} changedAt={src.changedAt} style={{ marginTop: 0, marginBottom: 14 }} /> : null;
+        })()}
         {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>

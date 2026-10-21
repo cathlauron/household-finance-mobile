@@ -11,6 +11,7 @@ import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
 import DeleteRow from '../components/DeleteRow';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import { withoutSavingsPot } from '../deleteRecords';
 import AmountInput from '../components/AmountInput';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
@@ -49,6 +50,7 @@ function shortDate(iso: string): string {
 export default function PotDetailScreen() {
   const { colors } = useTheme();
   const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const id: string = route.params?.id;
@@ -249,6 +251,7 @@ export default function PotDetailScreen() {
                   <Text style={styles.meta} numberOfLines={1}>
                     {shortDate(c.date)}
                     {from ? ` · ${amt > 0 ? 'from' : 'to'} ${from}` : ''}
+                    {who.by(c.addedBy)}
                   </Text>
                 </View>
                 <Text style={[styles.rowAmount, { color: amt > 0 ? colors.saving : colors.inkDim }]}>
@@ -341,6 +344,8 @@ export default function PotDetailScreen() {
           )}
         </View>
       </BottomSheet>
+      {/* Version 2.2 (W2 everywhere): who added the pot, and who last changed it. */}
+      {goal && <WhoFootnote addedBy={goal.addedBy} createdAt={goal.createdAt} changedBy={goal.changedBy} changedAt={goal.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />}
       {/* Version 2.2 (Cath): Delete at the bottom of the page, same as inside Edit. */}
       <DeleteRow
         label="Delete savings pot"

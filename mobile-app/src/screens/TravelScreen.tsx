@@ -24,6 +24,7 @@ import type {
 import SwipeableRow from '../components/SwipeableRow';
 import AppSwitch from '../components/AppSwitch';
 import DeleteRow from '../components/DeleteRow';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import { withoutTrip } from '../deleteRecords';
 import { takeOffSavedBalance } from '../takeOffBalance';
 import { reconcileTravelChecklistTransactions } from '../travelChecklist';
@@ -130,6 +131,7 @@ function isValidDateOrEmpty(s: string): boolean {
 export default function TravelScreen() {
   const { colors } = useTheme();
   const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -356,7 +358,7 @@ export default function TravelScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureTitle} numberOfLines={1}>{trip.name || 'Untitled trip'}</Text>
-              <Text style={styles.featureSub}>{niceRange(trip)}</Text>
+              <Text style={styles.featureSub}>{niceRange(trip)}{who.by(trip.addedBy)}</Text>
             </View>
             {!!badge && (
               <View style={[styles.badge, { backgroundColor: colors.accentTint, marginRight: 6 }]}>
@@ -786,7 +788,7 @@ export default function TravelScreen() {
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={[styles.tripName, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title || 'Item'}</Text>
                           <Text style={styles.tripSub} numberOfLines={2}>
-                            {[item.checked ? paidLine(item) : '', item.note?.trim() || ''].filter(Boolean).join(' · ') || 'Not paid yet'}
+                            {[item.checked ? paidLine(item) : '', item.note?.trim() || '', who.others(item.addedBy) ? `added by ${who.nameOf(item.addedBy)}` : ''].filter(Boolean).join(' · ') || 'Not paid yet'}
                           </Text>
                         </View>
                         {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
@@ -891,6 +893,8 @@ export default function TravelScreen() {
               </View>
               </SwipeTabs>
               {/* Version 2.2 (Cath): Delete at the bottom of the trip, not only inside Edit. */}
+              {/* Version 2.2 (W2 everywhere): who added the trip, and who last changed it. */}
+              <WhoFootnote addedBy={t.addedBy} createdAt={t.createdAt} changedBy={t.changedBy} changedAt={t.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
               <DeleteRow label="Delete trip" testID="travel-trip-delete" onPress={() => confirmDeleteTripFromPage(t)} />
             </>
           );

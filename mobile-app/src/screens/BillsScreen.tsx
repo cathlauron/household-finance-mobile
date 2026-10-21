@@ -566,6 +566,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                   >
                     <PayRow
                       testID={`bill-row-${bill.id}`}
+                      addedBy={bill.addedBy}
                       icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
                       title={bill.name || 'Untitled bill'}
                       sub={`${!due ? 'Add a due date anytime' : `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}`}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
@@ -598,6 +599,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                   amountColor={colors.inkDim}
                   badge={{ text: 'Paid', tone: 'paid' }}
                   divider={rowIndex > 0}
+                  addedBy={paidCycles(bill)[0]?.paidBy}
                   onPress={() => openBill(bill)}
                 />
               ))}

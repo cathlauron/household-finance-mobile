@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useWho } from '../components/WhoLogged';
 import { withoutSavingsPot } from '../deleteRecords';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -109,6 +110,7 @@ type SavingsScreenProps = {
 export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  const who = useWho();
 
   const openedSavingsRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -659,6 +661,8 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                   if (covered !== null) subParts.push(covered.toFixed(1) + ' months covered');
                   else if (goal.targetDate) subParts.push('by ' + formatShortDateLabel(goal.targetDate));
                   else if (target > 0) subParts.push('no date');
+                  // Version 2.2 (W1 everywhere): no icon here, so "by Ana" goes in the line under the name.
+                  if (who.others(goal.addedBy)) subParts.push(`added by ${who.nameOf(goal.addedBy)}`);
                   return (
                     <SwipeableRow
                       key={goal.id}

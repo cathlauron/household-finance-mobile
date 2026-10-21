@@ -12,6 +12,7 @@ import { todayISO } from '../dateUtils';
 import { requestNotificationPermission } from '../pushNotifications';
 import type { ThemeColors } from '../theme';
 import type { Bill } from '../types';
+import { WhoBadge } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 
 // Redesign: Subscriptions, from the Finance Flow mockup (To-Pay > Subscriptions).
@@ -127,6 +128,7 @@ export default function SubscriptionsScreen() {
         <View style={[styles.avatar, { backgroundColor: colors.accentTint }]}>
           <GradientFill match={[styles.avatar, { backgroundColor: colors.accentTint }]} />
           <Text style={[styles.avatarText, { color: colors.gold }]}>{(b.name || '?').trim().charAt(0).toUpperCase()}</Text>
+          <WhoBadge by={b.addedBy} />
         </View>
         <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={[styles.title, kind === 'cancelled' && { color: colors.inkDim }]} numberOfLines={1}>{b.name || 'Subscription'}</Text>

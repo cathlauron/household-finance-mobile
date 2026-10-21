@@ -23,6 +23,7 @@ import * as Network from 'expo-network';
 import { Alert, AppState } from 'react-native';
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel, ManualTransaction } from './types';
+import { stampHouseholdWho } from './whoStamp';
 import { defaultModel } from './defaultModel';
 import { deriveKey, generateSalt, encryptJSON, decryptJSON } from './encryption';
 import {
@@ -981,7 +982,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : g
       ),
     };
-    const sanitizedModel = sanitizeModelIds(stamped);
+    // Version 2.2 (W1/W2 everywhere): who added / changed bills, debts, loans, pots,
+    // income, trips and the entries inside them.
+    const sanitizedModel = sanitizeModelIds(stampHouseholdWho(stamped, prev, now, usernameRef.current));
     // Version 3: no account yet. A new money entry asks to save Finance Flow first;
     // anything else (Home tidying up) just changes what's on screen.
     if (guestRef.current) {

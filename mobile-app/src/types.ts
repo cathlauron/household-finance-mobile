@@ -93,6 +93,10 @@ export type PaymentLogEntry = {
   // adds to that account's balance; the expected amount is only a projection.
   paymentMethod?: PaymentMethod;
   createdAt?: number; // when it was logged (stamped on save)
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type IncomeSource = {
@@ -108,6 +112,10 @@ export type IncomeSource = {
   // Redesign: the account paydays usually go into (preselected when logging one).
   depositTo?: PaymentMethod;
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // ---- Checkpoint 10.2a: payment method tracking ----
@@ -142,6 +150,8 @@ export type BillCycle = {
   // A late fee the lender charged for this cycle's short or late payment (added to the
   // next amount due).
   lateFee?: number;
+  // Version 2.2 (W1/W2 everywhere): who marked this cycle paid (cleared when unpaid).
+  paidBy?: string;
 };
 
 export type Bill = {
@@ -169,6 +179,10 @@ export type Bill = {
   // "cancel by" date the person wants to be reminded of.
   cancelledOn?: string;
   cancelBy?: string;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type Debt = {
@@ -188,6 +202,10 @@ export type Debt = {
   customFreq?: string;
   customStartDate?: string;
   customOccurrenceCount?: number | '';
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type LoanPayment = {
@@ -201,6 +219,10 @@ export type LoanPayment = {
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type Loan = {
@@ -221,6 +243,10 @@ export type Loan = {
   customStartDate?: string;
   customOccurrenceCount?: number | '';
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type SavingsContribution = {
@@ -231,6 +257,10 @@ export type SavingsContribution = {
   paymentMethod?: PaymentMethod;
   auto?: boolean; // added automatically on a payday
   createdAt?: number; // when it was logged (stamped on save)
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type SavingsGoal = {
@@ -245,6 +275,10 @@ export type SavingsGoal = {
   keptIn?: PaymentMethod;
   autoAdd?: { enabled: boolean; amount: number; since: string };
   isEmergency?: boolean;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type CalculatorInputs = {
@@ -312,6 +346,10 @@ export type TravelChecklistItem = {
   // Only on the way to being saved: "take it off my balance" for a payment dated before
   // balances were last updated (never kept on a saved item).
   takeOffBalance?: boolean;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type TravelTrip = {
@@ -332,6 +370,10 @@ export type TravelTrip = {
   trackInSavings?: boolean;
   savingsGoalId?: string;
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // ---- Checkpoint 8.3: Events ----

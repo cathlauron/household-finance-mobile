@@ -600,6 +600,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
               >
               <PayRow
                 testID={`loan-row-${loan.id}`}
+                addedBy={loan.addedBy}
                 icon={loan.direction === 'lent' ? 'arrow-redo-outline' : 'business-outline'}
                 title={loan.name || 'Untitled loan'}
                 sub={`${loan.direction === 'lent' ? 'You lent' : 'You borrowed'}${loanNextDue ? ` · next ${loanNextDue.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`}
