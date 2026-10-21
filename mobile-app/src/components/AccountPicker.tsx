@@ -10,9 +10,10 @@ import GradientFill from './GradientFill';
 import { cardColor, cardChipColors } from './CardFace';
 
 // Redesign: choosing the account for a new transaction (required).
-// Money out: "Paid from". Cash and debit accounts with nothing in them, or less than the
-// amount, can't be chosen ("Insufficient balance"), so a balance never goes below zero.
-// Credit cards are borrowing, so they can always be charged.
+// Money out: "Paid from". An account with nothing in it, or less than the amount, is
+// greyed out and can't be chosen ("Insufficient balance"), so a balance never goes below
+// zero. Version 2.2 (Cath): the same for cash, debit AND credit cards (a card is checked
+// against what's still available to use on it), with the same wording everywhere.
 // Money in: "Add to", any account.
 // Balances shown are live (see accountCurrentBalance). When editing a transaction, its
 // own amount is left out, so it isn't counted against itself.
@@ -49,8 +50,8 @@ export function accountProblem(
     if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} has ${formatPeso(bal)} available to use.`;
     return null;
   }
-  if (bal <= 0) return `${name} has no balance left.`;
-  if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} has ${formatPeso(bal)}.`;
+  if (bal <= 0) return `Insufficient balance: ${name} has no money left in it.`;
+  if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} only has ${formatPeso(bal)}.`;
   return null;
 }
 
@@ -88,9 +89,8 @@ export default function AccountPicker({ model, direction, amount, value, onChang
             const pm: PaymentMethod = { type: g, accountId: a.id };
             const bal = availableBalance(model, pm, excludeTxnId) ?? 0;
             const selected = value?.type === g && value?.accountId === a.id;
-            const blocked =
-              spending && g !== 'credit' && (bal <= 0 || (typeof amount === 'number' && amount > bal));
-            const reason = !blocked ? null : bal <= 0 ? 'No balance' : 'Insufficient balance';
+            const blocked = spending && (bal <= 0 || (typeof amount === 'number' && amount > bal));
+            const reason = !blocked ? null : 'Insufficient balance';
             return (
               <TouchableOpacity
                 key={`${g}:${a.id}`}

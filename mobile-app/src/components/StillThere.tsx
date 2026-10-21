@@ -57,8 +57,8 @@ export function StillTherePopup({
       <View style={s.backdrop}>
         <View style={s.card}>
           <View style={[s.wave, { backgroundColor: colors.accentTint }]}>
-            {/* 2.2 (approved P3): the app's leaf instead of the waving-hand emoji, like the cover. */}
-            <Ionicons name="leaf-outline" size={28} color={colors.gold} />
+            {/* 2.2 (Cath picked C): a coffee cup ("taking a break?") instead of the waving-hand emoji, like the cover. */}
+            <Ionicons name="cafe-outline" size={28} color={colors.gold} />
           </View>
           <Text style={s.title}>Hey, are you still there?</Text>
           <Text style={s.body}>
@@ -92,9 +92,9 @@ export function PausedCover({ visible, onShow }: { visible: boolean; onShow: () 
   return (
     <Modal visible={visible} transparent={false} animationType="fade" onRequestClose={onShow} statusBarTranslucent>
       <View style={[s.cover, { backgroundColor: colors.navy2 }]}>
-        {/* 2.2 (Cath, option B): the app's own leaf on a pale green circle, instead of the emoji. */}
+        {/* 2.2 (Cath picked C): the coffee cup on a pale green circle, same as the check-in. */}
         <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden importantForAccessibility="no">
-          <Ionicons name="leaf-outline" size={38} color={colors.gold} />
+          <Ionicons name="cafe-outline" size={38} color={colors.gold} />
         </View>
         <Text style={[s.title, { marginTop: 12 }]}>Amounts hidden while you were away</Text>
         <Text style={[s.body, { marginBottom: 18 }]}>Nothing is locked or lost.</Text>

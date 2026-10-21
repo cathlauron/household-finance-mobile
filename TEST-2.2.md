@@ -37,7 +37,7 @@ Sections, for reference (all passed in Expo Go)
 Not yet tested at all (built 2026-10-21, after section N was written): nothing.
 
 O  2026-10-21 batch (new Claude account): calendar circles, who logged it everywhere,
-   mood samples, last 4 digits, leaf cover, new linking screen. NOT YET TESTED.
+   mood samples, last 4 digits, leaf cover, new linking screen. PASSED on Cath's phone 2026-10-21.
 - O1  Calendar page: today is a soft pale-green circle with a green number. Tap another
       day: a soft pale-grey circle (not black). Tap today: it stays pale green. The month
       name and the day heading under the calendar are lighter and slightly smaller. Year
@@ -77,7 +77,7 @@ O  2026-10-21 batch (new Claude account): calendar circles, who logged it everyw
       household will have. "Go back" closes it and nothing happens.
 
 P  2026-10-21 design-skills batch (taste, Emil Kowalski, Impeccable /polish): app-wide
-   polish P1-P4 and the new website (website/index.html). NOT YET TESTED.
+   polish P1-P4 and the new website (website/index.html). PASSED on Cath's phone 2026-10-21.
 - P1  Page titles everywhere (Home, To-Pay, Plan, Settings...) are slightly smaller and
       less heavy, like the calendar's month. Nothing in the app looks extra-bold now.
 - P2  Amounts in lists line up digit by digit (look at Transactions and To-Pay).
@@ -112,7 +112,7 @@ P  2026-10-21 design-skills batch (taste, Emil Kowalski, Impeccable /polish): ap
       changes Left to spend, days to payday and what's still due. Make the window narrow
       (like a phone): everything stacks and nothing scrolls sideways.
 
-Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). NOT YET TESTED.
+Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). PASSED on Cath's phone 2026-10-21.
 - Q1  Add a transaction: the form starts closing as soon as you tap Add (no waiting
       spinner), then the new row slides into the list and glows pale green for about a
       second and a half. Same for a bill, debt, loan, pot or trip item.
@@ -132,7 +132,7 @@ Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). 
       In + > transaction, typing an amount and a description keeps up with your fingers.
 
 R  2026-10-21 Cath's notes (credit limit, K1 Bill | Debt | Loan, subscription example,
-   light/dark lag, Add lag). NOT YET TESTED.
+   light/dark lag, Add lag). PASSED on Cath's phone 2026-10-21.
 - R1  Pay something with a credit card for more than it has available (bill Pay sheet, a
       new transaction, a trip item): it says "Insufficient balance: <card> has ₱X available
       to use." and doesn't save. A card with nothing left says so too. An amount within
@@ -151,7 +151,7 @@ R  2026-10-21 Cath's notes (credit limit, K1 Bill | Debt | Loan, subscription ex
       also after closing and reopening the app.
 
 S  2026-10-21 Speed sweep (cards, whole-app redraws) + "Hey, are you still there?".
-   NOT YET TESTED.
+   PASSED on Cath's phone 2026-10-21.
 - S1  Home > Accounts cards: swipe right and left several times in a row, quickly. Each
       card follows your finger and flies off/comes back smoothly, with no hitch halfway.
 - S2  Hold a card and drag it up and down: the gap moves smoothly, it drops in cleanly.
@@ -163,3 +163,13 @@ S  2026-10-21 Speed sweep (cards, whole-app redraws) + "Hey, are you still there
       turn on airplane mode, back to normal when you turn it off).
 - S5  Leave the app alone until the check-in appears: it says "Hey, are you still
       there?" and the button says "Good".
+
+T  2026-10-21 Coffee cup icon, Insufficient balance for every account. NOT YET TESTED.
+- T1  The "Hey, are you still there?" check-in and the "Amounts hidden while you were
+      away" cover both show a coffee cup on a pale green circle.
+- T2  Pay a bill (or add a transaction) for more than a cash or debit account has: that
+      account is greyed out with "Insufficient balance" under its name and can't be
+      picked. Same for a credit card with less available than the amount.
+- T3  Pick an account first, then raise the amount above what it has and tap Save /
+      Pay: it says "Insufficient balance: <name> only has ₱X." and doesn't save. An
+      account with nothing left says "Insufficient balance: <name> has no money left in it."
