@@ -178,6 +178,7 @@ export default function TransactionsScreen({
   editTxnId,
   onFormClosed,
   addNonceProp,
+  addDateProp,
   onFormOpened,
   onAdded,
 }: {
@@ -187,6 +188,8 @@ export default function TransactionsScreen({
   // Version 2.2 (Cath: + on Home lagged): the quick "New transaction" form over Home
   // opens on each new number here (see QuickAdd in navigation/MainTabs.tsx).
   addNonceProp?: number;
+  // The day picked in the calendar (the form over the calendar).
+  addDateProp?: string;
   onFormOpened?: () => void;
   // Something new was added (the quick form over Home then goes to Transactions).
   onAdded?: () => void;
@@ -222,6 +225,7 @@ export default function TransactionsScreen({
   useEffect(() => {
     if (!formOnly || !addNonceProp) return;
     openAddModal();
+    if (addDateProp && /^\d{4}-\d{2}-\d{2}$/.test(addDateProp)) setDateInput(addDateProp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addNonceProp]);
   useEffect(() => {
@@ -344,7 +348,7 @@ export default function TransactionsScreen({
   // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
   // every key typed in the form).
   const txnIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
-  const arrivedTxn = useArrival(txnIds);
+  const arrivedTxn = useArrival(txnIds, formOnly ? undefined : 'txn');
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();

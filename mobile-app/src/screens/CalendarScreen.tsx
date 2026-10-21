@@ -22,7 +22,13 @@ import {
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
+import TransactionsScreen from './TransactionsScreen';
+import BillsScreen from './BillsScreen';
+import DebtsScreen from './DebtsScreen';
+import LoansScreen from './LoansScreen';
+import { expectArrival } from '../arrivalFocus';
+import { buildTransactionsList } from '../transactions';
 import { hapticSelection } from '../haptics';
 import { requestToPayTab } from '../openToPayTabRequest';
 import { requestToPayAdd } from '../fabActions';
@@ -312,7 +318,7 @@ const YEAR_NOTE_H = 44; // the note above the first year
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
-  const { model } = useData();
+  const { model, getModel } = useData();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -466,18 +472,27 @@ export default function CalendarScreen() {
   }
 
   // + adds on the day you're looking at.
+  // Version 2.2 (Cath: don't jump to the other screen before I've added it): the form
+  // opens right here over the calendar, starting on the picked day. Only after Add does
+  // the app go to Transactions or To-Pay, where the new one slides in and glows.
+  const [formHosts, setFormHosts] = useState<{ kind: 'txn' | 'bills' | 'debts' | 'loans'; date: string; nonce: number }[]>([]);
+  const endFormHost = (nonce: number) => setTimeout(() => setFormHosts((l) => l.filter((h) => h.nonce !== nonce)), 500);
   function add(kind: 'txn' | 'bill' | 'debt' | 'loan') {
-    setAddOpen(false);
     const date = isoOf(page.year, page.month, selDay);
-    navigation.goBack();
+    const k = kind === 'txn' ? 'txn' : kind === 'bill' ? 'bills' : kind === 'debt' ? 'debts' : 'loans';
+    const m = getModel();
+    if (m) expectArrival(k, k === 'txn' ? buildTransactionsList(m).map((t) => t.id) : (k === 'bills' ? m.bills : k === 'debts' ? m.debts : m.loans).map((x: { id: string }) => x.id));
+    // The form takes this sheet's place (no close and reopen).
+    startSheetHandoff(() => setAddOpen(false));
+    setFormHosts((l) => [...l, { kind: k, date, nonce: Date.now() }]);
+  }
+  function afterFormAdded(kind: 'txn' | 'bills' | 'debts' | 'loans') {
     if (kind === 'txn') {
-      navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now(), addDate: date } });
+      navigation.navigate('Main', { screen: 'Transactions' });
       return;
     }
-    const tab = kind === 'bill' ? 'bills' : kind === 'debt' ? 'debts' : 'loans';
-    requestToPayTab(tab);
+    requestToPayTab(kind);
     navigation.navigate('Main', { screen: 'To-Pay' });
-    afterSlide(() => requestToPayAdd(date));
   }
 
   const selectedForList = listLayout ? { y: page.year, m: page.month, d: selDay } : null;
@@ -798,6 +813,20 @@ export default function CalendarScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {formHosts.map((h) => (
+        <View key={h.nonce} pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+          {h.kind === 'txn' ? (
+            <TransactionsScreen formOnly addNonceProp={h.nonce} addDateProp={h.date} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('txn')} />
+          ) : h.kind === 'bills' ? (
+            <BillsScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('bills')} />
+          ) : h.kind === 'debts' ? (
+            <DebtsScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('debts')} />
+          ) : (
+            <LoansScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('loans')} />
+          )}
+        </View>
+      ))}
 
       {/* + : add on the day you're looking at. Version 2.2 (Cath picked A): the same
           bottom sheet as the app's forms, a white list with the pale green icon tiles and

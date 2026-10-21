@@ -5,6 +5,8 @@ import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
 import { setToPaySub, onToPaySwitchAdd, AddCarry } from '../fabActions';
+import { useData } from '../DataContext';
+import { expectArrival } from '../arrivalFocus';
 import { closeOpenSwipeRows } from '../components/SwipeableRow';
 import { useStickyState } from '../stickyState';
 import BillsScreen from './BillsScreen';
@@ -34,6 +36,7 @@ interface ToPayScreenProps {
 
 export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   const { colors } = useTheme();
+  const { getModel } = useData();
   const [activeSubTab, setActiveSubTab] = useStickyState<SubTab>('toPay.sub', 'bills');
   const [swipeOpenRequest, setSwipeOpenRequest] = useState<OpenBillRequest | null>(null);
   const [swipeOpenDebtRequest, setSwipeOpenDebtRequest] = useState<OpenDebtRequest | null>(null);
@@ -93,16 +96,21 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   // Version 2.2 (Cath): Bill | Debt | Loan switch on a New form. The other kind's form
   // opens here, over this list, with what was typed; this list only changes to that kind
   // once it's been added (so you see it there).
-  const [switchForm, setSwitchForm] = useState<{ sub: SubTab; carry: AddCarry; nonce: number } | null>(null);
+  // More than one can be there for a moment while one form hands over to the next.
+  const [switchForms, setSwitchForms] = useState<{ sub: SubTab; carry: AddCarry; nonce: number }[]>([]);
   useEffect(
     () =>
       onToPaySwitchAdd((sub, carry) => {
-        setSwitchForm({ sub, carry, nonce: Date.now() });
+        const m = getModel();
+        // So the list can find, light up and scroll to the new one after Add.
+        if (m) expectArrival(sub, (sub === 'bills' ? m.bills : sub === 'debts' ? m.debts : m.loans).map((x: { id: string }) => x.id));
+        setSwitchForms((list) => [...list, { sub, carry, nonce: Date.now() }]);
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
   // After its sheet has slid away, the extra form is let go.
-  const endSwitchForm = (nonce: number) => setTimeout(() => setSwitchForm((f) => (f && f.nonce === nonce ? null : f)), 500);
+  const endSwitchForm = (nonce: number) => setTimeout(() => setSwitchForms((list) => list.filter((f) => f.nonce !== nonce)), 500);
   const styles = makeStyles(colors);
   const navigation = useNavigation<any>();
   // Version 2.1: swipe between Bills, Debts and Loans; past either end it carries on to
@@ -145,15 +153,18 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
           />
         )}
       </View>
-      {switchForm && (
-        <View pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+      {switchForms.map((f) => (
+        <View key={f.nonce} pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
           {(() => {
-            const f = switchForm;
             const common = {
               formOnly: true,
               addCarry: { ...f.carry, nonce: f.nonce },
               onFormClosed: () => endSwitchForm(f.nonce),
-              onAdded: () => setActiveSubTab(f.sub),
+              onAdded: () => {
+                setActiveSubTab(f.sub);
+                // Opened from somewhere else (the calendar): come back to To-Pay to see it.
+                navigation.navigate('Main', { screen: 'To-Pay' });
+              },
             };
             return f.sub === 'bills' ? (
               <BillsScreen key={f.nonce} {...common} />
@@ -164,7 +175,7 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
             );
           })()}
         </View>
-      )}
+      ))}
     </SafeAreaView>
     </SwipeTabs>
   );

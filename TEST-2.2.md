@@ -250,7 +250,7 @@ Y  2026-10-22 Switch in place + year view. NOT YET TESTED.
 - Y3  Calendar > year view: fling quickly from 2021 to 2031 and back: every year is
       drawn (no blank pages), today is a green number in a circle.
 
-Z  2026-10-22 Card stack rebuilt, smooth light/dark, calendar fixes. NOT YET TESTED.
+Z  2026-10-22 Card stack rebuilt, smooth light/dark, calendar fixes. PASSED on Cath's phone 2026-10-22 (cards smoother).
 - Z1  Home cards: swipe right and left several times quickly; the front card follows your
       finger exactly and flies off/comes back smoothly.
 - Z2  Hold a card and move it up and down for several seconds: it stays right under your
@@ -261,3 +261,20 @@ Z  2026-10-22 Card stack rebuilt, smooth light/dark, calendar fixes. NOT YET TES
 - Z5  Calendar: tap any day that isn't today: it gets a light grey CIRCLE (not a square).
 - Z6  Calendar +: the four choices sit on the sheet with no white box around them, just a
       faint line between them (starting under the text).
+
+AA 2026-10-22 One sheet for Bill/Debt/Loan, add from anywhere, see it land. NOT YET TESTED.
+- AA1 To-Pay > Bills > +, type an amount and name, tap Debt: the same sheet just changes
+      to the debt form (no closing and reopening), with your amount and name. Same for
+      Loan, and back to Bill.
+- AA2 Add it: "Added", To-Pay switches to Debts, the new debt slides in and glows, and the
+      list scrolls to it if it's further down.
+- AA3 Bills > + > add a bill that lands further down the list: the list scrolls to it and
+      it glows (no need to scroll yourself). Same on Debts, Loans and Transactions.
+- AA4 Calendar > pick a day > + > Transaction: the form comes up right over the calendar
+      (no jump), on that day. Add: you go to Transactions and see it slide in and glow.
+- AA5 Calendar > + > Bill (and Debt, Loan): the form comes up over the calendar, Due on
+      the picked day. Add: you go to To-Pay on that list and see it slide in and glow.
+      Cancel: you stay on the calendar.
+- AA6 Hold a Home card and drag it to the very top or bottom of the screen: the page
+      scrolls along while you hold it there; the card stays under your finger. Let go: it
+      drops into the right place and the order is kept.

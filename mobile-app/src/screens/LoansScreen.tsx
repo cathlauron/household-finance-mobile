@@ -28,7 +28,7 @@ import { getNextDueDate, RecurringType } from '../recurrence';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
@@ -94,7 +94,7 @@ type LoansScreenProps = {
   // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
   // first): the other kind's New form opens right where you are, with what you typed;
   // only once it's added does To-Pay show that list (see ToPayScreen).
-  addCarry?: { amount: number | ''; name: string; nonce: number };
+  addCarry?: { amount: number | ''; name: string; date?: string; nonce: number };
   onAdded?: () => void;
   // Version 2.2 fix (Cath's video: Edit on a loan's page flashed and closed): the page
   // itself shows this loan's form, with no jump back to the list. formOnly draws just the
@@ -131,13 +131,15 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     openAddModal();
     setTotalAmountInput(addCarry.amount);
     setNameInput(addCarry.name);
+    // The day picked in the calendar (or carried over from the other form).
+    if (addCarry.date) setOnetimeDateInput(addCarry.date);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   // Version 2.2 (approved P4): a just-added loan slides in and glows.
-  const arrived = useArrival((model?.loans || []).map((l) => l.id));
+  const arrived = useArrival((model?.loans || []).map((l) => l.id), formOnly ? undefined : 'loans');
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -666,8 +668,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           <KindSwitch
             current="loans"
             onSwitch={(to) => {
-              const carry = { amount: totalAmountInput, name: nameInput };
-              closeModal();
+              const carry = { amount: totalAmountInput, name: nameInput, date: onetimeDateInput || undefined };
+              // The other form takes this sheet's place (no close and reopen).
+              startSheetHandoff(() => closeModal());
               switchToPayAdd(to, carry);
             }}
           />

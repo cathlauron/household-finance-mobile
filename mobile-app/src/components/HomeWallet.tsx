@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { reduceMotionNow } from '../reduceMotion';
 import { holdTabSwipe } from '../navigation/swipeTabs';
-import { setHomeScrollLocked } from '../homeScrollLock';
+import { setHomeScrollLocked, scrollHomeBy } from '../homeScrollLock';
 import { View, StyleSheet, useWindowDimensions, AppState } from 'react-native';
 import Reanimated, { Easing, Extrapolation, interpolate, SharedValue, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
@@ -108,7 +108,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   }, [saved.map((c) => c.key).join('|')]);
   const cards = order.map((k) => saved.find((c) => c.key === k)).filter(Boolean) as WalletCard[];
   const orderKey = order.join('|');
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
 
   // ---- the moving values ----
   const tops = usePool(0); // each card's place in the stack (slides when the order changes)
@@ -119,6 +119,10 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const frontSlot = useSharedValue(0);
   const busySV = useSharedValue(0);
   const dragTargetSV = useSharedValue(-1);
+  // How far Home has scrolled while a card is held near the top or bottom (the held card
+  // moves by the same amount, so it stays under your finger).
+  const scrollComp = useSharedValue(0);
+  const edgeSV = useSharedValue(0);
   const slots = useRef(new Map<string, number>()).current;
   const slotOf = (k: string) => {
     let s = slots.get(k);
@@ -289,6 +293,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const dragStartRef = useRef((_k: string, _i: number) => {});
   dragStartRef.current = (k: string, index: number) => {
     holding.current = true;
+    heldInfo.current = { key: k, index, count: order.length };
     setHomeScrollLocked(true);
     hapticMedium();
     setDragging(k);
@@ -296,6 +301,31 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
     layout(order.filter((x) => x !== k), index);
   };
   const onDragStart = useCallback((k: string, i: number) => dragStartRef.current(k, i), []);
+  // Near the top or bottom edge: scroll Home along, a little every frame.
+  const heldInfo = useRef<{ key: string; index: number; count: number } | null>(null);
+  const edgeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopEdge = () => {
+    if (edgeTimer.current) clearInterval(edgeTimer.current);
+    edgeTimer.current = null;
+  };
+  const onEdge = useCallback((edge: number) => {
+    stopEdge();
+    if (!edge) return;
+    edgeTimer.current = setInterval(() => {
+      const h = heldInfo.current;
+      if (!h) return stopEdge();
+      const moved = scrollHomeBy(edge * 9);
+      if (!moved) return;
+      scrollComp.value = scrollComp.value + moved;
+      const target = Math.max(0, Math.min(h.count - 1, Math.round((h.index * PEEK + dragY.value + scrollComp.value) / PEEK)));
+      if (target !== dragTargetSV.value) {
+        dragTargetSV.value = target;
+        dragMoveRef.current(h.key, target);
+      }
+    }, 16);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => () => stopEdge(), []);
   const dragMoveRef = useRef((_k: string, _t: number) => {});
   dragMoveRef.current = (k: string, target: number) => {
     hapticSelection();
@@ -306,6 +336,8 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const dragEndRef = useRef((_k: string, _i: number, _t: number, _y: number) => {});
   dragEndRef.current = (k: string, index: number, target: number, y: number) => {
     holding.current = false;
+    heldInfo.current = null;
+    stopEdge();
     setHomeScrollLocked(false);
     const keys = order.filter((x) => x !== k);
     keys.splice(target, 0, k);
@@ -313,6 +345,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
     // It drops from where you held it, levelling out as it slides into its slot.
     tops[slot].value = index * PEEK + y;
     dragY.value = 0;
+    scrollComp.value = 0;
     setDragging(null);
     setGapAt(-1);
     setSettling(k);
@@ -334,6 +367,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   const gestures = useMemo(() => {
     const m = new Map<string, ReturnType<typeof Gesture.Race>>();
     const count = cards.length;
+    const edgeBottom = screenH - 170; // above the tab bar
     cards.forEach((c, index) => {
       const slot = slotOf(c.key);
       const key = c.key;
@@ -360,6 +394,8 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
         .activateAfterLongPress(350)
         .onStart(() => {
           dragY.value = 0;
+          scrollComp.value = 0;
+          edgeSV.value = 0;
           liftUp.value = 0;
           liftUp.value = withTiming(-LIFT, { duration: 180, easing: OUT_CUBIC });
           heldSlot.value = slot;
@@ -368,7 +404,12 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
         })
         .onUpdate((e) => {
           dragY.value = e.translationY;
-          const target = Math.max(0, Math.min(count - 1, Math.round((index * PEEK + e.translationY) / PEEK)));
+          const edge = e.absoluteY < 150 ? -1 : e.absoluteY > edgeBottom ? 1 : 0;
+          if (edge !== edgeSV.value) {
+            edgeSV.value = edge;
+            runOnJS(onEdge)(edge);
+          }
+          const target = Math.max(0, Math.min(count - 1, Math.round((index * PEEK + e.translationY + scrollComp.value) / PEEK)));
           if (target !== dragTargetSV.value) {
             dragTargetSV.value = target;
             runOnJS(onDragMove)(key, target);
@@ -378,13 +419,14 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
           const target = dragTargetSV.value;
           if (target < 0) return;
           dragTargetSV.value = -1;
-          runOnJS(onDragEnd)(key, index, target, dragY.value);
+          edgeSV.value = 0;
+          runOnJS(onDragEnd)(key, index, target, dragY.value + scrollComp.value);
         });
       m.set(key, Gesture.Race(drag, swipe, tap));
     });
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderKey, screenW]);
+  }, [orderKey, screenW, screenH]);
 
   // A soft wash of each card's own colour (mixed into the card background), kept light
   // so the Left to Spend card and the + button stay the stars of the screen.
@@ -435,6 +477,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
                   tops={tops}
                   xs={xs}
                   dragY={dragY}
+                  scrollComp={scrollComp}
                   liftUp={liftUp}
                   heldSlot={heldSlot}
                   lifted={lifted}
@@ -509,6 +552,7 @@ function MovingCard({
   tops,
   xs,
   dragY,
+  scrollComp,
   liftUp,
   heldSlot,
   lifted,
@@ -521,6 +565,7 @@ function MovingCard({
   tops: SharedValue<number>[];
   xs: SharedValue<number>[];
   dragY: SharedValue<number>;
+  scrollComp: SharedValue<number>;
   liftUp: SharedValue<number>;
   heldSlot: SharedValue<number>;
   lifted: boolean;
@@ -539,7 +584,7 @@ function MovingCard({
     const tilt = held ? interpolate(liftUp.value, [-LIFT, 0], [5, 0], Extrapolation.CLAMP) : 0;
     return {
       transform: [
-        { translateY: held ? top.value + dragY.value + liftUp.value : top.value },
+        { translateY: held ? top.value + dragY.value + scrollComp.value + liftUp.value : top.value },
         { translateX: x.value },
         { rotate: `${slant}deg` },
         { rotate: `${tilt}deg` },

@@ -19,7 +19,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
@@ -59,7 +59,7 @@ type BillsScreenProps = {
   // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
   // first): the other kind's New form opens right where you are, with what you typed;
   // only once it's added does To-Pay show that list (see ToPayScreen).
-  addCarry?: { amount: number | ''; name: string; nonce: number };
+  addCarry?: { amount: number | ''; name: string; date?: string; nonce: number };
   onAdded?: () => void;
   // Version 2.2 fix (Cath's video: Edit on a bill's page flashed and closed): the page
   // itself shows this bill's form, with no jump back to the list. formOnly draws just the
@@ -100,13 +100,15 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     openAddModal();
     setAmountInput(addCarry.amount);
     setNameInput(addCarry.name);
+    // The day picked in the calendar (or carried over from the other form).
+    if (addCarry.date) setOnetimeDateInput(addCarry.date);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   // Version 2.2 (approved P4): a just-added bill slides in and glows.
-  const arrived = useArrival((model?.bills || []).map((b) => b.id));
+  const arrived = useArrival((model?.bills || []).map((b) => b.id), formOnly ? undefined : 'bills');
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
   // reached via the subscription-reminder deep link, or via a swipe-to-
@@ -659,8 +661,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
           <KindSwitch
             current="bills"
             onSwitch={(to) => {
-              const carry = { amount: amountInput, name: nameInput };
-              closeModal();
+              const carry = { amount: amountInput, name: nameInput, date: onetimeDateInput || undefined };
+              // The other form takes this sheet's place (no close and reopen).
+              startSheetHandoff(() => closeModal());
               switchToPayAdd(to, carry);
             }}
           />

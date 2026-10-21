@@ -11,8 +11,8 @@
 // skipped, matching the same gap noted in balanceProjection.ts.
 // ============================================================
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { onHomeScrollLock } from '../homeScrollLock';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { onHomeScrollLock, registerHomeScroller } from '../homeScrollLock';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -119,6 +119,26 @@ export default function DashboardScreen({
   // The page holds still while a Wallet card is picked up (see homeScrollLock.ts).
   const [scrollLocked, setScrollLocked] = useState(false);
   useEffect(() => onHomeScrollLock(setScrollLocked), []);
+  // The Wallet can scroll the page while a card is held near the top or bottom edge.
+  const pageRef = useRef<any>(null);
+  const pageY = useRef(0);
+  const pageContentH = useRef(0);
+  const pageViewH = useRef(0);
+  useEffect(() => {
+    registerHomeScroller({
+      scrollBy: (dy: number) => {
+        const max = Math.max(0, pageContentH.current - pageViewH.current);
+        const to = Math.max(0, Math.min(max, pageY.current + dy));
+        const moved = to - pageY.current;
+        if (moved !== 0) {
+          pageY.current = to;
+          pageRef.current?.scrollTo({ y: to, animated: false });
+        }
+        return moved;
+      },
+    });
+    return () => registerHomeScroller(null);
+  }, []);
 
 
   function openDueItem(item: DueItem) {
@@ -162,9 +182,19 @@ export default function DashboardScreen({
   return (
     <>
     <PullToRefreshScrollView
+      ref={pageRef}
+      onContentSizeChange={(_w: number, h: number) => {
+        pageContentH.current = h;
+      }}
+      onLayout={(e: any) => {
+        pageViewH.current = e.nativeEvent.layout.height;
+      }}
       style={styles.container}
         contentContainerStyle={styles.contentContainer}
-        onScroll={onScrollY ? (e: any) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+        onScroll={(e: any) => {
+          pageY.current = e.nativeEvent.contentOffset.y;
+          onScrollY?.(e.nativeEvent.contentOffset.y);
+        }}
       scrollEnabled={!scrollLocked}
       scrollEventThrottle={16}
     >

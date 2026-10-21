@@ -30,6 +30,31 @@ const DRAWER = Easing.bezier(0.32, 0.72, 0, 1);
 const OPEN_MS = 280;
 const CLOSE_MS = 240;
 
+// Version 2.2 (Cath: switching Bill / Debt / Loan closed the sheet and opened it again):
+// a "handoff" from one sheet to the next. The next sheet appears already up (no slide),
+// and the one before it goes away underneath at that same moment (no slide down), so it
+// looks like one sheet whose form changed.
+let handoffClose: (() => void) | null = null;
+let handoffUntil = 0;
+let instantCloseUntil = 0;
+export function startSheetHandoff(closePrevious: () => void) {
+  handoffClose = closePrevious;
+  handoffUntil = Date.now() + 1500;
+  // If the next sheet never shows, the old one still closes (normally).
+  setTimeout(() => {
+    if (handoffClose === closePrevious) {
+      handoffClose = null;
+      closePrevious();
+    }
+  }, 1500);
+}
+function takeHandoff(): (() => void) | null {
+  if (!handoffClose || Date.now() > handoffUntil) return null;
+  const f = handoffClose;
+  handoffClose = null;
+  return f;
+}
+
 export default function BottomSheet({
   visible,
   onClose,
@@ -92,6 +117,14 @@ export default function BottomSheet({
   const justClosed = !visible && wasVisible.current;
   const [, redraw] = React.useReducer((n: number) => n + 1, 0);
   const openNow = React.useCallback(() => {
+    const prev = takeHandoff();
+    if (prev) {
+      y.setValue(0);
+      dim.setValue(1);
+      instantCloseUntil = Date.now() + 400;
+      prev();
+      return;
+    }
     if (reduce) {
       y.setValue(0);
       dim.setValue(1);
@@ -119,7 +152,7 @@ export default function BottomSheet({
       y.setValue(offY);
       dim.setValue(0);
     } else if (!visible && was) {
-      if (reduce) {
+      if (reduce || Date.now() < instantCloseUntil) {
         // No slide: take the window down straight away.
         y.setValue(offY);
         dim.setValue(0);

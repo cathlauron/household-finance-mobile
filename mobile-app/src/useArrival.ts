@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutAnimation } from 'react-native';
 import { reduceMotionNow } from './reduceMotion';
+import { takeExpectedArrival } from './arrivalFocus';
 
 const ARRIVE = {
   duration: 280,
@@ -18,7 +19,9 @@ const GLOW_MS = 1700;
 
 // ids: the ids shown in the list right now. Returns the id that just arrived (for its
 // glow), or null.
-export function useArrival(ids: string[]): string | null {
+// kind: which list this is ('bills', 'debts', 'loans', 'txn'), so an add made from
+// somewhere else is found too (see arrivalFocus.ts).
+export function useArrival(ids: string[], kind?: string): string | null {
   const prev = useRef<Set<string> | null>(null);
   const [glow, setGlow] = useState<string | null>(null);
   const key = useMemo(() => ids.join('|'), [ids]);
@@ -27,7 +30,13 @@ export function useArrival(ids: string[]): string | null {
   // in this same update. The previous list is only updated after the screen shows it.
   const arrived = useMemo(() => {
     const before = prev.current;
-    if (!before) return null;
+    // Just opened (or opened again) after an add made elsewhere: the new one still slides in.
+    if (!before) {
+      const expected = kind ? takeExpectedArrival(kind, ids) : null;
+      if (expected && !reduceMotionNow()) LayoutAnimation.configureNext(ARRIVE);
+      return expected;
+    }
+    if (kind) takeExpectedArrival(kind, ids);
     const fresh = ids.filter((id) => !before.has(id));
     // One or two new rows = something was just added. Many at once = a month switch or
     // a sync, which shouldn't animate.

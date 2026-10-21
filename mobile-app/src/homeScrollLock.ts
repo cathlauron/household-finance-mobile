@@ -14,3 +14,15 @@ export function onHomeScrollLock(l: Listener): () => void {
     listeners.delete(l);
   };
 }
+
+// Version 2.2 (Cath: a held card dragged to the top or bottom of the screen should
+// scroll the page along): Home's page lets the Wallet move it while a card is held.
+type Scroller = { scrollBy: (dy: number) => number };
+let scroller: Scroller | null = null;
+export function registerHomeScroller(s: Scroller | null) {
+  scroller = s;
+}
+// Scrolls Home by up to dy points; returns how far it actually moved (0 at the ends).
+export function scrollHomeBy(dy: number): number {
+  return scroller ? scroller.scrollBy(dy) : 0;
+}

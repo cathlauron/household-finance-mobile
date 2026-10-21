@@ -16,7 +16,9 @@ import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import TabPage from './TabPage';
-import { QuietWhenHidden } from '../DataContext';
+import { QuietWhenHidden, useData } from '../DataContext';
+import { expectArrival } from '../arrivalFocus';
+import { buildTransactionsList } from '../transactions';
 import GradientFill from '../components/GradientFill';
 
 const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
@@ -79,10 +81,13 @@ function useCurrentTab(): string {
 let quickAddOpen: (() => void) | null = null;
 function QuickAdd() {
   const navigation = useNavigation<any>();
+  const { getModel } = useData();
   const [nonce, setNonce] = React.useState(0);
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
     quickAddOpen = () => {
+      const m = getModel();
+      if (m) expectArrival('txn', buildTransactionsList(m).map((t) => t.id));
       setOpen(true);
       setNonce(Date.now());
     };

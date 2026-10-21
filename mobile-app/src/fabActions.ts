@@ -52,7 +52,7 @@ export function useToPayAddRequest(sub: ToPaySub, open: (date?: string) => void)
 // Version 2.2 (canvas K1): switching a NEW bill / debt / loan form to another kind. The
 // amount and name typed so far are carried over; To-Pay shows that list, and its screen
 // opens its own add form with them.
-export type AddCarry = { amount: number | ''; name: string };
+export type AddCarry = { amount: number | ''; name: string; date?: string };
 let pendingAdd: { sub: ToPaySub; carry: AddCarry } | null = null;
 
 // Version 2.2 (Cath): To-Pay opens the other kind's form where you are (no jump to that

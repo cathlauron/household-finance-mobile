@@ -28,7 +28,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import type { Debt, HouseholdModel, PaymentMethod } from '../types';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import Button from '../components/Button';
@@ -63,7 +63,7 @@ type DebtsScreenProps = {
   // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
   // first): the other kind's New form opens right where you are, with what you typed;
   // only once it's added does To-Pay show that list (see ToPayScreen).
-  addCarry?: { amount: number | ''; name: string; nonce: number };
+  addCarry?: { amount: number | ''; name: string; date?: string; nonce: number };
   onAdded?: () => void;
   // Version 2.2 fix (Cath's video: Edit on a debt's page flashed and closed): the page
   // itself shows this debt's form, with no jump back to the list. formOnly draws just the
@@ -100,13 +100,15 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
     openAddModal();
     setAmountInput(addCarry.amount);
     setCreditorInput(addCarry.name);
+    // The day picked in the calendar (or carried over from the other form).
+    if (addCarry.date) setOnetimeDateInput(addCarry.date);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   // Version 2.2 (approved P4): a just-added debt slides in and glows.
-  const arrived = useArrival((model?.debts || []).map((d) => d.id));
+  const arrived = useArrival((model?.debts || []).map((d) => d.id), formOnly ? undefined : 'debts');
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -596,8 +598,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
           <KindSwitch
             current="debts"
             onSwitch={(to) => {
-              const carry = { amount: amountInput, name: creditorInput };
-              closeModal();
+              const carry = { amount: amountInput, name: creditorInput, date: onetimeDateInput || undefined };
+              // The other form takes this sheet's place (no close and reopen).
+              startSheetHandoff(() => closeModal());
               switchToPayAdd(to, carry);
             }}
           />
