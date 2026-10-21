@@ -16,7 +16,7 @@ import { hapticSelection, hapticLight } from '../haptics';
 import { todayISO } from '../dateUtils';
 import { makeId } from '../utils';
 import { formatPeso, cautionThresholdAmount, LeftToSpendMood } from '../balanceProjection';
-import { catchUpSince, tightWays, wayText, daysBetween, WELCOME_BACK_DAYS, TightWay } from '../calmHome';
+import { catchUpSince, tightWays, wayText, daysBetween, WELCOME_BACK_DAYS, TightWay, highPriorityDue } from '../calmHome';
 import type { HouseholdModel, ManualTransaction, PaymentMethod } from '../types';
 
 // Version 3, the calm Home (approved mockups H3b and H4b). Both cards sit between the
@@ -382,6 +382,13 @@ export function TightCard({ amount, mood, statusLabel, targetDate, basis }: { am
           ))}
         </View>
       )}
+      {(() => {
+        const iso = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+        const first = highPriorityDue(model, iso);
+        if (!first.length) return null;
+        const list = first.length > 3 ? `${first.slice(0, 3).join(', ')} and ${first.length - 3} more` : first.join(', ');
+        return <Text style={[s.sub, { color: colors.ink }]}>{`Pay High priority first: ${list}.`}</Text>;
+      })()}
       <Text style={s.foot}>Nothing moves until you choose. You can turn this off in Settings › Budgeting.</Text>
     </View>
   );

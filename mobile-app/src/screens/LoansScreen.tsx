@@ -12,6 +12,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest } from '../fabActions';
 import PayRow from '../components/PayRow';
+import PriorityPick from '../components/PriorityPick';
+import { Priority, priorityRank } from '../priority';
+import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -121,6 +124,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
   const [totalAmountInput, setTotalAmountInput] = useState<number | ''>('');
   const [expectedPaymentInput, setExpectedPaymentInput] = useState<number | ''>('');
   const [interestRateInput, setInterestRateInput] = useState('');
+  const [priorityInput, setPriorityInput] = useState<Priority>('');
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
@@ -186,6 +190,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     setEditingId(null);
     setNameInput('');
     setLoanTypeInput('');
+    setPriorityInput('');
     setDirectionInput('borrowed');
     setTotalAmountInput('');
     setExpectedPaymentInput('');
@@ -211,6 +216,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     if (!singleForm.claim()) return;
     setEditingId(loan.id);
     setNameInput(loan.name);
+    setPriorityInput(loan.priority || '');
     setLoanTypeInput(loan.loanType || '');
     setDirectionInput(loan.direction === 'lent' ? 'lent' : 'borrowed');
     setTotalAmountInput(loanTotal(loan) === 0 ? '' : loanTotal(loan));
@@ -370,6 +376,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
           totalAmount: parsedTotal,
           expectedPayment: parsedExpected,
           interestRate: parsedRate,
+          priority: priorityInput,
           recurringType: recurTypeInput,
           dueDate,
           customFreq: recurTypeInput === 'custom' ? customFreqInput : undefined,
@@ -386,6 +393,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
         totalAmount: parsedTotal,
         expectedPayment: parsedExpected,
         interestRate: parsedRate,
+        priority: priorityInput,
         actualPayments: [],
         owner: 'shared',
         direction: directionInput,
@@ -491,7 +499,21 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
     );
   }
 
-  const loans = sortByNextDue(model.loans);
+  // Version 2.2: overdue loans first (with the Overdue tag, like bills and debts); on the
+  // same day High priority comes first.
+  const overdueLoanIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'loan').map((o) => o.id));
+  const loans = sortByNextDue(model.loans)
+    .map((l, i) => ({ l, i }))
+    .sort((a, b) => {
+      const oa = overdueLoanIds.has(a.l.id) ? 0 : 1;
+      const ob = overdueLoanIds.has(b.l.id) ? 0 : 1;
+      if (oa !== ob) return oa - ob;
+      const na = getNextDueDate((a.l.recurringType as RecurringType) || 'onetime', a.l.dueDate || {})?.getTime() ?? Infinity;
+      const nb = getNextDueDate((b.l.recurringType as RecurringType) || 'onetime', b.l.dueDate || {})?.getTime() ?? Infinity;
+      if (na === nb) return priorityRank(a.l.priority) - priorityRank(b.l.priority) || a.i - b.i;
+      return a.i - b.i;
+    })
+    .map((x) => x.l);
   const totalBorrowed = loans
     .filter((l) => l.direction !== 'lent')
     .reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0);
@@ -571,6 +593,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
                 amount={formatPeso(remaining)}
                 amountColor={loan.direction === 'lent' ? colors.positive : colors.negative}
                 divider={rowIndex > 0}
+                badge={overdueLoanIds.has(loan.id) ? { text: 'Overdue', tone: 'overdue' } : undefined}
+                priority={loan.priority}
                 onPress={() => navigation.navigate('PayDetail', { kind: 'loan', id: loan.id })}
               />
               </SwipeableRow>
@@ -636,6 +660,13 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled }
           <Guided {...fieldErrors.props('interest')} focusRef={interestRef}>
             <InputRow label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
           </Guided>
+        </FormGroup>
+
+        {/* Version 2.2 (canvas K2): Priority, same as bills and debts. */}
+        <FormGroup>
+          <PickerRow label="Priority" value={priorityInput ? priorityInput.charAt(0).toUpperCase() + priorityInput.slice(1) : 'None'} open={openRow === 'priority'} onToggle={() => toggleRow('priority')}>
+            <PriorityPick value={priorityInput} onChange={setPriorityInput} />
+          </PickerRow>
         </FormGroup>
 
         {editingId && (

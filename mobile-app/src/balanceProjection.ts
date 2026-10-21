@@ -735,7 +735,7 @@ export function getLeftToSpendStatus(
 ): { color: string; label: string; mood: LeftToSpendMood } {
   // Redesign: labels match the Finance Flow mockups, and `mood` drives the Home card
   // colour (green / burnt orange / red).
-  if (amount < 0) return { color: colors.error, label: 'Overspent', mood: 'over' };
+  if (amount < 0) return { color: colors.error, label: 'Over budget', mood: 'over' };
   const cautionAmount = cautionThresholdAmount(model);
   if (amount < cautionAmount) return { color: colors.orange, label: 'Running low', mood: 'low' };
   return { color: colors.ok, label: 'Looking good', mood: 'good' };

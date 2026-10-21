@@ -17,11 +17,13 @@ type Props = {
   amountColor: string;
   badge?: { text: string; tone: 'overdue' | 'soon' | 'info' | 'paid' };
   divider?: boolean;
+  // Version 2.2 (canvas K3): a small High / Medium / Low tag after the name.
+  priority?: 'high' | 'medium' | 'low' | '';
   onPress: () => void;
   testID?: string;
 };
 
-export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, onPress, testID }: Props) {
+export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID }: Props) {
   const { colors } = useTheme();
   const tone = badge
     ? badge.tone === 'overdue'
@@ -38,7 +40,7 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       onPress={onPress}
       activeOpacity={0.6}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}`}
+      accessibilityLabel={`${title}${priority ? `, ${priority} priority` : ''}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}`}
       style={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}
     >
       <GradientFill match={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]} />
@@ -47,7 +49,13 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
         <Ionicons name={icon} size={17} color={colors.gold} />
       </View>
       <View style={styles.main}>
-        <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1}>{title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1}>{title}</Text>
+          {!!priority && (() => {
+            const c = priority === 'high' ? colors.negative : priority === 'medium' ? colors.orange : colors.positive;
+            return <Text style={[styles.prTag, { color: c, borderColor: c }]}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</Text>;
+          })()}
+        </View>
         <Text style={[styles.sub, { color: colors.inkDim }]} numberOfLines={1}>{sub}</Text>
       </View>
       <View style={styles.right}>
@@ -63,6 +71,8 @@ const styles = StyleSheet.create({
   tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   main: { flex: 1, marginRight: 8 },
   title: { fontSize: 17, fontWeight: '500' },
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  prTag: { marginLeft: 6, fontSize: 11, fontWeight: '800', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
   sub: { fontSize: 13, marginTop: 1 },
   right: { alignItems: 'flex-end' },
   amount: { fontSize: 17, fontWeight: '600' },

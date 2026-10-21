@@ -129,7 +129,7 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
                 [
                   ['light', 'Light'],
                   ['dark', 'Dark'],
-                  ['device', 'Like my phone'],
+                  ['device', 'Device'],
                 ] as const
               ).map(([id, label]) => (
                 <TouchableOpacity

@@ -120,14 +120,17 @@ export default function LeafBackground() {
       )),
     [leaf, opacity, colors.navy2, scale, height]
   );
-  const falling = fallingOn && !reduceMotion;
+  // Version 2.2 (Cath): turning Falling leaves off stops the moving leaves where they are
+  // (turning it back on carries on from there). The still field is only for the phone's
+  // Reduce Motion.
+  const moving = !reduceMotion;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
         <Rect x="0" y="0" width={width} height={height} fill={colors.navy2} />
-        {!falling && <G transform={`scale(${scale})`}>{leaves}</G>}
+        {!moving && <G transform={`scale(${scale})`}>{leaves}</G>}
       </Svg>
-      {falling && appActive && <FallingLeaves color={leaf} opacity={opacity} veinColor={colors.navy2} />}
+      {moving && <FallingLeaves color={leaf} opacity={opacity} veinColor={colors.navy2} paused={!fallingOn || !appActive} />}
     </View>
   );
 }

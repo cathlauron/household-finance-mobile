@@ -182,6 +182,8 @@ export type Debt = {
   owner: string;
   interestRate?: number | '';
   minPayment?: number | '';
+  // Version 2.2 (canvas K2): High / Medium / Low.
+  priority?: 'high' | 'medium' | 'low' | '';
   createdAt?: number;
   customFreq?: string;
   customStartDate?: string;
@@ -211,6 +213,8 @@ export type Loan = {
   owner: string;
   direction: 'borrowed' | 'lent';
   interestRate?: number | '';
+  // Version 2.2 (canvas K2): High / Medium / Low.
+  priority?: 'high' | 'medium' | 'low' | '';
   recurringType?: 'monthly' | 'annual' | 'onetime' | 'custom';
   dueDate?: Record<string, any>;
   customFreq?: string;

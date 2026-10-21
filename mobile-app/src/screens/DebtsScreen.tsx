@@ -11,6 +11,9 @@ import { useToPayAddRequest } from '../fabActions';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
+import PriorityPick from '../components/PriorityPick';
+import { Priority, priorityRank } from '../priority';
+import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid } from '../billPayments';
 import { paymentToPlace, placePayment } from '../billPayments';
@@ -91,6 +94,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
   const [minPaymentInput, setMinPaymentInput] = useState<number | ''>('');
   const [feesPortionInput, setFeesPortionInput] = useState<number | ''>('');
   const [notesInput, setNotesInput] = useState('');
+  const [priorityInput, setPriorityInput] = useState<Priority>('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
@@ -138,6 +142,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
     setCategoryInput('');
     setAmountInput('');
     setInterestRateInput('');
+    setPriorityInput('');
     setMinPaymentInput('');
     setFeesPortionInput('');
     setNotesInput('');
@@ -171,6 +176,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
       typeof debt.minPayment === 'number' ? debt.minPayment : ''
     );
     setNotesInput(debt.notes || '');
+    setPriorityInput(debt.priority || '');
     const cur = currentCycle(debt);
     setPaymentMethodInput(cur?.paymentMethod);
     setFeesPortionInput(cur && cur.feesPortion !== undefined && cur.feesPortion !== '' ? cur.feesPortion : '');
@@ -281,6 +287,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
           category: categoryInput.trim(),
           notes: notesInput,
           interestRate: parsedInterest,
+          priority: priorityInput,
           minPayment: parsedMinPayment,
           recurringType: recurTypeInput,
           dueDate,
@@ -309,6 +316,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
         notes: notesInput,
         owner: 'shared',
         interestRate: parsedInterest,
+        priority: priorityInput,
         minPayment: parsedMinPayment,
         createdAt: Date.now(),
       };
@@ -415,7 +423,26 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
     );
   }
 
-  const debts = sortByNextDue(model.debts);
+  // Version 2.2 fix (Cath: no Overdue tag on a debt that was past its due date): overdue
+  // debts come first and say so, like bills; on the same day High priority comes first.
+  const overdueDebtIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'debt').map((o) => o.id));
+  const debtDueTime = (d: Debt) => {
+    const cur = currentCycle(d);
+    const dt = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : getNextDueDate(d.recurringType, d.dueDate);
+    return dt ? dt.getTime() : Infinity;
+  };
+  const debts = sortByNextDue(model.debts)
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => {
+      const oa = overdueDebtIds.has(a.d.id) ? 0 : 1;
+      const ob = overdueDebtIds.has(b.d.id) ? 0 : 1;
+      if (oa !== ob) return oa - ob;
+      const ta = debtDueTime(a.d);
+      const tb = debtDueTime(b.d);
+      if (ta === tb) return priorityRank(a.d.priority) - priorityRank(b.d.priority) || a.i - b.i;
+      return a.i - b.i;
+    })
+    .map((x) => x.d);
   const totalOwed = debts.reduce((sum, d) => sum + debtAmount(d), 0);
 
   return (
@@ -452,8 +479,17 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
               sub={(() => {
                 const cur = currentCycle(debt);
                 const d = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : nextDue;
-                return d ? `Due ${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'No date set';
+                return d ? `${overdueDebtIds.has(debt.id) ? 'Was due' : 'Due'} ${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'No date set';
               })()}
+              badge={(() => {
+                if (overdueDebtIds.has(debt.id)) return { text: 'Overdue', tone: 'overdue' as const };
+                const t = debtDueTime(debt);
+                if (!isFinite(t)) return undefined;
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const days = Math.round((t - today.getTime()) / 86400000);
+                return days <= 7 && days >= 0 ? { text: days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' as const } : undefined;
+              })()}
+              priority={debt.priority}
               amount={formatPeso(debtAmount(debt))}
               amountColor={colors.negative}
               divider={rowIndex > 0}
@@ -503,7 +539,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled }
 
         <FormGroup>
           <Guided {...fieldErrors.props('more')} onShow={() => { if (openRow !== 'more') toggleRow('more'); }}>
-          <PickerRow label="More details" value={[interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
+          <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
+            <PriorityPick value={priorityInput} onChange={setPriorityInput} />
             <InlineField label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
             <InlineAmount label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
             <InlineField label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />

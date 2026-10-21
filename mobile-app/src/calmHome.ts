@@ -9,6 +9,8 @@
 
 import type { HouseholdModel } from './types';
 import { getOverdueItems } from './overdue';
+import { currentCycle, isCyclePaid } from './billPayments';
+import { getNextDueDate } from './recurrence';
 import { paydaysForSource } from './incomeMonth';
 import { loanOutstandingBalance, formatPeso } from './balanceProjection';
 import { isEmergencyPot, potSaved } from './savingsPots';
@@ -144,4 +146,25 @@ export function wayText(w: TightWay): string {
   if (w.kind === 'pot') return `Use ${amt} from ${w.name}`;
   if (w.kind === 'owed') return `Collect ${amt} you lent (${w.name})`;
   return `Follow up the ${amt} refund (${w.name})`;
+}
+
+// Version 2.2 (canvas K3): while money is tight, the High priority bills, debts and loans
+// due before the given day (or already overdue), so Home can say to pay them first.
+export function highPriorityDue(model: HouseholdModel, untilISO: string): string[] {
+  const names: string[] = [];
+  const iso = (d: Date | null) => (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '');
+  for (const r of [...(model.bills || []), ...(model.debts || [])] as any[]) {
+    if (r.priority !== 'high') continue;
+    const c = currentCycle(r);
+    if (c && isCyclePaid(c)) continue;
+    const due = c?.dueDate || iso(getNextDueDate(r.recurringType, r.dueDate));
+    if (due && due <= untilISO) names.push(r.name || r.creditorOrPerson || 'A bill');
+  }
+  for (const l of model.loans || []) {
+    if (l.priority !== 'high' || l.direction !== 'borrowed' || loanOutstandingBalance(l) <= 0) continue;
+    const due = iso(getNextDueDate(l.recurringType || 'onetime', l.dueDate || {}));
+    const late = getOverdueItems(model).some((o) => o.kind === 'loan' && o.id === l.id);
+    if (late || (due && due <= untilISO)) names.push(l.name || 'A loan');
+  }
+  return names;
 }

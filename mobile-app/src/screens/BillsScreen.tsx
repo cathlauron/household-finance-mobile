@@ -24,6 +24,7 @@ import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, pa
 import { paymentToPlace, placePayment } from '../billPayments';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import PayRow from '../components/PayRow';
+import { priorityRank } from '../priority';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
@@ -436,7 +437,8 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
-    return da.getTime() - db.getTime();
+    // Version 2.2 (canvas K3): on the same day, High priority comes first.
+    return da.getTime() - db.getTime() || priorityRank(a.priority) - priorityRank(b.priority);
   });
   const overdueIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'bill').map((o) => o.id));
   const todayStart = new Date();
@@ -525,6 +527,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled }
                       amountColor={colors.negative}
                       badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
                       divider={rowIndex > 0}
+                      priority={bill.priority}
                       onPress={() => openBill(bill)}
                     />
                   </SwipeableRow>
