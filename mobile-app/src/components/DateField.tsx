@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
+import { View, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';

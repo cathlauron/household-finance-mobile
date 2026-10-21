@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { formatPeso } from '../balanceProjection';

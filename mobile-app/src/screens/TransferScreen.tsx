@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '../components/AppText';

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import LoadingView from './LoadingView';
-import { View, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
 import GradientFill from './GradientFill';

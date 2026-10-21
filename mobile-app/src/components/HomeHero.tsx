@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import GradientFill from './GradientFill';
-import { View, ScrollView, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, ScrollView, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline, Polygon, Circle } from 'react-native-svg';

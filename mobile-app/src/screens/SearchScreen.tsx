@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

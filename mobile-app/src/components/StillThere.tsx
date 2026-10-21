@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import LoadingView from '../components/LoadingView';
-import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';

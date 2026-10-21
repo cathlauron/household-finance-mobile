@@ -1,7 +1,8 @@
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';

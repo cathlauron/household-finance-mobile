@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';

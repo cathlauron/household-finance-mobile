@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
-import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { Modal, View, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';

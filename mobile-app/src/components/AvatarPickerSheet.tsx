@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';

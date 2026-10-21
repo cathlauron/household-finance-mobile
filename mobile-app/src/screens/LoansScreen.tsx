@@ -5,7 +5,8 @@ import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaym
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

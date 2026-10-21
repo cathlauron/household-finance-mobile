@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';

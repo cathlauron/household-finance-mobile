@@ -14,7 +14,8 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../../components/Tap';
 import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
 import { useTheme } from '../../ThemeContext';

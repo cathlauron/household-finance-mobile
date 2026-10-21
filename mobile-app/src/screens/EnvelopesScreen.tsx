@@ -1,7 +1,8 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Text, TextInput } from '../components/AppText';
 import { useTheme } from '../ThemeContext';

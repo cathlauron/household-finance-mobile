@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Share, Linking, AppState } from 'react-native';
+import { View, StyleSheet, Modal, Share, Linking, AppState } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';

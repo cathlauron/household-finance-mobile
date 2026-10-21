@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { hapticSelection } from '../haptics';

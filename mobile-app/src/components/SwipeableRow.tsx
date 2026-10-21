@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useRef } from 'react';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { holdTabSwipe, SwipeTabsContext } from '../navigation/swipeTabs';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';

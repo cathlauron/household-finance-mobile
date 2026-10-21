@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';

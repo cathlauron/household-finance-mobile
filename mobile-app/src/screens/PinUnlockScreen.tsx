@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';

@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text, TextInput } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { radii, spacing } from '../tokens';

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';

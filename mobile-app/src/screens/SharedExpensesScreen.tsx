@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import LoadingView from '../components/LoadingView';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';

@@ -1,6 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import LoadingView from '../components/LoadingView';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';

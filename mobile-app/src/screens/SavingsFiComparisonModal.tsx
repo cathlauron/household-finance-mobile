@@ -12,7 +12,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import { formatPeso } from '../balanceProjection';
 import { computeFiScenario, FiScenarioInputs } from '../fiScenario';

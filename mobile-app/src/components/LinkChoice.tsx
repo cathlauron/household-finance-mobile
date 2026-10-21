@@ -2,7 +2,8 @@
 // each has, two clear choices with the app's own line icons, then a check sheet before
 // anything happens. The actual linking is still done by the caller (onChoose), unchanged.
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';

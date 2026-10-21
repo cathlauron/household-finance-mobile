@@ -1,5 +1,6 @@
 ﻿import React from 'react';
-import { TouchableOpacity, ActivityIndicator, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import GradientFill from './GradientFill';
 import { useTheme } from '../ThemeContext';

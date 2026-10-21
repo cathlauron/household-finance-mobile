@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, AppState, Alert } from 'react-native';
+import { View, StyleSheet, AppState, Alert } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';

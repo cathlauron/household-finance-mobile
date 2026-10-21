@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { paintBusy } from '../components/BusyOverlay';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { Ionicons } from '@expo/vector-icons';
