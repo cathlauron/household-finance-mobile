@@ -52,7 +52,8 @@ export function idsForAccount(model: HouseholdModel, group: AccountGroup, accoun
 
 export default function CardDetailScreen() {
   const { colors, isDark } = useTheme();
-  const { model, saveModel, getModel } = useData();
+  const { model, saveModel, getModel, isLinked } = useData();
+  const [allUpdates, setAllUpdates] = useState(false);
   // Version 3 (approved K4): the one-time question, "Ask me later" hides it for this visit.
   const [askLater, setAskLater] = useState(false);
   const [answer, setAnswer] = useState<'canUse' | 'owe' | null>(null);
@@ -375,6 +376,50 @@ export default function CardDetailScreen() {
           You owe is the limit minus what you can still use. Paying the card frees up the limit again.
         </Text>
       </BottomSheet>
+
+      {/* Version 2.2 (canvas B1): every balance typed in by hand, newest first. */}
+      {(account?.balanceLog?.length ?? 0) > 0 && (() => {
+        const log = account!.balanceLog!;
+        const shown = allUpdates ? log : log.slice(0, 5);
+        const when = (ms: number) => {
+          const d = new Date(ms);
+          const today = new Date();
+          const sameDay = d.toDateString() === today.toDateString();
+          const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          return sameDay ? `Today, ${time}` : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
+        };
+        const who = (by?: string) => (isLinked && by ? ` · by ${by.charAt(0).toUpperCase() + by.slice(1)}` : '');
+        return (
+          <>
+            <View style={styles.sectionHead}>
+              <Text style={styles.header}>Balance updates</Text>
+              {log.length > 5 && (
+                <TouchableOpacity onPress={() => setAllUpdates(!allUpdates)} hitSlop={8}>
+                  <Text style={styles.link}>{allUpdates ? 'Show fewer' : 'See all'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.group}>
+              <GradientFill match={styles.group} />
+              {shown.map((e, i) => {
+                const diff = e.from === null ? null : Math.round((e.to - e.from) * 100) / 100;
+                return (
+                  <View key={e.at + ':' + i} style={[styles.row, i > 0 && styles.line]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle}>{e.from === null ? `First balance ${formatPeso(e.to)}` : `${formatPeso(e.from)} → ${formatPeso(e.to)}`}</Text>
+                      <Text style={styles.meta}>{when(e.at) + who(e.by)}</Text>
+                    </View>
+                    {diff !== null && diff !== 0 && (
+                      <Text style={[styles.rowAmount, { color: diff < 0 ? colors.negative : colors.positive }]}>{`${diff < 0 ? '−' : '+'}${formatPeso(Math.abs(diff))}`}</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+            <Text style={[styles.meta, { marginHorizontal: 16, marginTop: 6 }]}>Each time the balance was typed in by hand. Not spending.</Text>
+          </>
+        );
+      })()}
 
       <TouchableOpacity style={[styles.group, styles.action]} onPress={() => navigation.navigate('Accounts', { editGroup: group, editId: accountId, nonce: Date.now() })} accessibilityRole="button">
         <GradientFill match={[styles.group, styles.action]} />

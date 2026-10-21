@@ -53,6 +53,9 @@ import type { HouseholdModel } from './src/types';
 import { getBiometricState } from './src/biometrics';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes, setAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
+import { StillTherePopup, PausedCover, AutoLockSheet, STILL_THERE_AFTER_MS } from './src/components/StillThere';
+import { onActivity } from './src/activity';
+import { hideAmountsNow } from './src/hideAmounts';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { MoodThemeProvider } from './src/mood';
 import { DataProvider, useData } from './src/DataContext';
@@ -224,6 +227,12 @@ function AppContent() {
   }, []);
   const usernameRef = useRef<string | null>(null);
   const autoLockMinutesRef = useRef<number>(DEFAULT_AUTO_LOCK_MINUTES);
+  // Version 2.2 (canvas S1-S3): "Are you still there?", the cover after no answer, and the
+  // Auto-lock sheet it can open.
+  const stillTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [stillThereOpen, setStillThereOpen] = useState(false);
+  const [pausedCover, setPausedCover] = useState(false);
+  const [autoLockSheetOpen, setAutoLockSheetOpen] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentDeviceIdRef = useRef<string | null>(null);
   const deviceSessionUnsubRef = useRef<(() => void) | null>(null);
@@ -519,11 +528,20 @@ function AppContent() {
       clearTimeout(idleTimerRef.current);
       idleTimerRef.current = null;
     }
+    if (stillTimerRef.current) {
+      clearTimeout(stillTimerRef.current);
+      stillTimerRef.current = null;
+    }
   }
 
   function resetIdleTimer() {
     clearIdleTimer();
     if (screenRef.current !== 'home') return;
+    // Version 2.2 (canvas S1): with Auto-lock off, 5 minutes untouched asks "Are you
+    // still there?" (with Auto-lock on, the app just locks as before).
+    if (autoLockMinutesRef.current <= 0 && AppState.currentState === 'active') {
+      stillTimerRef.current = setTimeout(() => setStillThereOpen(true), STILL_THERE_AFTER_MS);
+    }
     if (autoLockMinutesRef.current <= 0) return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
@@ -531,11 +549,18 @@ function AppContent() {
     }, timeoutMs);
   }
 
+  useEffect(() => onActivity(() => resetIdleTimer()), []);
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
         lockIfConfigured();
+        if (stillTimerRef.current) {
+          clearTimeout(stillTimerRef.current);
+          stillTimerRef.current = null;
+        }
       }
+      if (nextState === 'active') resetIdleTimer();
       if (nextState === 'active') {
         const user = getCurrentFirebaseUser();
         const deviceId = currentDeviceIdRef.current;
@@ -557,6 +582,9 @@ function AppContent() {
       flushPendingDeepLink();
     } else {
       clearIdleTimer();
+      setStillThereOpen(false);
+      setPausedCover(false);
+      setAutoLockSheetOpen(false);
     }
     return () => clearIdleTimer();
   }, [screen]);
@@ -744,6 +772,41 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
+        <StillTherePopup
+          visible={stillThereOpen}
+          onHere={() => {
+            setStillThereOpen(false);
+            resetIdleTimer();
+          }}
+          onAutoLock={() => {
+            setStillThereOpen(false);
+            setAutoLockSheetOpen(true);
+          }}
+          onTimeout={() => {
+            setStillThereOpen(false);
+            hideAmountsNow();
+            setPausedCover(true);
+          }}
+        />
+        <PausedCover
+          visible={pausedCover}
+          onShow={async () => {
+            setPausedCover(false);
+            const username = usernameRef.current;
+            if (!username) return;
+            const [pin, bio] = await Promise.all([hasPinSetUp(username), getBiometricState(username)]);
+            if (pin || bio === 'ENABLED') setScreen('locked');
+            else resetIdleTimer();
+          }}
+        />
+        <AutoLockSheet
+          visible={autoLockSheetOpen}
+          username={currentUsername}
+          onClose={() => {
+            setAutoLockSheetOpen(false);
+            resetIdleTimer();
+          }}
+        />
       </View>
     );
   }

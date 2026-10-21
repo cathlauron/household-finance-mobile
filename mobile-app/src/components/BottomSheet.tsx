@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { spacing } from '../tokens';
+import { noteActivity } from '../activity';
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -73,7 +74,7 @@ export default function BottomSheet({
       navigationBarTranslucent
     >
       {/* Version 2.1: a pop-up window needs its own gesture root for swipes to work on Android. */}
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1 }} onTouchStart={noteActivity}>
       <View style={styles.backdropWrap}>
         <Pressable
           style={styles.backdropPressable}

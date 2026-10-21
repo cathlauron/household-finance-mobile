@@ -408,6 +408,9 @@ export type BalanceAccountEntry = {
   creditLimit?: number;
   statementDueDay?: number; // day of the month the statement is due (1-31)
   minPayment?: number; // usual minimum payment
+  // Version 2.2 (canvas B1): every time the balance was typed in by hand, newest first
+  // (kept to the last 50). from is null for the first balance.
+  balanceLog?: { at: number; from: number | null; to: number; by?: string }[];
 };
 
 export type BalanceAccounts = {

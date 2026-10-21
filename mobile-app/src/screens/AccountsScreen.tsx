@@ -47,7 +47,7 @@ function makeId(): string {
 
 export default function AccountsScreen() {
   const { colors, isDark } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, username } = useData();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
@@ -162,10 +162,18 @@ export default function AccountsScreen() {
     };
     const currentList = updated.balanceAccounts[activeGroup];
 
+    // Version 2.2 (canvas B1): a balance typed in by hand is recorded on the account.
+    const logEntry = (from: number | null) => ({ at: Date.now(), from, to: Number(parsedAmount || 0), ...(username ? { by: username } : {}) });
     if (editingId) {
       updated.balanceAccounts[activeGroup] = currentList.map((a) =>
         a.id === editingId
-          ? { ...a, name: trimmedName, amount: balanceChanged ? parsedAmount : a.amount, color: colorInput }
+          ? {
+              ...a,
+              name: trimmedName,
+              amount: balanceChanged ? parsedAmount : a.amount,
+              color: colorInput,
+              ...(balanceChanged && isSpendingGroup ? { balanceLog: [logEntry(Number(previousLive) || 0), ...(a.balanceLog || [])].slice(0, 50) } : {}),
+            }
           : a
       );
     } else {
@@ -174,6 +182,7 @@ export default function AccountsScreen() {
         name: trimmedName,
         amount: parsedAmount,
         color: colorInput,
+        ...(isSpendingGroup ? { balanceLog: [logEntry(null)] } : {}),
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
     }

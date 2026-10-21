@@ -20,6 +20,11 @@ function setHidden(v: boolean) {
   AsyncStorage.setItem(KEY, v ? '1' : '0').catch(() => {});
 }
 
+// Version 2.2 (canvas S2): nobody answered "Are you still there?", so the amounts hide.
+export function hideAmountsNow() {
+  setHidden(true);
+}
+
 export function useHideAmounts(): { hidden: boolean; toggle: () => void; money: (n: number, opts?: { noCents?: boolean }) => string } {
   const [value, setValue] = useState(hidden);
   useEffect(() => {
