@@ -3,6 +3,11 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> START HERE (2026-10-16): This is the ACTIVE progress log. Version 2.0.0 is finished and
 >>> merged into `main` (merge commit 9ae00f9). ALL new work happens on the `v3` branch.
 >>> Read the "▶️ Next step" section at the bottom first.
+>>> NEWEST (2026-10-21, wrap-up): VERSION 2.2 work lives on branch `v2.2` (v3 = same
+>>> commit, 590fa50). It is NOT on `main` yet. Cath tested sections A-N on her phone in
+>>> Expo Go (TEST-2.2.md on v2.2). Start with the "FIRST THINGS NEXT SESSION" list in the
+>>> newest Next step bullet. Cath is moving to another Claude account (free-trial limit);
+>>> mockup screenshots are in design/2.2-mockups/ on v2.2.
 >>> NEWEST (2026-10-18, wrap-up): VERSION 2.1.0 IS FINAL and merged into `main` (2a3d886,
 >>> versionCode 3). Next: Cath makes the EAS build, then runs the post-build check list
 >>> (see the newest "Next step" bullet). v3 has 2.1 merged in.
@@ -126,11 +131,37 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   Round 8: date box for monthly/yearly bills, debts and loans (pick any day, month or
   year), loan "First payment" date, calendar month-and-year shortcut. Version 2.1.0.
 
+
+- 2026-10-20 / 21 (version 2.2, branch `v2.2`, all pushed; v3 = v2.2): see the commit
+  messages for detail. Opening speed (remembered unlocked key with the saved sign-in,
+  native PBKDF2 module modules/ff-crypto with JS fallback, identical keys); saves run one
+  at a time in the background with 3-way merge against the base (no lost partner
+  changes), wait for saves on log out/switch; Delete at the bottom of bill/debt/loan/
+  card/pot/trip pages; trip dates tap; Travel checklist ticks ask how it was paid (P1-P3);
+  four ways to link (Send invite with link, Show QR, Scan to join, Type a code) and the
+  invite web page on Firebase Hosting (hosting/join.html, live at
+  https://household-finance-mobile.web.app); invite codes expire after 15 minutes unless
+  used; welcome screens fixed; set-up look preview (leaves pause in place, Device);
+  Pay wording; Over budget wording; overdue tags and priority (High/Medium/Low) on bills,
+  debts and loans, Running low names the High ones; calendar rebuilt like the iPhone
+  (slides up, year view, Scroll/Swipe, Compact/Details/List, tap a day, + on the day,
+  projected balance); Edit on bill/debt/loan/transaction/pot/card pages opens the form
+  right on that page (fixed the flashing found in Cath's video); "Are you still there?"
+  after 5 minutes untouched with Auto-lock off (also with the screen dark), cover after a
+  minute, Auto-lock sheet; Balance updates list on card pages; Custom repeat for bills
+  and debts; swipe-to-delete closes on screen change and a quick flick changes tab;
+  shared household: small letter on transactions others logged + Added by / Changed by.
+  Website mockup (Design canvas): phone Home matches the app, QR install card, animated
+  How it works.
+
 =====================================================================
 🔧 In progress
 =====================================================================
 - Nothing half-built. Cath is about to send her own notes and ideas for version 3; read
   them first and agree an order with her before building.
+
+- 2026-10-21: Nothing half-built in code. Waiting on Cath: approval of mockups LK1-LK2
+  and D1-D3 (with her changes, see Next step), and the website redesign comparison.
 
 =====================================================================
 📌 Decisions — still active
@@ -256,6 +287,20 @@ Testing
   build next. Overspent word still open (suggested "Over budget"; Cath prefers "running
   low" for H4b). Credit cards can't be a source of moved money, only receive payments.
 
+
+- 2026-10-20/21 (version 2.2): Cath chose "best of both" for opening speed (remember the
+  key + native PBKDF2). Edit always opens the form on the item's own page (no jumping back
+  to the list). Calendar opens from the bottom as a full page that can't be dragged
+  closed; Scroll and Swipe both kept. Mood colours follow Left to spend (green / orange
+  "Running low" / rose "Over budget"); the word is "Over budget". Priority High/Medium/Low
+  on bills, debts and loans. "Are you still there?" after 5 minutes untouched (only with
+  Auto-lock off), 1-minute countdown, then amounts hidden behind a cover. Who logged it:
+  Cath chose W1 option B (small letter on the icon, only for others' entries) and W2
+  (Added by / Changed by as a footnote on the item's page). Balance updates go on each
+  card's own page. Website: no Google Play yet, show the build's QR code first.
+  Version 3 ideas from Cath: Apple-Wallet-style transit cards, boarding passes, event
+  tickets.
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -376,6 +421,13 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
   OK (touches data). After pulling, `npm install` once (react-native-reanimated,
   react-native-worklets).
 
+
+- 2026-10-21: Not yet checked in a real build: I11 (invite page opens the app), I12
+  (first sign-in / PIN / linking speed with the native PBKDF2), offline banner swipe-up.
+  "Who logged it" is only on transactions so far (Cath wants it on every applicable
+  screen). Mood colour preview on the set-up screen still not showing (Cath, Oct 21).
+  Entries made before 2.2 have no "added by" and no balance-update history.
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -477,6 +529,20 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   accounts; found the inviter-never-finishes linking trap and a rules bug
   (memberVersions without .get) which were fixed; then asked to batch all remaining
   testing at the end of 2.1.
+
+
+- 2026-10-21 (on `v2.2` / `v3`, not main yet): TEST-2.2.md (device test status),
+  design/2.2-mockups/*.png (screenshots of design rounds 15-18 and the website),
+  website/mockup.html (the website mockup as a plain page), mobile-app/hosting/ (invite
+  page + index for Firebase Hosting), mobile-app/modules/ff-crypto (native PBKDF2),
+  new src files: pbkdf2Core.ts, fastCrypto.ts, deleteRecords.ts, joinLink.ts,
+  takeOffBalance.ts, travelChecklist.ts, priority.ts, activity.ts, lookPreview.ts,
+  components/StillThere.tsx, PriorityPick.tsx, CustomScheduleFields.tsx, DeleteRow.tsx,
+  screens/CalendarScreen.tsx (rewritten). Design canvases and the plan doc are artifacts
+  in Cath's first Claude account and may not open in other accounts:
+  app canvas https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX, website canvas
+  https://claude.ai/artifact/WGB2bNqnnRtLKbdWEQuuv2, plan doc
+  https://claude.ai/artifact/X58irbPXSeBqRi89gUe1j8.
 
 =====================================================================
 ▶️ Next step
@@ -596,3 +662,37 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   `v3`: B1 new start and B5 to device-test, K2 statements in To-Pay, limit warnings and
   pay-off plan, reports opt-in + weekly check-in, Travel to-do swipe actions, peel-off
   Appearance, the "Overspent" word.
+
+- 2026-10-21 (session): version 2.2 polish with Cath testing in Expo Go; see Done. Found
+  the edit-flashing cause from Cath's screen recording (form opened late after jumping
+  back to the list, then the page was reopened over it).
+- NEWEST (2026-10-21, wrap-up): work is on branch `v2.2` (v3 is the same commit). Cath
+  switches Claude accounts. FIRST THINGS NEXT SESSION, in this order (mockup first for
+  anything visual, as always):
+  1. Calendar: make the green "today" circle a lighter shade, and the selected day a
+     circle too (not a box), also light.
+  2. Shared household "who logged it" (W1 B letter + W2 footnote) on every applicable
+     screen, not just Transactions: bills, debts, loans (added + paid), savings moves,
+     trip items, balance updates, income/paydays.
+  3. LK1-LK2 (linking choice redesign): use different icons that match the app's vibe
+     (not emoji), then build after approval.
+  4. D1-D3 (last 4 digits on debit/credit cards): put the last 4 digits and the amount
+     closer to the bottom of the card, the way the app's cards look now; then build.
+  5. Mood colours preview still doesn't show when creating a new account (set-up "Make it
+     feel like yours"); needs the swipe samples (approved L2 idea) to actually tint.
+  6. "Are you still there?" cover after a minute: change its icon (the 🙈) to match the
+     app's vibe/design.
+  7. Website: only ONE phone (the main one at the top); swiping it shows the screen
+     animations one after another (not six phones at once). Remove the "Meralco paid" and
+     "Thailand" floating pop-ups. The site looks too plain: make a second, livelier design
+     to compare side by side.
+  Then: Cath's test of the newest items, the real 2.2 EAS build (preview-v2), I11/I12,
+  merge v2.2 into main with the version bump check (2.2.0, versionCode 4 already set).
+  PowerShell to get the code:
+    cd C:\Projects\household-finance-mobile
+    git fetch
+    git checkout v2.2
+    git pull
+    cd mobile-app
+    npm install
+    npx expo start -c
