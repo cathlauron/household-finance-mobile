@@ -66,7 +66,10 @@ export function SharedSheetHost({ name }: { name: string }) {
   React.useEffect(() => {
     if (openCount <= 1) return;
     const handoff = takeHandoff();
-    if (handoff) return handoff();
+    if (handoff) {
+      handoff();
+      return;
+    }
     // Sweep fix: no handoff waiting (it timed out) - close the older forms anyway, so an
     // old one can never come back when the newest closes.
     const newest = active as SharedEntry | null;

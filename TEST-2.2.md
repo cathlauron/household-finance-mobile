@@ -294,8 +294,13 @@ AB 2026-10-22 Front card, real cross-fade, one form sheet, no flash. NOT YET TES
 
 AC 2026-10-22 Sweep (bugs, smoothness, animation). NOT YET TESTED.
 - AC1 Go into a page and back (e.g. Home > Accounts > Income > Not assigned, then back,
-      back): the page underneath is visible and drifts back in while the top page slides
-      away (no empty moment, no pop at the end). Same when you swipe back with a finger.
+      back): the two pages move side by side, like the tabs. Going in, the new page pushes
+      the old one out to the left; going back, the old page comes back in from the left as
+      the top one leaves to the right. No empty moment, no pop at the end, and the pages
+      never show through each other. Same when you swipe back with a finger.
+- AC9 Calendar opens and closes as a sheet; the page behind it stays still.
+- AC10 Moon/sun: tap it, then tap it again straight away: the screen never stays frozen
+      on a picture of the old look; it ends in the mode of your last tap.
 - AC2 Switching tabs feels a little quicker; everything slides with the same soft curve.
 - AC3 Home cards: a flip is quicker and starts moving at once. Pick up a card: the page
       below glides down to make room (no jump) and glides back after the drop.

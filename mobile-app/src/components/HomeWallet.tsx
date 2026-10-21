@@ -257,7 +257,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       setBusy(true);
       hapticSelection();
       const only = xs[slotOf(order[0])];
-      const back = () => setTimeout(() => curlIn(only, () => setBusy(false)), 16);
+      const back = () => setTimeout(() => curlIn(only, () => setBusy(false)), 40);
       if (dir === 'right') curlOff(only, fromX, back);
       else
         only.value = withTiming(-screenW * 1.1, { duration: D(300), easing: EASE }, (finished) => {
@@ -280,7 +280,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
         // behind the others, then bring it in from the right.
         tops[slotOf(front)].value = 0;
         persist(next);
-        setTimeout(() => curlIn(x, finish), 16);
+        setTimeout(() => curlIn(x, finish), 40);
       });
     } else {
       const back = keys.shift() as string;
@@ -291,7 +291,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       curlOff(x, 0, () => {
         tops[slotOf(back)].value = (next.length - 1) * PEEK;
         persist(next);
-        setTimeout(() => curlIn(x, finish), 16);
+        setTimeout(() => curlIn(x, finish), 40);
       });
     }
   }

@@ -59,12 +59,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setIsDark(toDark);
     });
   };
+  // Fades the photo of the old look away (a couple of frames after the new look is drawn).
+  const reveal = () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        Animated.timing(fade, { toValue: 0, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
+          if (finished) setShot(null);
+        })
+      )
+    );
   const switchUnderShot = () => {
     const p = pendingRef.current;
     if (!p) return;
     pendingRef.current = null;
-    revealRef.current = true;
     setModeState(p.m);
+    if (p.toDark === isDarkRef.current) {
+      // Tapped back to the look already showing before the fade began: nothing to
+      // recolour, just let the photo go (it must never stay on the screen).
+      reveal();
+      return;
+    }
+    revealRef.current = true;
     setIsDark(p.toDark);
   };
   const setMode = (m: ColorMode) => {
@@ -80,8 +95,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     pendingRef.current = { m, toDark };
+    // If the photo never comes back, switch anyway (the switch can never get stuck).
+    let gotPhoto = false;
+    setTimeout(() => {
+      if (gotPhoto || !pendingRef.current) return;
+      const p = pendingRef.current;
+      pendingRef.current = null;
+      switchNow(p.m, p.toDark);
+    }, 1500);
     captureScreen({ format: 'jpg', quality: 0.85, result: 'tmpfile' })
       .then((uri) => {
+        if (!pendingRef.current) return; // already switched without it
+        gotPhoto = true;
         fade.setValue(1);
         setShot(uri);
         // If the photo is slow to show, switch anyway.
@@ -89,7 +114,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         // No photo: just switch, to the last tapped choice.
-        const p = pendingRef.current ?? { m, toDark };
+        const p = pendingRef.current;
+        if (!p) return;
         pendingRef.current = null;
         switchNow(p.m, p.toDark);
       });
@@ -98,12 +124,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!revealRef.current) return;
     revealRef.current = false;
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        Animated.timing(fade, { toValue: 0, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start(() => setShot(null))
-      )
-    );
-  }, [isDark, fade]);
+    reveal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDark]);
 
   const colors = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
   // 2.2 speed sweep: the same theme object until the colours really change.

@@ -76,10 +76,12 @@ const Stack = createStackNavigator<RootStackParamList>();
 // Version 2.2 sweep (Cath: going BACK from Accounts > Income > a person "looks buggy"): the
 // page underneath used to be fully invisible until the very end of going back, so the
 // top page slid away over an empty background and the old page then popped in. Now the
-// page underneath stays a little visible and moves too: it drifts a fifth of the way to
-// the left and fades as it's covered, and on the way back it drifts in and fades up from
-// the first moment (also when you swipe back with your finger).
+// two pages move side by side, like the tabs: the new page pushes the old one out to the
+// left, and going back the old page comes back in from the left as the top one leaves to
+// the right (also when you swipe back with your finger). They never overlap, so the
+// see-through pages never show through each other, and there's never an empty moment.
 const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => {
+  const w = layouts.screen.width;
   if (reduceMotionNow()) {
     // Phone set to remove animations: a short fade, no sliding; the covered page fades out.
     return {
@@ -95,11 +97,10 @@ const paperSlide: StackCardStyleInterpolator = ({ current, next, layouts }) => {
       transform: [
         {
           translateX: next
-            ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [0, -layouts.screen.width * 0.2] })
-            : current.progress.interpolate({ inputRange: [0, 1], outputRange: [layouts.screen.width, 0] }),
+            ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [0, -w] })
+            : current.progress.interpolate({ inputRange: [0, 1], outputRange: [w, 0] }),
         },
       ],
-      opacity: next ? next.progress.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0.15, 0] }) : 1,
     },
   };
 };
