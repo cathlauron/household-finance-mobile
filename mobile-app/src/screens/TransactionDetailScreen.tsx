@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState, useMemo } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -180,7 +181,7 @@ export default function TransactionDetailScreen() {
 
   return (
     <>
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.name} numberOfLines={2}>{entry.label}</Text>
         <Text style={[styles.amount, { color: amountColor }]}>
@@ -304,7 +305,7 @@ export default function TransactionDetailScreen() {
           </View>
         );
       })()}
-    </ScrollView>
+    </KeyboardAwareScrollView>
     {editing && raw && (
       <View style={{ position: 'absolute', width: 0, height: 0 }}>
         <TransactionsScreen

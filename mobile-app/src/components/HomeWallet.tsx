@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { reduceMotionNow } from '../reduceMotion';
 import { holdTabSwipe } from '../navigation/swipeTabs';
+import { setHomeScrollLocked } from '../homeScrollLock';
 import { View, StyleSheet, Animated, Easing, useWindowDimensions, AppState } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -320,6 +321,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       .activateAfterLongPress(350)
       .onStart(() => {
         holding.current = true;
+        setHomeScrollLocked(true);
         hapticMedium();
         dragY.setValue(0);
         liftUp.setValue(0);
@@ -341,6 +343,7 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
       })
       .onFinalize(() => {
         holding.current = false;
+        setHomeScrollLocked(false);
         const target = dragTarget.current;
         if (target < 0) return;
         const keys = order.filter((k) => k !== c.key);

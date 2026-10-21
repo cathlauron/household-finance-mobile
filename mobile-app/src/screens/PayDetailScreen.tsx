@@ -1,4 +1,5 @@
 import { loanCoverage } from '../loanSchedule';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -202,7 +203,7 @@ export default function PayDetailScreen() {
 
   return (
     <>
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={[styles.group, styles.hero]}>
         <GradientFill match={[styles.group, styles.hero]} />
         <View style={styles.bigTile}>
@@ -347,7 +348,7 @@ export default function PayDetailScreen() {
       {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
       <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
-    </ScrollView>
+    </KeyboardAwareScrollView>
     {editor}
     </>
   );
@@ -405,7 +406,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <Text style={styles.loanTitle}>{loan.name || 'Loan'}</Text>
       <Text style={styles.loanSub}>
         {lent ? 'You lent this' : 'You borrowed this'}
@@ -506,7 +507,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
       />
       <WhoFootnote addedBy={loan.addedBy} createdAt={loan.createdAt} changedBy={loan.changedBy} changedAt={loan.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved } from '../messages';
 import LoadingView from '../components/LoadingView';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
@@ -160,7 +161,7 @@ export default function SubscriptionsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={[styles.group, { padding: 16 }]}>
         <GradientFill match={[styles.group, { padding: 16 }]} />
         <Text style={styles.meta}>You spend</Text>
@@ -204,7 +205,7 @@ export default function SubscriptionsScreen() {
       )}
 
       {subs.length === 0 && <Text style={styles.footer}>No subscriptions yet. Turn on "Subscription" when adding a bill.</Text>}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -5,6 +5,7 @@ import { WhoFootnote, useWho } from '../components/WhoLogged';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
+import { takeSalaryHandoff, cancelSalaryHandoff } from '../salaryHandoff';
 import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -82,6 +83,9 @@ function sortByNextPayDate(sources: IncomeSource[]): IncomeSource[] {
 }
 
 type IncomeScreenProps = {
+  // Version 2.2: opens the "Add income" form straight away (from a New transaction's
+  // "Add a salary").
+  openAddNonce?: number;
   openIncomeId?: string;
   openIncomeNonce?: number;
   // Set on one person's income page ('__none' = sources with nobody picked).
@@ -93,7 +97,7 @@ const AVATAR_COLORS = ['#2E6B47', '#5B6CC9', '#D47A9B', '#C2410C', '#0E7490'];
 const dayOf = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 const shortDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }: IncomeScreenProps = {}) {
+export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, openAddNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
   const who = useWho();
@@ -221,6 +225,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     openAddModal();
     if (pagePerson) setPersonInput(pagePerson.name);
   };
+  useEffect(() => {
+    if (!openAddNonce) return;
+    afterSlide(() => openAddModalRef.current());
+  }, [openAddNonce]);
+  // Leaving without adding one: nothing waits for it any more.
+  useEffect(() => () => cancelSalaryHandoff(), []);
 
   async function saveLoggedPayday() {
     if (!model || !logSheet) return;
@@ -310,6 +320,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
+    let addedId: string | null = null;
 
     const parsedAmount: number | '' = amountInput === '' ? '' : amountInput;
 
@@ -415,6 +426,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         createdAt: Date.now(),
       };
       updated.income = [...updated.income, newSource];
+      addedId = newSource.id;
     }
 
     setSaving(true);
@@ -422,6 +434,13 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       await saveModel(updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      // Came here from a New transaction's "Add a salary": go straight back to it.
+      const next = addedId ? takeSalaryHandoff() : null;
+      if (next && addedId) {
+        const id = addedId;
+        navigation.goBack();
+        afterSlide(() => next(id));
+      }
     } catch (e) {
       setErrorMsg(notSaved('this income'));
     } finally {

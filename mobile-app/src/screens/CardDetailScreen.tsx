@@ -168,7 +168,7 @@ export default function CardDetailScreen() {
 
   return (
     <>
-    <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* The same colour and gradient as this card in Home's Wallet. */}
       <View style={[styles.card, cardFaceColors(chip, isDark)]}>
         <CardFaceFill color={chip} radius={17} />

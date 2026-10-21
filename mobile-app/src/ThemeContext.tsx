@@ -69,3 +69,18 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error('useTheme must be used inside a ThemeProvider');
   return ctx;
 }
+
+// Version 2.2 (Cath: the light/dark switch still took a moment): a tab you're not looking
+// at recolours a moment later, as background work, so the switch only has to wait for the
+// page you're on. It is recoloured long before you can get to it, and at once if you do.
+export function QuietThemeWhenHidden({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const live = useContext(ThemeContext);
+  const [shown, setShown] = useState(live);
+  useEffect(() => {
+    if (shown === live) return;
+    if (active) setShown(live);
+    else startTransition(() => setShown(live));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, active]);
+  return <ThemeContext.Provider value={active ? live : shown}>{children}</ThemeContext.Provider>;
+}

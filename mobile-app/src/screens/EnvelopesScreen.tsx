@@ -73,7 +73,7 @@ export default function EnvelopesScreen() {
         : 'Set a monthly budget or add your income to see this';
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.intro}>Give every peso a job. What is left in an envelope can roll into next month.</Text>
 
       <View style={[styles.group, styles.unassigned]}>

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved } from '../messages';
 import LoadingView from '../components/LoadingView';
 import AppSwitch from '../components/AppSwitch';
@@ -77,7 +78,7 @@ export default function RecurringScreen() {
   ];
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content}>
       <Text style={styles.intro}>Things that happen on a schedule are added for you, so you never type them twice.</Text>
 
       {rules.length === 0 && (
@@ -165,7 +166,7 @@ export default function RecurringScreen() {
           </TouchableOpacity>
         )}
       </BottomSheet>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import LoadingView from '../components/LoadingView';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -91,7 +92,7 @@ export default function InsightsScreen() {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={[styles.group, { padding: 16 }]}>
         <GradientFill match={styles.group} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -141,7 +142,7 @@ export default function InsightsScreen() {
         {reportRow('person', 'Spending by person', undefined, false)}
         {reportRow('more', 'More reports', 'Payment methods, tax summary, weekly digest, year in review', false)}
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

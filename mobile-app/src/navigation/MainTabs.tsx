@@ -16,6 +16,7 @@ import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import TabPage from './TabPage';
+import { QuietWhenHidden } from '../DataContext';
 import GradientFill from '../components/GradientFill';
 
 const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
@@ -70,6 +71,35 @@ function useCurrentTab(): string {
   );
 }
 
+// Version 2.2 (Cath: + on Home still felt laggy): on Home, + opens the New transaction
+// form right where you are, instead of first switching to the Transactions tab and
+// drawing its whole list. The form is kept ready after the first time, so it opens at
+// once. After Add you stay on Home (the "Added" tick shows); the entry is on Transactions.
+// On the Transactions tab itself, + works as before (the new row slides in there).
+let quickAddOpen: (() => void) | null = null;
+function QuickAdd() {
+  const [nonce, setNonce] = React.useState(0);
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    quickAddOpen = () => {
+      setOpen(true);
+      setNonce(Date.now());
+    };
+    return () => {
+      quickAddOpen = null;
+    };
+  }, []);
+  if (!nonce) return null;
+  return (
+    // Takes no room on the screen: only its pop-up form shows.
+    <View pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+      <QuietWhenHidden active={open}>
+        <TransactionsScreen formOnly addNonceProp={nonce} onFormClosed={() => setOpen(false)} />
+      </QuietWhenHidden>
+    </View>
+  );
+}
+
 function AddFab({ bottom }: { bottom: number }) {
   const activeTab = useCurrentTab();
   const { colors } = useTheme();
@@ -87,6 +117,7 @@ function AddFab({ bottom }: { bottom: number }) {
       onPress={() => {
         hapticLight();
         if (onToPay) requestToPayAdd();
+        else if (activeTab !== 'Transactions' && quickAddOpen) quickAddOpen();
         else navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
       }}
       style={({ pressed }) => [
@@ -266,6 +297,7 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
       />
     </Tab.Navigator>
     <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} />
+    <QuickAdd />
     </View>
   );
 }

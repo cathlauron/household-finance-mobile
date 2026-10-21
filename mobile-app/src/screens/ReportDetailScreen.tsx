@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -74,7 +75,7 @@ export function MoreReportsScreen() {
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 4 }}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 4 }}>
       <View style={styles.group}>
         <GradientFill match={styles.group} />
         {MORE_REPORTS.map((rid, i) => (
@@ -89,7 +90,7 @@ export function MoreReportsScreen() {
           </TouchableOpacity>
         ))}
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -182,7 +182,7 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollView pageBounce keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         {searching && categories.length > 0 && (
           <>
             <Text style={styles.header}>Categories</Text>

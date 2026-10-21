@@ -196,7 +196,7 @@ export default function PotDetailScreen() {
 
   return (
     <>
-    <KeyboardAwareScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={styles.group}>
         <GradientFill match={styles.group} />
         <View style={{ padding: 16 }}>

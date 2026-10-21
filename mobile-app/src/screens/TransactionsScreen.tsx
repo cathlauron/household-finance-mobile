@@ -46,6 +46,7 @@ import { idsForAccount } from './CardDetailScreen';
 import SegmentedControl from '../components/SegmentedControl';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
+import { startSalaryHandoff } from '../salaryHandoff';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -172,9 +173,23 @@ function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): 
 
 // Version 2.2 (Cath: Edit should open where you are): formOnly draws just the form (for
 // the Transaction page's Edit), opened on editTxnId; onFormClosed says when it closed.
-export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }: { formOnly?: boolean; editTxnId?: string; onFormClosed?: () => void } = {}) {
+export default function TransactionsScreen({
+  formOnly,
+  editTxnId,
+  onFormClosed,
+  addNonceProp,
+  onFormOpened,
+}: {
+  formOnly?: boolean;
+  editTxnId?: string;
+  onFormClosed?: () => void;
+  // Version 2.2 (Cath: + on Home lagged): the quick "New transaction" form over Home
+  // opens on each new number here (see QuickAdd in navigation/MainTabs.tsx).
+  addNonceProp?: number;
+  onFormOpened?: () => void;
+} = {}) {
   const { colors } = useTheme();
-  const { model, saveModel, isLinked, username } = useData();
+  const { model, saveModel, isLinked, username, getModel } = useData();
   const navigation = useNavigation();
   // Pull the list down from the top to open Search (like the iPhone).
   const pullToSearch = usePullDownToOpen(() => (navigation as any).navigate('Search'));
@@ -202,7 +217,12 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
   // Version 2.2 (calendar +): the new transaction starts on the day picked in the calendar.
   const addDate: string | undefined = route.params?.addDate;
   useEffect(() => {
-    if (!addNonce) return;
+    if (!formOnly || !addNonceProp) return;
+    openAddModal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addNonceProp]);
+  useEffect(() => {
+    if (formOnly || !addNonce) return;
     openAddModal();
     if (addDate && /^\d{4}-\d{2}-\d{2}$/.test(addDate)) setDateInput(addDate);
   }, [addNonce]);
@@ -346,7 +366,8 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
   // through a ref so it always uses the newest data.
   const swipeDeleteRef = useRef<(rawId: string) => void>(() => {});
   const listBlock = useMemo(() => {
-    if (!model) return null;
+    // The form on its own (Edit on a transaction's page, + on Home) never shows the list.
+    if (!model || formOnly) return null;
     return (
       <>
         {days.map((day) => (
@@ -494,6 +515,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
   }
 
   function openAddModal() {
+    onFormOpened?.();
     setMoreOpen(false);
     setRuleFilled(false);
     setEditingId(null);
@@ -587,10 +609,33 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
 
   // Money in › Salary: logs a payday on the chosen Income source (the same as logging
   // it on the Income page), into the chosen account.
+  // No salary set up yet: go and add one, then come back to this form with it picked.
+  function goAddSalary() {
+    const keepAmount = amountInput;
+    const keepAccount = paymentMethodInput;
+    const keepDate = dateInput;
+    startSalaryHandoff((sourceId) => {
+      openAddModal();
+      setDirectionInput('in');
+      setIncomeKindInput('salary');
+      setIncomeSourceIdInput(sourceId);
+      setDateInput(keepDate);
+      const src = (getModel()?.income || []).find((x) => x.id === sourceId);
+      setAmountInput(keepAmount !== '' ? keepAmount : typeof src?.expectedAmount === 'number' ? src.expectedAmount : '');
+      setPaymentMethodInput(keepAccount ?? src?.depositTo);
+    });
+    closeModal();
+    (navigation as any).navigate('Income', { openAddNonce: Date.now() });
+  }
+
   async function saveSalary() {
     if (!model) return;
     const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
     setErrorMsg('');
+    if (!(model.income || []).length) {
+      fieldErrors.show('salary', 'Add your salary first. Tap "Add a salary" above.');
+      return;
+    }
     if (!source) {
       fieldErrors.show('salary', 'Pick which salary this is.');
       return;
@@ -1037,7 +1082,27 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
             </View>
             {incomeKindInput === 'salary' && !editingId && (
               (model.income || []).length === 0 ? (
-                <Text style={styles.formFooter}>Add your salary on the Income page first (Home › Wallet › Add account › Income).</Text>
+                // Version 2.2 (Cath): a red note straight away (and again on Add), with a
+                // button that takes you to the next step instead of a list of steps.
+                <Guided {...fieldErrors.props('salary')} inset={false} radius={12}>
+                  <View style={[styles.salaryNeeded, { backgroundColor: colors.errorBg }]}>
+                    <Ionicons name="alert-circle-outline" size={20} color={colors.negative} style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.salaryNeededTitle, { color: colors.negative }]}>No salary set up yet</Text>
+                      <Text style={[styles.salaryNeededBody, { color: colors.negative }]}>
+                        Add it once (how much and when it comes in). You'll come right back here to log this payday.
+                      </Text>
+                      <TouchableOpacity
+                        testID="txn-add-salary-first"
+                        onPress={goAddSalary}
+                        accessibilityRole="button"
+                        style={[styles.salaryNeededBtn, { backgroundColor: colors.buttonFill }]}
+                      >
+                        <Text style={[styles.salaryNeededBtnText, { color: colors.onButton }]}>Add a salary</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Guided>
               ) : (
                 <Guided {...fieldErrors.props('salary')} inset={false} radius={12}>
                   <Text style={[styles.inputLabel, fieldErrors.field === 'salary' && { color: colors.error, fontWeight: '700' }]}>Which salary?</Text>
@@ -1277,6 +1342,11 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    salaryNeeded: { flexDirection: 'row', gap: 10, borderRadius: 14, padding: 12, marginBottom: 12 },
+    salaryNeededTitle: { fontSize: 15, fontWeight: '600' },
+    salaryNeededBody: { fontSize: 14, lineHeight: 20, marginTop: 2 },
+    salaryNeededBtn: { alignSelf: 'flex-start', marginTop: 10, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
+    salaryNeededBtnText: { fontSize: 15, fontWeight: '600' },
     container: {
       flex: 1,
       backgroundColor: 'transparent',

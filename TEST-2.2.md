@@ -190,7 +190,7 @@ U  2026-10-21 Code review fixes + speed sweep 2. PASSED on Cath's phone 2026-10-
 - U7  General feel: scrolling, opening forms and typing in amounts on Home, Transactions,
       To-Pay and Plan. Tell Claude any spot that still lags.
 
-V  2026-10-21 Speed sweep 3 (shared calculations, quiet hidden tabs). NOT YET TESTED.
+V  2026-10-21 Speed sweep 3 (shared calculations, quiet hidden tabs). PASSED on Cath's phone 2026-10-22.
 - V1  Visit Home, Transactions, To-Pay and Plan once. Then on To-Pay add a bill and
       pay one: the form closes and the list updates without a pause.
 - V2  Go to Home and Transactions right after: both already show the new bill/payment
@@ -204,3 +204,30 @@ V  2026-10-21 Speed sweep 3 (shared calculations, quiet hidden tabs). NOT YET TE
 - V6  Calendar: Due soon on Home, overdue tags on To-Pay and the calendar amounts are
       the same as before. Leave the app open past midnight (or change the phone's date):
       overdue and due-soon update for the new day.
+
+W  2026-10-22 Cath's video notes. NOT YET TESTED.
+- W1  Home: tap the moon/sun. The whole screen changes colour quicker than before (the
+      other tabs catch up in the background; go to them: already recoloured).
+- W2  Home +: the New transaction form slides up over Home straight away (no switch to
+      Transactions first). Add: you stay on Home and see "Added"; the entry is in
+      Transactions. Cancel: you're still on Home. + on the Transactions tab works as before.
+- W3  With no salary set up: + > Money in > Salary. A red box says "No salary set up
+      yet" with an "Add a salary" button. Tap Add without it: the red message appears
+      and the form scrolls to it.
+- W4  Tap "Add a salary": the form closes, Income opens with its Add form already open.
+      Add a salary: you come straight back to New transaction, Money in > Salary, with the
+      new salary picked (and the amount/account you typed kept).
+- W5  Calendar > year view: scroll through all years quickly: the months are drawn as
+      you scroll (no blank years). It starts at January 2024 (no empty months) with a note
+      at the top, and ends at December 2028 with a note saying it covers 2 years back and
+      2 years ahead.
+- W6  Year view: today's date still has its circle; tapping a month still opens it.
+- W7  Hold a Home card and move it up and down slowly for several seconds: it keeps
+      following your finger; the page doesn't scroll while you hold it. Let go: it drops
+      into place, and the page scrolls normally again.
+- W8  New bill > Category: "Subscription" is no longer a choice (use the Subscription
+      switch). An old bill that had it still shows it.
+- W9  Bounce: pull down / push up past the edge on Debts, Loans, Plan, Shared expenses,
+      a trip's Budget and To-do, Savings Pots / Emergency / FI, Groceries, Events, Income,
+      Accounts, a card's page, a bill's page, Subscriptions, Recurring, Search, Reports:
+      all stretch like Bills, even when everything fits on the screen.

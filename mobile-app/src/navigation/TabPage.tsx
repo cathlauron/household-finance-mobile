@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native'
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
 import { QuietWhenHidden } from '../DataContext';
+import { QuietThemeWhenHidden } from '../ThemeContext';
 
 // Switching tabs is a soft, minimal fade: the old tab fades out while drifting a few
 // pixels away, then the new tab fades in while settling the last few pixels into place
@@ -87,10 +88,12 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       pointerEvents={place === 0 ? 'auto' : 'none'}
       style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0, opacity, transform: [{ translateX }] }]}
     >
-      <QuietWhenHidden active={place === 0}>
-        {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
-        {children}
-      </QuietWhenHidden>
+      <QuietThemeWhenHidden active={place === 0}>
+        <QuietWhenHidden active={place === 0}>
+          {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
+          {children}
+        </QuietWhenHidden>
+      </QuietThemeWhenHidden>
     </Animated.View>
   );
 }

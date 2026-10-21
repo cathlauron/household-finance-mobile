@@ -50,7 +50,10 @@ function billAmount(bill: Bill): number {
 
 const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
 const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
-const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Subscription', 'School', 'Other'];
+// Version 2.2 (Cath): no "Subscription" category any more; the Subscription switch below
+// is the one place to say a bill is a subscription (it also puts it on the Subscriptions
+// page). Bills saved with that category before keep it (shown as their own category).
+const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'School', 'Other'];
 
 type BillsScreenProps = {
   // Version 2.2 fix (Cath's video: Edit on a bill's page flashed and closed): the page

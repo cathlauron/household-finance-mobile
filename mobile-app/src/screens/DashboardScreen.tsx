@@ -11,7 +11,8 @@
 // skipped, matching the same gap noted in balanceProjection.ts.
 // ============================================================
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { onHomeScrollLock } from '../homeScrollLock';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -115,6 +116,9 @@ export default function DashboardScreen({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const [dueSheetOpen, setDueSheetOpen] = useState(false);
+  // The page holds still while a Wallet card is picked up (see homeScrollLock.ts).
+  const [scrollLocked, setScrollLocked] = useState(false);
+  useEffect(() => onHomeScrollLock(setScrollLocked), []);
 
 
   function openDueItem(item: DueItem) {
@@ -161,6 +165,7 @@ export default function DashboardScreen({
       style={styles.container}
         contentContainerStyle={styles.contentContainer}
         onScroll={onScrollY ? (e: any) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+      scrollEnabled={!scrollLocked}
       scrollEventThrottle={16}
     >
       {header}

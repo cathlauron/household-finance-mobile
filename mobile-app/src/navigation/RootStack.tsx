@@ -38,7 +38,7 @@ export type RootStackParamList = {
   Calendar: undefined;
   // Version 2.1: the card page's "Edit card" opens this card's edit sheet here.
   Accounts: { editGroup?: 'cash' | 'debit' | 'credit'; editId?: string; nonce?: number } | undefined;
-  Income: { openIncomeId?: string; openIncomeNonce?: number } | undefined;
+  Income: { openIncomeId?: string; openIncomeNonce?: number; openAddNonce?: number } | undefined;
   IncomePerson: { personId: string };
   Savings: { openSavingsId?: string; openSavingsNonce?: number } | undefined;
   Reports: undefined;
@@ -180,6 +180,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       >
         {({ route }) => (
           <IncomeScreen
+            openAddNonce={route.params?.openAddNonce}
             openIncomeId={route.params?.openIncomeId}
             openIncomeNonce={route.params?.openIncomeNonce}
           />

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -103,17 +104,20 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
 // drawn.
 
 type Page = { year: number; month: number };
-const PAGES_EACH_SIDE = 24;
+// Version 2.2 (Cath: the year view started at Oct 2024 with empty months before it, and
+// ended at 2028): the calendar covers whole years, from 2 years before this year to 2
+// years after it (2024 to 2028 in 2026), and says so at both ends of the year view.
+const YEARS_EACH_SIDE = 2;
 
 function buildPages(): Page[] {
   const now = new Date();
   const pages: Page[] = [];
-  for (let i = -PAGES_EACH_SIDE; i <= PAGES_EACH_SIDE; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    pages.push({ year: d.getFullYear(), month: d.getMonth() });
+  for (let y = now.getFullYear() - YEARS_EACH_SIDE; y <= now.getFullYear() + YEARS_EACH_SIDE; y++) {
+    for (let m = 0; m < 12; m++) pages.push({ year: y, month: m });
   }
   return pages;
 }
+const TODAY_INDEX = YEARS_EACH_SIDE * 12 + new Date().getMonth();
 
 function weeksIn(year: number, month: number): number {
   const first = new Date(year, month, 1).getDay();
@@ -229,23 +233,36 @@ const MiniMonth = React.memo(function MiniMonth({ year, month, onOpen, width }: 
   const days = new Date(year, month + 1, 0).getDate();
   const cell = Math.floor(width / 7);
   const isThisMonth = year === now.getFullYear() && month === now.getMonth();
+  const td = now.getDate();
+  const todayAt = isThisMonth ? { d: td, w: Math.floor((td + first - 1) / 7), c: (td + first - 1) % 7 } : null;
   return (
     <Pressable onPress={() => onOpen(year, month)} style={{ width, height: miniHeight(width) }} accessibilityLabel={`${MONTHS[month]} ${year}`}>
       <Text style={{ fontSize: 17, fontWeight: '800', color: isThisMonth ? colors.gold : colors.ink, marginBottom: 4 }}>{MONTHS[month].slice(0, 3)}</Text>
-      {Array.from({ length: 6 }).map((_, w) => (
-        <View key={w} style={{ flexDirection: 'row', height: cell }}>
-          {Array.from({ length: 7 }).map((__, c) => {
-            const d = w * 7 + c - first + 1;
-            const show = d >= 1 && d <= days;
-            const today = show && isThisMonth && d === now.getDate();
-            return (
-              <View key={c} style={{ width: cell, height: cell, alignItems: 'center', justifyContent: 'center', borderRadius: cell / 2, backgroundColor: today ? colors.gold + TODAY_TINT : 'transparent' }}>
-                {show && <Text style={{ fontSize: 11, letterSpacing: -0.4, fontWeight: today ? '700' : '500', color: today ? colors.gold : colors.ink }}>{d}</Text>}
-              </View>
-            );
-          })}
-        </View>
-      ))}
+      {/* Speed (Cath: years showed blank while scrolling): each weekday column is one
+          piece of text, instead of 42 separate boxes per month, so a whole year draws in a
+          fraction of the time. Today's circle sits behind its number. */}
+      <View style={{ flexDirection: 'row', height: cell * 6 }}>
+        {todayAt && (
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', left: todayAt.c * cell, top: todayAt.w * cell, width: cell, height: cell, borderRadius: cell / 2, backgroundColor: colors.gold + TODAY_TINT }}
+          />
+        )}
+        {Array.from({ length: 7 }).map((_, c) => (
+          <Text key={c} style={{ width: cell, fontSize: 11, lineHeight: cell, letterSpacing: -0.4, textAlign: 'center', fontWeight: '500', color: colors.ink }}>
+            {Array.from({ length: 6 }).map((__, w) => {
+              const d = w * 7 + c - first + 1;
+              const show = d >= 1 && d <= days;
+              const isToday = show && todayAt && todayAt.d === d;
+              return (
+                <Text key={w} style={isToday ? { color: colors.gold, fontWeight: '700' } : undefined}>
+                  {(show ? String(d) : ' ') + (w < 5 ? '\n' : '')}
+                </Text>
+              );
+            })}
+          </Text>
+        ))}
+      </View>
     </Pressable>
   );
 });
@@ -274,6 +291,7 @@ const YearBlock = React.memo(function YearBlock({ year, pages, miniW, onOpen }: 
   );
 });
 const YEAR_HEAD = 72; // title + line
+const YEAR_NOTE_H = 44; // the note above the first year
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
@@ -284,7 +302,7 @@ export default function CalendarScreen() {
   const s = useMemo(() => makeStyles(colors), [colors]);
   const today = new Date();
   const pages = useMemo(buildPages, []);
-  const todayIndex = PAGES_EACH_SIDE;
+  const todayIndex = TODAY_INDEX;
 
   const [level, setLevel] = useState<'year' | 'month'>('month');
   const [viewMode, setViewModeState] = useState<CalendarViewMode>(DEFAULT_VIEW_MODE);
@@ -566,12 +584,22 @@ export default function CalendarScreen() {
         keyExtractor={(y) => String(y)}
         renderItem={renderYear}
         initialScrollIndex={yi}
-        getItemLayout={(_, i) => ({ length: yearH, offset: yearH * i, index: i })}
-        initialNumToRender={1}
-        maxToRenderPerBatch={1}
-        windowSize={3}
+        getItemLayout={(_, i) => ({ length: yearH, offset: YEAR_NOTE_H + yearH * i, index: i })}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={7}
         onScrollBeginDrag={() => setTodayArmed(false)}
         contentContainerStyle={{ paddingBottom: 120 }}
+        ListHeaderComponent={
+          <View style={{ height: YEAR_NOTE_H, justifyContent: 'center' }}>
+            <Text style={s.yearRangeNote} numberOfLines={1}>The calendar starts in January {years[0]}.</Text>
+          </View>
+        }
+        ListFooterComponent={
+          <Text style={s.yearRangeNote}>
+            It covers 2 years back and 2 years ahead ({years[0]} to {years[years.length - 1]}). Next year it moves forward a year.
+          </Text>
+        }
         showsVerticalScrollIndicator={false}
       />
     );
@@ -614,7 +642,7 @@ export default function CalendarScreen() {
           <Text style={s.dayTitle} numberOfLines={1}>{label}</Text>
           {showBalance && typeof balances[selDay] === 'number' && <Text style={s.dayBal}>Balance {formatPeso(balances[selDay])}</Text>}
         </View>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
+        <KeyboardAwareScrollView pageBounce contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
           <View style={s.group}>
             <GradientFill match={s.group} />
             {evs.length === 0 ? (
@@ -639,7 +667,7 @@ export default function CalendarScreen() {
               })
             )}
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     );
   } else if (navMode === 'swipe') {
@@ -779,6 +807,7 @@ const DOW_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    yearRangeNote: { fontSize: 13, lineHeight: 18, color: colors.inkDim, textAlign: 'center', paddingHorizontal: 32, paddingVertical: 14 },
     container: { flex: 1, backgroundColor: colors.navy2 },
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 4 },
     backRow: { flexDirection: 'row', alignItems: 'center', marginLeft: -6 },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, ScrollView, ScrollViewProps } from 'react-native';
+import { ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardAwareScrollView } from './components/KeyboardAwareScrollView';
 
 // Not a pull-to-refresh any more. This just gives every screen the platform's elastic
@@ -21,7 +21,8 @@ export const PullToRefreshScrollView = React.forwardRef<ScrollView, Props>(funct
       keyboardShouldPersistTaps="handled"
       {...rest}
       ref={ref}
-      {...(Platform.OS === 'android' ? { overScrollMode: 'always' as const } : { bounces: true, alwaysBounceVertical: true })}
+      // The same bounce on every page, also pages short enough to fit the screen (2.2).
+      pageBounce
     >
       {children}
     </KeyboardAwareScrollView>

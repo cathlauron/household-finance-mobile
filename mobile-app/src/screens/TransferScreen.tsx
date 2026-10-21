@@ -153,7 +153,7 @@ export default function TransferScreen() {
           {saving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.barBtn, { fontWeight: '700' }]}>Move</Text>}
         </TouchableOpacity>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {accounts.length < 2 || senders.length === 0 ? (
           <Text style={styles.footer}>
             {accounts.length < 2
