@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { ScrollView } from 'react-native';
+import { CARD as HERO_CARD } from '../components/HomeHero';
+import type { LeftToSpendMood } from '../balanceProjection';
 import { setLookPreview } from '../lookPreview';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,16 +32,89 @@ const HELP: { id: HelpWith; title: string; sub: string; icon: keyof typeof Ionic
   { id: 'spending', title: 'See where my money goes', sub: 'Spending by category', icon: 'pie-chart-outline' },
 ];
 
+// Version 2.2 (approved L2, Cath 2026-10-21): "Swipe to see how Home changes". The same
+// Left to spend card as Home, three ways; swiping to one tints this whole screen in it.
+const SAMPLES: { mood: LeftToSpendMood; amount: string; left: number; perDay: string; title: string; sub: string }[] = [
+  { mood: 'good', amount: '₱8,420', left: 0.6, perDay: '₱700 a day', title: 'Plenty left', sub: 'Green, as usual' },
+  { mood: 'low', amount: '₱1,200', left: 0.18, perDay: '₱100 a day', title: 'Running low', sub: 'Turns warm orange' },
+  { mood: 'over', amount: '−₱650', left: 0, perDay: '', title: 'Over budget', sub: 'Soft rose' },
+];
+
+function MoodSamples({ index, onIndex, isDark }: { index: number; onIndex: (i: number) => void; isDark: boolean }) {
+  const { colors } = useTheme();
+  const [width, setWidth] = useState(0);
+  const gap = 12;
+  const cardW = Math.max(0, width - 28); // the next card peeks in
+  const step = cardW + gap;
+  const cur = SAMPLES[index];
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <Text style={{ fontSize: 13, fontWeight: '700', letterSpacing: 0.4, color: colors.inkDim, marginBottom: 8, marginLeft: 4 }}>SWIPE TO SEE HOW HOME CHANGES</Text>
+      {width > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={step}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          onScroll={(e) => {
+            const i = Math.max(0, Math.min(SAMPLES.length - 1, Math.round(e.nativeEvent.contentOffset.x / step)));
+            if (i !== index) {
+              hapticSelection();
+              onIndex(i);
+            }
+          }}
+          scrollEventThrottle={32}
+          contentContainerStyle={{ gap, paddingRight: 28 - gap }}
+          testID="guest-mood-samples"
+        >
+          {SAMPLES.map((m) => {
+            const bg = m.mood === 'good' ? colors.cardTealEnd : HERO_CARD[m.mood][isDark ? 'dark' : 'light'];
+            const dim = m.mood === 'good' ? colors.cardTealTextDim : 'rgba(255,255,255,0.92)';
+            const fill = m.mood === 'good' ? colors.mintAccent : '#FFFFFF';
+            return (
+              <View key={m.mood} style={{ width: cardW, borderRadius: 20, padding: 18, backgroundColor: bg }} accessibilityLabel={`${m.title}: left to spend ${m.amount}`}>
+                <GradientFill kind="solid" color={bg} strength={0.26} radius={20} />
+                <Text style={{ fontSize: 15, color: dim }}>Left to spend</Text>
+                <Text style={{ fontSize: 36, fontWeight: '800', color: '#FFFFFF', marginTop: 2 }}>{m.amount}</Text>
+                <View style={{ height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)', marginTop: 12, overflow: 'hidden' }}>
+                  <View style={{ width: `${Math.round(m.left * 100)}%`, height: '100%', backgroundColor: fill, borderRadius: 3 }} />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                  <Text style={{ fontSize: 14, color: dim }}>12 days to payday</Text>
+                  {!!m.perDay && <Text style={{ fontSize: 14, color: dim }}>{m.perDay}</Text>}
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10, marginHorizontal: 4 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>{cur.title}</Text>
+        <Text style={{ fontSize: 14, color: colors.inkDim }}>{cur.sub}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+        {SAMPLES.map((m, i) => (
+          <View key={m.mood} style={{ height: 6, width: i === index ? 18 : 6, borderRadius: 3, backgroundColor: i === index ? colors.gold : colors.navy4 }} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onDone }: Props) {
-  const { colors, mode, setMode } = useTheme();
+  const { colors, mode, setMode, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const s = makeStyles(colors);
   const first = setup.name.trim().split(' ')[0];
-  // The background follows the Falling leaves switch straight away (before anything is saved).
+  // The background follows the Falling leaves switch straight away (before anything is saved),
+  // and (2.2, approved L2) the whole screen takes the colours of the mood sample on show.
+  const [sample, setSample] = useState(0);
+  const sampleMood: LeftToSpendMood = step === 3 && setup.moodColors ? SAMPLES[sample].mood : 'good';
   useEffect(() => {
-    setLookPreview({ fallingLeaves: setup.fallingLeaves });
-  }, [setup.fallingLeaves]);
+    setLookPreview({ fallingLeaves: setup.fallingLeaves, mood: sampleMood });
+  }, [setup.fallingLeaves, sampleMood]);
   useEffect(() => () => setLookPreview({}), []);
 
   function back() {
@@ -160,6 +236,7 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
                 <AppSwitch value={setup.moodColors} onValueChange={(v) => onChange({ ...setup, moodColors: v })} trackColor={{ true: colors.buttonFill, false: colors.navy4 }} />
               </View>
             </View>
+            {setup.moodColors && <MoodSamples index={sample} onIndex={setSample} isDark={isDark} />}
             <Text style={[s.footnote, { color: colors.inkDim }]}>You can change these anytime in Settings.</Text>
           </>
         )}

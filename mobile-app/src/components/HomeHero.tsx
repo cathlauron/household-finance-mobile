@@ -35,7 +35,8 @@ type Props = {
   targetDate: Date;
 };
 
-const CARD = {
+// Exported for the set-up screen's mood samples (2.2, approved L2).
+export const CARD = {
   good: null,
   low: { light: '#A33C00', dark: '#933600' },
   over: { light: '#B30F1F', dark: '#A00D1C' },

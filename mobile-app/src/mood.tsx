@@ -3,6 +3,7 @@ import { ThemeContext } from './ThemeContext';
 import { useData } from './DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, LeftToSpendMood } from './balanceProjection';
 import type { ThemeColors } from './theme';
+import { useLookPreview } from './lookPreview';
 
 // Redesign: mood colours. When Left to Spend is Running low or Overspent, the app's
 // accent colour (buttons, links, selected tabs, icon tiles, the + button and the
@@ -33,7 +34,10 @@ const DARK_PAGE: Record<LeftToSpendMood, string> = {
 export function useMood(): LeftToSpendMood {
   const { model } = useData();
   const theme = useContext(ThemeContext);
+  const preview = useLookPreview();
   return useMemo(() => {
+    // Set-up screen (approved L2): the sample being looked at wins.
+    if (preview.mood) return preview.mood;
     if (!model || !theme) return 'good';
     if (model.settings?.moodColorsEnabled === false) return 'good';
     try {
@@ -42,7 +46,7 @@ export function useMood(): LeftToSpendMood {
     } catch {
       return 'good';
     }
-  }, [model, theme]);
+  }, [model, theme, preview.mood]);
 }
 
 // Re-provides the theme with the mood's accent colours swapped in. Wraps the app
