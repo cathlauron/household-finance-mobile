@@ -192,8 +192,12 @@ export default function TransactionsScreen() {
   // Redesign: the floating + button opens this tab with { addNonce } to show the
   // "New transaction" sheet straight away.
   const addNonce = route.params?.addNonce;
+  // Version 2.2 (calendar +): the new transaction starts on the day picked in the calendar.
+  const addDate: string | undefined = route.params?.addDate;
   useEffect(() => {
-    if (addNonce) openAddModal();
+    if (!addNonce) return;
+    openAddModal();
+    if (addDate && /^\d{4}-\d{2}-\d{2}$/.test(addDate)) setDateInput(addDate);
   }, [addNonce]);
   // Redesign: search button in the title bar (opens Search).
   React.useLayoutEffect(() => {

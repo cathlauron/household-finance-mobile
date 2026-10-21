@@ -40,3 +40,16 @@ export async function getCalendarNavMode(): Promise<CalendarNavMode> {
 export async function setCalendarNavMode(mode: CalendarNavMode): Promise<void> {
   await AsyncStorage.setItem(NAV_MODE_KEY, mode);
 }
+
+// Version 2.2 (canvas C5): the projected balance at the bottom of the calendar can be hidden.
+const SHOW_BALANCE_KEY = 'calendar:showBalance';
+export async function getCalendarShowBalance(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(SHOW_BALANCE_KEY)) !== 'off';
+  } catch {
+    return true;
+  }
+}
+export async function setCalendarShowBalance(on: boolean): Promise<void> {
+  await AsyncStorage.setItem(SHOW_BALANCE_KEY, on ? 'on' : 'off');
+}

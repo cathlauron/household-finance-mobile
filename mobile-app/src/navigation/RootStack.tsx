@@ -163,7 +163,10 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
           cardOverlayEnabled: true,
           cardStyleInterpolator: sheetUp,
           gestureDirection: 'vertical',
-          cardStyle: { backgroundColor: colors.navy2, marginTop: 48, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+          // Version 2.2 (Cath: scrolling the months closed the calendar): it still slides up
+          // from the bottom, but as a full page that can't be dragged down; Done closes it.
+          gestureEnabled: false,
+          cardStyle: { backgroundColor: colors.navy2 },
         }}
       />
       <Stack.Screen
