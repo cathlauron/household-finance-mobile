@@ -11,6 +11,7 @@ import { useToPayAddRequest } from '../fabActions';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
+import CustomScheduleFields, { customFreqLabel, parseCustom } from '../components/CustomScheduleFields';
 import PriorityPick from '../components/PriorityPick';
 import { Priority, priorityRank } from '../priority';
 import { getOverdueItems } from '../overdue';
@@ -52,7 +53,7 @@ function sortByNextDue(debts: Debt[]): Debt[] {
 
 
 
-const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 
 type DebtsScreenProps = {
   // Version 2.2 fix (Cath's video: Edit on a debt's page flashed and closed): the page
@@ -108,6 +109,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   const [priorityInput, setPriorityInput] = useState<Priority>('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  // Version 2.2 (Cath): Custom repeat, same as loans.
+  const [customFreqInput, setCustomFreqInput] = useState('monthly');
+  const [customStartDateInput, setCustomStartDateInput] = useState('');
+  const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
   // Version 2.1: which due date is the current one (an earlier month when behind). '' = the next one.
@@ -159,6 +164,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
     setNotesInput('');
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
+    setCustomFreqInput('monthly');
+    setCustomStartDateInput('');
+    setCustomOccurrenceInput('');
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
@@ -193,6 +201,13 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
     setFeesPortionInput(cur && cur.feesPortion !== undefined && cur.feesPortion !== '' ? cur.feesPortion : '');
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    {
+      const dd = (debt.dueDate || {}) as Record<string, any>;
+      setCustomFreqInput(debt.customFreq || dd.customFreq || 'monthly');
+      setCustomStartDateInput(debt.customStartDate || dd.customStartDate || '');
+      const cnt = typeof debt.customOccurrenceCount === 'number' ? debt.customOccurrenceCount : dd.customOccurrenceCount;
+      setCustomOccurrenceInput(typeof cnt === 'number' ? String(cnt) : '');
+    }
     const d = debt.dueDate || {};
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
@@ -260,6 +275,22 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
+    // Custom: kept both on the record and in dueDate, so every place that works out the
+    // next date finds it.
+    let customFields: { customFreq?: string; customStartDate?: string; customOccurrenceCount?: number | '' } = {
+      customFreq: undefined,
+      customStartDate: undefined,
+      customOccurrenceCount: undefined,
+    };
+    if (recurTypeInput === 'custom') {
+      const parsed = parseCustom(customStartDateInput, customOccurrenceInput);
+      if ('error' in parsed) {
+        fieldErrors.show('due', parsed.error);
+        return;
+      }
+      customFields = { customFreq: customFreqInput, customStartDate: customStartDateInput.trim(), customOccurrenceCount: parsed.count };
+      dueDate = { ...customFields };
+    }
 
     let parsedInterest: number | '' = '';
     if (interestRateInput.trim() !== '') {
@@ -278,7 +309,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
       : '';
     // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
     // Version 2.1 (round 8): the date picked in the date box is the first one due (any month or year).
-    const dueNowISO = recurTypeInput !== 'onetime' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
+    const dueNowISO = recurTypeInput !== 'onetime' && recurTypeInput !== 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, debts: [...model.debts] };
 
@@ -302,6 +333,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
           priority: priorityInput,
           minPayment: parsedMinPayment,
           recurringType: recurTypeInput,
+          ...customFields,
           dueDate,
           cycles,
         };
@@ -312,6 +344,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
         creditorOrPerson: trimmedCreditor,
         category: categoryInput.trim(),
         recurringType: recurTypeInput,
+        ...customFields,
         dueDate,
         cycles: [
           {
@@ -539,12 +572,18 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
           </PickerRow>
           <AmountRow label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
           <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
-            <Choices options={REPEAT_CHOICES} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
+            <Choices options={[...REPEAT_CHOICES, { id: 'custom' as RecurringType, label: 'Custom' }]} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
           </PickerRow>
           <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+          {recurTypeInput === 'custom' ? (
+            <PickerRow label="Schedule" value={`${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+              <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="debt-custom-start" />
+            </PickerRow>
+          ) : (
           <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, dueNowInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
             <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={dueNowInput} onFirstDue={setDueNowInput} testID="debt-due-date-field" />
           </PickerRow>
+          )}
           </Guided>
           <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />

@@ -5,6 +5,7 @@ import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SegmentedControl from '../components/SegmentedControl';
 import { setToPaySub } from '../fabActions';
+import { closeOpenSwipeRows } from '../components/SwipeableRow';
 import { useStickyState } from '../stickyState';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -87,6 +88,7 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   // Redesign: tell the floating + which list is showing, so it adds the right thing.
   useEffect(() => {
     setToPaySub(activeSubTab);
+    closeOpenSwipeRows();
   }, [activeSubTab]);
   const styles = makeStyles(colors);
   const navigation = useNavigation<any>();

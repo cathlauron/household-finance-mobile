@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { createContext, useCallback, useMemo, useRef } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { hapticSelection } from '../haptics';
 
@@ -8,6 +8,11 @@ import { hapticSelection } from '../haptics';
 // Things that swipe sideways by themselves (the Left to Spend card pages, the wallet card
 // stack, swipe-to-delete rows) keep their swipe: they spread `holdTabSwipe` on their outer
 // view, and a page swipe gives way for any touch that starts on them.
+
+// Version 2.2 (Cath: swipe-to-delete opened when she meant to change screens): a quick
+// flick across a swipe-to-delete row still changes the tab. Rows ask the nearest swipe
+// area through this.
+export const SwipeTabsContext = createContext<((direction: 1 | -1) => void) | null>(null);
 
 let held = false;
 export const holdTabSwipe = {
@@ -65,5 +70,15 @@ export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: 
         }),
     [enabled, inner]
   );
-  return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
+  const flick = useCallback((dir: 1 | -1) => {
+    if (Date.now() - lastSwipeAt < 300) return;
+    lastSwipeAt = Date.now();
+    hapticSelection();
+    onSwipeRef.current(dir);
+  }, []);
+  return (
+    <SwipeTabsContext.Provider value={enabled ? flick : null}>
+      <GestureDetector gesture={gesture}>{children}</GestureDetector>
+    </SwipeTabsContext.Provider>
+  );
 }

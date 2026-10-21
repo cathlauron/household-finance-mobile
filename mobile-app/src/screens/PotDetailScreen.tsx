@@ -15,6 +15,7 @@ import { withoutSavingsPot } from '../deleteRecords';
 import AmountInput from '../components/AmountInput';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { useTheme } from '../ThemeContext';
+import SavingsScreen from './SavingsScreen';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { accountLabel } from '../transactionActions';
@@ -58,6 +59,8 @@ export default function PotDetailScreen() {
 
   const [sheet, setSheet] = useState<Sheet>(null);
   const [amount, setAmount] = useState<number | ''>('');
+  // Version 2.2 (Cath): Edit opens the pot's form right on this page.
+  const [editing, setEditing] = useState(false);
   const [pm, setPm] = useState<PaymentMethod | undefined>(undefined);
 
   useLayoutEffect(() => {
@@ -66,7 +69,7 @@ export default function PotDetailScreen() {
       headerBackTitle: 'Savings',
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => navigation.navigate('Savings', { openSavingsId: id, openSavingsNonce: Date.now() })}
+          onPress={() => setEditing(true)}
           accessibilityRole="button"
           testID="pot-edit"
         >
@@ -188,6 +191,7 @@ export default function PotDetailScreen() {
   const fromLabel = (p?: PaymentMethod) => accountLabel(model, p);
 
   return (
+    <>
     <KeyboardAwareScrollView contentContainerStyle={styles.content}>
       <View style={styles.group}>
         <GradientFill match={styles.group} />
@@ -358,6 +362,20 @@ export default function PotDetailScreen() {
         }
       />
     </KeyboardAwareScrollView>
+    {editing && (
+      <View style={{ position: 'absolute', width: 0, height: 0 }}>
+        <SavingsScreen
+          formOnly
+          openSavingsId={id}
+          onFormClosed={() => {
+            setEditing(false);
+            const latest = getModel();
+            if (latest && !(latest.savingsGoals || []).some((g) => g.id === id)) navigation.goBack();
+          }}
+        />
+      </View>
+    )}
+    </>
   );
 }
 

@@ -6,6 +6,7 @@ import { Text } from '../components/AppText';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
+import AccountsScreen from './AccountsScreen';
 import { useData } from '../DataContext';
 import { formatPeso, accountCurrentBalance } from '../balanceProjection';
 import { buildTransactionsList } from '../transactions';
@@ -54,6 +55,8 @@ export default function CardDetailScreen() {
   const { colors, isDark } = useTheme();
   const { model, saveModel, getModel, isLinked } = useData();
   const [allUpdates, setAllUpdates] = useState(false);
+  // Version 2.2 (Cath): Edit card opens the form right on this page.
+  const [editing, setEditing] = useState(false);
   // Version 3 (approved K4): the one-time question, "Ask me later" hides it for this visit.
   const [askLater, setAskLater] = useState(false);
   const [answer, setAnswer] = useState<'canUse' | 'owe' | null>(null);
@@ -162,6 +165,7 @@ export default function CardDetailScreen() {
   }
 
   return (
+    <>
     <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* The same colour and gradient as this card in Home's Wallet. */}
       <View style={[styles.card, cardFaceColors(chip, isDark)]}>
@@ -421,7 +425,7 @@ export default function CardDetailScreen() {
         );
       })()}
 
-      <TouchableOpacity style={[styles.group, styles.action]} onPress={() => navigation.navigate('Accounts', { editGroup: group, editId: accountId, nonce: Date.now() })} accessibilityRole="button">
+      <TouchableOpacity style={[styles.group, styles.action]} onPress={() => setEditing(true)} accessibilityRole="button">
         <GradientFill match={[styles.group, styles.action]} />
         <Text style={[styles.actionText, { color: colors.gold }]}>Edit card</Text>
       </TouchableOpacity>
@@ -446,6 +450,21 @@ export default function CardDetailScreen() {
         }
       />
     </KeyboardAwareScrollView>
+    {editing && (
+      <View style={{ position: 'absolute', width: 0, height: 0 }}>
+        <AccountsScreen
+          formOnly
+          editGroup={group}
+          editAccountId={accountId}
+          onFormClosed={() => {
+            setEditing(false);
+            const latest = getModel();
+            if (latest && !(latest.balanceAccounts[group] || []).some((a) => a.id === accountId)) navigation.goBack();
+          }}
+        />
+      </View>
+    )}
+    </>
   );
 }
 

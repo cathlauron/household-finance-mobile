@@ -101,9 +101,12 @@ type PillTab = 'goals' | 'ef' | 'fi';
 type SavingsScreenProps = {
   openSavingsId?: string;
   openSavingsNonce?: number;
+  // Version 2.2 (Cath: Edit should open where you are): just the pot's form, for the pot page.
+  formOnly?: boolean;
+  onFormClosed?: () => void;
 };
 
-export default function SavingsScreen({ openSavingsId, openSavingsNonce }: SavingsScreenProps = {}) {
+export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
 
@@ -115,6 +118,10 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     const target = (model.savingsGoals || []).find((g) => g.id === openSavingsId);
     if (target) {
       openedSavingsRef.current = { id: openSavingsId, nonce: openSavingsNonce };
+      if (formOnly) {
+        openEditModal(target);
+        return;
+      }
       if (!firstTimeOpen('savings', openSavingsId, openSavingsNonce)) return;
       afterSlide(() => openEditModal(target));
     }
@@ -141,6 +148,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   // Redesign: Add in the top bar starts a new pot (the mockup's "Add a savings pot").
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a savings pot" testID="savings-add-pot" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -252,6 +260,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
 
@@ -606,7 +615,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
       }}
     >
     <SafeAreaView style={styles.container}>
-      <View style={styles.pillRow}>
+      <View style={[styles.pillRow, formOnly && { display: 'none' }]}>
         <SegmentedControl<PillTab>
           accessibilityLabel="Savings view"
           options={[
@@ -619,7 +628,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         />
       </View>
 
-      {activeTab === 'goals' && (
+      {!formOnly && activeTab === 'goals' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.summaryCard}>
             <GradientFill match={styles.summaryCard} />
@@ -688,7 +697,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         </PullToRefreshScrollView>
       )}
 
-      {activeTab === 'ef' && (
+      {!formOnly && activeTab === 'ef' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
             <GradientFill match={styles.summaryCard} />
@@ -724,7 +733,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         </PullToRefreshScrollView>
       )}
 
-      {activeTab === 'fi' && (
+      {!formOnly && activeTab === 'fi' && (
         <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
           <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
             <GradientFill match={styles.summaryCard} />

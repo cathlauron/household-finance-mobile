@@ -465,6 +465,11 @@ export type ManualTransaction = {
   incomeKind?: 'bonus' | 'side' | 'allowance' | 'gift' | 'other';
   // Redesign ("Make it repeat"): set on transactions added by a repeat, pointing at it.
   recurringId?: string;
+  // Version 2.2 (canvas W1 B + W2): who added it (username), and who last changed it and
+  // when. Stamped on save; shown only in a shared household.
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // Redesign ("Make it repeat" / Recurring page): a transaction that is added for you on a

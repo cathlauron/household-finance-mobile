@@ -165,9 +165,11 @@ function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): 
   return goal ? goal.id : null;
 }
 
-export default function TransactionsScreen() {
+// Version 2.2 (Cath: Edit should open where you are): formOnly draws just the form (for
+// the Transaction page's Edit), opened on editTxnId; onFormClosed says when it closed.
+export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }: { formOnly?: boolean; editTxnId?: string; onFormClosed?: () => void } = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, isLinked, username } = useData();
   const navigation = useNavigation();
   // Pull the list down from the top to open Search (like the iPhone).
   const pullToSearch = usePullDownToOpen(() => (navigation as any).navigate('Search'));
@@ -201,6 +203,7 @@ export default function TransactionsScreen() {
   }, [addNonce]);
   // Redesign: search button in the title bar (opens Search).
   React.useLayoutEffect(() => {
+    if (formOnly) return;
     // Version 2.1 (S9): the two icons sit on the "Transactions" title line, not the empty row above.
     navigation.setOptions({
       headerTitleRight: () => (
@@ -230,7 +233,17 @@ export default function TransactionsScreen() {
   }, [navigation, colors.gold]);
   // Redesign: the Transaction page's "Edit" comes back here with { editId } to open the form.
   const editNonce = route.params?.editNonce;
+  const formOnlyOpened = React.useRef(false);
   useEffect(() => {
+    if (!formOnly || !editTxnId || !model || formOnlyOpened.current) return;
+    const t = buildTransactionsList(model).find((x) => x.rawId === editTxnId && x.source === 'manual');
+    if (t) {
+      formOnlyOpened.current = true;
+      openEditModal(t);
+    }
+  }, [formOnly, editTxnId, model]);
+  useEffect(() => {
+    if (formOnly) return;
     const editId = route.params?.editId;
     if (!editNonce || !editId || !model) return;
     const t = buildTransactionsList(model).find((x) => x.rawId === editId && x.source === 'manual');
@@ -383,6 +396,7 @@ export default function TransactionsScreen() {
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
   // ---- Categorization Rules auto-fill ----
@@ -674,6 +688,7 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshControl={pullToSearch}>
         {/* Redesign: filter chips (month, newest/oldest, category) */}
         <View style={styles.filterRow}>
@@ -894,6 +909,12 @@ export default function TransactionsScreen() {
               <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
               <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
                 <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
+                {/* Version 2.2 (canvas W1 B): a small letter when someone else in the household logged it. */}
+                {isLinked && !!rawManual?.addedBy && rawManual.addedBy !== username && (
+                  <View style={[styles.whoBadge, { backgroundColor: colors.navy3 }]} accessibilityLabel={`Logged by ${rawManual.addedBy}`}>
+                    <Text style={[styles.whoText, { color: colors.indigo ?? colors.inkDim }]}>{rawManual.addedBy.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.txnMain}>
                 <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
@@ -917,6 +938,7 @@ export default function TransactionsScreen() {
         {/* Redesign: adding is done with the floating + button; importing a spreadsheet
             moved to Settings › Backup & Data. */}
       </PullToRefreshScrollView>
+      )}
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
@@ -1250,6 +1272,8 @@ function makeStyles(colors: any) {
     daySection: { marginBottom: 20 },
     dayHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
     tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    whoBadge: { position: 'absolute', right: -4, bottom: -4, width: 15, height: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.navy3, elevation: 1 },
+    whoText: { fontSize: 9, fontWeight: '800', lineHeight: 11 },
     emptyText: { fontSize: 15, color: colors.inkDim, marginTop: 6, marginBottom: 12, textAlign: 'center' },
     txnMain: { flex: 1, marginRight: 10 },
     reviewCard: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 12 },

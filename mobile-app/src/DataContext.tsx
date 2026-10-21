@@ -22,7 +22,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, ReactNod
 import * as Network from 'expo-network';
 import { Alert, AppState } from 'react-native';
 import CryptoJS from 'crypto-js';
-import type { HouseholdModel } from './types';
+import type { HouseholdModel, ManualTransaction } from './types';
 import { defaultModel } from './defaultModel';
 import { deriveKey, generateSalt, encryptJSON, decryptJSON } from './encryption';
 import {
@@ -918,6 +918,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await Promise.race([saveLineRef.current, new Promise<void>((resolve) => setTimeout(resolve, maxMs))]);
   }
 
+  // Version 2.2 (canvas W1 B + W2): a new transaction remembers who added it; a changed one
+  // remembers who changed it and when. Unchanged ones are left exactly as they were.
+  function stampWho(list: ManualTransaction[], before: ManualTransaction[], knownIds: Set<string>, now: number, who: string | null): ManualTransaction[] {
+    const prevById = new Map(before.map((t) => [t.id, t]));
+    return list.map((t) => {
+      if (!knownIds.has(t.id)) {
+        const stamped = t.createdAt ? t : { ...t, createdAt: now };
+        return who && !stamped.addedBy ? { ...stamped, addedBy: who } : stamped;
+      }
+      const old = prevById.get(t.id);
+      if (!who || !old || old === t) return t;
+      const strip = (x: ManualTransaction) => JSON.stringify({ ...x, changedBy: undefined, changedAt: undefined });
+      if (strip(old) === strip(t)) return t;
+      return { ...t, changedBy: who, changedAt: now };
+    });
+  }
+
   async function saveModel(updatedModel: HouseholdModel) {
     // Left to Spend: stamp the moment each NEW transaction is first saved (any screen
     // that adds one: Transactions, CSV import, Travel, Events, refunds). Existing
@@ -932,9 +949,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const knownPaydays = new Set((prev?.income || []).flatMap((s) => (s.paymentLog || []).map((e) => e.id)));
     const stamped: HouseholdModel = {
       ...updatedModel,
-      manualTransactions: (updatedModel.manualTransactions || []).map((t) =>
-        t.createdAt || knownIds.has(t.id) ? t : { ...t, createdAt: now }
-      ),
+      manualTransactions: stampWho(updatedModel.manualTransactions || [], prev?.manualTransactions || [], knownIds, now, usernameRef.current),
       loans: (updatedModel.loans || []).map((l) =>
         (l.actualPayments || []).some((p) => !p.createdAt && !knownLoanPays.has(p.id))
           ? {

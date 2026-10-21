@@ -45,7 +45,9 @@ function makeId(): string {
   return 'acct-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
-export default function AccountsScreen() {
+// Version 2.2 (Cath: Edit should open where you are): formOnly draws just the account's
+// form, for "Edit card" on a card's page; onFormClosed says when it has closed.
+export default function AccountsScreen({ formOnly, editGroup, editAccountId, onFormClosed }: { formOnly?: boolean; editGroup?: AccountGroup; editAccountId?: string; onFormClosed?: () => void } = {}) {
   const { colors, isDark } = useTheme();
   const { model, saveModel, username } = useData();
   const styles = makeStyles(colors);
@@ -58,7 +60,18 @@ export default function AccountsScreen() {
   // Version 2.1 (Cath): "Edit card" on a card's page comes here and opens that card's sheet.
   const route = useRoute<any>();
   const editNonce = route.params?.nonce;
+  const formOnlyOpened = useRef(false);
   React.useEffect(() => {
+    if (!formOnly || formOnlyOpened.current || !model || !editGroup || !editAccountId) return;
+    const account = model.balanceAccounts[editGroup]?.find((a: BalanceAccountEntry) => a.id === editAccountId);
+    if (account) {
+      formOnlyOpened.current = true;
+      openEditModal(editGroup, account);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formOnly, model, editGroup, editAccountId]);
+  React.useEffect(() => {
+    if (formOnly) return;
     const g = route.params?.editGroup as AccountGroup | undefined;
     const id = route.params?.editId as string | undefined;
     if (!editNonce || !g || !id || !model) return;
@@ -68,6 +81,7 @@ export default function AccountsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editNonce]);
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
@@ -133,6 +147,7 @@ export default function AccountsScreen() {
     setActiveGroup(null);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
 
@@ -279,6 +294,7 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -368,6 +384,7 @@ export default function AccountsScreen() {
           );
         })}
       </PullToRefreshScrollView>
+      )}
 
       <BottomSheet visible={chooseTypeOpen} onClose={() => setChooseTypeOpen(false)} title="Add an account">
         {GROUPS.map((g, i) => (

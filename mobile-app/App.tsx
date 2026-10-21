@@ -55,6 +55,7 @@ import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinut
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { StillTherePopup, PausedCover, AutoLockSheet, STILL_THERE_AFTER_MS } from './src/components/StillThere';
 import { onActivity } from './src/activity';
+import { closeOpenSwipeRows } from './src/components/SwipeableRow';
 import { hideAmountsNow } from './src/hideAmounts';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { MoodThemeProvider } from './src/mood';
@@ -229,7 +230,9 @@ function AppContent() {
   const autoLockMinutesRef = useRef<number>(DEFAULT_AUTO_LOCK_MINUTES);
   // Version 2.2 (canvas S1-S3): "Are you still there?", the cover after no answer, and the
   // Auto-lock sheet it can open.
-  const stillTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When someone last touched the app. Checked every few seconds (a single long timer
+  // doesn't survive the screen turning off), and on coming back to the app.
+  const lastTouchRef = useRef(Date.now());
   const [stillThereOpen, setStillThereOpen] = useState(false);
   const [pausedCover, setPausedCover] = useState(false);
   const [autoLockSheetOpen, setAutoLockSheetOpen] = useState(false);
@@ -528,20 +531,12 @@ function AppContent() {
       clearTimeout(idleTimerRef.current);
       idleTimerRef.current = null;
     }
-    if (stillTimerRef.current) {
-      clearTimeout(stillTimerRef.current);
-      stillTimerRef.current = null;
-    }
   }
 
   function resetIdleTimer() {
     clearIdleTimer();
     if (screenRef.current !== 'home') return;
-    // Version 2.2 (canvas S1): with Auto-lock off, 5 minutes untouched asks "Are you
-    // still there?" (with Auto-lock on, the app just locks as before).
-    if (autoLockMinutesRef.current <= 0 && AppState.currentState === 'active') {
-      stillTimerRef.current = setTimeout(() => setStillThereOpen(true), STILL_THERE_AFTER_MS);
-    }
+
     if (autoLockMinutesRef.current <= 0) return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
@@ -549,18 +544,39 @@ function AppContent() {
     }, timeoutMs);
   }
 
-  useEffect(() => onActivity(() => resetIdleTimer()), []);
+  function noteTouch() {
+    lastTouchRef.current = Date.now();
+    resetIdleTimer();
+  }
+  useEffect(() => onActivity(() => noteTouch()), []);
+
+  // Version 2.2 fix (Cath: it never showed): with Auto-lock off, 5 minutes without a
+  // touch asks "Are you still there?". That includes the phone's screen going dark for 5
+  // minutes or more: it asks as soon as the app is opened again.
+  const stillOpenRef = useRef(false);
+  stillOpenRef.current = stillThereOpen || pausedCover || autoLockSheetOpen;
+  function checkStillThere() {
+    if (screenRef.current !== 'home' || stillOpenRef.current) return;
+    if (autoLockMinutesRef.current > 0 || AppState.currentState !== 'active') return;
+    if (Date.now() - lastTouchRef.current >= STILL_THERE_AFTER_MS) setStillThereOpen(true);
+  }
+  useEffect(() => {
+    if (screen !== 'home') return;
+    lastTouchRef.current = Date.now();
+    const t = setInterval(checkStillThere, 10000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
         lockIfConfigured();
-        if (stillTimerRef.current) {
-          clearTimeout(stillTimerRef.current);
-          stillTimerRef.current = null;
-        }
       }
-      if (nextState === 'active') resetIdleTimer();
+      if (nextState === 'active') {
+        resetIdleTimer();
+        checkStillThere();
+      }
       if (nextState === 'active') {
         const user = getCurrentFirebaseUser();
         const deviceId = currentDeviceIdRef.current;
@@ -696,6 +712,8 @@ function AppContent() {
   function handleNavStateChange() {
     const name = navigationRef.getCurrentRoute()?.name ?? null;
     const prevName = lastRouteNameRef.current;
+    // Version 2.2 (Cath): a row left open on swipe-to-delete closes when the screen changes.
+    if (name !== prevName) closeOpenSwipeRows();
     if (name && prevName && name !== prevName) {
       const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
       const from = TAB_ORDER.indexOf(prevName);
@@ -755,7 +773,7 @@ function AppContent() {
 
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
-      <View style={{ flex: 1, backgroundColor: 'transparent' }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
+      <View style={{ flex: 1, backgroundColor: 'transparent' }} onStartShouldSetResponderCapture={() => { noteTouch(); return false; }}>
         <NavigationContainer
           ref={navigationRef}
           theme={{
@@ -776,7 +794,7 @@ function AppContent() {
           visible={stillThereOpen}
           onHere={() => {
             setStillThereOpen(false);
-            resetIdleTimer();
+            noteTouch();
           }}
           onAutoLock={() => {
             setStillThereOpen(false);
@@ -796,7 +814,7 @@ function AppContent() {
             if (!username) return;
             const [pin, bio] = await Promise.all([hasPinSetUp(username), getBiometricState(username)]);
             if (pin || bio === 'ENABLED') setScreen('locked');
-            else resetIdleTimer();
+            else noteTouch();
           }}
         />
         <AutoLockSheet
@@ -804,7 +822,7 @@ function AppContent() {
           username={currentUsername}
           onClose={() => {
             setAutoLockSheetOpen(false);
-            resetIdleTimer();
+            noteTouch();
           }}
         />
       </View>

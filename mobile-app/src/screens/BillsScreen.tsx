@@ -24,6 +24,7 @@ import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, pa
 import { paymentToPlace, placePayment } from '../billPayments';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import PayRow from '../components/PayRow';
+import CustomScheduleFields, { customFreqLabel, parseCustom } from '../components/CustomScheduleFields';
 import { priorityRank } from '../priority';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
@@ -43,7 +44,7 @@ function billAmount(bill: Bill): number {
 // due date yet sort to the bottom.
 
 const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
-const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Subscription', 'School', 'Other'];
 
 type BillsScreenProps = {
@@ -112,6 +113,10 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  // Version 2.2 (Cath): Custom repeat, same as loans.
+  const [customFreqInput, setCustomFreqInput] = useState('monthly');
+  const [customStartDateInput, setCustomStartDateInput] = useState('');
+  const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
   // Version 2.1: which due date is the current one (an earlier month when behind). '' = the next one.
@@ -177,6 +182,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     setSubscriptionInput(false);
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
+    setCustomFreqInput('monthly');
+    setCustomStartDateInput('');
+    setCustomOccurrenceInput('');
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
@@ -210,6 +218,13 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     setPaymentMethodInput(currentCycle(bill)?.paymentMethod);
     const rt = (bill.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    {
+      const dd = (bill.dueDate || {}) as Record<string, any>;
+      setCustomFreqInput(bill.customFreq || dd.customFreq || 'monthly');
+      setCustomStartDateInput(bill.customStartDate || dd.customStartDate || '');
+      const cnt = typeof bill.customOccurrenceCount === 'number' ? bill.customOccurrenceCount : dd.customOccurrenceCount;
+      setCustomOccurrenceInput(typeof cnt === 'number' ? String(cnt) : '');
+    }
     const d = bill.dueDate || {};
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
@@ -279,6 +294,22 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
+    // Custom: kept both on the record and in dueDate, so every place that works out the
+    // next date finds it.
+    let customFields: { customFreq?: string; customStartDate?: string; customOccurrenceCount?: number | '' } = {
+      customFreq: undefined,
+      customStartDate: undefined,
+      customOccurrenceCount: undefined,
+    };
+    if (recurTypeInput === 'custom') {
+      const parsed = parseCustom(customStartDateInput, customOccurrenceInput);
+      if ('error' in parsed) {
+        fieldErrors.show('due', parsed.error);
+        return;
+      }
+      customFields = { customFreq: customFreqInput, customStartDate: customStartDateInput.trim(), customOccurrenceCount: parsed.count };
+      dueDate = { ...customFields };
+    }
 
     const nextDue = getNextDueDate(recurTypeInput, dueDate);
     const nextDueISO = nextDue
@@ -286,7 +317,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       : '';
     // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
     // Version 2.1 (round 8): the date picked in the date box is the first one due (any month or year).
-    const dueNowISO = recurTypeInput !== 'onetime' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
+    const dueNowISO = recurTypeInput !== 'onetime' && recurTypeInput !== 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, bills: [...model.bills] };
 
@@ -308,6 +339,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
           priority: priorityInput,
           notes: notesInput,
           recurringType: recurTypeInput,
+          ...customFields,
           dueDate,
           cycles,
           isSubscription: subscriptionInput,
@@ -324,6 +356,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         name: trimmedName,
         category: categoryInput.trim(),
         recurringType: recurTypeInput,
+        ...customFields,
         dueDate,
         priority: priorityInput,
         owner: 'shared',
@@ -594,16 +627,18 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
             <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <OwnChoiceField style={styles.inlineField} options={BILL_CATEGORIES} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
-          <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+          <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : recurTypeInput === 'custom' ? 'Custom' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
             <Choices
-              options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }]}
+              options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }, { id: 'custom', label: 'Custom' }]}
               value={recurTypeInput as any}
               onChange={(v) => setRecurTypeInput(v as RecurringType)}
             />
           </PickerRow>
           <Guided {...fieldErrors.props('due')} onShow={() => setOpenRow('due')}>
-          <PickerRow label="Due on" value={dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
-            {recurTypeInput === 'onetime' ? (
+          <PickerRow label={recurTypeInput === 'custom' ? 'Schedule' : 'Due on'} value={recurTypeInput === 'custom' ? `${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}` : dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
+            {recurTypeInput === 'custom' ? (
+              <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="bill-custom-start" />
+            ) : recurTypeInput === 'onetime' ? (
               <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
             ) : (
               <ScheduleChoices
