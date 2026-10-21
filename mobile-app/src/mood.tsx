@@ -3,6 +3,7 @@ import { ThemeContext } from './ThemeContext';
 import { useData } from './DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, LeftToSpendMood } from './balanceProjection';
 import type { ThemeColors } from './theme';
+import type { HouseholdModel } from './types';
 import { useLookPreview } from './lookPreview';
 
 // Redesign: mood colours. When Left to Spend is Running low or Overspent, the app's
@@ -31,6 +32,18 @@ const DARK_PAGE: Record<LeftToSpendMood, string> = {
   over: '#16060A',
 };
 
+// 2.2 speed sweep: working out Left to Spend goes through all your bills and spending.
+// Several parts of the app ask for the mood at once, so it's worked out once per change
+// of your data and remembered (the mood itself doesn't depend on the colours).
+let moodCache: { model: HouseholdModel; mood: LeftToSpendMood } | null = null;
+function moodFor(model: HouseholdModel, colors: ThemeColors): LeftToSpendMood {
+  if (moodCache && moodCache.model === model) return moodCache.mood;
+  const lts = computeLeftToSpend(model);
+  const mood = getLeftToSpendStatus(lts.amount, model, colors).mood;
+  moodCache = { model, mood };
+  return mood;
+}
+
 export function useMood(): LeftToSpendMood {
   const { model } = useData();
   const theme = useContext(ThemeContext);
@@ -41,8 +54,7 @@ export function useMood(): LeftToSpendMood {
     if (!model || !theme) return 'good';
     if (model.settings?.moodColorsEnabled === false) return 'good';
     try {
-      const lts = computeLeftToSpend(model);
-      return getLeftToSpendStatus(lts.amount, model, theme.colors).mood;
+      return moodFor(model, theme.colors);
     } catch {
       return 'good';
     }

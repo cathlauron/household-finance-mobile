@@ -51,9 +51,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const colors = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
+  // 2.2 speed sweep: the same theme object until the colours really change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const value = useMemo(() => ({ colors, isDark, mode, setMode }), [colors, isDark, mode]);
 
   return (
-    <ThemeContext.Provider value={{ colors, isDark, mode, setMode }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

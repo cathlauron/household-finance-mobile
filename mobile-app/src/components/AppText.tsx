@@ -110,12 +110,22 @@ function hasDigits(children: React.ReactNode): boolean {
   return false;
 }
 
+function isPlain(children: React.ReactNode): boolean {
+  if (children == null || typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') return true;
+  if (Array.isArray(children)) return children.every((c) => c == null || typeof c === 'string' || typeof c === 'number' || typeof c === 'boolean');
+  return false;
+}
+
 export const Text = forwardRef<RNText, TextProps>(function AppText({ style, ...rest }, ref) {
   const inherited = useContext(ParentWeight);
   const scale = useTextScale();
   const { font, weight } = fontStyleFor(style, inherited);
   const size = sizeStyleFor(style, scale, inherited !== null);
   const extra = hasDigits(rest.children) ? [TABULAR, style, font, size] : font || size ? [style, font, size] : style;
+  // 2.2 speed sweep: plain words or numbers (most text in the app) have no text inside
+  // them to pass the weight on to, so they skip the extra wrapper. That's about half the
+  // pieces the phone has to redraw on every screen.
+  if (isPlain(rest.children)) return <RNText ref={ref} {...rest} style={extra} />;
   return (
     <ParentWeight.Provider value={(weight ?? '400') as Weight}>
       <RNText ref={ref} {...rest} style={extra} />
