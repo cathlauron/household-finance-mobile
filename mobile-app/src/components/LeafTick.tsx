@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated as RNAnimated, StyleSheet, View } from 'react-native';
+import { Animated as RNAnimated, Easing as RNEasing, StyleSheet, View } from 'react-native';
+import { reduceMotionNow } from '../reduceMotion';
 import Svg, { Path } from 'react-native-svg';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming, SharedValue } from 'react-native-reanimated';
 import { Text } from './AppText';
@@ -10,6 +11,8 @@ import { hapticLight } from '../haptics';
 // a small card in the middle of the screen shows the logo's leaf drawing itself, then a
 // word ("Added", "Saved", "Paid"), and fades away. Call showLeafTick('Added') from
 // anywhere; <LeafTickHost /> is mounted once in App.
+
+const EASE_OUT = RNEasing.bezier(0.23, 1, 0.32, 1);
 
 type Listener = (label: string) => void;
 let listener: Listener | null = null;
@@ -56,14 +59,24 @@ export function LeafTickHost() {
       card.stopAnimation();
       word.setValue(0);
       t.value = 0;
-      RNAnimated.timing(card, { toValue: 1, duration: 140, useNativeDriver: true }).start();
-      t.value = withTiming(1, { duration: 480, easing: Easing.linear });
-      RNAnimated.timing(word, { toValue: 1, duration: 180, delay: 360, useNativeDriver: true }).start();
+      // Version 2.2 (approved P4): quicker, since it shows after every save. The leaf
+      // draws in 0.32 s (was 0.48 s at one flat speed), the card pops in with a strong
+      // ease-out, and the whole tick is gone a little sooner. With the phone set to remove
+      // animations, the finished leaf simply appears and fades.
+      if (reduceMotionNow()) {
+        card.setValue(1);
+        word.setValue(1);
+        t.value = 1;
+      } else {
+        RNAnimated.timing(card, { toValue: 1, duration: 160, easing: EASE_OUT, useNativeDriver: true }).start();
+        t.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
+        RNAnimated.timing(word, { toValue: 1, duration: 160, delay: 220, easing: EASE_OUT, useNativeDriver: true }).start();
+      }
       timer.current = setTimeout(() => {
-        RNAnimated.timing(card, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+        RNAnimated.timing(card, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
           if (finished) setLabel(null);
         });
-      }, 1050);
+      }, 900);
     };
     return () => {
       listener = null;

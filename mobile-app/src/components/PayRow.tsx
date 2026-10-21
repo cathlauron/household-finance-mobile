@@ -6,6 +6,7 @@ import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import GradientFill from './GradientFill';
 import { WhoBadge } from './WhoLogged';
+import ArrivalGlow from './ArrivalGlow';
 
 // Redesign: one row in the To-Pay lists (Finance Flow mockup): icon tile, name,
 // "Due Fri, Oct 16" underneath, and the amount with an optional tag on the right.
@@ -25,9 +26,11 @@ type Props = {
   testID?: string;
   // Version 2.2 (W1 everywhere): who added it; a small letter shows when it's someone else.
   addedBy?: string;
+  // Version 2.2 (approved P4): true for a moment after this row was just added.
+  glow?: boolean;
 };
 
-export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy }: Props) {
+export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy, glow }: Props) {
   const { colors } = useTheme();
   const tone = badge
     ? badge.tone === 'overdue'
@@ -48,6 +51,7 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       style={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}
     >
       <GradientFill match={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]} />
+      {glow && <ArrivalGlow />}
       <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
         <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
         <Ionicons name={icon} size={17} color={colors.gold} />

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { useArrival } from '../useArrival';
+import ArrivalGlow from '../components/ArrivalGlow';
 import { showLeafTick } from '../components/LeafTick';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import SegmentedControl from '../components/SegmentedControl';
@@ -132,6 +134,8 @@ function isValidDateOrEmpty(s: string): boolean {
 export default function TravelScreen() {
   const { colors } = useTheme();
   const { model, saveModel, getModel } = useData();
+  // Version 2.2 (approved P4): a just-added trip item slides in and glows.
+  const arrived = useArrival((model?.travel || []).flatMap((t) => (t.checklist || []).map((i) => i.id)));
   const who = useWho();
   const styles = makeStyles(colors);
 
@@ -775,6 +779,7 @@ export default function TravelScreen() {
                   )}
                   {(t.checklist || []).map((item, i) => (
                     <View key={item.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
+                      {arrived === item.id && <ArrivalGlow />}
                       <TouchableOpacity
                         onPress={() => toggleItem(t, item)}
                         style={[styles.check, item.checked && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}

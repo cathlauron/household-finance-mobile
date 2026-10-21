@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useArrival } from '../useArrival';
+import ArrivalGlow from '../components/ArrivalGlow';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -313,6 +315,8 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
     return sortTransactions(list, sortOrder);
   }, [model, allEntries, sortOrder, categoryFilter, monthFilter, accountFilter]);
   const days = useMemo(() => groupByDate(transactions), [transactions]);
+  // Version 2.2 (approved P4): a just-added transaction slides in and glows for a moment.
+  const arrivedTxn = useArrival(transactions.map((t) => t.id));
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
@@ -908,6 +912,7 @@ export default function TransactionsScreen({ formOnly, editTxnId, onFormClosed }
               accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
             >
               <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
+              {arrivedTxn === t.id && <ArrivalGlow />}
               <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
                 <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
                 {/* Version 2.2 (canvas W1 B): a small letter when someone else in the household logged it. */}

@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useArrival } from '../useArrival';
+import ArrivalGlow from '../components/ArrivalGlow';
 import { useWho } from '../components/WhoLogged';
 import { withoutSavingsPot } from '../deleteRecords';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
@@ -111,6 +113,8 @@ type SavingsScreenProps = {
 export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  // Version 2.2 (approved P4): a just-added pot slides in and glows.
+  const arrived = useArrival((model?.savingsGoals || []).map((g) => g.id));
   const who = useWho();
 
   const openedSavingsRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -679,6 +683,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                         accessibilityRole="button"
                         accessibilityLabel={`${goal.name || 'Untitled pot'}, ${formatPeso(saved)} saved`}
                       >
+                        {arrived === goal.id && <ArrivalGlow />}
                         <View style={styles.goalRowTop}>
                           <Text style={[styles.goalName, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
                             {goal.name || 'Untitled pot'}

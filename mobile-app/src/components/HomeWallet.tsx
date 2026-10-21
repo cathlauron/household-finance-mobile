@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { reduceMotionNow } from '../reduceMotion';
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import { View, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
 import { TouchableOpacity } from './Tap';
@@ -27,6 +28,8 @@ import GradientFill from './GradientFill';
 //  - Tap a card to open its page.
 // The order is saved with your household data (walletOrder), so it stays put.
 
+// Version 2.2 (approved P4): with the phone set to remove animations, the cards move instantly.
+const D = (ms: number) => (reduceMotionNow() ? 0 : ms);
 const PEEK = 52; // how much of each card behind the front one shows
 const CARD_HEIGHT = 176;
 const GROUP_LABEL: Record<AccountGroup, string> = { cash: 'Cash', debit: 'Debit', credit: 'Credit' };
@@ -111,7 +114,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
   function slide(keys: string[], gap = -1, duration = 180) {
     return keys.map((k, i) => {
       const slot = gap >= 0 && i >= gap ? i + 1 : i;
-      return Animated.timing(tops.get(k) as Animated.Value, { toValue: slot * PEEK, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+      return Animated.timing(tops.get(k) as Animated.Value, { toValue: slot * PEEK, duration: D(duration), easing: Easing.out(Easing.cubic), useNativeDriver: true });
     });
   }
   function layout(keys: string[], gap = -1) {
@@ -165,13 +168,13 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
     x.setValue(from);
     return Animated.sequence([
       // the little corner lift before it goes
-      Animated.timing(x, { toValue: from + 36, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(x, { toValue: screenW * 1.1, duration: 260, easing: EASE, useNativeDriver: true }),
+      Animated.timing(x, { toValue: from + 36, duration: D(110), easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(x, { toValue: screenW * 1.1, duration: D(260), easing: EASE, useNativeDriver: true }),
     ]);
   }
   function curlIn(x: Animated.Value, done: () => void) {
     x.setValue(screenW * 1.1);
-    Animated.timing(x, { toValue: 0, duration: 380, easing: SETTLE, useNativeDriver: true }).start(() => {
+    Animated.timing(x, { toValue: 0, duration: D(380), easing: SETTLE, useNativeDriver: true }).start(() => {
       x.setValue(0);
       done();
     });
@@ -187,7 +190,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       const out =
         dir === 'right'
           ? curlOff(only, fromX)
-          : Animated.timing(only, { toValue: -screenW * 1.1, duration: 300, easing: EASE, useNativeDriver: true });
+          : Animated.timing(only, { toValue: -screenW * 1.1, duration: D(300), easing: EASE, useNativeDriver: true });
       out.start(() =>
         setTimeout(
           () =>
@@ -226,7 +229,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       Animated.parallel(
         [
           curlOff(x, 0),
-          Animated.timing(frontX, { toValue: 0, duration: 220, easing: EASE, useNativeDriver: true }),
+          Animated.timing(frontX, { toValue: 0, duration: D(220), easing: EASE, useNativeDriver: true }),
           ...slide(keys, -1, 300),
         ],
         { stopTogether: false }
@@ -268,6 +271,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
       .onEnd((e) => {
         const frontX = xs.get(order[order.length - 1]) as Animated.Value;
         if (Math.abs(e.translationX) > 50 || Math.abs(e.velocityX) > 500) cycle(e.translationX < 0 ? 'left' : 'right', e.translationX * 0.8);
+        else if (reduceMotionNow()) frontX.setValue(0);
         else Animated.spring(frontX, { toValue: 0, friction: 7, useNativeDriver: true }).start();
       });
     const drag = Gesture.Pan()
@@ -277,7 +281,7 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         hapticMedium();
         dragY.setValue(0);
         liftUp.setValue(0);
-        Animated.timing(liftUp, { toValue: -LIFT, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+        Animated.timing(liftUp, { toValue: -LIFT, duration: D(180), easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
         dragTarget.current = index;
         setDragging(c.key);
         setGapAt(index);
@@ -308,8 +312,8 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
         setGapAt(-1);
         setSettling(c.key);
         Animated.parallel([
-          ...(v ? [Animated.timing(v, { toValue: target * PEEK, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true })] : []),
-          Animated.timing(liftUp, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          ...(v ? [Animated.timing(v, { toValue: target * PEEK, duration: D(200), easing: Easing.out(Easing.cubic), useNativeDriver: true })] : []),
+          Animated.timing(liftUp, { toValue: 0, duration: D(200), easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         ]).start(() => setSettling((k) => (k === c.key ? null : k)));
         if (keys.join('|') !== order.join('|')) persist(keys);
       });

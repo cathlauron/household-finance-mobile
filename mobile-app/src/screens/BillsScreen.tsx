@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import React, { useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -73,6 +74,8 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  // Version 2.2 (approved P4): a just-added bill slides in and glows.
+  const arrived = useArrival((model?.bills || []).map((b) => b.id));
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
   // reached via the subscription-reminder deep link, or via a swipe-to-
@@ -567,6 +570,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                   >
                     <PayRow
                       testID={`bill-row-${bill.id}`}
+                      glow={arrived === bill.id}
                       addedBy={bill.addedBy}
                       icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
                       title={bill.name || 'Untitled bill'}

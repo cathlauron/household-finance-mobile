@@ -1,7 +1,8 @@
 import React from 'react';
 import SkyGlow from './SkyGlow';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions } from 'react-native';
+import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions, Animated, Easing } from 'react-native';
+import { useReduceMotion } from '../reduceMotion';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
@@ -20,6 +21,14 @@ export type BottomSheetProps = {
   header?: React.ReactNode;
   grouped?: boolean;
 };
+
+// Version 2.2 (approved P1, Emil Kowalski's drawer curve): the sheet leaps up the moment
+// it's asked for and settles gently (300 ms), the dim behind it fades, and it can be
+// dragged down by its top bar to close. With the phone set to remove animations it just
+// appears and disappears.
+const DRAWER = Easing.bezier(0.32, 0.72, 0, 1);
+const OPEN_MS = 300;
+const CLOSE_MS = 240;
 
 export default function BottomSheet({
   visible,
@@ -63,11 +72,66 @@ export default function BottomSheet({
   // grows past the top of the screen.
   const bottomSpace = keyboardHeight > 0 ? keyboardHeight + (Platform.OS === 'android' ? insets.bottom : 0) : insets.bottom;
 
+  // Opening and closing. The Modal stays shown while the sheet slides away.
+  const reduce = useReduceMotion();
+  const [shown, setShown] = React.useState(visible);
+  const offY = screenHeight;
+  const y = React.useRef(new Animated.Value(offY)).current;
+  const dim = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    if (visible) {
+      setShown(true);
+      if (reduce) {
+        y.setValue(0);
+        dim.setValue(1);
+        return;
+      }
+      y.setValue(offY);
+      dim.setValue(0);
+      Animated.parallel([
+        Animated.timing(y, { toValue: 0, duration: OPEN_MS, easing: DRAWER, useNativeDriver: true }),
+        Animated.timing(dim, { toValue: 1, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      ]).start();
+    } else if (shown) {
+      if (reduce) {
+        setShown(false);
+        return;
+      }
+      Animated.parallel([
+        Animated.timing(y, { toValue: offY, duration: CLOSE_MS, easing: DRAWER, useNativeDriver: true }),
+        Animated.timing(dim, { toValue: 0, duration: CLOSE_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setShown(false);
+      });
+    }
+    // Only when it is asked to open or close.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  // Drag down by the handle or the top bar to close; let go early and it springs back.
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+  const drag = React.useMemo(
+    () =>
+      Gesture.Pan()
+        .runOnJS(true)
+        .activeOffsetY(12)
+        .failOffsetX([-24, 24])
+        .onUpdate((e) => {
+          y.setValue(Math.max(0, e.translationY));
+        })
+        .onEnd((e) => {
+          if (e.translationY > 120 || e.velocityY > 900) onCloseRef.current();
+          else Animated.spring(y, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
+        }),
+    [y]
+  );
+
   return (
     <Modal
-      visible={visible}
+      visible={shown}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       testID={testID}
       statusBarTranslucent
@@ -76,6 +140,7 @@ export default function BottomSheet({
       {/* Version 2.1: a pop-up window needs its own gesture root for swipes to work on Android. */}
       <GestureHandlerRootView style={{ flex: 1 }} onTouchStart={noteActivity}>
       <View style={styles.backdropWrap}>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.4)', opacity: dim }]} />
         <Pressable
           style={styles.backdropPressable}
           onPress={onClose}
@@ -87,25 +152,30 @@ export default function BottomSheet({
           style={styles.keyboardWrap}
           pointerEvents="box-none"
         >
-          <View
+          <Animated.View
             style={[
               styles.sheet,
               grouped && { backgroundColor: colors.navy2 },
               keyboardHeight > 0 && { maxHeight: Math.max(200, screenHeight - insets.top - 24) },
+              { transform: [{ translateY: y }] },
             ]}
           >
             {/* Version 2.1: the same time-of-day glow as Home, without rays/rain/stars. */}
             <SkyGlow plain />
-            <View style={styles.handleWrap}>
-              <View style={styles.handle} />
-            </View>
+            <GestureDetector gesture={drag}>
+              <View>
+                <View style={styles.handleWrap}>
+                  <View style={styles.handle} />
+                </View>
 
-            {header}
-            {!header && !!title && (
-              <View style={styles.header}>
-                <Text style={styles.title}>{title}</Text>
+                {header}
+                {!header && !!title && (
+                  <View style={styles.header}>
+                    <Text style={styles.title}>{title}</Text>
+                  </View>
+                )}
               </View>
-            )}
+            </GestureDetector>
 
             <KeyboardAwareScrollView
               style={styles.scroll}
@@ -118,7 +188,7 @@ export default function BottomSheet({
             </KeyboardAwareScrollView>
 
             <View style={{ height: bottomSpace }} />
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
       </GestureHandlerRootView>
@@ -130,7 +200,6 @@ function makeStyles(colors: any, screenHeight: number) {
   return StyleSheet.create({
     backdropWrap: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
       justifyContent: 'flex-end',
     },
     backdropPressable: {

@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
@@ -76,6 +77,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  // Version 2.2 (approved P4): a just-added debt slides in and glows.
+  const arrived = useArrival((model?.debts || []).map((d) => d.id));
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -520,6 +523,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
             >
             <PayRow
               testID={`debt-row-${debt.id}`}
+              glow={arrived === debt.id}
               addedBy={debt.addedBy}
               icon="people-outline"
               title={debt.creditorOrPerson || 'Debt'}

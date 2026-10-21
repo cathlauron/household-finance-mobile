@@ -60,7 +60,7 @@ export default function SearchScreen() {
   function close() {
     if (closingRef.current) return;
     closingRef.current = true;
-    Animated.timing(drop, { toValue: 0, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => navigation.goBack());
+    Animated.timing(drop, { toValue: 0, duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: true }).start(() => navigation.goBack());
   }
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {

@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import { loanPaymentToPlace, placeLoanPayment } from '../loanSchedule';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
@@ -107,6 +108,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
+  // Version 2.2 (approved P4): a just-added loan slides in and glows.
+  const arrived = useArrival((model?.loans || []).map((l) => l.id));
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -601,6 +604,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
               >
               <PayRow
                 testID={`loan-row-${loan.id}`}
+                glow={arrived === loan.id}
                 addedBy={loan.addedBy}
                 icon={loan.direction === 'lent' ? 'arrow-redo-outline' : 'business-outline'}
                 title={loan.name || 'Untitled loan'}
