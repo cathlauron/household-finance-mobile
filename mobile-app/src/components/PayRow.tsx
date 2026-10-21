@@ -61,8 +61,10 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1}>{title}</Text>
           {!!priority && (() => {
+            // 2.2 (approved P2): a soft filled pill instead of a thin outline.
             const c = priority === 'high' ? colors.negative : priority === 'medium' ? colors.orange : colors.positive;
-            return <Text style={[styles.prTag, { color: c, borderColor: c }]}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</Text>;
+            const bg = priority === 'high' ? colors.errorBg : priority === 'medium' ? colors.warnBg : colors.okBg;
+            return <Text style={[styles.prTag, { color: c, backgroundColor: bg }]}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</Text>;
           })()}
         </View>
         <Text style={[styles.sub, { color: colors.inkDim }]} numberOfLines={1}>{sub}</Text>
@@ -81,7 +83,7 @@ const styles = StyleSheet.create({
   main: { flex: 1, marginRight: 8 },
   title: { fontSize: 17, fontWeight: '500' },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
-  prTag: { marginLeft: 6, fontSize: 11, fontWeight: '800', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
+  prTag: { marginLeft: 6, fontSize: 11, fontWeight: '700', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
   sub: { fontSize: 13, marginTop: 1 },
   right: { alignItems: 'flex-end' },
   amount: { fontSize: 17, fontWeight: '600' },

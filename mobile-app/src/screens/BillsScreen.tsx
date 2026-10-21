@@ -576,7 +576,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                       title={bill.name || 'Untitled bill'}
                       sub={`${!due ? 'Add a due date anytime' : `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}`}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
                       amount={formatPeso(billAmount(bill))}
-                      amountColor={colors.negative}
+                      amountColor={isOverdue ? colors.negative : colors.ink}
                       badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
                       divider={rowIndex > 0}
                       priority={bill.priority}

@@ -542,7 +542,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
               })()}
               priority={debt.priority}
               amount={formatPeso(debtAmount(debt))}
-              amountColor={colors.negative}
+              amountColor={overdueDebtIds.has(debt.id) ? colors.negative : colors.ink}
               divider={rowIndex > 0}
               onPress={() => navigation.navigate('PayDetail', { kind: 'debt', id: debt.id })}
             />

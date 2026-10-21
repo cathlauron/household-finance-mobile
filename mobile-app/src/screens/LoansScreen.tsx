@@ -610,7 +610,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
                 title={loan.name || 'Untitled loan'}
                 sub={`${loan.direction === 'lent' ? 'You lent' : 'You borrowed'}${loanNextDue ? ` · next ${loanNextDue.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`}
                 amount={formatPeso(remaining)}
-                amountColor={loan.direction === 'lent' ? colors.positive : colors.negative}
+                amountColor={loan.direction === 'lent' ? colors.positive : overdueLoanIds.has(loan.id) ? colors.negative : colors.ink}
                 divider={rowIndex > 0}
                 badge={overdueLoanIds.has(loan.id) ? { text: 'Overdue', tone: 'overdue' } : undefined}
                 priority={loan.priority}

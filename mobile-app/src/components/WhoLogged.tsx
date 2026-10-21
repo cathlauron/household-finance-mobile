@@ -57,6 +57,7 @@ export function WhoFootnote({ addedBy, createdAt, changedBy, changedAt, style }:
 }
 
 const styles = StyleSheet.create({
-  badge: { position: 'absolute', right: -4, bottom: -4, width: 15, height: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, elevation: 1 },
-  letter: { fontSize: 9, fontWeight: '800', lineHeight: 11 },
+  // 2.2 (approved P2): 18-point circle with an 11-point letter (was 15 / 9), easier to read.
+  badge: { position: 'absolute', right: -5, bottom: -5, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, elevation: 1 },
+  letter: { fontSize: 11, fontWeight: '700', lineHeight: 13 },
 });

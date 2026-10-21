@@ -207,7 +207,7 @@ export default function DashboardScreen({
                   <View style={[styles.groupRowBody, idx > 0 && styles.divider]}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{item.label}</Text>
-                      <Text style={[styles.rowSub, { color: colors.negative }]}>{formatPeso(item.amount)}</Text>
+                      <Text style={[styles.rowSub, { color: isOverdue ? colors.negative : colors.ink }]}>{formatPeso(item.amount)}</Text>
                     </View>
                     <Text
                       style={[

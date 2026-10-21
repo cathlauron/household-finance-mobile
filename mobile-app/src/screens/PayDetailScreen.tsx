@@ -209,7 +209,7 @@ export default function PayDetailScreen() {
           <Ionicons name={icon as any} size={26} color={colors.gold} />
         </View>
         <Text style={styles.name}>{name}</Text>
-        <Text style={[styles.amount, { color: colors.negative }]}>{formatPeso(amount)}</Text>
+        <Text style={[styles.amount, { color: overdue ? colors.negative : colors.ink }]}>{formatPeso(amount)}</Text>
         {/* Version 2.1 (canvas S3): a bill paid in parts shows what's new and what was carried. */}
         {kind === 'bill' && !curPaid && carried > 0 && (
           <View style={{ alignSelf: 'stretch', marginTop: 10, gap: 6 }}>
@@ -336,7 +336,7 @@ export default function PayDetailScreen() {
                       {who.by(c.paidBy)}
                     </Text>
                   </View>
-                  <Text style={[styles.histAmount, { color: colors.negative }]}>{formatPeso(num(c.amountPaid))}</Text>
+                  <Text style={[styles.histAmount, { color: colors.ink }]}>{formatPeso(num(c.amountPaid))}</Text>
                 </View>
               );
             })}
@@ -442,7 +442,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
         <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
         <Text style={styles.meta}>{lent ? 'Still to get back' : 'Still to pay'}</Text>
-        <Text style={[styles.amount, { color: lent ? colors.positive : colors.negative, fontSize: 34, lineHeight: 40 }]}>{formatPeso(left)}</Text>
+        <Text style={[styles.amount, { color: lent ? colors.positive : overdueItem ? colors.negative : colors.ink, fontSize: 34, lineHeight: 40 }]}>{formatPeso(left)}</Text>
         <View style={styles.track}>
           <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: colors.gold }]} />
         </View>
@@ -462,7 +462,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
           </View>
           <View style={[styles.trioCell]}>
             <Text style={styles.meta}>Monthly</Text>
-            <Text style={[styles.headline, { color: lent ? colors.positive : colors.negative }]}>{monthly ? formatPeso(monthly).replace('.00', '') : '—'}</Text>
+            <Text style={[styles.headline, { color: lent ? colors.positive : colors.ink }]}>{monthly ? formatPeso(monthly).replace('.00', '') : '—'}</Text>
           </View>
         </View>
       </View>

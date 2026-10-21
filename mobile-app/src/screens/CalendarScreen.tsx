@@ -81,6 +81,9 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
   if (isSaving) return { text: abs, color: colors.saving };
   const isIn = ev.type === 'income' || (ev.type === 'manual' && ev.direction === 'in');
   if (isIn) return { text: '+' + abs, color: colors.positive };
+  // 2.2 (approved P2): bills, debts and loans that are only scheduled are calm ink; red
+  // stays for money actually spent.
+  if (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan') return { text: '−' + abs, color: colors.ink };
   return { text: '−' + abs, color: colors.negative };
 }
 

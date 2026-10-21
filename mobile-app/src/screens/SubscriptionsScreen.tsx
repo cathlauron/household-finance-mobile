@@ -146,7 +146,7 @@ export default function SubscriptionsScreen() {
           </TouchableOpacity>
         ) : (
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.amount, { color: colors.negative }]}>{formatPeso(num(cur?.amountDue)).replace('.00', '')}</Text>
+            <Text style={[styles.amount, { color: colors.ink }]}>{formatPeso(num(cur?.amountDue)).replace('.00', '')}</Text>
             {tag && (
               <Text style={[styles.tag, was !== null ? { color: colors.negative, backgroundColor: colors.errorBg } : { color: colors.orange, backgroundColor: colors.warnBg }]}>
                 {tag}
