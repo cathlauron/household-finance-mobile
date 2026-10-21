@@ -11,7 +11,7 @@
 // skipped, matching the same gap noted in balanceProjection.ts.
 // ============================================================
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -112,7 +112,7 @@ export default function DashboardScreen({
 }: { header?: React.ReactNode; footer?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const [dueSheetOpen, setDueSheetOpen] = useState(false);
 

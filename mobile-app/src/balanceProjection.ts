@@ -409,7 +409,29 @@ export function incomeOccurrencesInMonth(source: IncomeSource, year: number, mon
 }
 
 // ---- Every dated event in one month, grouped by day-of-month ----
+// 2.2 speed sweep: Home, Left to Spend, the mood colours and the calendar all ask for the
+// same months again and again. Each month is now worked out once per version of your data
+// (and per day, since "today" matters) and reused. Nothing that reads it changes it.
+const monthEventsCache = new WeakMap<object, Map<string, Record<number, CalendarEvent[]>>>();
 export function computeMonthEvents(
+  model: HouseholdModel,
+  year: number,
+  monthIndex: number
+): Record<number, CalendarEvent[]> {
+  let byMonth = monthEventsCache.get(model);
+  if (!byMonth) {
+    byMonth = new Map();
+    monthEventsCache.set(model, byMonth);
+  }
+  const key = `${toISO(stripTime(new Date()))}|${year}-${monthIndex}`;
+  const hit = byMonth.get(key);
+  if (hit) return hit;
+  const fresh = computeMonthEventsNow(model, year, monthIndex);
+  byMonth.set(key, fresh);
+  return fresh;
+}
+
+function computeMonthEventsNow(
   model: HouseholdModel,
   year: number,
   monthIndex: number

@@ -94,10 +94,24 @@ function scanLoans(loans: Loan[] | undefined, today: string): OverdueItem[] {
 }
 
 // Everything overdue right now, oldest first.
+// 2.2 speed sweep: worked out once per version of your data (and per day) and reused;
+// the Bills, Debts and Loans pages used to redo it on every key typed in their forms.
+const overdueCache = new WeakMap<object, { today: string; items: OverdueItem[] }>();
 export function getOverdueItems(
   model: { bills?: CycleRecord[]; debts?: CycleRecord[]; loans?: Loan[] }
 ): OverdueItem[] {
   const today = todayISO();
+  const hit = overdueCache.get(model);
+  if (hit && hit.today === today) return hit.items;
+  const items = overdueNow(model, today);
+  overdueCache.set(model, { today, items });
+  return items;
+}
+
+function overdueNow(
+  model: { bills?: CycleRecord[]; debts?: CycleRecord[]; loans?: Loan[] },
+  today: string
+): OverdueItem[] {
   return [
     ...scanCycles(model.bills, 'bill', today),
     ...scanCycles(model.debts, 'debt', today),

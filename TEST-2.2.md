@@ -164,7 +164,7 @@ S  2026-10-21 Speed sweep (cards, whole-app redraws) + "Hey, are you still there
 - S5  Leave the app alone until the check-in appears: it says "Hey, are you still
       there?" and the button says "Good".
 
-T  2026-10-21 Coffee cup icon, Insufficient balance for every account. NOT YET TESTED.
+T  2026-10-21 Coffee cup icon, Insufficient balance for every account. PASSED on Cath's phone 2026-10-21.
 - T1  The "Hey, are you still there?" check-in and the "Amounts hidden while you were
       away" cover both show a coffee cup on a pale green circle.
 - T2  Pay a bill (or add a transaction) for more than a cash or debit account has: that
@@ -174,7 +174,7 @@ T  2026-10-21 Coffee cup icon, Insufficient balance for every account. NOT YET T
       Pay: it says "Insufficient balance: <name> only has ₱X." and doesn't save. An
       account with nothing left says "Insufficient balance: <name> has no money left in it."
 
-U  2026-10-21 Code review fixes + speed sweep 2. NOT YET TESTED.
+U  2026-10-21 Code review fixes + speed sweep 2. PASSED on Cath's phone 2026-10-21.
 - U1  Open and close any pop-up form (Cancel, Done, or drag it down): it slides away
       smoothly every time, with no flicker or quick reappearing before it goes.
 - U2  Add two things quickly one after the other (e.g. a transaction, then straight away
@@ -189,3 +189,18 @@ U  2026-10-21 Code review fixes + speed sweep 2. NOT YET TESTED.
       smooth.
 - U7  General feel: scrolling, opening forms and typing in amounts on Home, Transactions,
       To-Pay and Plan. Tell Claude any spot that still lags.
+
+V  2026-10-21 Speed sweep 3 (shared calculations, quiet hidden tabs). NOT YET TESTED.
+- V1  Visit Home, Transactions, To-Pay and Plan once. Then on To-Pay add a bill and
+      pay one: the form closes and the list updates without a pause.
+- V2  Go to Home and Transactions right after: both already show the new bill/payment
+      (Left to Spend, Due soon, the payment in the list). Switching tabs slides smoothly.
+- V3  Typing in a bill, debt or loan form keeps up with your fingers.
+- V4  Scroll Home down past the Left to Spend card and back up: smooth; the slim
+      "Left to spend" bar appears and goes away at the same point as before.
+- V5  Flip a Home card, then within 3 seconds go to another tab and add a transaction.
+      Come back after a few seconds: the card order AND the transaction are both kept
+      (also after closing and reopening the app).
+- V6  Calendar: Due soon on Home, overdue tags on To-Pay and the calendar amounts are
+      the same as before. Leave the app open past midnight (or change the phone's date):
+      overdue and due-soon update for the new day.

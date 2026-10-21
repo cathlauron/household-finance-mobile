@@ -77,7 +77,7 @@ export default React.memo(HomeWallet);
 function HomeWallet({ model }: { model: HouseholdModel }) {
   const { hidden, money } = useHideAmounts(); // version 3: the Home eye hides these too
   const { colors } = useTheme();
-  const { saveModel } = useData();
+  const { saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -157,12 +157,16 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
   latestModel.current = model;
   const saveRef = useRef(saveModel);
   saveRef.current = saveModel;
+  const getModelRef = useRef(getModel);
+  getModelRef.current = getModel;
   function flush() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     const keys = pendingKeys.current;
     pendingKeys.current = null;
-    if (keys) saveRef.current({ ...latestModel.current, walletOrder: keys }).catch(() => {});
+    // Always on top of the newest data (anything saved meanwhile on another screen is kept).
+    const base = getModelRef.current() ?? latestModel.current;
+    if (keys) saveRef.current({ ...base, walletOrder: keys }).catch(() => {});
   }
   function persist(keys: string[]) {
     setOrder(keys);

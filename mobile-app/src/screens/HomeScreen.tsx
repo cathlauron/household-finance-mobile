@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -52,6 +52,7 @@ export default function HomeScreen({ username }: Props) {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [showSlimBar, setShowSlimBar] = useState(false);
+  const slimShownRef = useRef(false);
   const { money } = useHideAmounts();
 
   // Worked out once per data change, not on every redraw (scrolling, the bell, etc.).
@@ -208,7 +209,15 @@ export default function HomeScreen({ username }: Props) {
 
       <View style={{ flex: 1 }}>
         <DashboardScreen
-          onScrollY={(y) => setShowSlimBar(y > 150)}
+          onScrollY={(y) => {
+            // Speed sweep: only tell the screen when the slim bar should appear or go
+            // (not on every scroll step).
+            const show = y > 150;
+            if (show !== slimShownRef.current) {
+              slimShownRef.current = show;
+              setShowSlimBar(show);
+            }
+          }}
           header={
             leftToSpend && leftToSpendStatus ? (
               <>

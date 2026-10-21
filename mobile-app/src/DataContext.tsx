@@ -18,7 +18,7 @@ import { getCurrentFirebaseUser } from './authFirebase';
 import { showSaved } from './components/SavedToast';
 import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
+import React, { createContext, startTransition, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
 import { Alert, AppState, InteractionManager } from 'react-native';
 import CryptoJS from 'crypto-js';
@@ -1712,6 +1712,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       {children}
     </DataContext.Provider>
   );
+}
+
+// 2.2 speed sweep (Cath: "do another deep sweep"): a tab you're not looking at still gets
+// every change, but as background work the phone can pause for anything you're doing
+// (a tap, typing, an animation), instead of redrawing the whole hidden page first. The tab
+// you're on always gets changes straight away, and a hidden tab catches up at once when you
+// go to it. Nothing is paused or hidden (unlike the freezing tried before), so pop-up
+// forms aren't affected.
+export function QuietWhenHidden({ active, children }: { active: boolean; children: ReactNode }) {
+  const live = useContext(DataContext);
+  const [shown, setShown] = useState(live);
+  useEffect(() => {
+    if (shown === live) return;
+    if (active) setShown(live);
+    else startTransition(() => setShown(live));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, active]);
+  return <DataContext.Provider value={active ? live : shown}>{children}</DataContext.Provider>;
 }
 
 export function useData(): DataContextValue {
