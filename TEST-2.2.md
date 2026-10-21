@@ -190,7 +190,7 @@ U  2026-10-21 Code review fixes + speed sweep 2. PASSED on Cath's phone 2026-10-
 - U7  General feel: scrolling, opening forms and typing in amounts on Home, Transactions,
       To-Pay and Plan. Tell Claude any spot that still lags.
 
-V  2026-10-21 Speed sweep 3 (shared calculations, quiet hidden tabs). PASSED on Cath's phone 2026-10-22.
+V  2026-10-21 Speed sweep 3 (shared calculations, quiet hidden tabs). NOT YET TESTED.
 - V1  Visit Home, Transactions, To-Pay and Plan once. Then on To-Pay add a bill and
       pay one: the form closes and the list updates without a pause.
 - V2  Go to Home and Transactions right after: both already show the new bill/payment
