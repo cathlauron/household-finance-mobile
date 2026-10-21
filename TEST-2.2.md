@@ -123,3 +123,7 @@ Q  2026-10-21 fixes after Cath's video (slower feel, spinner, Groceries swipe). 
 - Q5  Quickly tick two grocery items (or two trip items) one after another: both stay
       ticked.
 - Q6  Open a form, close it, and immediately open it again: it slides up normally.
+- Q7  (From Cath's screen recording: the Pay sheet stayed on screen ~2 s after Pay.) On a
+      bill or debt page: Pay > Pay. The sheet slides away right after you tap Pay, then
+      the leaf tick shows "Paid". Saving anything should feel as quick as before the
+      design update.
