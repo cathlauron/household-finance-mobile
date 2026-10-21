@@ -453,6 +453,9 @@ export type BalanceAccountEntry = {
   // Version 2.2 (canvas B1): every time the balance was typed in by hand, newest first
   // (kept to the last 50). from is null for the first balance.
   balanceLog?: { at: number; from: number | null; to: number; by?: string }[];
+  // Version 2.2 (canvas D1-D3): optional last 4 digits of a debit or credit card, to tell
+  // cards apart. Exactly 4 numbers; never the full card number.
+  last4?: string;
 };
 
 export type BalanceAccounts = {

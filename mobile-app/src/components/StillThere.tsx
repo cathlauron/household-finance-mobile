@@ -90,7 +90,10 @@ export function PausedCover({ visible, onShow }: { visible: boolean; onShow: () 
   return (
     <Modal visible={visible} transparent={false} animationType="fade" onRequestClose={onShow} statusBarTranslucent>
       <View style={[s.cover, { backgroundColor: colors.navy2 }]}>
-        <Text style={{ fontSize: 40 }}>🙈</Text>
+        {/* 2.2 (Cath, option B): the app's own leaf on a pale green circle, instead of the emoji. */}
+        <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden importantForAccessibility="no">
+          <Ionicons name="leaf-outline" size={38} color={colors.gold} />
+        </View>
         <Text style={[s.title, { marginTop: 12 }]}>Amounts hidden while you were away</Text>
         <Text style={[s.body, { marginBottom: 18 }]}>Nothing is locked or lost.</Text>
         <TouchableOpacity style={[s.primary, { backgroundColor: colors.buttonFill, alignSelf: 'stretch', marginHorizontal: 32 }]} onPress={onShow} accessibilityRole="button" testID="paused-show">

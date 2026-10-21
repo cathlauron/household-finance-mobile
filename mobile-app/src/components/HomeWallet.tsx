@@ -410,9 +410,15 @@ export default function HomeWallet({ model }: { model: HouseholdModel }) {
                     {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>}
                   </View>
                   {isFront && (
-                    <View style={styles.front}>
-                      <Text style={styles.frontLabel}>Balance</Text>
-                      <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>
+                    <View style={[styles.front, styles.frontRow]}>
+                      <View style={{ flexShrink: 1 }}>
+                        <Text style={styles.frontLabel}>Balance</Text>
+                        <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>
+                      </View>
+                      {/* Version 2.2 (canvas D1): last 4 digits on the same bottom line, front card only. */}
+                      {!!c.account.last4 && c.group !== 'cash' && (
+                        <Text style={styles.last4} accessibilityLabel={`ending in ${c.account.last4.split('').join(' ')}`}>•••• {c.account.last4}</Text>
+                      )}
                     </View>
                   )}
                 </Animated.View>
@@ -464,6 +470,8 @@ function makeStyles(colors: ThemeColors) {
     typeTagText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase', color: colors.inkDim },
     peekAmount: { fontSize: 15, fontWeight: '600' },
     front: { marginTop: 'auto' },
+    frontRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 },
+    last4: { fontSize: 15, letterSpacing: 1.5, color: colors.inkDim, paddingBottom: 4 },
     frontLabel: { fontSize: 13, color: colors.inkDim },
     frontAmount: { fontSize: 24, lineHeight: 30, fontWeight: '700' },
     footer: { fontSize: 13, color: colors.inkDim, marginTop: 8, paddingHorizontal: 4 },

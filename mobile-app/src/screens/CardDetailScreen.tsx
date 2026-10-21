@@ -180,9 +180,15 @@ export default function CardDetailScreen() {
             <Text style={styles.type}>{GROUP_LABEL[group]}</Text>
           </View>
         </View>
-        <View style={{ marginTop: 'auto' }}>
-          <Text style={styles.meta}>{isCredit ? 'Available to use' : 'Balance'}</Text>
-          <Text style={[styles.balance, { color: amount < 0 ? colors.negative : colors.positive }]}>{formatPeso(amount)}</Text>
+        <View style={{ marginTop: 'auto', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={styles.meta}>{isCredit ? 'Available to use' : 'Balance'}</Text>
+            <Text style={[styles.balance, { color: amount < 0 ? colors.negative : colors.positive }]}>{formatPeso(amount)}</Text>
+          </View>
+          {/* Version 2.2 (canvas D3): the last 4 digits at the bottom right of the card. */}
+          {!!account.last4 && group !== 'cash' && (
+            <Text style={{ fontSize: 16, letterSpacing: 1.5, color: colors.inkDim, paddingBottom: 5 }} accessibilityLabel={`ending in ${account.last4.split('').join(' ')}`}>•••• {account.last4}</Text>
+          )}
         </View>
       </View>
 

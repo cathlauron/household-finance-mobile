@@ -109,6 +109,8 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   const nameRef = useRef<any>(null);
   const [amountInput, setAmountInput] = useState<number | ''>('');
   const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
+  // Version 2.2 (canvas D2): optional last 4 digits (debit and credit cards only).
+  const [last4Input, setLast4Input] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -131,6 +133,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     setNameInput('');
     setAmountInput('');
     setColorInput(DEFAULT_GROUP_COLORS[group]);
+    setLast4Input('');
     setErrorMsg('');
   }
 
@@ -140,6 +143,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     setNameInput(account.name);
     setAmountInput(account.amount);
     setColorInput(account.color || DEFAULT_GROUP_COLORS[group]);
+    setLast4Input(account.last4 || '');
     setErrorMsg('');
   }
 
@@ -160,6 +164,12 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
       setErrorMsg(''); fieldErrors.show('name', 'Give this account a name.');
       return;
     }
+    const hasLast4 = activeGroup === 'debit' || activeGroup === 'credit';
+    if (hasLast4 && last4Input.length > 0 && last4Input.length < 4) {
+      setErrorMsg('Type all 4 last digits, or leave it empty.');
+      return;
+    }
+    const last4 = hasLast4 && last4Input.length === 4 ? last4Input : undefined;
     const parsedAmount = amountInput === '' ? 0 : amountInput;
 
     // Redesign: balances shown here are live (saved balance + anything paid since).
@@ -187,6 +197,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
               name: trimmedName,
               amount: balanceChanged ? parsedAmount : a.amount,
               color: colorInput,
+              last4,
               ...(balanceChanged && isSpendingGroup ? { balanceLog: [logEntry(Number(previousLive) || 0), ...(a.balanceLog || [])].slice(0, 50) } : {}),
             }
           : a
@@ -197,6 +208,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
         name: trimmedName,
         amount: parsedAmount,
         color: colorInput,
+        ...(last4 ? { last4 } : {}),
         ...(isSpendingGroup ? { balanceLog: [logEntry(null)] } : {}),
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
@@ -439,6 +451,23 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
             onChangeAmount={setAmountInput}
             allowNegative
           />
+
+        {(activeGroup === 'debit' || activeGroup === 'credit') && (
+          <>
+            <Text style={styles.inputLabel}>Last 4 digits (optional)</Text>
+            <TextInput
+              style={[styles.input, { letterSpacing: 3 }]}
+              placeholder="e.g. 4821"
+              placeholderTextColor={colors.inkFaint}
+              value={last4Input}
+              onChangeText={(t) => setLast4Input(t.replace(/[^0-9]/g, '').slice(0, 4))}
+              keyboardType="number-pad"
+              maxLength={4}
+              testID="account-last4"
+            />
+            <Text style={[styles.inputLabel, { marginTop: -6, fontWeight: '400', color: colors.inkDim }]}>Just the last 4, to tell your cards apart. Never type the full card number.</Text>
+          </>
+        )}
 
         <Text style={styles.inputLabel}>Card color</Text>
         <ScrollView
