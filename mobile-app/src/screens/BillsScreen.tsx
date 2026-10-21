@@ -56,6 +56,11 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'School', 'Other'];
 
 type BillsScreenProps = {
+  // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
+  // first): the other kind's New form opens right where you are, with what you typed;
+  // only once it's added does To-Pay show that list (see ToPayScreen).
+  addCarry?: { amount: number | ''; name: string; nonce: number };
+  onAdded?: () => void;
   // Version 2.2 fix (Cath's video: Edit on a bill's page flashed and closed): the page
   // itself shows this bill's form, with no jump back to the list. formOnly draws just the
   // form (and its pop-ups); onFormClosed says when it has closed.
@@ -72,7 +77,7 @@ type BillsScreenProps = {
   openBillNonce?: number;
 };
 
-export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, formOnly, onFormClosed }: BillsScreenProps = {}) {
+export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, formOnly, onFormClosed, addCarry, onAdded }: BillsScreenProps = {}) {
   // Redesign: the floating + adds a bill while this list is showing.
   useToPayAddRequest('bills', (date) => {
     if (formOnly) return;
@@ -90,6 +95,13 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     // Only when this list first shows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  React.useEffect(() => {
+    if (!formOnly || !addCarry) return;
+    openAddModal();
+    setAmountInput(addCarry.amount);
+    setNameInput(addCarry.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -429,9 +441,11 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   async function commitSave(toSave: HouseholdModel) {
     setSaving(true);
     try {
+      const wasNew = !editingId;
       await saveModel(toSave);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      if (wasNew) onAdded?.();
     } catch (e) {
       setErrorMsg(notSaved('this bill'));
     } finally {

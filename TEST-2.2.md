@@ -240,3 +240,12 @@ X  2026-10-22 More notes. NOT YET TESTED.
       green icon tile and a short line each. Cancel closes it.
 - X3  Calendar +, pick a day (e.g. Nov 3), then Bill: the New bill form opens with Due on
       Nov 3. Same for Debt and Loan. Transaction starts on that day too.
+
+Y  2026-10-22 Switch in place + year view. NOT YET TESTED.
+- Y1  To-Pay > Bills > +: type an amount and a name, then tap Debt at the top. The New
+      debt form comes up right there (you stay on the Bills list behind it), with your
+      amount and name. Tap Add: "Added", and To-Pay then shows Debts with the new debt.
+- Y2  Same from Debts to Loan, Loans to Bill, etc. Cancel after switching: you're still on
+      the list you started on, nothing added.
+- Y3  Calendar > year view: fling quickly from 2021 to 2031 and back: every year is
+      drawn (no blank pages), today is a green number in a circle.

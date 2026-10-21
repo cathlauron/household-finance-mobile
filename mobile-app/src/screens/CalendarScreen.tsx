@@ -237,6 +237,19 @@ const MiniMonth = React.memo(function MiniMonth({ year, month, onOpen, width }: 
   const isThisMonth = year === now.getFullYear() && month === now.getMonth();
   const td = now.getDate();
   const todayAt = isThisMonth ? { d: td, w: Math.floor((td + first - 1) / 7), c: (td + first - 1) % 7 } : null;
+  // Each weekday column is one plain piece of text ("1\n8\n15..."), so a month is 7
+  // pieces instead of 42 boxes (today's number is drawn again on top, in green).
+  const cols = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, c) =>
+        Array.from({ length: 6 }, (__, w) => {
+          const d = w * 7 + c - first + 1;
+          return d >= 1 && d <= days && !(todayAt && todayAt.d === d) ? String(d) : ' ';
+        }).join('\n')
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [year, month, isThisMonth]
+  );
   return (
     <Pressable onPress={() => onOpen(year, month)} style={{ width, height: miniHeight(width) }} accessibilityLabel={`${MONTHS[month]} ${year}`}>
       <Text style={{ fontSize: 17, fontWeight: '800', color: isThisMonth ? colors.gold : colors.ink, marginBottom: 4 }}>{MONTHS[month].slice(0, 3)}</Text>
@@ -250,20 +263,19 @@ const MiniMonth = React.memo(function MiniMonth({ year, month, onOpen, width }: 
             style={{ position: 'absolute', left: todayAt.c * cell, top: todayAt.w * cell, width: cell, height: cell, borderRadius: cell / 2, backgroundColor: colors.gold + TODAY_TINT }}
           />
         )}
-        {Array.from({ length: 7 }).map((_, c) => (
+        {cols.map((col, c) => (
           <Text key={c} style={{ width: cell, fontSize: 11, lineHeight: cell, letterSpacing: -0.4, textAlign: 'center', fontWeight: '500', color: colors.ink }}>
-            {Array.from({ length: 6 }).map((__, w) => {
-              const d = w * 7 + c - first + 1;
-              const show = d >= 1 && d <= days;
-              const isToday = show && todayAt && todayAt.d === d;
-              return (
-                <Text key={w} style={isToday ? { color: colors.gold, fontWeight: '700' } : undefined}>
-                  {(show ? String(d) : ' ') + (w < 5 ? '\n' : '')}
-                </Text>
-              );
-            })}
+            {col}
           </Text>
         ))}
+        {todayAt && (
+          <Text
+            pointerEvents="none"
+            style={{ position: 'absolute', left: todayAt.c * cell, top: todayAt.w * cell, width: cell, fontSize: 11, lineHeight: cell, letterSpacing: -0.4, textAlign: 'center', fontWeight: '700', color: colors.gold }}
+          >
+            {todayAt.d}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
@@ -587,9 +599,13 @@ export default function CalendarScreen() {
         renderItem={renderYear}
         initialScrollIndex={yi}
         getItemLayout={(_, i) => ({ length: yearH, offset: YEAR_NOTE_H + yearH * i, index: i })}
+        // Speed (Cath: years still showed blank while scrolling): every year is drawn
+        // ahead of time, a couple at a time just after the year view opens, so nothing is
+        // left to draw while you scroll.
         initialNumToRender={2}
         maxToRenderPerBatch={2}
-        windowSize={7}
+        updateCellsBatchingPeriod={16}
+        windowSize={41}
         onScrollBeginDrag={() => setTodayArmed(false)}
         contentContainerStyle={{ paddingBottom: 120 }}
         ListHeaderComponent={

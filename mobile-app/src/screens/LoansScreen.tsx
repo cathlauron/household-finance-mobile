@@ -91,6 +91,11 @@ function sortByNextDue(loans: Loan[]): Loan[] {
 }
 
 type LoansScreenProps = {
+  // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
+  // first): the other kind's New form opens right where you are, with what you typed;
+  // only once it's added does To-Pay show that list (see ToPayScreen).
+  addCarry?: { amount: number | ''; name: string; nonce: number };
+  onAdded?: () => void;
   // Version 2.2 fix (Cath's video: Edit on a loan's page flashed and closed): the page
   // itself shows this loan's form, with no jump back to the list. formOnly draws just the
   // form (and its pop-ups); onFormClosed says when it has closed.
@@ -103,7 +108,7 @@ type LoansScreenProps = {
   openLoanNonce?: number;
 };
 
-export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, formOnly, onFormClosed }: LoansScreenProps = {}) {
+export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, formOnly, onFormClosed, addCarry, onAdded }: LoansScreenProps = {}) {
   // Redesign: the floating + adds a loan while this list is showing.
   useToPayAddRequest('loans', (date) => {
     if (formOnly) return;
@@ -121,6 +126,13 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     // Only when this list first shows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  React.useEffect(() => {
+    if (!formOnly || !addCarry) return;
+    openAddModal();
+    setTotalAmountInput(addCarry.amount);
+    setNameInput(addCarry.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { model, saveModel } = useData();
@@ -466,9 +478,11 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   async function commitSave(toSave: HouseholdModel) {
     setSaving(true);
     try {
+      const wasNew = !editingId;
       await saveModel(toSave);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      if (wasNew) onAdded?.();
     } catch (e) {
       setErrorMsg(notSaved('this loan'));
     } finally {

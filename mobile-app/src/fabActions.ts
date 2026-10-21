@@ -55,7 +55,21 @@ export function useToPayAddRequest(sub: ToPaySub, open: (date?: string) => void)
 export type AddCarry = { amount: number | ''; name: string };
 let pendingAdd: { sub: ToPaySub; carry: AddCarry } | null = null;
 
+// Version 2.2 (Cath): To-Pay opens the other kind's form where you are (no jump to that
+// list until it's added). Falls back to switching the list if To-Pay isn't listening.
+let switchListener: ((sub: ToPaySub, carry: AddCarry) => void) | null = null;
+export function onToPaySwitchAdd(l: (sub: ToPaySub, carry: AddCarry) => void): () => void {
+  switchListener = l;
+  return () => {
+    if (switchListener === l) switchListener = null;
+  };
+}
+
 export function switchToPayAdd(sub: ToPaySub, carry: AddCarry) {
+  if (switchListener) {
+    switchListener(sub, carry);
+    return;
+  }
   pendingAdd = { sub, carry };
   requestToPayTab(sub);
 }
