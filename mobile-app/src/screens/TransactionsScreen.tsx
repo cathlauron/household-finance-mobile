@@ -375,7 +375,8 @@ export default function TransactionsScreen({
           const isManual = t.source === 'manual';
           const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
-          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
+          // H-16: only money out waits for a refund (older entries switched to money in may still carry one).
+          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId && t.direction === 'out';
           const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
           const billId = t.source === 'bill' ? findBillIdForTransaction(model, t.id) : null;
           const debtId = t.source === 'debt' ? findDebtIdForTransaction(model, t.id) : null;
@@ -764,6 +765,10 @@ export default function TransactionsScreen({
           } else {
             delete next.refundExpectedAmount;
           }
+        } else if (directionInput !== 'out' && !t.refundTransactionId) {
+          // H-16 (2026-10-22): only money out can be waiting for a refund. Switched to Money
+          // in (or Saved) before the refund came: it no longer waits for one.
+          delete next.refundExpectedAmount;
         }
         return next;
       });

@@ -15,7 +15,7 @@ check to prove) / possible (depends on timing or phone behaviour).
 | 1. Data safety: saving, syncing, storage limit, Clear all, backup export | Done 2026-10-22 (part 1) |
 | 1b. Data safety: leaving / dissolving a household, linking, recovery key, Firestore rules | Next (needs a Firebase test setup; see 'Ideas') |
 | 2. Home | Part done 2026-10-22 (H-08, H-09, H-11) |
-| 3. Transactions | To do |
+| 3. Transactions | In progress (H-16) |
 | 4. To-Pay (Bills / Debts / Loans) | To do |
 | 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | To do |
 | 6. Settings | To do |
@@ -77,6 +77,7 @@ code says otherwise:
 - H-13: round account balances to centavos everywhere they're worked out.
 
 | H-15 | Fixed (Cath: grey when zero): red money totals (Bills still to pay, Debts, Loans, Groceries Bought, trip paid, event spent, Transactions Out) are grey at ₱0.00; Out drops its minus at zero | Proven: `__tests__/ZeroAmountsGrey.test.tsx` (Debts + Groceries red before, grey after), `tests/moneyColor.test.mjs`; seen in the hidden browser |
+| H-16 | NEW + fixed: an expense waiting for a refund, edited to Money in, kept its expected refund (refund badge on income; Mark received could add the money twice) | Proven: `__tests__/RefundDirection.test.tsx` (red: refund kept; green: dropped). List and transaction page also only show a pending refund on money out |
 
 ## Small questions (not bugs, Cath's taste) - ANSWERED 2026-10-22: grey when zero (H-15)
 

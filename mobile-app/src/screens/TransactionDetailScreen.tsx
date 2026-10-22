@@ -97,7 +97,8 @@ export default function TransactionDetailScreen() {
   const person = (model.people || []).find((p) => p.id === entry.owner);
   const paidBy = entry.owner === 'shared' || !entry.owner ? 'Shared' : person?.name || '—';
   const account = accountLabel(model, raw?.paymentMethod);
-  const refundExpected = raw?.refundExpectedAmount;
+  // H-16: only money out waits for a refund (a received one still shows on its expense).
+  const refundExpected = raw?.direction === 'out' || raw?.refundTransactionId ? raw?.refundExpectedAmount : undefined;
   const refundReceived = typeof refundExpected === 'number' && !!raw?.refundTransactionId;
 
   const openEdit = () => {

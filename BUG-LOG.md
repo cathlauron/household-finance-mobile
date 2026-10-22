@@ -77,6 +77,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-14 | Clearing the Running-low box and pausing saved 0 mid-typing | autoSaveInput.ts, screens/SettingsScreen.tsx | __tests__/SettingsRunningLow.test.tsx |
 | H-03 | Connection dropped while opening: empty, unlinked household; edits overwrote the phone copy | DataContext.tsx (loadModel, openFromPhoneCopy) | __tests__/OpenOnBadConnection.test.tsx |
 | H-15 | Zero money totals shown in red | moneyColor.ts (+7 screens) | __tests__/ZeroAmountsGrey.test.tsx, tests/moneyColor.test.mjs |
+| H-16 | Expense with an expected refund switched to Money in kept the refund | screens/TransactionsScreen.tsx, TransactionDetailScreen.tsx | __tests__/RefundDirection.test.tsx |
 
 ## Still open (not fixed yet)
 
