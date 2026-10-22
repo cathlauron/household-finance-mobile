@@ -1,4 +1,5 @@
 import { usernameOwner } from '../usernameClaim';
+import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { formatRecoveryKeyInput } from '../typingHelpers';
 import React, { useEffect, useState, useRef } from 'react';
@@ -254,7 +255,7 @@ export default function SignInScreen({
       onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, undefined, { email: recoveryContext.email, password: recoveryContext.password });
     } catch (e: any) {
       setRecoveryBusy(false);
-      setRecoveryError(e?.message || 'Could not recover with this key. Check and try again.');
+      setRecoveryError(friendlyError(e, 'Could not recover with this key. Check and try again.'));
     }
   }
 
@@ -314,7 +315,7 @@ export default function SignInScreen({
             setRecoveryContext(null);
             onSignedIn(recoveryContext.username, newKey, restoredModel, profileEntry, householdKey, { email: recoveryContext.email, password: recoveryContext.password });
           } catch (err: any) {
-            setPeerError(err?.message || 'Failed to complete peer recovery.');
+            setPeerError(friendlyError(err, 'Failed to complete peer recovery.'));
           }
         },
         () => {
@@ -324,7 +325,7 @@ export default function SignInScreen({
       );
     } catch (e: any) {
       setPeerBusy(false);
-      setPeerError(e?.message || 'Could not start peer recovery. Please try again.');
+      setPeerError(friendlyError(e, 'Could not start peer recovery. Please try again.'));
     }
   }
 

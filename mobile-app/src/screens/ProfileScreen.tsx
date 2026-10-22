@@ -1,4 +1,5 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, TRY_AGAIN } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
@@ -167,7 +168,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       showLeafTick('Saved');
       setNameSheetOpen(false);
     } catch (e: any) {
-      Alert.alert("Couldn't save your name", e?.message || 'Please try again.');
+      Alert.alert("Couldn't save your name", friendlyError(e, 'Please try again.'));
     } finally {
       setNameSaving(false);
     }
@@ -760,7 +761,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setHouseholdMembers(members);
       setMemberToRemove(null);
     } catch (e: any) {
-      setRemoveMemberMsg(e?.message || "Couldn't remove them. Nothing changed, so please try again in a moment.");
+      setRemoveMemberMsg(friendlyError(e, "Couldn't remove them. Nothing changed, so please try again in a moment."));
     } finally {
       setRemoveMemberBusy(false);
     }
@@ -810,7 +811,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setApprovalCodeInput('');
     } catch (e: any) {
       setApprovalBusy(false);
-      setApprovalErrorMsg(e?.message || 'Could not approve request. Check the code and try again.');
+      setApprovalErrorMsg(friendlyError(e, 'Could not approve request. Check the code and try again.'));
     }
   }
 

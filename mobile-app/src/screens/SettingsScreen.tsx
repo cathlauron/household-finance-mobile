@@ -1,4 +1,5 @@
 import { hapticSelection } from '../haptics';
+import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotSaved, alertDidntWork, TRY_AGAIN } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
@@ -1193,7 +1194,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setRetroactiveBusy(false);
     } catch (e: any) {
       setRetroactiveBusy(false);
-      setRetroactiveError(e?.message || "Couldn't make a recovery key. Nothing changed, so please try again in a moment.");
+      setRetroactiveError(friendlyError(e, "Couldn't make a recovery key. Nothing changed, so please try again in a moment."));
     }
   }
 

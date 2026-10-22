@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
@@ -592,7 +593,7 @@ export default function TransactionsScreen({
       try {
         setReceiptPhoto(await makeReceiptDataUri(asset.uri, asset.width));
       } catch (e: any) {
-        Alert.alert("Couldn't add that photo", e?.message || 'Try picking a different one.');
+        Alert.alert("Couldn't add that photo", friendlyError(e, 'Try picking a different one.'));
       }
     } finally {
       setAutoLockSuppressed(false);
