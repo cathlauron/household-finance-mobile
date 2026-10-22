@@ -832,3 +832,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   for 5 minutes, saved on the phone (Cath chose 5 minutes; password and fingerprint still
   work). Checks: npm test 136/136, test:screens 42/42, hooks 0. Phone: TEST-2.2 AJ.
   Next: rest of sign-in / linking screens, Settings, notifications + calendar.
+
+- NEWEST (2026-10-22, evening): Cath device-tested AJ. BUG HUNT FINISHED for every area
+  a computer can check (BUG-HUNT.md): H-20 reminder switches saved data from before the
+  permission pop-up (could undo the partner's change); H-22 pot page target date had no
+  year. Screen sweep: all 18 main screens + Home + 9 detail pages open with older and full
+  data (no crashes, no NaN/undefined, data shown) - __tests__/OldDataScreens + HomeData.
+  Skill now gates every save on all checks passing (a failing check was committed once and
+  fixed straight after). Checks: npm test 136/136, test:screens 91/91, hooks 0.
+  Open questions for Cath: dates without a year (add the year only when not this year?),
+  H-21 (confirm pop-ups, same fix as H-20?), H-19 (rare sign-in case). Phone: TEST-2.2 AK.
+  Not checkable here: leaving/joining a household (needs two real accounts / the Firebase
+  emulator, blocked in Claude's workspace). Then: the real 2.2 build (AG4, I11, I12).
