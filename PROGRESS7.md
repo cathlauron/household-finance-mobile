@@ -820,3 +820,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   npm test 133/133, test:screens 37/37, test:hooks 0. Phone checks: TEST-2.2 section AH
   (plus AG4/AG5 still open). Next: continue the bug hunt (Transactions, To-Pay, Settings,
   sign-in). New features stay paused.
+
+- NEWEST (2026-10-22, late afternoon): Cath device-tested section AH. Bug hunt area 3
+  (Transactions) started: H-16 expense with an expected refund switched to Money in kept
+  the refund; H-17 deleting a refund entry left its expense "received" (all deletes now
+  share deleteManualTxn). Both proven red-green. Checks: npm test 136/136, test:screens
+  38/38, hooks 0. Phone: TEST-2.2 section AI. Next: rest of Transactions, then To-Pay.
