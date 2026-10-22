@@ -74,6 +74,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-10 | Same entry added twice by a quick double tap on Save/Add | components/SimpleForm.tsx (SheetBar), TransactionsScreen, AccountsScreen | __tests__/SheetBar.test.tsx (shared bar), __tests__/TransactionDoubleTap.test.tsx (New transaction); none yet for Accounts |
 | H-11 | "-₱0.00" and "Over budget" with nothing overspent; "₱NaN" | balanceProjection.ts (computeLeftToSpend, formatPeso) | tests/centavos.test.mjs |
 | H-12 | Raw technical error text on screen | friendlyError.ts (+9 screens) | tests/friendlyError.test.mjs |
+| H-14 | Clearing the Running-low box and pausing saved 0 mid-typing | autoSaveInput.ts, screens/SettingsScreen.tsx | __tests__/SettingsRunningLow.test.tsx |
 
 ## Still open (not fixed yet)
 
