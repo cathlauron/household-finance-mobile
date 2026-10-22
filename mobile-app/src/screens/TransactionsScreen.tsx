@@ -24,7 +24,7 @@ import { usePullDownToOpen } from '../pullDownToOpen';
 import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { requestOpenBill } from '../openBillRequest';
-import { accountLabel } from '../transactionActions';
+import { accountLabel, deleteManualTxn } from '../transactionActions';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { formatPeso } from '../balanceProjection';
@@ -810,13 +810,9 @@ export default function TransactionsScreen({
 
   async function performDelete() {
     if (!editingId || !model) return;
-    const deletedTxn = (model.manualTransactions || []).find((t) => t.id === editingId);
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: (model.manualTransactions || [])
-        .filter((t) => t.id !== editingId)
-        .filter((t) => !(deletedTxn?.refundTransactionId && t.id === deletedTxn.refundTransactionId)),
-    };
+    // One shared delete (H-17: also puts an expense back to "refund pending" when its
+    // refund entry is the one deleted).
+    const updated: HouseholdModel = deleteManualTxn(model, editingId);
     setSaving(true);
     try {
       await saveModel(updated);
@@ -841,13 +837,7 @@ export default function TransactionsScreen({
 
   async function performDeleteTxnById(id: string) {
     if (!model) return;
-    const deletedTxn = (model.manualTransactions || []).find((t) => t.id === id);
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: (model.manualTransactions || [])
-        .filter((t) => t.id !== id)
-        .filter((t) => !(deletedTxn?.refundTransactionId && t.id === deletedTxn.refundTransactionId)),
-    };
+    const updated: HouseholdModel = deleteManualTxn(model, id);
     setSaving(true);
     try {
       await saveModel(updated);

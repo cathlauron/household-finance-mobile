@@ -78,6 +78,7 @@ code says otherwise:
 
 | H-15 | Fixed (Cath: grey when zero): red money totals (Bills still to pay, Debts, Loans, Groceries Bought, trip paid, event spent, Transactions Out) are grey at ₱0.00; Out drops its minus at zero | Proven: `__tests__/ZeroAmountsGrey.test.tsx` (Debts + Groceries red before, grey after), `tests/moneyColor.test.mjs`; seen in the hidden browser |
 | H-16 | NEW + fixed: an expense waiting for a refund, edited to Money in, kept its expected refund (refund badge on income; Mark received could add the money twice) | Proven: `__tests__/RefundDirection.test.tsx` (red: refund kept; green: dropped). List and transaction page also only show a pending refund on money out |
+| H-17 | NEW + fixed: deleting a refund entry left its expense saying "received" | Proven: `tests/refundDelete.test.mjs` (red-green). All three delete paths now use one shared delete |
 
 ## Small questions (not bugs, Cath's taste) - ANSWERED 2026-10-22: grey when zero (H-15)
 
