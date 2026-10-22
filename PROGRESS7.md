@@ -169,6 +169,17 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   5. BUG-HUNT.md: hunt area 1 (data safety) done; findings H-01..H-06 (see Known issues).
   Checks at the end: tsc clean, npm test 104/104, test:screens 11/11.
 
+- 2026-10-22 (lunch batch, on v2.2/v3, each proven with a check that failed first):
+  H-01 Clear all data owner-only in a household (members offered Leave household);
+  H-02 bigger storage (parts) on for every account, household moves into parts only when
+  every phone reports 2.2+; H-05 backup file locked with the account password, cache copies
+  removed; H-07 hooks after the loading return (Income x2, Settings x1) + permanent
+  `npm run test:hooks`; H-08 Home card last-month line inside the chart; H-09 Home / bell /
+  To-Pay follow the date (useToday); H-10 double-tap on Save/Add can't add twice;
+  H-11 Left to Spend rounded to centavos (no "-₱0.00"/"Over budget" at zero, no "₱NaN");
+  H-12 no raw technical error text (friendlyError). Firestore rules reviewed: no serious
+  holes. Checks at the end: tsc clean, npm test 128/128, test:screens 28/28, test:hooks 0.
+
 =====================================================================
 🔧 In progress
 =====================================================================
@@ -325,6 +336,11 @@ Testing
   she's free and gives permission that day. Claude's own hidden browser is used instead.
   Cath: "I do not want you to guess ever" - ask when anything is unclear.
 
+- 2026-10-22 (Cath): Clear all in a household = owner only, warning names the others;
+  members told only the owner can and offered Leave household. Storage: switch parts on
+  for real households (option a). Backup: lock with the account password and delete after
+  sharing (option a). While Cath is away, Claude parks anything needing her decision.
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -467,6 +483,14 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
 - 2026-10-22: PROGRESS7 may be behind TEST-2.2.md: v2.2 commits after the 10-21 wrap-up
   (TEST-2.2 sections AB-AF) aren't described here. Read TEST-2.2.md and `git log v2.2`.
 
+- 2026-10-22 (lunch batch): PARKED for Cath's yes (recommendations in BUG-HUNT.md):
+  H-03 empty household on a bad-connection open, H-04 false "Sync Failed", H-06 offline
+  change + instant close, H-13 account balances not rounded to centavos (card ₱0.00 in
+  red). Small question: zero amounts in red (Debts total, Groceries Bought). The storage
+  parts only take over once your partner's phone also runs 2.2 (until then: same 1 MB).
+  Sign-in/linking/sync can't be tested in Claude's workspace (Firebase emulator download
+  blocked). Phone checks for this batch: TEST-2.2 section AG.
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -542,6 +566,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   test:screens, browser:build, browser:walk; devDependencies jest, jest-expo,
   @testing-library/react-native, react-test-renderer, @types/jest, react-dom,
   react-native-web, @expo/metro-runtime, playwright.
+
+- 2026-10-22 (lunch batch, v2.2/v3): src/components/ClearAllData.tsx, src/backupFile.ts,
+  src/partsGate.ts, src/homeChart.ts, src/useToday.ts, src/friendlyError.ts,
+  mobile-app/eslint.config.mjs (test:hooks); checks __tests__/ClearAllData, SheetBar,
+  useToday; tests/backupFile, partsGate, homeChart, centavos, friendlyError.
 
 =====================================================================
 📅 Session log
@@ -763,3 +792,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
     cd mobile-app
     npm install
     npx expo start -c
+
+- NEWEST (2026-10-22, after the lunch batch): Cath tests TEST-2.2 section AG on her phone
+  (npm install once after pulling). Then ask her the parked items (H-03, H-04, H-06,
+  H-13, zero amounts in red). Then continue the hunt: Transactions, To-Pay, Settings,
+  sign-in screens (BUG-HUNT.md areas). New features stay paused.
