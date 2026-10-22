@@ -67,7 +67,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 |---|---|---|---|
 | H-01 | Clear all data in a shared household erased it for both, warning said "this profile" | components/ClearAllData.tsx, screens/SettingsScreen.tsx | __tests__/ClearAllData.test.tsx, __tests__/SettingsClearAll.test.tsx |
 | H-02 | Storage full after ~3 receipts; partner stops seeing changes | partsGate.ts, householdPartsSync.ts | tests/partsGate.test.mjs |
-| H-05 | Backup file = every money detail, unlocked, left on the phone | backupFile.ts, screens/SettingsScreen.tsx | tests/backupFile.test.mjs |
+| H-05 | Backup file = every money detail, unlocked, left on the phone | backupFile.ts, screens/SettingsScreen.tsx | tests/backupFile.test.mjs, __tests__/SettingsBackup.test.tsx |
 | H-07 | Income / Settings could crash when the data briefly went away (logging out) | screens/IncomeScreen.tsx, screens/SettingsScreen.tsx | npm run test:hooks (whole app) |
 | H-08 | Home card's last-month line past the right edge | homeChart.ts, components/HomeHero.tsx | tests/homeChart.test.mjs |
 | H-09 | Yesterday's Left to Spend / due labels after the app was left open overnight | useToday.ts, HomeScreen, HomeHero, useBellInbox, Bills/Debts/Loans | __tests__/useToday.test.tsx |

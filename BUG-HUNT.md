@@ -52,7 +52,7 @@ code says otherwise:
 | H-02 | Fixed: bigger storage on for every account; the household only moves into it when every phone reports 2.2+ | Proven (rules): `tests/partsGate.test.mjs` (red-green). Needs your phone: AG4 (two phones) |
 | H-03 | PARKED: needs Cath's yes (changes loading / saving) | - |
 | H-04 | PARKED: needs Cath's yes (changes syncing messages) | - |
-| H-05 | Fixed: backup locked with the account password, cache copies removed | Proven: `tests/backupFile.test.mjs` (red-green). Needs your phone: AG3 |
+| H-05 | Fixed: backup locked with the account password, cache copies removed | Proven: `tests/backupFile.test.mjs` and on the real Settings page `__tests__/SettingsBackup.test.tsx` (this morning's page fails both). Needs your phone: AG3 (the share sheet itself) |
 | H-06 | PARKED: needs Cath's yes (changes offline saving) | - |
 | H-07 | NEW + fixed: hooks after the loading return could crash Income and Settings (one was from today's backup change) | Proven: `npm run test:hooks` (3 errors -> 0), now a permanent check |
 | H-08 | NEW + fixed: Home card's last-month line ran past the right edge (Oct -> Nov, Jan -> Feb) | Proven: `tests/homeChart.test.mjs` (red-green) |
