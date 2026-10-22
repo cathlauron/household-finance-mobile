@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useToday } from './useToday';
 import { getOverdueItems, OverdueItem } from './overdue';
 import { usePendingRecovery } from './usePendingRecovery';
 import { loadBellRead, markBellRead, markAllBellRead, pruneBellRead } from './bellReadState';
@@ -33,8 +34,10 @@ export function useBellInbox(username: string, model: any) {
     return () => { active = false; };
   }, [username]);
 
-  const overdue = useMemo(() => (model ? getOverdueItems(model) : []), [model]);
-  const dueSoon = useMemo(() => (model ? getUpcomingDue(model, 14) : []), [model]);
+  // H-09: worked out again when the date changes, not only when the data does.
+  const today = useToday();
+  const overdue = useMemo(() => (model ? getOverdueItems(model) : []), [model, today]);
+  const dueSoon = useMemo(() => (model ? getUpcomingDue(model, 14) : []), [model, today]);
 
   const items: BellItem[] = useMemo(() => {
     const list: BellItem[] = [];

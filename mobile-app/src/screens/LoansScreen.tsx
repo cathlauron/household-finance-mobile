@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved } from '../messages';
 import { useArrival } from '../useArrival';
@@ -109,6 +110,9 @@ type LoansScreenProps = {
 };
 
 export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, formOnly, onFormClosed, addCarry, onAdded }: LoansScreenProps = {}) {
+  // H-09 (2026-10-22): redraw when the date changes, so Overdue and due dates are
+  // right the morning after the app was left open.
+  useToday();
   // Redesign: the floating + adds a loan while this list is showing.
   useToPayAddRequest('loans', (date) => {
     if (formOnly) return;

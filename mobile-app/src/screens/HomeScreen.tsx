@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useToday } from '../useToday';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -56,11 +57,13 @@ export default function HomeScreen({ username }: Props) {
   const { money } = useHideAmounts();
 
   // Worked out once per data change, not on every redraw (scrolling, the bell, etc.).
-  const leftToSpend = useMemo(() => (model ? computeLeftToSpend(model) : null), [model]);
+  // H-09: and again when the date changes (the app left open overnight).
+  const today = useToday();
+  const leftToSpend = useMemo(() => (model ? computeLeftToSpend(model) : null), [model, today]);
   const leftToSpendStatus =
     leftToSpend && model ? getLeftToSpendStatus(leftToSpend.amount, model, colors) : null;
 
-  const totalBalanceToday = useMemo(() => (model ? totalCurrentBalance(model) : 0), [model]);
+  const totalBalanceToday = useMemo(() => (model ? totalCurrentBalance(model) : 0), [model, today]);
   const spentSoFar = leftToSpend ? Math.max(0, totalBalanceToday - leftToSpend.amount) : 0;
   const pctUsed =
     totalBalanceToday > 0 ? Math.min(100, Math.max(0, (spentSoFar / totalBalanceToday) * 100)) : 0;

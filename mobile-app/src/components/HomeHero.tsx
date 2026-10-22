@@ -1,4 +1,5 @@
 import { chartPoints } from '../homeChart';
+import { useToday } from '../useToday';
 import React, { useMemo, useState } from 'react';
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import GradientFill from './GradientFill';
@@ -76,6 +77,8 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
   const [page, setPage] = useState(0);
   // Version 3: the eye beside "Left to spend" hides the amounts (₱ *****).
   const { hidden, toggle, money } = useHideAmounts();
+  // H-09: the month chart follows the date too.
+  const today = useToday();
 
   const cardColor = mood === 'good' ? colors.cardTealEnd : CARD[mood][isDark ? 'dark' : 'light'];
   const dim = mood === 'good' ? colors.cardTealTextDim : 'rgba(255,255,255,0.92)';
@@ -97,7 +100,7 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
     const sameDayLast = prevCum[Math.min(now.getDate(), daysPrev) - 1] ?? 0;
     const diff = (thisCum[thisCum.length - 1] ?? 0) - sameDayLast;
     return { totals, thisCum, prevCum, daysThis, diff };
-  }, [model]);
+  }, [model, today]);
 
   const breakdown = useMemo(() => leftToSpendBreakdown(model, { amount, targetDate, basis }), [model, amount, targetDate, basis]);
   const untilLabel = targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });

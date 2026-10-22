@@ -6,7 +6,10 @@
 //   npm run browser:walk -- Skip "fill:Name=Cath" Continue ...
 //
 // Steps: plain text = tap the thing with exactly that text; "~text" = tap text containing
-// it; "fill:Placeholder=value" = type into a box; "wait:ms" = wait and take a picture.
+// it; "fill:Placeholder=value" = type into a box; "wait:ms" = wait and take a picture;
+// "later:2026-10-23T08:00" = put the app away, move the clock to that local time, bring
+// it back (needs WALK_START_TIME, e.g. WALK_START_TIME=2026-10-22T23:50, so the page
+// starts on a fake clock); "expect:text" = fail if that text isn't on screen.
 // Pictures and a log go to mobile-app/web-shots (not saved to git).
 import { chromium } from 'playwright';
 import http from 'node:http';
@@ -48,6 +51,7 @@ async function picture(label) {
   console.log(`${n}. ${label}`);
 }
 
+if (process.env.WALK_START_TIME) await page.clock.install({ time: new Date(process.env.WALK_START_TIME) });
 await page.goto(url);
 await page.waitForTimeout(6000);
 await picture('app opened');
@@ -63,6 +67,28 @@ for (const step of process.argv.slice(2)) {
     }
     if (!done) problems.push(`STEP FAILED: no box "${box}"`);
     await page.waitForTimeout(600);
+    continue;
+  }
+  if (step.startsWith('later:')) {
+    const setVisibility = (state) =>
+      page.evaluate((st) => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => st });
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => st === 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      }, state);
+    await setVisibility('hidden');
+    await page.clock.setSystemTime(new Date(step.slice(6)));
+    await setVisibility('visible');
+    await page.clock.runFor(1500);
+    await page.waitForTimeout(1500);
+    await picture(`app put away and brought back at ${step.slice(6)}`);
+    continue;
+  }
+  if (step.startsWith('expect:')) {
+    const want = step.slice(7);
+    const seen = await page.getByText(want, { exact: false }).first().isVisible().catch(() => false);
+    if (!seen) problems.push(`EXPECTED BUT MISSING: "${want}"`);
+    console.log(seen ? `ok: sees "${want}"` : `MISSING: "${want}"`);
     continue;
   }
   if (step.startsWith('wait:')) {

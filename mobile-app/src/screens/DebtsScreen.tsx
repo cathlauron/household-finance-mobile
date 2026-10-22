@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
@@ -78,6 +79,9 @@ type DebtsScreenProps = {
 };
 
 export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, formOnly, onFormClosed, addCarry, onAdded }: DebtsScreenProps = {}) {
+  // H-09 (2026-10-22): redraw when the date changes, so Overdue and due dates are
+  // right the morning after the app was left open.
+  useToday();
   // Redesign: the floating + adds a debt while this list is showing.
   useToPayAddRequest('debts', (date) => {
     if (formOnly) return;
