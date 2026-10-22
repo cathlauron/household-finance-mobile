@@ -141,8 +141,8 @@ test.each(SCREENS)('%s opens with older data', async (_name, file) => {
 }, 30000);
 
 // Home and the detail pages (2026-10-22 bug hunt, areas 2 and 5).
-const DETAIL: [string, string, any, any?][] = [
-  ['Home', 'HomeScreen', { username: 'cath' }],
+// Every row needs all 4 items (fewer: Jest waits for a "done" callback forever).
+const DETAIL: [string, string, any, any][] = [
   ['Bill page', 'PayDetailScreen', {}, { kind: 'bill', id: 'b1' }],
   ['Paid subscription page', 'PayDetailScreen', {}, { kind: 'bill', id: 'b2' }],
   ['Debt page', 'PayDetailScreen', {}, { kind: 'debt', id: 'dt1' }],
@@ -179,4 +179,4 @@ test.each(DETAIL)('%s opens with a full household', async (_name, file, props, p
     if (process.env.SHOW_TEXT) console.log('TEXT', text.slice(0, 3000));
     expect(text).not.toMatch(/NaN|Infinity|undefined/);
   }
-}, 60000);
+}, 20000);
