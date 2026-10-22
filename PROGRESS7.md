@@ -154,6 +154,21 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   Website mockup (Design canvas): phone Home matches the app, QR install card, animated
   How it works.
 
+- 2026-10-22 (bug-check setup, on `v2.2`/`v3`, new Claude account): Cath was worn out by
+  "fixed" claims that weren't, and fixes breaking other things. Set up, with her approval:
+  1. Skill `.claude/skills/finance-flow-bug-check/SKILL.md` (loads in every account once
+     the repo is attached) + root CLAUDE.md pointing to it: proof before "fixed", every bug
+     becomes a permanent check, Claude tests before Cath, bug hunts, ask never guess.
+  2. Screen checks: jest-expo + React Native Testing Library (dev only; no app package
+     changed version). `npm run test:screens`; first checks: amount box (5) and Plan tab
+     rows (6). Both proven red-green (broken on purpose -> failed -> restored -> passed).
+  3. Background tester: the app runs as a web build in a hidden browser in Claude's
+     workspace (guest mode, never touches Firebase). `npm run browser:build`,
+     `npm run browser:walk -- <steps>`; how-to and limits in BUG-CHECK-BROWSER.md.
+  4. BUG-LOG.md: 40 past bugs Cath reported, the file each lives in, and which are guarded.
+  5. BUG-HUNT.md: hunt area 1 (data safety) done; findings H-01..H-06 (see Known issues).
+  Checks at the end: tsc clean, npm test 104/104, test:screens 11/11.
+
 =====================================================================
 🔧 In progress
 =====================================================================
@@ -301,6 +316,15 @@ Testing
   Version 3 ideas from Cath: Apple-Wallet-style transit cards, boarding passes, event
   tickets.
 
+- 2026-10-22 (Cath): NEW FEATURES PAUSED (version 3 work) until the bug hunt and its
+  fixes are done. Bug-check skill is the standing way of working for any code change.
+  Status words with Cath: "Proven" / "Changed, not yet confirmed" / "Needs your phone".
+  Testing tools approved (dev only). Hunt order: data safety first, then Home,
+  Transactions, To-Pay, Plan pages, Settings, sign-in/linking, notifications + calendar.
+  Claude does NOT use Cath's computer (emulator) while she is working; only when she says
+  she's free and gives permission that day. Claude's own hidden browser is used instead.
+  Cath: "I do not want you to guess ever" - ask when anything is unclear.
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -428,6 +452,21 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
   screen). Mood colour preview on the set-up screen still not showing (Cath, Oct 21).
   Entries made before 2.2 have no "added by" and no balance-update history.
 
+- 2026-10-22 (bug hunt area 1, details in BUG-HUNT.md on v2.2). Re-checked in code:
+  RISK 3 IS handled (merge before save in one Firestore transaction, merge3.ts, 12
+  checks); RISK 1 is partly handled (receipts shrunk, avatars.ts). Still open:
+  H-01 Clear all data in a shared household wipes it for both people, warning says "this
+  profile" (SettingsScreen ~1877/1188). H-02 real households still one ~1 MB online copy;
+  parts only for "test" usernames (householdPartsSync.ts:27); a receipt can use ~1/4 of
+  it. H-03 connection drop while opening -> empty Home, not linked; edits then overwrite
+  the phone copy and personal online backup (DataContext loadModel catch ~618).
+  H-04 "Sync Failed" after 8 s even when the save finishes later. H-05 Export backup is a
+  plain file left in the cache, next to a line saying everything is encrypted.
+  H-06 (possible) offline change + closing the app at once may not be kept.
+  Decisions needed from Cath before fixing H-01, H-02, H-05 (listed in BUG-HUNT.md).
+- 2026-10-22: PROGRESS7 may be behind TEST-2.2.md: v2.2 commits after the 10-21 wrap-up
+  (TEST-2.2 sections AB-AF) aren't described here. Read TEST-2.2.md and `git log v2.2`.
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -496,6 +535,14 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   creditCards. Design canvas https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX has the
   loading (L-rows), save-animation (round 7) and due-date (round 8) mockups.
 
+- 2026-10-22 (on v2.2/v3): CLAUDE.md (root), .claude/skills/finance-flow-bug-check/SKILL.md,
+  BUG-LOG.md, BUG-HUNT.md, BUG-CHECK-BROWSER.md, mobile-app/jest.config.js,
+  mobile-app/__tests__/ (helpers/setup.js, helpers/render.tsx, AmountInput.test.tsx,
+  PlanScreen.test.tsx), mobile-app/tools/browser-walk.mjs. package.json: scripts
+  test:screens, browser:build, browser:walk; devDependencies jest, jest-expo,
+  @testing-library/react-native, react-test-renderer, @types/jest, react-dom,
+  react-native-web, @expo/metro-runtime, playwright.
+
 =====================================================================
 📅 Session log
 =====================================================================
@@ -543,6 +590,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   app canvas https://claude.ai/artifact/ASR1EPaw6Ro7jkQDwR5AJX, website canvas
   https://claude.ai/artifact/WGB2bNqnnRtLKbdWEQuuv2, plan doc
   https://claude.ai/artifact/X58irbPXSeBqRi89gUe1j8.
+
+- 2026-10-22: bug-check setup (see Done). Also wrote a Claude Design brief for a
+  clickable prototype (not in the repo; Cath has the file).
 
 =====================================================================
 ▶️ Next step
@@ -689,6 +739,23 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Then: Cath's test of the newest items, the real 2.2 EAS build (preview-v2), I11/I12,
   merge v2.2 into main with the version bump check (2.2.0, versionCode 4 already set).
   PowerShell to get the code:
+    cd C:\Projects\household-finance-mobile
+    git fetch
+    git checkout v2.2
+    git pull
+    cd mobile-app
+    npm install
+    npx expo start -c
+
+
+- NEWEST (2026-10-22): NEW FEATURES ARE PAUSED. Work is the bug hunt, using the
+  finance-flow-bug-check skill (on v2.2). FIRST: ask Cath the three decisions in
+  BUG-HUNT.md (H-01 Clear all in a shared household, H-02 storage parts for real
+  households, H-05 Export backup), then fix in small batches, each with a check proven
+  red-green. Then hunt area 1b (leaving/dissolving, linking, recovery key, Firestore
+  rules), then the screen areas in order. The 2026-10-21 list above (calendar circles,
+  who logged it, LK, D1-D3, ...) waits until the hunt is done unless Cath says otherwise.
+  PowerShell to get the code (npm install is needed once: new testing packages):
     cd C:\Projects\household-finance-mobile
     git fetch
     git checkout v2.2
