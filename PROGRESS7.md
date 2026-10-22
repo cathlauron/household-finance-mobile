@@ -180,6 +180,13 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   H-12 no raw technical error text (friendlyError). Firestore rules reviewed: no serious
   holes. Checks at the end: tsc clean, npm test 128/128, test:screens 28/28, test:hooks 0.
 
+- 2026-10-22 (end of lunch batch): H-14 Running-low box no longer saves 0 while you clear
+  it to type. Proofs on the REAL screens (stand-in data, no Firebase): New transaction
+  double tap, Settings Clear all (member/owner), Settings Save a backup, Settings
+  Running low; each fails with the old code. Account-form double save could not be
+  reproduced (check dropped, guard kept). Final: tsc clean, npm test 130/130,
+  test:screens 34/34 (9 files), test:hooks 0, hidden-browser walk OK.
+
 =====================================================================
 🔧 In progress
 =====================================================================
@@ -571,6 +578,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   src/partsGate.ts, src/homeChart.ts, src/useToday.ts, src/friendlyError.ts,
   mobile-app/eslint.config.mjs (test:hooks); checks __tests__/ClearAllData, SheetBar,
   useToday; tests/backupFile, partsGate, homeChart, centavos, friendlyError.
+
+- 2026-10-22 (end of lunch batch): src/autoSaveInput.ts; __tests__/TransactionDoubleTap,
+  SettingsClearAll, SettingsBackup, SettingsRunningLow (pattern for checking whole screens:
+  mock DataContext, firebase/*, sessions; see these files).
 
 =====================================================================
 📅 Session log
