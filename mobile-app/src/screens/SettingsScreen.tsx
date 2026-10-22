@@ -1248,7 +1248,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setBackupSheetOpen(false);
       setBackupPassword('');
       await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Save your backup' });
-      setExportMsg('Backup saved. It is locked with your password; keep that password safe.');
+      // (The phone can't tell us whether it was saved or the share was cancelled.)
+      setExportMsg('Your backup file is locked with your password. Keep that password safe.');
     } catch (e) {
       setBackupError("Couldn't create the backup file. Please try again.");
       setExportMsg("Couldn't create the backup file. Please try again.");
