@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { redUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
@@ -536,7 +537,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
+          <Text style={[styles.balanceBannerAmount, { color: redUnlessZero(totalOwed, colors) }]}>{formatPeso(totalOwed)}</Text>
         </View>
 
         {debts.length === 0 && (

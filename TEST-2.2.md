@@ -353,3 +353,11 @@ AG 2026-10-22 Bug-check batch 1 (Claude tested each with automatic checks first;
 - AG7 Settings > Budgeting > the "Running low" percent: clear the box, wait 2 seconds
       (don't leave the box): it stays empty (it used to jump to 0). Type 20 and leave the
       box: it saves 20.
+
+AH 2026-10-22 afternoon: bad connection while opening, zero amounts grey. NOT YET TESTED.
+- AH1 With your phone on very weak signal (or turn mobile data off a second after tapping
+      the app open), open Finance Flow: Home shows your household as usual (not empty),
+      and it catches up once the connection is back. Add something meanwhile: it's kept.
+- AH2 To-Pay > Debts with no debts: "Total debt logged ₱0.00" is grey. Same for Bills /
+      Loans totals, Groceries "Bought", and Transactions "Out" (no minus sign at zero).
+      Anything above zero is still red.

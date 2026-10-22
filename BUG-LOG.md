@@ -75,6 +75,8 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-11 | "-₱0.00" and "Over budget" with nothing overspent; "₱NaN" | balanceProjection.ts (computeLeftToSpend, formatPeso) | tests/centavos.test.mjs |
 | H-12 | Raw technical error text on screen | friendlyError.ts (+9 screens) | tests/friendlyError.test.mjs |
 | H-14 | Clearing the Running-low box and pausing saved 0 mid-typing | autoSaveInput.ts, screens/SettingsScreen.tsx | __tests__/SettingsRunningLow.test.tsx |
+| H-03 | Connection dropped while opening: empty, unlinked household; edits overwrote the phone copy | DataContext.tsx (loadModel, openFromPhoneCopy) | __tests__/OpenOnBadConnection.test.tsx |
+| H-15 | Zero money totals shown in red | moneyColor.ts (+7 screens) | __tests__/ZeroAmountsGrey.test.tsx, tests/moneyColor.test.mjs |
 
 ## Still open (not fixed yet)
 

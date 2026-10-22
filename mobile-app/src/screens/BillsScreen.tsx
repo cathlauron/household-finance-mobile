@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { redUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted } from '../messages';
@@ -564,7 +565,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(stillToPay)}</Text>
+          <Text style={[styles.balanceBannerAmount, { color: redUnlessZero(stillToPay, colors) }]}>{formatPeso(stillToPay)}</Text>
           <Text style={styles.summarySub}>
             {paidThisMonth.length} of {paidThisMonth.length + dueThisMonth.length} {paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid
           </Text>

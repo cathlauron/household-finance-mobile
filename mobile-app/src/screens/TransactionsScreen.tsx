@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { redUnlessZero, isZeroAmount } from '../moneyColor';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
@@ -958,7 +959,7 @@ export default function TransactionsScreen({
           </View>
           <View style={[styles.summaryCell, styles.summaryDivider]}>
             <Text style={styles.summaryLabel}>Out</Text>
-            <Text style={[styles.summaryAmount, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>−{formatPeso(totals.totalOut)}</Text>
+            <Text style={[styles.summaryAmount, { color: redUnlessZero(totals.totalOut, colors) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{isZeroAmount(totals.totalOut) ? '' : '−'}{formatPeso(totals.totalOut)}</Text>
           </View>
         </View>
 

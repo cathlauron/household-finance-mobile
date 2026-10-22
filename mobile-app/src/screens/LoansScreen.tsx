@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { redUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved } from '../messages';
@@ -596,7 +597,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           <GradientFill match={[styles.group, styles.summaryRow]} />
           <View style={styles.summaryCell}>
             <Text style={styles.balanceBannerLabel}>You owe (borrowed)</Text>
-            <Text style={[styles.balanceBannerAmount, { color: colors.negative }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
+            <Text style={[styles.balanceBannerAmount, { color: redUnlessZero(Math.max(0, totalBorrowed), colors) }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
           </View>
           <View style={[styles.summaryCell, styles.summaryDivider]}>
             <Text style={styles.balanceBannerLabel}>Owed to you (lent)</Text>

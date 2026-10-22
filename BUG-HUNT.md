@@ -50,10 +50,10 @@ code says otherwise:
 |---|---|---|
 | H-01 | Fixed: owner only; warning names the others; members told why + offered Leave household | Proven: `__tests__/ClearAllData.test.tsx` (11 checks) and on the real Settings page as member and owner `__tests__/SettingsClearAll.test.tsx` (old behaviour fails both). AG1/AG2 are look-arounds |
 | H-02 | Fixed: bigger storage on for every account; the household only moves into it when every phone reports 2.2+ | Proven (rules): `tests/partsGate.test.mjs` (red-green). Needs your phone: AG4 (two phones) |
-| H-03 | PARKED: needs Cath's yes (changes loading / saving) | - |
-| H-04 | PARKED: needs Cath's yes (changes syncing messages) | - |
+| H-03 | Fixed (Cath's yes, 2026-10-22): opens this phone's copy, still linked, reconnects in the background | Proven: `__tests__/OpenOnBadConnection.test.tsx` (fix off: empty + not linked; on: phone copy, linked, nothing empty saved). Needs your phone: AH1 |
+| H-04 | Cath, 2026-10-22: leave as is | - |
 | H-05 | Fixed: backup locked with the account password, cache copies removed | Proven: `tests/backupFile.test.mjs` and on the real Settings page `__tests__/SettingsBackup.test.tsx` (this morning's page fails both). Needs your phone: AG3 (the share sheet itself) |
-| H-06 | PARKED: needs Cath's yes (changes offline saving) | - |
+| H-06 | Cath, 2026-10-22: leave as is | - |
 | H-07 | NEW + fixed: hooks after the loading return could crash Income and Settings (one was from today's backup change) | Proven: `npm run test:hooks` (3 errors -> 0), now a permanent check |
 | H-08 | NEW + fixed: Home card's last-month line ran past the right edge (Oct -> Nov, Jan -> Feb) | Proven: `tests/homeChart.test.mjs` (red-green) |
 | H-09 | NEW + fixed: Home / bell / To-Pay stayed on yesterday when the app was left open overnight | Proven: `__tests__/useToday.test.tsx` (red-green); seen in the hidden browser across midnight. Needs your phone: AG5 |
@@ -61,7 +61,7 @@ code says otherwise:
 | H-11 | NEW + fixed: spending exactly what an account held could show "-₱0.00" and "Over budget" (rose) | Proven: `tests/centavos.test.mjs` (4 red -> green) |
 | H-12 | NEW + fixed: 9 screens could show raw technical error text | Proven: `tests/friendlyError.test.mjs` (red-green) |
 | H-14 | NEW + fixed: clearing the Running-low box and pausing saved 0 and showed 0 mid-typing | Proven on the real Settings page: `__tests__/SettingsRunningLow.test.tsx` (fix off: saved 0; fix on: nothing saved). AG7 is a look-around |
-| H-13 | PARKED: account balances aren't rounded to centavos; a card can show ₱0.00 in red. Rounding them changes what's saved when balances are baked in, so ask first | - |
+| H-13 | Cath, 2026-10-22: leave as is. Was PARKED: account balances aren't rounded to centavos; a card can show ₱0.00 in red. Rounding them changes what's saved when balances are baked in, so ask first | - |
 
 ## Recommendations for the parked ones (Cath decides)
 
@@ -76,7 +76,9 @@ code says otherwise:
   before the change counts as saved (a fraction of a second).
 - H-13: round account balances to centavos everywhere they're worked out.
 
-## Small questions (not bugs, Cath's taste)
+| H-15 | Fixed (Cath: grey when zero): red money totals (Bills still to pay, Debts, Loans, Groceries Bought, trip paid, event spent, Transactions Out) are grey at ₱0.00; Out drops its minus at zero | Proven: `__tests__/ZeroAmountsGrey.test.tsx` (Debts + Groceries red before, grey after), `tests/moneyColor.test.mjs`; seen in the hidden browser |
+
+## Small questions (not bugs, Cath's taste) - ANSWERED 2026-10-22: grey when zero (H-15)
 
 - Zero amounts shown in red: To-Pay > Debts "Total debt logged ₱0.00" and Groceries "Bought
   ₱0.00" are red even at zero. Keep red, or grey when it's zero?

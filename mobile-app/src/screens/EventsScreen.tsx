@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { redUnlessZero } from '../moneyColor';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
@@ -641,7 +642,7 @@ export default function EventsScreen() {
                         <Text style={styles.eventName} numberOfLines={1}>{r.name}</Text>
                         <Text style={styles.eventSub}>{r.budget > 0 ? (diff >= 0 ? `${formatPeso(diff)} under budget` : `${formatPeso(-diff)} over budget`) : 'No budget'}</Text>
                       </View>
-                      <Text style={[styles.eventAmount, { color: colors.negative }]}>{formatPeso(r.spent)}</Text>
+                      <Text style={[styles.eventAmount, { color: redUnlessZero(r.spent, colors) }]}>{formatPeso(r.spent)}</Text>
                     </TouchableOpacity>
                   );
                 })}

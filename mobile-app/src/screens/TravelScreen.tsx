@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { redUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { alertDidntWork } from '../messages';
 import { useArrival } from '../useArrival';
@@ -755,7 +756,7 @@ export default function TravelScreen() {
                   </View>
                   <View style={styles.trioCell}>
                     <Text style={styles.tripSub}>Paid</Text>
-                    <Text style={[styles.trioVal, { color: colors.negative }]}>{formatPeso(paid)}</Text>
+                    <Text style={[styles.trioVal, { color: redUnlessZero(paid, colors) }]}>{formatPeso(paid)}</Text>
                   </View>
                 </View>
                 {/* Canvas T3a option B: a thin bar while it's saving in Savings. */}

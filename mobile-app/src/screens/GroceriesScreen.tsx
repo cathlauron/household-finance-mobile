@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { redUnlessZero } from '../moneyColor';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
@@ -281,7 +282,7 @@ export default function GroceriesScreen() {
             </View>
             <View style={[styles.trioCell, styles.trioLine]}>
               <Text style={styles.meta}>Bought</Text>
-              <Text style={[styles.headline, { color: colors.negative }]}>{formatPeso(bought)}</Text>
+              <Text style={[styles.headline, { color: redUnlessZero(bought, colors) }]}>{formatPeso(bought)}</Text>
             </View>
             <View style={[styles.trioCell, styles.trioLine]}>
               <Text style={styles.meta}>Items</Text>
