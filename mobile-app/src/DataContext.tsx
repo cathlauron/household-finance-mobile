@@ -225,7 +225,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       storageFullWarnedRef.current = true;
       Alert.alert(
         'Online storage is full',
-        'Your latest changes are saved on this phone, but they are too big to send online, so other phones won\'t see them yet. Removing photos frees the most space. We\'re working on more room in an update.'
+        'Your latest changes are saved on this phone, but they are too big to send online, so other phones won\'t see them yet. Removing photos frees the most space. In a shared household, updating Finance Flow on every phone gives it more room.'
       );
     }
     return true;

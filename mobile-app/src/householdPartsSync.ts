@@ -9,24 +9,24 @@
 //   2    -> the household got too big for one `data` copy (over 1 MiB). The parts are now
 //           the main copy; `data` is left as it was. Goes back to 1 once it fits again.
 //
-// FOR TESTING ONLY in this build: this only switches on for accounts whose username starts
-// with "test" (step 4: a throwaway household with two test accounts). Real households are
-// untouched until it's been tested on the phone.
+// 2.1 switched this on for "test" accounts only. 2.2 (H-02, 2026-10-22): on for everyone;
+// layout 2 only once every member's phone reports 2.2 or newer (partsGate.ts).
 //
 // Every step here is "best effort": a failure is logged and never stops a normal save.
 
 import CryptoJS from 'crypto-js';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { splitModel, joinParts, partTexts } from './householdParts';
 import { saveParts, loadParts, deleteAllParts, migrateToParts, reportMemberVersion, PartTooBigError } from './householdCloudParts';
 import type { HouseholdModel } from './types';
+import { partsEnabledFor, everyoneReadsParts, PARTS_READER_VERSION } from './partsGate';
 
-export const PARTS_APP_VERSION = '2.1';
+// What this phone reports in memberVersions (2.2: reads parts for every account).
+export const PARTS_APP_VERSION = PARTS_READER_VERSION;
 
-export function partsEnabledFor(username: string | null | undefined): boolean {
-  return !!username && username.toLowerCase().startsWith('test');
-}
+// Who has parts switched on: see partsGate.ts.
+export { partsEnabledFor };
 
 // Part saves run one after another, never at the same time, so two quick saves can't
 // interleave and leave the parts half from one and half from the other.
@@ -146,6 +146,13 @@ export async function saveWhenTooBig(username: string, householdId: string, key:
   if (!partsEnabledFor(username) || currentLayout(householdId) < 1) return false;
   return inOrder(async () => {
   try {
+    // H-02 (2026-10-22): only when every phone in the household reads parts (see
+    // partsGate.ts). Otherwise nothing changes online and the caller says storage is full.
+    const snap = await getDoc(doc(db, 'households', householdId));
+    if (!snap.exists() || !everyoneReadsParts(snap.data().members, snap.data().memberVersions)) {
+      console.warn('[parts] not every phone in the household reads parts yet; staying on one copy');
+      return false;
+    }
     state.texts = await saveParts(householdId, key, splitModel(model), state.texts);
     // updatedAt changes too, so other phones' live listener notices the new version.
     await updateDoc(doc(db, 'households', householdId), { layout: 2, updatedAt: Date.now() });
