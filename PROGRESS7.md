@@ -808,3 +808,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   (npm install once after pulling). Then ask her the parked items (H-03, H-04, H-06,
   H-13, zero amounts in red). Then continue the hunt: Transactions, To-Pay, Settings,
   sign-in screens (BUG-HUNT.md areas). New features stay paused.
+
+- NEWEST (2026-10-22, 3 PM): Cath: "device test as described" for TEST-2.2 section AG.
+  Still open: AG4 (two phones, once the partner's phone has 2.2) and AG5 (app left open
+  overnight). Next: Cath's answers on the parked items (H-03, H-04, H-06, H-13, zero
+  amounts in red), then continue the bug hunt (Transactions, To-Pay, Settings, sign-in).
