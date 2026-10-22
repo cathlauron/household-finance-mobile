@@ -57,7 +57,7 @@ code says otherwise:
 | H-07 | NEW + fixed: hooks after the loading return could crash Income and Settings (one was from today's backup change) | Proven: `npm run test:hooks` (3 errors -> 0), now a permanent check |
 | H-08 | NEW + fixed: Home card's last-month line ran past the right edge (Oct -> Nov, Jan -> Feb) | Proven: `tests/homeChart.test.mjs` (red-green) |
 | H-09 | NEW + fixed: Home / bell / To-Pay stayed on yesterday when the app was left open overnight | Proven: `__tests__/useToday.test.tsx` (red-green); seen in the hidden browser across midnight. Needs your phone: AG5 |
-| H-10 | NEW + fixed: a quick second tap on Save/Add while a form closed could add it twice | Proven for the shared Save bar (13 forms): `__tests__/SheetBar.test.tsx`. Transaction + account forms: changed, not yet confirmed (AG6) |
+| H-10 | NEW + fixed: a quick second tap on Save/Add while a form closed could add it twice | Proven: shared Save bar (13 forms) `__tests__/SheetBar.test.tsx`; New transaction form `__tests__/TransactionDoubleTap.test.tsx` (without the guard it saved twice, with it once). Account form: changed, not yet confirmed |
 | H-11 | NEW + fixed: spending exactly what an account held could show "-₱0.00" and "Over budget" (rose) | Proven: `tests/centavos.test.mjs` (4 red -> green) |
 | H-12 | NEW + fixed: 9 screens could show raw technical error text | Proven: `tests/friendlyError.test.mjs` (red-green) |
 | H-14 | NEW + fixed: clearing the Running-low box and pausing saved 0 and showed 0 mid-typing | Changed, not yet confirmed on screen (Settings needs an account; helper checked in `tests/autoSaveInput.test.mjs`). Needs your phone: AG7 |

@@ -71,7 +71,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-07 | Income / Settings could crash when the data briefly went away (logging out) | screens/IncomeScreen.tsx, screens/SettingsScreen.tsx | npm run test:hooks (whole app) |
 | H-08 | Home card's last-month line past the right edge | homeChart.ts, components/HomeHero.tsx | tests/homeChart.test.mjs |
 | H-09 | Yesterday's Left to Spend / due labels after the app was left open overnight | useToday.ts, HomeScreen, HomeHero, useBellInbox, Bills/Debts/Loans | __tests__/useToday.test.tsx |
-| H-10 | Same entry added twice by a quick double tap on Save/Add | components/SimpleForm.tsx (SheetBar), TransactionsScreen, AccountsScreen | __tests__/SheetBar.test.tsx (shared bar); none yet for Transactions/Accounts |
+| H-10 | Same entry added twice by a quick double tap on Save/Add | components/SimpleForm.tsx (SheetBar), TransactionsScreen, AccountsScreen | __tests__/SheetBar.test.tsx (shared bar), __tests__/TransactionDoubleTap.test.tsx (New transaction); none yet for Accounts |
 | H-11 | "-₱0.00" and "Over budget" with nothing overspent; "₱NaN" | balanceProjection.ts (computeLeftToSpend, formatPeso) | tests/centavos.test.mjs |
 | H-12 | Raw technical error text on screen | friendlyError.ts (+9 screens) | tests/friendlyError.test.mjs |
 
