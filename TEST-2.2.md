@@ -354,7 +354,8 @@ AG 2026-10-22 Bug-check batch 1 (Claude tested each with automatic checks first;
       (don't leave the box): it stays empty (it used to jump to 0). Type 20 and leave the
       box: it saves 20.
 
-AH 2026-10-22 afternoon: bad connection while opening, zero amounts grey. NOT YET TESTED.
+AH 2026-10-22 afternoon: bad connection while opening, zero amounts grey. Cath, 2026-10-22:
+   "device test as described".
 - AH1 With your phone on very weak signal (or turn mobile data off a second after tapping
       the app open), open Finance Flow: Home shows your household as usual (not empty),
       and it catches up once the connection is back. Add something meanwhile: it's kept.
