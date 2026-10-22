@@ -191,6 +191,16 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
     clearFieldError();
   }, [monthlyDayInput, semiDay1Input, semiDay2Input, biweeklyAnchorInput, onetimeDateInput, frequencyInput, paymentLogEntries, depositInput, modalOpen, clearFieldError]);
 
+  // Hooks stay above the loading return below, so they run on every render (2026-10-22:
+  // they used to sit below it, which can crash the page when the data briefly goes away,
+  // e.g. while logging out).
+  useEffect(() => {
+    if (!openAddNonce) return;
+    afterSlide(() => openAddModalRef.current());
+  }, [openAddNonce]);
+  // Leaving without adding one: nothing waits for it any more.
+  useEffect(() => () => cancelSalaryHandoff(), []);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -225,12 +235,6 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
     openAddModal();
     if (pagePerson) setPersonInput(pagePerson.name);
   };
-  useEffect(() => {
-    if (!openAddNonce) return;
-    afterSlide(() => openAddModalRef.current());
-  }, [openAddNonce]);
-  // Leaving without adding one: nothing waits for it any more.
-  useEffect(() => () => cancelSalaryHandoff(), []);
 
   async function saveLoggedPayday() {
     if (!model || !logSheet) return;

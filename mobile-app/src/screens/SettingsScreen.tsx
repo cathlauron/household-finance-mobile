@@ -449,6 +449,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [backupSheetOpen, setBackupSheetOpen] = useState(false);
   const [backupPassword, setBackupPassword] = useState('');
   const [backupError, setBackupError] = useState('');
+  const removeOldBackupFilesRef = useRef<() => void>(() => {});
   const [exportBusy, setExportBusy] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
   // H-01 (2026-10-22): in a shared household only the owner may clear all data.
@@ -525,6 +526,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [passSheetOpen, setPassSheetOpen] = useState(false);
   // The swipe preview only plays right after Swipe to delete is turned on here.
   const [showSwipePreview, setShowSwipePreview] = useState(false);
+
+  // (Above the loading return so it runs on every render; removeOldBackupFiles is below.)
+  useEffect(() => {
+    if (page === 'backup') removeOldBackupFilesRef.current();
+  }, [page]);
 
   if (!model) {
     return (
@@ -1194,6 +1200,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   // ---- Checkpoint 11.3: Data handlers ----
   // Removes backup files left in the phone's cache folder (older versions left a plain,
   // unlocked one there after every backup). Best effort.
+  removeOldBackupFilesRef.current = removeOldBackupFiles;
   async function removeOldBackupFiles() {
     try {
       const dir = FileSystem.cacheDirectory;
@@ -1202,9 +1209,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await Promise.all(names.filter(isBackupFileName).map((n) => FileSystem.deleteAsync(dir + n, { idempotent: true })));
     } catch {}
   }
-  useEffect(() => {
-    if (page === 'backup') removeOldBackupFiles();
-  }, [page]);
 
   function handleExportBackup() {
     setExportMsg('');

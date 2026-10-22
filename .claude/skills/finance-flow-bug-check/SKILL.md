@@ -59,6 +59,7 @@ Never use "should work", "probably", "looks fixed" or "done" without proof.
    - `npx tsc --noEmit` (no errors)
    - `npm test` (the logic checks)
    - `npm run test:screens` (the screen checks)
+   - `npm run test:hooks` (hooks in the right place; a mistake here crashes a screen)
    All must be clean. Re-read your whole diff once, as a stranger would.
 7. **Try it yourself** (next section) when the change is visible on screen.
 8. **Record it.** Add or update the `BUG-LOG.md` row (id, what Cath saw, cause, the
