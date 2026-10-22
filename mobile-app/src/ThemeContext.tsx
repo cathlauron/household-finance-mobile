@@ -1,7 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, startTransition } from 'react';
-import { Animated, Appearance, Easing, StyleSheet, View } from 'react-native';
-import { reduceMotionNow } from './reduceMotion';
-import { captureScreen } from 'react-native-view-shot';
+import React, { createContext, useContext, useEffect, useMemo, useState, startTransition } from 'react';
+import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, ThemeColors } from './theme';
 
@@ -42,91 +40,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [mode]);
 
-  // Version 2.2 (Cath: the switch lagged; then the fade went fully black/white): a real
-  // cross-fade. The screen as it looks now is photographed and laid on top, the app
-  // recolours underneath (unseen), then the photo fades away to show the new look. So
-  // it goes smoothly from the old look straight to the new one. With the phone set to
-  // remove animations (or if the photo can't be taken) it just switches.
-  const isDarkRef = useRef(isDark);
-  isDarkRef.current = isDark;
-  const fade = useRef(new Animated.Value(0)).current;
-  const [shot, setShot] = useState<string | null>(null);
-  const pendingRef = useRef<{ m: ColorMode; toDark: boolean } | null>(null);
-  const revealRef = useRef(false);
-  const switchNow = (m: ColorMode, toDark: boolean) => {
-    setModeState(m);
-    startTransition(() => {
-      setIsDark(toDark);
-    });
-  };
-  // Fades the photo of the old look away (a couple of frames after the new look is drawn).
-  const reveal = () =>
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        Animated.timing(fade, { toValue: 0, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
-          if (finished) setShot(null);
-        })
-      )
-    );
-  const switchUnderShot = () => {
-    const p = pendingRef.current;
-    if (!p) return;
-    pendingRef.current = null;
-    setModeState(p.m);
-    if (p.toDark === isDarkRef.current) {
-      // Tapped back to the look already showing before the fade began: nothing to
-      // recolour, just let the photo go (it must never stay on the screen).
-      reveal();
-      return;
-    }
-    revealRef.current = true;
-    setIsDark(p.toDark);
-  };
+  // Version 2.2 (Cath: "I prefer the light/dark in 2.1, it's more responsive and smooth"):
+  // back to how 2.1 did it. The tap switches the mode straight away, in the same moment,
+  // with no photo, no fade and no waiting. (Tabs you're not looking at still catch up a
+  // moment later where you can't see, so the page you're on switches as quickly as it can.)
   const setMode = (m: ColorMode) => {
+    setModeState(m);
+    setIsDark(resolveIsDark(m));
     AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
-    const toDark = resolveIsDark(m);
-    // Tapped again while the fade is getting ready: the last tap wins (sweep fix).
-    if (pendingRef.current) {
-      pendingRef.current = { m, toDark };
-      return;
-    }
-    if (toDark === isDarkRef.current || reduceMotionNow()) {
-      switchNow(m, toDark);
-      return;
-    }
-    pendingRef.current = { m, toDark };
-    // If the photo never comes back, switch anyway (the switch can never get stuck).
-    let gotPhoto = false;
-    setTimeout(() => {
-      if (gotPhoto || !pendingRef.current) return;
-      const p = pendingRef.current;
-      pendingRef.current = null;
-      switchNow(p.m, p.toDark);
-    }, 1500);
-    captureScreen({ format: 'jpg', quality: 0.85, result: 'tmpfile' })
-      .then((uri) => {
-        if (!pendingRef.current) return; // already switched without it
-        gotPhoto = true;
-        fade.setValue(1);
-        setShot(uri);
-        // If the photo is slow to show, switch anyway.
-        setTimeout(switchUnderShot, 700);
-      })
-      .catch(() => {
-        // No photo: just switch, to the last tapped choice.
-        const p = pendingRef.current;
-        if (!p) return;
-        pendingRef.current = null;
-        switchNow(p.m, p.toDark);
-      });
   };
-  // Once the new colours are on screen, the photo of the old look fades away.
-  useEffect(() => {
-    if (!revealRef.current) return;
-    revealRef.current = false;
-    reveal();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDark]);
 
   const colors = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
   // 2.2 speed sweep: the same theme object until the colours really change.
@@ -135,21 +57,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={value}>
-      <View style={{ flex: 1 }}>
-        {children}
-        {/* Taps go through to the app underneath while it fades. */}
-        {shot && (
-          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <Animated.Image
-              source={{ uri: shot }}
-              onLoad={() => switchUnderShot()}
-              fadeDuration={0}
-              resizeMode="stretch"
-              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: fade }]}
-            />
-          </View>
-        )}
-      </View>
+      {children}
     </ThemeContext.Provider>
   );
 }

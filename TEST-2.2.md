@@ -324,3 +324,8 @@ AE 2026-10-22 Loan switch, subscription line, no swipe-delete, calendar layer. N
       bills/debts/loans in Transactions still swipe to "view" that item.
 - AE4 Calendar > + > (any, or Cancel) > back > open the calendar again > close it: Home
       looks normal, no calendar behind it. The calendar still rises from the bottom.
+
+AF 2026-10-22 Light/dark back to 2.1. NOT YET TESTED.
+- AF1 Home moon/sun: the whole page switches in the same moment you tap, no fade, no
+      photo, no wait (like 2.1). Same from Settings > Appearance. Other tabs are already
+      switched when you go to them.
