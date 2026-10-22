@@ -48,7 +48,7 @@ code says otherwise:
 
 | id | Status | Proof |
 |---|---|---|
-| H-01 | Fixed: owner only; warning names the others; members told why + offered Leave household | Proven: `__tests__/ClearAllData.test.tsx` (11 checks, red-green). Needs your phone: AG1/AG2 |
+| H-01 | Fixed: owner only; warning names the others; members told why + offered Leave household | Proven: `__tests__/ClearAllData.test.tsx` (11 checks) and on the real Settings page as member and owner `__tests__/SettingsClearAll.test.tsx` (old behaviour fails both). AG1/AG2 are look-arounds |
 | H-02 | Fixed: bigger storage on for every account; the household only moves into it when every phone reports 2.2+ | Proven (rules): `tests/partsGate.test.mjs` (red-green). Needs your phone: AG4 (two phones) |
 | H-03 | PARKED: needs Cath's yes (changes loading / saving) | - |
 | H-04 | PARKED: needs Cath's yes (changes syncing messages) | - |
