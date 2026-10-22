@@ -363,7 +363,7 @@ AH 2026-10-22 afternoon: bad connection while opening, zero amounts grey. Cath, 
       Loans totals, Groceries "Bought", and Transactions "Out" (no minus sign at zero).
       Anything above zero is still red.
 
-AI 2026-10-22 late afternoon: refunds. NOT YET TESTED.
+AI 2026-10-22 late afternoon: refunds. Cath, 2026-10-22: "device test as described".
 - AI1 Add an expense (Money out, e.g. ₱500 "Test shoes") with "Expecting a refund" on.
       Open it, Edit, switch to Money in, Save: the row no longer shows a refund badge, and
       its page has no "Mark refund as received".
