@@ -331,7 +331,9 @@ AF 2026-10-22 Light/dark back to 2.1. NOT YET TESTED.
       switched when you go to them.
 
 AG 2026-10-22 Bug-check batch 1 (Claude tested each with automatic checks first; these are
-   only the things a computer can't show). NOT YET TESTED. Before testing: `npm install`
+   only the things a computer can't show). Cath, 2026-10-22: "device test as described".
+   AG4 (two phones, needs the partner's phone on 2.2) and AG5 (app left open overnight)
+   can't be done in one sitting: still open until Cath confirms them. Before testing: `npm install`
    once after `git pull` (new testing tools).
 - AG1 Settings > Backup & Data > Clear all data & start fresh, as the household OWNER: the
       box says it clears it for you AND your partner (by name), button "Yes, clear it for
