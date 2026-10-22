@@ -377,3 +377,10 @@ AJ 2026-10-22 evening: PIN lock. Cath, 2026-10-22: "device test as described".
       your password, or try your PIN again in 5 minutes." Close the app completely and open
       it again: the same message is there and the right PIN still doesn't open it. Your
       password does. (Or wait 5 minutes: the PIN works again.)
+
+AK 2026-10-22 evening: small ones. NOT YET TESTED.
+- AK1 Settings > Notifications: turn "Notify me on this phone" off and on again: it stays
+      on, and nothing else in the app changes (it used to be able to undo a change your
+      partner made while the phone's permission pop-up was open).
+- AK2 Plan > Savings > a pot with a target date next year: its page says "by <date>, 2027"
+      (with the year), the same as the Savings list.

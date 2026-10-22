@@ -61,6 +61,10 @@ Never use "should work", "probably", "looks fixed" or "done" without proof.
    - `npm run test:screens` (the screen checks)
    - `npm run test:hooks` (hooks in the right place; a mistake here crashes a screen)
    All must be clean. Re-read your whole diff once, as a stranger would.
+   **Gate the save on it** (added 2026-10-22, after a failing check was committed once):
+   run the four checks with `set -e` (or `&&`) right before `git commit`, and make the
+   screen check's output fail the chain when it contains "failed". Never commit after
+   only reading a summary line.
 7. **Try it yourself** (next section) when the change is visible on screen.
 8. **Record it.** Add or update the `BUG-LOG.md` row (id, what Cath saw, cause, the
    check's file and name, status). Only add a `TEST-2.2.md` phone check (later
