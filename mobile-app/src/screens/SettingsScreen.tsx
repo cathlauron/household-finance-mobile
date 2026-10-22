@@ -1,4 +1,5 @@
 import { hapticSelection } from '../haptics';
+import { readyToAutoSave } from '../autoSaveInput';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotSaved, alertDidntWork, TRY_AGAIN } from '../messages';
@@ -497,6 +498,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       cautionThresholdMountedRef.current = true;
       return;
     }
+    // H-14: an empty box waits (it's saved as 0 only when you leave it).
+    if (!readyToAutoSave(cautionThresholdInput)) return;
     const timer = setTimeout(() => {
       saveCautionThreshold();
     }, 600);

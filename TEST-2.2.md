@@ -348,3 +348,6 @@ AG 2026-10-22 Bug-check batch 1 (Claude tested each with automatic checks first;
 - AG5 Leave the app open in the background overnight (no lock), open it in the morning:
       Home's date, days to payday and "due" labels are today's, not yesterday's.
 - AG6 Look-around: add a transaction and tap Add twice very quickly: only ONE is added.
+- AG7 Settings > Budgeting > the "Running low" percent: clear the box, wait 2 seconds
+      (don't leave the box): it stays empty (it used to jump to 0). Type 20 and leave the
+      box: it saves 20.
