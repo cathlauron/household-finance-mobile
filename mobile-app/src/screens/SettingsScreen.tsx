@@ -21,7 +21,9 @@ import { RowInteractionPreview } from '../components/RowInteractionPreview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
-import { useData } from '../DataContext';
+import { useData, withTimeout } from '../DataContext';
+import ClearAllData, { roleFromMembers, type ClearAllRole } from '../components/ClearAllData';
+import { getHouseholdMembers } from '../household';
 import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
@@ -443,8 +445,35 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   // ---- Checkpoint 11.3: Data (backup export + clear all data) ----
   const [exportMsg, setExportMsg] = useState('');
   const [exportBusy, setExportBusy] = useState(false);
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
+  // H-01 (2026-10-22): in a shared household only the owner may clear all data.
+  const [clearRole, setClearRole] = useState<ClearAllRole>(isLinked ? 'checking' : 'solo');
+  const [clearNames, setClearNames] = useState<{ others: string[]; owner: string | null }>({ others: [], owner: null });
+  useEffect(() => {
+    if (page !== 'backup') return;
+    if (!isLinked) {
+      setClearRole('solo');
+      return;
+    }
+    let alive = true;
+    setClearRole('checking');
+    (async () => {
+      try {
+        const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
+        if (!householdId) throw new Error('No household');
+        const members = await withTimeout(getHouseholdMembers(householdId), 8000, 'Timed out checking the household.');
+        if (!alive) return;
+        const r = roleFromMembers(members, getCurrentFirebaseUser()?.uid);
+        setClearRole(r.role);
+        setClearNames({ others: r.others, owner: r.owner });
+      } catch {
+        if (alive) setClearRole('unknown');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [page, isLinked, username]);
 
   // Version 2.2 (sweep): every hook sits above the loading screen's early return, so the
   // hooks run in the same order on every draw (a must in React; breaking it can crash).
@@ -1186,12 +1215,16 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }
 
   async function handleClearAllData() {
+    // Only just-you profiles and a household's owner may clear (see ClearAllData).
+    if (clearRole !== 'solo' && clearRole !== 'owner') return false;
+    if (clearRole === 'solo' && isLinked) return false;
     setClearBusy(true);
     try {
       await saveModel(defaultModel());
-      setClearConfirmOpen(false);
+      return true;
     } catch (e) {
       Alert.alert(...alertDidntWork('clear the data'));
+      return false;
     } finally {
       setClearBusy(false);
     }
@@ -1874,21 +1907,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
-        {!clearConfirmOpen ? (
-          <SettingsGroup plain footer="This can't be undone. You'll be asked to confirm first.">
-            <PlainRow title="Clear all data & start fresh" danger onPress={() => setClearConfirmOpen(true)} />
-          </SettingsGroup>
-        ) : (
-          <View style={styles.dangerConfirmBox}>
-            <Text style={styles.dangerConfirmText}>
-              This clears every entry for this profile — bills, debts, loans, income, savings, accounts, everything. Your username and password stay the same. This can't be undone.
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button variant="solidDanger" label="Yes, clear everything" onPress={handleClearAllData} loading={clearBusy} disabled={clearBusy} style={{ flex: 1 }} />
-              <Button variant="secondary" label="Cancel" onPress={() => setClearConfirmOpen(false)} style={{ flex: 1 }} />
-            </View>
-          </View>
-        )}
+        <ClearAllData
+          role={clearRole}
+          partnerNames={clearNames.others}
+          ownerName={clearNames.owner}
+          busy={clearBusy}
+          onClear={handleClearAllData}
+          onLeave={() => navigation.push('Profile', { section: 'household' })}
+        />
         </>
         )}
 
