@@ -9,7 +9,8 @@
 // it; "fill:Placeholder=value" = type into a box; "wait:ms" = wait and take a picture;
 // "later:2026-10-23T08:00" = put the app away, move the clock to that local time, bring
 // it back (needs WALK_START_TIME, e.g. WALK_START_TIME=2026-10-22T23:50, so the page
-// starts on a fake clock); "expect:text" = fail if that text isn't on screen.
+// starts on a fake clock); "expect:text" = fail if that text isn't on screen;
+// "scroll:600" = scroll down that many pixels (negative = up).
 // Pictures and a log go to mobile-app/web-shots (not saved to git).
 import { chromium } from 'playwright';
 import http from 'node:http';
@@ -89,6 +90,13 @@ for (const step of process.argv.slice(2)) {
     const seen = await page.getByText(want, { exact: false }).first().isVisible().catch(() => false);
     if (!seen) problems.push(`EXPECTED BUT MISSING: "${want}"`);
     console.log(seen ? `ok: sees "${want}"` : `MISSING: "${want}"`);
+    continue;
+  }
+  if (step.startsWith('scroll:')) {
+    await page.mouse.move(195, 420);
+    await page.mouse.wheel(0, Number(step.slice(7)));
+    await page.waitForTimeout(1200);
+    await picture(`scrolled ${step.slice(7)}`);
     continue;
   }
   if (step.startsWith('wait:')) {
