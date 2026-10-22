@@ -42,6 +42,7 @@ import {
   saveHouseholdPendingBase,
   loadHouseholdPendingBase,
   saveCachedHouseholdKey,
+  loadCachedHouseholdKey,
 } from './storage';
 import { cancelLinkCode, finishHostLink } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
@@ -616,6 +617,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       return loaded;
     } catch (e) {
+      // H-03 (2026-10-22, Cath chose this): a dropped connection while opening used to show
+      // an EMPTY household, as if not linked, and anything added then overwrote this phone's
+      // copy and the online backup. Now the copy saved on this phone opens instead (still
+      // linked when the household key is saved here too), and the live link reconnects in
+      // the background, merging both sides the same way as after being offline.
+      const fromPhone = await openFromPhoneCopy(username, key, options).catch(() => null);
+      if (fromPhone) return fromPhone;
       const fallback = defaultModel();
       setModel(fallback);
       setIsLinked(false);
@@ -623,6 +631,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  // H-03: opens the copy saved on this phone after the online part of opening failed.
+  // Returns null when there's no usable copy here (the old behaviour then applies).
+  async function openFromPhoneCopy(
+    username: string,
+    key: CryptoJS.lib.WordArray,
+    options: { deferNotifications?: boolean }
+  ): Promise<HouseholdModel | null> {
+    if (usernameRef.current !== username) return null; // switched account meanwhile
+    const encrypted = await loadEncryptedProfileData(username);
+    if (!encrypted) return null;
+    const local = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+    const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
+    if (householdId) {
+      const cached = await loadCachedHouseholdKey(username);
+      // Linked but the household key isn't saved on this phone: can't safely open it here.
+      if (!cached || cached.householdId !== householdId) return null;
+      if (usernameRef.current !== username) return null;
+      householdIdRef.current = householdId;
+      householdKeyRef.current = unwrapHouseholdKey(cached.wrappedKey, key);
+      // Like opening offline: changes made now wait, and are merged with the online copy
+      // once connected (never replaced by it).
+      awaitingOnlineRef.current = householdId;
+      lastSyncedModelRef.current = local;
+      try {
+        const baseText = await loadHouseholdPendingBase(username);
+        if (baseText) {
+          lastSyncedModelRef.current = sanitizeModelIds(decryptJSON<HouseholdModel>(key, baseText));
+          setPendingChanges(1);
+        }
+      } catch {}
+      setModel(local);
+      setIsLinked(true);
+      // The live link keeps retrying until the connection is back.
+      setTimeout(() => goOnline(), 3000);
+    } else {
+      setModel(local);
+      setIsLinked(false);
+    }
+    if (!options.deferNotifications) rescheduleBillNotifications(local).catch(() => {});
+    return local;
   }
 
 
