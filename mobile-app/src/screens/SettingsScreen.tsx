@@ -43,7 +43,8 @@ import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
 import { SettingsGroup, SettingsRow, PlainRow, SegmentRow } from '../components/SettingsHub';
 import { PickerRow, Choices, AmountRow, SheetBar, FormGroup, PasswordRow, SheetHero } from '../components/SimpleForm';
-import { deriveKey, decryptJSON } from '../encryption';
+import { deriveKey, decryptJSON, generateSalt } from '../encryption';
+import { makeBackupText, backupFileName, isBackupFileName } from '../backupFile';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
@@ -444,6 +445,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   // ---- Checkpoint 11.3: Data (backup export + clear all data) ----
   const [exportMsg, setExportMsg] = useState('');
+  // H-05 (2026-10-22): the backup is locked with the account password, asked for here.
+  const [backupSheetOpen, setBackupSheetOpen] = useState(false);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupError, setBackupError] = useState('');
   const [exportBusy, setExportBusy] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
   // H-01 (2026-10-22): in a shared household only the owner may clear all data.
@@ -1187,31 +1192,71 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }
 
   // ---- Checkpoint 11.3: Data handlers ----
-  async function handleExportBackup() {
-    if (!model) return;
+  // Removes backup files left in the phone's cache folder (older versions left a plain,
+  // unlocked one there after every backup). Best effort.
+  async function removeOldBackupFiles() {
+    try {
+      const dir = FileSystem.cacheDirectory;
+      if (!dir) return;
+      const names = await FileSystem.readDirectoryAsync(dir);
+      await Promise.all(names.filter(isBackupFileName).map((n) => FileSystem.deleteAsync(dir + n, { idempotent: true })));
+    } catch {}
+  }
+  useEffect(() => {
+    if (page === 'backup') removeOldBackupFiles();
+  }, [page]);
+
+  function handleExportBackup() {
     setExportMsg('');
+    setBackupPassword('');
+    setBackupError('');
+    setBackupSheetOpen(true);
+  }
+
+  // H-05: check the password, lock the backup with it, share the file, then remove it.
+  async function handleConfirmBackup() {
+    if (!model) return;
+    if (!backupPassword) {
+      setBackupError('Enter your account password.');
+      return;
+    }
+    setBackupError('');
     setExportBusy(true);
     await paintBusy();
+    let fileUri: string | null = null;
     try {
-      const json = JSON.stringify(model, null, 2);
-      const fileUri = FileSystem.cacheDirectory + `finance-flow-backup-${Date.now()}.json`;
-      await FileSystem.writeAsStringAsync(fileUri, json, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      const canShare = await Sharing.isAvailableAsync();
-      if (!canShare) {
-        setExportMsg('Saving/sharing files is not available on this device.');
-        setExportBusy(false);
+      if (!(await verifyPassword(backupPassword))) {
+        setBackupError('Incorrect password.');
         return;
       }
-      await Sharing.shareAsync(fileUri, {
-        mimeType: 'application/json',
-        dialogTitle: 'Save your backup',
-      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        setBackupError('Saving/sharing files is not available on this device.');
+        return;
+      }
+      const salt = await generateSalt();
+      const iv = await generateSalt();
+      const text = makeBackupText(getModel() ?? model, deriveKey(backupPassword, salt), salt, iv);
+      await removeOldBackupFiles();
+      fileUri = FileSystem.cacheDirectory + backupFileName();
+      await FileSystem.writeAsStringAsync(fileUri, text, { encoding: FileSystem.EncodingType.UTF8 });
+      setBackupSheetOpen(false);
+      setBackupPassword('');
+      await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Save your backup' });
+      setExportMsg('Backup saved. It is locked with your password; keep that password safe.');
     } catch (e) {
+      setBackupError("Couldn't create the backup file. Please try again.");
       setExportMsg("Couldn't create the backup file. Please try again.");
+    } finally {
+      setExportBusy(false);
+      // The copy in the cache folder is no longer needed once the share sheet has closed
+      // (the app you shared to has its own copy). Removed a little later, to give that app
+      // time to finish reading it; anything left is removed next time this page opens.
+      if (fileUri) {
+        const uri = fileUri;
+        setTimeout(() => FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {}), 60000);
+      }
     }
-    setExportBusy(false);
   }
 
   async function handleClearAllData() {
@@ -1882,7 +1927,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <>
         {/* Version 2.1 (round 6, X5): while saving a backup, a small house beside the title draws itself. */}
         <BusySectionTitle busy={exportBusy} label="YOUR DATA" words={['Gathering your data…', 'Making your file…', 'Almost there…']} />
-        <SettingsGroup label={exportBusy ? undefined : 'Your data'} plain footer={exportMsg || 'Everything is encrypted on this phone before it is saved online.'}>
+        <SettingsGroup label={exportBusy ? undefined : 'Your data'} plain footer={exportMsg || 'The backup file is locked with your password.'}>
           <PlainRow
             title="Save a backup"
             onPress={exportBusy ? undefined : handleExportBackup}
@@ -2123,6 +2168,39 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {editingRuleId && <Button label="Delete this rule" variant="destructive" onPress={handleDeleteRule} />}
 
         <Button label="Cancel" variant="quiet" onPress={closeRuleModal} />
+      </BottomSheet>
+
+      {/* H-05: Save a backup asks for the password that locks the file. */}
+      <BottomSheet
+        visible={backupSheetOpen}
+        onClose={() => { if (!exportBusy) setBackupSheetOpen(false); }}
+        grouped
+        header={
+          <SheetBar
+            title="Save a backup"
+            onCancel={() => setBackupSheetOpen(false)}
+            onDone={handleConfirmBackup}
+            doneLabel="Save"
+            busy={exportBusy}
+            doneDisabled={!backupPassword}
+          />
+        }
+      >
+        <BusyHero
+          busy={exportBusy}
+          icon="lock-closed-outline"
+          title="Lock it with your password"
+          sub="The backup file is locked with your account password. You'll need it to open the file."
+          words={['Checking your password…', 'Locking your file…', 'Almost there…']}
+        />
+        <View style={{ opacity: exportBusy ? 0.45 : 1 }} pointerEvents={exportBusy ? 'none' : 'auto'}>
+          <FormGroup>
+            <PasswordRow label="Password" value={backupPassword} onChangeText={setBackupPassword} placeholder="Your password" autoFocus testID="backup-password-input" />
+          </FormGroup>
+        </View>
+        <Text style={[styles.sheetNote, backupError ? { color: colors.error } : null]}>
+          {backupError || (exportBusy ? '' : 'Choose where to keep it next, like Google Drive or email.')}
+        </Text>
       </BottomSheet>
 
       {/* Fingerprint: confirm the password (version 2.1: the app's usual bottom sheet). */}
