@@ -81,6 +81,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-17 | Deleting a refund entry left its expense saying "received" | transactionActions.ts (deleteManualTxn), TransactionsScreen | tests/refundDelete.test.mjs |
 | H-18 | 5 wrong PINs: reopening the app gave 5 fresh tries, endlessly | pin.ts, quickUnlock.ts, screens/PinUnlockScreen.tsx | __tests__/PinLockout.test.tsx, __tests__/PinLockScreen.test.tsx |
 | H-20 | Turning on reminders after the permission pop-up undid changes that arrived meanwhile | screens/SettingsScreen.tsx | __tests__/SettingsNotifyStale.test.tsx |
+| H-22 | Pot page target date had no year (Savings list had it) | screens/PotDetailScreen.tsx | __tests__/PotTargetYear.test.tsx |
 
 ## Still open (not fixed yet)
 

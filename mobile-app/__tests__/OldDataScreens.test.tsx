@@ -7,6 +7,7 @@ import { defaultModel } from '../src/defaultModel';
 // saved by an older app version (missing the newer lists: trips, events, groceries, shared
 // expenses, rules, payees, ...) and with a full household like Cath's.
 let mockModel: any;
+let mockParams: any = {};
 const mockProxy = () => new Proxy({}, { get: (_t, k) => (k === '__esModule' ? true : () => ({})) });
 jest.mock('firebase/firestore', () => mockProxy());
 jest.mock('firebase/auth', () => mockProxy());
@@ -26,7 +27,7 @@ jest.mock('../src/DataContext', () => ({
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => ({ navigate: jest.fn(), setOptions: jest.fn(), addListener: () => () => {}, goBack: jest.fn(), push: jest.fn(), getState: () => ({ routes: [] }) }),
-  useRoute: () => ({ name: 'X', params: {} }),
+  useRoute: () => ({ name: 'X', params: mockParams }),
   useFocusEffect: () => {},
   useIsFocused: () => true,
 }));
@@ -109,6 +110,7 @@ test.each([['Plan', 'PlanScreen'], ['Transactions', 'TransactionsScreen'], ['Bil
     SavingsScreen: /Emergency fund/, GoalsScreen: /Pay off motorcycle/, SharedExpensesScreen: /Dinner/, GroceriesScreen: /Rice 5kg/,
     TravelScreen: /Baguio/, EventsScreen: /Mama/, IncomeScreen: /BPO salary|Cath/, AccountsScreen: /BPI Savings/, SubscriptionsScreen: /Netflix/,
   };
+  if (process.env.SHOW_TEXT_ALL) console.log('TEXT', file, text.slice(0, 1500));
   if (expected[file]) expect(text).toMatch(expected[file]);
 }, 30000);
 
@@ -137,3 +139,44 @@ test.each(SCREENS)('%s opens with older data', async (_name, file) => {
   }
   expect(errors.filter((e) => /TypeError|Cannot read|is not a function|undefined is not/.test(e))).toEqual([]);
 }, 30000);
+
+// Home and the detail pages (2026-10-22 bug hunt, areas 2 and 5).
+const DETAIL: [string, string, any, any?][] = [
+  ['Home', 'HomeScreen', { username: 'cath' }],
+  ['Bill page', 'PayDetailScreen', {}, { kind: 'bill', id: 'b1' }],
+  ['Paid subscription page', 'PayDetailScreen', {}, { kind: 'bill', id: 'b2' }],
+  ['Debt page', 'PayDetailScreen', {}, { kind: 'debt', id: 'dt1' }],
+  ['Loan page', 'PayDetailScreen', {}, { kind: 'loan', id: 'l1' }],
+  ['Credit card page', 'CardDetailScreen', {}, { group: 'credit', id: 'k1' }],
+  ['Debit card page', 'CardDetailScreen', {}, { group: 'debit', id: 'd1' }],
+  ['Pot page', 'PotDetailScreen', {}, { id: 'g1' }],
+  ['Transaction page', 'TransactionDetailScreen', {}, { id: 'manual-t2' }],
+  ['Missing bill page (deleted elsewhere)', 'PayDetailScreen', {}, { kind: 'bill', id: 'gone' }],
+  ['Missing pot page (deleted elsewhere)', 'PotDetailScreen', {}, { id: 'gone' }],
+];
+test.each(DETAIL)('%s opens with a full household', async (_name, file, props, params) => {
+  for (const data of [fullHousehold(), oldHousehold()]) {
+    mockModel = data;
+    mockParams = params ?? {};
+    const Screen = require(`../src/screens/${file}`).default;
+    const errors: any[] = [];
+    const spy = jest.spyOn(console, 'error').mockImplementation((...a: any[]) => { errors.push(a.map(String).join(' ')); });
+    try {
+      render(
+        <ThemeProvider>
+          <Screen {...props} />
+        </ThemeProvider>,
+      );
+      await act(async () => {});
+    } finally {
+      spy.mockRestore();
+    }
+    expect(errors.filter((e) => /TypeError|Cannot read|is not a function|undefined is not/.test(e))).toEqual([]);
+    const words: string[] = [];
+    const walk = (n: any) => { if (n == null) return; if (typeof n === 'string') return void words.push(n); if (Array.isArray(n)) return n.forEach(walk); walk(n.children); };
+    walk(require('@testing-library/react-native').screen.toJSON());
+    const text = words.join(' | ');
+    if (process.env.SHOW_TEXT) console.log('TEXT', text.slice(0, 3000));
+    expect(text).not.toMatch(/NaN|Infinity|undefined/);
+  }
+}, 60000);

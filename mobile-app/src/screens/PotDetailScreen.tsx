@@ -44,6 +44,11 @@ import type { PaymentMethod, SavingsGoal } from '../types';
 
 type Sheet = null | 'add' | 'out' | 'keptIn' | 'auto';
 
+function targetDateText(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -117,7 +122,9 @@ export default function PotDetailScreen() {
   if (target > 0) {
     sub = `of ${formatPeso(target)}`;
     if (ef && covered !== null) sub += ` · ${covered.toFixed(1)} of ${efTargetMonths(model)} months covered`;
-    else if (goal.targetDate) sub += ` · by ${shortDate(goal.targetDate)}`;
+    // H-22 (2026-10-22): with the year, the same as the Savings list (a target next year
+    // read like this year without it).
+    else if (goal.targetDate) sub += ` · by ${targetDateText(goal.targetDate)}`;
   } else if (ef && covered !== null) {
     sub = `${covered.toFixed(1)} months covered`;
   } else {

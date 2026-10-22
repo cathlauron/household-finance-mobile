@@ -14,10 +14,10 @@ check to prove) / possible (depends on timing or phone behaviour).
 |---|---|
 | 1. Data safety: saving, syncing, storage limit, Clear all, backup export | Done 2026-10-22 (part 1) |
 | 1b. Data safety: leaving / dissolving a household, linking, recovery key, Firestore rules | Next (needs a Firebase test setup; see 'Ideas') |
-| 2. Home | Part done 2026-10-22 (H-08, H-09, H-11) |
+| 2. Home | Done 2026-10-22 (H-08, H-09, H-11; Home opens with older and full data, amounts checked) |
 | 3. Transactions | Done 2026-10-22 (H-16, H-17) |
 | 4. To-Pay (Bills / Debts / Loans) | Checked 2026-10-22: payments, carry-over, undo, Feb 29 yearly bills, Still-to-pay total, overdue - no new bugs found |
-| 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | Part checked: pots can't move out more than saved; shared-expense splits round to centavos - no new bugs |
+| 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | Done 2026-10-22: all open with older and full data, amounts checked (H-22) |
 | 6. Settings | Done 2026-10-22 (H-20); saves after pop-ups checked |
 | 7. Sign-in / unlock / linking screens | Done 2026-10-22: H-18 fixed; sign-in reviewed (wrong password vs missing account vs someone else's username handled). Low-priority note H-19 |
 | 8. Notifications and the calendar | Reviewed 2026-10-22: reminders skip past times and logged paydays; calendar months change by swipe (checked on Cath's phone in L/M). Notifications themselves need a real phone |
@@ -84,11 +84,19 @@ code says otherwise:
 | H-20 | NEW + fixed: turning on reminders / weekly recap saved the data from before the phone's permission pop-up, quietly undoing anything that arrived meanwhile (e.g. the partner's change) | Proven: `__tests__/SettingsNotifyStale.test.tsx` (partner's bill lost before, kept after) |
 | H-21 | LOW, not fixed (pattern): "Delete this…?" confirm pop-ups save the data from when the pop-up opened, so a partner's change arriving during those seconds could be undone. Same fix as H-20 if Cath wants it | - |
 | - | Screen sweep: all 18 main screens open with older data AND with a full household (no crashes, no NaN/undefined on screen, data shown) | `__tests__/OldDataScreens.test.tsx` (36 checks; proven to fail when data is missing) |
+| H-22 | NEW + fixed: a pot's target date had the year on the Savings list but not on its own page ("by Aug 18" for Aug 2027) | Proven: `__tests__/PotTargetYear.test.tsx` (red-green) |
+| - | Detail pages sweep: bill, subscription, debt, loan, credit + debit card, pot, transaction pages, and pages for something deleted elsewhere, all open with full and older data | `__tests__/OldDataScreens.test.tsx` |
 
 ## Small questions (not bugs, Cath's taste) - ANSWERED 2026-10-22: grey when zero (H-15)
 
 - Zero amounts shown in red: To-Pay > Debts "Total debt logged ₱0.00" and Groceries "Bought
   ₱0.00" are red even at zero. Keep red, or grey when it's zero?
+
+## Question for Cath (2026-10-22, evening)
+
+- About 30 places show dates without a year ("Nov 11", "Aug 18"). Fine for dates this
+  year, misleading for next year (a trip, event or goal in 2027). Add the year only when the
+  date isn't in this year ("Aug 18, 2027", but still "Nov 11")?
 
 ## Question for Cath (2026-10-22, not a bug) - ANSWERED: stay as is (renames don't carry over)
 
