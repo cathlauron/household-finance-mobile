@@ -15,9 +15,9 @@ check to prove) / possible (depends on timing or phone behaviour).
 | 1. Data safety: saving, syncing, storage limit, Clear all, backup export | Done 2026-10-22 (part 1) |
 | 1b. Data safety: leaving / dissolving a household, linking, recovery key, Firestore rules | Next (needs a Firebase test setup; see 'Ideas') |
 | 2. Home | Part done 2026-10-22 (H-08, H-09, H-11) |
-| 3. Transactions | In progress (H-16) |
-| 4. To-Pay (Bills / Debts / Loans) | To do |
-| 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | To do |
+| 3. Transactions | Done 2026-10-22 (H-16, H-17) |
+| 4. To-Pay (Bills / Debts / Loans) | Checked 2026-10-22: payments, carry-over, undo, Feb 29 yearly bills, Still-to-pay total, overdue - no new bugs found |
+| 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | Part checked: pots can't move out more than saved; shared-expense splits round to centavos - no new bugs |
 | 6. Settings | To do |
 | 7. Sign-in / unlock / linking screens | To do |
 | 8. Notifications and the calendar | To do |
@@ -84,6 +84,13 @@ code says otherwise:
 
 - Zero amounts shown in red: To-Pay > Debts "Total debt logged ₱0.00" and Groceries "Bought
   ₱0.00" are red even at zero. Keep red, or grey when it's zero?
+
+## Question for Cath (2026-10-22, not a bug)
+
+- Renaming a category (Settings > Categories) only renames it in the list; past
+  transactions, bills, rules and watched categories keep the old name. Your web app did
+  this on purpose ("everywhere they're already used stays as free text"). Keep it, or should
+  a rename carry over to everything that used the old name?
 
 ## Ideas
 
