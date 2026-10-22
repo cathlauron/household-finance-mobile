@@ -813,3 +813,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Still open: AG4 (two phones, once the partner's phone has 2.2) and AG5 (app left open
   overnight). Next: Cath's answers on the parked items (H-03, H-04, H-06, H-13, zero
   amounts in red), then continue the bug hunt (Transactions, To-Pay, Settings, sign-in).
+
+- NEWEST (2026-10-22, afternoon): Cath's answers - H-03 do it (DONE: opens the phone's copy,
+  still linked, reconnects in the background; __tests__/OpenOnBadConnection), H-04 / H-06 /
+  H-13 leave as is, zero amounts grey (DONE as H-15 on 7 screens). Checks: tsc clean,
+  npm test 133/133, test:screens 37/37, test:hooks 0. Phone checks: TEST-2.2 section AH
+  (plus AG4/AG5 still open). Next: continue the bug hunt (Transactions, To-Pay, Settings,
+  sign-in). New features stay paused.
