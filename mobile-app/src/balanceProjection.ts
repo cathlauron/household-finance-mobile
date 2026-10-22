@@ -626,8 +626,13 @@ export function computeRunningBalances(
 // Small local helper so Calendar doesn't need its own copy — matches the web app's
 // two-decimal-places style.
 export function formatPeso(amount: number, currencySymbol: string = '₱'): string {
-  const isNegative = amount < 0;
-  const abs = Math.abs(amount);
+  // H-11 (2026-10-22): a missing or broken amount shows a dash, never "NaN" or "∞"; and the
+  // sign comes from the amount rounded to centavos, so a hair below zero is "₱0.00", not
+  // "-₱0.00".
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return `${currencySymbol}—`;
+  const cents = Math.round(amount * 100);
+  const isNegative = cents < 0;
+  const abs = Math.abs(cents) / 100;
   const formatted = abs.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return `${isNegative ? '-' : ''}${currencySymbol}${formatted}`;
 }
@@ -677,7 +682,10 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
     : new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const basis: 'payday' | 'endOfMonth' = payDate ? 'payday' : 'endOfMonth';
   const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
-  const amount = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  // H-11 (2026-10-22): rounded to centavos (sums like 0.30 - 0.10 - 0.20 land a hair below
+  // zero, which showed "-₱0.00" and "Over budget"). `+ 0` turns -0 into 0.
+  const raw = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  const amount = Math.round(raw * 100) / 100 + 0;
   return { amount, targetDate, basis };
 }
 
