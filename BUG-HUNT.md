@@ -13,8 +13,8 @@ check to prove) / possible (depends on timing or phone behaviour).
 | Area | Status |
 |---|---|
 | 1. Data safety: saving, syncing, storage limit, Clear all, backup export | Done 2026-10-22 (part 1) |
-| 1b. Data safety: leaving / dissolving a household, linking, recovery key, Firestore rules | Next |
-| 2. Home | To do |
+| 1b. Data safety: leaving / dissolving a household, linking, recovery key, Firestore rules | Next (needs a Firebase test setup; see 'Ideas') |
+| 2. Home | Part done 2026-10-22 (H-08, H-09, H-11) |
 | 3. Transactions | To do |
 | 4. To-Pay (Bills / Debts / Loans) | To do |
 | 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | To do |
@@ -44,7 +44,49 @@ code says otherwise:
 | H-05 | Settings > Export backup puts ALL money details in a plain, unlocked file on the phone and never deletes it; the line right under it says everything is encrypted. | certain | privacy | `screens/SettingsScreen.tsx` handleExportBackup ~1161, footer text ~1852 |
 | H-06 | A change made while offline and then closing the app straight away might not be kept: the phone's own copy is written in the background without waiting. | possible | could lose a change | `DataContext.tsx` persistModel ~1063-1091 |
 
-## Decisions needed from Cath before fixing (data rules: ask first)
+## Status after 2026-10-22 lunch batch (Cath's decisions: H-01 owner-only + option b, H-02 a, H-05 a)
+
+| id | Status | Proof |
+|---|---|---|
+| H-01 | Fixed: owner only; warning names the others; members told why + offered Leave household | Proven: `__tests__/ClearAllData.test.tsx` (11 checks, red-green). Needs your phone: AG1/AG2 |
+| H-02 | Fixed: bigger storage on for every account; the household only moves into it when every phone reports 2.2+ | Proven (rules): `tests/partsGate.test.mjs` (red-green). Needs your phone: AG4 (two phones) |
+| H-03 | PARKED: needs Cath's yes (changes loading / saving) | - |
+| H-04 | PARKED: needs Cath's yes (changes syncing messages) | - |
+| H-05 | Fixed: backup locked with the account password, cache copies removed | Proven: `tests/backupFile.test.mjs` (red-green). Needs your phone: AG3 |
+| H-06 | PARKED: needs Cath's yes (changes offline saving) | - |
+| H-07 | NEW + fixed: hooks after the loading return could crash Income and Settings (one was from today's backup change) | Proven: `npm run test:hooks` (3 errors -> 0), now a permanent check |
+| H-08 | NEW + fixed: Home card's last-month line ran past the right edge (Oct -> Nov, Jan -> Feb) | Proven: `tests/homeChart.test.mjs` (red-green) |
+| H-09 | NEW + fixed: Home / bell / To-Pay stayed on yesterday when the app was left open overnight | Proven: `__tests__/useToday.test.tsx` (red-green); seen in the hidden browser across midnight. Needs your phone: AG5 |
+| H-10 | NEW + fixed: a quick second tap on Save/Add while a form closed could add it twice | Proven for the shared Save bar (13 forms): `__tests__/SheetBar.test.tsx`. Transaction + account forms: changed, not yet confirmed (AG6) |
+| H-11 | NEW + fixed: spending exactly what an account held could show "-₱0.00" and "Over budget" (rose) | Proven: `tests/centavos.test.mjs` (4 red -> green) |
+| H-12 | NEW + fixed: 9 screens could show raw technical error text | Proven: `tests/friendlyError.test.mjs` (red-green) |
+| H-13 | PARKED: account balances aren't rounded to centavos; a card can show ₱0.00 in red. Rounding them changes what's saved when balances are baked in, so ask first | - |
+
+## Recommendations for the parked ones (Cath decides)
+
+- H-03 (opening with a bad connection shows an empty household): instead of an empty
+  household, open from the copy saved on this phone and keep trying to connect in the
+  background (the same way the app already opens when it starts offline). Nothing empty is
+  ever saved over your copies.
+- H-04 (false "Sync Failed"): when a save takes longer than 8 seconds, show "Still saving…
+  it will finish when the connection allows" instead of the alarm, and only say "Sync
+  Failed" if it really didn't arrive.
+- H-06 (offline change + closing the app at once): wait for the phone copy to finish saving
+  before the change counts as saved (a fraction of a second).
+- H-13: round account balances to centavos everywhere they're worked out.
+
+## Small questions (not bugs, Cath's taste)
+
+- Zero amounts shown in red: To-Pay > Debts "Total debt logged ₱0.00" and Groceries "Bought
+  ₱0.00" are red even at zero. Keep red, or grey when it's zero?
+
+## Ideas
+
+- Sign-in, linking and two-phone syncing can't be tested in Claude's workspace yet: the
+  Firebase emulator download is blocked there (storage.googleapis.com). Firestore rules
+  can still be read and reviewed.
+
+## Decisions needed from Cath before fixing (data rules: ask first) - ANSWERED 2026-10-22
 
 - H-01: in a shared household, should Clear all clear only your own things, clear the
   whole household with a stronger warning that names your partner, or not be offered?

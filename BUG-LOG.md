@@ -61,6 +61,20 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-039 | Who logged / changed it (stamps) | whoStamp code | logic (partly): whoStamp |
 | B-040 | Recovery key dashes, email format, email typo suggestions | typing helpers | logic (partly): typingHelpers |
 
+## Found by Claude's bug hunt (before Cath saw them)
+
+| id | What Cath would have seen | Where (file) | Guard |
+|---|---|---|---|
+| H-01 | Clear all data in a shared household erased it for both, warning said "this profile" | components/ClearAllData.tsx, screens/SettingsScreen.tsx | __tests__/ClearAllData.test.tsx |
+| H-02 | Storage full after ~3 receipts; partner stops seeing changes | partsGate.ts, householdPartsSync.ts | tests/partsGate.test.mjs |
+| H-05 | Backup file = every money detail, unlocked, left on the phone | backupFile.ts, screens/SettingsScreen.tsx | tests/backupFile.test.mjs |
+| H-07 | Income / Settings could crash when the data briefly went away (logging out) | screens/IncomeScreen.tsx, screens/SettingsScreen.tsx | npm run test:hooks (whole app) |
+| H-08 | Home card's last-month line past the right edge | homeChart.ts, components/HomeHero.tsx | tests/homeChart.test.mjs |
+| H-09 | Yesterday's Left to Spend / due labels after the app was left open overnight | useToday.ts, HomeScreen, HomeHero, useBellInbox, Bills/Debts/Loans | __tests__/useToday.test.tsx |
+| H-10 | Same entry added twice by a quick double tap on Save/Add | components/SimpleForm.tsx (SheetBar), TransactionsScreen, AccountsScreen | __tests__/SheetBar.test.tsx (shared bar); none yet for Transactions/Accounts |
+| H-11 | "-₱0.00" and "Over budget" with nothing overspent; "₱NaN" | balanceProjection.ts (computeLeftToSpend, formatPeso) | tests/centavos.test.mjs |
+| H-12 | Raw technical error text on screen | friendlyError.ts (+9 screens) | tests/friendlyError.test.mjs |
+
 ## Still open (not fixed yet)
 
 The full, current list lives in PROGRESS7.md, "Known issues / gotchas — still open"

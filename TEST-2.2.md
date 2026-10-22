@@ -329,3 +329,22 @@ AF 2026-10-22 Light/dark back to 2.1. NOT YET TESTED.
 - AF1 Home moon/sun: the whole page switches in the same moment you tap, no fade, no
       photo, no wait (like 2.1). Same from Settings > Appearance. Other tabs are already
       switched when you go to them.
+
+AG 2026-10-22 Bug-check batch 1 (Claude tested each with automatic checks first; these are
+   only the things a computer can't show). NOT YET TESTED. Before testing: `npm install`
+   once after `git pull` (new testing tools).
+- AG1 Settings > Backup & Data > Clear all data & start fresh, as the household OWNER: the
+      box says it clears it for you AND your partner (by name), button "Yes, clear it for
+      everyone". Tap Cancel (don't clear!).
+- AG2 Same on your partner's phone (a MEMBER, if you can): no clear button; it says only
+      the owner can, with "Leave household" (opens the Household page). Tap Cancel there.
+- AG3 Settings > Backup & Data > Save a backup: asks for your password. A wrong one says
+      "Incorrect password". The right one opens the share sheet; save it to Google Drive or
+      email it to yourself and check the file arrives (it's locked, so it looks like
+      gibberish if opened - that's correct).
+- AG4 Two phones (when your partner has 2.2): open the app on both, add something on each:
+      both see both changes as before. (Bigger storage switches on quietly in the
+      background; nothing should look different.)
+- AG5 Leave the app open in the background overnight (no lock), open it in the morning:
+      Home's date, days to payday and "due" labels are today's, not yesterday's.
+- AG6 Look-around: add a transaction and tap Add twice very quickly: only ONE is added.
