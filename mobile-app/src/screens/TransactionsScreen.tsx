@@ -302,6 +302,9 @@ export default function TransactionsScreen({
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // H-10 (2026-10-22): after a successful save the form is closing; a quick second tap on
+  // Save would add the same entry again. Blocked until the form is opened again.
+  const savedOnceRef = useRef(false);
   // Redesign: quick-add sheet extras.
   const [moreOpen, setMoreOpen] = useState(false);
   const [ruleFilled, setRuleFilled] = useState(false);
@@ -506,6 +509,7 @@ export default function TransactionsScreen({
   }
 
   function openAddModal() {
+    savedOnceRef.current = false;
     onFormOpened?.();
     setMoreOpen(false);
     setRuleFilled(false);
@@ -515,6 +519,7 @@ export default function TransactionsScreen({
   }
 
   function openEditModal(t: TransactionEntry) {
+    savedOnceRef.current = false;
     if (t.source !== 'manual' || !t.rawId) return;
     const raw = (model?.manualTransactions || []).find((m) => m.id === t.rawId);
     if (!raw) return;
@@ -620,6 +625,7 @@ export default function TransactionsScreen({
   }
 
   async function saveSalary() {
+    if (savedOnceRef.current) return;
     if (!model) return;
     const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
     setErrorMsg('');
@@ -653,6 +659,7 @@ export default function TransactionsScreen({
     setSaving(true);
     try {
       await saveModel(updated);
+      savedOnceRef.current = true;
       showLeafTick('Added');
       closeModal();
       onAdded?.();
@@ -664,6 +671,7 @@ export default function TransactionsScreen({
   }
 
   async function handleSave() {
+    if (savedOnceRef.current) return;
     if (!model) return;
     if (!editingId && directionInput === 'in' && incomeKindInput === 'salary') return saveSalary();
     // Extra income with no description gets the kind's name (e.g. "Bonus").
@@ -782,6 +790,7 @@ export default function TransactionsScreen({
     try {
       const wasNew = !editingId;
       await saveModel(updated);
+      savedOnceRef.current = true;
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
       if (wasNew) onAdded?.();

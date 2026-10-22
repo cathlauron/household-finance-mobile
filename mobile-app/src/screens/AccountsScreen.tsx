@@ -116,6 +116,9 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   const [last4Input, setLast4Input] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  // H-10 (2026-10-22): after a successful save the form is closing; a quick second tap on
+  // Save would add the same entry again. Blocked until the form is opened again.
+  const savedOnceRef = useRef(false);
 
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
@@ -131,6 +134,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   }
 
   function openAddModal(group: AccountGroup) {
+    savedOnceRef.current = false;
     setActiveGroup(group);
     setEditingId(null);
     setNameInput('');
@@ -141,6 +145,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   }
 
   function openEditModal(group: AccountGroup, account: BalanceAccountEntry) {
+    savedOnceRef.current = false;
     setActiveGroup(group);
     setEditingId(account.id);
     setNameInput(account.name);
@@ -161,6 +166,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
 
 
   async function handleSave() {
+    if (savedOnceRef.current) return;
     if (!activeGroup || !model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
@@ -229,6 +235,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     setSaving(true);
     try {
       await saveModel(updated);
+      savedOnceRef.current = true;
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {

@@ -23,13 +23,22 @@ import type { ThemeColors } from '../theme';
 export function SheetBar({ title, onCancel, onDone, doneLabel, busy, doneDisabled, hideCancel }: { title: string; onCancel: () => void; onDone: () => void; doneLabel: string; busy?: boolean; doneDisabled?: boolean; hideCancel?: boolean }) {
   const { colors } = useTheme();
   const off = !!busy || !!doneDisabled;
+  // H-10 (2026-10-22): a quick second tap on Save / Add (while the form is closing) is
+  // ignored, so an entry can't be added twice. A tap more than 0.8 s later works again.
+  const lastDoneAt = useRef(0);
+  const done = () => {
+    const now = Date.now();
+    if (now - lastDoneAt.current < 800) return;
+    lastDoneAt.current = now;
+    onDone();
+  };
   return (
     <View style={bar.row}>
       <TouchableOpacity onPress={onCancel} disabled={hideCancel} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={bar.side}>
         {!hideCancel && <Text style={[bar.btn, { color: colors.gold }]}>Cancel</Text>}
       </TouchableOpacity>
       <Text style={[bar.title, { color: colors.ink }]} numberOfLines={1}>{title}</Text>
-      <TouchableOpacity onPress={onDone} disabled={off} accessibilityRole="button" accessibilityState={{ disabled: off }} testID="simple-form-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[bar.side, { alignItems: 'flex-end' }]}>
+      <TouchableOpacity onPress={done} disabled={off} accessibilityRole="button" accessibilityState={{ disabled: off }} testID="simple-form-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[bar.side, { alignItems: 'flex-end' }]}>
         <Text style={[bar.btn, { color: colors.gold, fontWeight: '700', opacity: off ? 0.4 : 1 }]}>{doneLabel}</Text>
       </TouchableOpacity>
     </View>
