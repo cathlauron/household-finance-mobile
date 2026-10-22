@@ -1,3 +1,4 @@
+import { chartPoints } from '../homeChart';
 import React, { useMemo, useState } from 'react';
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import GradientFill from './GradientFill';
@@ -104,8 +105,7 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
   const chartW = Math.max(0, width - 40);
   const chartH = 50;
   const maxY = Math.max(1, ...month.thisCum, ...month.prevCum);
-  const pts = (arr: number[]) =>
-    arr.map((v, i) => `${((i / Math.max(1, month.daysThis - 1)) * chartW).toFixed(1)},${(chartH - 2 - (v / maxY) * (chartH - 6)).toFixed(1)}`);
+  const pts = (arr: number[]) => chartPoints(arr, month.daysThis, chartW, chartH, maxY);
   const thisPts = pts(month.thisCum);
   const prevPts = pts(month.prevCum);
   const lastPt = thisPts[thisPts.length - 1]?.split(',').map(Number);
