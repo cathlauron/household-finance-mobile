@@ -85,7 +85,7 @@ code says otherwise:
 - Zero amounts shown in red: To-Pay > Debts "Total debt logged ₱0.00" and Groceries "Bought
   ₱0.00" are red even at zero. Keep red, or grey when it's zero?
 
-## Question for Cath (2026-10-22, not a bug)
+## Question for Cath (2026-10-22, not a bug) - ANSWERED: stay as is (renames don't carry over)
 
 - Renaming a category (Settings > Categories) only renames it in the list; past
   transactions, bills, rules and watched categories keep the old name. Your web app did
