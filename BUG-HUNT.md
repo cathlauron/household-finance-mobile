@@ -18,7 +18,7 @@ check to prove) / possible (depends on timing or phone behaviour).
 | 3. Transactions | Done 2026-10-22 (H-16, H-17) |
 | 4. To-Pay (Bills / Debts / Loans) | Checked 2026-10-22: payments, carry-over, undo, Feb 29 yearly bills, Still-to-pay total, overdue - no new bugs found |
 | 5. Plan pages (Savings, Goals, Shared, Groceries, Travel, Events) | Part checked: pots can't move out more than saved; shared-expense splits round to centavos - no new bugs |
-| 6. Settings | To do |
+| 6. Settings | Done 2026-10-22 (H-20); saves after pop-ups checked |
 | 7. Sign-in / unlock / linking screens | Done 2026-10-22: H-18 fixed; sign-in reviewed (wrong password vs missing account vs someone else's username handled). Low-priority note H-19 |
 | 8. Notifications and the calendar | Reviewed 2026-10-22: reminders skip past times and logged paydays; calendar months change by swipe (checked on Cath's phone in L/M). Notifications themselves need a real phone |
 
@@ -81,6 +81,9 @@ code says otherwise:
 | H-17 | NEW + fixed: deleting a refund entry left its expense saying "received" | Proven: `tests/refundDelete.test.mjs` (red-green). All three delete paths now use one shared delete |
 | H-18 | NEW + fixed (security, Cath's rule): 5 wrong PINs only switched the lock screen to password until the app was reopened, so a PIN could be guessed by reopening again and again. Now the PIN is blocked for 5 minutes (saved on the phone); password and fingerprint still work; the password lifts the block | Proven: `__tests__/PinLockout.test.tsx`, `__tests__/PinLockScreen.test.tsx` (this morning's code fails). Needs your phone: AJ1 |
 | H-19 | LOW, not fixed: on a NEW phone, if the connection drops between two steps of signing in to a shared household, it asks for the recovery key instead of saying to check the connection (SignInScreen restore path, `loadHouseholdData` failure is treated like a wrong password). Rare | - |
+| H-20 | NEW + fixed: turning on reminders / weekly recap saved the data from before the phone's permission pop-up, quietly undoing anything that arrived meanwhile (e.g. the partner's change) | Proven: `__tests__/SettingsNotifyStale.test.tsx` (partner's bill lost before, kept after) |
+| H-21 | LOW, not fixed (pattern): "Delete this…?" confirm pop-ups save the data from when the pop-up opened, so a partner's change arriving during those seconds could be undone. Same fix as H-20 if Cath wants it | - |
+| - | Screen sweep: all 18 main screens open with older data AND with a full household (no crashes, no NaN/undefined on screen, data shown) | `__tests__/OldDataScreens.test.tsx` (36 checks; proven to fail when data is missing) |
 
 ## Small questions (not bugs, Cath's taste) - ANSWERED 2026-10-22: grey when zero (H-15)
 

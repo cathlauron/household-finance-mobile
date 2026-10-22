@@ -615,9 +615,12 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       }
     }
 
+    // H-20 (2026-10-22): the newest data (a change may have arrived while the phone's
+    // permission pop-up was open; saving the older copy would undo it).
+    const latest = getModel() ?? model;
     const updated: HouseholdModel = {
-      ...model,
-      settings: { ...model.settings, pushNotificationsEnabled: turningOn },
+      ...latest,
+      settings: { ...latest.settings, pushNotificationsEnabled: turningOn },
     };
     try {
       await saveModel(updated);
@@ -642,9 +645,11 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       }
     }
 
+    // H-20: the newest data (see togglePushNotifications).
+    const latest = getModel() ?? model;
     const updated: HouseholdModel = {
-      ...model,
-      settings: { ...model.settings, weeklyRecapEnabled: turningOn },
+      ...latest,
+      settings: { ...latest.settings, weeklyRecapEnabled: turningOn },
     };
     try {
       await saveModel(updated);
