@@ -371,3 +371,9 @@ AI 2026-10-22 late afternoon: refunds. Cath, 2026-10-22: "device test as describ
       received": a "Refund: ..." money-in appears. Delete that refund entry: the expense
       goes back to waiting for its refund (its page offers "Mark refund as received"
       again). Delete both test entries afterwards.
+
+AJ 2026-10-22 evening: PIN lock. NOT YET TESTED. (Needs a lock PIN set in Settings.)
+- AJ1 Lock the app, then type a WRONG PIN 5 times: it says "Too many incorrect PINs. Use
+      your password, or try your PIN again in 5 minutes." Close the app completely and open
+      it again: the same message is there and the right PIN still doesn't open it. Your
+      password does. (Or wait 5 minutes: the PIN works again.)
