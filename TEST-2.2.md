@@ -362,3 +362,12 @@ AH 2026-10-22 afternoon: bad connection while opening, zero amounts grey. Cath, 
 - AH2 To-Pay > Debts with no debts: "Total debt logged ₱0.00" is grey. Same for Bills /
       Loans totals, Groceries "Bought", and Transactions "Out" (no minus sign at zero).
       Anything above zero is still red.
+
+AI 2026-10-22 late afternoon: refunds. NOT YET TESTED.
+- AI1 Add an expense (Money out, e.g. ₱500 "Test shoes") with "Expecting a refund" on.
+      Open it, Edit, switch to Money in, Save: the row no longer shows a refund badge, and
+      its page has no "Mark refund as received".
+- AI2 Add another expense with a refund expected. On its page tap "Mark refund as
+      received": a "Refund: ..." money-in appears. Delete that refund entry: the expense
+      goes back to waiting for its refund (its page offers "Mark refund as received"
+      again). Delete both test entries afterwards.
