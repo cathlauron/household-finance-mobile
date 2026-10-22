@@ -826,3 +826,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   the refund; H-17 deleting a refund entry left its expense "received" (all deletes now
   share deleteManualTxn). Both proven red-green. Checks: npm test 136/136, test:screens
   38/38, hooks 0. Phone: TEST-2.2 section AI. Next: rest of Transactions, then To-Pay.
+
+- NEWEST (2026-10-22, evening): Cath device-tested AI. To-Pay checked, no new bugs.
+  Category renames stay as is (Cath). H-18 (security): 5 wrong PINs now block the PIN
+  for 5 minutes, saved on the phone (Cath chose 5 minutes; password and fingerprint still
+  work). Checks: npm test 136/136, test:screens 42/42, hooks 0. Phone: TEST-2.2 AJ.
+  Next: rest of sign-in / linking screens, Settings, notifications + calendar.
