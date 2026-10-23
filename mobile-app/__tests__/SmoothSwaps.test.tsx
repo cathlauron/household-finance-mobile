@@ -69,3 +69,16 @@ test('set-up steps with Remove animations on: the old step goes at once', () => 
   );
   expect(screen.queryByText('step one')).toBeNull();
 });
+
+// 2026-10-23: a form that waits for a page's slide to finish ("Add an account", "Edit" on
+// a page) must open even if the app never counts as settled (an endless animation).
+test('afterSlide still runs (once) when the app never settles', () => {
+  const rn = require('react-native');
+  const spy = jest.spyOn(rn.InteractionManager, 'runAfterInteractions').mockImplementation(() => ({ cancel: () => {} }) as any);
+  const { afterSlide } = require('../src/afterSlide');
+  const fn = jest.fn();
+  afterSlide(fn);
+  act(() => jest.advanceTimersByTime(1100));
+  expect(fn).toHaveBeenCalledTimes(1);
+  spy.mockRestore();
+});
