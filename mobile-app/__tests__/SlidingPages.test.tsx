@@ -109,3 +109,83 @@ test('a new row on a page you cannot see only lights up once that page is showin
   fireEvent.press(screen.getByTestId('tab-debts'));
   expect(screen.getByTestId('glow').props.children).toBe('d2');
 });
+
+// Cath, 2026-10-23 afternoon: on To-Pay, past Loans (or before Bills) the next main tab
+// comes in with your finger, and letting go far enough goes there.
+describe('To-Pay: past the ends, the main tabs take over', () => {
+  const { tabDrag } = require('../src/navigation/tabDrag');
+  let went: number[] = [];
+  function TabsHarness({ start = 'loans' as Id }) {
+    const [value, setValue] = useState<Id>(start);
+    return (
+      <SlidingPages<Id>
+        testID="pages"
+        options={OPTIONS}
+        value={value}
+        onChange={(id) => {
+          changes.push(id);
+          setValue(id);
+        }}
+        edgeToTabs={{ index: 2, count: 4, go: (d) => went.push(d) }}
+        renderPage={(id) => <Text>{id} page</Text>}
+      />
+    );
+  }
+  function dragOnly(dx: number) {
+    fireGestureHandler(getByGestureTestId('pages-pan'), [
+      { state: State.BEGAN, translationX: 0 },
+      { state: State.ACTIVE, translationX: dx / 2 },
+      { state: State.ACTIVE, translationX: dx },
+    ]);
+  }
+  beforeEach(() => {
+    went = [];
+    tabDrag.setValue(0);
+  });
+
+  test('past Loans the drag moves the tabs (Plan comes in with the finger)', async () => {
+    const tabs = require('../src/navigation/tabDrag');
+    const spy = jest.spyOn(tabs, 'setTabDrag');
+    renderInApp(<TabsHarness />);
+    measure();
+    dragOnly(-150);
+    await settle();
+    // While the finger was down, the tabs were moved by the drag past Loans.
+    expect(Math.min(...spy.mock.calls.map((c: any[]) => c[0]))).toBeLessThan(-100);
+    spy.mockRestore();
+  });
+
+  test('let go past Loans far enough: goes to the next tab; the sub-page stays Loans', async () => {
+    renderInApp(<TabsHarness />);
+    measure();
+    swipe(-200);
+    await settle();
+    expect(went).toEqual([1]);
+    expect(changes).toEqual([]);
+  });
+
+  test('before Bills: goes to the previous tab', async () => {
+    renderInApp(<TabsHarness start="bills" />);
+    measure();
+    swipe(200);
+    await settle();
+    expect(went).toEqual([-1]);
+  });
+
+  test('a short drag past Loans goes nowhere', async () => {
+    renderInApp(<TabsHarness />);
+    measure();
+    swipe(-40, -100);
+    await settle();
+    expect(went).toEqual([]);
+  });
+
+  test('in the middle, swipes still turn the sub-page (tabs untouched)', async () => {
+    renderInApp(<TabsHarness start="debts" />);
+    measure();
+    swipe(-200);
+    await settle();
+    expect(changes).toEqual(['loans']);
+    expect(went).toEqual([]);
+  });
+});

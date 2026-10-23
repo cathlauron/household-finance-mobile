@@ -118,10 +118,15 @@ test('pages with sub-pages slide through SlidingPages (not their own switch)', (
   }
 });
 
-test('swiping past the last sub-page never jumps to another main tab', () => {
+// Cath, 2026-10-23 morning: past the ends, a soft bounce. Afternoon, for To-Pay (a main
+// tab): past Loans / before Bills the next main tab follows your finger instead. Pages
+// that aren't main tabs keep the bounce.
+test('past the last sub-page: To-Pay hands over to the main tabs, other pages bounce', () => {
   for (const name of SLIDING) {
     const f = files.find((x) => x.name === name);
     assert.doesNotMatch(code(f.text), /navigate\(d > 0 \?/, name);
+    if (name === 'screens/ToPayScreen.tsx') assert.match(code(f.text), /edgeToTabs=/, name);
+    else assert.doesNotMatch(code(f.text), /edgeToTabs=/, name);
   }
 });
 

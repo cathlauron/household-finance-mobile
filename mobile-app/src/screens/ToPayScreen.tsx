@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import SlidingPages from '../components/SlidingPages';
+import { useNavigation } from '@react-navigation/native';
+import { TAB_ORDER } from '../navigation/tabDrag';
 import { setToPaySub } from '../fabActions';
 import { closeOpenSwipeRows } from '../components/SwipeableRow';
 import { useStickyState } from '../stickyState';
@@ -93,6 +95,10 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   // Version 2.1: swipe between Bills, Debts and Loans. Smoothness 2026-10-23 (Cath picked
   // "follows your finger"): the pages now slide with your finger, and past Loans or Bills
   // they bounce instead of jumping to Plan / Transactions (use the tab bar for those).
+  // Changed the same afternoon (Cath): past Loans / before Bills the next main tab comes in
+  // with your finger and you land there, like swiping between tabs.
+  const navigation = useNavigation<any>();
+  const toPayIndex = TAB_ORDER.indexOf('To-Pay');
   return (
     <SafeAreaView style={styles.container}>
       <SlidingPages<SubTab>
@@ -102,6 +108,7 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
         value={activeSubTab}
         onChange={setActiveSubTab}
         switcherWrapStyle={styles.switcherRow}
+        edgeToTabs={{ index: toPayIndex, count: TAB_ORDER.length, go: (d) => navigation.navigate(TAB_ORDER[toPayIndex + d]) }}
         renderPage={(id) =>
           id === 'bills' ? (
             <BillsScreen

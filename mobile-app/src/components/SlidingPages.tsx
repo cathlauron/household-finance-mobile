@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, { cancelAnimation, Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import SegmentedControl from './SegmentedControl';
 import { holdForSubPages, heldOnUI, SwipeTabsContext } from '../navigation/swipeTabs';
+import { commitTabDrag, edgeGive, releaseTabDrag, setTabDrag } from '../navigation/tabDrag';
 import { hapticSelection } from '../haptics';
 import { useReduceMotion } from '../reduceMotion';
 import { CURVE, SUBPAGE_MS } from '../motion';
@@ -43,6 +44,10 @@ type Props<T extends string> = {
   // take their own height, and the height glides between them as you swipe, so what's
   // below moves smoothly instead of jumping.
   inline?: boolean;
+  // On a main tab (To-Pay, Cath 2026-10-23): past the first or last page the swipe moves
+  // the main tabs instead (the next tab comes in with your finger) and letting go far
+  // enough goes there. Without it, the ends bounce (Savings, Groceries...).
+  edgeToTabs?: { index: number; count: number; go: (direction: 1 | -1) => void };
   testID?: string;
 };
 
@@ -59,6 +64,7 @@ export default function SlidingPages<T extends string>({
   hideSwitcher,
   between,
   inline,
+  edgeToTabs,
   testID,
 }: Props<T>) {
   const count = options.length;
@@ -119,6 +125,31 @@ export default function SlidingPages<T extends string>({
   }, []);
   const warmUp = useCallback(() => setWarm(true), []);
 
+  // Past the ends on a main tab: the overflow moves the tabs (TabPage reads tabDrag).
+  const edgeRef = useRef(edgeToTabs);
+  edgeRef.current = edgeToTabs;
+  const hasEdge = !!edgeToTabs;
+  const tabsDragging = useSharedValue(false);
+  const dragTabs = useCallback((px: number) => {
+    const e = edgeRef.current;
+    if (e) setTabDrag(edgeGive(px, e.index, e.count));
+  }, []);
+  const endTabs = useCallback((px: number, vx: number) => {
+    const e = edgeRef.current;
+    if (!e) return;
+    const width = widthSV.value;
+    const dir: 1 | -1 = px < 0 ? 1 : -1;
+    const next = e.index + dir;
+    const far = Math.abs(px) > width * 0.25 || (Math.abs(vx) > 600 && Math.abs(px) > 24 && Math.sign(vx) === Math.sign(px));
+    if (width > 0 && far && next >= 0 && next < e.count) {
+      hapticSelection();
+      commitTabDrag();
+      e.go(dir);
+    } else {
+      releaseTabDrag();
+    }
+  }, [widthSV]);
+
   const gesture = useMemo(
     () =>
       Gesture.Pan()
@@ -136,16 +167,35 @@ export default function SlidingPages<T extends string>({
         })
         .onUpdate((e) => {
           if (ignoring.value) return;
+          if (hasEdge && widthSV.value > 0) {
+            // Past the first or last page: the page stays at the end, the tabs move.
+            const raw = startPos.value - e.translationX / widthSV.value;
+            const edge = raw < 0 ? 0 : raw > count - 1 ? count - 1 : raw;
+            const over = -(raw - edge) * widthSV.value;
+            pos.value = edge;
+            if (over !== 0 || tabsDragging.value) {
+              tabsDragging.value = over !== 0;
+              runOnJS(dragTabs)(over);
+            }
+            return;
+          }
           pos.value = dragPosition(startPos.value, e.translationX, widthSV.value, count);
         })
         .onEnd((e) => {
           if (ignoring.value) return;
+          if (hasEdge && tabsDragging.value) {
+            tabsDragging.value = false;
+            const raw = startPos.value - e.translationX / widthSV.value;
+            const edge = raw < 0 ? 0 : count - 1;
+            runOnJS(endTabs)(-(raw - edge) * widthSV.value, e.velocityX);
+            return;
+          }
           const from = startPos.value;
           const target = settleTarget(from, e.translationX, e.velocityX, widthSV.value, count);
           pos.value = reduceSV.value ? target : withTiming(target, { duration: SUBPAGE_MS, easing: Easing.bezier(...CURVE) });
           if (target !== from) runOnJS(commit)(target);
         }),
-    [count, hideSwitcher, testID, commit, warmUp, ignoring, pos, startPos, widthSV, reduceSV]
+    [count, hideSwitcher, testID, commit, warmUp, ignoring, pos, startPos, widthSV, reduceSV, hasEdge, tabsDragging, dragTabs, endTabs]
   );
 
   // A quick flick across a swipe-to-delete row (SwipeableRow asks through this).
@@ -156,6 +206,14 @@ export default function SlidingPages<T extends string>({
         commit(target);
         pos.value = reduce ? target : withTiming(target, { duration: SUBPAGE_MS, easing: Easing.bezier(...CURVE) });
         return;
+      }
+      if (edgeRef.current) {
+        const next = edgeRef.current.index + dir;
+        if (next >= 0 && next < edgeRef.current.count) {
+          hapticSelection();
+          edgeRef.current.go(dir);
+          return;
+        }
       }
       if (reduce) return;
       // Past the end: a small nudge and back.

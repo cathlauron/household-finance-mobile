@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { InteractionManager } from 'react-native';
 import { SwipeTabs } from './swipeTabs';
+import { TAB_ORDER } from './tabDrag';
 import { View, Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
@@ -24,7 +25,6 @@ import { expectArrival } from '../arrivalFocus';
 import { buildTransactionsList } from '../transactions';
 import GradientFill from '../components/GradientFill';
 
-const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
 
 // Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger): a swipe brings the next
 // tab in under your finger, so it has to be built already. Once the app has settled after

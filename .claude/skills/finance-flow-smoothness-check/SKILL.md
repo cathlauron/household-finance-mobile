@@ -105,6 +105,10 @@ How to check (besides reading the code):
   with her on 2026-10-23.)
 - 2026-10-23: swiping past the first or last sub-page stops with a soft bounce. It does
   NOT jump to another main tab (use the tab bar for that).
+  CHANGED 2026-10-23 (Cath, afternoon): on To-Pay, swiping past Loans (or before Bills)
+  goes to the next main tab again, and that tab comes in WITH your finger (like swiping
+  between tabs). Pages that aren't tabs (Savings, Groceries, Events, Travel) keep the
+  bounce: there's no next screen to go to.
 - 2026-10-23: money numbers that change while on screen (e.g. Left to Spend) count quickly
   to the new value (`COUNT_MS`); instant with Reduce Motion.
 - 2026-10-23: the bottom tabs follow your finger too (like the sub-pages).

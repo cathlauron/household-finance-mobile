@@ -2,6 +2,9 @@ import { Animated, Easing } from 'react-native';
 import { reduceMotionNow } from '../reduceMotion';
 import { CURVE, TAB_MS } from '../motion';
 
+// The main tabs, left to right.
+export const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
+
 // Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger too, like Bills / Debts /
 // Loans): while you swipe across a tab page, the page you're on and the one beside it move
 // with your finger by this many points. TabPage adds it to their position.
