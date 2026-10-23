@@ -4,7 +4,7 @@ overlap, fades must be smooth). Reads the frames tools/browser-walk.mjs recorded
 "rec:" step (web-shots/rec-NN/) and reports, per recording:
 
   FLICKER    something changed for one or two frames and then went back (A-B-A)
-  BLANK      a nearly empty frame in the middle of a change (a flash between screens)
+  BLANK      a sudden cut to a nearly empty frame mid-change (a blink between screens)
   LATE POP   the screen had settled, then changed again (content or a button popping in)
   SNAP       a big change that happened all at once (no slide or fade at all)
   JUMP       one frame changed a big part of the screen at once while things were moving
@@ -69,8 +69,10 @@ def check(folder):
     std = [float(f.std()) for f in fr]
     if std[0] > 12 and std[-1] > 12:
         for i in range(1, len(fr) - 1):
-            if std[i] < 6:
-                problems.append(f'BLANK at {ms[i]} ms: frame {i + 1} is nearly empty')
+            # Only a sudden cut to empty counts; the bottom of a soft dip (old fades out,
+            # then new fades in, Cath's choice) passes through the background gently.
+            if std[i] < 6 and std[i - 1] >= 6 and d[i] > 0.25:
+                problems.append(f'BLANK at {ms[i]} ms: frame {i + 1} cut to nearly empty at once')
 
     # Moving span, LATE POP and JUMP.
     moving = [i for i in range(1, len(fr)) if d[i] > MOVING]

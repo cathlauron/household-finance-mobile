@@ -4,7 +4,10 @@ import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
 import { saveSession, loadSession, clearSession, saveSessionKey, loadSessionKey, clearSessionKey } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet, Linking } from 'react-native';
+import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, Easing, StyleSheet, Linking } from 'react-native';
+import { reduceMotionNow } from './src/reduceMotion';
+import { CURVE, CURVE_OUT, DIP_MS, FADE_IN_MS } from './src/motion';
+import { swapPlan } from './src/screenSwap';
 import { joinCodeFromUrl, setPendingJoinCode } from './src/joinLink';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -72,16 +75,89 @@ LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher' | 'welcome' | 'setup' | 'guest' | 'guestSignUp';
 
-// Each top-level screen fades in on its own Animated value that starts at 0
-// from its very first frame, so the new screen never flashes at full opacity
-// before fading. skip = true keeps the cold-start splash instant.
-function ScreenFade({ skip, children }: { skip: boolean; children: React.ReactNode }) {
-  const opacity = useRef(new Animated.Value(skip ? 1 : 0)).current;
+// Smoothness 2026-10-23 (Cath: no blink between screens; old fades out, new fades in,
+// never both at once; locking is instant): changing between whole screens (welcome,
+// set-up, sign-in, unlock, Home). See src/screenSwap.ts for which changes are instant.
+type Slot = { key: Screen; node: React.ReactNode } | null;
+function ScreenSwap({ screenKey, children }: { screenKey: Screen; children: React.ReactNode }) {
+  // Two fixed places that take turns: the new screen is built in the free one, invisible,
+  // while the old one stays exactly where it is (so it never restarts). Then ONE animation
+  // runs the whole dip: the old one fades out, then the new one fades in. It's one
+  // animation (not two in a row) so nothing can squeeze in between the halves and hold the
+  // screen empty (the frame recorder showed a 130-150 ms empty pause with two).
+  const front = useRef<'A' | 'B'>('A');
+  const slots = useRef<{ A: Slot; B: Slot }>({ A: { key: screenKey, node: children }, B: null });
+  // The dip in progress: 0 = old fully showing, 1 = new fully showing.
+  const dip = useRef<{ value: Animated.Value; from: 'A' | 'B' } | null>(null);
+  const pendingFade = useRef(false);
+  const [, redraw] = useState(0);
+
+  const cur = slots.current[front.current];
+  if (cur && cur.key !== screenKey) {
+    const plan = swapPlan(cur.key, screenKey, reduceMotionNow());
+    const next = front.current === 'A' ? 'B' : 'A';
+    dip.current?.value.stopAnimation();
+    if (plan === 'fade') {
+      // A change while a dip is still running starts a new dip from the screen in front.
+      if (slots.current[next]) slots.current[next] = null;
+      dip.current = { value: new Animated.Value(0), from: front.current };
+      pendingFade.current = true;
+    } else {
+      // Instant (locking, leaving the money screens): the old one goes at once.
+      slots.current[front.current] = null;
+      slots.current[next] = null;
+      dip.current = null;
+      pendingFade.current = false;
+    }
+    front.current = next;
+  }
+  // The screen in front always shows its newest content.
+  slots.current[front.current] = { key: screenKey, node: children };
+
   useLayoutEffect(() => {
-    if (skip) return;
-    Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-  }, []);
-  return <Animated.View style={{ flex: 1, opacity }}>{children}</Animated.View>;
+    if (!pendingFade.current || !dip.current) return;
+    pendingFade.current = false;
+    const d = dip.current;
+    Animated.timing(d.value, { toValue: 1, duration: DIP_MS + FADE_IN_MS, easing: Easing.linear, useNativeDriver: true }).start(({ finished }) => {
+      if (!finished || dip.current !== d) return;
+      dip.current = null;
+      slots.current[d.from] = null;
+      redraw((n) => n + 1);
+    });
+  }, [screenKey]);
+
+  const SPLIT = DIP_MS / (DIP_MS + FADE_IN_MS);
+  const easeIn = Easing.bezier(...CURVE);
+  const easeOut = Easing.bezier(...CURVE_OUT);
+  const opacityOf = (name: 'A' | 'B') => {
+    const d = dip.current;
+    if (!d) return 1;
+    return name === d.from
+      ? d.value.interpolate({ inputRange: [0, SPLIT], outputRange: [1, 0], easing: easeOut, extrapolate: 'clamp' })
+      : d.value.interpolate({ inputRange: [SPLIT, 1], outputRange: [0, 1], easing: easeIn, extrapolate: 'clamp' });
+  };
+  const place = (name: 'A' | 'B') => {
+    const slot = slots.current[name];
+    if (!slot) return null;
+    const isFront = front.current === name;
+    const other = name === 'A' ? 'B' : 'A';
+    return (
+      <Animated.View
+        key={name}
+        style={[StyleSheet.absoluteFillObject, { opacity: opacityOf(name), zIndex: isFront ? 1 : 2 }]}
+        // Only the screen in front takes touches, and only once the old one has gone.
+        pointerEvents={isFront && !slots.current[other] ? 'auto' : 'none'}
+      >
+        <React.Fragment key={slot.key}>{slot.node}</React.Fragment>
+      </Animated.View>
+    );
+  };
+  return (
+    <View style={{ flex: 1 }}>
+      {place('A')}
+      {place('B')}
+    </View>
+  );
 }
 
 function AppContent() {
@@ -1148,9 +1224,7 @@ function AppContent() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy2 }}>
       {screen !== 'loading' && <LeafBackground />}
-      <ScreenFade key={screen} skip={screen === 'loading'}>
-        {renderScreen()}
-      </ScreenFade>
+      <ScreenSwap screenKey={screen}>{renderScreen()}</ScreenSwap>
       <SavedToastHost />
       <LeafTickHost />
     </View>

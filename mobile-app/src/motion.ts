@@ -6,6 +6,10 @@
 
 // Leaps away at once and settles gently (Emil Kowalski's drawer curve, approved P1).
 export const CURVE = [0.32, 0.72, 0, 1] as const;
+// The same curve played backwards (slow start, quick end), for things fading OUT just
+// before something else fades in (the soft dip): the two halves meet in the middle instead
+// of the old one vanishing at once and leaving an empty moment (frame recorder, 10-23).
+export const CURVE_OUT = [1, 0.28, 0.68, 0] as const;
 
 export const TAB_MS = 240; // bottom tabs
 export const PAGE_OPEN_MS = 280; // a page sliding in

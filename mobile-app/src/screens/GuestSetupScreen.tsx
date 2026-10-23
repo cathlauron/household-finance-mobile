@@ -1,3 +1,4 @@
+import StepSlide from '../components/StepSlide';
 import React, { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { CARD as HERO_CARD } from '../components/HomeHero';
@@ -139,6 +140,8 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
         <Text style={{ fontSize: 13, color: colors.inkDim }}>{step} of 4</Text>
       </View>
 
+      {/* Smoothness 2026-10-23 (Cath): each step slides like opening a page. */}
+      <StepSlide stepKey={String(step)} order={step}>
       <KeyboardAwareScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         {step === 1 && (
           <>
@@ -275,6 +278,7 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
           </>
         )}
       </KeyboardAwareScrollView>
+      </StepSlide>
 
       <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 20 }}>
         <TouchableOpacity

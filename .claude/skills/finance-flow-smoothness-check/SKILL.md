@@ -99,9 +99,18 @@ How to check (besides reading the code):
 - 2026-10-23: the bottom tabs follow your finger too (like the sub-pages).
 - 2026-10-23: Search drops down with the house curve and speeds (was its own).
 - 2026-10-23: "I borrowed / I lent" copies the Bill / Debt / Loan switch: a short
-  explanation line under it.
+  explanation line under it. (Cath then clarified: copy the TRANSITION too, see the form-switch line.)
 - 2026-10-23: zero amounts are grey whatever their colour (green and blue too, not only red).
 - 2026-10-23: dark mode changes with a quick soft dip (about a third of a second), not a snap.
+  REPLACED the same day (Cath, asked again because 2.2 had her "keep it instant like 2.1"):
+  dark mode stays INSTANT, the colours change the moment you tap.
+- 2026-10-23: the set-up steps (name, help with, start, who uses the phone) slide like
+  opening a page: Continue slides the next one in from the right, Back slides it away.
+- 2026-10-23: switches inside a form that change the form (Bill / Debt / Loan in the +
+  form, I borrowed / I lent): the highlight glides, and the fields below softly fade out
+  and the new ones fade in (about a third of a second). The amount box and keyboard stay.
+- 2026-10-23: a fade-out right before a fade-in uses CURVE_OUT (the house curve played
+  backwards) so the two halves meet in the middle (no near-empty pause).
 - 2026-10-23: whole-screen changes (welcome, set-up, sign-in, unlock): the old screen fades
   out, then the new one fades in; no blank blink, never both at once. Locking: instant.
 
