@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B3F30">
+<title>Finance Flow · Payday to payday, sorted</title>
+<meta name="description" content="Finance Flow shows what's left to spend until payday, reminds you before every bill, and keeps your household on the same numbers. Made for households in the Philippines.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Finance Flow website, version 2.2 (Cath approved option B, 2026-10-21).
+  Built with the repo's design skills: taste (no generic tells, one idea from the subject:
+  the 15th-to-30th payday rhythm, one thing to try: the payday strip), Emil Kowalski's
+  motion (drawer curve, press squeeze, reduced motion), mobile-native (tap targets,
+  safe areas, no tap flash) and Impeccable (accessible, factual copy).
+  One file, no build step. The QR code and contact email are still placeholders.
+-->
+<style>
+:root{
+  --green:#1B3F30;--green-2:#2E6B47;--mint:#34D399;--mint-ink:#0F2A1F;--sage:#D4E3DA;--sage-2:#A8C4B4;
+  --ground:#F2F2F7;--card:#FFFFFF;--ink:#111111;--ink-2:#3A3A3C;--ink-3:#636366;--line:#E5E5EA;
+  --red:#B3261E;--ok:#1E7B3E;--ok-bg:#E3F2E8;--orange:#C2410C;--indigo:#6D5BD0;
+  --ease-out:cubic-bezier(0.23,1,0.32,1);--drawer:cubic-bezier(0.32,0.72,0,1);
+  --display:'Bricolage Grotesque',Figtree,system-ui,sans-serif;
+  --text:Figtree,-apple-system,system-ui,sans-serif;
+  --ui:-apple-system,'SF Pro Text',Figtree,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--text);-webkit-tap-highlight-color:transparent}
+a{color:var(--green-2)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+.disp{font-family:var(--display)}
+h1,h2{font-family:var(--display);margin:0;font-weight:700}
+.btn{display:inline-block;touch-action:manipulation;transition:transform 140ms var(--ease-out);text-decoration:none;border-radius:999px;font-weight:600}
+.btn:active{transform:scale(0.97)}
+@media (hover:hover){.lnk:hover{text-decoration:underline}}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Hero */
+.hero{background:var(--green);color:#fff}
+header{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding-top:max(18px,env(safe-area-inset-top));padding-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:700;font-size:17px;min-height:44px}
+nav{margin-left:auto;display:flex;gap:6px 20px;align-items:center;flex-wrap:wrap;font-size:15px}
+nav a{color:var(--sage);text-decoration:none;padding:12px 0}
+nav a.btn{background:var(--mint);color:var(--mint-ink);padding:12px 18px}
+.hero-body{display:flex;flex-wrap:wrap;gap:48px 56px;align-items:center;padding-top:32px;padding-bottom:88px}
+.hero-copy{flex:999 1 420px;min-width:0}
+.hero h1{font-size:clamp(46px,7vw,88px);line-height:.98;letter-spacing:-.03em}
+.lede{font-size:clamp(18px,2vw,21px);line-height:1.5;color:var(--sage);margin:28px 0 0;max-width:32em}
+.actions{display:flex;gap:12px 22px;flex-wrap:wrap;margin-top:32px;align-items:center}
+.actions .btn{background:var(--mint);color:var(--mint-ink);padding:16px 26px;font-size:17px;font-weight:700}
+.actions .lnk{color:#fff;font-weight:600;font-size:17px;padding:12px 0}
+.small{font-size:15px;color:var(--sage-2);margin:18px 0 0}
+
+/* The one phone */
+.show{flex:1 1 300px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.phone{width:300px;height:620px;border-radius:46px;background:#0B1A13;padding:10px;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.phone:focus-visible{outline:3px solid var(--mint);outline-offset:4px}
+.screen-box{width:100%;height:100%;border-radius:37px;overflow:hidden;background:var(--ground);position:relative;color:var(--ink);font-family:var(--ui)}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:26px;border-radius:13px;background:#0B1A13;z-index:3}
+.track{display:flex;height:100%;transition:transform 460ms var(--drawer)}
+.scr{flex:none;width:100%;height:100%;padding:50px 14px 14px;position:relative}
+.scr .t{font-size:24px;font-weight:600;letter-spacing:-.2px}
+.grp{background:#fff;border-radius:14px;overflow:hidden}
+.row{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;font-size:14px}
+.row+.row{border-top:1px solid var(--ground)}
+.row b{font-weight:600}
+.row .s{display:block;font-size:12px;color:var(--ink-3)}
+.row .n{font-weight:500}
+.pill{font-size:11px;font-weight:600;color:var(--ok);background:var(--ok-bg);padding:2px 8px;border-radius:999px}
+.bar{height:6px;border-radius:3px;background:var(--line);margin-top:10px}
+.bar i{display:block;height:100%;border-radius:3px;transform-origin:left}
+.caption{text-align:center;max-width:320px;min-height:76px}
+.caption .disp{font-size:20px;font-weight:600}
+.caption p{font-size:15px;color:var(--sage);line-height:1.45;margin:4px 0 0}
+.ctrls{display:flex;align-items:center;gap:12px}
+.arrow{width:44px;height:44px;border-radius:22px;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer}
+.dots{display:flex;gap:2px}
+.dot{width:30px;height:44px;border:0;padding:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dot span{display:block;width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.35);transition:width 240ms var(--ease-out),background-color 240ms}
+.dot[aria-current="true"] span{width:22px;background:var(--mint)}
+
+/* Screen animations: play when a screen comes into view */
+.on .a-up{animation:up 520ms var(--ease-out) both}
+.on .d2{animation-delay:300ms}.on .d3{animation-delay:450ms}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.on .a-bar{animation:grow 1000ms var(--ease-out) 250ms both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.a-old{opacity:0}.on .a-old{animation:out 420ms ease 900ms both}
+@keyframes out{from{opacity:1}to{opacity:0;transform:translateY(-8px)}}
+.on .a-new{animation:up 420ms var(--ease-out) 1100ms both}
+.a-sheet{transform:translateY(110%)}.on .a-sheet{animation:sheet 2800ms var(--drawer) 300ms both}
+@keyframes sheet{0%{transform:translateY(110%)}18%{transform:none}72%{transform:none}100%{transform:translateY(110%)}}
+.on .a-press{animation:press 240ms ease 1700ms both}
+@keyframes press{50%{transform:scale(.96)}}
+.on .a-tick{animation:pop 360ms var(--ease-out) 3000ms both}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.on .a-linked{animation:pop 420ms var(--ease-out) 1400ms both}
+.a-code{opacity:0}.on .a-code{animation:out 300ms ease 1200ms both}
+.stack{display:grid}.stack>*{grid-area:1/1}
+
+/* Sections */
+section h2{font-size:clamp(32px,4vw,48px);line-height:1.04;letter-spacing:-.025em}
+p.body{font-size:18px;line-height:1.55;color:var(--ink-2);margin:16px 0 0;max-width:36em}
+#strip{padding-top:88px;padding-bottom:72px}
+#strip h2{font-size:clamp(34px,4.6vw,56px);line-height:1.02;max-width:13em}
+.strip-card{margin-top:32px;background:#fff;border-radius:28px;padding:24px 20px}
+.days{display:grid;grid-template-columns:repeat(31,minmax(0,1fr));gap:3px;align-items:end;height:120px}
+.day{display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%}
+.day i{display:block;width:100%;border-radius:6px;transition:background-color 200ms ease,height 200ms var(--ease-out)}
+.day small{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.day.today small{color:var(--ink);font-weight:700}
+label[for=today]{display:block;font-size:15px;color:var(--ink-2);margin-top:18px}
+input[type=range]{width:100%;margin-top:2px;accent-color:var(--green-2);height:44px;touch-action:pan-y}
+.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-top:18px}
+.results .k{font-size:14px;color:var(--ink-3)}
+.results .v{font-family:var(--display);font-size:42px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:8px 20px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:var(--ink-3)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.split{display:flex;flex-wrap:wrap;gap:40px 56px}
+.split>h2{flex:1 1 300px}
+.split>.side{flex:999 1 440px;display:flex;flex-direction:column}
+.thing{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;padding:22px 0;border-top:2px solid var(--line)}
+.thing>div{flex:1 1 260px}
+.thing .h{font-size:21px;font-weight:700}
+.thing p{font-size:17px;line-height:1.55;color:var(--ink-2);margin:6px 0 0}
+.chip{flex:none;background:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:16px;align-items:center;font-size:15px;font-family:var(--ui)}
+.chip span:first-child{color:var(--ink-2)}
+.chip b{font-weight:600;font-variant-numeric:tabular-nums}
+.white{background:#fff}
+.together{display:flex;flex-wrap:wrap;gap:40px 56px;align-items:center;padding-top:88px;padding-bottom:88px}
+.together>div:first-child{flex:999 1 420px;min-width:0}
+.mini{flex:1 1 300px;background:var(--ground);border-radius:20px;padding:18px;font-family:var(--ui)}
+.av{width:44px;height:44px;border-radius:22px;color:#fff;font-size:18px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.private .side{gap:28px}
+.private .h{font-size:20px;font-weight:700}
+.private p{font-size:17px;line-height:1.55;color:var(--ink-2);margin:6px 0 0}
+#get{background:var(--mint);color:var(--mint-ink)}
+#get .wrap{display:flex;flex-wrap:wrap;gap:40px 56px;align-items:center;padding-top:80px;padding-bottom:80px}
+#get h2{font-size:clamp(34px,4.6vw,60px);line-height:1;letter-spacing:-.03em}
+#get ol{font-size:18px;line-height:1.7;margin:18px 0 0;padding-left:22px}
+.qr{flex:none;width:220px;height:220px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:var(--ink-3);padding:16px}
+footer{display:flex;gap:8px 20px;flex-wrap:wrap;font-size:14px;color:var(--ink-3);padding-top:24px;padding-bottom:max(24px,env(safe-area-inset-bottom))}
+footer a{padding:12px 0}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .on *{animation:none !important}
+  .track,.day i,.btn,.dot span{transition:none}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <header class="wrap">
+    <a href="#" class="brand btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M9.5 19c0-3.5 1.2-5.8 4.5-7-.2 3.6-1.8 6-4.5 7z"/></svg>
+      <span class="disp">Finance Flow</span></a>
+    <nav aria-label="Main">
+      <a href="#strip" class="lnk">Try it</a>
+      <a href="#together" class="lnk">Households</a>
+      <a href="#private" class="lnk">Privacy</a>
+      <a href="#get" class="btn">Get the app</a>
+    </nav>
+  </header>
+
+  <section class="wrap hero-body">
+    <div class="hero-copy">
+      <h1>From the 15th to the 30th, sorted.</h1>
+      <p class="lede">Every peso between kinsenas and katapusan: what's left to spend, what's due next, and what you're saving, shared with the people you live with.</p>
+      <div class="actions">
+        <a href="#get" class="btn">Scan to install</a>
+        <a href="#strip" class="lnk">Try your own payday</a>
+      </div>
+      <p class="small">Free Android test build, made for households in the Philippines.</p>
+    </div>
+
+    <div class="show">
+      <div class="phone" id="phone" tabindex="0" role="group" aria-roledescription="carousel" aria-label="The app, one screen at a time. Use the arrow keys or swipe.">
+        <div class="screen-box">
+          <div class="notch"></div>
+          <div class="track" id="track">
+
+            <div class="scr" style="background:linear-gradient(180deg,#F6E3DC 0%,#F2F2F7 24%)">
+              <div style="font-size:12px;color:var(--ink-3)">Good evening, Cath</div>
+              <div class="t">Home</div>
+              <div style="margin-top:10px;border-radius:16px;background:var(--green);padding:14px;color:#fff">
+                <div style="font-size:12px;color:#BFD3C8">Left to spend</div>
+                <div class="stack num" style="font-size:30px;font-weight:700"><div class="a-old">₱8,870</div><div class="a-new">₱8,420</div></div>
+                <div class="bar" style="background:rgba(255,255,255,.2);height:5px"><i class="a-bar" style="width:62%;background:var(--mint)"></i></div>
+                <div style="font-size:12px;color:#BFD3C8;margin-top:8px">12 days to payday · ₱700 a day</div>
+              </div>
+              <div class="grp" style="margin-top:12px">
+                <div class="row a-new"><span class="n">Groceries</span><b class="num">−₱450</b></div>
+                <div class="row"><span><span class="n">Meralco</span><span class="s">Due in 2 days</span></span><b class="num">₱2,350</b></div>
+              </div>
+            </div>
+
+            <div class="scr">
+              <div class="t">To-Pay</div>
+              <div class="grp" style="margin-top:12px">
+                <div class="row"><span><span class="n">Meralco</span><span class="s">Due in 2 days</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><b class="num">₱2,350</b><span class="pill a-tick">Paid today</span></span></div>
+                <div class="row"><span><span class="n">Internet</span><span class="s">Due Friday</span></span><b class="num">₱1,699</b></div>
+              </div>
+              <div class="a-sheet" style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:10px 16px 18px;box-shadow:0 -8px 30px rgba(0,0,0,.10)">
+                <div style="width:32px;height:4px;border-radius:2px;background:#C7C7CC;margin:0 auto"></div>
+                <div style="text-align:center;font-weight:600;margin-top:10px">Pay Meralco</div>
+                <div class="num" style="text-align:center;font-size:26px;font-weight:700">₱2,350</div>
+                <div style="background:var(--ground);border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px">Paid from <b style="font-weight:600">BPI Savings</b></div>
+                <div class="a-press" style="margin-top:12px;background:var(--green-2);color:#F2F2F7;text-align:center;padding:11px;border-radius:999px;font-weight:600">Pay</div>
+              </div>
+            </div>
+
+            <div class="scr">
+              <div class="t">Transactions</div>
+              <div style="font-size:12px;font-weight:600;color:var(--ink-3);margin:12px 4px 6px">Today</div>
+              <div class="grp">
+                <div class="row a-up d2" style="background:#EEF5F0"><span><span class="n">Jollibee</span><span class="s">GCash · Food · by Ana</span></span><b class="num" style="color:var(--red)">−₱320</b></div>
+                <div class="row"><span><span class="n">Groceries</span><span class="s">Cash</span></span><b class="num" style="color:var(--red)">−₱1,240</b></div>
+                <div class="row"><span><span class="n">Salary</span><span class="s">BPI Savings</span></span><b class="num" style="color:var(--ok)">+₱25,000</b></div>
+              </div>
+              <div class="a-press" style="position:absolute;right:16px;bottom:18px;width:48px;height:48px;border-radius:24px;background:var(--green-2);color:#F2F2F7;font-size:26px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+
+            <div class="scr">
+              <div class="t">Savings</div>
+              <div class="grp" style="padding:12px;margin-top:12px">
+                <div style="display:flex;justify-content:space-between;font-size:14px"><b style="font-weight:600">Thailand trip</b><b style="font-weight:600;color:var(--green-2)">In 24 days</b></div>
+                <div class="bar"><i class="a-bar" style="width:64%;background:var(--orange)"></i></div>
+                <div class="num" style="font-size:12px;color:var(--ink-3);margin-top:6px">₱16,000 of ₱25,000</div>
+                <span class="pill a-up d3" style="display:inline-block;margin-top:8px;font-size:12px">+₱2,000 added</span>
+              </div>
+              <div class="grp" style="padding:12px;margin-top:10px">
+                <b style="font-size:14px;font-weight:600">Emergency fund</b>
+                <div class="bar"><i class="a-bar" style="width:34%;background:var(--orange)"></i></div>
+                <div style="font-size:12px;color:var(--ink-3);margin-top:6px">1.7 months covered</div>
+              </div>
+            </div>
+
+            <div class="scr">
+              <div class="t">October</div>
+              <div id="cal" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px 0;margin-top:10px;text-align:center;font-size:13px"></div>
+              <div class="grp a-up d3" style="padding:11px 12px;margin-top:10px">
+                <div style="font-size:13px;font-weight:600">Thursday, Oct 22</div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Meralco</span><b style="font-weight:600">₱2,350</b></div>
+              </div>
+            </div>
+
+            <div class="scr">
+              <div class="t">Household</div>
+              <div class="grp stack" style="padding:18px;margin-top:12px;justify-items:center;border-radius:16px">
+                <div class="a-code" style="text-align:center">
+                  <div style="font-size:12px;color:var(--ink-3)">Your code</div>
+                  <div style="font-size:30px;font-weight:700;letter-spacing:6px;margin-top:4px">TU63H6</div>
+                  <div style="font-size:12px;color:var(--green-2);margin-top:4px">Valid for 14:32</div>
+                </div>
+                <div class="a-linked" style="text-align:center">
+                  <div style="display:flex;justify-content:center;gap:6px"><span class="av" style="width:36px;height:36px;font-size:15px;background:var(--green-2)">C</span><span class="av" style="width:36px;height:36px;font-size:15px;background:var(--indigo)">A</span></div>
+                  <div style="font-size:18px;font-weight:600;margin-top:8px">Linked!</div>
+                  <div style="font-size:12px;color:var(--ink-3)">Ana joined your household</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="caption" aria-live="polite">
+        <div class="disp" id="capTitle">Home</div>
+        <p id="capText">Log a spend and Left to spend updates at once, with the days to payday underneath.</p>
+      </div>
+      <div class="ctrls">
+        <button class="arrow btn" id="prev" aria-label="Previous screen">‹</button>
+        <div class="dots" id="dots"></div>
+        <button class="arrow btn" id="next" aria-label="Next screen">›</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section id="strip" class="wrap">
+  <h2>Slide to today. See what's yours.</h2>
+  <p class="body">A sample household paid on the 15th and the 30th, with ₱13,500 to live on each half-month after bills and savings. Move the slider to any day of October.</p>
+  <div class="strip-card">
+    <div class="days" id="days" aria-hidden="true"></div>
+    <label for="today">Today is October <span id="todayLabel">20</span></label>
+    <input id="today" type="range" min="1" max="31" value="20">
+    <div class="results" aria-live="polite">
+      <div><div class="k">Left to spend</div><div class="v" id="left" style="color:var(--green)">₱4,500</div></div>
+      <div><div class="k">Until payday</div><div class="v" id="daysLeft">10 days</div><div class="num" id="perDay" style="font-size:15px;color:var(--ink-2)">₱450 a day</div></div>
+      <div><div class="k">Still due before payday</div><div id="due" style="font-size:17px;line-height:1.6;margin-top:6px"></div></div>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--green-2)"></i>Payday</span>
+    <span><i style="background:#D9776A"></i>A bill is due</span>
+    <span>Sample numbers, not real accounts.</span>
+  </div>
+</section>
+
+<section class="wrap split" style="padding-top:24px;padding-bottom:96px">
+  <h2>Everything that comes between paydays.</h2>
+  <div class="side">
+    <div class="thing"><div><div class="h">Left to spend</div><p>One number that tells you what is really yours until payday, after bills and savings.</p></div><div class="chip"><span>12 days to payday</span><b style="color:var(--green)">₱8,420</b></div></div>
+    <div class="thing"><div><div class="h">Bills, debts and loans</div><p>A reminder before each one is due, and paying it takes two taps: which account, and done.</p></div><div class="chip"><span>Meralco · due the 22nd</span><b>₱2,350</b></div></div>
+    <div class="thing"><div><div class="h">Savings pots and trips</div><p>Save toward the emergency fund, the next trip or Christmas, and watch each pot fill up.</p></div><div class="chip"><span>Thailand trip · 64%</span><b style="color:var(--orange)">₱16,000</b></div></div>
+    <div class="thing"><div><div class="h">Every account and card</div><p>Cash, GCash, banks and credit cards side by side, with what you can still use on each card.</p></div><div class="chip"><span>BPI Visa · •••• 7730</span><b>₱18,500 left</b></div></div>
+  </div>
+</section>
+
+<section id="together" class="white">
+  <div class="wrap together">
+    <div>
+      <h2>Up to five people, one set of numbers.</h2>
+      <p class="body" style="max-width:34em">Invite your partner or family with a message, a QR code or a 6-letter code. Everyone sees the same bills and balances, each entry says who logged it, and changes made on two phones at once are merged, not lost.</p>
+    </div>
+    <div class="mini" aria-label="Example: entries logged by two people">
+      <div style="margin-bottom:14px"><span class="av" style="background:var(--green-2)">C</span><span class="av" style="background:var(--indigo);margin-left:-10px;box-shadow:0 0 0 3px var(--ground)">A</span></div>
+      <div class="grp">
+        <div class="row" style="gap:12px;padding:12px 14px"><span style="position:relative;width:32px;height:32px;border-radius:8px;background:#E6F0EA;flex:none"><span style="position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;border-radius:9px;background:#fff;color:var(--indigo);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">A</span></span><span style="flex:1"><span class="n" style="font-size:15px">Groceries</span><span class="s">Cash · by Ana</span></span><b class="num" style="color:var(--red)">−₱450</b></div>
+        <div class="row" style="gap:12px;padding:12px 14px"><span style="width:32px;height:32px;border-radius:8px;background:#E6F0EA;flex:none"></span><span style="flex:1"><span class="n" style="font-size:15px">Meralco</span><span class="s">Paid by you · today</span></span><b class="num">₱2,350</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="private" class="wrap split private" style="padding-top:96px;padding-bottom:96px">
+  <h2>Readable only by your household.</h2>
+  <div class="side">
+    <div><div class="h">Locked before it leaves your phone</div><p>Your money data is scrambled with a key made from your password, so even the servers it's stored on can't read it.</p></div>
+    <div><div class="h">Fingerprint or PIN to open</div><p>Open it quickly with your fingerprint or a PIN, and hide all amounts with one tap.</p></div>
+    <div><div class="h">Works offline</div><p>Add things with no signal; they sync by themselves when you're back online.</p></div>
+  </div>
+</section>
+
+<section id="get">
+  <div class="wrap">
+    <div style="flex:999 1 340px">
+      <h2>Start before your next payday.</h2>
+      <ol>
+        <li>Point your phone's camera at the code and open the link.</li>
+        <li>Download Finance Flow and tap Install.</li>
+        <li>If your phone asks, allow installing from this source.</li>
+      </ol>
+      <p style="font-size:15px;margin:14px 0 0;color:var(--green)">Android test build. Not on Google Play or the App Store yet.</p>
+    </div>
+    <div class="qr">[QR code from the 2.2 build]</div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <span>© 2026 Finance Flow</span><a href="#" class="lnk" style="margin-left:auto">Privacy</a><a href="#" class="lnk">Contact [EMAIL]</a>
+</footer>
+
+<script>
+(function () {
+  // The one phone: swipe, arrows, dots or arrow keys. The screen in view plays its animation.
+  var screens = [
+    ['Home', 'Log a spend and Left to spend updates at once, with the days to payday underneath.'],
+    ['To-Pay', 'Tap a bill, choose the account, Pay. It is ticked off and the balance follows.'],
+    ['Transactions', 'The + adds a spend in seconds. Everyone in the household sees it, and who logged it.'],
+    ['Savings', 'Pots for a trip, Christmas or emergencies fill up as you add to them.'],
+    ['Calendar', 'Every bill and payday on its day. Tap a day to see what is on it.'],
+    ['Household', 'Share a code or QR. When they join, both phones say Linked.']
+  ];
+  var track = document.getElementById('track');
+  var scrs = track.children;
+  var dotsBox = document.getElementById('dots');
+  var i = 0;
+  screens.forEach(function (s, j) {
+    var b = document.createElement('button');
+    b.className = 'dot btn';
+    b.setAttribute('aria-label', 'Show ' + s[0]);
+    b.appendChild(document.createElement('span'));
+    b.addEventListener('click', function () { go(j); });
+    dotsBox.appendChild(b);
+  });
+  function go(n) {
+    i = (n + screens.length) % screens.length;
+    track.style.transform = 'translateX(' + (-i * 100) + '%)';
+    for (var k = 0; k < scrs.length; k++) {
+      scrs[k].classList.remove('on');
+      scrs[k].setAttribute('aria-hidden', k === i ? 'false' : 'true');
+      dotsBox.children[k].setAttribute('aria-current', k === i ? 'true' : 'false');
+    }
+    void scrs[i].offsetWidth; // restart this screen's animation
+    scrs[i].classList.add('on');
+    document.getElementById('capTitle').textContent = screens[i][0];
+    document.getElementById('capText').textContent = screens[i][1];
+  }
+  document.getElementById('prev').addEventListener('click', function () { go(i - 1); });
+  document.getElementById('next').addEventListener('click', function () { go(i + 1); });
+  var phone = document.getElementById('phone');
+  var x0 = null;
+  phone.addEventListener('pointerdown', function (e) { x0 = e.clientX; });
+  phone.addEventListener('pointerup', function (e) {
+    if (x0 === null) return;
+    var dx = e.clientX - x0; x0 = null;
+    if (dx < -40) go(i + 1); else if (dx > 40) go(i - 1);
+  });
+  phone.addEventListener('pointercancel', function () { x0 = null; });
+  phone.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { go(i + 1); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { go(i - 1); e.preventDefault(); }
+  });
+
+  // The calendar screen: soft circles for today (20) and the tapped day (22).
+  var cal = document.getElementById('cal');
+  var marks = { 1: 'color:#636366;font-weight:600', 15: 'color:#636366;font-weight:600', 5: 'color:#1E7B3E;font-weight:600', 30: 'color:#1E7B3E;font-weight:600' };
+  for (var e = 0; e < 4; e++) cal.appendChild(document.createElement('div'));
+  for (var d = 1; d <= 31; d++) {
+    var cell = document.createElement('div');
+    cell.style.cssText = 'height:30px;display:flex;align-items:center;justify-content:center';
+    var n = document.createElement('span');
+    n.textContent = d;
+    var st = marks[d] || '';
+    if (d === 20) st = 'background:rgba(46,107,71,.18);color:#2E6B47;font-weight:700';
+    if (d === 22) { st = 'background:rgba(17,17,17,.08);color:#111;font-weight:700'; n.className = 'a-tick'; }
+    n.style.cssText = 'width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;' + st;
+    cell.appendChild(n);
+    cal.appendChild(cell);
+  }
+  go(0);
+
+  // The payday strip (sample household, paid on the 15th and the 30th).
+  var bills = { 5: 'Rent', 10: 'Water', 18: 'Internet', 22: 'Meralco', 25: 'BPI Visa' };
+  var daysBox = document.getElementById('days');
+  var bars = [];
+  for (var x = 1; x <= 31; x++) {
+    var day = document.createElement('div');
+    day.className = 'day';
+    day.innerHTML = '<i></i><small>' + x + '</small>';
+    daysBox.appendChild(day);
+    bars.push(day);
+  }
+  var slider = document.getElementById('today');
+  function peso(v) { return '₱' + v.toLocaleString('en-US'); }
+  function suf(v) { return v === 1 || v === 21 || v === 31 ? 'st' : v === 22 ? 'nd' : v === 23 ? 'rd' : 'th'; }
+  function render() {
+    var t = Number(slider.value);
+    var start = t < 15 ? 1 : t < 30 ? 15 : 30;
+    var next = t < 15 ? 15 : t < 30 ? 30 : 46; // 46 = November 15
+    var daysLeft = next - t;
+    var left = Math.max(0, Math.round((13500 * (daysLeft / (next - start))) / 10) * 10);
+    var due = [];
+    for (var b = t + 1; b < Math.min(next, 32); b++) if (bills[b]) due.push(bills[b] + ' on the ' + b + suf(b));
+    bars.forEach(function (el, k) {
+      var x = k + 1, isPay = x === 15 || x === 30, isBill = !!bills[x], isToday = x === t, past = x < t;
+      var bg = isPay ? '#2E6B47' : isBill ? '#D9776A' : '#E5E5EA';
+      if (past) bg = isPay ? '#A9C4B4' : isBill ? '#F0CBC4' : '#F2F2F7';
+      if (isToday) bg = '#111111';
+      var bar = el.firstChild;
+      bar.style.background = bg;
+      bar.style.height = isPay ? '100%' : isBill ? '62%' : isToday ? '40%' : '24%';
+      el.className = 'day' + (isToday ? ' today' : '');
+      el.lastChild.style.visibility = (isToday || isPay || isBill || x === 1 || x === 31) ? 'visible' : 'hidden';
+    });
+    document.getElementById('todayLabel').textContent = t;
+    document.getElementById('left').textContent = peso(left);
+    document.getElementById('daysLeft').textContent = daysLeft === 1 ? '1 day' : daysLeft + ' days';
+    document.getElementById('perDay').textContent = daysLeft > 0 ? peso(Math.round(left / daysLeft / 10) * 10) + ' a day' : '';
+    document.getElementById('due').textContent = due.length ? due.join(', ') : 'Nothing else is due before payday.';
+  }
+  slider.addEventListener('input', render);
+  render();
+})();
+</script>
+</body>
+</html>

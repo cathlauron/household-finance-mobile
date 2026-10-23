@@ -4,6 +4,7 @@ import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import GradientFill from './GradientFill';
+import { reduceMotionNow } from '../reduceMotion';
 
 // Shows a sample row being swiped left to reveal Delete. Plays 3 times when it appears,
 // then stays still. Settings only shows it right after you turn Swipe to delete on.
@@ -13,6 +14,8 @@ export function RowInteractionPreview() {
   const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Phone set to remove animations: the sample row stays still (its text explains it).
+    if (reduceMotionNow()) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(400),

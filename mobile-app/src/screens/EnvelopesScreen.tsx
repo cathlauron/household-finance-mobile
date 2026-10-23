@@ -1,7 +1,9 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { alertNotSaved } from '../messages';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Text, TextInput } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
@@ -44,7 +46,7 @@ export default function EnvelopesScreen() {
     try {
       await saveModel(next);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this envelope'));
     }
   }
 
@@ -71,7 +73,7 @@ export default function EnvelopesScreen() {
         : 'Set a monthly budget or add your income to see this';
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.intro}>Give every peso a job. What is left in an envelope can roll into next month.</Text>
 
       <View style={[styles.group, styles.unassigned]}>

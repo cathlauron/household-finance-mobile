@@ -16,6 +16,11 @@ import PlanScreen from '../screens/PlanScreen';
 import { useTheme } from '../ThemeContext';
 import { getSharedHeaderOptions } from './headerOptions';
 import TabPage from './TabPage';
+import PaySwitchHost from './PaySwitchHost';
+import { QuietWhenHidden, useData } from '../DataContext';
+import { SHEET_CLOSE_WAIT, SharedSheetHost } from '../components/BottomSheet';
+import { expectArrival } from '../arrivalFocus';
+import { buildTransactionsList } from '../transactions';
 import GradientFill from '../components/GradientFill';
 
 const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
@@ -70,6 +75,48 @@ function useCurrentTab(): string {
   );
 }
 
+// Version 2.2 (Cath: + on Home still felt laggy): on Home, + opens the New transaction
+// form right where you are, instead of first switching to the Transactions tab and
+// drawing its whole list. The form is kept ready after the first time, so it opens at
+// once. Cath: after Add it then goes to Transactions, so you see the new entry slide in
+// there. On the Transactions tab itself, + works as before.
+let quickAddOpen: (() => void) | null = null;
+function QuickAdd() {
+  const navigation = useNavigation<any>();
+  const { getModel } = useData();
+  const [nonce, setNonce] = React.useState(0);
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    quickAddOpen = () => {
+      const m = getModel();
+      if (m) expectArrival('txn', buildTransactionsList(m).map((t) => t.id));
+      setOpen(true);
+      setNonce(Date.now());
+    };
+    return () => {
+      quickAddOpen = null;
+    };
+  }, []);
+  if (!nonce) return null;
+  return (
+    // Takes no room on the screen: only its pop-up form shows.
+    <View pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+      <QuietWhenHidden active={open}>
+        <TransactionsScreen
+          formOnly
+          addNonceProp={nonce}
+          onFormOpened={() => setOpen(true)}
+          onFormClosed={() => setOpen(false)}
+          // Cath: after Add, land on Transactions to see the new entry slide in.
+          // Cath: the form slid away while Transactions was already showing (a flash of it).
+          // Now the form finishes sliding away first, then Transactions shows.
+          onAdded={() => setTimeout(() => navigation.navigate('Main', { screen: 'Transactions' }), SHEET_CLOSE_WAIT)}
+        />
+      </QuietWhenHidden>
+    </View>
+  );
+}
+
 function AddFab({ bottom }: { bottom: number }) {
   const activeTab = useCurrentTab();
   const { colors } = useTheme();
@@ -87,6 +134,7 @@ function AddFab({ bottom }: { bottom: number }) {
       onPress={() => {
         hapticLight();
         if (onToPay) requestToPayAdd();
+        else if (activeTab !== 'Transactions' && quickAddOpen) quickAddOpen();
         else navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
       }}
       style={({ pressed }) => [
@@ -266,6 +314,10 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
       />
     </Tab.Navigator>
     <AddFab bottom={tabBarBottom + TAB_BAR_HEIGHT + 14} />
+    <QuickAdd />
+    {/* The one sheet that shows the bill, debt and loan forms (see BottomSheet). */}
+    <SharedSheetHost name="pay-form" />
+    <PaySwitchHost />
     </View>
   );
 }

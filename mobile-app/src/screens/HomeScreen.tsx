@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useToday } from '../useToday';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -26,6 +28,9 @@ import { requestToPayTab } from '../openToPayTabRequest';
 import { applyAutoSavings } from '../savingsPots';
 import { applyRecurring } from '../recurring';
 import { getCallName } from '../preferredName';
+import GuestPicks from '../components/GuestPicks';
+import { useHideAmounts } from '../hideAmounts';
+import { WelcomeBackCard, TightCard } from '../components/CalmHome';
 import { useTravelTime, differenceText, gmtLabel } from '../travelTime';
 import { rescheduleBillNotifications } from '../pushNotifications';
 
@@ -35,7 +40,7 @@ type Props = {
 
 export default function HomeScreen({ username }: Props) {
   const { colors, isDark, setMode } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, guest, guestInfo } = useData();
   // Redesign: savings pots set to "add every payday", and repeating transactions
   // ("Make it repeat"), catch up when Home opens.
   React.useEffect(() => {
@@ -48,13 +53,17 @@ export default function HomeScreen({ username }: Props) {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const [showSlimBar, setShowSlimBar] = useState(false);
+  const slimShownRef = useRef(false);
+  const { money } = useHideAmounts();
 
   // Worked out once per data change, not on every redraw (scrolling, the bell, etc.).
-  const leftToSpend = useMemo(() => (model ? computeLeftToSpend(model) : null), [model]);
+  // H-09: and again when the date changes (the app left open overnight).
+  const today = useToday();
+  const leftToSpend = useMemo(() => (model ? computeLeftToSpend(model) : null), [model, today]);
   const leftToSpendStatus =
     leftToSpend && model ? getLeftToSpendStatus(leftToSpend.amount, model, colors) : null;
 
-  const totalBalanceToday = useMemo(() => (model ? totalCurrentBalance(model) : 0), [model]);
+  const totalBalanceToday = useMemo(() => (model ? totalCurrentBalance(model) : 0), [model, today]);
   const spentSoFar = leftToSpend ? Math.max(0, totalBalanceToday - leftToSpend.amount) : 0;
   const pctUsed =
     totalBalanceToday > 0 ? Math.min(100, Math.max(0, (spentSoFar / totalBalanceToday) * 100)) : 0;
@@ -85,7 +94,7 @@ export default function HomeScreen({ username }: Props) {
       : 'Good evening';
 
   // "What should we call you?": the name picked in onboarding or Profile, else the username.
-  const callName = getCallName(model, username);
+  const callName = guest ? guestInfo?.name || 'there' : getCallName(model, username);
 
   // Travel time note: shown when the phone is in a different time zone from home.
   const travel = useTravelTime();
@@ -169,17 +178,7 @@ export default function HomeScreen({ username }: Props) {
         <View style={hs.headerRight}>
           <OfflineCloud />
           {/* Quick light/dark switch (sets Light or Dark; Settings → Appearance can go back to Auto). */}
-          <TouchableOpacity
-            testID="home-theme-toggle"
-            accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={hs.bellBtn}
-            onPress={() => {
-              hapticSelection();
-              setMode(isDark ? 'light' : 'dark');
-            }}
-          >
-            <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={23} color={colors.ink} />
-          </TouchableOpacity>
+          <ThemeToggle style={hs.bellBtn} />
           <TouchableOpacity accessibilityLabel="Notifications" style={hs.bellBtn} onPress={() => setBellOpen(true)}>
             <Ionicons name="notifications-outline" size={24} color={colors.ink} />
             {unreadCount > 0 ? (
@@ -213,9 +212,18 @@ export default function HomeScreen({ username }: Props) {
 
       <View style={{ flex: 1 }}>
         <DashboardScreen
-          onScrollY={(y) => setShowSlimBar(y > 150)}
+          onScrollY={(y) => {
+            // Speed sweep: only tell the screen when the slim bar should appear or go
+            // (not on every scroll step).
+            const show = y > 150;
+            if (show !== slimShownRef.current) {
+              slimShownRef.current = show;
+              setShowSlimBar(show);
+            }
+          }}
           header={
             leftToSpend && leftToSpendStatus ? (
+              <>
               <HomeHero
                 model={model!}
                 amount={leftToSpend.amount}
@@ -228,13 +236,25 @@ export default function HomeScreen({ username }: Props) {
                 fullDate={fullDate}
                 targetDate={leftToSpend.targetDate}
               />
+              {/* Version 3 calm Home: both sit between Left to Spend and Accounts. */}
+              <TightCard
+                amount={leftToSpend.amount}
+                mood={mood}
+                statusLabel={leftToSpendStatus.label}
+                targetDate={leftToSpend.targetDate}
+                basis={leftToSpend.basis}
+              />
+              <WelcomeBackCard username={username} />
+              </>
             ) : undefined
+          }
+          footer={guest ? <GuestPicks /> : undefined
           }
         />
         {showSlimBar && leftToSpend && (
           <View pointerEvents="none" style={[hs.slimBar, { backgroundColor: moodCard.start }]}>
             <Text style={[hs.slimBarLabel, { color: moodCard.dim }]}>Left to spend</Text>
-            <Text style={[hs.slimBarAmount, { color: colors.cardTealText }]}>{formatPeso(leftToSpend.amount)}</Text>
+            <Text style={[hs.slimBarAmount, { color: colors.cardTealText }]}>{money(leftToSpend.amount)}</Text>
           </View>
         )}
       </View>
@@ -450,4 +470,29 @@ function makeHomeStyles(colors: any) {
     slimBarLabel: { fontSize: 13, fontWeight: '600' },
     slimBarAmount: { fontSize: 15, fontWeight: '700' },
   });
+}
+
+// 2.2 speed fix (Cath: the light/dark button lagged): its own small piece, so the icon
+// flips the moment it's tapped while the whole app recolours just after.
+function ThemeToggle({ style }: { style: object }) {
+  const { colors, isDark, setMode } = useTheme();
+  const [shown, setShown] = useState<boolean | null>(null);
+  const dark = shown ?? isDark;
+  useEffect(() => {
+    setShown(null);
+  }, [isDark]);
+  return (
+    <TouchableOpacity
+      testID="home-theme-toggle"
+      accessibilityLabel={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      style={style}
+      onPress={() => {
+        hapticSelection();
+        setShown(!dark);
+        setMode(dark ? 'light' : 'dark');
+      }}
+    >
+      <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={23} color={colors.ink} />
+    </TouchableOpacity>
+  );
 }

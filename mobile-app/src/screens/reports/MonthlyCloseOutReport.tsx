@@ -6,7 +6,8 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';

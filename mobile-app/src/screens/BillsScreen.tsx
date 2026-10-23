@@ -1,29 +1,44 @@
+import { firstTimeOpen } from '../handledOpen';
+import { dateText } from '../dateUtils';
+import { redUnlessZero } from '../moneyColor';
+import { useToday } from '../useToday';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted } from '../messages';
+import { useArrival } from '../useArrival';
+import { useSingleForm } from '../singleForm';
 import React, { useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
-import { useToPayAddRequest } from '../fabActions';
+import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
+import KindSwitch from '../components/KindSwitch';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import type { Bill, HouseholdModel, BillCycle, PaymentMethod } from '../types';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
 import Button from '../components/Button';
 import { getOverdueItems } from '../overdue';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid, wasPaidThisMonth, paidCycles } from '../billPayments';
+import { paymentToPlace, placePayment } from '../billPayments';
+import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import PayRow from '../components/PayRow';
+import CustomScheduleFields, { customFreqLabel, parseCustom } from '../components/CustomScheduleFields';
+import { priorityRank } from '../priority';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, ScheduleChoices } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, Choices, DayStrip, AccountChoices, accountName, ordinal, MONTHS_SHORT, ScheduleChoices, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 function billAmount(bill: Bill): number {
@@ -38,10 +53,26 @@ function billAmount(bill: Bill): number {
 // due date yet sort to the bottom.
 
 const PRIORITIES: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
-const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
-const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Subscription', 'School', 'Other'];
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
+// Version 2.2 (Cath): no "Subscription" category any more; the Subscription switch below
+// is the one place to say a bill is a subscription (it also puts it on the Subscriptions
+// page). Bills saved with that category before keep it (shown as their own category).
+const BILL_CATEGORIES = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'School', 'Other'];
 
 type BillsScreenProps = {
+  // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
+  // first): the other kind's New form opens right where you are, with what you typed;
+  // only once it's added does To-Pay show that list (see ToPayScreen).
+  addCarry?: { amount: number | ''; name: string; date?: string; nonce: number };
+  onAdded?: () => void;
+  // Version 2.2 fix (Cath's video: Edit on a bill's page flashed and closed): the page
+  // itself shows this bill's form, with no jump back to the list. formOnly draws just the
+  // form (and its pop-ups); onFormClosed says when it has closed.
+  formOnly?: boolean;
+  onFormClosed?: () => void;
+  // Version 2.2: called once the requested item's form has opened, so the request is
+  // cleared and the form never pops up again when this list is shown again.
+  onOpenHandled?: () => void;
   openBillId?: string;
   // Set only when this bill was requested via a swipe on TransactionsScreen
   // (openBillRequest.ts) — increments every request, even for the same
@@ -50,12 +81,41 @@ type BillsScreenProps = {
   openBillNonce?: number;
 };
 
-export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenProps = {}) {
+export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, formOnly, onFormClosed, addCarry, onAdded }: BillsScreenProps = {}) {
+  // H-09 (2026-10-22): redraw when the date changes, so Overdue and due dates are
+  // right the morning after the app was left open.
+  useToday();
   // Redesign: the floating + adds a bill while this list is showing.
-  useToPayAddRequest('bills', () => openAddModal());
+  useToPayAddRequest('bills', (date) => {
+    if (formOnly) return;
+    openAddModal();
+    // Version 2.2 (calendar +): starts on the day picked in the calendar.
+    if (date) setOnetimeDateInput(date);
+  });
+  // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
+  React.useEffect(() => {
+    const carry = takePendingAdd('bills');
+    if (!carry || formOnly) return;
+    openAddModal();
+    setAmountInput(carry.amount);
+    setNameInput(carry.name);
+    // Only when this list first shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    if (!formOnly || !addCarry) return;
+    openAddModal();
+    setAmountInput(addCarry.amount);
+    setNameInput(addCarry.name);
+    // The day picked in the calendar (or carried over from the other form).
+    if (addCarry.date) setOnetimeDateInput(addCarry.date);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
+  // Version 2.2 (approved P4): a just-added bill slides in and glows.
+  const arrived = useArrival(React.useMemo(() => (model?.bills || []).map((b) => b.id), [model?.bills]), formOnly ? undefined : 'bills');
 
   // B.14 fast-follow: auto-open a bill's edit sheet when this screen is
   // reached via the subscription-reminder deep link, or via a swipe-to-
@@ -74,12 +134,19 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     const target = (model.bills || []).find((b) => b.id === openBillId);
     if (target) {
       openedBillRef.current = { id: openBillId, nonce: openBillNonce };
+      if (formOnly) {
+        openEditModal(target);
+        return;
+      }
+      if (!firstTimeOpen('bill', openBillId, openBillNonce)) return;
       afterSlide(() => openEditModal(target));
+      onOpenHandled?.();
     }
   }, [model, openBillId, openBillNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const singleForm = useSingleForm('bill');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
@@ -90,6 +157,10 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  // Version 2.2 (Cath): Custom repeat, same as loans.
+  const [customFreqInput, setCustomFreqInput] = useState('monthly');
+  const [customStartDateInput, setCustomStartDateInput] = useState('');
+  const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
   // Version 2.1: which due date is the current one (an earlier month when behind). '' = the next one.
@@ -112,7 +183,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const dueLabel =
     recurTypeInput === 'onetime'
       ? onetimeDateInput
-        ? new Date(onetimeDateInput + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        ? dateText(new Date(onetimeDateInput + 'T00:00:00'), { weekday: true })
         : 'Choose'
       : dueNowInput
       ? new Date(dueNowInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -126,13 +197,16 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       ? new Date(dueNowInput + 'T00:00:00')
       : getNextDueDate(recurTypeInput, recurTypeInput === 'monthly' ? { day: dayInput } : { day: dayInput, month: monthInput ? parseInt(monthInput, 10) : '' });
   const nextDueText = nextDueDate && !isNaN(nextDueDate.getTime())
-    ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${nextDueDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
+    ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${dateText(nextDueDate, { weekday: true })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
     : '';
 
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
     clearFieldError();
   }, [amountInput, nameInput, dayInput, monthInput, onetimeDateInput, recurTypeInput, modalOpen, clearFieldError]);
+
+  // Version 3 (M4): paid, then the due date moved: ask which bill the payment was for.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
   if (!model) {
     return (
@@ -152,6 +226,9 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setSubscriptionInput(false);
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
+    setCustomFreqInput('monthly');
+    setCustomStartDateInput('');
+    setCustomOccurrenceInput('');
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
@@ -161,12 +238,14 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   }
 
   function openAddModal() {
+    if (!singleForm.claim()) return;
     setEditingId(null);
     resetForm();
     setModalOpen(true);
   }
 
   function openEditModal(bill: Bill) {
+    if (!singleForm.claim()) return;
     setEditingId(bill.id);
     setNameInput(bill.name);
     setCategoryInput(bill.category || '');
@@ -183,6 +262,13 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     setPaymentMethodInput(currentCycle(bill)?.paymentMethod);
     const rt = (bill.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    {
+      const dd = (bill.dueDate || {}) as Record<string, any>;
+      setCustomFreqInput(bill.customFreq || dd.customFreq || 'monthly');
+      setCustomStartDateInput(bill.customStartDate || dd.customStartDate || '');
+      const cnt = typeof bill.customOccurrenceCount === 'number' ? bill.customOccurrenceCount : dd.customOccurrenceCount;
+      setCustomOccurrenceInput(typeof cnt === 'number' ? String(cnt) : '');
+    }
     const d = bill.dueDate || {};
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
@@ -200,9 +286,11 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   }
 
   function closeModal() {
+    singleForm.release();
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
 
@@ -250,6 +338,22 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
+    // Custom: kept both on the record and in dueDate, so every place that works out the
+    // next date finds it.
+    let customFields: { customFreq?: string; customStartDate?: string; customOccurrenceCount?: number | '' } = {
+      customFreq: undefined,
+      customStartDate: undefined,
+      customOccurrenceCount: undefined,
+    };
+    if (recurTypeInput === 'custom') {
+      const parsed = parseCustom(customStartDateInput, customOccurrenceInput);
+      if ('error' in parsed) {
+        fieldErrors.show('due', parsed.error);
+        return;
+      }
+      customFields = { customFreq: customFreqInput, customStartDate: customStartDateInput.trim(), customOccurrenceCount: parsed.count };
+      dueDate = { ...customFields };
+    }
 
     const nextDue = getNextDueDate(recurTypeInput, dueDate);
     const nextDueISO = nextDue
@@ -257,7 +361,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       : '';
     // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
     // Version 2.1 (round 8): the date picked in the date box is the first one due (any month or year).
-    const dueNowISO = recurTypeInput !== 'onetime' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
+    const dueNowISO = recurTypeInput !== 'onetime' && recurTypeInput !== 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, bills: [...model.bills] };
 
@@ -279,6 +383,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           priority: priorityInput,
           notes: notesInput,
           recurringType: recurTypeInput,
+          ...customFields,
           dueDate,
           cycles,
           isSubscription: subscriptionInput,
@@ -295,6 +400,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         name: trimmedName,
         category: categoryInput.trim(),
         recurringType: recurTypeInput,
+        ...customFields,
         dueDate,
         priority: priorityInput,
         owner: 'shared',
@@ -309,30 +415,67 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
       updated.bills = [...updated.bills, newBill];
     }
 
+    let toSave = updated;
+    if (editingId) {
+      // Version 3 (M4): a payment made before the due date moved gets placed on the right bill.
+      const before = model.bills.find((x) => x.id === editingId);
+      const edited = updated.bills.find((x) => x.id === editingId);
+      const moved =
+        !!before &&
+        !!edited &&
+        (currentCycle(before)?.dueDate !== dueNowISO ||
+          before.recurringType !== edited.recurringType ||
+          JSON.stringify(before.dueDate || {}) !== JSON.stringify(edited.dueDate || {}));
+      const place = moved && edited ? paymentToPlace(edited, dueNowISO) : null;
+      if (place && edited) {
+        const swap = (rec: typeof edited) => ({ ...updated, bills: updated.bills.map((x) => (x.id === editingId ? rec : x)) });
+        if (place.other) {
+          setPlaceAsk({
+            record: edited,
+            placement: place,
+            noun: 'bill',
+            onPick: (forISO) => {
+              setPlaceAsk(null);
+              commitSave(swap(placePayment(edited, place, forISO)));
+            },
+          });
+          return;
+        }
+        toSave = swap(placePayment(edited, place, place.newDue));
+      }
+    }
+    await commitSave(toSave);
+  }
+
+  async function commitSave(toSave: HouseholdModel) {
     setSaving(true);
     try {
-      await saveModel(updated);
+      const wasNew = !editingId;
+      await saveModel(toSave);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      if (wasNew) onAdded?.();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this bill'));
     } finally {
       setSaving(false);
     }
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      bills: model.bills.filter((b) => b.id !== editingId),
+      ...current,
+      bills: current.bills.filter((b) => b.id !== editingId),
     };
     setSaving(true);
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this bill'));
     } finally {
       setSaving(false);
     }
@@ -349,16 +492,18 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     );
   }
   async function performDeleteById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      bills: model.bills.filter((b) => b.id !== id),
+      ...current,
+      bills: current.bills.filter((b) => b.id !== id),
     };
     setSaving(true);
     try {
       await saveModel(updated);
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this bill'));
     } finally {
       setSaving(false);
     }
@@ -387,7 +532,8 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
-    return da.getTime() - db.getTime();
+    // Version 2.2 (canvas K3): on the same day, High priority comes first.
+    return da.getTime() - db.getTime() || priorityRank(a.priority) - priorityRank(b.priority);
   });
   const overdueIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'bill').map((o) => o.id));
   const todayStart = new Date();
@@ -415,16 +561,17 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
   const stillToPay = dueThisMonth.reduce((sum, b) => sum + billAmount(b), 0);
   const subs = bills.filter((b) => b.isSubscription);
   const subsActive = subs.filter((b) => b.subscriptionStatus !== 'cancelled').length;
-  const fmtDue = (d: Date | null) => (d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'No date set');
+  const fmtDue = (d: Date | null) => (d ? dateText(d, { weekday: true }) : 'No date set');
   const openBill = (b: Bill) => navigation.navigate('PayDetail', { kind: 'bill', id: b.id });
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(stillToPay)}</Text>
+          <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(stillToPay, colors) }]} value={stillToPay} format={formatPeso} />
           <Text style={styles.summarySub}>
             {paidThisMonth.length} of {paidThisMonth.length + dueThisMonth.length} {paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid
           </Text>
@@ -469,13 +616,16 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                   >
                     <PayRow
                       testID={`bill-row-${bill.id}`}
+                      glow={arrived === bill.id}
+                      addedBy={bill.addedBy}
                       icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
                       title={bill.name || 'Untitled bill'}
                       sub={`${!due ? 'Add a due date anytime' : `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}`}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
                       amount={formatPeso(billAmount(bill))}
-                      amountColor={colors.negative}
+                      amountColor={isOverdue ? colors.negative : colors.ink}
                       badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
                       divider={rowIndex > 0}
+                      priority={bill.priority}
                       onPress={() => openBill(bill)}
                     />
                   </SwipeableRow>
@@ -500,6 +650,7 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
                   amountColor={colors.inkDim}
                   badge={{ text: 'Paid', tone: 'paid' }}
                   divider={rowIndex > 0}
+                  addedBy={paidCycles(bill)[0]?.paidBy}
                   onPress={() => openBill(bill)}
                 />
               ))}
@@ -508,15 +659,32 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         )}
 
       </PullToRefreshScrollView>
+      )}
 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
+        // One sheet for New bill / debt / loan, so switching only changes the form.
+        shared="pay-form"
         grouped
         header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+        {!editingId && (
+          <KindSwitch
+            key="pay-form-kind"
+            current="bills"
+            onSwitch={(to) => {
+              const carry = { amount: amountInput, name: nameInput, date: onetimeDateInput || undefined };
+              // The other form takes this sheet's place (no close and reopen).
+              startSheetHandoff(() => closeModal());
+              switchToPayAdd(to, carry);
+            }}
+          />
+        )}
+        {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
+            box (and the keyboard stays up), even though the loan form has an extra row above. */}
+        <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>
 
@@ -526,24 +694,20 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           </Guided>
           <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
             <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
-            <TextInput
-              style={styles.inlineField}
-              placeholder="Or type your own"
-              placeholderTextColor={colors.inkFaint}
-              value={BILL_CATEGORIES.includes(categoryInput) ? '' : categoryInput}
-              onChangeText={setCategoryInput}
-            />
+            <OwnChoiceField style={styles.inlineField} options={BILL_CATEGORIES} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
-          <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+          <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : recurTypeInput === 'custom' ? 'Custom' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
             <Choices
-              options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }]}
+              options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }, { id: 'custom', label: 'Custom' }]}
               value={recurTypeInput as any}
               onChange={(v) => setRecurTypeInput(v as RecurringType)}
             />
           </PickerRow>
           <Guided {...fieldErrors.props('due')} onShow={() => setOpenRow('due')}>
-          <PickerRow label="Due on" value={dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
-            {recurTypeInput === 'onetime' ? (
+          <PickerRow label={recurTypeInput === 'custom' ? 'Schedule' : 'Due on'} value={recurTypeInput === 'custom' ? `${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}` : dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
+            {recurTypeInput === 'custom' ? (
+              <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="bill-custom-start" />
+            ) : recurTypeInput === 'onetime' ? (
               <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
             ) : (
               <ScheduleChoices
@@ -567,7 +731,14 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
         </FormGroup>
 
         <FormGroup>
-          <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
+          {/* 2.2 (Cath): when to tick it. One piece with the switch, so no line runs
+              between the switch and its example (the line clashed with the text). */}
+          <View>
+            <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
+            <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, paddingHorizontal: 16, paddingBottom: 12 }}>
+              Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
+            </Text>
+          </View>
           <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
             <Text style={styles.inlineLabel}>Priority</Text>
             <Choices
@@ -586,9 +757,10 @@ export default function BillsScreen({ openBillId, openBillNonce }: BillsScreenPr
           </Footnote>
         )}
         {!!nextDueText && <Footnote>{nextDueText}</Footnote>}
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
+      <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
     </SafeAreaView>
   );
 }

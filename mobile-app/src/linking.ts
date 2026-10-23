@@ -59,6 +59,7 @@ import { updateProfileHouseholdId, savePendingHostLink, loadPendingHostLink, cle
 import { saveProfileCloudBackup } from './cloudBackup';
 import { mergeModels, sanitizeModelIds } from './mergeModels';
 import { getCurrentFirebaseUser } from './authFirebase';
+import { withNetTimeout } from './netTimeout';
 
 // Chosen to avoid easy mix-ups when the code is read aloud or typed by hand
 // (no 0/O, no 1/I/L).
@@ -223,10 +224,13 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   // A code only stays readable for a short window after it's created (see
   // firestore.rules) — past that, Firestore denies the read outright, which
   // surfaces here as a thrown error rather than a "document not found."
+  // Only the two online steps have the "slow connection" timer. The key scrambling in
+  // between takes several seconds on a phone and must not count against it.
   let snap;
   try {
-    snap = await getDocFromServer(doc(db, 'linkCodes', code));
-  } catch (e) {
+    snap = await withNetTimeout(getDocFromServer(doc(db, 'linkCodes', code)));
+  } catch (e: any) {
+    if (e?.code === 'net-timeout') throw e;
     throw new Error("That code doesn't look right, or it's expired.");
   }
   if (!snap.exists()) {
@@ -251,7 +255,7 @@ export async function joinHouseholdLink(codeInput: string, myUsername: string): 
   // Checkpoint 9.2d — record who just unlocked the host's data, right away rather than
   // only at finish time, so the host's phone can show "X wants to link" and require an
   // explicit confirm before anything is finalized.
-  await setDoc(doc(db, 'linkCodes', code), { joinerUsername: myUsername }, { merge: true });
+  await withNetTimeout(setDoc(doc(db, 'linkCodes', code), { joinerUsername: myUsername }, { merge: true }));
 
   return {
     hostUsername: data.hostUsername,
@@ -416,6 +420,20 @@ export async function finishHostLink(
   }
 
   return { status: 'done', householdId: data.householdId };
+}
+
+// Version 2.2: has someone already used this code (joined, or finished joining)? Used for
+// a code past its 15 minutes: an unused one is put away; a used one is kept so this phone
+// can still finish linking. 'unknown' when the check couldn't be made (e.g. offline).
+export async function linkCodeUse(code: string): Promise<'used' | 'unused' | 'unknown'> {
+  try {
+    const snap = await getDoc(doc(db, 'linkCodes', code));
+    if (!snap.exists()) return 'unused';
+    const data = snap.data() as { joinerUsername?: string; finished?: boolean };
+    return data.joinerUsername || data.finished ? 'used' : 'unused';
+  } catch (e) {
+    return 'unknown';
+  }
 }
 
 export async function cancelLinkCode(code: string): Promise<void> {

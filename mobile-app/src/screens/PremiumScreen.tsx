@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';

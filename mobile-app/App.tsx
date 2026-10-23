@@ -2,9 +2,10 @@ import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
-import { saveSession, loadSession, clearSession } from './src/staySignedIn';
+import { saveSession, loadSession, clearSession, saveSessionKey, loadSessionKey, clearSessionKey } from './src/staySignedIn';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet } from 'react-native';
+import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, Animated, StyleSheet, Linking } from 'react-native';
+import { joinCodeFromUrl, setPendingJoinCode } from './src/joinLink';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -19,8 +20,13 @@ import {
 } from '@expo-google-fonts/nunito';
 import { setFontsReady } from './src/components/AppText';
 import LoadingView from './src/components/LoadingView';
-import { SavedToastHost } from './src/components/SavedToast';
+import { SavedToastHost, showSaved } from './src/components/SavedToast';
 import { LeafTickHost } from './src/components/LeafTick';
+import WelcomeScreen from './src/screens/WelcomeScreen';
+import { markOnboardingCompleted } from './src/onboarding';
+import GuestSetupScreen from './src/screens/GuestSetupScreen';
+import GuestSaveSheet from './src/components/GuestSaveSheet';
+import { GuestSetup, emptyGuestSetup, loadGuestSetup, saveGuestSetup, clearGuestSetup, guestModel } from './src/guest';
 import BusyOverlay, { paintBusy } from './src/components/BusyOverlay';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -45,8 +51,12 @@ import { deriveKey, decryptJSON } from './src/encryption';
 import { sanitizeModelIds } from './src/mergeModels';
 import type { HouseholdModel } from './src/types';
 import { getBiometricState } from './src/biometrics';
-import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes } from './src/autoLock';
+import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes, setAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
+import { StillTherePopup, PausedCover, AutoLockSheet, STILL_THERE_AFTER_MS } from './src/components/StillThere';
+import { onActivity } from './src/activity';
+import { closeOpenSwipeRows } from './src/components/SwipeableRow';
+import { hideAmountsNow } from './src/hideAmounts';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { MoodThemeProvider } from './src/mood';
 import { DataProvider, useData } from './src/DataContext';
@@ -60,7 +70,7 @@ import {
 } from './src/sessions';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
-type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher';
+type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher' | 'welcome' | 'setup' | 'guest' | 'guestSignUp';
 
 // Each top-level screen fades in on its own Animated value that starts at 0
 // from its very first frame, so the new screen never flashes at full opacity
@@ -76,10 +86,22 @@ function ScreenFade({ skip, children }: { skip: boolean; children: React.ReactNo
 
 function AppContent() {
   const { colors } = useTheme();
-  const { loadModel, clearModel, goOnline, isOnline } = useData();
+  const { loadModel, clearModel, waitForSaves, startGuest, guestRequest, model: currentModel, goOnline, isOnline } = useData();
   // Version 2.1 (open from the phone first): the account opened from the phone's copy and
   // still needs its quiet online sign-in (retried when the connection comes back).
   const pendingReconcileRef = useRef<{ username: string; creds: { email: string; password: string } } | null>(null);
+  // Version 3 (new start): answers from Welcome + the four questions, before any account.
+  const [guestSetup, setGuestSetup] = useState<GuestSetup>(emptyGuestSetup());
+  function updateGuestSetup(next: GuestSetup) {
+    setGuestSetup(next);
+    saveGuestSetup(next);
+  }
+  function enterGuestHome(setup: GuestSetup) {
+    const next = { ...setup, step: 'home' as const };
+    updateGuestSetup(next);
+    startGuest(guestModel(next), { name: next.name.trim(), helpWith: next.helpWith });
+    setScreen('guest');
+  }
   const [introFromSignIn, setIntroFromSignIn] = useState(false);
   const [screen, setScreen] = useState<Screen>('loading');
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
@@ -95,6 +117,11 @@ function AppContent() {
   // Sign in once: true while a remembered LINKED account signs in quietly behind the
   // opening screen (an unlinked one opens offline straight away instead).
   const [silentSignIn, setSilentSignIn] = useState(false);
+  // Version 3 (M2): the opening shows changing words while a saved account unlocks.
+  const [openingUnlocking, setOpeningUnlocking] = useState(false);
+  // Version 3 (M3): sign-in opened from the account list ("Use password instead") gets
+  // "‹ Back to accounts", and the phone's Back button returns to the list too.
+  const [signInFromSwitcher, setSignInFromSwitcher] = useState(false);
   // Resolves when the opening animation has had its ~3 seconds, so a quick quiet
   // sign-in never cuts the animation short.
   const introDoneRef = useRef<Promise<void>>(new Promise((resolve) => setTimeout(resolve, 3100)));
@@ -126,6 +153,8 @@ function AppContent() {
   const pendingDeepLinkPayday = useRef<string | null>(null);
   // Envelope alert -> Envelopes page; month-end summary -> the close-out report.
   const pendingDeepLinkPage = useRef<'envelopeAlert' | 'closeOut' | null>(null);
+  // Version 2.2: an invite link (financeflow://join/ABC123) opens Household, which joins.
+  const pendingJoinOpen = useRef(false);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -149,6 +178,10 @@ function AppContent() {
   }
 
   function flushPendingDeepLink() {
+    if (pendingJoinOpen.current && navigationRef.isReady() && screenRef.current === 'home') {
+      pendingJoinOpen.current = false;
+      navigationRef.navigate('Profile', undefined);
+    }
     if (pendingDeepLinkPage.current && navigationRef.isReady()) {
       const page = pendingDeepLinkPage.current;
       pendingDeepLinkPage.current = null;
@@ -168,6 +201,21 @@ function AppContent() {
     navigationRef.navigate('Main', { openBillId: billId });
   }
 
+  // Version 2.2: invite links. The code waits (joinLink.ts) until Household picks it up:
+  // straight away when signed in, or after signing in.
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      const code = joinCodeFromUrl(url);
+      if (!code) return;
+      setPendingJoinCode(code);
+      pendingJoinOpen.current = true;
+      flushPendingDeepLink();
+    };
+    Linking.getInitialURL().then(handle).catch(() => {});
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    return () => sub.remove();
+  }, []);
+
   // Cold start: the app may have been launched BY tapping the notification.
   useEffect(() => {
     Notifications.getLastNotificationResponseAsync().then(captureNotificationResponse);
@@ -180,6 +228,14 @@ function AppContent() {
   }, []);
   const usernameRef = useRef<string | null>(null);
   const autoLockMinutesRef = useRef<number>(DEFAULT_AUTO_LOCK_MINUTES);
+  // Version 2.2 (canvas S1-S3): "Are you still there?", the cover after no answer, and the
+  // Auto-lock sheet it can open.
+  // When someone last touched the app. Checked every few seconds (a single long timer
+  // doesn't survive the screen turning off), and on coming back to the app.
+  const lastTouchRef = useRef(Date.now());
+  const [stillThereOpen, setStillThereOpen] = useState(false);
+  const [pausedCover, setPausedCover] = useState(false);
+  const [autoLockSheetOpen, setAutoLockSheetOpen] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentDeviceIdRef = useRef<string | null>(null);
   const deviceSessionUnsubRef = useRef<(() => void) | null>(null);
@@ -201,10 +257,26 @@ function AppContent() {
       const profiles = await loadProfilesIndex();
       const profile = profiles.find((p) => p.username === username);
       if (!profile) return null;
-      const key = deriveKey(creds.password, profile.salt);
       const encrypted = await loadEncryptedProfileData(username);
       if (!encrypted) return null;
-      const model = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+      // Version 2.2 (Cath chose "best of both"): the remembered account's unlocked key
+      // skips the slow password-to-key step. Used only if it really opens the data;
+      // otherwise it's wiped and the key is made from the password as before.
+      let key: CryptoJS.lib.WordArray | null = null;
+      let model: HouseholdModel | null = null;
+      const rememberedKey = await loadSessionKey(username, profile.salt);
+      if (rememberedKey) {
+        try {
+          model = sanitizeModelIds(decryptJSON<HouseholdModel>(rememberedKey, encrypted));
+          key = rememberedKey;
+        } catch (e) {
+          clearSessionKey().catch(() => {});
+        }
+      }
+      if (!key || !model) {
+        key = deriveKey(creds.password, profile.salt);
+        model = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+      }
       if (profile.householdId) {
         // Version 2.1: a linked household opens from the phone too, using this phone's
         // password-locked copy of the household key (kept since the last online open).
@@ -256,6 +328,14 @@ function AppContent() {
     goOnline();
   }
 
+  // Version 2.2: keeps the remembered account's unlocked key next to its saved
+  // sign-in, so the next open skips the slow step (see staySignedIn.ts).
+  async function rememberSessionKey(username: string, key: CryptoJS.lib.WordArray) {
+    const profiles = await loadProfilesIndex();
+    const profile = profiles.find((p) => p.username === username);
+    if (profile?.salt) await saveSessionKey(username, profile.salt, key);
+  }
+
   // Opens an account that was unlocked offline (unlinked profiles only). Used by the
   // account switcher and by "sign in once" when the app starts.
   function enterWithOfflineUnlock(
@@ -274,7 +354,10 @@ function AppContent() {
       { deferNotifications: true, offlineStart: !!offline.householdKey }
     ).catch(() => {});
     recordRecentAccount(creds.username, undefined, undefined, offline.model.avatars?.[creds.username]).catch(() => {});
-    saveSession(creds).catch(() => {});
+    // The key is kept only once the sign-in itself is saved (review fix: in that order).
+    saveSession(creds)
+      .then(() => saveSessionKey(creds.username, offline.profile.salt, offline.key))
+      .catch(() => {});
     setScreen('home');
     setTimeout(() => {
       rescheduleBillNotifications(offline.model).catch(() => {});
@@ -382,6 +465,7 @@ function AppContent() {
       autoLockMinutesRef.current = await getAutoLockMinutes();
       // Sign in once: a remembered account opens without asking for the password.
       if (saved && profiles.some((p) => p.username === saved.username)) {
+        setOpeningUnlocking(true); // words under the little leaf while it unlocks
         await introDrawnRef.current;
         const offline = await attemptOfflineUnlock(saved.username, saved);
         if (offline) {
@@ -399,7 +483,15 @@ function AppContent() {
       if (saved) clearSession().catch(() => {});
       await introDoneRef.current;
       if (!profiles.length) {
-        setScreen('intro');
+        // Version 3: brand-new phone: Welcome, four questions, then Home without an account
+        // (picks up where they left off if the app was closed part-way).
+        const saved = await loadGuestSetup();
+        if (saved?.step === 'home') {
+          enterGuestHome(saved);
+        } else {
+          setGuestSetup(saved ?? emptyGuestSetup());
+          setScreen(saved?.step === 'setup' ? 'setup' : 'welcome');
+        }
       } else if (recents.length) {
         setRecentAccounts(recents);
         setScreen('switcher');
@@ -444,6 +536,7 @@ function AppContent() {
   function resetIdleTimer() {
     clearIdleTimer();
     if (screenRef.current !== 'home') return;
+
     if (autoLockMinutesRef.current <= 0) return;
     const timeoutMs = autoLockMinutesRef.current * 60 * 1000;
     idleTimerRef.current = setTimeout(() => {
@@ -451,10 +544,38 @@ function AppContent() {
     }, timeoutMs);
   }
 
+  function noteTouch() {
+    lastTouchRef.current = Date.now();
+    resetIdleTimer();
+  }
+  useEffect(() => onActivity(() => noteTouch()), []);
+
+  // Version 2.2 fix (Cath: it never showed): with Auto-lock off, 5 minutes without a
+  // touch asks "Are you still there?". That includes the phone's screen going dark for 5
+  // minutes or more: it asks as soon as the app is opened again.
+  const stillOpenRef = useRef(false);
+  stillOpenRef.current = stillThereOpen || pausedCover || autoLockSheetOpen;
+  function checkStillThere() {
+    if (screenRef.current !== 'home' || stillOpenRef.current) return;
+    if (autoLockMinutesRef.current > 0 || AppState.currentState !== 'active') return;
+    if (Date.now() - lastTouchRef.current >= STILL_THERE_AFTER_MS) setStillThereOpen(true);
+  }
+  useEffect(() => {
+    if (screen !== 'home') return;
+    lastTouchRef.current = Date.now();
+    const t = setInterval(checkStillThere, 10000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'background' || nextState === 'inactive') {
         lockIfConfigured();
+      }
+      if (nextState === 'active') {
+        resetIdleTimer();
+        checkStillThere();
       }
       if (nextState === 'active') {
         const user = getCurrentFirebaseUser();
@@ -468,11 +589,18 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    if (screen !== 'signIn') setSignInFromSwitcher(false);
+  }, [screen]);
+
+  useEffect(() => {
     if (screen === 'home') {
       resetIdleTimer();
       flushPendingDeepLink();
     } else {
       clearIdleTimer();
+      setStillThereOpen(false);
+      setPausedCover(false);
+      setAutoLockSheetOpen(false);
     }
     return () => clearIdleTimer();
   }, [screen]);
@@ -480,6 +608,8 @@ function AppContent() {
   async function handleFullSignOut() {
     // Read these first: the username is cleared later in this function.
     const signedOutUsername = usernameRef.current;
+    // Version 2.2: let the last change finish saving first.
+    await waitForSaves();
     const keepRecent = keepRecentOnSignOutRef.current;
     keepRecentOnSignOutRef.current = false;
     if (signedOutUsername && !keepRecent) {
@@ -532,6 +662,9 @@ function AppContent() {
   // fresh and lands back on the switcher instead of a blank sign-in form.
   async function handleSwitchAccount() {
     clearIdleTimer();
+    // Version 2.2: let the last change finish saving first (saving now carries on in the
+    // background after a form closes).
+    await waitForSaves();
     // The next launch shows the account switcher instead of opening this account.
     clearSession().catch(() => {});
     // 1. Unsubscribe listener FIRST (same ordering as handleFullSignOut)
@@ -579,6 +712,8 @@ function AppContent() {
   function handleNavStateChange() {
     const name = navigationRef.getCurrentRoute()?.name ?? null;
     const prevName = lastRouteNameRef.current;
+    // Version 2.2 (Cath): a row left open on swipe-to-delete closes when the screen changes.
+    if (name !== prevName) closeOpenSwipeRows();
     if (name && prevName && name !== prevName) {
       const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
       const from = TAB_ORDER.indexOf(prevName);
@@ -606,7 +741,7 @@ function AppContent() {
           </View>
         )}
         <View style={StyleSheet.absoluteFill}>
-          <IntroScreen />
+          <IntroScreen unlocking={openingUnlocking} />
         </View>
       </View>
     );
@@ -638,7 +773,7 @@ function AppContent() {
 
   if (screen === 'home' && currentUsername && derivedKey) {
     return (
-      <View style={{ flex: 1, backgroundColor: 'transparent' }} onStartShouldSetResponderCapture={() => { resetIdleTimer(); return false; }}>
+      <View style={{ flex: 1, backgroundColor: 'transparent' }} onStartShouldSetResponderCapture={() => { noteTouch(); return false; }}>
         <NavigationContainer
           ref={navigationRef}
           theme={{
@@ -655,6 +790,41 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
+        <StillTherePopup
+          visible={stillThereOpen}
+          onHere={() => {
+            setStillThereOpen(false);
+            noteTouch();
+          }}
+          onAutoLock={() => {
+            setStillThereOpen(false);
+            setAutoLockSheetOpen(true);
+          }}
+          onTimeout={() => {
+            setStillThereOpen(false);
+            hideAmountsNow();
+            setPausedCover(true);
+          }}
+        />
+        <PausedCover
+          visible={pausedCover}
+          onShow={async () => {
+            setPausedCover(false);
+            const username = usernameRef.current;
+            if (!username) return;
+            const [pin, bio] = await Promise.all([hasPinSetUp(username), getBiometricState(username)]);
+            if (pin || bio === 'ENABLED') setScreen('locked');
+            else noteTouch();
+          }}
+        />
+        <AutoLockSheet
+          visible={autoLockSheetOpen}
+          username={currentUsername}
+          onClose={() => {
+            setAutoLockSheetOpen(false);
+            noteTouch();
+          }}
+        />
       </View>
     );
   }
@@ -669,6 +839,93 @@ function AppContent() {
             onboardingCredsRef.current = null;
             setScreen('home');
           }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === 'welcome') {
+    return (
+      <WelcomeScreen
+        onStart={() => {
+          updateGuestSetup({ ...guestSetup, step: 'setup' });
+          setScreen('setup');
+        }}
+        onSignIn={() => setScreen('signIn')}
+      />
+    );
+  }
+
+  if (screen === 'setup') {
+    return (
+      <GuestSetupScreen
+        setup={guestSetup}
+        onChange={updateGuestSetup}
+        onBackToWelcome={() => {
+          updateGuestSetup({ ...guestSetup, step: 'welcome' });
+          setScreen('welcome');
+        }}
+        onDone={enterGuestHome}
+      />
+    );
+  }
+
+  if (screen === 'guest') {
+    return (
+      <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <NavigationContainer
+          ref={navigationRef}
+          theme={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent' } }}
+        >
+          <RootStack
+            username=""
+            onSignOut={() => {}}
+            onSwitchAccount={() => setScreen('signIn')}
+            onLock={() => {}}
+            onGuestSave={() => setScreen('guestSignUp')}
+          />
+        </NavigationContainer>
+        <GuestSaveSheet onContinue={() => setScreen('guestSignUp')} />
+      </View>
+    );
+  }
+
+  if (screen === 'guestSignUp') {
+    const pendingEntry = guestRequest?.entry ?? null;
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <CreateProfileScreen
+          guest={{
+            name: guestSetup.name.trim(),
+            model: guestRequest?.model ?? currentModel ?? guestModel(guestSetup),
+            entry: pendingEntry,
+            onBack: () => setScreen('guest'),
+          }}
+          onProfileCreated={(username, key, credentials) => {
+            setRemoteRevokeNotice(null);
+            setCurrentUsername(username);
+            setDerivedKey(key);
+            loadModel(username, key);
+            const user = getCurrentFirebaseUser();
+            if (user) {
+              registerAndListenDeviceSession(user.uid).catch(() => {});
+              recordRecentAccount(username, user.uid, undefined, undefined).catch(() => {});
+            }
+            if (credentials) {
+              saveFingerprintCopyIfPossible({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password })
+                .then(() => rememberSessionKey(username, key))
+                .catch(() => {});
+            }
+            // "Does anyone else use your phone?" Yes: lock after a minute away.
+            if (guestSetup.othersUsePhone) setAutoLockMinutes(1).catch(() => {});
+            markOnboardingCompleted(username).catch(() => {});
+            clearGuestSetup();
+            setGuestSetup(emptyGuestSetup());
+            setScreen('home');
+            setTimeout(() => showSaved(pendingEntry ? `Signed in. Your ${pendingEntry} is saved.` : 'Signed in. Finance Flow is saved.'), 600);
+          }}
+          onGoToSignIn={() => setScreen('signIn')}
         />
       </SafeAreaView>
     );
@@ -689,9 +946,14 @@ function AppContent() {
     if (screen === 'switcher') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+        {silentSignIn && autoSignIn && (
+          <View style={{ ...StyleSheet.absoluteFillObject, opacity: 0 }} pointerEvents="none">
+            {renderSignIn(true)}
+          </View>
+        )}
         <AccountSwitcherScreen
           accounts={recentAccounts}
-          working={unlocking}
+          working={unlocking || (silentSignIn && !!autoSignIn)}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
             setUnlocking(true);
@@ -703,10 +965,13 @@ function AppContent() {
                   enterWithOfflineUnlock(creds, offline);
                   return;
                 }
+                // Version 2.2 (Cath: "unlocks, then a Signing in screen: double wait"): the
+                // online sign-in runs out of sight behind this screen, which keeps showing
+                // "Unlocking…". It only shows the sign-in screen if it fails.
                 setRemoteRevokeNotice(null);
                 setSignInPrefillUsername(undefined);
                 setAutoSignIn(creds);
-                setScreen('signIn');
+                setSilentSignIn(true);
               } finally {
                 setUnlocking(false);
               }
@@ -715,6 +980,7 @@ function AppContent() {
           onUsePassword={(username) => {
             setAutoSignIn(null);
             setSignInPrefillUsername(username);
+            setSignInFromSwitcher(true);
             setScreen('signIn');
           }}
           onUseOtherAccount={() => {
@@ -748,7 +1014,9 @@ function AppContent() {
                 username,
                 password: credentials.password,
               }).catch(() => {});
-              saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+              saveSession({ email: credentials.email, username, password: credentials.password })
+                .then(() => rememberSessionKey(username, key))
+                .catch(() => {});
             }
             setScreen('onboarding');
           }}
@@ -777,6 +1045,20 @@ function AppContent() {
           setRemoteRevokeNotice('Your saved sign-in is out of date. Sign in with your password.');
         }}
         silent={silent}
+        onBackToAccounts={
+          !silent && signInFromSwitcher
+            ? () => {
+                setSignInFromSwitcher(false);
+                setSignInPrefillUsername(undefined);
+                setAutoSignIn(null);
+                setRemoteRevokeNotice(null);
+                loadRecentAccounts().then((recents) => {
+                  setRecentAccounts(recents);
+                  setScreen('switcher');
+                });
+              }
+            : undefined
+        }
         onSilentFailed={(username) => {
           // The quiet sign-in at launch didn't work (no connection, or the saved
           // password changed): show the normal sign-in screen, once.
@@ -839,7 +1121,9 @@ function AppContent() {
             ).catch(() => {});
           }
           if (credentials) {
-            saveSession({ email: credentials.email, username, password: credentials.password }).catch(() => {});
+            saveSession({ email: credentials.email, username, password: credentials.password })
+                .then(() => rememberSessionKey(username, key))
+                .catch(() => {});
           }
           if (credentials && !viaQuickUnlock) {
             saveFingerprintCopyIfPossible({
@@ -855,7 +1139,7 @@ function AppContent() {
             }, 0);
           }
         }}
-        onGoToCreateProfile={() => { setIntroFromSignIn(true); setScreen('intro'); }}
+        onGoToCreateProfile={() => { setIntroFromSignIn(true); setScreen('welcome'); }}
       />
     </SafeAreaView>
   );

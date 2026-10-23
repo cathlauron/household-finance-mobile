@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { formatPeso } from '../balanceProjection';
@@ -9,7 +11,7 @@ import AccountPicker, { accountProblem } from './AccountPicker';
 import AmountInput from './AmountInput';
 import DateField from './DateField';
 import SegmentedControl from './SegmentedControl';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 
 // Redesign: asks which account a payment comes from (or goes into) before it's logged,
 // e.g. "Mark as paid" on a bill. Same rules as a new transaction: required, and cash or
@@ -34,12 +36,15 @@ type Props = {
   partOption?: { name: string; repeats: boolean };
   // "Paying the Oct 15 bill" under the title.
   dueText?: string;
+  // Version 2.2 (Cath, canvas P1-P2): a second choice at the top, "Just mark it paid": no
+  // account, no date, nothing in spending (used by Travel's checklist).
+  justMark?: { onConfirm: () => void; note?: string };
   onConfirm: (pm: PaymentMethod, amount: number, lateFee: number, date: string, takeOffBalance: boolean) => void;
 };
 
 function shortISO(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateText(d);
 }
 function yesterdayISO(): string {
   const d = new Date();
@@ -47,7 +52,7 @@ function yesterdayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onConfirm }: Props) {
+export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, justMark, onConfirm }: Props) {
   const { colors } = useTheme();
   const [pm, setPm] = useState<PaymentMethod | undefined>(initial);
   const [error, setError] = useState('');
@@ -57,6 +62,8 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
   const [date, setDate] = useState(todayISO());
   const [dateMode, setDateMode] = useState<'today' | 'yesterday' | 'pick'>('today');
   const [takeOff, setTakeOff] = useState(false);
+  const [mode, setMode] = useState<'account' | 'mark'>('account');
+  const marking = !!justMark && mode === 'mark';
   const amountEditable = editableAmount || (partOption && part);
   const effective = amountEditable ? (typeof payAmount === 'number' ? payAmount : 0) : amount;
   // Version 2.1 (canvas S4): a payment dated before balances were last updated is already in
@@ -82,10 +89,17 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     setDate(todayISO());
     setDateMode('today');
     setTakeOff(false);
+    setMode('account');
     setPm(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? initial : undefined);
   }, [visible]);
 
   function confirm() {
+    if (marking) {
+      if (confirmedRef.current) return;
+      confirmedRef.current = true;
+      justMark?.onConfirm();
+      return;
+    }
     if (date > todayISO()) {
       setError("A payment can't be dated in the future.");
       return;
@@ -125,6 +139,40 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
       }
     >
       <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+        {!!justMark && (
+          <View style={{ marginBottom: 12 }}>
+            <SegmentedControl<'account' | 'mark'>
+              accessibilityLabel="How it was paid"
+              options={[
+                { id: 'account', label: 'Paid from an account' },
+                { id: 'mark', label: 'Just mark it paid' },
+              ]}
+              value={mode}
+              onChange={(v) => {
+                setMode(v);
+                setError('');
+              }}
+            />
+          </View>
+        )}
+        {marking ? (
+          <>
+            <Text style={[styles.amount, { color: colors.inkDim }]}>{formatPeso(amount)}</Text>
+            <View style={[styles.markCard, { backgroundColor: colors.navy2 }]}>
+              <View style={[styles.markIcon, { backgroundColor: colors.accentTint }]}>
+                <Ionicons name="checkmark" size={18} color={colors.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.markTitle, { color: colors.ink }]}>Ticked, nothing else changes</Text>
+                <Text style={[styles.markBody, { color: colors.inkDim }]}>
+                  Use this when it was paid some other way, or you already recorded it. Your account balances and spending stay the same.
+                </Text>
+              </View>
+            </View>
+            {!!justMark?.note && <Text style={[styles.markBody, { color: colors.inkDim, marginTop: 14, marginHorizontal: 4 }]}>{justMark.note}</Text>}
+          </>
+        ) : (
+        <>
         {!!dueText && <Text style={[styles.dueText, { color: colors.inkDim }]}>{dueText}</Text>}
         {!!partOption && (
           <SegmentedControl<'all' | 'part'>
@@ -220,13 +268,15 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             </Text>
             <TouchableOpacity onPress={() => setTakeOff((t) => !t)} accessibilityRole="checkbox" accessibilityState={{ checked: takeOff }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
               <View style={[styles.check, { borderColor: colors.gold, backgroundColor: takeOff ? colors.gold : 'transparent' }]}>
-                {takeOff && <Text style={{ color: colors.onButton, fontSize: 12, fontWeight: '800' }}>✓</Text>}
+                {takeOff && <Ionicons name="checkmark" size={13} color={colors.onButton} />}
               </View>
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold, flexShrink: 1 }}>It isn't included, take it off my balance</Text>
             </TouchableOpacity>
           </View>
         )}
         <AccountPicker model={model} direction={direction} amount={effective} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
+        </>
+        )}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
       </View>
     </BottomSheet>
@@ -248,4 +298,8 @@ const styles = StyleSheet.create({
   dueText: { fontSize: 14, textAlign: 'center', marginBottom: 10 },
   balanceNote: { borderRadius: 14, padding: 12, marginBottom: 12 },
   check: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  markCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 16, padding: 16 },
+  markIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  markTitle: { fontSize: 16, fontWeight: '700' },
+  markBody: { fontSize: 14, lineHeight: 20, marginTop: 4 },
 });

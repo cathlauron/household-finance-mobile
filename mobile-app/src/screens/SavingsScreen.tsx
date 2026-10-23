@@ -1,9 +1,16 @@
+import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
+import { useArrival } from '../useArrival';
+import ArrivalGlow from '../components/ArrivalGlow';
+import { useWho } from '../components/WhoLogged';
+import { withoutSavingsPot } from '../deleteRecords';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
-import { SwipeTabs } from '../navigation/swipeTabs';
 import { useNavigation } from '@react-navigation/native';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
@@ -11,13 +18,14 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource, CalculatorInputs, PaymentMethod } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import DateField from '../components/DateField';
-import SegmentedControl from '../components/SegmentedControl';
+import SlidingPages from '../components/SlidingPages';
 import SavingsFiComparisonModal from './SavingsFiComparisonModal';
 import { hapticLight } from '../haptics';
 import Button from '../components/Button';
@@ -99,11 +107,17 @@ type PillTab = 'goals' | 'ef' | 'fi';
 type SavingsScreenProps = {
   openSavingsId?: string;
   openSavingsNonce?: number;
+  // Version 2.2 (Cath: Edit should open where you are): just the pot's form, for the pot page.
+  formOnly?: boolean;
+  onFormClosed?: () => void;
 };
 
-export default function SavingsScreen({ openSavingsId, openSavingsNonce }: SavingsScreenProps = {}) {
+export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
+  // Version 2.2 (approved P4): a just-added pot slides in and glows.
+  const arrived = useArrival((model?.savingsGoals || []).map((g) => g.id));
+  const who = useWho();
 
   const openedSavingsRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
   useEffect(() => {
@@ -113,10 +127,15 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     const target = (model.savingsGoals || []).find((g) => g.id === openSavingsId);
     if (target) {
       openedSavingsRef.current = { id: openSavingsId, nonce: openSavingsNonce };
+      if (formOnly) {
+        openEditModal(target);
+        return;
+      }
+      if (!firstTimeOpen('savings', openSavingsId, openSavingsNonce)) return;
       afterSlide(() => openEditModal(target));
     }
   }, [model, openSavingsId, openSavingsNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<any>();
 
   const [activeTab, setActiveTab] = useStickyState<PillTab>('savings.tab', 'goals');
@@ -138,6 +157,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
 
   // Redesign: Add in the top bar starts a new pot (the mockup's "Add a savings pot").
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a savings pot" testID="savings-add-pot" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -249,6 +269,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
 
@@ -367,24 +388,25 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this pot'));
     } finally {
       setSaving(false);
     }
   }
 
   async function performDeleteGoal() {
-    if (!editingId || !model) return;
-    const updated: HouseholdModel = {
-      ...model,
-      savingsGoals: model.savingsGoals.filter((g) => g.id !== editingId),
-    };
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
+    // Version 2.2 (sweep): same as swipe-to-delete, a trip or event saving into this pot
+    // stops saving (before, its switch stayed on and made a new pot on its next change).
+    const updated: HouseholdModel = withoutSavingsPot(current, editingId);
     setSaving(true);
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this pot'));
     } finally {
       setSaving(false);
     }
@@ -402,22 +424,15 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce }: Savin
   }
 
   async function performDeleteGoalById(id: string) {
-    if (!model) return;
-    const updated: HouseholdModel = {
-      ...model,
-      savingsGoals: model.savingsGoals.filter((g) => g.id !== id),
-      events: (model.events || []).map((ev) =>
-        ev.savingsGoalId === id ? { ...ev, savingsGoalId: undefined, trackInSavings: false } : ev
-      ),
-      travel: (model.travel || []).map((trip) =>
-        trip.savingsGoalId === id ? { ...trip, savingsGoalId: undefined, trackInSavings: false } : trip
-      ),
-    };
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
+    const updated: HouseholdModel = withoutSavingsPot(current, id);
     setSaving(true);
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this pot'));
     } finally {
       setSaving(false);
     }
@@ -603,180 +618,175 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     </TouchableOpacity>
   );
 
-  // Version 2.1: swipe sideways between Pots, Emergency and FI.
-  const PILLS: PillTab[] = ['goals', 'ef', 'fi'];
+  // Version 2.1: swipe sideways between Pots, Emergency and FI. Smoothness 2026-10-23
+  // (Cath picked "follows your finger"): the pages slide with your finger, like To-Pay.
   return (
-    <SwipeTabs
-      onSwipe={(d) => {
-        const i = PILLS.indexOf(activeTab) + d;
-        if (i >= 0 && i < PILLS.length) setActiveTab(PILLS[i]);
-      }}
-    >
     <SafeAreaView style={styles.container}>
-      <View style={styles.pillRow}>
-        <SegmentedControl<PillTab>
-          accessibilityLabel="Savings view"
-          options={[
-            { id: 'goals', label: 'Pots' },
-            { id: 'ef', label: 'Emergency' },
-            { id: 'fi', label: 'FI' },
-          ]}
-          value={activeTab}
-          onChange={setActiveTab}
-        />
-      </View>
+      <SlidingPages<PillTab>
+        testID="savings-pages"
+        accessibilityLabel="Savings view"
+        options={[
+          { id: 'goals', label: 'Pots', testID: 'savings-tab-goals' },
+          { id: 'ef', label: 'Emergency', testID: 'savings-tab-ef' },
+          { id: 'fi', label: 'FI', testID: 'savings-tab-fi' },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+        hideSwitcher={formOnly}
+        switcherWrapStyle={styles.pillRow}
+        renderPage={(id) =>
+          formOnly ? null : id === 'goals' ? (
+              <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={styles.summaryCard}>
+                  <GradientFill match={styles.summaryCard} />
+                  <Text style={styles.balanceBannerLabel}>Set aside in total</Text>
+                  <CountingText style={[styles.potsTotal, { color: colors.saving }]} value={totalSaved} format={formatPeso} />
+                  {thisMonth !== 0 && (
+                    <Text style={[styles.potsThisMonth, { color: colors.saving }]}>
+                      {thisMonth > 0 ? '+' : '−'}
+                      {formatPeso(Math.abs(thisMonth))} this month
+                    </Text>
+                  )}
+                </View>
 
-      {activeTab === 'goals' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.summaryCard}>
-            <GradientFill match={styles.summaryCard} />
-            <Text style={styles.balanceBannerLabel}>Set aside in total</Text>
-            <Text style={[styles.potsTotal, { color: colors.saving }]}>{formatPeso(totalSaved)}</Text>
-            {thisMonth !== 0 && (
-              <Text style={[styles.potsThisMonth, { color: colors.saving }]}>
-                {thisMonth > 0 ? '+' : '−'}
-                {formatPeso(Math.abs(thisMonth))} this month
-              </Text>
-            )}
-          </View>
-
-          {goals.length === 0 ? (
-            <Text style={styles.emptyText}>No pots yet. Tap Add to start one, like an emergency fund or a trip.</Text>
+                {goals.length === 0 ? (
+                  <Text style={styles.emptyText}>No pots yet. Tap Add to start one, like an emergency fund or a trip.</Text>
+                ) : (
+                  <>
+                    <Text style={styles.potsHeader}>Pots</Text>
+                    <View style={styles.listGroup}>
+                      <GradientFill match={styles.listGroup} />
+                      {goals.map((goal, rowIndex) => {
+                        const saved = contributionsTotal(goal);
+                        const target = potTarget(goal, model);
+                        const pct = target > 0 ? Math.min(100, Math.max(0, (saved / target) * 100)) : 0;
+                        const covered = isEmergencyPot(goal) ? monthsCovered(goal, model) : null;
+                        const subParts: string[] = [];
+                        if (target > 0) subParts.push('of ' + formatPeso(target));
+                        if (covered !== null) subParts.push(covered.toFixed(1) + ' months covered');
+                        else if (goal.targetDate) subParts.push('by ' + formatShortDateLabel(goal.targetDate));
+                        else if (target > 0) subParts.push('no date');
+                        // Version 2.2 (W1 everywhere): no icon here, so "by Ana" goes in the line under the name.
+                        if (who.others(goal.addedBy)) subParts.push(`added by ${who.nameOf(goal.addedBy)}`);
+                        return (
+                          <SwipeableRow
+                            key={goal.id}
+                            enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                            onDelete={() => handleSwipeDelete(goal)}
+                            testID={`goal-swipe-${goal.id}`}
+                            flat
+                          >
+                            <TouchableOpacity
+                              testID={`goal-row-${goal.id}`}
+                              style={[styles.potRow, rowIndex > 0 && styles.potDivider]}
+                              onPress={() => navigation.navigate('PotDetail', { id: goal.id })}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${goal.name || 'Untitled pot'}, ${formatPeso(saved)} saved`}
+                            >
+                              {arrived === goal.id && <ArrivalGlow />}
+                              <View style={styles.goalRowTop}>
+                                <Text style={[styles.goalName, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
+                                  {goal.name || 'Untitled pot'}
+                                </Text>
+                                <Text style={[styles.potAmount, { color: colors.saving }]}>{formatPeso(saved)}</Text>
+                              </View>
+                              {subParts.length > 0 && <Text style={styles.goalSub} numberOfLines={1}>{subParts.join(' · ')}</Text>}
+                              {target > 0 && (
+                                <View style={styles.progressTrack}>
+                                  <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          </SwipeableRow>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.potsFooter}>Tap a pot to add money or see its history. Add savings here rather than with + on Home, so the money isn't counted twice.</Text>
+                  </>
+                )}
+              </PullToRefreshScrollView>
+          ) : id === 'ef' ? (
+              <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
+                  <GradientFill match={styles.summaryCard} />
+                  <Text style={styles.balanceBannerLabel}>Your emergency fund covers</Text>
+                  <Text style={styles.potsTotal}>{efMonths !== null ? `${efMonths.toFixed(1)} months` : '—'}</Text>
+                  <Text style={styles.calcSub}>
+                    {efMonths === null
+                      ? 'Add your essential expenses below'
+                      : efToGo > 0
+                        ? `Aim for ${efTarget} months · ${formatPeso(efToGo)} to go`
+                        : `You've reached ${efTarget} months`}
+                  </Text>
+                  {efMonths !== null && (
+                    <View style={[styles.progressTrack, { alignSelf: 'stretch', marginTop: 14 }]}>
+                      <View style={[styles.progressFill, { width: `${Math.min(100, (efMonths / efTarget) * 100)}%` as const }]} />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.listGroup}>
+                  <GradientFill match={styles.listGroup} />
+                  {calcRow('Essential expenses', efExpensesNum > 0 ? `${formatPeso(efExpensesNum)} / mo` : 'Not set', colors.error, () =>
+                    openEdit({ key: 'efMonthlyExpenses', title: 'Essential expenses', kind: 'peso', hint: 'What you need each month for the basics', value: efExpensesNum, suggest: suggestedMonthlyExpenses > 0 ? { label: `From your bills: ${formatPeso(suggestedMonthlyExpenses)}/mo`, value: Math.round(suggestedMonthlyExpenses * 100) / 100 } : undefined })
+                  )}
+                  {calcRow('Saved so far', formatPeso(efSavedNow), colors.saving, () =>
+                    efPot ? navigation.navigate('PotDetail', { id: efPot.id }) : openEdit({ key: 'efCurrentSavings', title: 'Saved so far', kind: 'peso', hint: 'Start an "Emergency Fund" pot to track this automatically', value: efSavingsNum }),
+                    true
+                  )}
+                  {calcRow('Target', `${efTarget} months`, undefined, () => openEdit({ key: 'efTargetMonths', title: 'Target', kind: 'months', value: efTarget }), true)}
+                </View>
+                <Text style={styles.potsFooter}>
+                  {efPot ? 'Saved so far comes from your Emergency Fund pot. ' : ''}Essential expenses are suggested from your bills. Tap to change.
+                </Text>
+              </PullToRefreshScrollView>
           ) : (
-            <>
-              <Text style={styles.potsHeader}>Pots</Text>
-              <View style={styles.listGroup}>
-                <GradientFill match={styles.listGroup} />
-                {goals.map((goal, rowIndex) => {
-                  const saved = contributionsTotal(goal);
-                  const target = potTarget(goal, model);
-                  const pct = target > 0 ? Math.min(100, Math.max(0, (saved / target) * 100)) : 0;
-                  const covered = isEmergencyPot(goal) ? monthsCovered(goal, model) : null;
-                  const subParts: string[] = [];
-                  if (target > 0) subParts.push('of ' + formatPeso(target));
-                  if (covered !== null) subParts.push(covered.toFixed(1) + ' months covered');
-                  else if (goal.targetDate) subParts.push('by ' + formatShortDateLabel(goal.targetDate));
-                  else if (target > 0) subParts.push('no date');
-                  return (
-                    <SwipeableRow
-                      key={goal.id}
-                      enabled={Boolean(model.settings.swipeToDeleteEnabled)}
-                      onDelete={() => handleSwipeDelete(goal)}
-                      testID={`goal-swipe-${goal.id}`}
-                      flat
-                    >
-                      <TouchableOpacity
-                        testID={`goal-row-${goal.id}`}
-                        style={[styles.potRow, rowIndex > 0 && styles.potDivider]}
-                        onPress={() => navigation.navigate('PotDetail', { id: goal.id })}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${goal.name || 'Untitled pot'}, ${formatPeso(saved)} saved`}
-                      >
-                        <View style={styles.goalRowTop}>
-                          <Text style={[styles.goalName, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
-                            {goal.name || 'Untitled pot'}
-                          </Text>
-                          <Text style={[styles.potAmount, { color: colors.saving }]}>{formatPeso(saved)}</Text>
-                        </View>
-                        {subParts.length > 0 && <Text style={styles.goalSub} numberOfLines={1}>{subParts.join(' · ')}</Text>}
-                        {target > 0 && (
-                          <View style={styles.progressTrack}>
-                            <View style={[styles.progressFill, { width: `${pct}%` as const }]} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    </SwipeableRow>
-                  );
-                })}
-              </View>
-              <Text style={styles.potsFooter}>Tap a pot to add money or see its history. Add savings here rather than with + on Home, so the money isn't counted twice.</Text>
-            </>
-          )}
-        </PullToRefreshScrollView>
-      )}
-
-      {activeTab === 'ef' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
-            <GradientFill match={styles.summaryCard} />
-            <Text style={styles.balanceBannerLabel}>Your emergency fund covers</Text>
-            <Text style={styles.potsTotal}>{efMonths !== null ? `${efMonths.toFixed(1)} months` : '—'}</Text>
-            <Text style={styles.calcSub}>
-              {efMonths === null
-                ? 'Add your essential expenses below'
-                : efToGo > 0
-                  ? `Aim for ${efTarget} months · ${formatPeso(efToGo)} to go`
-                  : `You've reached ${efTarget} months`}
-            </Text>
-            {efMonths !== null && (
-              <View style={[styles.progressTrack, { alignSelf: 'stretch', marginTop: 14 }]}>
-                <View style={[styles.progressFill, { width: `${Math.min(100, (efMonths / efTarget) * 100)}%` as const }]} />
-              </View>
-            )}
-          </View>
-          <View style={styles.listGroup}>
-            <GradientFill match={styles.listGroup} />
-            {calcRow('Essential expenses', efExpensesNum > 0 ? `${formatPeso(efExpensesNum)} / mo` : 'Not set', colors.error, () =>
-              openEdit({ key: 'efMonthlyExpenses', title: 'Essential expenses', kind: 'peso', hint: 'What you need each month for the basics', value: efExpensesNum, suggest: suggestedMonthlyExpenses > 0 ? { label: `From your bills: ${formatPeso(suggestedMonthlyExpenses)}/mo`, value: Math.round(suggestedMonthlyExpenses * 100) / 100 } : undefined })
-            )}
-            {calcRow('Saved so far', formatPeso(efSavedNow), colors.saving, () =>
-              efPot ? navigation.navigate('PotDetail', { id: efPot.id }) : openEdit({ key: 'efCurrentSavings', title: 'Saved so far', kind: 'peso', hint: 'Start an "Emergency Fund" pot to track this automatically', value: efSavingsNum }),
-              true
-            )}
-            {calcRow('Target', `${efTarget} months`, undefined, () => openEdit({ key: 'efTargetMonths', title: 'Target', kind: 'months', value: efTarget }), true)}
-          </View>
-          <Text style={styles.potsFooter}>
-            {efPot ? 'Saved so far comes from your Emergency Fund pot. ' : ''}Essential expenses are suggested from your bills. Tap to change.
-          </Text>
-        </PullToRefreshScrollView>
-      )}
-
-      {activeTab === 'fi' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
-            <GradientFill match={styles.summaryCard} />
-            <Text style={styles.balanceBannerLabel}>{fiMonthsUntilFi === 0 ? 'You could be' : 'Financially independent in about'}</Text>
-            <Text style={styles.potsTotal}>
-              {fiMonthsUntilFi === null ? '—' : fiMonthsUntilFi === 0 ? 'there now' : fiMonthsUntilFi >= 12 ? `${Math.round(fiMonthsUntilFi / 12)} years` : `${fiMonthsUntilFi} months`}
-            </Text>
-            <Text style={styles.calcSub}>
-              {fiNumber !== null ? `You'd need ${formatPeso(Math.round(fiNumber))} invested` : 'Fill in the rows below to see your estimate'}
-            </Text>
-          </View>
-          <View style={styles.listGroup}>
-            <GradientFill match={styles.listGroup} />
-            {calcRow('Yearly expenses', !isNaN(fiExpensesNum) ? formatPeso(fiExpensesNum) : 'Not set', colors.error, () =>
-              openEdit({ key: 'fiAnnualExpenses', title: 'Yearly expenses', kind: 'peso', value: fiExpensesNum, suggest: suggestedAnnualExpenses > 0 ? { label: `From your bills: ${formatPeso(suggestedAnnualExpenses)}/yr`, value: Math.round(suggestedAnnualExpenses * 100) / 100 } : undefined })
-            )}
-            {calcRow('Pension or other income', !isNaN(fiGuaranteedIncomeNum) && fiGuaranteedIncomeNum > 0 ? `${formatPeso(fiGuaranteedIncomeNum)} / yr` : 'None', undefined, () =>
-              openEdit({ key: 'fiGuaranteedAnnualIncome', title: 'Pension or other income', kind: 'peso', hint: 'Yearly income you\'ll get without working (optional)', value: fiGuaranteedIncomeNum }),
-              true
-            )}
-            {calcRow('Invested now', formatPeso(isNaN(fiSavingsNum) ? 0 : fiSavingsNum), colors.saving, () =>
-              openEdit({ key: 'fiCurrentSavings', title: 'Invested now', kind: 'peso', value: fiSavingsNum, suggest: suggestedNetWorth > 0 ? { label: `Your chosen accounts: ${formatPeso(suggestedNetWorth)}`, value: Math.round(suggestedNetWorth * 100) / 100 } : undefined }),
-              true
-            )}
-            {calcRow('Saving each month', !isNaN(fiMonthlySavingsNum) ? formatPeso(fiMonthlySavingsNum) : 'Not set', colors.saving, () =>
-              openEdit({ key: 'fiMonthlySavings', title: 'Saving each month', kind: 'peso', value: fiMonthlySavingsNum, suggest: suggestedMonthlySavings > 0 ? { label: `Income minus bills: ${formatPeso(suggestedMonthlySavings)}/mo`, value: Math.round(suggestedMonthlySavings * 100) / 100 } : undefined }),
-              true
-            )}
-            {calcRow('Expected return', !isNaN(fiReturnNum) ? `${fiReturnNum}% a year` : 'Not set', undefined, () =>
-              openEdit({ key: 'fiExpectedReturnPct', title: 'Expected return', kind: 'pct', hint: 'Average yearly growth of your investments', value: fiReturnNum }),
-              true
-            )}
-            {calcRow('Safe withdrawal rate', `${fiSwrForMath}%`, undefined, () =>
-              openEdit({ key: 'fiWithdrawalRatePct', title: 'Safe withdrawal rate', kind: 'pct', hint: 'How much you take out each year. 4% is the usual rule of thumb.', value: fiSwrForMath }),
-              true
-            )}
-          </View>
-          <Text style={styles.potsFooter}>An estimate, not advice.</Text>
-          <View style={styles.listGroup}>
-            <GradientFill match={styles.listGroup} />
-            {calcRow('Accounts counted', `${fiSelectedAccountIds.length} of ${fiAllAccounts.length}`, undefined, () => setFiAccountPickerOpen(true))}
-            {calcRow('Compare scenarios', '', undefined, () => setFiCompareOpen(true), true)}
-          </View>
-        </PullToRefreshScrollView>
-      )}
+              <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={[styles.summaryCard, { alignItems: 'center', paddingVertical: 18 }]}>
+                  <GradientFill match={styles.summaryCard} />
+                  <Text style={styles.balanceBannerLabel}>{fiMonthsUntilFi === 0 ? 'You could be' : 'Financially independent in about'}</Text>
+                  <Text style={styles.potsTotal}>
+                    {fiMonthsUntilFi === null ? '—' : fiMonthsUntilFi === 0 ? 'there now' : fiMonthsUntilFi >= 12 ? `${Math.round(fiMonthsUntilFi / 12)} years` : `${fiMonthsUntilFi} months`}
+                  </Text>
+                  <Text style={styles.calcSub}>
+                    {fiNumber !== null ? `You'd need ${formatPeso(Math.round(fiNumber))} invested` : 'Fill in the rows below to see your estimate'}
+                  </Text>
+                </View>
+                <View style={styles.listGroup}>
+                  <GradientFill match={styles.listGroup} />
+                  {calcRow('Yearly expenses', !isNaN(fiExpensesNum) ? formatPeso(fiExpensesNum) : 'Not set', colors.error, () =>
+                    openEdit({ key: 'fiAnnualExpenses', title: 'Yearly expenses', kind: 'peso', value: fiExpensesNum, suggest: suggestedAnnualExpenses > 0 ? { label: `From your bills: ${formatPeso(suggestedAnnualExpenses)}/yr`, value: Math.round(suggestedAnnualExpenses * 100) / 100 } : undefined })
+                  )}
+                  {calcRow('Pension or other income', !isNaN(fiGuaranteedIncomeNum) && fiGuaranteedIncomeNum > 0 ? `${formatPeso(fiGuaranteedIncomeNum)} / yr` : 'None', undefined, () =>
+                    openEdit({ key: 'fiGuaranteedAnnualIncome', title: 'Pension or other income', kind: 'peso', hint: 'Yearly income you\'ll get without working (optional)', value: fiGuaranteedIncomeNum }),
+                    true
+                  )}
+                  {calcRow('Invested now', formatPeso(isNaN(fiSavingsNum) ? 0 : fiSavingsNum), colors.saving, () =>
+                    openEdit({ key: 'fiCurrentSavings', title: 'Invested now', kind: 'peso', value: fiSavingsNum, suggest: suggestedNetWorth > 0 ? { label: `Your chosen accounts: ${formatPeso(suggestedNetWorth)}`, value: Math.round(suggestedNetWorth * 100) / 100 } : undefined }),
+                    true
+                  )}
+                  {calcRow('Saving each month', !isNaN(fiMonthlySavingsNum) ? formatPeso(fiMonthlySavingsNum) : 'Not set', colors.saving, () =>
+                    openEdit({ key: 'fiMonthlySavings', title: 'Saving each month', kind: 'peso', value: fiMonthlySavingsNum, suggest: suggestedMonthlySavings > 0 ? { label: `Income minus bills: ${formatPeso(suggestedMonthlySavings)}/mo`, value: Math.round(suggestedMonthlySavings * 100) / 100 } : undefined }),
+                    true
+                  )}
+                  {calcRow('Expected return', !isNaN(fiReturnNum) ? `${fiReturnNum}% a year` : 'Not set', undefined, () =>
+                    openEdit({ key: 'fiExpectedReturnPct', title: 'Expected return', kind: 'pct', hint: 'Average yearly growth of your investments', value: fiReturnNum }),
+                    true
+                  )}
+                  {calcRow('Safe withdrawal rate', `${fiSwrForMath}%`, undefined, () =>
+                    openEdit({ key: 'fiWithdrawalRatePct', title: 'Safe withdrawal rate', kind: 'pct', hint: 'How much you take out each year. 4% is the usual rule of thumb.', value: fiSwrForMath }),
+                    true
+                  )}
+                </View>
+                <Text style={styles.potsFooter}>An estimate, not advice.</Text>
+                <View style={styles.listGroup}>
+                  <GradientFill match={styles.listGroup} />
+                  {calcRow('Accounts counted', `${fiSelectedAccountIds.length} of ${fiAllAccounts.length}`, undefined, () => setFiAccountPickerOpen(true))}
+                  {calcRow('Compare scenarios', '', undefined, () => setFiCompareOpen(true), true)}
+                </View>
+              </PullToRefreshScrollView>
+          )
+        }
+      />
 
       <BottomSheet
         visible={editField !== null}
@@ -891,7 +901,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           </>
         )}
 
-        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete pot" variant="destructive" onPress={handleDeleteGoal} />}
       </BottomSheet>
 
@@ -942,7 +952,6 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         }}
       />
     </SafeAreaView>
-    </SwipeTabs>
   );
 }
 

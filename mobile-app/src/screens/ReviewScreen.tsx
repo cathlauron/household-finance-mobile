@@ -1,5 +1,8 @@
 import React, { useLayoutEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { alertNotSaved } from '../messages';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
@@ -40,7 +43,7 @@ export default function ReviewScreen() {
         }),
       });
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this change'));
     }
   }
 
@@ -71,7 +74,7 @@ export default function ReviewScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <Text style={styles.intro}>Check the category on new spending. One tap if it's right.</Text>
       {items.map((t) => (
         <View key={t.id} style={styles.card}>
@@ -109,7 +112,7 @@ export default function ReviewScreen() {
           </View>
         </View>
       ))}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

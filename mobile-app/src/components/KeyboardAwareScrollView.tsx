@@ -41,10 +41,30 @@ function keyboardTopFrom(e: KeyboardEvent, navBar: number): number {
   return Math.min(fromY, screenH - height);
 }
 
-export const KeyboardAwareScrollView = forwardRef<ScrollView, ScrollViewProps>(function KeyboardAwareScrollView(
-  { contentContainerStyle, onScroll, onTouchEnd, scrollEventThrottle, ...rest },
+type Props = ScrollViewProps & {
+  // A whole page (not a pop-up form): it bounces at the edges like every other page.
+  pageBounce?: boolean;
+};
+
+export const KeyboardAwareScrollView = forwardRef<ScrollView, Props>(function KeyboardAwareScrollView(
+  { contentContainerStyle, onScroll, onTouchEnd, scrollEventThrottle, onLayout, pageBounce, ...rest },
   ref
 ) {
+  // Version 2.2 (Cath: Debts, Loans, Plan, FI... didn't bounce like Bills): every page
+  // gets the same elastic edge, even when everything fits on the screen. Android only
+  // stretches a page that can scroll, so short pages are made one point taller than the
+  // screen (you can't see the difference). iPhone always bounces.
+  // Only for whole pages: a pop-up form sizes itself to its content, so it must not grow.
+  const vertical = !!pageBounce && !rest.horizontal;
+  const [viewH, setViewH] = useState(0);
+  const handleLayout = useCallback(
+    (e: any) => {
+      const h = e.nativeEvent.layout.height;
+      setViewH((old) => (Math.abs(old - h) < 1 ? old : h));
+      onLayout?.(e);
+    },
+    [onLayout]
+  );
   const inner = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const navBarRef = useRef(insets.bottom);
@@ -134,12 +154,20 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, ScrollViewProps>(f
     <ScrollIntoViewContext.Provider value={ctx}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        {...(vertical ? (Platform.OS === 'android' ? { overScrollMode: 'always' as const } : { bounces: true, alwaysBounceVertical: true }) : null)}
         {...rest}
         ref={inner}
+        onLayout={vertical ? handleLayout : onLayout}
         onScroll={handleScroll}
-        scrollEventThrottle={scrollEventThrottle ?? 16}
+        // Speed sweep: scroll position is only needed for the keyboard, so pages that
+        // don't follow scrolling themselves send it less often.
+        scrollEventThrottle={scrollEventThrottle ?? (onScroll ? 16 : 64)}
         onTouchEnd={handleTouchEnd}
-        contentContainerStyle={extra > 0 ? [contentContainerStyle, { paddingBottom: basePad + extra }] : contentContainerStyle}
+        contentContainerStyle={[
+          contentContainerStyle,
+          extra > 0 ? { paddingBottom: basePad + extra } : null,
+          vertical && Platform.OS === 'android' && viewH > 0 ? { minHeight: viewH + 1 } : null,
+        ]}
       />
     </ScrollIntoViewContext.Provider>
   );

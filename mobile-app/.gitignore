@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Claude background browser checks (2026-10-22)
+web-build/
+web-shots/

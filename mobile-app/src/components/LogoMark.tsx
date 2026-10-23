@@ -17,7 +17,9 @@ export const LOGO_PATHS = [
   'M 502 668 C 453 664, 432 592, 428 548 C 442 544, 486 566, 505 658',
 ];
 
-export default function LogoMark({ width = 84, color }: { width?: number; color?: string }) {
+// wordmark={false}: just the house (where the words are drawn next to it, or inside the
+// small app tile). Version 2.2 fix: the welcome screens showed the words twice.
+export default function LogoMark({ width = 84, color, wordmark = true }: { width?: number; color?: string; wordmark?: boolean }) {
   const { colors } = useTheme();
   const stroke = color ?? colors.gold;
   const height = Math.round((width * 530) / 644);
@@ -28,9 +30,11 @@ export default function LogoMark({ width = 84, color }: { width?: number; color?
           <Path key={i} d={d} stroke={stroke} strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" />
         ))}
       </Svg>
+      {wordmark && (
       <Text style={{ marginTop: Math.round(width * 0.16), fontSize: 13, fontWeight: '600', letterSpacing: 4, paddingLeft: 4, color: stroke }}>
         FINANCE FLOW
       </Text>
+      )}
     </View>
   );
 }

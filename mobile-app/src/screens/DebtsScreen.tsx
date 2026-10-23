@@ -1,3 +1,11 @@
+import { firstTimeOpen } from '../handledOpen';
+import { dateText } from '../dateUtils';
+import { redUnlessZero } from '../moneyColor';
+import { useToday } from '../useToday';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted, alertNotDeleted } from '../messages';
+import { useArrival } from '../useArrival';
+import { useSingleForm } from '../singleForm';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -5,18 +13,26 @@ import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native'
 import { Text } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useTheme } from '../ThemeContext';
-import { useToPayAddRequest } from '../fabActions';
-import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount } from '../components/SimpleForm';
+import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
+import KindSwitch from '../components/KindSwitch';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, AccountChoices, accountName, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, InlineAmount, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 import PayRow from '../components/PayRow';
+import CustomScheduleFields, { customFreqLabel, parseCustom } from '../components/CustomScheduleFields';
+import PriorityPick from '../components/PriorityPick';
+import { Priority, priorityRank } from '../priority';
+import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid } from '../billPayments';
+import { paymentToPlace, placePayment } from '../billPayments';
+import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
 import type { Debt, HouseholdModel, PaymentMethod } from '../types';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import SwipeableRow from '../components/SwipeableRow';
 import { makeId } from '../utils';
 import Button from '../components/Button';
@@ -45,22 +61,65 @@ function sortByNextDue(debts: Debt[]): Debt[] {
 
 
 
-const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual'];
+const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 
 type DebtsScreenProps = {
+  // Version 2.2 (Cath: switching Bill / Debt / Loan shouldn't jump to the other list
+  // first): the other kind's New form opens right where you are, with what you typed;
+  // only once it's added does To-Pay show that list (see ToPayScreen).
+  addCarry?: { amount: number | ''; name: string; date?: string; nonce: number };
+  onAdded?: () => void;
+  // Version 2.2 fix (Cath's video: Edit on a debt's page flashed and closed): the page
+  // itself shows this debt's form, with no jump back to the list. formOnly draws just the
+  // form (and its pop-ups); onFormClosed says when it has closed.
+  formOnly?: boolean;
+  onFormClosed?: () => void;
+  // Version 2.2: called once the requested item's form has opened, so the request is
+  // cleared and the form never pops up again when this list is shown again.
+  onOpenHandled?: () => void;
   openDebtId?: string;
   openDebtNonce?: number;
 };
 
-export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenProps = {}) {
+export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, formOnly, onFormClosed, addCarry, onAdded }: DebtsScreenProps = {}) {
+  // H-09 (2026-10-22): redraw when the date changes, so Overdue and due dates are
+  // right the morning after the app was left open.
+  useToday();
   // Redesign: the floating + adds a debt while this list is showing.
-  useToPayAddRequest('debts', () => openAddModal());
+  useToPayAddRequest('debts', (date) => {
+    if (formOnly) return;
+    openAddModal();
+    // Version 2.2 (calendar +): starts on the day picked in the calendar.
+    if (date) setOnetimeDateInput(date);
+  });
+  // Version 2.2 (canvas K1): opened from another kind's form; carry what was typed.
+  React.useEffect(() => {
+    const carry = takePendingAdd('debts');
+    if (!carry || formOnly) return;
+    openAddModal();
+    setAmountInput(carry.amount);
+    setCreditorInput(carry.name);
+    // Only when this list first shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    if (!formOnly || !addCarry) return;
+    openAddModal();
+    setAmountInput(addCarry.amount);
+    setCreditorInput(addCarry.name);
+    // The day picked in the calendar (or carried over from the other form).
+    if (addCarry.date) setOnetimeDateInput(addCarry.date);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
-  const styles = makeStyles(colors);
+  const { model, saveModel, getModel } = useData();
+  // Version 2.2 (approved P4): a just-added debt slides in and glows.
+  const arrived = useArrival(React.useMemo(() => (model?.debts || []).map((d) => d.id), [model?.debts]), formOnly ? undefined : 'debts');
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const singleForm = useSingleForm('debt');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const openedDebtRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -71,7 +130,13 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     const target = (model.debts || []).find((d) => d.id === openDebtId);
     if (target) {
       openedDebtRef.current = { id: openDebtId, nonce: openDebtNonce };
+      if (formOnly) {
+        openEditModal(target);
+        return;
+      }
+      if (!firstTimeOpen('debt', openDebtId, openDebtNonce)) return;
       afterSlide(() => openEditModal(target));
+      onOpenHandled?.();
     }
   }, [model, openDebtId, openDebtNonce]);
   const [creditorInput, setCreditorInput] = useState('');
@@ -81,8 +146,13 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   const [minPaymentInput, setMinPaymentInput] = useState<number | ''>('');
   const [feesPortionInput, setFeesPortionInput] = useState<number | ''>('');
   const [notesInput, setNotesInput] = useState('');
+  const [priorityInput, setPriorityInput] = useState<Priority>('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
+  // Version 2.2 (Cath): Custom repeat, same as loans.
+  const [customFreqInput, setCustomFreqInput] = useState('monthly');
+  const [customStartDateInput, setCustomStartDateInput] = useState('');
+  const [customOccurrenceInput, setCustomOccurrenceInput] = useState('');
   const [onetimeDateInput, setOnetimeDateInput] = useState('');
   const [dayInput, setDayInput] = useState('');
   // Version 2.1: which due date is the current one (an earlier month when behind). '' = the next one.
@@ -112,6 +182,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     clearFieldError();
   }, [amountInput, creditorInput, onetimeDateInput, dayInput, monthInput, recurTypeInput, interestRateInput, modalOpen, clearFieldError]);
 
+  // Version 3 (M4): paid, then the due date moved: ask which payment it was.
+  const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -125,11 +198,15 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     setCategoryInput('');
     setAmountInput('');
     setInterestRateInput('');
+    setPriorityInput('');
     setMinPaymentInput('');
     setFeesPortionInput('');
     setNotesInput('');
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
+    setCustomFreqInput('monthly');
+    setCustomStartDateInput('');
+    setCustomOccurrenceInput('');
     setOnetimeDateInput('');
     setDayInput('');
     setMonthInput('');
@@ -139,12 +216,14 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   }
 
   function openAddModal() {
+    if (!singleForm.claim()) return;
     setEditingId(null);
     resetForm();
     setModalOpen(true);
   }
 
   function openEditModal(debt: Debt) {
+    if (!singleForm.claim()) return;
     setEditingId(debt.id);
     setCreditorInput(debt.creditorOrPerson);
     setCategoryInput(debt.category || '');
@@ -156,11 +235,19 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       typeof debt.minPayment === 'number' ? debt.minPayment : ''
     );
     setNotesInput(debt.notes || '');
+    setPriorityInput(debt.priority || '');
     const cur = currentCycle(debt);
     setPaymentMethodInput(cur?.paymentMethod);
     setFeesPortionInput(cur && cur.feesPortion !== undefined && cur.feesPortion !== '' ? cur.feesPortion : '');
     const rt = (debt.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
+    {
+      const dd = (debt.dueDate || {}) as Record<string, any>;
+      setCustomFreqInput(debt.customFreq || dd.customFreq || 'monthly');
+      setCustomStartDateInput(debt.customStartDate || dd.customStartDate || '');
+      const cnt = typeof debt.customOccurrenceCount === 'number' ? debt.customOccurrenceCount : dd.customOccurrenceCount;
+      setCustomOccurrenceInput(typeof cnt === 'number' ? String(cnt) : '');
+    }
     const d = debt.dueDate || {};
     setOnetimeDateInput(d.date || '');
     setDayInput(d.day ? String(d.day) : '');
@@ -178,9 +265,11 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   }
 
   function closeModal() {
+    singleForm.release();
     setModalOpen(false);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
   async function handleSave() {
@@ -226,6 +315,22 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       }
       dueDate = { day: dayInput.trim(), month: monthInput.trim() ? monthNum : '' };
     }
+    // Custom: kept both on the record and in dueDate, so every place that works out the
+    // next date finds it.
+    let customFields: { customFreq?: string; customStartDate?: string; customOccurrenceCount?: number | '' } = {
+      customFreq: undefined,
+      customStartDate: undefined,
+      customOccurrenceCount: undefined,
+    };
+    if (recurTypeInput === 'custom') {
+      const parsed = parseCustom(customStartDateInput, customOccurrenceInput);
+      if ('error' in parsed) {
+        fieldErrors.show('due', parsed.error);
+        return;
+      }
+      customFields = { customFreq: customFreqInput, customStartDate: customStartDateInput.trim(), customOccurrenceCount: parsed.count };
+      dueDate = { ...customFields };
+    }
 
     let parsedInterest: number | '' = '';
     if (interestRateInput.trim() !== '') {
@@ -244,7 +349,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
       : '';
     // Version 2.1: an earlier month when you're behind (only one of the recent due dates).
     // Version 2.1 (round 8): the date picked in the date box is the first one due (any month or year).
-    const dueNowISO = recurTypeInput !== 'onetime' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
+    const dueNowISO = recurTypeInput !== 'onetime' && recurTypeInput !== 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(dueNowInput) ? dueNowInput : nextDueISO;
 
     const updated: HouseholdModel = { ...model, debts: [...model.debts] };
 
@@ -265,8 +370,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           category: categoryInput.trim(),
           notes: notesInput,
           interestRate: parsedInterest,
+          priority: priorityInput,
           minPayment: parsedMinPayment,
           recurringType: recurTypeInput,
+          ...customFields,
           dueDate,
           cycles,
         };
@@ -277,6 +384,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         creditorOrPerson: trimmedCreditor,
         category: categoryInput.trim(),
         recurringType: recurTypeInput,
+        ...customFields,
         dueDate,
         cycles: [
           {
@@ -293,36 +401,74 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         notes: notesInput,
         owner: 'shared',
         interestRate: parsedInterest,
+        priority: priorityInput,
         minPayment: parsedMinPayment,
         createdAt: Date.now(),
       };
       updated.debts = [...updated.debts, newDebt];
     }
 
+    let toSave = updated;
+    if (editingId) {
+      // Version 3 (M4): a payment made before the due date moved gets placed on the right payment.
+      const before = model.debts.find((x) => x.id === editingId);
+      const edited = updated.debts.find((x) => x.id === editingId);
+      const moved =
+        !!before &&
+        !!edited &&
+        (currentCycle(before)?.dueDate !== dueNowISO ||
+          before.recurringType !== edited.recurringType ||
+          JSON.stringify(before.dueDate || {}) !== JSON.stringify(edited.dueDate || {}));
+      const place = moved && edited ? paymentToPlace(edited, dueNowISO) : null;
+      if (place && edited) {
+        const swap = (rec: typeof edited) => ({ ...updated, debts: updated.debts.map((x) => (x.id === editingId ? rec : x)) });
+        if (place.other) {
+          setPlaceAsk({
+            record: edited,
+            placement: place,
+            noun: 'payment',
+            onPick: (forISO) => {
+              setPlaceAsk(null);
+              commitSave(swap(placePayment(edited, place, forISO)));
+            },
+          });
+          return;
+        }
+        toSave = swap(placePayment(edited, place, place.newDue));
+      }
+    }
+    await commitSave(toSave);
+  }
+
+  async function commitSave(toSave: HouseholdModel) {
     setSaving(true);
     try {
-      await saveModel(updated);
+      const wasNew = !editingId;
+      await saveModel(toSave);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      if (wasNew) onAdded?.();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this debt'));
     } finally {
       setSaving(false);
     }
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      debts: model.debts.filter((d) => d.id !== editingId),
+      ...current,
+      debts: current.debts.filter((d) => d.id !== editingId),
     };
     setSaving(true);
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this debt'));
     } finally {
       setSaving(false);
     }
@@ -340,16 +486,18 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
   }
 
   async function performDeleteById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      debts: model.debts.filter((d) => d.id !== id),
+      ...current,
+      debts: current.debts.filter((d) => d.id !== id),
     };
     setSaving(true);
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this debt'));
     } finally {
       setSaving(false);
     }
@@ -366,16 +514,36 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
     );
   }
 
-  const debts = sortByNextDue(model.debts);
+  // Version 2.2 fix (Cath: no Overdue tag on a debt that was past its due date): overdue
+  // debts come first and say so, like bills; on the same day High priority comes first.
+  const overdueDebtIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'debt').map((o) => o.id));
+  const debtDueTime = (d: Debt) => {
+    const cur = currentCycle(d);
+    const dt = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : getNextDueDate(d.recurringType, d.dueDate);
+    return dt ? dt.getTime() : Infinity;
+  };
+  const debts = sortByNextDue(model.debts)
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => {
+      const oa = overdueDebtIds.has(a.d.id) ? 0 : 1;
+      const ob = overdueDebtIds.has(b.d.id) ? 0 : 1;
+      if (oa !== ob) return oa - ob;
+      const ta = debtDueTime(a.d);
+      const tb = debtDueTime(b.d);
+      if (ta === tb) return priorityRank(a.d.priority) - priorityRank(b.d.priority) || a.i - b.i;
+      return a.i - b.i;
+    })
+    .map((x) => x.d);
   const totalOwed = debts.reduce((sum, d) => sum + debtAmount(d), 0);
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
-          <Text style={styles.balanceBannerAmount}>{formatPeso(totalOwed)}</Text>
+          <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(totalOwed, colors) }]} value={totalOwed} format={formatPeso} />
         </View>
 
         {debts.length === 0 && (
@@ -398,15 +566,26 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
             >
             <PayRow
               testID={`debt-row-${debt.id}`}
+              glow={arrived === debt.id}
+              addedBy={debt.addedBy}
               icon="people-outline"
               title={debt.creditorOrPerson || 'Debt'}
               sub={(() => {
                 const cur = currentCycle(debt);
                 const d = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : nextDue;
-                return d ? `Due ${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'No date set';
+                return d ? `${overdueDebtIds.has(debt.id) ? 'Was due' : 'Due'} ${dateText(d, { weekday: true })}` : 'No date set';
               })()}
+              badge={(() => {
+                if (overdueDebtIds.has(debt.id)) return { text: 'Overdue', tone: 'overdue' as const };
+                const t = debtDueTime(debt);
+                if (!isFinite(t)) return undefined;
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const days = Math.round((t - today.getTime()) / 86400000);
+                return days <= 7 && days >= 0 ? { text: days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' as const } : undefined;
+              })()}
+              priority={debt.priority}
               amount={formatPeso(debtAmount(debt))}
-              amountColor={colors.negative}
+              amountColor={overdueDebtIds.has(debt.id) ? colors.negative : colors.ink}
               divider={rowIndex > 0}
               onPress={() => navigation.navigate('PayDetail', { kind: 'debt', id: debt.id })}
             />
@@ -417,15 +596,32 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         )}
 
       </PullToRefreshScrollView>
+      )}
 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
+        // One sheet for New bill / debt / loan, so switching only changes the form.
+        shared="pay-form"
         grouped
         header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+        {!editingId && (
+          <KindSwitch
+            key="pay-form-kind"
+            current="debts"
+            onSwitch={(to) => {
+              const carry = { amount: amountInput, name: creditorInput, date: onetimeDateInput || undefined };
+              // The other form takes this sheet's place (no close and reopen).
+              startSheetHandoff(() => closeModal());
+              switchToPayAdd(to, carry);
+            }}
+          />
+        )}
+        {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
+            box (and the keyboard stays up), even though the loan form has an extra row above. */}
+        <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
         </Guided>
 
@@ -436,16 +632,22 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
           <PickerRow label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices options={DEBT_TYPES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
-            <InlineField label="Or type your own" value={DEBT_TYPES.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+            <OwnChoiceField options={DEBT_TYPES} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
           <AmountRow label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
           <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
-            <Choices options={REPEAT_CHOICES} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
+            <Choices options={[...REPEAT_CHOICES, { id: 'custom' as RecurringType, label: 'Custom' }]} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
           </PickerRow>
           <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+          {recurTypeInput === 'custom' ? (
+            <PickerRow label="Schedule" value={`${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+              <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="debt-custom-start" />
+            </PickerRow>
+          ) : (
           <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, dueNowInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
             <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={dueNowInput} onFirstDue={setDueNowInput} testID="debt-due-date-field" />
           </PickerRow>
+          )}
           </Guided>
           <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
@@ -454,7 +656,8 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
 
         <FormGroup>
           <Guided {...fieldErrors.props('more')} onShow={() => { if (openRow !== 'more') toggleRow('more'); }}>
-          <PickerRow label="More details" value={[interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
+          <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
+            <PriorityPick value={priorityInput} onChange={setPriorityInput} />
             <InlineField label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
             <InlineAmount label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
             <InlineField label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />
@@ -463,9 +666,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce }: DebtsScreenPr
         </FormGroup>
 
         {!!debtFootnote && <Footnote>{debtFootnote}</Footnote>}
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete debt" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
+      <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
     </SafeAreaView>
   );
 }

@@ -6,7 +6,8 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import { View, ActivityIndicator, Share } from 'react-native';
+import { TouchableOpacity } from '../../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import GradientFill from '../../components/GradientFill';

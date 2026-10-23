@@ -1,7 +1,13 @@
+import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { takeSalaryHandoff, cancelSalaryHandoff } from '../salaryHandoff';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
@@ -27,9 +33,9 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import { monthTotals, sourcesByPerson } from '../incomeMonth';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { useNavigation } from '@react-navigation/native';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
@@ -77,6 +83,9 @@ function sortByNextPayDate(sources: IncomeSource[]): IncomeSource[] {
 }
 
 type IncomeScreenProps = {
+  // Version 2.2: opens the "Add income" form straight away (from a New transaction's
+  // "Add a salary").
+  openAddNonce?: number;
   openIncomeId?: string;
   openIncomeNonce?: number;
   // Set on one person's income page ('__none' = sources with nobody picked).
@@ -85,12 +94,13 @@ type IncomeScreenProps = {
 
 const NO_PERSON = '__none';
 const AVATAR_COLORS = ['#2E6B47', '#5B6CC9', '#D47A9B', '#C2410C', '#0E7490'];
-const dayOf = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-const shortDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const dayOf = (d: Date) => dateText(d, { weekday: true });
+const shortDay = (iso: string) => dateText(new Date(iso + 'T00:00:00'), { weekday: true });
 
-export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }: IncomeScreenProps = {}) {
+export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, openAddNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -101,10 +111,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     const target = (model.income || []).find((s) => s.id === openIncomeId);
     if (target) {
       openedIncomeRef.current = { id: openIncomeId, nonce: openIncomeNonce };
+      if (!firstTimeOpen('income', openIncomeId, openIncomeNonce)) return;
       afterSlide(() => openEditModal(target));
     }
   }, [model, openIncomeId, openIncomeNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -134,7 +145,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     if (frequencyInput === 'semimonthly') return semiDay1Input && semiDay2Input ? `${ordinal(parseInt(semiDay1Input, 10))} and ${ordinal(parseInt(semiDay2Input, 10))}` : 'Choose';
     if (frequencyInput === 'weekly') return weeklyDowInput !== null ? `${DOW_LABELS[weeklyDowInput]}s` : 'Choose';
     const d = frequencyInput === 'onetime' ? onetimeDateInput : biweeklyAnchorInput;
-    return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Choose';
+    return d ? dateText(new Date(d + 'T00:00:00'), { weekday: true }) : 'Choose';
   })();
   const nextPaydayText = (() => {
     const pd =
@@ -145,7 +156,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       : biweeklyAnchorInput ? [biweeklyAnchorInput] : [];
     if (!pd.length) return '';
     const next = computeNextPayDate(frequencyInput, pd);
-    return next ? `Next payday ${next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}.` : '';
+    return next ? `Next payday ${dateText(next, { weekday: true })}.` : '';
   })();
 
   // Logging one payday (from a row in "Paydays this month"): the same record as
@@ -179,6 +190,16 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   useEffect(() => {
     clearFieldError();
   }, [monthlyDayInput, semiDay1Input, semiDay2Input, biweeklyAnchorInput, onetimeDateInput, frequencyInput, paymentLogEntries, depositInput, modalOpen, clearFieldError]);
+
+  // Hooks stay above the loading return below, so they run on every render (2026-10-22:
+  // they used to sit below it, which can crash the page when the data briefly goes away,
+  // e.g. while logging out).
+  useEffect(() => {
+    if (!openAddNonce) return;
+    afterSlide(() => openAddModalRef.current());
+  }, [openAddNonce]);
+  // Leaving without adding one: nothing waits for it any more.
+  useEffect(() => () => cancelSalaryHandoff(), []);
 
   if (!model) {
     return (
@@ -239,7 +260,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       showLeafTick('Added');
       setLogSheet(null);
     } catch {
-      setLogError('Failed to save. Please try again.');
+      setLogError(notSaved('this payday'));
     } finally {
       setLogSaving(false);
     }
@@ -303,6 +324,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
+    let addedId: string | null = null;
 
     const parsedAmount: number | '' = amountInput === '' ? '' : amountInput;
 
@@ -408,6 +430,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         createdAt: Date.now(),
       };
       updated.income = [...updated.income, newSource];
+      addedId = newSource.id;
     }
 
     setSaving(true);
@@ -415,25 +438,34 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       await saveModel(updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      // Came here from a New transaction's "Add a salary": go straight back to it.
+      const next = addedId ? takeSalaryHandoff() : null;
+      if (next && addedId) {
+        const id = addedId;
+        navigation.goBack();
+        afterSlide(() => next(id));
+      }
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this income'));
     } finally {
       setSaving(false);
     }
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      income: model.income.filter((s) => s.id !== editingId),
+      ...current,
+      income: current.income.filter((s) => s.id !== editingId),
     };
     setSaving(true);
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this income'));
     } finally {
       setSaving(false);
     }
@@ -450,16 +482,18 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   }
 
   async function performDeleteSourceById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      income: model.income.filter((s) => s.id !== id),
+      ...current,
+      income: current.income.filter((s) => s.id !== id),
     };
     setSaving(true);
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this income'));
     } finally {
       setSaving(false);
     }
@@ -624,7 +658,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                           )}
                           <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={styles.rowName}>{shortDay(r.logged ? r.logged.date : r.date)}</Text>
-                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}</Text>
+                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}{who.by(r.logged?.addedBy)}</Text>
                           </View>
                           <Text style={[styles.rowAmount, { color: r.logged ? colors.positive : colors.planned }]}>
                             +{formatPeso(r.logged ? got : r.expected)}
@@ -661,7 +695,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <Text style={styles.rowName} numberOfLines={1}>{source.sourceName || source.category || 'Untitled income'}</Text>
                               <Text style={styles.rowSub} numberOfLines={1}>
-                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}
+                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}{who.by(source.addedBy)}
                               </Text>
                             </View>
                             <Text style={[styles.rowAmount, { color: colors.ink }]}>
@@ -744,7 +778,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
             </FormGroup>
             <Text style={styles.logSection}>WENT INTO</Text>
             <AccountChoices model={model} value={logSheet.pm} onChange={(pm) => setLogSheet((l) => (l ? { ...l, pm } : l))} />
-            {!!logError && <Text style={[styles.errorText, { marginTop: 10 }]}>{logError}</Text>}
+            <ErrorNote text={logError} />
             <View style={{ height: 16 }} />
           </>
         )}
@@ -764,7 +798,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           <PickerRow label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
             <Choices options={CATEGORY_SUGGESTIONS.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
-            <InlineField label="Or type your own" value={CATEGORY_SUGGESTIONS.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+            <OwnChoiceField options={CATEGORY_SUGGESTIONS} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
           <PickerRow label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
             {model.people.length > 0 && (
@@ -840,7 +874,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         </Guided>
         <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
+        {/* Version 2.2 (W2 everywhere): who added this income, and who last changed it. */}
+        {editingId && (() => {
+          const src = model?.income.find((x) => x.id === editingId);
+          return src ? <WhoFootnote addedBy={src.addedBy} createdAt={src.createdAt} changedBy={src.changedBy} changedAt={src.changedAt} style={{ marginTop: 0, marginBottom: 14 }} /> : null;
+        })()}
         {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>

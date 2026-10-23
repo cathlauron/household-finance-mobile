@@ -2,7 +2,8 @@
   "expo": {
     "name": "Finance Flow",
     "slug": "mobile-app",
-    "version": "2.1.0",
+    "scheme": "financeflow",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -20,7 +21,7 @@
     },
     "android": {
       "package": "com.cathlauron.householdfinance",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#122b21"
@@ -70,6 +71,14 @@
           "locationWhenInUsePermission": "Finance Flow uses your approximate location to match the sky on Home to your sunrise, sunset and weather.",
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Finance Flow uses the camera to scan a household invite QR code.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ],

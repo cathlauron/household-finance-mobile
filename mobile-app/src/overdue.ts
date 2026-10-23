@@ -1,4 +1,5 @@
-﻿import { todayISO } from './dateUtils';
+﻿import { isTrackedLoan, loanCoverage } from './loanSchedule';
+import { todayISO } from './dateUtils';
 import { loanOutstandingBalance } from './balanceProjection';
 import type { Loan } from './types';
 
@@ -59,6 +60,22 @@ function scanLoans(loans: Loan[] | undefined, today: string): OverdueItem[] {
   const out: OverdueItem[] = [];
   (loans || []).forEach(l => {
     if (l.direction !== 'borrowed') return;
+    // Version 3: a repeating loan with a First payment date shows its missed payments.
+    if (isTrackedLoan(l)) {
+      const { missed } = loanCoverage(l, today);
+      const owed = loanOutstandingBalance(l);
+      if (!missed.length || owed <= 0) return;
+      const each = typeof l.expectedPayment === 'number' ? l.expectedPayment : 0;
+      out.push({
+        kind: 'loan',
+        id: l.id,
+        name: l.name || 'Loan',
+        dueDate: missed[0],
+        amountOwed: Math.min(owed, each > 0 ? each * missed.length : owed),
+        key: `overdue:loan:${l.id}:${missed[0]}`,
+      });
+      return;
+    }
     if (l.recurringType !== 'onetime') return;
     const due = l.dueDate && typeof l.dueDate.date === 'string' ? l.dueDate.date : '';
     if (!due || due >= today) return;
@@ -77,10 +94,24 @@ function scanLoans(loans: Loan[] | undefined, today: string): OverdueItem[] {
 }
 
 // Everything overdue right now, oldest first.
+// 2.2 speed sweep: worked out once per version of your data (and per day) and reused;
+// the Bills, Debts and Loans pages used to redo it on every key typed in their forms.
+const overdueCache = new WeakMap<object, { today: string; items: OverdueItem[] }>();
 export function getOverdueItems(
   model: { bills?: CycleRecord[]; debts?: CycleRecord[]; loans?: Loan[] }
 ): OverdueItem[] {
   const today = todayISO();
+  const hit = overdueCache.get(model);
+  if (hit && hit.today === today) return hit.items;
+  const items = overdueNow(model, today);
+  overdueCache.set(model, { today, items });
+  return items;
+}
+
+function overdueNow(
+  model: { bills?: CycleRecord[]; debts?: CycleRecord[]; loans?: Loan[] },
+  today: string
+): OverdueItem[] {
   return [
     ...scanCycles(model.bills, 'bill', today),
     ...scanCycles(model.debts, 'debt', today),

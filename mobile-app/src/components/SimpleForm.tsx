@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { animateNextLayout } from '../animateLayout';
+import { dateText } from '../dateUtils';
 import AppSwitch from './AppSwitch';
 import DateField from './DateField';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
-import { View, TouchableOpacity, StyleSheet, ScrollView, KeyboardTypeOptions } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardTypeOptions } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
 import AmountInput from './AmountInput';
@@ -22,13 +25,22 @@ import type { ThemeColors } from '../theme';
 export function SheetBar({ title, onCancel, onDone, doneLabel, busy, doneDisabled, hideCancel }: { title: string; onCancel: () => void; onDone: () => void; doneLabel: string; busy?: boolean; doneDisabled?: boolean; hideCancel?: boolean }) {
   const { colors } = useTheme();
   const off = !!busy || !!doneDisabled;
+  // H-10 (2026-10-22): a quick second tap on Save / Add (while the form is closing) is
+  // ignored, so an entry can't be added twice. A tap more than 0.8 s later works again.
+  const lastDoneAt = useRef(0);
+  const done = () => {
+    const now = Date.now();
+    if (now - lastDoneAt.current < 800) return;
+    lastDoneAt.current = now;
+    onDone();
+  };
   return (
     <View style={bar.row}>
       <TouchableOpacity onPress={onCancel} disabled={hideCancel} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={bar.side}>
         {!hideCancel && <Text style={[bar.btn, { color: colors.gold }]}>Cancel</Text>}
       </TouchableOpacity>
       <Text style={[bar.title, { color: colors.ink }]} numberOfLines={1}>{title}</Text>
-      <TouchableOpacity onPress={onDone} disabled={off} accessibilityRole="button" accessibilityState={{ disabled: off }} testID="simple-form-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[bar.side, { alignItems: 'flex-end' }]}>
+      <TouchableOpacity onPress={done} disabled={off} accessibilityRole="button" accessibilityState={{ disabled: off }} testID="simple-form-done" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[bar.side, { alignItems: 'flex-end' }]}>
         <Text style={[bar.btn, { color: colors.gold, fontWeight: '700', opacity: off ? 0.4 : 1 }]}>{doneLabel}</Text>
       </TouchableOpacity>
     </View>
@@ -206,7 +218,7 @@ export function PickerRow({
   const s = rowStyles(colors);
   return (
     <View>
-      <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
+      <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); animateNextLayout(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
         <Text style={[s.label, { flex: 1 }, invalid && { color: colors.error, fontWeight: '700' }]}>{label}</Text>
         {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
         <Text style={s.value} numberOfLines={1}>{value}</Text>
@@ -375,7 +387,7 @@ export const REPEAT_CHOICES: { id: RecurringType; label: string }[] = [
 ];
 
 function niceDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return dateText(d, { weekday: true });
 }
 
 // "the 15th", "Mar 15" or "Sun, Nov 15" for the Due on row.
@@ -482,4 +494,30 @@ export function InlineAmount({ label, value, onChange, placeholder }: { label: s
       <AmountInput value={value} onChangeAmount={onChange} placeholder={placeholder ?? '0.00'} style={{ backgroundColor: colors.navy2, marginBottom: 0 }} />
     </View>
   );
+}
+
+// Version 2.2 fix (Cath: typing "card" became "Car"): the "Or type your own" box keeps
+// what you type, even when it matches one of the choices above it. Picking a choice
+// clears the box. `style` set = a plain box (Bills); otherwise the labelled InlineField.
+export function OwnChoiceField({ options, value, onChange, label = 'Or type your own', style, placeholder }: { options: string[]; value: string; onChange: (v: string) => void; label?: string; style?: any; placeholder?: string }) {
+  const { colors } = useTheme();
+  const [text, setText] = React.useState(options.includes(value) ? '' : value);
+  const typed = React.useRef(text);
+  React.useEffect(() => {
+    // A choice was picked (or the form was reset/opened for another item).
+    if (value !== typed.current) {
+      const next = options.includes(value) ? '' : value;
+      typed.current = next;
+      setText(next);
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const change = (v: string) => {
+    typed.current = v;
+    setText(v);
+    onChange(v);
+  };
+  if (style) {
+    return <TextInput style={style} placeholder={placeholder ?? label} placeholderTextColor={colors.inkFaint} value={text} onChangeText={change} />;
+  }
+  return <InlineField label={label} value={text} onChangeText={change} placeholder={placeholder} />;
 }

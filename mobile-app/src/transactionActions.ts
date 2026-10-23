@@ -18,13 +18,16 @@ export function accountLabel(model: HouseholdModel, pm: PaymentMethod | undefine
 }
 
 // Deletes a manual transaction (and the refund it created, if any).
+// H-17 (2026-10-22): deleting a refund entry itself puts its expense back to "refund
+// pending" (the same as "Undo refund received"); it used to keep saying "received".
 export function deleteManualTxn(model: HouseholdModel, id: string): HouseholdModel {
   const deleted = (model.manualTransactions || []).find((t) => t.id === id);
   return {
     ...model,
     manualTransactions: (model.manualTransactions || [])
       .filter((t) => t.id !== id)
-      .filter((t) => !(deleted?.refundTransactionId && t.id === deleted.refundTransactionId)),
+      .filter((t) => !(deleted?.refundTransactionId && t.id === deleted.refundTransactionId))
+      .map((t) => (t.refundTransactionId === id ? { ...t, refundTransactionId: undefined } : t)),
   };
 }
 

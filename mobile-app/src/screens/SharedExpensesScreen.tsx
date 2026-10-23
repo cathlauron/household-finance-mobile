@@ -1,7 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { notSaved } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import LoadingView from '../components/LoadingView';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
@@ -23,7 +25,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomSheet from '../components/BottomSheet';
 import DateField from '../components/DateField';
 import Button from '../components/Button';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { equalShares } from '../sharedExpenses';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow } from '../components/SimpleForm';
 
@@ -38,7 +40,7 @@ import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnot
 // balances (log your own spending as a normal transaction).
 
 function shortDate(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateText(new Date(iso + 'T00:00:00'));
 }
 
 export default function SharedExpensesScreen() {
@@ -243,7 +245,7 @@ export default function SharedExpensesScreen() {
       showLeafTick(editingId ? 'Saved' : 'Added');
       setSheetOpen(false);
     } catch {
-      setError('Failed to save. Please try again.');
+      setError(notSaved('this expense'));
     } finally {
       setSaving(false);
     }
@@ -316,7 +318,7 @@ export default function SharedExpensesScreen() {
       showLeafTick('Settled');
       setSettleKey(null);
     } catch {
-      setSettleError('Failed to save. Please try again.');
+      setSettleError(notSaved('this expense'));
     }
   }
 

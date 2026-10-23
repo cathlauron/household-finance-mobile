@@ -46,3 +46,31 @@ export async function verifyPin(username: string, pin: string): Promise<boolean>
 export async function removePin(username: string): Promise<void> {
   await AsyncStorage.removeItem(pinKey(username));
 }
+
+// ---- H-18 (2026-10-22, Cath's rule): 5 wrong PINs block the PIN for 5 minutes ----
+// Saved on the phone, so closing and reopening the app doesn't give fresh tries. The
+// account password (and fingerprint) still open the app meanwhile; using the password
+// lifts the block.
+export const PIN_LOCK_MS = 5 * 60 * 1000;
+
+function pinLockKey(username: string): string {
+  return `profile:${username}:pin-locked-until`;
+}
+
+// When the PIN works again (a time in ms), or 0 when it isn't blocked.
+export async function pinLockedUntil(username: string): Promise<number> {
+  try {
+    const until = parseInt((await AsyncStorage.getItem(pinLockKey(username))) ?? '0', 10) || 0;
+    return until > Date.now() ? until : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+export async function lockPin(username: string): Promise<void> {
+  await AsyncStorage.setItem(pinLockKey(username), String(Date.now() + PIN_LOCK_MS)).catch(() => {});
+}
+
+export async function clearPinLock(username: string): Promise<void> {
+  await AsyncStorage.removeItem(pinLockKey(username)).catch(() => {});
+}

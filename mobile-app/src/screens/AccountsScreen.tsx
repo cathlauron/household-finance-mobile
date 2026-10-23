@@ -1,9 +1,13 @@
+import { firstTimeOpen } from '../handledOpen';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted } from '../messages';
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
@@ -44,9 +48,11 @@ function makeId(): string {
   return 'acct-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
-export default function AccountsScreen() {
+// Version 2.2 (Cath: Edit should open where you are): formOnly draws just the account's
+// form, for "Edit card" on a card's page; onFormClosed says when it has closed.
+export default function AccountsScreen({ formOnly, editGroup, editAccountId, onFormClosed }: { formOnly?: boolean; editGroup?: AccountGroup; editAccountId?: string; onFormClosed?: () => void } = {}) {
   const { colors, isDark } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, username, getModel } = useData();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
@@ -57,16 +63,28 @@ export default function AccountsScreen() {
   // Version 2.1 (Cath): "Edit card" on a card's page comes here and opens that card's sheet.
   const route = useRoute<any>();
   const editNonce = route.params?.nonce;
+  const formOnlyOpened = useRef(false);
   React.useEffect(() => {
+    if (!formOnly || formOnlyOpened.current || !model || !editGroup || !editAccountId) return;
+    const account = model.balanceAccounts[editGroup]?.find((a: BalanceAccountEntry) => a.id === editAccountId);
+    if (account) {
+      formOnlyOpened.current = true;
+      openEditModal(editGroup, account);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formOnly, model, editGroup, editAccountId]);
+  React.useEffect(() => {
+    if (formOnly) return;
     const g = route.params?.editGroup as AccountGroup | undefined;
     const id = route.params?.editId as string | undefined;
     if (!editNonce || !g || !id || !model) return;
     const account = model.balanceAccounts[g]?.find((a: BalanceAccountEntry) => a.id === id);
-    if (account) afterSlide(() => openEditModal(g, account));
+    if (account && firstTimeOpen('account', id, editNonce)) afterSlide(() => openEditModal(g, account));
     // Only when "Edit card" sends a new request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editNonce]);
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
@@ -94,8 +112,13 @@ export default function AccountsScreen() {
   const nameRef = useRef<any>(null);
   const [amountInput, setAmountInput] = useState<number | ''>('');
   const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
+  // Version 2.2 (canvas D2): optional last 4 digits (debit and credit cards only).
+  const [last4Input, setLast4Input] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  // H-10 (2026-10-22): after a successful save the form is closing; a quick second tap on
+  // Save would add the same entry again. Blocked until the form is opened again.
+  const savedOnceRef = useRef(false);
 
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
@@ -111,20 +134,24 @@ export default function AccountsScreen() {
   }
 
   function openAddModal(group: AccountGroup) {
+    savedOnceRef.current = false;
     setActiveGroup(group);
     setEditingId(null);
     setNameInput('');
     setAmountInput('');
     setColorInput(DEFAULT_GROUP_COLORS[group]);
+    setLast4Input('');
     setErrorMsg('');
   }
 
   function openEditModal(group: AccountGroup, account: BalanceAccountEntry) {
+    savedOnceRef.current = false;
     setActiveGroup(group);
     setEditingId(account.id);
     setNameInput(account.name);
     setAmountInput(account.amount);
     setColorInput(account.color || DEFAULT_GROUP_COLORS[group]);
+    setLast4Input(account.last4 || '');
     setErrorMsg('');
   }
 
@@ -132,18 +159,26 @@ export default function AccountsScreen() {
     setActiveGroup(null);
     setEditingId(null);
     setErrorMsg('');
+    onFormClosed?.();
   }
 
 
 
 
   async function handleSave() {
+    if (savedOnceRef.current) return;
     if (!activeGroup || !model) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
       setErrorMsg(''); fieldErrors.show('name', 'Give this account a name.');
       return;
     }
+    const hasLast4 = activeGroup === 'debit' || activeGroup === 'credit';
+    if (hasLast4 && last4Input.length > 0 && last4Input.length < 4) {
+      setErrorMsg('Type all 4 last digits, or leave it empty.');
+      return;
+    }
+    const last4 = hasLast4 && last4Input.length === 4 ? last4Input : undefined;
     const parsedAmount = amountInput === '' ? 0 : amountInput;
 
     // Redesign: balances shown here are live (saved balance + anything paid since).
@@ -161,10 +196,19 @@ export default function AccountsScreen() {
     };
     const currentList = updated.balanceAccounts[activeGroup];
 
+    // Version 2.2 (canvas B1): a balance typed in by hand is recorded on the account.
+    const logEntry = (from: number | null) => ({ at: Date.now(), from, to: Number(parsedAmount || 0), ...(username ? { by: username } : {}) });
     if (editingId) {
       updated.balanceAccounts[activeGroup] = currentList.map((a) =>
         a.id === editingId
-          ? { ...a, name: trimmedName, amount: balanceChanged ? parsedAmount : a.amount, color: colorInput }
+          ? {
+              ...a,
+              name: trimmedName,
+              amount: balanceChanged ? parsedAmount : a.amount,
+              color: colorInput,
+              last4,
+              ...(balanceChanged && isSpendingGroup ? { balanceLog: [logEntry(Number(previousLive) || 0), ...(a.balanceLog || [])].slice(0, 50) } : {}),
+            }
           : a
       );
     } else {
@@ -173,6 +217,8 @@ export default function AccountsScreen() {
         name: trimmedName,
         amount: parsedAmount,
         color: colorInput,
+        ...(last4 ? { last4 } : {}),
+        ...(isSpendingGroup ? { balanceLog: [logEntry(null)] } : {}),
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
     }
@@ -189,20 +235,23 @@ export default function AccountsScreen() {
     setSaving(true);
     try {
       await saveModel(updated);
+      savedOnceRef.current = true;
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this account'));
     } finally {
       setSaving(false);
     }
   }
 
   async function performDelete() {
-    if (!activeGroup || !editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!activeGroup || !editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      balanceAccounts: { ...model.balanceAccounts },
+      ...current,
+      balanceAccounts: { ...current.balanceAccounts },
     };
     updated.balanceAccounts[activeGroup] = updated.balanceAccounts[activeGroup].filter(
       (a) => a.id !== editingId
@@ -212,7 +261,7 @@ export default function AccountsScreen() {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this account'));
     } finally {
       setSaving(false);
     }
@@ -230,10 +279,12 @@ export default function AccountsScreen() {
   }
 
   async function performDeleteAccountById(group: AccountGroup, id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      balanceAccounts: { ...model.balanceAccounts },
+      ...current,
+      balanceAccounts: { ...current.balanceAccounts },
     };
     updated.balanceAccounts[group] = (updated.balanceAccounts[group] ?? []).filter((a) => a.id !== id);
     await saveModel(updated);
@@ -269,6 +320,7 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {!formOnly && (
       <PullToRefreshScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -335,7 +387,7 @@ export default function AccountsScreen() {
                     >
                       <TouchableOpacity
                         style={[styles.accountRow, i > 0 && styles.accountRowDivider]}
-                        onPress={() => navigation.navigate('CardDetail', { group, id: account.id })}
+                        onPress={() => navigation.navigate('CardDetail', { group, id: account.id, backTitle: 'Accounts' })}
                         onLongPress={() => openEditModal(group, account)}
                         accessibilityRole="button"
                         accessibilityLabel={`${account.name}, ${formatPeso(bal)}`}
@@ -358,6 +410,7 @@ export default function AccountsScreen() {
           );
         })}
       </PullToRefreshScrollView>
+      )}
 
       <BottomSheet visible={chooseTypeOpen} onClose={() => setChooseTypeOpen(false)} title="Add an account">
         {GROUPS.map((g, i) => (
@@ -413,6 +466,23 @@ export default function AccountsScreen() {
             allowNegative
           />
 
+        {(activeGroup === 'debit' || activeGroup === 'credit') && (
+          <>
+            <Text style={styles.inputLabel}>Last 4 digits (optional)</Text>
+            <TextInput
+              style={[styles.input, { letterSpacing: 3 }]}
+              placeholder="e.g. 4821"
+              placeholderTextColor={colors.inkFaint}
+              value={last4Input}
+              onChangeText={(t) => setLast4Input(t.replace(/[^0-9]/g, '').slice(0, 4))}
+              keyboardType="number-pad"
+              maxLength={4}
+              testID="account-last4"
+            />
+            <Text style={[styles.inputLabel, { marginTop: -6, fontWeight: '400', color: colors.inkDim }]}>Just the last 4, to tell your cards apart. Never type the full card number.</Text>
+          </>
+        )}
+
         <Text style={styles.inputLabel}>Card color</Text>
         <ScrollView
           horizontal
@@ -432,7 +502,7 @@ export default function AccountsScreen() {
           ))}
         </ScrollView>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
 
         <Button label="Save" onPress={handleSave} loading={saving} />
 

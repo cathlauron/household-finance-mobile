@@ -1,5 +1,7 @@
 ﻿import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
+import { friendlyError } from '../friendlyError';
+import { View, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -115,7 +117,7 @@ export default function AvatarPickerSheet({ visible, onClose, initials, current,
       await onSave({ type: 'photo', photoDataUri: dataUri }, [added, ...saved]);
       close();
     } catch (e: any) {
-      setError(e?.message || "Couldn't use that photo. Try a different one.");
+      setError(friendlyError(e, "Couldn't use that photo. Try a different one."));
     } finally {
       setBusy(false);
       setAutoLockSuppressed(false);

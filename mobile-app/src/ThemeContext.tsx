@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, startTransition } from 'react';
 import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, ThemeColors } from './theme';
@@ -40,6 +40,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [mode]);
 
+  // Version 2.2 (Cath: "I prefer the light/dark in 2.1, it's more responsive and smooth"):
+  // back to how 2.1 did it. The tap switches the mode straight away, in the same moment,
+  // with no photo, no fade and no waiting. (Tabs you're not looking at still catch up a
+  // moment later where you can't see, so the page you're on switches as quickly as it can.)
   const setMode = (m: ColorMode) => {
     setModeState(m);
     setIsDark(resolveIsDark(m));
@@ -47,9 +51,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const colors = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
+  // 2.2 speed sweep: the same theme object until the colours really change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const value = useMemo(() => ({ colors, isDark, mode, setMode }), [colors, isDark, mode]);
 
   return (
-    <ThemeContext.Provider value={{ colors, isDark, mode, setMode }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
@@ -59,4 +66,19 @@ export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used inside a ThemeProvider');
   return ctx;
+}
+
+// Version 2.2 (Cath: the light/dark switch still took a moment): a tab you're not looking
+// at recolours a moment later, as background work, so the switch only has to wait for the
+// page you're on. It is recoloured long before you can get to it, and at once if you do.
+export function QuietThemeWhenHidden({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const live = useContext(ThemeContext);
+  const [shown, setShown] = useState(live);
+  useEffect(() => {
+    if (shown === live) return;
+    if (active) setShown(live);
+    else startTransition(() => setShown(live));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, active]);
+  return <ThemeContext.Provider value={active ? live : shown}>{children}</ThemeContext.Provider>;
 }
