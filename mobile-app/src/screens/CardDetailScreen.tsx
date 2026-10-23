@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { animateNextLayout } from '../animateLayout';
 import { dateText } from '../dateUtils';
 import { alertDidntWork } from '../messages';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
@@ -407,7 +408,7 @@ export default function CardDetailScreen() {
             <View style={styles.sectionHead}>
               <Text style={styles.header}>Balance updates</Text>
               {log.length > 5 && (
-                <TouchableOpacity onPress={() => setAllUpdates(!allUpdates)} hitSlop={8}>
+                <TouchableOpacity onPress={() => { animateNextLayout(); setAllUpdates(!allUpdates); }} hitSlop={8}>
                   <Text style={styles.link}>{allUpdates ? 'Show fewer' : 'See all'}</Text>
                 </TouchableOpacity>
               )}

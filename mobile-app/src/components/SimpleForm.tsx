@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { animateNextLayout } from '../animateLayout';
 import { dateText } from '../dateUtils';
 import AppSwitch from './AppSwitch';
 import DateField from './DateField';
@@ -217,7 +218,7 @@ export function PickerRow({
   const s = rowStyles(colors);
   return (
     <View>
-      <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
+      <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); animateNextLayout(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
         <Text style={[s.label, { flex: 1 }, invalid && { color: colors.error, fontWeight: '700' }]}>{label}</Text>
         {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
         <Text style={s.value} numberOfLines={1}>{value}</Text>

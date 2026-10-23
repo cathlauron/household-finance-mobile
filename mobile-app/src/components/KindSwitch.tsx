@@ -2,6 +2,7 @@
 // of a NEW bill, debt or loan form. One short line says what it is; picked the wrong one?
 // Tap another and that form opens with the amount and name you typed. The "?" explains
 // the difference between a transaction, a bill, a debt and a loan.
+import { animateNextLayout } from '../animateLayout';
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,7 +43,7 @@ export default function KindSwitch({ current, onSwitch }: { current: ToPaySub; o
       <View style={s.lineRow}>
         <Text style={[s.line, { color: colors.inkDim }]}>{LINE[current]}</Text>
         <TouchableOpacity
-          onPress={() => setHelp((h) => !h)}
+          onPress={() => { animateNextLayout(); setHelp((h) => !h); }}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={help ? 'Hide what each one means' : 'What is the difference?'}

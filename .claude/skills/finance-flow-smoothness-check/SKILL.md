@@ -29,6 +29,40 @@ they differ.
    (AskUserQuestion when available) before building, and add her answer here. For anything
    new or visual, show a moving sample first (Design canvas) and build only after she picks.
 
+## Every transition: no flicker, no overlap, smooth fades (Cath, 2026-10-23)
+
+Cath: "no button, no page will flicker, no screen will overlap, if there are fades, make
+the fade smooth as well". Check EVERY screen change and EVERY button against these:
+
+- **No flicker.** Nothing that's on screen may disappear and come back, flash, blink or
+  go faint for a frame. A button never shows its old state for a frame before its new one.
+  A page never arrives empty and then fills in all at once (fade the content in).
+  A title never pops in late and pushes the page down.
+- **No blank moment.** Between two screens there is never a frame of just background.
+- **No overlap.** Two pages never show through each other or sit half on top of each other.
+  Allowed on purpose (Cath, 2026-10-23): pop-up sheets over a dimmed page, the Calendar
+  rising over a dimmed page, Search dropping down. Anything else overlapping is a bug.
+- **No snaps.** Something big that changes (a row opening, a help card, a theme change, a
+  screen change) moves or fades; it never jumps all at once. Small text changes (a
+  number, a label) may change in place.
+- **Smooth fades.** Every fade uses the shared speeds and curve in `motion.ts` (no default
+  or linear fades), and never passes through an empty screen. Fading from one screen to
+  another = the old fades out, then the new fades in (they never overlap).
+- **Exception: locking.** When the app locks, the money screen disappears at once so
+  nobody glimpses the numbers (Cath, 2026-10-23). Unlocking fades in.
+
+How to check (besides reading the code):
+- Record it frame by frame in the hidden browser: wrap any step in `rec:` in
+  `tools/browser-walk.mjs` (e.g. `rec:To-Pay`, `rec:label:Notifications`, `rec:id:home-tab`,
+  `rec:drag:-200`, `rec:at:195,150`), then run `python3 -I tools/flicker-check.py
+  web-shots/rec-*`. It reports FLICKER, BLANK, SNAP, LATE POP and JUMP, and writes a
+  `sheet.png` of every frame. Look at the frames before calling anything a bug.
+- Known web-only noise: a step that can't find its button makes the browser scroll the
+  page (a full-page jump); dropped frames at the start of a slide look like a JUMP; the
+  page library's dim runs on a slower path on the web. Page slides only run on the web
+  because RootStack sets `animation: 'default'`.
+- The exact feel on a phone stays "Needs your phone".
+
 ## The shared pieces (all in `mobile-app/src`)
 
 - `motion.ts`: the curve `CURVE` = bezier(0.32, 0.72, 0, 1) (use `Easing.bezier(...CURVE)`),
@@ -62,10 +96,14 @@ they differ.
   NOT jump to another main tab (use the tab bar for that).
 - 2026-10-23: money numbers that change while on screen (e.g. Left to Spend) count quickly
   to the new value (`COUNT_MS`); instant with Reduce Motion.
-- OPEN (ask Cath): the bottom tabs still slide only after you let go, while sub-pages
-  follow the finger. Should the main tabs follow the finger too?
-- OPEN (ask Cath): Search drops down with its own curve (0.22, 1, 0.36, 1), unlike the
-  rest. Keep it, or match the house curve?
+- 2026-10-23: the bottom tabs follow your finger too (like the sub-pages).
+- 2026-10-23: Search drops down with the house curve and speeds (was its own).
+- 2026-10-23: "I borrowed / I lent" copies the Bill / Debt / Loan switch: a short
+  explanation line under it.
+- 2026-10-23: zero amounts are grey whatever their colour (green and blue too, not only red).
+- 2026-10-23: dark mode changes with a quick soft dip (about a third of a second), not a snap.
+- 2026-10-23: whole-screen changes (welcome, set-up, sign-in, unlock): the old screen fades
+  out, then the new one fades in; no blank blink, never both at once. Locking: instant.
 
 ## Steps for any change that moves
 

@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, isZeroAmount } from '../moneyColor';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -1282,7 +1283,7 @@ export default function TransactionsScreen({
         )}
 
         {!salaryEntry && (
-        <TouchableOpacity style={styles.moreToggle} onPress={() => setMoreOpen((v) => !v)} accessibilityRole="button">
+        <TouchableOpacity style={styles.moreToggle} onPress={() => { animateNextLayout(); setMoreOpen((v) => !v); }} accessibilityRole="button">
           <Text style={styles.moreToggleText}>More details</Text>
           <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.gold} />
         </TouchableOpacity>

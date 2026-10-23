@@ -15,3 +15,7 @@ export const SHEET_CLOSE_MS = 240; // a sheet going away
 export const DIM_MS = 220; // the dim behind a sheet fading in
 export const SUBPAGE_MS = 240; // Bills / Debts / Loans settling after a swipe or tap
 export const COUNT_MS = 500; // a money number counting to its new value
+export const ROW_MS = 220; // a row or card opening / closing, the rows below making room
+export const FADE_IN_MS = 180; // something appearing (page content, a title, a toast)
+export const FADE_OUT_MS = 140; // something going away
+export const DIP_MS = 160; // each half of a soft dip (dark mode, whole-screen changes)

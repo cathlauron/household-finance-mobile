@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { animateNextLayout } from '../animateLayout';
 import { View, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
@@ -140,7 +141,7 @@ export default function DateField({
       <TouchableOpacity
         testID={testID}
         style={[styles.inputButton, showPicker && styles.inputButtonActive]}
-        onPress={() => setShowPicker((prev) => !prev)}
+        onPress={() => { animateNextLayout(); setShowPicker((prev) => !prev); }}
         activeOpacity={0.7}
       >
         <Text style={[styles.valueText, !value && styles.placeholderText]}>
@@ -172,7 +173,7 @@ export default function DateField({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => setPickingMonth((v) => !v)}
+              onPress={() => { animateNextLayout(); setPickingMonth((v) => !v); }}
               style={[styles.monthChip, { backgroundColor: colors.accentTint }]}
               accessibilityRole="button"
               accessibilityLabel={pickingMonth ? 'Back to the days' : 'Choose a month and year'}

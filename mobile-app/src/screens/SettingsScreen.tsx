@@ -1,4 +1,5 @@
 import { hapticSelection } from '../haptics';
+import { animateNextLayout } from '../animateLayout';
 import { readyToAutoSave } from '../autoSaveInput';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -12,7 +13,7 @@ import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
@@ -183,7 +184,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     data: 'Data',
   };
 
-  useEffect(() => {
+  // Smoothness 2026-10-23: set before the page is drawn (no frame showing the old title).
+  useLayoutEffect(() => {
     navigation.setOptions({
       title: page ? (SECTIONS[page]?.title ?? PAGE_TITLES[page] ?? 'Settings') : 'Settings',
       headerBackTitle: page ? 'Settings' : 'Home',
@@ -692,7 +694,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     }
   }
 
-  const toggleRow = (key: string) => setOpenRow((o) => (o === key ? null : key));
+  const toggleRow = (key: string) => {
+    animateNextLayout();
+    setOpenRow((o) => (o === key ? null : key));
+  };
   const passDone = passChangeMsg === 'Password changed.';
   function closePassSheet() {
     setPassSheetOpen(false);
@@ -1684,7 +1689,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             right={settingSwitch(model.settings.paydayNudgeEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, paydayNudgeEnabled: on } }), 'settings-payday-nudge')}
           />
           {model.settings.paydayNudgeEnabled !== false && (
-            <PlainRow title="Remind me at" value={formatClock(paydayTime)} onPress={() => setPaydayTimeOpen((o) => !o)} testID="settings-payday-time" />
+            <PlainRow title="Remind me at" value={formatClock(paydayTime)} onPress={() => { animateNextLayout(); setPaydayTimeOpen((o) => !o); }} testID="settings-payday-time" />
           )}
           {model.settings.paydayNudgeEnabled !== false && paydayTimeOpen && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4 }}>

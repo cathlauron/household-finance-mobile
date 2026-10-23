@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero } from '../moneyColor';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
@@ -322,7 +323,7 @@ export default function GroceriesScreen() {
                   </SwipeableRow>
                 ))}
                 {items.length > SHOW_FIRST && (
-                  <TouchableOpacity style={[styles.row, styles.line]} onPress={() => setShowAll((v) => !v)} accessibilityRole="button">
+                  <TouchableOpacity style={[styles.row, styles.line]} onPress={() => { animateNextLayout(); setShowAll((v) => !v); }} accessibilityRole="button">
                     <Text style={[styles.title, { color: colors.gold }]}>{showAll ? 'Show less' : `Show ${items.length - SHOW_FIRST} more`}</Text>
                   </TouchableOpacity>
                 )}

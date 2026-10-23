@@ -162,6 +162,9 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       screenOptions={({ navigation }) => ({
         cardStyle: { backgroundColor: 'transparent' },
         headerMode: 'screen',
+        // Phones animate pages anyway; saying so also turns the slides on in the web copy
+        // Claude records frame by frame (smoothness checks, 2026-10-23).
+        animation: 'default',
         // The Calendar rises as a sheet over a dimmed page: the page behind it stays put.
         cardStyleInterpolator: topRouteName(navigation) === 'Calendar' ? stayBehindSheet : paperSlide,
         transitionSpec: { open: paperTiming, close: paperTimingBack },
@@ -230,7 +233,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         )}
       </Stack.Screen>
       {/* One person's income: their paydays this month and their sources. */}
-      <Stack.Screen name="IncomePerson" options={{ title: '', headerBackTitle: 'Income' }}>
+      <Stack.Screen name="IncomePerson" options={{ title: ' ', headerBackTitle: 'Income' }}>
         {({ route }) => <IncomeScreen personId={route.params.personId} />}
       </Stack.Screen>
       <Stack.Screen
@@ -256,16 +259,16 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
       {/* A Settings sub-page (Account & Security, Appearance, ...), pushed so it fades in like other pages. */}
-      <Stack.Screen name="SettingsPage" options={{ title: '', headerBackTitle: 'Settings' }}>
+      <Stack.Screen name="SettingsPage" options={{ title: ' ', headerBackTitle: 'Settings' }}>
         {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
-      <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: '', headerBackTitle: 'Insights' }} />
+      <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: ' ', headerBackTitle: 'Insights' }} />
       <Stack.Screen name="MoreReports" component={MoreReportsScreen} options={{ title: 'More reports', headerBackTitle: 'Insights' }} />
-      <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: '', headerBackTitle: 'Savings' }} />
+      <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: ' ', headerBackTitle: 'Savings' }} />
       {/* Redesign: each Plan section is its own page, as in the mockup. */}
       <Stack.Screen name="Groceries" component={GroceriesScreen} options={{ title: 'Groceries', headerBackTitle: 'Plan' }} />
       <Stack.Screen name="Travel" component={TravelScreen} options={{ title: 'Travel', headerBackTitle: 'Plan' }} />

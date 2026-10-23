@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { alertDidntWork } from '../messages';
@@ -894,7 +895,7 @@ export default function TravelScreen() {
                         maxLength={120}
                         testID="travel-page-todo-input"
                       />
-                      <TouchableOpacity onPress={() => setPageTodoDateOpen((v) => !v)} accessibilityRole="button" accessibilityLabel="Add a date (optional)" hitSlop={8} style={{ marginHorizontal: 8 }}>
+                      <TouchableOpacity onPress={() => { animateNextLayout(); setPageTodoDateOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="Add a date (optional)" hitSlop={8} style={{ marginHorizontal: 8 }}>
                         <Ionicons name="calendar-outline" size={20} color={pageTodoDate ? colors.gold : colors.inkFaint} />
                       </TouchableOpacity>
                       {!!pageTodoText.trim() && (

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import SkyGlow from '../components/SkyGlow';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { reduceMotionNow } from '../reduceMotion';
+import { CURVE, FADE_IN_MS } from '../motion';
 import { TouchableOpacity } from '../components/Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,14 +76,35 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
       {/* An empty title (detail pages that show their own big heading) hides the line. */}
       {title !== '' && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
-            {title}
-          </Text>
+          <FadeInTitle title={title} style={[styles.title, { color: colors.ink, flexShrink: 1 }]} />
           {!!options.headerTitleRight && <View style={{ marginLeft: 'auto' }}>{options.headerTitleRight()}</View>}
         </View>
       )}
       <OfflineBanner style={{ marginTop: 8, marginBottom: 4 }} />
     </View>
+  );
+}
+
+// Smoothness 2026-10-23: pages whose title is only known once their contents are built
+// (a report, a pot, a Settings section, an income person) start with a blank title " ",
+// which keeps the title's line so nothing below moves; the title then fades in.
+function FadeInTitle({ title, style }: { title: string; style: any }) {
+  const blank = title.trim() === '';
+  const opacity = useRef(new Animated.Value(blank ? 0 : 1)).current;
+  const wasBlank = useRef(blank);
+  useEffect(() => {
+    if (wasBlank.current && !blank) {
+      if (reduceMotionNow()) opacity.setValue(1);
+      else Animated.timing(opacity, { toValue: 1, duration: FADE_IN_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+    }
+    wasBlank.current = blank;
+  }, [blank, opacity]);
+  return (
+    <Animated.View style={{ opacity, flexShrink: 1 }}>
+      <Text style={style} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header">
+        {title}
+      </Text>
+    </Animated.View>
   );
 }
 
