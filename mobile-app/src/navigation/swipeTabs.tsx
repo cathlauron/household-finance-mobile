@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useMemo, useRef } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { makeMutable } from 'react-native-reanimated';
 import { hapticSelection } from '../haptics';
 
 // Version 2.1 (Cath): swipe the page sideways to move between tabs (Home / Transactions /
@@ -15,15 +16,38 @@ import { hapticSelection } from '../haptics';
 export const SwipeTabsContext = createContext<((direction: 1 | -1) => void) | null>(null);
 
 let held = false;
+// The same "a row or card has this touch" flag, readable on the animation thread (the
+// sliding sub-pages check it there).
+export const heldOnUI = makeMutable(false);
 export const holdTabSwipe = {
   onTouchStart: () => {
     held = true;
+    heldOnUI.value = true;
   },
   onTouchEnd: () => {
     held = false;
+    heldOnUI.value = false;
   },
   onTouchCancel: () => {
     held = false;
+    heldOnUI.value = false;
+  },
+};
+
+// Smoothness 2026-10-23 (Cath picked "follows your finger"): sliding sub-pages (Bills /
+// Debts / Loans and others, components/SlidingPages.tsx) handle their own sideways swipe,
+// so the page-wide swipe that changes the main tab stands aside for touches that start on
+// them. Past the last sub-page they bounce instead of changing tab (Cath's choice).
+let subHeld = false;
+export const holdForSubPages = {
+  onTouchStart: () => {
+    subHeld = true;
+  },
+  onTouchEnd: () => {
+    subHeld = false;
+  },
+  onTouchCancel: () => {
+    subHeld = false;
   },
 };
 
@@ -49,11 +73,11 @@ export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: 
           // Touch started on something that swipes by itself: let it have the swipe.
           // (Its onTouchStart runs first, so `held` is already set.)
           setTimeout(() => {
-            if (held) manager.fail();
+            if (held || (!inner && subHeld)) manager.fail();
           }, 0);
         })
         .onEnd((e) => {
-          if (held) return;
+          if (held || (!inner && subHeld)) return;
           const dx = e.translationX;
           if (Math.abs(dx) < DISTANCE && Math.abs(e.velocityX) < FLICK) return;
           if (Math.abs(e.translationY) > Math.abs(dx)) return;

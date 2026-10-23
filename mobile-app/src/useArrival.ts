@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutAnimation } from 'react-native';
 import { reduceMotionNow } from './reduceMotion';
 import { takeExpectedArrival } from './arrivalFocus';
+import { usePageActive } from './pageActive';
 
 const ARRIVE = {
   duration: 280,
@@ -25,10 +26,14 @@ export function useArrival(ids: string[], kind?: string): string | null {
   const prev = useRef<Set<string> | null>(null);
   const [glow, setGlow] = useState<string | null>(null);
   const key = useMemo(() => ids.join('|'), [ids]);
+  // Smoothness 2026-10-23: on a sub-page you can't see, the list remembers what it last
+  // showed and lights up what's new once its page slides into view.
+  const showing = usePageActive();
 
   // Worked out during render (from the list as it was last shown) so the move animates
   // in this same update. The previous list is only updated after the screen shows it.
   const arrived = useMemo(() => {
+    if (!showing) return null;
     const before = prev.current;
     // Just opened (or opened again) after an add made elsewhere: the new one still slides in.
     if (!before) {
@@ -44,12 +49,13 @@ export function useArrival(ids: string[], kind?: string): string | null {
     if (!reduceMotionNow()) LayoutAnimation.configureNext(ARRIVE);
     return fresh[0];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, showing]);
 
   // Code review fix: the glow always goes away, even when the list changes again (another
   // add, a delete) before it has faded. Before, it could stay stuck on a row.
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!showing) return;
     prev.current = new Set(ids);
     if (!arrived) return;
     setGlow(arrived);
@@ -59,7 +65,7 @@ export function useArrival(ids: string[], kind?: string): string | null {
       setGlow((g) => (g === arrived ? null : g));
     }, GLOW_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, showing]);
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
   }, []);

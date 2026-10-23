@@ -10,7 +10,8 @@
 // "later:2026-10-23T08:00" = put the app away, move the clock to that local time, bring
 // it back (needs WALK_START_TIME, e.g. WALK_START_TIME=2026-10-22T23:50, so the page
 // starts on a fake clock); "expect:text" = fail if that text isn't on screen;
-// "scroll:600" = scroll down that many pixels (negative = up).
+// "scroll:600" = scroll down that many pixels (negative = up); "drag:-200" = swipe the
+// page 200 px left with a picture mid-swipe (positive = right).
 // Pictures and a log go to mobile-app/web-shots (not saved to git).
 import { chromium } from 'playwright';
 import http from 'node:http';
@@ -97,6 +98,24 @@ for (const step of process.argv.slice(2)) {
     await page.mouse.wheel(0, Number(step.slice(7)));
     await page.waitForTimeout(1200);
     await picture(`scrolled ${step.slice(7)}`);
+    continue;
+  }
+  if (step.startsWith('drag:')) {
+    // "drag:-200" = put a finger down mid-page, slide it 200 px left (positive = right),
+    // take a picture with the finger still down, then let go and take another.
+    const dx = Number(step.slice(5));
+    const x0 = dx < 0 ? 300 : 90;
+    await page.mouse.move(x0, 520);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) {
+      await page.mouse.move(x0 + (dx * i) / 10, 520);
+      await page.waitForTimeout(16);
+    }
+    await page.waitForTimeout(150);
+    await picture(`finger down, moved ${dx}`);
+    await page.mouse.up();
+    await page.waitForTimeout(700);
+    await picture(`let go after ${dx}`);
     continue;
   }
   if (step.startsWith('wait:')) {

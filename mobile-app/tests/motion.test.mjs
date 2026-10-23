@@ -92,3 +92,22 @@ test('no new file types its own animation speed', () => {
   );
   assert.deepEqual(bad.map((f) => f.name), []);
 });
+
+// Cath, 2026-10-23: every page with sub-pages slides the same way (follows your finger),
+// through the one shared component. Pages are added here as they move over.
+const SLIDING = ['screens/ToPayScreen.tsx'];
+test('pages with sub-pages slide through SlidingPages (not their own switch)', () => {
+  for (const name of SLIDING) {
+    const f = files.find((x) => x.name === name);
+    assert.ok(f, name);
+    assert.match(f.text, /<SlidingPages</, `${name} should use SlidingPages`);
+    assert.doesNotMatch(code(f.text), /<SwipeTabs\s+inner/, `${name} should not keep its own sub-page swipe`);
+  }
+});
+
+test('swiping past the last sub-page never jumps to another main tab', () => {
+  for (const name of SLIDING) {
+    const f = files.find((x) => x.name === name);
+    assert.doesNotMatch(code(f.text), /navigate\(d > 0 \?/, name);
+  }
+});

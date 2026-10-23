@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { SwipeTabs } from '../navigation/swipeTabs';
-import { useNavigation } from '@react-navigation/native';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../ThemeContext';
-import SegmentedControl from '../components/SegmentedControl';
+import SlidingPages from '../components/SlidingPages';
 import { setToPaySub } from '../fabActions';
 import { closeOpenSwipeRows } from '../components/SwipeableRow';
 import { useStickyState } from '../stickyState';
@@ -92,49 +90,40 @@ export default function ToPayScreen({ initialOpenBillId }: ToPayScreenProps) {
   }, [activeSubTab]);
   // (The Bill | Debt | Loan switch forms live in navigation/PaySwitchHost.tsx.)
   const styles = makeStyles(colors);
-  const navigation = useNavigation<any>();
-  // Version 2.1: swipe between Bills, Debts and Loans; past either end it carries on to
-  // the next tab (Transactions / Plan).
-  function swipeSub(d: 1 | -1) {
-    const i = TOPAY_TABS.findIndex((t) => t.id === activeSubTab) + d;
-    if (i >= 0 && i < TOPAY_TABS.length) setActiveSubTab(TOPAY_TABS[i].id);
-    else navigation.navigate(d > 0 ? 'Plan' : 'Transactions');
-  }
+  // Version 2.1: swipe between Bills, Debts and Loans. Smoothness 2026-10-23 (Cath picked
+  // "follows your finger"): the pages now slide with your finger, and past Loans or Bills
+  // they bounce instead of jumping to Plan / Transactions (use the tab bar for those).
   return (
-    <SwipeTabs inner onSwipe={swipeSub}>
     <SafeAreaView style={styles.container}>
-      <View style={styles.switcherRow}>
-        <SegmentedControl<SubTab>
-          accessibilityLabel="Show"
-          options={TOPAY_TABS.map((t) => ({ id: t.id, label: t.label, testID: `topay-tab-${t.id}` }))}
-          value={activeSubTab}
-          onChange={setActiveSubTab}
-        />
-      </View>
-      <View style={styles.contentWrap}>
-        {activeSubTab === 'bills' && (
-          <BillsScreen
-            openBillId={swipeOpenRequest ? swipeOpenRequest.billId : initialOpenBillId}
-            openBillNonce={swipeOpenRequest ? swipeOpenRequest.nonce : undefined}
-          />
-        )}
-        {activeSubTab === 'debts' && (
-          <DebtsScreen
-            openDebtId={swipeOpenDebtRequest ? swipeOpenDebtRequest.debtId : undefined}
-            openDebtNonce={swipeOpenDebtRequest ? swipeOpenDebtRequest.nonce : undefined}
-            onOpenHandled={() => setSwipeOpenDebtRequest(null)}
-          />
-        )}
-        {activeSubTab === 'loans' && (
-          <LoansScreen
-            openLoanId={swipeOpenLoanRequest ? swipeOpenLoanRequest.loanId : undefined}
-            openLoanNonce={swipeOpenLoanRequest ? swipeOpenLoanRequest.nonce : undefined}
-            onOpenHandled={() => setSwipeOpenLoanRequest(null)}
-          />
-        )}
-      </View>
+      <SlidingPages<SubTab>
+        testID="topay-pages"
+        accessibilityLabel="Show"
+        options={TOPAY_TABS.map((t) => ({ id: t.id, label: t.label, testID: `topay-tab-${t.id}` }))}
+        value={activeSubTab}
+        onChange={setActiveSubTab}
+        switcherWrapStyle={styles.switcherRow}
+        renderPage={(id) =>
+          id === 'bills' ? (
+            <BillsScreen
+              openBillId={swipeOpenRequest ? swipeOpenRequest.billId : initialOpenBillId}
+              openBillNonce={swipeOpenRequest ? swipeOpenRequest.nonce : undefined}
+            />
+          ) : id === 'debts' ? (
+            <DebtsScreen
+              openDebtId={swipeOpenDebtRequest ? swipeOpenDebtRequest.debtId : undefined}
+              openDebtNonce={swipeOpenDebtRequest ? swipeOpenDebtRequest.nonce : undefined}
+              onOpenHandled={() => setSwipeOpenDebtRequest(null)}
+            />
+          ) : (
+            <LoansScreen
+              openLoanId={swipeOpenLoanRequest ? swipeOpenLoanRequest.loanId : undefined}
+              openLoanNonce={swipeOpenLoanRequest ? swipeOpenLoanRequest.nonce : undefined}
+              onOpenHandled={() => setSwipeOpenLoanRequest(null)}
+            />
+          )
+        }
+      />
     </SafeAreaView>
-    </SwipeTabs>
   );
 }
 function makeStyles(colors: any) {
@@ -148,6 +137,5 @@ function makeStyles(colors: any) {
       paddingTop: 10,
       paddingBottom: 4,
     },
-    contentWrap: { flex: 1 },
   });
 }
