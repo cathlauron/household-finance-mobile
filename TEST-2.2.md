@@ -378,7 +378,7 @@ AJ 2026-10-22 evening: PIN lock. Cath, 2026-10-22: "device test as described".
       it again: the same message is there and the right PIN still doesn't open it. Your
       password does. (Or wait 5 minutes: the PIN works again.)
 
-AK 2026-10-22 evening: small ones. NOT YET TESTED.
+AK 2026-10-22 evening: small ones. Cath, 2026-10-22: "device test as described".
 - AK1 Settings > Notifications: turn "Notify me on this phone" off and on again: it stays
       on, and nothing else in the app changes (it used to be able to undo a change your
       partner made while the phone's permission pop-up was open).
