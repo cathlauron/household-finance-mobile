@@ -47,7 +47,7 @@ function monthly(b: Bill): number {
 
 export default function SubscriptionsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
 
@@ -69,9 +69,11 @@ export default function SubscriptionsScreen() {
   const perMonth = active.reduce((s, b) => s + monthly(b), 0);
 
   async function update(id: string, patch: Partial<Bill>) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     try {
-      await saveModel({ ...model, bills: model.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
+      await saveModel({ ...current, bills: current.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
     } catch {
       Alert.alert(...alertNotSaved('this subscription'));
     }

@@ -388,3 +388,5 @@ AK 2026-10-22 evening: small ones. Cath, 2026-10-22: "device test as described".
 AL 2026-10-22 night: years on dates, confirm pop-ups, sign-in. NOT YET TESTED.
 - AL1 Make a test trip for next year (e.g. Apr 2-9): Travel shows "Apr 2 – 9, 2027". This
       year's dates still show without a year ("Nov 11"). Delete the test trip.
+- AL2 Look-around: delete a test bill, a test transaction and a test trip (make them
+      first): each disappears and nothing else changes.

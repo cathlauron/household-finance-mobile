@@ -112,7 +112,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   // Version 2.2 (approved P4): a just-added bill slides in and glows.
   const arrived = useArrival(React.useMemo(() => (model?.bills || []).map((b) => b.id), [model?.bills]), formOnly ? undefined : 'bills');
 
@@ -462,10 +462,12 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      bills: model.bills.filter((b) => b.id !== editingId),
+      ...current,
+      bills: current.bills.filter((b) => b.id !== editingId),
     };
     setSaving(true);
     try {
@@ -489,10 +491,12 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     );
   }
   async function performDeleteById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      bills: model.bills.filter((b) => b.id !== id),
+      ...current,
+      bills: current.bills.filter((b) => b.id !== id),
     };
     setSaving(true);
     try {

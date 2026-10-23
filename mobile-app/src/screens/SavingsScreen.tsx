@@ -114,7 +114,7 @@ type SavingsScreenProps = {
 
 export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   // Version 2.2 (approved P4): a just-added pot slides in and glows.
   const arrived = useArrival((model?.savingsGoals || []).map((g) => g.id));
   const who = useWho();
@@ -395,10 +395,12 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
   }
 
   async function performDeleteGoal() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     // Version 2.2 (sweep): same as swipe-to-delete, a trip or event saving into this pot
     // stops saving (before, its switch stayed on and made a new pot on its next change).
-    const updated: HouseholdModel = withoutSavingsPot(model, editingId);
+    const updated: HouseholdModel = withoutSavingsPot(current, editingId);
     setSaving(true);
     try {
       await saveModel(updated);
@@ -422,8 +424,10 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
   }
 
   async function performDeleteGoalById(id: string) {
-    if (!model) return;
-    const updated: HouseholdModel = withoutSavingsPot(model, id);
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
+    const updated: HouseholdModel = withoutSavingsPot(current, id);
     setSaving(true);
     try {
       await saveModel(updated);

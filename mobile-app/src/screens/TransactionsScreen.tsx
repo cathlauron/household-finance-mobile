@@ -809,10 +809,12 @@ export default function TransactionsScreen({
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     // One shared delete (H-17: also puts an expense back to "refund pending" when its
     // refund entry is the one deleted).
-    const updated: HouseholdModel = deleteManualTxn(model, editingId);
+    const updated: HouseholdModel = deleteManualTxn(current, editingId);
     setSaving(true);
     try {
       await saveModel(updated);
@@ -836,8 +838,10 @@ export default function TransactionsScreen({
   }
 
   async function performDeleteTxnById(id: string) {
-    if (!model) return;
-    const updated: HouseholdModel = deleteManualTxn(model, id);
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
+    const updated: HouseholdModel = deleteManualTxn(current, id);
     setSaving(true);
     try {
       await saveModel(updated);

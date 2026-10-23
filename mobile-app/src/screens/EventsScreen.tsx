@@ -177,7 +177,7 @@ function rollOverAnnualEvents(events: EventItem[], txns: ManualTransaction[], to
 
 export default function EventsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -274,12 +274,14 @@ export default function EventsScreen() {
 
   // Mark done / not done right from the list (logs or removes the event's expense).
   async function markDone(ev: EventItem, done: boolean) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     hapticSelection();
     const completedDate = done ? todayISO() : undefined;
-    const { transactionId, transactions } = reconcileEventTransaction(!!ev.completed, ev.expenseTransactionId, done, eventBudget(ev) || '', model.manualTransactions ?? [], ev.name, completedDate);
+    const { transactionId, transactions } = reconcileEventTransaction(!!ev.completed, ev.expenseTransactionId, done, eventBudget(ev) || '', current.manualTransactions ?? [], ev.name, completedDate);
     await saveModel({
-      ...model,
+      ...current,
       events: events.map((e) => (e.id === ev.id ? { ...e, completed: done, completedDate, expenseTransactionId: transactionId } : e)),
       manualTransactions: transactions,
     });
@@ -472,17 +474,19 @@ export default function EventsScreen() {
   }
 
   async function handleDeleteEvent() {
-    if (!editingId || !model) return;
-    const deletedEvent = (model.events ?? []).find((ev) => ev.id === editingId);
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
+    const deletedEvent = (current.events ?? []).find((ev) => ev.id === editingId);
     const updated: HouseholdModel = {
-      ...model,
-      events: (model.events ?? []).filter((ev) => ev.id !== editingId),
+      ...current,
+      events: (current.events ?? []).filter((ev) => ev.id !== editingId),
       savingsGoals: deletedEvent?.savingsGoalId
-        ? (model.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
-        : model.savingsGoals ?? [],
+        ? (current.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
+        : current.savingsGoals ?? [],
       manualTransactions: deletedEvent?.expenseTransactionId
-        ? (model.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
-        : model.manualTransactions,
+        ? (current.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
+        : current.manualTransactions,
     };
     try {
       await saveModel(updated);
@@ -493,17 +497,19 @@ export default function EventsScreen() {
   }
 
   async function performDeleteEventById(id: string) {
-    if (!model) return;
-    const deletedEvent = (model.events ?? []).find((ev) => ev.id === id);
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
+    const deletedEvent = (current.events ?? []).find((ev) => ev.id === id);
     const updated: HouseholdModel = {
-      ...model,
-      events: (model.events ?? []).filter((ev) => ev.id !== id),
+      ...current,
+      events: (current.events ?? []).filter((ev) => ev.id !== id),
       savingsGoals: deletedEvent?.savingsGoalId
-        ? (model.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
-        : model.savingsGoals ?? [],
+        ? (current.savingsGoals ?? []).filter((g) => g.id !== deletedEvent.savingsGoalId)
+        : current.savingsGoals ?? [],
       manualTransactions: deletedEvent?.expenseTransactionId
-        ? (model.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
-        : model.manualTransactions,
+        ? (current.manualTransactions ?? []).filter((t) => t.id !== deletedEvent.expenseTransactionId)
+        : current.manualTransactions,
     };
     try {
       await saveModel(updated);

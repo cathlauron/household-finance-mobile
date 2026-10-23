@@ -52,7 +52,7 @@ function makeId(): string {
 // form, for "Edit card" on a card's page; onFormClosed says when it has closed.
 export default function AccountsScreen({ formOnly, editGroup, editAccountId, onFormClosed }: { formOnly?: boolean; editGroup?: AccountGroup; editAccountId?: string; onFormClosed?: () => void } = {}) {
   const { colors, isDark } = useTheme();
-  const { model, saveModel, username } = useData();
+  const { model, saveModel, username, getModel } = useData();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
@@ -246,10 +246,12 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   }
 
   async function performDelete() {
-    if (!activeGroup || !editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!activeGroup || !editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      balanceAccounts: { ...model.balanceAccounts },
+      ...current,
+      balanceAccounts: { ...current.balanceAccounts },
     };
     updated.balanceAccounts[activeGroup] = updated.balanceAccounts[activeGroup].filter(
       (a) => a.id !== editingId
@@ -277,10 +279,12 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   }
 
   async function performDeleteAccountById(group: AccountGroup, id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      balanceAccounts: { ...model.balanceAccounts },
+      ...current,
+      balanceAccounts: { ...current.balanceAccounts },
     };
     updated.balanceAccounts[group] = (updated.balanceAccounts[group] ?? []).filter((a) => a.id !== id);
     await saveModel(updated);

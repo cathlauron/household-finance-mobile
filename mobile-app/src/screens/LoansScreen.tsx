@@ -143,7 +143,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   // Version 2.2 (approved P4): a just-added loan slides in and glows.
   const arrived = useArrival(React.useMemo(() => (model?.loans || []).map((l) => l.id), [model?.loans]), formOnly ? undefined : 'loans');
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
@@ -499,10 +499,12 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      loans: model.loans.filter((l) => l.id !== editingId),
+      ...current,
+      loans: current.loans.filter((l) => l.id !== editingId),
     };
     setSaving(true);
     try {
@@ -527,10 +529,12 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   }
 
   async function performDeleteLoanById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      loans: model.loans.filter((l) => l.id !== id),
+      ...current,
+      loans: current.loans.filter((l) => l.id !== id),
     };
     setSaving(true);
     try {

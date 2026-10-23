@@ -112,7 +112,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   }, [addCarry?.nonce]);
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   // Version 2.2 (approved P4): a just-added debt slides in and glows.
   const arrived = useArrival(React.useMemo(() => (model?.debts || []).map((d) => d.id), [model?.debts]), formOnly ? undefined : 'debts');
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
@@ -455,10 +455,12 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      debts: model.debts.filter((d) => d.id !== editingId),
+      ...current,
+      debts: current.debts.filter((d) => d.id !== editingId),
     };
     setSaving(true);
     try {
@@ -483,10 +485,12 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   }
 
   async function performDeleteById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      debts: model.debts.filter((d) => d.id !== id),
+      ...current,
+      debts: current.debts.filter((d) => d.id !== id),
     };
     setSaving(true);
     try {

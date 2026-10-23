@@ -807,10 +807,12 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }
 
   async function performDeleteCategory() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      categories: model.categories.filter((c) => c.id !== editingId),
+      ...current,
+      categories: current.categories.filter((c) => c.id !== editingId),
     };
     try {
       await saveModel(updated);
@@ -946,10 +948,12 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }
 
   async function performDeletePayee() {
-    if (!editingPayeeId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingPayeeId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      payees: (model.payees ?? []).filter((p) => p.id !== editingPayeeId),
+      ...current,
+      payees: (current.payees ?? []).filter((p) => p.id !== editingPayeeId),
     };
     try {
       await saveModel(updated);
@@ -1060,10 +1064,12 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   }
 
   async function performDeleteRule() {
-    if (!editingRuleId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingRuleId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      categorizationRules: (model.categorizationRules ?? []).filter((r) => r.id !== editingRuleId),
+      ...current,
+      categorizationRules: (current.categorizationRules ?? []).filter((r) => r.id !== editingRuleId),
     };
     try {
       await saveModel(updated);

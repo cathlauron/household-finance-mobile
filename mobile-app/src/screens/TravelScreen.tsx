@@ -633,15 +633,19 @@ export default function TravelScreen() {
   }
 
   async function handleDeleteTrip() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     if (featuredId === editingId) setFeaturedId(null);
-    await saveModel(withoutTrip(model, editingId));
+    await saveModel(withoutTrip(current, editingId));
     closeModal();
   }
 
   async function performDeleteTripById(id: string) {
-    if (!model) return;
-    await saveModel(withoutTrip(model, id));
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
+    await saveModel(withoutTrip(current, id));
   }
 
   function handleSwipeDeleteTrip(trip: TravelTrip) {

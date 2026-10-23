@@ -99,7 +99,7 @@ const shortDay = (iso: string) => dateText(new Date(iso + 'T00:00:00'), { weekda
 
 export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, openAddNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const who = useWho();
   const navigation = useNavigation<any>();
 
@@ -453,10 +453,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      income: model.income.filter((s) => s.id !== editingId),
+      ...current,
+      income: current.income.filter((s) => s.id !== editingId),
     };
     setSaving(true);
     try {
@@ -480,10 +482,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
   }
 
   async function performDeleteSourceById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      income: model.income.filter((s) => s.id !== id),
+      ...current,
+      income: current.income.filter((s) => s.id !== id),
     };
     setSaving(true);
     try {

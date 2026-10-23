@@ -76,7 +76,7 @@ function shortDate(iso: string): string {
 
 export default function GoalsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -244,10 +244,12 @@ export default function GoalsScreen() {
   }
 
   async function handleDeleteGoal() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== editingId),
+      ...current,
+      yearlyGoals: (current.yearlyGoals ?? []).filter((g) => g.id !== editingId),
     };
     try {
       await saveModel(updated);
@@ -258,10 +260,12 @@ export default function GoalsScreen() {
   }
 
   async function performDeleteGoalById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== id),
+      ...current,
+      yearlyGoals: (current.yearlyGoals ?? []).filter((g) => g.id !== id),
     };
     try {
       await saveModel(updated);
