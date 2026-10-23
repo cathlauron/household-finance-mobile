@@ -844,3 +844,12 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   H-21 (confirm pop-ups, same fix as H-20?), H-19 (rare sign-in case). Phone: TEST-2.2 AK.
   Not checkable here: leaving/joining a household (needs two real accounts / the Firebase
   emulator, blocked in Claude's workspace). Then: the real 2.2 build (AG4, I11, I12).
+
+- NEWEST (2026-10-22, night): Cath device-tested AK and agreed to all three open items.
+  Done, each proven red-green: dates show the year only when not this year (dateText, 29
+  places; trip ranges "Apr 2 – 9, 2027"); H-21 25 delete confirms start from the newest
+  data; H-19 new-phone sign-in says "Check your connection" instead of asking for the
+  recovery key. Checks: npm test 144/144, test:screens 95/95, hooks 0. Phone: TEST-2.2 AL.
+  The bug hunt has no open items left that a computer can check. Next (Cath decides):
+  the real 2.2 build (AG4 two phones, I11 invite link, I12 opening speed), then merge 2.2
+  into main.
