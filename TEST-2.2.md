@@ -391,3 +391,27 @@ AL 2026-10-22 night: years on dates, confirm pop-ups, sign-in. NOT YET TESTED. (
       year's dates still show without a year ("Nov 11"). Delete the test trip.
 - AL2 Look-around: delete a test bill, a test transaction and a test trip (make them
       first): each disappears and nothing else changes.
+
+AM 2026-10-23: smoothness (sub-pages follow your finger). NOT YET TESTED.
+- AM1 To-Pay: put your finger on the list and slowly drag left: the Debts page comes in
+      WITH your finger, and the white highlight in Bills / Debts / Loans moves along with
+      it. Let go past about a quarter of the screen: it settles on Debts. Let go early: it
+      slides back to Bills.
+- AM2 To-Pay on Loans: swipe left again: the page gives a little and springs back. You
+      stay on Loans (it no longer jumps to Plan). Same on Bills swiping right (no jump to
+      Transactions). The bottom tab bar still changes tabs when you swipe ON it.
+- AM3 Tap Bills / Debts / Loans: the page slides there and the highlight glides.
+- AM4 Swipe-to-delete on a bill still works (slow swipe on the row opens Delete; a quick
+      flick across a row turns the page).
+- AM5 Plan > Savings (Pots / Emergency / FI), Groceries (List / Calculator / Meal ideas),
+      Events (Upcoming / Done): the same finger-following slide and bounce at the ends.
+- AM6 Plan > Travel > open a trip: swipe on Budget / To-do: it follows your finger and
+      the things below (Delete trip, other trips) move smoothly to the new height.
+- AM7 Small switchers in forms (Bill / Debt / Loan in New bill, I borrowed / I lent):
+      the white highlight glides; the form doesn't slide.
+- AM8 Add a ₱100 test transaction from Home: Left to Spend counts down quickly to the
+      new amount (about half a second). Delete the test transaction: it counts back up.
+- AM9 Phone Settings > Accessibility > Remove animations ON: pages, highlight and numbers
+      change at once (dragging still follows your finger). Turn it back off.
+- AM10 Look-around: add a debt from New bill's Bill / Debt switch: To-Pay shows Debts
+      and the new debt lights up once it's on screen.
