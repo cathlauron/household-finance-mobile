@@ -1,4 +1,5 @@
 import { usernameOwner } from '../usernameClaim';
+import { restoreLinkedHousehold } from '../signInRestore';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { formatRecoveryKeyInput } from '../typingHelpers';
@@ -569,13 +570,23 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           // the shared household document, not in this personal backup. Confirm the
           // password is correct by actually unwrapping the shared key and decrypting
           // the shared data with it, before trusting any of this.
-          try {
-            const householdKey = unwrapHouseholdKey(wrappedKeyInfo.wrappedKey, key);
-            const encryptedHousehold = await loadHouseholdData(effectiveHouseholdId);
-            if (!encryptedHousehold) throw new Error('missing household data');
-            restoredModel = decryptJSON<HouseholdModel>(householdKey, encryptedHousehold);
-            restoredHouseholdKey = householdKey;
-          } catch (e) {
+          // H-19 (2026-10-22): a dropped connection here says so, instead of asking for the
+          // recovery key as if the password were wrong (see signInRestore.ts).
+          const outcome = await restoreLinkedHousehold({
+            unwrap: () => unwrapHouseholdKey(wrappedKeyInfo.wrappedKey, key),
+            load: () => loadHouseholdData(effectiveHouseholdId),
+            decrypt: (hk, text) => decryptJSON<HouseholdModel>(hk, text),
+          });
+          if (outcome.status === 'offline') {
+            setIsRestoring(false);
+            setBusy(false);
+            setError("Couldn't reach your household. Check your connection and try again.");
+            return;
+          }
+          if (outcome.status === 'ok') {
+            restoredModel = outcome.model;
+            restoredHouseholdKey = outcome.householdKey;
+          } else {
             triggerRecovery({
               username,
               email,

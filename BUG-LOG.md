@@ -83,6 +83,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-20 | Turning on reminders after the permission pop-up undid changes that arrived meanwhile | screens/SettingsScreen.tsx | __tests__/SettingsNotifyStale.test.tsx |
 | H-22 | Pot page target date had no year (Savings list had it) | screens/PotDetailScreen.tsx | __tests__/PotTargetYear.test.tsx |
 | H-21 | Delete pop-ups saved data from when they opened (could undo a partner's change) | 12 screens (performDelete...) | __tests__/DeleteConfirmStale.test.tsx |
+| H-19 | New phone sign-in: dropped connection asked for the recovery key | signInRestore.ts, screens/SignInScreen.tsx | tests/signInRestore.test.mjs, __tests__/SignInNewPhoneOffline.test.tsx |
 | - | Dates next year showed no year | dateUtils.ts dateText (+19 files) | tests/dateText.test.mjs, __tests__/DatesWithYear.test.tsx |
 
 ## Still open (not fixed yet)

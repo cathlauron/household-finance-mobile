@@ -80,7 +80,7 @@ code says otherwise:
 | H-16 | NEW + fixed: an expense waiting for a refund, edited to Money in, kept its expected refund (refund badge on income; Mark received could add the money twice) | Proven: `__tests__/RefundDirection.test.tsx` (red: refund kept; green: dropped). List and transaction page also only show a pending refund on money out |
 | H-17 | NEW + fixed: deleting a refund entry left its expense saying "received" | Proven: `tests/refundDelete.test.mjs` (red-green). All three delete paths now use one shared delete |
 | H-18 | NEW + fixed (security, Cath's rule): 5 wrong PINs only switched the lock screen to password until the app was reopened, so a PIN could be guessed by reopening again and again. Now the PIN is blocked for 5 minutes (saved on the phone); password and fingerprint still work; the password lifts the block | Proven: `__tests__/PinLockout.test.tsx`, `__tests__/PinLockScreen.test.tsx` (this morning's code fails). Needs your phone: AJ1 |
-| H-19 | LOW, not fixed: on a NEW phone, if the connection drops between two steps of signing in to a shared household, it asks for the recovery key instead of saying to check the connection (SignInScreen restore path, `loadHouseholdData` failure is treated like a wrong password). Rare | - |
+| H-19 | Fixed (Cath agreed): signing in on a new phone to a shared household, a dropped connection while reading the household now says "Check your connection" instead of asking for the recovery key. A wrong password still goes to recovery | Proven: `tests/signInRestore.test.mjs`, `__tests__/SignInNewPhoneOffline.test.tsx` (old sign-in fails). Needs a new phone or a reinstall to see on a phone |
 | H-20 | NEW + fixed: turning on reminders / weekly recap saved the data from before the phone's permission pop-up, quietly undoing anything that arrived meanwhile (e.g. the partner's change) | Proven: `__tests__/SettingsNotifyStale.test.tsx` (partner's bill lost before, kept after) |
 | H-21 | Fixed (Cath agreed): 25 "Delete...?" pop-ups (and two similar spots: event Done, subscription status) now start from the newest data when tapped, so a change arriving while the pop-up is open is kept | Proven: `__tests__/DeleteConfirmStale.test.tsx` (partner's transaction lost before, kept after) |
 | - | Screen sweep: all 18 main screens open with older data AND with a full household (no crashes, no NaN/undefined on screen, data shown) | `__tests__/OldDataScreens.test.tsx` (36 checks; proven to fail when data is missing) |
@@ -92,7 +92,7 @@ code says otherwise:
 - Zero amounts shown in red: To-Pay > Debts "Total debt logged ₱0.00" and Groceries "Bought
   ₱0.00" are red even at zero. Keep red, or grey when it's zero?
 
-## Question for Cath (2026-10-22, evening)
+## Question for Cath (2026-10-22, evening) - ANSWERED: yes, year only when not this year (done, dateText)
 
 - About 30 places show dates without a year ("Nov 11", "Aug 18"). Fine for dates this
   year, misleading for next year (a trip, event or goal in 2027). Add the year only when the
