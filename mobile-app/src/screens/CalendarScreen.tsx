@@ -29,6 +29,7 @@ import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
 import { expectArrival } from '../arrivalFocus';
 import { salaryHandoffPending } from '../salaryHandoff';
+import { accountHandoffPending } from '../accountHandoff';
 import { noteCalendarLeaving } from '../navigation/calendarLeaving';
 import { buildTransactionsList } from '../transactions';
 import { hapticSelection } from '../haptics';
@@ -486,7 +487,7 @@ export default function CalendarScreen() {
   // (Kept while it's off adding a salary, so it can come back with it - sweep fix.)
   const endFormHost = (nonce: number) =>
     setTimeout(() => {
-      if (salaryHandoffPending()) return;
+      if (salaryHandoffPending() || accountHandoffPending()) return;
       setFormHosts((l) => l.filter((h) => h.nonce !== nonce));
     }, 500);
   function add(kind: 'txn' | 'bill' | 'debt' | 'loan') {

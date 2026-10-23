@@ -5,6 +5,7 @@ import { notSaved, notDeleted } from '../messages';
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
+import { takeAccountHandoff, cancelAccountHandoff } from '../accountHandoff';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
@@ -84,6 +85,20 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     // Only when "Edit card" sends a new request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editNonce]);
+  // Cath, 2026-10-23: sent here by + for a transaction with no account yet: "Add an
+  // account" (which kind?) opens straight away. Leaving without adding one forgets the
+  // waiting transaction.
+  const addNonce = route.params?.addNonce;
+  React.useEffect(() => {
+    if (formOnly || !addNonce) return;
+    afterSlide(() => setChooseTypeOpen(true));
+    // Only when a new request arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addNonce]);
+  React.useEffect(() => {
+    if (formOnly) return;
+    return () => cancelAccountHandoff();
+  }, [formOnly]);
   useLayoutEffect(() => {
     if (formOnly) return;
     navigation.setOptions({
@@ -187,6 +202,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     // live balance first, so nothing paid since the last update is lost when the
     // "as of" moment moves to now. A name or colour change leaves balances alone.
     const isSpendingGroup = activeGroup === 'cash' || activeGroup === 'debit' || activeGroup === 'credit';
+    let newId: string | null = null;
     const previous = editingId ? model.balanceAccounts[activeGroup].find((a) => a.id === editingId) : undefined;
     const previousLive = previous ? accountCurrentBalance(model, activeGroup, previous) : 0;
     const balanceChanged = !editingId || !previous || Number(previousLive) !== Number(parsedAmount || 0);
@@ -213,8 +229,9 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
           : a
       );
     } else {
+      newId = makeId();
       const newAccount: BalanceAccountEntry = {
-        id: makeId(),
+        id: newId,
         name: trimmedName,
         amount: parsedAmount,
         color: colorInput,
@@ -239,6 +256,14 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
       savedOnceRef.current = true;
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      // Came here from New transaction (no account yet): straight back to it, with this
+      // account picked.
+      const next = !editingId && newId && isSpendingGroup ? takeAccountHandoff() : null;
+      if (next && newId) {
+        const account = { type: activeGroup as 'cash' | 'debit' | 'credit', accountId: newId };
+        navigation.goBack();
+        afterSlide(() => next(account));
+      }
     } catch (e) {
       setErrorMsg(notSaved('this account'));
     } finally {

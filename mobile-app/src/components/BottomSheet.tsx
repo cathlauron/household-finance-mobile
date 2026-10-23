@@ -142,6 +142,12 @@ export function startSheetHandoff(closePrevious: () => void) {
     }
   }, 1500);
 }
+// A sheet that was waiting to hand over to a form, when no form follows after all (e.g.
+// the app goes to Accounts first): it closes now instead of after the 1.5 s fallback.
+export function finishSheetHandoff() {
+  const f = takeHandoff();
+  if (f) f();
+}
 function takeHandoff(): (() => void) | null {
   if (!handoffClose || Date.now() > handoffUntil) return null;
   const f = handoffClose;

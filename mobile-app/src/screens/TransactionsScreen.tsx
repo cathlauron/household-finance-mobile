@@ -38,7 +38,7 @@ import {
 import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { finishSheetHandoff } from '../components/BottomSheet';
 import { makeId } from '../utils';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
@@ -50,6 +50,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import { startSalaryHandoff } from '../salaryHandoff';
+import { startAccountHandoff } from '../accountHandoff';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -210,14 +211,13 @@ export default function TransactionsScreen({
   const addDate: string | undefined = route.params?.addDate;
   useEffect(() => {
     if (!formOnly || !addNonceProp) return;
-    openAddModal();
-    if (addDateProp && /^\d{4}-\d{2}-\d{2}$/.test(addDateProp)) setDateInput(addDateProp);
+    openNewTransaction(addDateProp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addNonceProp]);
   useEffect(() => {
     if (formOnly || !addNonce) return;
-    openAddModal();
-    if (addDate && /^\d{4}-\d{2}-\d{2}$/.test(addDate)) setDateInput(addDate);
+    openNewTransaction(addDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addNonce]);
   // Redesign: search button in the title bar (opens Search).
   React.useLayoutEffect(() => {
@@ -610,6 +610,30 @@ export default function TransactionsScreen({
   // Money in › Salary: logs a payday on the chosen Income source (the same as logging
   // it on the Income page), into the chosen account.
   // No salary set up yet: go and add one, then come back to this form with it picked.
+  // Cath, 2026-10-23: + with no account yet goes to adding an account first; once it's
+  // added, you're back here with it picked (and the day from the calendar kept).
+  function hasAnyAccount(): boolean {
+    const m = getModel() ?? model;
+    const b = m?.balanceAccounts;
+    return !!b && (b.cash.length > 0 || b.debit.length > 0 || b.credit.length > 0);
+  }
+  function openNewTransaction(day?: string) {
+    const date = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : undefined;
+    if (!hasAnyAccount()) {
+      startAccountHandoff((account) => {
+        openAddModal();
+        setPaymentMethodInput(account);
+        if (date) setDateInput(date);
+      });
+      // (From the calendar's "what to add" sheet: it closes now, not over Accounts.)
+      finishSheetHandoff();
+      (navigation as any).navigate('Accounts', { addNonce: Date.now() });
+      return;
+    }
+    openAddModal();
+    if (date) setDateInput(date);
+  }
+
   function goAddSalary() {
     const keepAmount = amountInput;
     const keepAccount = paymentMethodInput;
@@ -1076,7 +1100,16 @@ export default function TransactionsScreen({
                     key={k.id}
                     testID={`txn-kind-${k.id}`}
                     style={[styles.chip, on && { backgroundColor: colors.accentTint }]}
-                    onPress={() => { setIncomeKindInput(on ? null : k.id); setErrorMsg(''); }}
+                    onPress={() => {
+                      // Cath, 2026-10-23: Salary with none set up goes straight to adding one
+                      // (then back here with it picked), instead of showing a note first.
+                      if (k.id === 'salary' && !on && !editingId && (model.income || []).length === 0) {
+                        goAddSalary();
+                        return;
+                      }
+                      setIncomeKindInput(on ? null : k.id);
+                      setErrorMsg('');
+                    }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
                   >

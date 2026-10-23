@@ -101,6 +101,7 @@ function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId
             return (
               <TouchableOpacity
                 key={`${g}:${a.id}`}
+                testID={`account-row-${a.id}`}
                 style={[
                   styles.row,
                   i > 0 && styles.rowTop,
