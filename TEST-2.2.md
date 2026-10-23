@@ -415,3 +415,21 @@ AM 2026-10-23: smoothness (sub-pages follow your finger). NOT YET TESTED.
       change at once (dragging still follows your finger). Turn it back off.
 - AM10 Look-around: add a debt from New bill's Bill / Debt switch: To-Pay shows Debts
       and the new debt lights up once it's on screen.
+
+AN 2026-10-23: smoothness 2 (no flicker, no overlap, smooth fades). NOT YET TESTED.
+- AN1 Welcome > set-up: each Continue slides the next step in from the right; Back slides
+      it away to the right. "See my Home": set-up fades out, Home fades in (no blink).
+- AN2 Lock the app and unlock: locking is instant (no fade); unlocking fades Home in.
+- AN3 Home: swipe slowly left from the middle of the page: Transactions comes in beside
+      Home WITH your finger (never an empty side), and nothing overlaps when you let go.
+      Do it on each tab, both ways; past Plan or Home it springs back.
+- AN4 To-Pay > + > New bill. Tap Debt, then Loan, then Bill: the highlight glides at once,
+      the fields fade out and the new ones fade in, the top of the pop-up glides to its new
+      height (no jump). Type an amount first: it stays, and so does the keyboard.
+- AN5 In New loan tap I lent, then I borrowed: same glide and fade.
+- AN6 Dark mode (moon on Home): changes at once, like 2.1.
+- AN7 Open a few Plan pages and go back: each slides side by side, nothing shows through.
+- AN8 Search on Transactions: drops down smoothly; tell me if the tab bar fades a moment
+      after the rest of the page.
+- AN9 Pop-ups (my browser can't check these): open the + form, Cancel, then tap the bell
+      straight away: the bell's pop-up opens. Tap the bell right after Home appears: it opens.

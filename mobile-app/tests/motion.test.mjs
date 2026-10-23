@@ -124,3 +124,26 @@ test('swiping past the last sub-page never jumps to another main tab', () => {
     assert.doesNotMatch(code(f.text), /navigate\(d > 0 \?/, name);
   }
 });
+
+// 2026-10-23 (frame recorder): a finger swipe between main tabs brought in an empty page
+// (the next tab wasn't built yet) and, at let-go, pages overlapped for a frame (positions
+// were set after drawing). Keep both fixes.
+test('main tabs: the other tabs are always built (with a time limit), positions set before drawing', () => {
+  const tabs = files.find((f) => f.name === 'navigation/MainTabs.tsx');
+  const page = files.find((f) => f.name === 'navigation/TabPage.tsx');
+  assert.match(code(tabs.text), /preload/);
+  assert.match(code(tabs.text), /setTimeout\(build, \d+\)/, 'preload needs a time-limit fallback');
+  assert.match(code(page.text), /useLayoutEffect\(\(\) => \{\s*const before = lastPlace\.current/, 'TabPage must place pages in a layout effect');
+});
+
+test('sub-pages beside the one showing are built with a time limit too', () => {
+  const f = files.find((x) => x.name === 'components/SlidingPages.tsx');
+  assert.match(code(f.text), /setTimeout\(\(\) => setWarm\(true\), \d+\)/);
+});
+
+// 2026-10-23: whole screens dip in ONE animation (two in a row left the screen empty for
+// 130-150 ms while other work squeezed in between).
+test('whole-screen changes: one animation for the whole dip', () => {
+  const f = files.find((x) => x.name === 'App.tsx') ?? { text: fs.readFileSync(path.join(src, '..', 'App.tsx'), 'utf8') };
+  assert.match(f.text, /duration: DIP_MS \+ FADE_IN_MS/);
+});

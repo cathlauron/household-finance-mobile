@@ -61,6 +61,17 @@ How to check (besides reading the code):
   page (a full-page jump); dropped frames at the start of a slide look like a JUMP; the
   page library's dim runs on a slower path on the web. Page slides only run on the web
   because RootStack sets `animation: 'default'`.
+- Pop-up sheets (learned 10-23): this browser never shows a pop-up while `rec:` (frame
+  stream) or `burst:` (rapid pictures) runs, and never opens a second pop-up after one was
+  closed (the version before 10-23 does the same: not an app bug). Open a pop-up with a
+  plain step, then `rec:` what happens inside it (e.g. Bill > Debt). Pop-ups opening and
+  closing stay "Needs your phone".
+- Frames can arrive out of order; flicker-check.py sorts them by time (a fake "flash"
+  otherwise). A soft fade-out's frames each change too little to count, so the fade-in
+  after it can show as LATE POP: look at the frames.
+- Look at mid-move frames at FULL size before calling an overlap: small strips misled
+  once (10-23).
+- Whole-page tab swipes need `mdrag:` (mouse) here; sub-pages and cards take `drag:`.
 - The exact feel on a phone stays "Needs your phone".
 
 ## The shared pieces (all in `mobile-app/src`)

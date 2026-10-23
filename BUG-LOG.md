@@ -88,6 +88,9 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | S-01 | Search drop-down, offline banner and the swipe-row hint moved even with the phone set to remove animations | screens/SearchScreen.tsx, components/OfflineBanner.tsx, components/RowInteractionPreview.tsx | tests/motion.test.mjs ("everything that moves respects Reduce Motion") |
 | S-02 | (caught while building, never shipped) a new row on a hidden sub-page would light up before you could see it | useArrival.ts, pageActive.ts | __tests__/SlidingPages.test.tsx ("a new row on a page you cannot see...") |
 | S-03 | (Claude's own process) the save gate let a failing screen check through: piping through tee hid the failure; caught before anything failing was saved | mobile-app/tools/check-all.mjs (npm run check:all) | proven 2026-10-23 with a deliberately failing check |
+| S-08 | Whole-screen changes (set-up to Home, unlock) sat on an empty screen for 130-150 ms | App.tsx ScreenSwap | tests/motion.test.mjs ("whole-screen changes: one animation") |
+| S-10 | Bill / Debt / Loan switch: fields swapped at once, pop-up's top edge jumped | components/FormSwapFade.tsx, BottomSheet.tsx | __tests__/SmoothSwaps.test.tsx |
+| S-11 | Finger swipe between main tabs: next tab came in empty; pages overlapped for a frame at let-go | navigation/MainTabs.tsx, TabPage.tsx | tests/motion.test.mjs ("main tabs: the other tabs are always built...") |
 
 ## Still open (not fixed yet)
 

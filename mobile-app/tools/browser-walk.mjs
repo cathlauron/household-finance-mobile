@@ -87,6 +87,30 @@ async function recorded(inner) {
   console.log(`   recorded ${f} frames of "${inner}" -> ${path.basename(dir)}`);
 }
 
+// "burst:<step>" (2026-10-23): the same, with rapid screenshots instead of the browser's
+// frame stream. Use it for pop-up sheets: while the frame stream runs, this browser never
+// tells a pop-up it has been shown, so it stays off screen (found 10-23; the app is fine,
+// the same taps open it without recording). Fewer frames (about one every 30-60 ms).
+async function burst(inner) {
+  recN += 1;
+  const dir = path.join(out, `rec-${String(recN).padStart(2, '0')}`);
+  fs.mkdirSync(dir, { recursive: true });
+  const times = [];
+  let f = 0;
+  const grab = async () => {
+    f += 1;
+    await page.screenshot({ path: path.join(dir, `f${String(f).padStart(3, '0')}.png`) });
+    times.push(Date.now() / 1000);
+  };
+  for (let i = 0; i < 4; i++) await grab();
+  const doing = runStep(inner, true);
+  const until = Date.now() + 1300;
+  while (Date.now() < until) await grab();
+  await doing;
+  fs.writeFileSync(path.join(dir, 'times.json'), JSON.stringify({ step: inner, times }));
+  console.log(`   burst ${f} pictures of "${inner}" -> ${path.basename(dir)}`);
+}
+
 async function runStep(step, quiet = false) {
   if (step.startsWith('fill:')) {
     const [box, value] = step.slice(5).split('=');
@@ -213,6 +237,7 @@ async function runStep(step, quiet = false) {
 
 for (const step of process.argv.slice(2)) {
   if (step.startsWith('rec:')) await recorded(step.slice(4));
+  else if (step.startsWith('burst:')) await burst(step.slice(6));
   else await runStep(step);
 }
 fs.writeFileSync(path.join(out, 'log.txt'), log.join('\n') + '\n\nPROBLEMS:\n' + (problems.join('\n') || 'none') + '\n');
