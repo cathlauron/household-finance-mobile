@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
 import KindSwitch from '../components/KindSwitch';
+import FormSwapFade from '../components/FormSwapFade';
 import { useData } from '../DataContext';
 import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -684,81 +685,84 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         )}
         {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
             box (and the keyboard stays up), even though the loan form has an extra row above. */}
-        <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
-          <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
-        </Guided>
-
-        <FormGroup>
-          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+        {/* Smoothness 2026-10-23 (Cath): the fields fade when Bill / Debt / Loan changes. */}
+        <FormSwapFade key="pay-form-body" channels={['kind']} swapKey={'bills'}>
+          <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+            <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
-          <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
-            <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
-            <OwnChoiceField style={styles.inlineField} options={BILL_CATEGORIES} value={categoryInput} onChange={setCategoryInput} />
-          </PickerRow>
-          <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : recurTypeInput === 'custom' ? 'Custom' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
-            <Choices
-              options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }, { id: 'custom', label: 'Custom' }]}
-              value={recurTypeInput as any}
-              onChange={(v) => setRecurTypeInput(v as RecurringType)}
-            />
-          </PickerRow>
-          <Guided {...fieldErrors.props('due')} onShow={() => setOpenRow('due')}>
-          <PickerRow label={recurTypeInput === 'custom' ? 'Schedule' : 'Due on'} value={recurTypeInput === 'custom' ? `${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}` : dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
-            {recurTypeInput === 'custom' ? (
-              <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="bill-custom-start" />
-            ) : recurTypeInput === 'onetime' ? (
-              <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
-            ) : (
-              <ScheduleChoices
-                rt={recurTypeInput}
-                date={onetimeDateInput}
-                onDate={setOnetimeDateInput}
-                day={dayInput}
-                onDay={setDayInput}
-                month={monthInput}
-                onMonth={setMonthInput}
-                firstDue={dueNowInput}
-                onFirstDue={setDueNowInput}
-                testID="bill-first-due-field"
+
+          <FormGroup>
+            <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+              <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+            </Guided>
+            <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
+              <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
+              <OwnChoiceField style={styles.inlineField} options={BILL_CATEGORIES} value={categoryInput} onChange={setCategoryInput} />
+            </PickerRow>
+            <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : recurTypeInput === 'custom' ? 'Custom' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+              <Choices
+                options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }, { id: 'custom', label: 'Custom' }]}
+                value={recurTypeInput as any}
+                onChange={(v) => setRecurTypeInput(v as RecurringType)}
               />
-            )}
-          </PickerRow>
-          </Guided>
-          <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
-            <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
-          </PickerRow>
-        </FormGroup>
+            </PickerRow>
+            <Guided {...fieldErrors.props('due')} onShow={() => setOpenRow('due')}>
+            <PickerRow label={recurTypeInput === 'custom' ? 'Schedule' : 'Due on'} value={recurTypeInput === 'custom' ? `${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}` : dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
+              {recurTypeInput === 'custom' ? (
+                <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="bill-custom-start" />
+              ) : recurTypeInput === 'onetime' ? (
+                <DateField value={onetimeDateInput} onChange={setOnetimeDateInput} placeholder="Pick a date" testID="bill-due-date-field" />
+              ) : (
+                <ScheduleChoices
+                  rt={recurTypeInput}
+                  date={onetimeDateInput}
+                  onDate={setOnetimeDateInput}
+                  day={dayInput}
+                  onDay={setDayInput}
+                  month={monthInput}
+                  onMonth={setMonthInput}
+                  firstDue={dueNowInput}
+                  onFirstDue={setDueNowInput}
+                  testID="bill-first-due-field"
+                />
+              )}
+            </PickerRow>
+            </Guided>
+            <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+              <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
+            </PickerRow>
+          </FormGroup>
 
-        <FormGroup>
-          {/* 2.2 (Cath): when to tick it. One piece with the switch, so no line runs
-              between the switch and its example (the line clashed with the text). */}
-          <View>
-            <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
-            <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, paddingHorizontal: 16, paddingBottom: 12 }}>
-              Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
-            </Text>
-          </View>
-          <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
-            <Text style={styles.inlineLabel}>Priority</Text>
-            <Choices
-              options={PRIORITIES.map((pr) => ({ id: pr, label: pr.charAt(0).toUpperCase() + pr.slice(1) }))}
-              value={priorityInput as any}
-              onChange={(pr) => setPriorityInput(priorityInput === pr ? '' : pr)}
-            />
-            <Text style={[styles.inlineLabel, { marginTop: 12 }]}>Note</Text>
-            <TextInput style={styles.inlineField} placeholder="Optional" placeholderTextColor={colors.inkFaint} value={notesInput} onChangeText={setNotesInput} multiline />
-          </PickerRow>
-        </FormGroup>
+          <FormGroup>
+            {/* 2.2 (Cath): when to tick it. One piece with the switch, so no line runs
+                between the switch and its example (the line clashed with the text). */}
+            <View>
+              <SwitchRow label="Subscription" value={subscriptionInput} onChange={setSubscriptionInput} />
+              <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, paddingHorizontal: 16, paddingBottom: 12 }}>
+                Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
+              </Text>
+            </View>
+            <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
+              <Text style={styles.inlineLabel}>Priority</Text>
+              <Choices
+                options={PRIORITIES.map((pr) => ({ id: pr, label: pr.charAt(0).toUpperCase() + pr.slice(1) }))}
+                value={priorityInput as any}
+                onChange={(pr) => setPriorityInput(priorityInput === pr ? '' : pr)}
+              />
+              <Text style={[styles.inlineLabel, { marginTop: 12 }]}>Note</Text>
+              <TextInput style={styles.inlineField} placeholder="Optional" placeholderTextColor={colors.inkFaint} value={notesInput} onChangeText={setNotesInput} multiline />
+            </PickerRow>
+          </FormGroup>
 
-        {carriedEdit > 0 && (
-          <Footnote>
-            {`Plus ${formatPeso(carriedEdit)} carried from last time. Total due ${formatPeso((typeof amountInput === 'number' ? amountInput : 0) + carriedEdit)}.`}
-          </Footnote>
-        )}
-        {!!nextDueText && <Footnote>{nextDueText}</Footnote>}
-        <ErrorNote text={errorMsg} />
-        {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
+          {carriedEdit > 0 && (
+            <Footnote>
+              {`Plus ${formatPeso(carriedEdit)} carried from last time. Total due ${formatPeso((typeof amountInput === 'number' ? amountInput : 0) + carriedEdit)}.`}
+            </Footnote>
+          )}
+          {!!nextDueText && <Footnote>{nextDueText}</Footnote>}
+          <ErrorNote text={errorMsg} />
+          {editingId && <Button label="Delete bill" variant="destructive" onPress={handleDelete} />}
+        </FormSwapFade>
       </BottomSheet>
       <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
     </SafeAreaView>

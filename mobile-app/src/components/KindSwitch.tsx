@@ -3,7 +3,8 @@
 // Tap another and that form opens with the amount and name you typed. The "?" explains
 // the difference between a transaction, a bill, a debt and a loan.
 import { animateNextLayout } from '../animateLayout';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { dipFormFields } from './FormSwapFade';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
@@ -28,6 +29,10 @@ const EXPLAIN: { title: string; text: string }[] = [
 export default function KindSwitch({ current, onSwitch }: { current: ToPaySub; onSwitch: (to: ToPaySub) => void }) {
   const { colors } = useTheme();
   const [help, setHelp] = useState(false);
+  // Smoothness 2026-10-23 (Cath): the highlight glides to your pick at once; the fields
+  // below fade out, the other kind's form takes over, and its fields fade in.
+  const [pick, setPick] = useState<ToPaySub | null>(null);
+  useEffect(() => setPick(null), [current]);
   return (
     <View style={{ marginBottom: 12 }}>
       <SegmentedControl<ToPaySub>
@@ -37,8 +42,12 @@ export default function KindSwitch({ current, onSwitch }: { current: ToPaySub; o
           { id: 'debts', label: 'Debt' },
           { id: 'loans', label: 'Loan' },
         ]}
-        value={current}
-        onChange={(v) => v !== current && onSwitch(v)}
+        value={pick ?? current}
+        onChange={(v) => {
+          if (v === current || pick) return;
+          setPick(v);
+          dipFormFields('kind', () => onSwitch(v));
+        }}
       />
       <View style={s.lineRow}>
         <Text style={[s.line, { color: colors.inkDim }]}>{LINE[current]}</Text>

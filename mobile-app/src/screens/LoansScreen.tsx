@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
 import KindSwitch, { SwitchLine } from '../components/KindSwitch';
+import FormSwapFade, { dipFormFields } from '../components/FormSwapFade';
 import PayRow from '../components/PayRow';
 import PriorityPick from '../components/PriorityPick';
 import { Priority, priorityRank } from '../priority';
@@ -173,6 +174,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   const [nameInput, setNameInput] = useState('');
   const [loanTypeInput, setLoanTypeInput] = useState('');
   const [directionInput, setDirectionInput] = useState<'borrowed' | 'lent'>('borrowed');
+  // The I borrowed / I lent pick while its fields fade (the highlight moves at once).
+  const [directionPick, setDirectionPick] = useState<'borrowed' | 'lent' | null>(null);
   const [totalAmountInput, setTotalAmountInput] = useState<number | ''>('');
   const [expectedPaymentInput, setExpectedPaymentInput] = useState<number | ''>('');
   const [interestRateInput, setInterestRateInput] = useState('');
@@ -692,130 +695,142 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
             }}
           />
         )}
-        <View style={{ marginBottom: 12 }}>
+        <FormSwapFade key="pay-form-loan-row" channels={['kind']} swapKey="loans" style={{ marginBottom: 12 }}>
           <SegmentedControl<'borrowed' | 'lent'>
             accessibilityLabel="Borrowed or lent"
             options={[{ id: 'borrowed', label: 'I borrowed' }, { id: 'lent', label: 'I lent' }]}
-            value={directionInput}
-            onChange={setDirectionInput}
+            value={directionPick ?? directionInput}
+            onChange={(d) => {
+              // Smoothness 2026-10-23 (Cath: copy Bill / Debt / Loan): the highlight glides
+              // at once; the fields below fade out, change, and fade back in.
+              if (directionPick) return;
+              setDirectionPick(d);
+              dipFormFields('detail', () => {
+                setDirectionInput(d);
+                setDirectionPick(null);
+              });
+            }}
           />
           <SwitchLine
             testID="loan-direction-line"
             text={directionInput === 'lent' ? 'Money you lent, paid back to you in set payments · to family or a friend' : 'Money you borrowed, paid back in set payments · car, housing, Pag-IBIG'}
           />
-        </View>
+        </FormSwapFade>
         {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
             box (and the keyboard stays up), even though the loan form has an extra row above. */}
-        <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
-          <BigAmount label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
-        </Guided>
-
-        <FormGroup>
-          <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Car loan" testID="loan-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+        {/* Smoothness 2026-10-23 (Cath): the fields fade when Bill / Debt / Loan changes. */}
+        <FormSwapFade key="pay-form-body" channels={['kind', 'detail']} swapKey={`loans-${directionInput}`}>
+          <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+            <BigAmount label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
-          <PickerRow label="Type" value={loanTypeInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
-            <Choices options={LOAN_TYPES.map((c) => ({ id: c, label: c }))} value={loanTypeInput as any} onChange={(c) => setLoanTypeInput(c)} />
-            <View style={{ height: 10 }} />
-            <OwnChoiceField options={LOAN_TYPES} value={loanTypeInput} onChange={setLoanTypeInput} />
-          </PickerRow>
-          <AmountRow label={directionInput === 'lent' ? 'They pay' : 'You pay'} value={expectedPaymentInput} onChange={setExpectedPaymentInput} />
-          <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
-            <Choices options={[...REPEAT_CHOICES, { id: 'custom' as RecurringType, label: 'Custom' }]} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
-          </PickerRow>
-          {recurTypeInput === 'custom' ? (
-            <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
-            <PickerRow label="Schedule" value={`${customFreqInput.charAt(0).toUpperCase() + customFreqInput.slice(1)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
-              <Choices
-                options={['daily', 'weekly', 'biweekly', 'monthly', 'yearly'].map((f) => ({ id: f, label: f.charAt(0).toUpperCase() + f.slice(1) }))}
-                value={customFreqInput}
-                onChange={setCustomFreqInput}
-              />
-              <View style={{ height: 10 }} />
-              <DateField label="Starts on" value={customStartDateInput} onChange={setCustomStartDateInput} placeholder="Pick a date" testID="loan-start-date-field" />
-              <InlineField label="How many payments (optional)" value={customOccurrenceInput} onChangeText={setCustomOccurrenceInput} placeholder="e.g. 12" keyboardType="number-pad" />
-            </PickerRow>
-            </Guided>
-          ) : (
-            <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
-            <PickerRow label={recurTypeInput === 'monthly' || recurTypeInput === 'annual' ? 'First payment' : 'Due on'} value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, firstDateInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
-              <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={firstDateInput} onFirstDue={setFirstDateInput} testID="loan-due-date-field" />
-            </PickerRow>
-            </Guided>
-          )}
-          <Guided {...fieldErrors.props('interest')} focusRef={interestRef}>
-            <InputRow label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
-          </Guided>
-        </FormGroup>
 
-        {/* Version 2.2 (canvas K2): Priority, same as bills and debts. */}
-        <FormGroup>
-          <PickerRow label="Priority" value={priorityInput ? priorityInput.charAt(0).toUpperCase() + priorityInput.slice(1) : 'None'} open={openRow === 'priority'} onToggle={() => toggleRow('priority')}>
-            <PriorityPick value={priorityInput} onChange={setPriorityInput} />
-          </PickerRow>
-        </FormGroup>
-
-        {editingId && (
           <FormGroup>
-            <PickerRow label="Payments" value={`${paymentsInput.length} logged`} open={openRow === 'payments'} onToggle={() => toggleRow('payments')}>
-              <View style={styles.paymentLogSection}>
-                    <Text style={styles.inputLabel}>Payment log</Text>
+            <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
+              <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Car loan" testID="loan-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+            </Guided>
+            <PickerRow label="Type" value={loanTypeInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
+              <Choices options={LOAN_TYPES.map((c) => ({ id: c, label: c }))} value={loanTypeInput as any} onChange={(c) => setLoanTypeInput(c)} />
+              <View style={{ height: 10 }} />
+              <OwnChoiceField options={LOAN_TYPES} value={loanTypeInput} onChange={setLoanTypeInput} />
+            </PickerRow>
+            <AmountRow label={directionInput === 'lent' ? 'They pay' : 'You pay'} value={expectedPaymentInput} onChange={setExpectedPaymentInput} />
+            <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+              <Choices options={[...REPEAT_CHOICES, { id: 'custom' as RecurringType, label: 'Custom' }]} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
+            </PickerRow>
+            {recurTypeInput === 'custom' ? (
+              <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+              <PickerRow label="Schedule" value={`${customFreqInput.charAt(0).toUpperCase() + customFreqInput.slice(1)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+                <Choices
+                  options={['daily', 'weekly', 'biweekly', 'monthly', 'yearly'].map((f) => ({ id: f, label: f.charAt(0).toUpperCase() + f.slice(1) }))}
+                  value={customFreqInput}
+                  onChange={setCustomFreqInput}
+                />
+                <View style={{ height: 10 }} />
+                <DateField label="Starts on" value={customStartDateInput} onChange={setCustomStartDateInput} placeholder="Pick a date" testID="loan-start-date-field" />
+                <InlineField label="How many payments (optional)" value={customOccurrenceInput} onChangeText={setCustomOccurrenceInput} placeholder="e.g. 12" keyboardType="number-pad" />
+              </PickerRow>
+              </Guided>
+            ) : (
+              <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
+              <PickerRow label={recurTypeInput === 'monthly' || recurTypeInput === 'annual' ? 'First payment' : 'Due on'} value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, firstDateInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+                <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={firstDateInput} onFirstDue={setFirstDateInput} testID="loan-due-date-field" />
+              </PickerRow>
+              </Guided>
+            )}
+            <Guided {...fieldErrors.props('interest')} focusRef={interestRef}>
+              <InputRow label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
+            </Guided>
+          </FormGroup>
 
-                    {paymentsInput.length === 0 && (
-                      <Text style={styles.emptyText}>No payments logged yet.</Text>
-                    )}
-
-                    {paymentsInput.map((p) => (
-                      <View key={p.id} style={styles.paymentRow}>
-                        <View style={styles.paymentRowMain}>
-                          <Text style={styles.paymentRowDate}>{p.date}</Text>
-                          <Text style={styles.paymentRowMethod}>{paymentMethodLabel(p.paymentMethod, model)}</Text>
-                        </View>
-                        <Text style={styles.paymentRowAmount}>
-                          {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
-                        </Text>
-                        <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn}>
-                          <Ionicons name="close" size={14} color={colors.inkFaint} />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-
-                    <View style={styles.paymentAddBox}>
-                      <Text style={styles.inputLabel}>Log a new payment</Text>
-                      <DateField
-                        label="Date"
-                        value={newPaymentDate}
-                        onChange={setNewPaymentDate}
-                        placeholder="2026-08-25"
-                        testID="loan-payment-date-field"
-                      />
-                      <Text style={styles.inputLabel}>Amount paid</Text>
-                        <AmountInput
-                          style={styles.amountInput}
-                          value={newPaymentAmount}
-                          onChangeAmount={setNewPaymentAmount}
-                        />
-                      <AccountPicker
-                        model={model}
-                        direction={directionInput === 'lent' ? 'in' : 'out'}
-                        amount={newPaymentAmount}
-                        value={newPaymentMethod}
-                        onChange={setNewPaymentMethod}
-                      />
-                      <ErrorNote text={paymentError} />
-                      <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>
-                        <GradientFill match={styles.paymentAddButton} />
-                        <Text style={styles.paymentAddButtonText}>+ Add payment</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+          {/* Version 2.2 (canvas K2): Priority, same as bills and debts. */}
+          <FormGroup>
+            <PickerRow label="Priority" value={priorityInput ? priorityInput.charAt(0).toUpperCase() + priorityInput.slice(1) : 'None'} open={openRow === 'priority'} onToggle={() => toggleRow('priority')}>
+              <PriorityPick value={priorityInput} onChange={setPriorityInput} />
             </PickerRow>
           </FormGroup>
-        )}
 
-        {!!loanFootnote && <Footnote>{loanFootnote}</Footnote>}
-        <ErrorNote text={errorMsg} />
-        {editingId && <Button label="Delete loan" variant="destructive" onPress={handleDelete} />}
+          {editingId && (
+            <FormGroup>
+              <PickerRow label="Payments" value={`${paymentsInput.length} logged`} open={openRow === 'payments'} onToggle={() => toggleRow('payments')}>
+                <View style={styles.paymentLogSection}>
+                      <Text style={styles.inputLabel}>Payment log</Text>
+
+                      {paymentsInput.length === 0 && (
+                        <Text style={styles.emptyText}>No payments logged yet.</Text>
+                      )}
+
+                      {paymentsInput.map((p) => (
+                        <View key={p.id} style={styles.paymentRow}>
+                          <View style={styles.paymentRowMain}>
+                            <Text style={styles.paymentRowDate}>{p.date}</Text>
+                            <Text style={styles.paymentRowMethod}>{paymentMethodLabel(p.paymentMethod, model)}</Text>
+                          </View>
+                          <Text style={styles.paymentRowAmount}>
+                            {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
+                          </Text>
+                          <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn}>
+                            <Ionicons name="close" size={14} color={colors.inkFaint} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+
+                      <View style={styles.paymentAddBox}>
+                        <Text style={styles.inputLabel}>Log a new payment</Text>
+                        <DateField
+                          label="Date"
+                          value={newPaymentDate}
+                          onChange={setNewPaymentDate}
+                          placeholder="2026-08-25"
+                          testID="loan-payment-date-field"
+                        />
+                        <Text style={styles.inputLabel}>Amount paid</Text>
+                          <AmountInput
+                            style={styles.amountInput}
+                            value={newPaymentAmount}
+                            onChangeAmount={setNewPaymentAmount}
+                          />
+                        <AccountPicker
+                          model={model}
+                          direction={directionInput === 'lent' ? 'in' : 'out'}
+                          amount={newPaymentAmount}
+                          value={newPaymentMethod}
+                          onChange={setNewPaymentMethod}
+                        />
+                        <ErrorNote text={paymentError} />
+                        <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>
+                          <GradientFill match={styles.paymentAddButton} />
+                          <Text style={styles.paymentAddButtonText}>+ Add payment</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+              </PickerRow>
+            </FormGroup>
+          )}
+
+          {!!loanFootnote && <Footnote>{loanFootnote}</Footnote>}
+          <ErrorNote text={errorMsg} />
+          {editingId && <Button label="Delete loan" variant="destructive" onPress={handleDelete} />}
+        </FormSwapFade>
       </BottomSheet>
       <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
 

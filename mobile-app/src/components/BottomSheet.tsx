@@ -3,7 +3,8 @@ import SkyGlow from './SkyGlow';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions, Animated, Easing } from 'react-native';
 import { useReduceMotion } from '../reduceMotion';
-import { CURVE, DIM_MS, SHEET_CLOSE_MS, SHEET_OPEN_MS } from '../motion';
+import { CURVE, DIM_MS, ROW_MS, SHEET_CLOSE_MS, SHEET_OPEN_MS } from '../motion';
+import { formSwitching } from './FormSwapFade';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
@@ -215,25 +216,56 @@ function OwnSheet({
   // a moment and took it down again: a flicker instead of the slide.
   const justClosed = !visible && wasVisible.current;
   const [, redraw] = React.useReducer((n: number) => n + 1, 0);
+  // Smoothness 2026-10-23: the sheet is "resting" when it's fully up and not being dragged.
+  const resting = React.useRef(false);
   const openNow = React.useCallback(() => {
     const prev = takeHandoff();
     if (prev) {
       y.setValue(0);
       dim.setValue(1);
       instantCloseUntil = Date.now() + 400;
+      resting.current = true;
       prev();
       return;
     }
     if (reduce) {
       y.setValue(0);
       dim.setValue(1);
+      resting.current = true;
       return;
     }
+    resting.current = false;
     Animated.parallel([
       Animated.timing(y, { toValue: 0, duration: OPEN_MS, easing: DRAWER, useNativeDriver: true }),
       Animated.timing(dim, { toValue: 1, duration: DIM_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-    ]).start();
+    ]).start(({ finished }) => {
+      if (finished) resting.current = true;
+    });
   }, [reduce, y, dim]);
+
+  // Smoothness 2026-10-23 (Cath: nothing may jump): when Bill / Debt / Loan (or I borrowed /
+  // I lent) changes the form, the new form is taller or shorter. Its top edge used to jump
+  // there in one frame; now it glides. Measured before the screen draws (new
+  // architecture), only during a form switch (rows opening inside a form animate
+  // themselves).
+  const sheetRef = React.useRef<View>(null);
+  const lastHeight = React.useRef(0);
+  React.useLayoutEffect(() => {
+    if (!visible) {
+      lastHeight.current = 0;
+      return;
+    }
+    sheetRef.current?.measure((_x, _y, _w, h) => {
+      const before = lastHeight.current;
+      lastHeight.current = h;
+      if (!before || Math.abs(h - before) < 2 || !resting.current || reduce || !formSwitching()) return;
+      // Taller: it starts lower by the difference and rises; shorter: it starts higher
+      // (the strip below it is covered by the filler under the sheet) and settles.
+      y.stopAnimation();
+      y.setValue(h - before);
+      Animated.timing(y, { toValue: 0, duration: ROW_MS, easing: DRAWER, useNativeDriver: true }).start();
+    });
+  });
   React.useEffect(() => {
     const was = wasVisible.current;
     wasVisible.current = visible;
@@ -259,6 +291,7 @@ function OwnSheet({
         return;
       }
       setClosing(true);
+      resting.current = false;
       Animated.parallel([
         Animated.timing(y, { toValue: offY, duration: CLOSE_MS, easing: DRAWER, useNativeDriver: true }),
         Animated.timing(dim, { toValue: 0, duration: CLOSE_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
@@ -278,11 +311,15 @@ function OwnSheet({
         .activeOffsetY(12)
         .failOffsetX([-24, 24])
         .onUpdate((e) => {
+          resting.current = false;
           y.setValue(Math.max(0, e.translationY));
         })
         .onEnd((e) => {
           if (e.translationY > 120 || e.velocityY > 900) onCloseRef.current();
-          else Animated.spring(y, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
+          else
+            Animated.spring(y, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start(({ finished }) => {
+              if (finished) resting.current = true;
+            });
         }),
     [y]
   );
@@ -314,6 +351,7 @@ function OwnSheet({
           pointerEvents="box-none"
         >
           <Animated.View
+            ref={sheetRef}
             style={[
               styles.sheet,
               grouped && { backgroundColor: colors.navy2 },
@@ -350,6 +388,12 @@ function OwnSheet({
 
             <View style={{ height: bottomSpace }} />
           </Animated.View>
+          {/* Below the bottom edge of the screen, moving with the sheet: when a shorter form
+              settles from higher up, this covers the strip under the sheet. */}
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.filler, { backgroundColor: grouped ? colors.navy2 : colors.navy3, transform: [{ translateY: y }] }]}
+          />
         </KeyboardAvoidingView>
       </View>
       </GestureHandlerRootView>
@@ -370,6 +414,7 @@ function makeStyles(colors: any, screenHeight: number) {
       width: '100%',
       justifyContent: 'flex-end',
     },
+    filler: { position: 'absolute', left: 0, right: 0, top: '100%', height: Math.round(screenHeight * 0.5) },
     sheet: {
       backgroundColor: colors.navy3,
       borderTopLeftRadius: 24,
