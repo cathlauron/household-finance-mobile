@@ -25,6 +25,7 @@ import { Priority, priorityRank } from '../priority';
 import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType } from '../recurrence';
@@ -602,13 +603,15 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           <GradientFill match={[styles.group, styles.summaryRow]} />
           <View style={styles.summaryCell}>
             <Text style={styles.balanceBannerLabel}>You owe (borrowed)</Text>
-            <Text style={[styles.balanceBannerAmount, { color: redUnlessZero(Math.max(0, totalBorrowed), colors) }]}>{formatPeso(Math.max(0, totalBorrowed))}</Text>
+            <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(Math.max(0, totalBorrowed), colors) }]} value={Math.max(0, totalBorrowed)} format={formatPeso} />
           </View>
           <View style={[styles.summaryCell, styles.summaryDivider]}>
             <Text style={styles.balanceBannerLabel}>Owed to you (lent)</Text>
-            <Text style={[styles.balanceBannerAmount, { color: colors.positive }]}>
-              {formatPeso(Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0)))}
-            </Text>
+            <CountingText
+              style={[styles.balanceBannerAmount, { color: colors.positive }]}
+              value={Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0))}
+              format={formatPeso}
+            />
           </View>
         </View>
 

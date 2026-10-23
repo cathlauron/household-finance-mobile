@@ -18,6 +18,7 @@ import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
 import KindSwitch from '../components/KindSwitch';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
@@ -570,7 +571,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
-          <Text style={[styles.balanceBannerAmount, { color: redUnlessZero(stillToPay, colors) }]}>{formatPeso(stillToPay)}</Text>
+          <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(stillToPay, colors) }]} value={stillToPay} format={formatPeso} />
           <Text style={styles.summarySub}>
             {paidThisMonth.length} of {paidThisMonth.length + dueThisMonth.length} {paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid
           </Text>

@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline, Polygon, Circle } from 'react-native-svg';
 import { Text } from './AppText';
+import CountingText from './CountingText';
 import { useTheme } from '../ThemeContext';
 import { formatPeso, LeftToSpendMood, leftToSpendBreakdown } from '../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../transactions';
@@ -160,7 +161,8 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
                 <Text style={styles.calText}>{dateText(new Date(), { weekday: true })}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={hidden ? 'Amount hidden' : undefined}>{money(amount)}</Text>
+            {/* Smoothness 2026-10-23 (Cath): counts quickly to the new amount when it changes. */}
+            <CountingText style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={hidden ? 'Amount hidden' : undefined} value={amount} masked={hidden} format={(n) => money(n)} />
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
               <Text style={[styles.status, { color: dim }]} numberOfLines={1}>

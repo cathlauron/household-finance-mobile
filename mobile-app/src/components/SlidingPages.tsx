@@ -10,7 +10,7 @@ import { CURVE, SUBPAGE_MS } from '../motion';
 import { dragPosition, settleTarget } from '../subPages';
 import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
-import { PageActiveContext } from '../pageActive';
+import { PageActiveContext, usePageActive } from '../pageActive';
 
 // Smoothness 2026-10-23 (Cath picked sample B, "follows your finger"): every page with
 // sub-pages (To-Pay Bills / Debts / Loans, Savings, Groceries, Events, Travel, Loans
@@ -64,6 +64,8 @@ export default function SlidingPages<T extends string>({
   const count = options.length;
   const index = Math.max(0, options.findIndex((o) => o.id === value));
   const reduce = useReduceMotion();
+  // Inside a tab that isn't showing, no page is.
+  const parentShowing = usePageActive();
   const pos = useSharedValue(index);
   const startPos = useSharedValue(index);
   const ignoring = useSharedValue(false);
@@ -201,7 +203,7 @@ export default function SlidingPages<T extends string>({
         {built && (
           <QuietThemeWhenHidden active={active}>
             <QuietWhenHidden active={active}>
-              <PageActiveContext.Provider value={active}>{renderPage(opt.id, active)}</PageActiveContext.Provider>
+              <PageActiveContext.Provider value={active && parentShowing}>{renderPage(opt.id, active)}</PageActiveContext.Provider>
             </QuietWhenHidden>
           </QuietThemeWhenHidden>
         )}

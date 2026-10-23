@@ -27,6 +27,7 @@ import { currentCycle, withEditedCurrentCycle, isCyclePaid } from '../billPaymen
 import { paymentToPlace, placePayment } from '../billPayments';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
@@ -542,7 +543,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
         <View style={[styles.group, styles.summaryCard]}>
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
-          <Text style={[styles.balanceBannerAmount, { color: redUnlessZero(totalOwed, colors) }]}>{formatPeso(totalOwed)}</Text>
+          <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(totalOwed, colors) }]} value={totalOwed} format={formatPeso} />
         </View>
 
         {debts.length === 0 && (

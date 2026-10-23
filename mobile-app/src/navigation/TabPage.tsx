@@ -6,6 +6,7 @@ import { reduceMotionNow } from '../reduceMotion';
 import { CURVE, TAB_MS } from '../motion';
 import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
+import { PageActiveContext } from '../pageActive';
 
 // Switching tabs is a soft, minimal fade: the old tab fades out while drifting a few
 // pixels away, then the new tab fades in while settling the last few pixels into place
@@ -95,8 +96,12 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     >
       <QuietThemeWhenHidden active={place === 0}>
         <QuietWhenHidden active={place === 0}>
-          {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
-          {children}
+          {/* Smoothness 2026-10-23: a hidden tab tells its contents so (new rows wait to
+              light up, numbers don't count off screen). */}
+          <PageActiveContext.Provider value={place === 0}>
+            {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
+            {children}
+          </PageActiveContext.Provider>
         </QuietWhenHidden>
       </QuietThemeWhenHidden>
     </Animated.View>

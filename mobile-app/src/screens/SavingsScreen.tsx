@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
 import type { SavingsGoal, SavingsContribution, HouseholdModel, IncomeSource, CalculatorInputs, PaymentMethod } from '../types';
@@ -639,7 +640,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 <View style={styles.summaryCard}>
                   <GradientFill match={styles.summaryCard} />
                   <Text style={styles.balanceBannerLabel}>Set aside in total</Text>
-                  <Text style={[styles.potsTotal, { color: colors.saving }]}>{formatPeso(totalSaved)}</Text>
+                  <CountingText style={[styles.potsTotal, { color: colors.saving }]} value={totalSaved} format={formatPeso} />
                   {thisMonth !== 0 && (
                     <Text style={[styles.potsThisMonth, { color: colors.saving }]}>
                       {thisMonth > 0 ? '+' : '−'}
