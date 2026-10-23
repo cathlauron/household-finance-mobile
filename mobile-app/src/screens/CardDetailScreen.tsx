@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { dateText } from '../dateUtils';
 import { alertDidntWork } from '../messages';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -126,7 +127,7 @@ export default function CardDetailScreen() {
   const owed = isCredit ? cardOwed(account, amount) : null;
   const due = isCredit ? nextStatementDue(account.statementDueDay) : null;
   const parts = isCredit ? installmentsOnCard(model, accountId) : [];
-  const short = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const short = (d: Date) => dateText(d);
 
   function updateCard(patch: Partial<typeof account>) {
     if (!model || !account) return Promise.resolve();
@@ -273,7 +274,7 @@ export default function CardDetailScreen() {
             const color = t.direction === 'in' ? colors.positive : t.direction === 'saving' ? colors.saving : colors.negative;
             const d = new Date(t.date + 'T00:00:00');
             const diff = Math.round((new Date().setHours(0, 0, 0, 0) - d.getTime()) / 86400000);
-            const when = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const when = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : dateText(d);
             return (
               <TouchableOpacity
                 key={t.id}
@@ -398,7 +399,7 @@ export default function CardDetailScreen() {
           const today = new Date();
           const sameDay = d.toDateString() === today.toDateString();
           const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          return sameDay ? `Today, ${time}` : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
+          return sameDay ? `Today, ${time}` : `${dateText(d)}, ${time}`;
         };
         const who = (by?: string) => (isLinked && by ? ` · by ${by.charAt(0).toUpperCase() + by.slice(1)}` : '');
         return (

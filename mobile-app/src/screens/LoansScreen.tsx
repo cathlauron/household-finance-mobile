@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { dateText } from '../dateUtils';
 import { redUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
@@ -645,7 +646,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
                 addedBy={loan.addedBy}
                 icon={loan.direction === 'lent' ? 'arrow-redo-outline' : 'business-outline'}
                 title={loan.name || 'Untitled loan'}
-                sub={`${loan.direction === 'lent' ? 'You lent' : 'You borrowed'}${loanNextDue ? ` · next ${loanNextDue.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`}
+                sub={`${loan.direction === 'lent' ? 'You lent' : 'You borrowed'}${loanNextDue ? ` · next ${dateText(loanNextDue)}` : ''}`}
                 amount={formatPeso(remaining)}
                 amountColor={loan.direction === 'lent' ? colors.positive : overdueLoanIds.has(loan.id) ? colors.negative : colors.ink}
                 divider={rowIndex > 0}

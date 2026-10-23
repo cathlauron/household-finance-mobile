@@ -11,7 +11,7 @@ import AccountPicker, { accountProblem } from './AccountPicker';
 import AmountInput from './AmountInput';
 import DateField from './DateField';
 import SegmentedControl from './SegmentedControl';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 
 // Redesign: asks which account a payment comes from (or goes into) before it's logged,
 // e.g. "Mark as paid" on a bill. Same rules as a new transaction: required, and cash or
@@ -44,7 +44,7 @@ type Props = {
 
 function shortISO(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateText(d);
 }
 function yesterdayISO(): string {
   const d = new Date();

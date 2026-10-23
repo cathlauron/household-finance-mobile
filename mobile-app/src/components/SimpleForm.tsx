@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { dateText } from '../dateUtils';
 import AppSwitch from './AppSwitch';
 import DateField from './DateField';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
@@ -385,7 +386,7 @@ export const REPEAT_CHOICES: { id: RecurringType; label: string }[] = [
 ];
 
 function niceDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return dateText(d, { weekday: true });
 }
 
 // "the 15th", "Mar 15" or "Sun, Nov 15" for the Due on row.

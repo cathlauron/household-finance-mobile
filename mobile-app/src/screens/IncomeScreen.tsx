@@ -33,7 +33,7 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import { monthTotals, sourcesByPerson } from '../incomeMonth';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { useNavigation } from '@react-navigation/native';
 import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
@@ -94,8 +94,8 @@ type IncomeScreenProps = {
 
 const NO_PERSON = '__none';
 const AVATAR_COLORS = ['#2E6B47', '#5B6CC9', '#D47A9B', '#C2410C', '#0E7490'];
-const dayOf = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-const shortDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const dayOf = (d: Date) => dateText(d, { weekday: true });
+const shortDay = (iso: string) => dateText(new Date(iso + 'T00:00:00'), { weekday: true });
 
 export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, openAddNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
@@ -145,7 +145,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
     if (frequencyInput === 'semimonthly') return semiDay1Input && semiDay2Input ? `${ordinal(parseInt(semiDay1Input, 10))} and ${ordinal(parseInt(semiDay2Input, 10))}` : 'Choose';
     if (frequencyInput === 'weekly') return weeklyDowInput !== null ? `${DOW_LABELS[weeklyDowInput]}s` : 'Choose';
     const d = frequencyInput === 'onetime' ? onetimeDateInput : biweeklyAnchorInput;
-    return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Choose';
+    return d ? dateText(new Date(d + 'T00:00:00'), { weekday: true }) : 'Choose';
   })();
   const nextPaydayText = (() => {
     const pd =
@@ -156,7 +156,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
       : biweeklyAnchorInput ? [biweeklyAnchorInput] : [];
     if (!pd.length) return '';
     const next = computeNextPayDate(frequencyInput, pd);
-    return next ? `Next payday ${next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}.` : '';
+    return next ? `Next payday ${dateText(next, { weekday: true })}.` : '';
   })();
 
   // Logging one payday (from a row in "Paydays this month"): the same record as

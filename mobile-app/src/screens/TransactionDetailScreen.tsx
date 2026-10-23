@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState, useMemo } from 'react';
+import { dateText } from '../dateUtils';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
@@ -297,7 +298,7 @@ export default function TransactionDetailScreen() {
           if (!ms) return '';
           const d = new Date(ms);
           const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          return d.toDateString() === new Date().toDateString() ? ` · today, ${time}` : ` · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
+          return d.toDateString() === new Date().toDateString() ? ` · today, ${time}` : ` · ${dateText(d)}, ${time}`;
         };
         return (
           <View style={{ marginTop: 16, alignItems: 'center' }}>

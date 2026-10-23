@@ -25,7 +25,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomSheet from '../components/BottomSheet';
 import DateField from '../components/DateField';
 import Button from '../components/Button';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { equalShares } from '../sharedExpenses';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow } from '../components/SimpleForm';
 
@@ -40,7 +40,7 @@ import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnot
 // balances (log your own spending as a normal transaction).
 
 function shortDate(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateText(new Date(iso + 'T00:00:00'));
 }
 
 export default function SharedExpensesScreen() {

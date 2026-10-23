@@ -1,4 +1,5 @@
 import { chartPoints } from '../homeChart';
+import { dateText } from '../dateUtils';
 import { useToday } from '../useToday';
 import React, { useMemo, useState } from 'react';
 import { holdTabSwipe } from '../navigation/swipeTabs';
@@ -103,7 +104,7 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
   }, [model, today]);
 
   const breakdown = useMemo(() => leftToSpendBreakdown(model, { amount, targetDate, basis }), [model, amount, targetDate, basis]);
-  const untilLabel = targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const untilLabel = dateText(targetDate, { weekday: true });
 
   const chartW = Math.max(0, width - 40);
   const chartH = 50;
@@ -156,7 +157,7 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
               >
                 <Ionicons name="calendar-outline" size={17} color="#FFFFFF" />
                 {/* Today's day and date, e.g. "Thu, Oct 15" (approved mockup, option A). */}
-                <Text style={styles.calText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+                <Text style={styles.calText}>{dateText(new Date(), { weekday: true })}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={hidden ? 'Amount hidden' : undefined}>{money(amount)}</Text>

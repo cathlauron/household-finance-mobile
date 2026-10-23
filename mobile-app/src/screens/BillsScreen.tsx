@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { dateText } from '../dateUtils';
 import { redUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
@@ -181,7 +182,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   const dueLabel =
     recurTypeInput === 'onetime'
       ? onetimeDateInput
-        ? new Date(onetimeDateInput + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        ? dateText(new Date(onetimeDateInput + 'T00:00:00'), { weekday: true })
         : 'Choose'
       : dueNowInput
       ? new Date(dueNowInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -195,7 +196,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       ? new Date(dueNowInput + 'T00:00:00')
       : getNextDueDate(recurTypeInput, recurTypeInput === 'monthly' ? { day: dayInput } : { day: dayInput, month: monthInput ? parseInt(monthInput, 10) : '' });
   const nextDueText = nextDueDate && !isNaN(nextDueDate.getTime())
-    ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${nextDueDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
+    ? `${recurTypeInput === 'onetime' ? 'Due' : 'Next due'} ${dateText(nextDueDate, { weekday: true })}. You'll get a reminder ${model?.settings.notifyDaysBefore ?? 3} days before.`
     : '';
 
   // The red message goes away as soon as the person changes something.
@@ -555,7 +556,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   const stillToPay = dueThisMonth.reduce((sum, b) => sum + billAmount(b), 0);
   const subs = bills.filter((b) => b.isSubscription);
   const subsActive = subs.filter((b) => b.subscriptionStatus !== 'cancelled').length;
-  const fmtDue = (d: Date | null) => (d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'No date set');
+  const fmtDue = (d: Date | null) => (d ? dateText(d, { weekday: true }) : 'No date set');
   const openBill = (b: Bill) => navigation.navigate('PayDetail', { kind: 'bill', id: b.id });
 
   return (

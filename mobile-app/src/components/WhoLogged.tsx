@@ -7,6 +7,7 @@
 //    moves, trip items), again only when someone else logged it.
 // Nothing shows outside a shared household. Entries made before 2.2 have no name.
 import React from 'react';
+import { dateText } from '../dateUtils';
 import { View, Text, StyleSheet } from 'react-native';
 import { useData } from '../DataContext';
 import { useTheme } from '../ThemeContext';
@@ -25,7 +26,7 @@ function when(ms?: number): string {
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return d.toDateString() === new Date().toDateString()
     ? ` · today, ${time}`
-    : ` · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
+    : ` · ${dateText(d)}, ${time}`;
 }
 
 // Put inside the icon's own View (that View must not clip: no overflow 'hidden').

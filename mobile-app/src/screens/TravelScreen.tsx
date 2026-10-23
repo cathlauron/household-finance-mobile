@@ -8,7 +8,7 @@ import { showLeafTick } from '../components/LeafTick';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import SegmentedControl from '../components/SegmentedControl';
 import { useNavigation } from '@react-navigation/native';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
@@ -106,7 +106,7 @@ function syncTripSavingsGoal(
 // Redesign helpers: "Nov 28 – 30 · 3 days", "In 46 days", "Oct 2".
 function shortDay(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? iso : dateText(d);
 }
 function niceRange(trip: TravelTrip): string {
   const s = trip.startDate ? new Date(trip.startDate + 'T00:00:00') : null;
@@ -115,7 +115,10 @@ function niceRange(trip: TravelTrip): string {
   if (s && e && !isNaN(s.getTime()) && !isNaN(e.getTime())) {
     const days = Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
     const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
-    const range = sameMonth ? `${shortDay(trip.startDate)} – ${e.getDate()}` : `${shortDay(trip.startDate)} – ${shortDay(trip.endDate)}`;
+    // The year once, at the end, when it isn't this year: "Apr 2 – 9, 2027".
+    const yr = s.getFullYear() !== new Date().getFullYear() ? `, ${s.getFullYear()}` : '';
+    const monthDay = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const range = sameMonth ? `${monthDay} – ${e.getDate()}${yr}` : `${shortDay(trip.startDate)} – ${shortDay(trip.endDate)}`;
     return `${range} · ${days} ${days === 1 ? 'day' : 'days'}`;
   }
   return shortDay(trip.startDate || trip.endDate);

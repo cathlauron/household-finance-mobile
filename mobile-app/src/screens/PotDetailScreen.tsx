@@ -22,7 +22,7 @@ import SavingsScreen from './SavingsScreen';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { accountLabel } from '../transactionActions';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { hapticLight } from '../haptics';
 import {
   isEmergencyPot,
@@ -51,7 +51,7 @@ function targetDateText(iso: string): string {
 
 function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? iso : dateText(d);
 }
 
 export default function PotDetailScreen() {

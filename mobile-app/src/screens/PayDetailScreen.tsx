@@ -27,7 +27,7 @@ import { currentCycle, paidCycles, markPaid, undoLastPayment, isCyclePaid, minim
 import { accountLabel } from '../transactionActions';
 import { getOverdueItems } from '../overdue';
 import { makeId } from '../utils';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import type { ThemeColors } from '../theme';
 import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod } from '../types';
 
@@ -47,7 +47,7 @@ function num(v: unknown): number {
 }
 function niceDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? iso : dateText(d, { weekday: true });
 }
 function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');

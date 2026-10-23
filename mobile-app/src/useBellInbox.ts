@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { dateText } from './dateUtils';
 import { useToday } from './useToday';
 import { getOverdueItems, OverdueItem } from './overdue';
 import { usePendingRecovery } from './usePendingRecovery';
@@ -63,7 +64,7 @@ export function useBellInbox(username: string, model: any) {
         group: 'due',
         key: `due:${d.type}:${d.id || d.label}:${localISO(d.date)}`,
         title: d.label,
-        subtitle: `Due ${d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        subtitle: `Due ${dateText(d.date)}`,
         due: { type: d.type, id: d.id, amount: d.amount, date: d.date },
       });
     });

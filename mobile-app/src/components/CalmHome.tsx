@@ -14,7 +14,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { useHideAmounts } from '../hideAmounts';
 import { hapticSelection, hapticLight } from '../haptics';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { makeId } from '../utils';
 import { formatPeso, cautionThresholdAmount, LeftToSpendMood } from '../balanceProjection';
 import { catchUpSince, tightWays, wayText, daysBetween, WELCOME_BACK_DAYS, TightWay, highPriorityDue } from '../calmHome';
@@ -23,7 +23,7 @@ import type { HouseholdModel, ManualTransaction, PaymentMethod } from '../types'
 // Version 3, the calm Home (approved mockups H3b and H4b). Both cards sit between the
 // Left to Spend card and Accounts. See calmHome.ts for what goes in them.
 
-const shortDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const shortDate = (iso: string) => dateText(new Date(iso + 'T00:00:00'));
 const noCents = (n: number) => formatPeso(n).replace('.00', '');
 
 // ---------- Per-phone switches ----------
@@ -336,7 +336,7 @@ export function TightCard({ amount, mood, statusLabel, targetDate, basis }: { am
   const plan = useMemo(() => (model ? tightWays(model, amount, cautionThresholdAmount(model)) : null), [model, amount]);
   if (!model || guest || mood === 'good' || !headsUp || dismissed === today || !plan) return null;
 
-  const until = basis === 'payday' ? `payday (${targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : 'the end of the month';
+  const until = basis === 'payday' ? `payday (${dateText(targetDate)})` : 'the end of the month';
   const title = mood === 'low' ? `${statusLabel} until ${until}` : `${statusLabel} before ${until}`;
   const daysLeft = Math.max(1, Math.round((targetDate.getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000));
   const n = plan.ways.length;

@@ -384,3 +384,7 @@ AK 2026-10-22 evening: small ones. Cath, 2026-10-22: "device test as described".
       partner made while the phone's permission pop-up was open).
 - AK2 Plan > Savings > a pot with a target date next year: its page says "by <date>, 2027"
       (with the year), the same as the Savings list.
+
+AL 2026-10-22 night: years on dates, confirm pop-ups, sign-in. NOT YET TESTED.
+- AL1 Make a test trip for next year (e.g. Apr 2-9): Travel shows "Apr 2 – 9, 2027". This
+      year's dates still show without a year ("Nov 11"). Delete the test trip.

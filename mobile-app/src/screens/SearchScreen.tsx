@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { dateText } from '../dateUtils';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, ScrollView, StyleSheet, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -33,7 +34,7 @@ function shortDate(date: string): string {
   const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Yesterday';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateText(d);
 }
 
 export default function SearchScreen() {

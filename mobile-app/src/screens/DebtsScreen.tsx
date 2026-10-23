@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { dateText } from '../dateUtils';
 import { redUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
@@ -567,7 +568,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
               sub={(() => {
                 const cur = currentCycle(debt);
                 const d = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : nextDue;
-                return d ? `${overdueDebtIds.has(debt.id) ? 'Was due' : 'Due'} ${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'No date set';
+                return d ? `${overdueDebtIds.has(debt.id) ? 'Was due' : 'Due'} ${dateText(d, { weekday: true })}` : 'No date set';
               })()}
               badge={(() => {
                 if (overdueDebtIds.has(debt.id)) return { text: 'Overdue', tone: 'overdue' as const };
