@@ -7,6 +7,8 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> (repo .claude/skills, also offered as a card). Sub-pages now follow your finger on
 >>> v2.2/v3 (Cath's pick B). Phone checks TEST-2.2 section AM. Save gate is now
 >>> `npm run check:all` (inside mobile-app). 4 motion questions wait in SMOOTH-HUNT.md.
+>>> NEWEST (2026-10-23 morning, smoothness 2): Cath's 4 answers built, plus no flicker /
+>>> overlap / smooth fades checked screen by screen (SMOOTH-HUNT.md). Phone: TEST-2.2 AM + AN.
 >>> NEWEST (2026-10-21, wrap-up): VERSION 2.2 work lives on branch `v2.2` (v3 = same
 >>> commit, 590fa50). It is NOT on `main` yet. Cath tested sections A-N on her phone in
 >>> Expo Go (TEST-2.2.md on v2.2). Start with the "FIRST THINGS NEXT SESSION" list in the
@@ -207,6 +209,21 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   To-Pay, Savings, Groceries, Events. Emulator walkthrough for Cath (10-22/23 night):
   welcome, set-up, Home, Transactions, To-Pay, Plan, calendar, bell, add account /
   transaction / bill all correct.
+- 2026-10-23 morning (smoothness 2, v2.2/v3, 021d651..1c6c564): Cath's answers - bottom tabs
+  follow the finger, Search uses the house curve, I borrowed / I lent changes the form like
+  Bill / Debt / Loan, every coloured zero amount grey. Skill gained the rules "no flicker,
+  no blank moment, no overlap, no snaps, smooth fades" (exceptions: sheets / calendar /
+  Search over a dimmed page; locking instant). Built: page contents fade in, rows and help
+  cards open smoothly (animateLayout.ts), late titles keep their space; whole screens dip
+  in ONE animation (ScreenSwap in App.tsx, screenSwap.ts; CURVE_OUT for the fade-out half);
+  set-up steps slide like pages (StepSlide.tsx); form switches fade their fields
+  (FormSwapFade.tsx) and the pop-up glides to its new height (BottomSheet.tsx, only during
+  a switch). Found by the frame recorder and fixed: the next tab came in empty on a finger
+  swipe and pages overlapped for a frame at let-go (preload with 1.5 s fallback, TabPage
+  layout effect). Tools: rec:/burst:/mdrag: walker steps, tools/flicker-check.py (sorts
+  frames by time). Final: tsc clean, npm test 175/175, test:screens 130/130, hooks 0.
+  Note: an earlier run of this same conversation did batches A and B; its reply never
+  reached Cath, this run finished the work.
 
 =====================================================================
 🔧 In progress
@@ -377,6 +394,12 @@ Testing
   Money numbers count quickly to new values (instant with Reduce Motion). Ask her about
   any motion choice not yet decided.
 
+- 2026-10-23 morning (Cath): bottom tabs follow the finger; Search matches the house curve;
+  I borrowed / I lent and Bill / Debt / Loan: highlight glides, fields fade out and in;
+  coloured zero amounts grey; dark mode stays INSTANT (asked again: 2.2 had "keep it
+  instant like 2.1"); set-up steps slide like pages; no flicker / overlap, smooth fades
+  everywhere (see the skill).
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -535,6 +558,11 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
   web only). Needs the phone: swipe feel, Android label/highlight order, the Bill/Debt/Loan
   hand-over glide. Emulator mouse drags don't act like a finger (Left to Spend card).
 
+- 2026-10-23 morning (smoothness 2): the hidden browser can't show pop-ups opening while it
+  records, nor a second pop-up after closing one (old version the same, not an app bug):
+  pop-ups opening/closing, lock/unlock and sign-in stay phone checks (TEST-2.2 AN2, AN9).
+  Small, to watch on the phone: opening Search, the tab bar's labels fade a moment late.
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -628,6 +656,14 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   totals; tests/motion, subPages, countUp; __tests__/SlidingPages, SubPageScreens,
   CountingText; tools/check-all.mjs (npm run check:all), browser-walk drag: step.
   DataContext stand-ins in __tests__ now include QuietWhenHidden.
+
+- 2026-10-23 morning (smoothness 2): src/screenSwap.ts, animateLayout.ts,
+  components/StepSlide.tsx, components/FormSwapFade.tsx, navigation/tabDrag.ts; changed
+  App.tsx (ScreenSwap), BottomSheet (height glide + filler), TabPage (layout effect),
+  MainTabs (preload), KindSwitch, Bills/Debts/Loans forms, GuestSetupScreen, motion.ts
+  (CURVE_OUT, ROW_MS, FADE_IN_MS, FADE_OUT_MS, DIP_MS); tests/screenSwap, motion (more);
+  __tests__/SmoothSwaps, SmoothTransitions, TabSwipe; tools/flicker-check.py,
+  browser-walk rec:/burst:/mdrag:.
 
 =====================================================================
 📅 Session log
@@ -907,3 +943,7 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   v2.2, npx expo start -c). Then answer SMOOTH-HUNT.md S-04..S-07. Save the smoothness
   skill card if not done (it's also in the repo). Still after that: the real 2.2 build
   (AG4, I11, I12), then merge 2.2 into main.
+
+- NEWEST (2026-10-23 morning, smoothness 2): Cath does her batch test: TEST-2.2 sections AM
+  and AN on her phone (git pull on v2.2, npx expo start -c). Nothing waits for her decision.
+  Then: the real 2.2 build (AG4, I11, I12) and merging 2.2 into main.
