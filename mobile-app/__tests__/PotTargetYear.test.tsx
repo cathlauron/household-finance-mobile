@@ -8,6 +8,8 @@ import { defaultModel } from '../src/defaultModel';
 // this coming August.
 let mockModel: any;
 jest.mock('../src/DataContext', () => ({
+  // Pages beside the one showing stay quiet in the app; here they just draw.
+  QuietWhenHidden: ({ children }: any) => children,
   useData: () => ({ model: mockModel, getModel: () => mockModel, saveModel: async () => {}, isLinked: false, username: 'cath' }),
   withTimeout: (p: any) => p,
 }));

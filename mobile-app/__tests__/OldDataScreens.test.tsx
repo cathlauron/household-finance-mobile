@@ -17,6 +17,8 @@ jest.mock('../src/authFirebase', () => ({ getCurrentFirebaseUser: () => null }))
 jest.mock('../src/sessions', () => ({ ...jest.requireActual('../src/sessions'), subscribeToUserDevices: () => () => {} }));
 jest.mock('../src/pushNotifications', () => ({ ...jest.requireActual('../src/pushNotifications'), rescheduleBillNotifications: async () => {} }));
 jest.mock('../src/DataContext', () => ({
+  // Pages beside the one showing stay quiet in the app; here they just draw.
+  QuietWhenHidden: ({ children }: any) => children,
   useData: () => ({
     model: mockModel, getModel: () => mockModel, saveModel: async () => {}, isLinked: false, username: 'cath',
     storageUsed: 0, pendingChanges: 0, verifyPassword: async () => true, changePassword: async () => ({}), getHouseholdKey: () => null,

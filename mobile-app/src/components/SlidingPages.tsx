@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, LayoutChangeEvent, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Reanimated, { cancelAnimation, Easing, runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Reanimated, { cancelAnimation, Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import SegmentedControl from './SegmentedControl';
 import { holdForSubPages, heldOnUI, SwipeTabsContext } from '../navigation/swipeTabs';
 import { hapticSelection } from '../haptics';
@@ -39,6 +39,10 @@ type Props<T extends string> = {
   hideSwitcher?: boolean;
   // Anything shown between the switcher and the pages.
   between?: React.ReactNode;
+  // Pages inside a scrolling page with more below them (Travel's trip page): the pages
+  // take their own height, and the height glides between them as you swipe, so what's
+  // below moves smoothly instead of jumping.
+  inline?: boolean;
   testID?: string;
 };
 
@@ -54,6 +58,7 @@ export default function SlidingPages<T extends string>({
   switcherStyle,
   hideSwitcher,
   between,
+  inline,
   testID,
 }: Props<T>) {
   const count = options.length;
@@ -65,6 +70,7 @@ export default function SlidingPages<T extends string>({
   const widthSV = useSharedValue(0);
   const reduceSV = useSharedValue(reduce);
   const [width, setWidth] = useState(0);
+  const heights = useSharedValue<number[]>(options.map(() => 0));
   const [warm, setWarm] = useState(false);
   const visited = useRef(new Set<number>([index]));
   visited.current.add(index);
@@ -154,6 +160,25 @@ export default function SlidingPages<T extends string>({
   );
 
   const stripStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -pos.value * widthSV.value }] }));
+  const heightStyle = useAnimatedStyle(() => {
+    if (!inline) return {};
+    const hs = heights.value;
+    const p = Math.max(0, Math.min(hs.length - 1, pos.value));
+    const lo = Math.floor(p);
+    const hi = Math.min(hs.length - 1, lo + 1);
+    const a = hs[lo] || hs[hi];
+    const b = hs[hi] || a;
+    if (!a) return {};
+    return { height: interpolate(p, [lo, lo === hi ? lo + 1 : hi], [a, b]) };
+  }, [inline]);
+  const measurePage = (k: number) => (e: LayoutChangeEvent) => {
+    if (!inline) return;
+    const h = e.nativeEvent.layout.height;
+    const next = heights.value.slice();
+    if (next[k] === h) return;
+    next[k] = h;
+    heights.value = next;
+  };
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -168,7 +193,8 @@ export default function SlidingPages<T extends string>({
       <View
         key={opt.id}
         testID={testID ? `${testID}-page-${opt.id}` : undefined}
-        style={[styles.page, width > 0 && { width }]}
+        style={[inline ? styles.pageInline : styles.page, width > 0 && { width }]}
+        onLayout={measurePage(k)}
         accessibilityElementsHidden={!active}
         importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
       >
@@ -184,7 +210,7 @@ export default function SlidingPages<T extends string>({
   });
 
   return (
-    <View style={styles.wrap} testID={testID}>
+    <View style={inline ? undefined : styles.wrap} testID={testID}>
       {!hideSwitcher && (
         <View style={switcherWrapStyle}>
           <SegmentedControl<T>
@@ -200,14 +226,20 @@ export default function SlidingPages<T extends string>({
       {between}
       <SwipeTabsContext.Provider value={hideSwitcher ? null : flick}>
         <GestureDetector gesture={gesture}>
-          <View testID={testID ? `${testID}-viewport` : undefined} style={styles.viewport} onLayout={onLayout} {...holdForSubPages} collapsable={false}>
+          <Reanimated.View
+            testID={testID ? `${testID}-viewport` : undefined}
+            style={[inline ? styles.viewportInline : styles.viewport, heightStyle]}
+            onLayout={onLayout}
+            {...holdForSubPages}
+            collapsable={false}
+          >
             {width > 0 ? (
-              <Reanimated.View style={[styles.strip, { width: width * count }, stripStyle]}>{pages}</Reanimated.View>
+              <Reanimated.View style={[inline ? styles.stripInline : styles.strip, { width: width * count }, stripStyle]}>{pages}</Reanimated.View>
             ) : (
               // Not measured yet (its first moment on screen): just the page that's showing.
               pages[index]
             )}
-          </View>
+          </Reanimated.View>
         </GestureDetector>
       </SwipeTabsContext.Provider>
     </View>
@@ -219,4 +251,7 @@ const styles = StyleSheet.create({
   viewport: { flex: 1, overflow: 'hidden' },
   strip: { flex: 1, flexDirection: 'row' },
   page: { flex: 1 },
+  viewportInline: { overflow: 'hidden' },
+  stripInline: { flexDirection: 'row', alignItems: 'flex-start' },
+  pageInline: {},
 });

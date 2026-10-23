@@ -11,6 +11,8 @@ let mockModel: any;
 let mockLatest: any = null;
 const mockSaveModel = jest.fn(async () => {});
 jest.mock('../src/DataContext', () => ({
+  // Pages beside the one showing stay quiet in the app; here they just draw.
+  QuietWhenHidden: ({ children }: any) => children,
   useData: () => ({ model: mockModel, getModel: () => mockLatest ?? mockModel, saveModel: mockSaveModel, isLinked: false, username: 'cath' }),
   withTimeout: (p: any) => p,
 }));

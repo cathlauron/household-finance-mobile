@@ -10,6 +10,8 @@ let mockModel: any;
 // The real data layer talks to Firebase; this check only needs the form, so it gets a
 // stand-in with a household and a save that is counted.
 jest.mock('../src/DataContext', () => ({
+  // Pages beside the one showing stay quiet in the app; here they just draw.
+  QuietWhenHidden: ({ children }: any) => children,
   useData: () => ({ model: mockModel, getModel: () => mockModel, saveModel: mockSaveModel, isLinked: true, username: 'miguel', storageUsed: 0, pendingChanges: 0, verifyPassword: async () => true, changePassword: async () => ({}), getHouseholdKey: () => null }),
   withTimeout: (p: any) => p,
 }));

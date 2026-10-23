@@ -73,11 +73,11 @@ export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: 
           // Touch started on something that swipes by itself: let it have the swipe.
           // (Its onTouchStart runs first, so `held` is already set.)
           setTimeout(() => {
-            if (held || (!inner && subHeld)) manager.fail();
+            if (held || subHeld) manager.fail();
           }, 0);
         })
         .onEnd((e) => {
-          if (held || (!inner && subHeld)) return;
+          if (held || subHeld) return;
           const dx = e.translationX;
           if (Math.abs(dx) < DISTANCE && Math.abs(e.velocityX) < FLICK) return;
           if (Math.abs(e.translationY) > Math.abs(dx)) return;

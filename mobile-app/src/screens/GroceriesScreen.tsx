@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { redUnlessZero } from '../moneyColor';
-import { SwipeTabs } from '../navigation/swipeTabs';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
@@ -16,7 +15,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, MealIdea, ManualTransaction } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
-import SegmentedControl from '../components/SegmentedControl';
+import SlidingPages from '../components/SlidingPages';
 import BottomSheet from '../components/BottomSheet';
 import AmountInput from '../components/AmountInput';
 import GradientFill from '../components/GradientFill';
@@ -251,223 +250,214 @@ export default function GroceriesScreen() {
 
   return (
     // 2.2 (Cath): swipe sideways between List, Calculator and Meal ideas, like Savings.
-    <SwipeTabs
-      onSwipe={(d) => {
-        const order: Tab[] = ['list', 'calc', 'meals'];
-        const i = order.indexOf(tab) + d;
-        if (i >= 0 && i < order.length) setTab(order[i]);
-      }}
-    >
+    // Smoothness 2026-10-23 (Cath picked "follows your finger"): the pages slide with your finger.
     <View style={styles.container}>
-      <View style={styles.segRow}>
-        <SegmentedControl<Tab>
-          accessibilityLabel="Groceries view"
-          options={[
-            { id: 'list', label: 'List' },
-            { id: 'calc', label: 'Calculator' },
-            { id: 'meals', label: 'Meal ideas' },
-          ]}
-          value={tab}
-          onChange={setTab}
-        />
-      </View>
-
-      {tab === 'list' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scroll}>
-          <View style={[styles.group, styles.trio]}>
-            <GradientFill match={styles.group} />
-            <View style={styles.trioCell}>
-              <Text style={styles.meta}>Planned</Text>
-              <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(planned)}</Text>
-            </View>
-            <View style={[styles.trioCell, styles.trioLine]}>
-              <Text style={styles.meta}>Bought</Text>
-              <Text style={[styles.headline, { color: redUnlessZero(bought, colors) }]}>{formatPeso(bought)}</Text>
-            </View>
-            <View style={[styles.trioCell, styles.trioLine]}>
-              <Text style={styles.meta}>Items</Text>
-              <Text style={styles.headline}>
-                {boughtItems.length} of {items.length}
-              </Text>
-            </View>
-          </View>
-
-          <Text style={styles.header}>Shopping list</Text>
-          <View style={styles.group}>
-            <GradientFill match={styles.group} />
-            {items.length === 0 && <Text style={[styles.meta, { padding: 16 }]}>Nothing on the list yet. Tap Add to add an item.</Text>}
-            {shown.map((g, i) => (
-              <SwipeableRow key={g.id} enabled={Boolean(model.settings.swipeToDeleteEnabled)} onDelete={() => deleteItem(g)} testID={`grocery-swipe-${g.id}`} flat>
-                <View style={[styles.row, i > 0 && styles.line]}>
-                  <TouchableOpacity
-                    onPress={() => toggleBought(g)}
-                    style={[styles.check, g.purchased && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: g.purchased }}
-                    accessibilityLabel={`Mark ${g.item} as bought`}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    {g.purchased && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.rowMain} onPress={() => openItem(g)} accessibilityRole="button">
-                    <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={[styles.title, g.purchased && styles.done]} numberOfLines={1}>
-                        {g.item || 'Untitled item'}
-                      </Text>
-                      <Text style={styles.meta} numberOfLines={1}>
-                        {g.purchased && num(g.actualAmount) > 0 && num(g.actualAmount) !== num(g.plannedAmount)
-                          ? `Paid ${formatPeso(num(g.actualAmount))}`
-                          : num(g.plannedAmount) > 0
-                            ? 'Planned'
-                            : 'No price yet'}
-                      </Text>
-                    </View>
-                    <Text style={[styles.amount, { color: g.purchased ? colors.inkDim : colors.planned }]}>
-                      {num(itemCost(g)) > 0 ? formatPeso(itemCost(g)) : ''}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </SwipeableRow>
-            ))}
-            {items.length > SHOW_FIRST && (
-              <TouchableOpacity style={[styles.row, styles.line]} onPress={() => setShowAll((v) => !v)} accessibilityRole="button">
-                <Text style={[styles.title, { color: colors.gold }]}>{showAll ? 'Show less' : `Show ${items.length - SHOW_FIRST} more`}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={styles.footer}>Ticking an item off adds it to your spending when you finish the trip.</Text>
-
-          {boughtItems.length > 0 && (
-            <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill }]} onPress={finishTrip} accessibilityRole="button" testID="groceries-finish">
-              <GradientFill color={colors.buttonFill} strength={0.18} />
-              <Text style={[styles.primaryText, { color: colors.onButton }]}>Finish trip · add {formatPeso(bought)}</Text>
-            </TouchableOpacity>
-          )}
-        </PullToRefreshScrollView>
-      )}
-
-      {tab === 'calc' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scroll}>
-          <View style={[styles.group, { padding: 18, alignItems: 'center' }]}>
-            <GradientFill match={styles.group} />
-            <Text style={styles.meta}>In your cart</Text>
-            <Text style={[styles.hero, { color: colors.planned }]}>{formatPeso(cart)}</Text>
-            {planned > 0 && (
-              <Text style={styles.subhead}>
-                {cart <= planned
-                  ? `${formatPeso(planned - cart)} left of the ${formatPeso(planned)} you planned`
-                  : `${formatPeso(cart - planned)} over the ${formatPeso(planned)} you planned`}
-              </Text>
-            )}
-          </View>
-
-          {calc.length > 0 && (
-            <View style={[styles.group, { marginTop: 20 }]}>
-              <GradientFill match={styles.group} />
-              {calc.map((e, i) => (
-                <View key={e.id} style={[styles.row, i > 0 && styles.line]}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={styles.title} numberOfLines={1}>{e.label}</Text>
-                    <Text style={styles.meta}>
-                      {num(e.qty) || 1} × {formatPeso(num(e.unitPrice) || num(e.amount))}
-                    </Text>
-                  </View>
-                  <Text style={[styles.amount, { color: colors.planned }]}>{formatPeso(num(e.amount))}</Text>
-                  <TouchableOpacity
-                    onPress={() => saveModel({ ...model, groceryCalculator: calc.filter((x) => x.id !== e.id) })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${e.label}`}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={{ marginLeft: 10 }}
-                  >
-                    <Ionicons name="close-circle" size={20} color={colors.inkDim} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-
-          <Text style={styles.header}>Add price</Text>
-          <View style={styles.group}>
-            <GradientFill match={styles.group} />
-            <View style={styles.row}>
-              <TextInput style={styles.inlineInput} placeholder="Item (optional)" placeholderTextColor={colors.inkDim} value={calcName} onChangeText={setCalcName} />
-            </View>
-            <View style={[styles.row, styles.line, { gap: 10 }]}>
-              <View style={{ flex: 2 }}>
-                <AmountInput value={calcPrice} onChangeAmount={setCalcPrice} placeholder="Price" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <AmountInput value={calcQty} onChangeAmount={setCalcQty} prefix={null} suffix="×" placeholder="1" />
-              </View>
-              <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.buttonFill }]} onPress={addCalc} accessibilityRole="button" accessibilityLabel="Add to cart" testID="calc-add">
-                <GradientFill color={colors.buttonFill} strength={0.18} />
-                <Ionicons name="add" size={24} color={colors.onButton} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {calc.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-              <TouchableOpacity style={[styles.primary, { flex: 1, marginTop: 0, backgroundColor: colors.accentTint }]} onPress={calcToList} accessibilityRole="button">
-                <GradientFill kind="tint" color={colors.accentTint} />
-                <Text style={[styles.primaryText, { color: colors.gold }]}>Add all to list</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.primary, { flex: 1, marginTop: 0, backgroundColor: colors.navy3 }]}
-                onPress={() => saveModel({ ...model, groceryCalculator: [] })}
-                accessibilityRole="button"
-              >
-                <GradientFill kind="surface" color={colors.navy3} />
-                <Text style={[styles.primaryText, { color: colors.inkDim }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </PullToRefreshScrollView>
-      )}
-
-      {tab === 'meals' && (
-        <PullToRefreshScrollView contentContainerStyle={styles.scroll}>
-          {meals.length === 0 && (
-            <View style={[styles.group, { padding: 16, gap: 12 }]}>
-              <GradientFill match={styles.group} />
-              <Text style={styles.subhead}>Save meals you cook often with their ingredients, then add them to your list in one tap.</Text>
-              <TouchableOpacity style={[styles.primary, { marginTop: 0, backgroundColor: colors.accentTint }]} onPress={addStarters} accessibilityRole="button">
-                <GradientFill kind="tint" color={colors.accentTint} />
-                <Text style={[styles.primaryText, { color: colors.gold }]}>Start with adobo and sinigang</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {meals.map((m) => {
-            const cost = mealCost(m);
-            return (
-              <View key={m.id} style={[styles.group, { padding: 16, gap: 10, marginBottom: 12 }]}>
+      <SlidingPages<Tab>
+        testID="groceries-pages"
+        accessibilityLabel="Groceries view"
+        options={[
+          { id: 'list', label: 'List', testID: 'groceries-tab-list' },
+          { id: 'calc', label: 'Calculator', testID: 'groceries-tab-calc' },
+          { id: 'meals', label: 'Meal ideas', testID: 'groceries-tab-meals' },
+        ]}
+        value={tab}
+        onChange={setTab}
+        switcherWrapStyle={styles.segRow}
+        renderPage={(id) =>
+          id === 'list' ? (
+            <PullToRefreshScrollView contentContainerStyle={styles.scroll}>
+              <View style={[styles.group, styles.trio]}>
                 <GradientFill match={styles.group} />
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'baseline' }} onPress={() => openMeal(m)} accessibilityRole="button" accessibilityLabel={`Edit ${m.name}`}>
-                  <Text style={[styles.headline, { flex: 1 }]}>{m.name}</Text>
-                  <Text style={[styles.amount, { color: colors.planned }]}>{cost > 0 ? formatPeso(cost) : 'Add prices'}</Text>
-                </TouchableOpacity>
-                <View style={styles.chips}>
-                  {m.ingredients.map((i) => (
-                    <View key={i.id} style={styles.chip}>
-                      <Text style={styles.chipText}>{i.name}</Text>
-                    </View>
-                  ))}
+                <View style={styles.trioCell}>
+                  <Text style={styles.meta}>Planned</Text>
+                  <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(planned)}</Text>
                 </View>
-                {m.ingredients.length > 0 && (
-                  <TouchableOpacity style={[styles.primary, { marginTop: 0, backgroundColor: colors.accentTint }]} onPress={() => addMealToList(m)} accessibilityRole="button">
-                    <GradientFill kind="tint" color={colors.accentTint} />
-                    <Text style={[styles.primaryText, { color: colors.gold }]}>
-                      Add {m.ingredients.length} {m.ingredients.length === 1 ? 'ingredient' : 'ingredients'} to the list
-                    </Text>
+                <View style={[styles.trioCell, styles.trioLine]}>
+                  <Text style={styles.meta}>Bought</Text>
+                  <Text style={[styles.headline, { color: redUnlessZero(bought, colors) }]}>{formatPeso(bought)}</Text>
+                </View>
+                <View style={[styles.trioCell, styles.trioLine]}>
+                  <Text style={styles.meta}>Items</Text>
+                  <Text style={styles.headline}>
+                    {boughtItems.length} of {items.length}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.header}>Shopping list</Text>
+              <View style={styles.group}>
+                <GradientFill match={styles.group} />
+                {items.length === 0 && <Text style={[styles.meta, { padding: 16 }]}>Nothing on the list yet. Tap Add to add an item.</Text>}
+                {shown.map((g, i) => (
+                  <SwipeableRow key={g.id} enabled={Boolean(model.settings.swipeToDeleteEnabled)} onDelete={() => deleteItem(g)} testID={`grocery-swipe-${g.id}`} flat>
+                    <View style={[styles.row, i > 0 && styles.line]}>
+                      <TouchableOpacity
+                        onPress={() => toggleBought(g)}
+                        style={[styles.check, g.purchased && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: g.purchased }}
+                        accessibilityLabel={`Mark ${g.item} as bought`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        {g.purchased && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.rowMain} onPress={() => openItem(g)} accessibilityRole="button">
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={[styles.title, g.purchased && styles.done]} numberOfLines={1}>
+                            {g.item || 'Untitled item'}
+                          </Text>
+                          <Text style={styles.meta} numberOfLines={1}>
+                            {g.purchased && num(g.actualAmount) > 0 && num(g.actualAmount) !== num(g.plannedAmount)
+                              ? `Paid ${formatPeso(num(g.actualAmount))}`
+                              : num(g.plannedAmount) > 0
+                                ? 'Planned'
+                                : 'No price yet'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.amount, { color: g.purchased ? colors.inkDim : colors.planned }]}>
+                          {num(itemCost(g)) > 0 ? formatPeso(itemCost(g)) : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </SwipeableRow>
+                ))}
+                {items.length > SHOW_FIRST && (
+                  <TouchableOpacity style={[styles.row, styles.line]} onPress={() => setShowAll((v) => !v)} accessibilityRole="button">
+                    <Text style={[styles.title, { color: colors.gold }]}>{showAll ? 'Show less' : `Show ${items.length - SHOW_FIRST} more`}</Text>
                   </TouchableOpacity>
                 )}
               </View>
-            );
-          })}
-          {meals.length > 0 && <Text style={styles.footer}>A meal's cost is the total of its ingredients. Tap a meal's name to edit it.</Text>}
-        </PullToRefreshScrollView>
-      )}
+              <Text style={styles.footer}>Ticking an item off adds it to your spending when you finish the trip.</Text>
+
+              {boughtItems.length > 0 && (
+                <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill }]} onPress={finishTrip} accessibilityRole="button" testID="groceries-finish">
+                  <GradientFill color={colors.buttonFill} strength={0.18} />
+                  <Text style={[styles.primaryText, { color: colors.onButton }]}>Finish trip · add {formatPeso(bought)}</Text>
+                </TouchableOpacity>
+              )}
+            </PullToRefreshScrollView>
+          ) : id === 'calc' ? (
+            <PullToRefreshScrollView contentContainerStyle={styles.scroll}>
+              <View style={[styles.group, { padding: 18, alignItems: 'center' }]}>
+                <GradientFill match={styles.group} />
+                <Text style={styles.meta}>In your cart</Text>
+                <Text style={[styles.hero, { color: colors.planned }]}>{formatPeso(cart)}</Text>
+                {planned > 0 && (
+                  <Text style={styles.subhead}>
+                    {cart <= planned
+                      ? `${formatPeso(planned - cart)} left of the ${formatPeso(planned)} you planned`
+                      : `${formatPeso(cart - planned)} over the ${formatPeso(planned)} you planned`}
+                  </Text>
+                )}
+              </View>
+
+              {calc.length > 0 && (
+                <View style={[styles.group, { marginTop: 20 }]}>
+                  <GradientFill match={styles.group} />
+                  {calc.map((e, i) => (
+                    <View key={e.id} style={[styles.row, i > 0 && styles.line]}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={styles.title} numberOfLines={1}>{e.label}</Text>
+                        <Text style={styles.meta}>
+                          {num(e.qty) || 1} × {formatPeso(num(e.unitPrice) || num(e.amount))}
+                        </Text>
+                      </View>
+                      <Text style={[styles.amount, { color: colors.planned }]}>{formatPeso(num(e.amount))}</Text>
+                      <TouchableOpacity
+                        onPress={() => saveModel({ ...model, groceryCalculator: calc.filter((x) => x.id !== e.id) })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${e.label}`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={{ marginLeft: 10 }}
+                      >
+                        <Ionicons name="close-circle" size={20} color={colors.inkDim} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <Text style={styles.header}>Add price</Text>
+              <View style={styles.group}>
+                <GradientFill match={styles.group} />
+                <View style={styles.row}>
+                  <TextInput style={styles.inlineInput} placeholder="Item (optional)" placeholderTextColor={colors.inkDim} value={calcName} onChangeText={setCalcName} />
+                </View>
+                <View style={[styles.row, styles.line, { gap: 10 }]}>
+                  <View style={{ flex: 2 }}>
+                    <AmountInput value={calcPrice} onChangeAmount={setCalcPrice} placeholder="Price" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <AmountInput value={calcQty} onChangeAmount={setCalcQty} prefix={null} suffix="×" placeholder="1" />
+                  </View>
+                  <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.buttonFill }]} onPress={addCalc} accessibilityRole="button" accessibilityLabel="Add to cart" testID="calc-add">
+                    <GradientFill color={colors.buttonFill} strength={0.18} />
+                    <Ionicons name="add" size={24} color={colors.onButton} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {calc.length > 0 && (
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+                  <TouchableOpacity style={[styles.primary, { flex: 1, marginTop: 0, backgroundColor: colors.accentTint }]} onPress={calcToList} accessibilityRole="button">
+                    <GradientFill kind="tint" color={colors.accentTint} />
+                    <Text style={[styles.primaryText, { color: colors.gold }]}>Add all to list</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.primary, { flex: 1, marginTop: 0, backgroundColor: colors.navy3 }]}
+                    onPress={() => saveModel({ ...model, groceryCalculator: [] })}
+                    accessibilityRole="button"
+                  >
+                    <GradientFill kind="surface" color={colors.navy3} />
+                    <Text style={[styles.primaryText, { color: colors.inkDim }]}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </PullToRefreshScrollView>
+          ) : (
+            <PullToRefreshScrollView contentContainerStyle={styles.scroll}>
+              {meals.length === 0 && (
+                <View style={[styles.group, { padding: 16, gap: 12 }]}>
+                  <GradientFill match={styles.group} />
+                  <Text style={styles.subhead}>Save meals you cook often with their ingredients, then add them to your list in one tap.</Text>
+                  <TouchableOpacity style={[styles.primary, { marginTop: 0, backgroundColor: colors.accentTint }]} onPress={addStarters} accessibilityRole="button">
+                    <GradientFill kind="tint" color={colors.accentTint} />
+                    <Text style={[styles.primaryText, { color: colors.gold }]}>Start with adobo and sinigang</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {meals.map((m) => {
+                const cost = mealCost(m);
+                return (
+                  <View key={m.id} style={[styles.group, { padding: 16, gap: 10, marginBottom: 12 }]}>
+                    <GradientFill match={styles.group} />
+                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'baseline' }} onPress={() => openMeal(m)} accessibilityRole="button" accessibilityLabel={`Edit ${m.name}`}>
+                      <Text style={[styles.headline, { flex: 1 }]}>{m.name}</Text>
+                      <Text style={[styles.amount, { color: colors.planned }]}>{cost > 0 ? formatPeso(cost) : 'Add prices'}</Text>
+                    </TouchableOpacity>
+                    <View style={styles.chips}>
+                      {m.ingredients.map((i) => (
+                        <View key={i.id} style={styles.chip}>
+                          <Text style={styles.chipText}>{i.name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    {m.ingredients.length > 0 && (
+                      <TouchableOpacity style={[styles.primary, { marginTop: 0, backgroundColor: colors.accentTint }]} onPress={() => addMealToList(m)} accessibilityRole="button">
+                        <GradientFill kind="tint" color={colors.accentTint} />
+                        <Text style={[styles.primaryText, { color: colors.gold }]}>
+                          Add {m.ingredients.length} {m.ingredients.length === 1 ? 'ingredient' : 'ingredients'} to the list
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+              {meals.length > 0 && <Text style={styles.footer}>A meal's cost is the total of its ingredients. Tap a meal's name to edit it.</Text>}
+            </PullToRefreshScrollView>
+          )
+        }
+      />
 
       <BottomSheet
         visible={sheet !== null}
@@ -544,7 +534,6 @@ export default function GroceriesScreen() {
         )}
       </BottomSheet>
     </View>
-    </SwipeTabs>
   );
 }
 

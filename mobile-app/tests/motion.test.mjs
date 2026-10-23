@@ -95,13 +95,20 @@ test('no new file types its own animation speed', () => {
 
 // Cath, 2026-10-23: every page with sub-pages slides the same way (follows your finger),
 // through the one shared component. Pages are added here as they move over.
-const SLIDING = ['screens/ToPayScreen.tsx'];
+const SLIDING = [
+  'screens/ToPayScreen.tsx',
+  'screens/SavingsScreen.tsx',
+  'screens/GroceriesScreen.tsx',
+  'screens/EventsScreen.tsx',
+  'screens/TravelScreen.tsx',
+];
 test('pages with sub-pages slide through SlidingPages (not their own switch)', () => {
   for (const name of SLIDING) {
     const f = files.find((x) => x.name === name);
     assert.ok(f, name);
     assert.match(f.text, /<SlidingPages</, `${name} should use SlidingPages`);
-    assert.doesNotMatch(code(f.text), /<SwipeTabs\s+inner/, `${name} should not keep its own sub-page swipe`);
+    // Travel keeps a page-wide swipe for touches outside the Budget / To-do area.
+    if (name !== 'screens/TravelScreen.tsx') assert.doesNotMatch(code(f.text), /<SwipeTabs[\s>]/, `${name} should not keep its own sub-page swipe`);
   }
 });
 

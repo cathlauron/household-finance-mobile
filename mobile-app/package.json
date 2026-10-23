@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --no-warnings --import ./tests/ts-resolve.mjs --test tests/*.test.mjs",
     "test:motion": "node --experimental-strip-types --no-warnings --import ./tests/ts-resolve.mjs --test tests/motion.test.mjs",
     "test:screens": "jest",
+    "check:all": "node tools/check-all.mjs",
     "browser:build": "expo export --platform web --output-dir web-build",
     "browser:walk": "node tools/browser-walk.mjs",
     "test:hooks": "eslint src App.tsx"

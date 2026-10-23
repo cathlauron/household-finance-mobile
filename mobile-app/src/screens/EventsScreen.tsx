@@ -1,12 +1,11 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { redUnlessZero } from '../moneyColor';
-import { SwipeTabs } from '../navigation/swipeTabs';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import AppSwitch from '../components/AppSwitch';
 import { useNavigation } from '@react-navigation/native';
-import SegmentedControl from '../components/SegmentedControl';
+import SlidingPages from '../components/SlidingPages';
 import { todayISO } from '../dateUtils';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -531,133 +530,134 @@ export default function EventsScreen() {
 
   return (
     // 2.2 (Cath): swipe sideways between Upcoming and Done, like Savings.
-    <SwipeTabs onSwipe={(d) => setView(d > 0 ? 'done' : 'up')}>
+    // Smoothness 2026-10-23 (Cath picked "follows your finger"): the pages slide with your
+    // finger; each has its own scrolling.
     <View style={styles.container}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-        <SegmentedControl<'up' | 'done'>
-          accessibilityLabel="Events view"
-          options={[
-            { id: 'up', label: 'Upcoming' },
-            { id: 'done', label: 'Done' },
-          ]}
-          value={view}
-          onChange={setView}
-        />
-      </View>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        {view === 'up' && (
-          <>
-            <View style={[styles.listGroup, styles.upSummary]}>
-              <GradientFill match={styles.listGroup} />
-              <View>
-                <Text style={styles.eventSub}>Coming up</Text>
-                <Text style={styles.headline}>{upcoming.length} {upcoming.length === 1 ? 'event' : 'events'}</Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.eventSub}>To spend</Text>
-                <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(toSpend)}</Text>
-              </View>
-            </View>
+      <SlidingPages<'up' | 'done'>
+        testID="events-pages"
+        accessibilityLabel="Events view"
+        options={[
+          { id: 'up', label: 'Upcoming', testID: 'events-tab-up' },
+          { id: 'done', label: 'Done', testID: 'events-tab-done' },
+        ]}
+        value={view}
+        onChange={setView}
+        switcherWrapStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}
+        renderPage={(id) => (
+          <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
+            {id === 'up' ? (
+                <>
+                  <View style={[styles.listGroup, styles.upSummary]}>
+                    <GradientFill match={styles.listGroup} />
+                    <View>
+                      <Text style={styles.eventSub}>Coming up</Text>
+                      <Text style={styles.headline}>{upcoming.length} {upcoming.length === 1 ? 'event' : 'events'}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.eventSub}>To spend</Text>
+                      <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(toSpend)}</Text>
+                    </View>
+                  </View>
 
-            {upcoming.length === 0 ? (
-              <Text style={styles.emptyText}>Nothing coming up. Tap Add to add a birthday, holiday or celebration.</Text>
-            ) : (
-              <View style={styles.listGroup}>
-                <GradientFill match={styles.listGroup} />
-                {upcoming.map(({ ev, date, days }, rowIndex) => {
-                  const open = openId === ev.id;
-                  const budget = eventBudget(ev);
-                  const extra = ev.items && ev.items.length ? `${ev.items.length} ${ev.items.length === 1 ? 'item' : 'items'}` : budget > 0 ? 'flat budget' : 'no budget';
-                  const when = days === null ? 'no date' : days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
-                  return (
-                    <SwipeableRow key={ev.id} enabled={Boolean(model.settings.swipeToDeleteEnabled)} onDelete={() => handleSwipeDeleteEvent(ev)} testID={`event-swipe-${ev.id}`} flat>
-                      <View style={[styles.eventRow, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 0, paddingHorizontal: 0 }, rowIndex > 0 && styles.rowDivider]}>
-                        <GradientFill match={styles.eventRow} />
-                        <TouchableOpacity style={styles.evHead} onPress={() => setOpenId(open ? null : ev.id)} accessibilityRole="button" accessibilityState={{ expanded: open }}>
-                          {dateTile(date, false)}
-                          <View style={styles.eventRowMain}>
-                            <Text style={styles.eventName} numberOfLines={1}>{ev.name || 'Untitled event'}</Text>
-                            <Text style={styles.eventSub} numberOfLines={1}>
-                              {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}
-                            </Text>
-                          </View>
-                          <Text style={[styles.eventAmount, { color: colors.planned }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>
-                        </TouchableOpacity>
-                        {open && (
-                          <View style={styles.evMore}>
-                            {(ev.items || []).map((it) => (
-                              <View key={it.id} style={styles.subLine}>
-                                <Text style={styles.subLineText}>{it.name}</Text>
-                                <Text style={[styles.subLineText, { color: colors.planned }]}>{typeof it.cost === 'number' ? formatPeso(it.cost) : ''}</Text>
-                              </View>
-                            ))}
-                            <View style={[styles.subLine, { alignItems: 'center', marginTop: 4 }]}>
-                              <Text style={styles.subLineText}>Save for this in Savings</Text>
-                              <AppSwitch
-                                value={!!ev.trackInSavings}
-                                onValueChange={(on) => setTrack(ev, on)}
-                                disabled={budget <= 0}
-                                trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
-                                accessibilityLabel={`Save for ${ev.name} in Savings`}
-                              />
-                            </View>
-                            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                              <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.buttonFill }]} onPress={() => markDone(ev, true)} accessibilityRole="button">
-                                <GradientFill color={colors.buttonFill} strength={0.18} />
-                                <Text style={[styles.smallBtnText, { color: colors.onButton }]}>Mark as done</Text>
+                  {upcoming.length === 0 ? (
+                    <Text style={styles.emptyText}>Nothing coming up. Tap Add to add a birthday, holiday or celebration.</Text>
+                  ) : (
+                    <View style={styles.listGroup}>
+                      <GradientFill match={styles.listGroup} />
+                      {upcoming.map(({ ev, date, days }, rowIndex) => {
+                        const open = openId === ev.id;
+                        const budget = eventBudget(ev);
+                        const extra = ev.items && ev.items.length ? `${ev.items.length} ${ev.items.length === 1 ? 'item' : 'items'}` : budget > 0 ? 'flat budget' : 'no budget';
+                        const when = days === null ? 'no date' : days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+                        return (
+                          <SwipeableRow key={ev.id} enabled={Boolean(model.settings.swipeToDeleteEnabled)} onDelete={() => handleSwipeDeleteEvent(ev)} testID={`event-swipe-${ev.id}`} flat>
+                            <View style={[styles.eventRow, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 0, paddingHorizontal: 0 }, rowIndex > 0 && styles.rowDivider]}>
+                              <GradientFill match={styles.eventRow} />
+                              <TouchableOpacity style={styles.evHead} onPress={() => setOpenId(open ? null : ev.id)} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+                                {dateTile(date, false)}
+                                <View style={styles.eventRowMain}>
+                                  <Text style={styles.eventName} numberOfLines={1}>{ev.name || 'Untitled event'}</Text>
+                                  <Text style={styles.eventSub} numberOfLines={1}>
+                                    {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}
+                                  </Text>
+                                </View>
+                                <Text style={[styles.eventAmount, { color: colors.planned }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>
                               </TouchableOpacity>
-                              <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.accentTint }]} onPress={() => openEditModal(ev)} accessibilityRole="button">
-                                <GradientFill kind="tint" color={colors.accentTint} />
-                                <Text style={[styles.smallBtnText, { color: colors.gold }]}>Edit</Text>
-                              </TouchableOpacity>
+                              {open && (
+                                <View style={styles.evMore}>
+                                  {(ev.items || []).map((it) => (
+                                    <View key={it.id} style={styles.subLine}>
+                                      <Text style={styles.subLineText}>{it.name}</Text>
+                                      <Text style={[styles.subLineText, { color: colors.planned }]}>{typeof it.cost === 'number' ? formatPeso(it.cost) : ''}</Text>
+                                    </View>
+                                  ))}
+                                  <View style={[styles.subLine, { alignItems: 'center', marginTop: 4 }]}>
+                                    <Text style={styles.subLineText}>Save for this in Savings</Text>
+                                    <AppSwitch
+                                      value={!!ev.trackInSavings}
+                                      onValueChange={(on) => setTrack(ev, on)}
+                                      disabled={budget <= 0}
+                                      trackColor={{ true: colors.buttonFill, false: colors.navy4 }}
+                                      accessibilityLabel={`Save for ${ev.name} in Savings`}
+                                    />
+                                  </View>
+                                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                                    <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.buttonFill }]} onPress={() => markDone(ev, true)} accessibilityRole="button">
+                                      <GradientFill color={colors.buttonFill} strength={0.18} />
+                                      <Text style={[styles.smallBtnText, { color: colors.onButton }]}>Mark as done</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.smallBtn, { backgroundColor: colors.accentTint }]} onPress={() => openEditModal(ev)} accessibilityRole="button">
+                                      <GradientFill kind="tint" color={colors.accentTint} />
+                                      <Text style={[styles.smallBtnText, { color: colors.gold }]}>Edit</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                              )}
                             </View>
-                          </View>
-                        )}
-                      </View>
-                    </SwipeableRow>
-                  );
-                })}
-              </View>
-            )}
-            <Text style={styles.groupFooter}>With "Save for this" on, money is set aside in Savings until the day, then counted as spending.</Text>
-          </>
-        )}
-
-        {view === 'done' && (
-          <>
-            {doneRows.length === 0 ? (
-              <Text style={styles.emptyText}>Nothing done yet. Open an event and tap Mark as done.</Text>
+                          </SwipeableRow>
+                        );
+                      })}
+                    </View>
+                  )}
+                  <Text style={styles.groupFooter}>With "Save for this" on, money is set aside in Savings until the day, then counted as spending.</Text>
+                </>
             ) : (
-              <View style={styles.listGroup}>
-                <GradientFill match={styles.listGroup} />
-                {doneRows.map((r, rowIndex) => {
-                  const diff = r.budget - r.spent;
-                  return (
-                    <TouchableOpacity
-                      key={r.key}
-                      style={[styles.evHead, rowIndex > 0 && styles.rowDivider]}
-                      onPress={() => (r.ev && r.current ? Alert.alert(r.name, 'Move this back to Upcoming?', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Not done yet', onPress: () => markDone(r.ev!, false) },
-                      ]) : undefined)}
-                      disabled={!r.current}
-                      accessibilityRole="button"
-                    >
-                      {dateTile(r.date, true)}
-                      <View style={styles.eventRowMain}>
-                        <Text style={styles.eventName} numberOfLines={1}>{r.name}</Text>
-                        <Text style={styles.eventSub}>{r.budget > 0 ? (diff >= 0 ? `${formatPeso(diff)} under budget` : `${formatPeso(-diff)} over budget`) : 'No budget'}</Text>
-                      </View>
-                      <Text style={[styles.eventAmount, { color: redUnlessZero(r.spent, colors) }]}>{formatPeso(r.spent)}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                <>
+                  {doneRows.length === 0 ? (
+                    <Text style={styles.emptyText}>Nothing done yet. Open an event and tap Mark as done.</Text>
+                  ) : (
+                    <View style={styles.listGroup}>
+                      <GradientFill match={styles.listGroup} />
+                      {doneRows.map((r, rowIndex) => {
+                        const diff = r.budget - r.spent;
+                        return (
+                          <TouchableOpacity
+                            key={r.key}
+                            style={[styles.evHead, rowIndex > 0 && styles.rowDivider]}
+                            onPress={() => (r.ev && r.current ? Alert.alert(r.name, 'Move this back to Upcoming?', [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Not done yet', onPress: () => markDone(r.ev!, false) },
+                            ]) : undefined)}
+                            disabled={!r.current}
+                            accessibilityRole="button"
+                          >
+                            {dateTile(r.date, true)}
+                            <View style={styles.eventRowMain}>
+                              <Text style={styles.eventName} numberOfLines={1}>{r.name}</Text>
+                              <Text style={styles.eventSub}>{r.budget > 0 ? (diff >= 0 ? `${formatPeso(diff)} under budget` : `${formatPeso(-diff)} over budget`) : 'No budget'}</Text>
+                            </View>
+                            <Text style={[styles.eventAmount, { color: redUnlessZero(r.spent, colors) }]}>{formatPeso(r.spent)}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                  <Text style={styles.groupFooter}>Events that repeat every year come back to Upcoming on their own.</Text>
+                </>
             )}
-            <Text style={styles.groupFooter}>Events that repeat every year come back to Upcoming on their own.</Text>
-          </>
+          </PullToRefreshScrollView>
         )}
-      </PullToRefreshScrollView>
+      />
 
       <BottomSheet
         visible={modalOpen}
@@ -741,7 +741,6 @@ export default function EventsScreen() {
         {editingId && <Button label="Delete event" variant="destructive" onPress={confirmDeleteEvent} />}
       </BottomSheet>
     </View>
-    </SwipeTabs>
   );
 }
 

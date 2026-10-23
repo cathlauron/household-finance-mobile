@@ -6,6 +6,8 @@ import { defaultModel } from '../src/defaultModel';
 // 2026-10-22 (Cath): dates next year showed no year ("Nov 11"), reading like this year.
 let mockModel: any;
 jest.mock('../src/DataContext', () => ({
+  // Pages beside the one showing stay quiet in the app; here they just draw.
+  QuietWhenHidden: ({ children }: any) => children,
   useData: () => ({ model: mockModel, getModel: () => mockModel, saveModel: async () => {}, isLinked: false, username: 'cath' }),
   withTimeout: (p: any) => p,
 }));

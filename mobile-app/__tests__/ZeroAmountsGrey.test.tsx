@@ -13,6 +13,8 @@ jest.mock('firebase/app', () => mockProxy());
 jest.mock('../src/firebase', () => ({ db: {}, auth: {} }));
 jest.mock('../src/authFirebase', () => ({ getCurrentFirebaseUser: () => null }));
 jest.mock('../src/DataContext', () => ({
+  // Pages beside the one showing stay quiet in the app; here they just draw.
+  QuietWhenHidden: ({ children }: any) => children,
   useData: () => ({ model: mockModel, getModel: () => mockModel, saveModel: async () => {}, isLinked: false, username: 'cath' }),
   withTimeout: (p: any) => p,
 }));
