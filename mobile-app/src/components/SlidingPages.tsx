@@ -184,6 +184,8 @@ export default function SlidingPages<T extends string>({
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
+    // Travel's page area reports its size on every frame while its height glides.
+    if (w === widthSV.value) return;
     widthSV.value = w;
     setWidth(w);
   };

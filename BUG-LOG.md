@@ -85,6 +85,9 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-21 | Delete pop-ups saved data from when they opened (could undo a partner's change) | 12 screens (performDelete...) | __tests__/DeleteConfirmStale.test.tsx |
 | H-19 | New phone sign-in: dropped connection asked for the recovery key | signInRestore.ts, screens/SignInScreen.tsx | tests/signInRestore.test.mjs, __tests__/SignInNewPhoneOffline.test.tsx |
 | - | Dates next year showed no year | dateUtils.ts dateText (+19 files) | tests/dateText.test.mjs, __tests__/DatesWithYear.test.tsx |
+| S-01 | Search drop-down, offline banner and the swipe-row hint moved even with the phone set to remove animations | screens/SearchScreen.tsx, components/OfflineBanner.tsx, components/RowInteractionPreview.tsx | tests/motion.test.mjs ("everything that moves respects Reduce Motion") |
+| S-02 | (caught while building, never shipped) a new row on a hidden sub-page would light up before you could see it | useArrival.ts, pageActive.ts | __tests__/SlidingPages.test.tsx ("a new row on a page you cannot see...") |
+| S-03 | (Claude's own process) the save gate let a failing screen check through: piping through tee hid the failure; caught before anything failing was saved | mobile-app/tools/check-all.mjs (npm run check:all) | proven 2026-10-23 with a deliberately failing check |
 
 ## Still open (not fixed yet)
 
