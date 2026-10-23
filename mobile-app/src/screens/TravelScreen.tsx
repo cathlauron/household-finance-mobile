@@ -906,7 +906,7 @@ export default function TravelScreen() {
                     </View>
                     {pageTodoDateOpen && (
                       <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-                        <DateField label="Date (optional)" value={pageTodoDate} onChange={setPageTodoDate} placeholder="Pick a date" clearable />
+                        <DateField mark="optional" label="Date" value={pageTodoDate} onChange={setPageTodoDate} placeholder="Pick a date" clearable />
                       </View>
                     )}
                   </View>
@@ -957,8 +957,8 @@ export default function TravelScreen() {
       >
         <FormGroup>
           <View style={{ padding: 12, gap: 8 }}>
-            <DateField label="Start" value={datesStart} onChange={(d) => { setDatesStart(d); setDatesError(''); }} placeholder="Pick a date" clearable testID="travel-dates-start" />
-            <DateField label="End" value={datesEnd} onChange={(d) => { setDatesEnd(d); setDatesError(''); }} placeholder="Pick a date" clearable testID="travel-dates-end" minimumDate={datesStart ? new Date(datesStart + 'T00:00:00') : undefined} />
+            <DateField mark="optional" label="Start" value={datesStart} onChange={(d) => { setDatesStart(d); setDatesError(''); }} placeholder="Pick a date" clearable testID="travel-dates-start" />
+            <DateField mark="optional" label="End" value={datesEnd} onChange={(d) => { setDatesEnd(d); setDatesError(''); }} placeholder="Pick a date" clearable testID="travel-dates-end" minimumDate={datesStart ? new Date(datesStart + 'T00:00:00') : undefined} />
           </View>
         </FormGroup>
         {!!datesError && <Text style={[styles.groupFooter, { color: colors.negative }]}>{datesError}</Text>}
@@ -975,10 +975,10 @@ export default function TravelScreen() {
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-            <InputRow label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus={!editingId} testID="travel-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+            <InputRow mark="required" label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus={!editingId} testID="travel-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
           </Guided>
           <Guided {...fieldErrors.props('dates')} onShow={() => { if (openRow !== 'dates') toggleRow('dates'); }}>
-          <PickerRow label="Dates" value={formDates} open={openRow === 'dates'} invalid={fieldErrors.field === 'dates'} onToggle={() => toggleRow('dates')} testID="travel-dates-row">
+          <PickerRow mark="optional" label="Dates" value={formDates} open={openRow === 'dates'} invalid={fieldErrors.field === 'dates'} onToggle={() => toggleRow('dates')} testID="travel-dates-row">
             <DateField label="Start" value={startDateInput} onChange={setStartDateInput} placeholder="Pick a date" clearable testID="travel-start-date-field" />
             <DateField label="End" value={endDateInput} onChange={setEndDateInput} placeholder="Pick a date" clearable testID="travel-end-date-field" />
           </PickerRow>
@@ -1084,10 +1084,10 @@ export default function TravelScreen() {
           ))}
           <PickerRow label="+ Add item" value="" open={openRow === 'item'} onToggle={() => toggleRow('item')} testID="travel-add-item-row">
             <Guided {...fieldErrors.props('item')} inset={false}>
-              <InlineField label="Item" value={itemTitleInput} onChangeText={setItemTitleInput} placeholder="e.g. Bus tickets, Hotel" />
+              <InlineField mark="required" label="Item" value={itemTitleInput} onChangeText={setItemTitleInput} placeholder="e.g. Bus tickets, Hotel" />
             </Guided>
-            <InlineAmount label="Cost (optional)" value={itemCostInput} onChange={setItemCostInput} />
-            <InlineField label="Note (optional)" value={itemNoteInput} onChangeText={setItemNoteInput} placeholder="e.g. Booked on Agoda, check-in 2 PM" />
+            <InlineAmount mark="optional" label="Cost" value={itemCostInput} onChange={setItemCostInput} />
+            <InlineField mark="optional" label="Note" value={itemNoteInput} onChangeText={setItemNoteInput} placeholder="e.g. Booked on Agoda, check-in 2 PM" />
             <TouchableOpacity style={[styles.addItemButton, { backgroundColor: colors.accentTint }]} onPress={handleAddChecklistItem} accessibilityRole="button" testID="travel-add-item">
               <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add to checklist</Text>
             </TouchableOpacity>

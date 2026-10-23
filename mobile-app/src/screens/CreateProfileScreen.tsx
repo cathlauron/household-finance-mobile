@@ -9,6 +9,7 @@ import { Text, TextInput } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { useTheme } from '../ThemeContext';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import CryptoJS from 'crypto-js';
@@ -241,7 +242,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
 
         <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
 
-        <Text style={styles.label}>Email address</Text>
+        <MarkedLabel text="Email address" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="mail-outline" size={18} color={colors.decor} />
@@ -275,7 +276,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
           </TouchableOpacity>
         )}
 
-        <Text style={styles.label}>Username</Text>
+        <MarkedLabel text="Username" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="person-outline" size={18} color={colors.decor} />
@@ -292,7 +293,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
           />
         </View>
 
-        <Text style={styles.label}>Password</Text>
+        <MarkedLabel text="Password" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="lock-closed-outline" size={18} color={colors.decor} />
@@ -306,7 +307,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
           />
         </View>
 
-        <Text style={styles.label}>Confirm password</Text>
+        <MarkedLabel text="Confirm password" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="lock-closed-outline" size={18} color={colors.decor} />

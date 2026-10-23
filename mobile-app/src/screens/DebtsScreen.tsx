@@ -625,45 +625,45 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
         {/* Smoothness 2026-10-23 (Cath): the fields fade when Bill / Debt / Loan changes. */}
         <FormSwapFade key="pay-form-body" channels={['kind']} swapKey={'debts'}>
           <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
-            <BigAmount label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+            <BigAmount mark="required" label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
 
           <FormGroup>
             <Guided {...fieldErrors.props('creditor')} focusRef={creditorRef}>
-              <InputRow label="Owed to" value={creditorInput} onChangeText={setCreditorInput} placeholder="e.g. BDO, Ate Fely" testID="debt-creditor-input" inputRef={creditorRef} invalid={fieldErrors.field === 'creditor'} />
+              <InputRow mark="required" label="Owed to" value={creditorInput} onChangeText={setCreditorInput} placeholder="e.g. BDO, Ate Fely" testID="debt-creditor-input" inputRef={creditorRef} invalid={fieldErrors.field === 'creditor'} />
             </Guided>
-            <PickerRow label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
+            <PickerRow mark="optional" label="Type" value={categoryInput || 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
               <Choices options={DEBT_TYPES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
               <View style={{ height: 10 }} />
               <OwnChoiceField options={DEBT_TYPES} value={categoryInput} onChange={setCategoryInput} />
             </PickerRow>
-            <AmountRow label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
-            <PickerRow label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+            <AmountRow mark="optional" label="Pay at least" value={minPaymentInput} onChange={setMinPaymentInput} />
+            <PickerRow mark="required" label="Repeats" value={repeatLabel(recurTypeInput)} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
               <Choices options={[...REPEAT_CHOICES, { id: 'custom' as RecurringType, label: 'Custom' }]} value={recurTypeInput} onChange={(v) => setRecurTypeInput(v as RecurringType)} />
             </PickerRow>
             <Guided {...fieldErrors.props('due')} onShow={() => { if (openRow !== 'due') toggleRow('due'); }}>
             {recurTypeInput === 'custom' ? (
-              <PickerRow label="Schedule" value={`${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+              <PickerRow mark="required" label="Schedule" value={`${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}`} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
                 <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="debt-custom-start" />
               </PickerRow>
             ) : (
-            <PickerRow label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, dueNowInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
+            <PickerRow mark="required" label="Due on" value={scheduleLabel(recurTypeInput, onetimeDateInput, dayInput, monthInput, dueNowInput)} open={openRow === 'due'} invalid={fieldErrors.field === 'due'} onToggle={() => toggleRow('due')}>
               <ScheduleChoices rt={recurTypeInput} date={onetimeDateInput} onDate={setOnetimeDateInput} day={dayInput} onDay={setDayInput} month={monthInput} onMonth={setMonthInput} firstDue={dueNowInput} onFirstDue={setDueNowInput} testID="debt-due-date-field" />
             </PickerRow>
             )}
             </Guided>
-            <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <PickerRow mark="optional" label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
               <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
             </PickerRow>
           </FormGroup>
 
           <FormGroup>
             <Guided {...fieldErrors.props('more')} onShow={() => { if (openRow !== 'more') toggleRow('more'); }}>
-            <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
+            <PickerRow mark="optional" label="More details" value={[priorityInput ? 'Priority' : '', interestRateInput ? 'Interest' : '', feesPortionInput !== '' ? 'Fees' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, interest, note'} open={openRow === 'more'} invalid={fieldErrors.field === 'more'} onToggle={() => toggleRow('more')}>
               <PriorityPick value={priorityInput} onChange={setPriorityInput} />
-              <InlineField label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
-              <InlineAmount label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
-              <InlineField label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />
+              <InlineField mark="optional" label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="e.g. 24" keyboardType="decimal-pad" />
+              <InlineAmount mark="optional" label="Fees in this amount (late fee or interest charged)" value={feesPortionInput} onChange={setFeesPortionInput} />
+              <InlineField mark="optional" label="Note" value={notesInput} onChangeText={setNotesInput} placeholder="Optional" multiline />
             </PickerRow>
             </Guided>
           </FormGroup>

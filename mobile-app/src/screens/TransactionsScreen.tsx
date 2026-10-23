@@ -39,6 +39,7 @@ import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
 import BottomSheet, { finishSheetHandoff } from '../components/BottomSheet';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { makeId } from '../utils';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
@@ -1073,6 +1074,8 @@ export default function TransactionsScreen({
         />
 
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+          {/* Cath, 2026-10-23: every field says if it's required (*) or optional. */}
+          <MarkedLabel text="Amount" mark="required" style={[styles.amountLabel, fieldErrors.field === 'amount' && { color: colors.error, fontWeight: '700' }]} />
           <AmountInput
             autoFocus={!editingId}
             centered
@@ -1091,7 +1094,7 @@ export default function TransactionsScreen({
 
         {directionInput === 'in' && (
           <>
-            <Text style={styles.inputLabel}>What is it?</Text>
+            <MarkedLabel text="What is it?" mark="optional" style={styles.inputLabel} />
             <View style={styles.chipRow}>
               {INCOME_KINDS.filter((k) => k.id !== 'salary' || !editingId).map((k) => {
                 const on = incomeKindInput === k.id;
@@ -1143,7 +1146,7 @@ export default function TransactionsScreen({
                 </Guided>
               ) : (
                 <Guided {...fieldErrors.props('salary')} inset={false} radius={12}>
-                  <Text style={[styles.inputLabel, fieldErrors.field === 'salary' && { color: colors.error, fontWeight: '700' }]}>Which salary?</Text>
+                  <MarkedLabel text="Which salary?" mark="required" style={[styles.inputLabel, fieldErrors.field === 'salary' && { color: colors.error, fontWeight: '700' }]} />
                   <View style={styles.chipRow}>
                     {(model.income || []).map((src) => {
                       const on = incomeSourceIdInput === src.id;
@@ -1177,7 +1180,8 @@ export default function TransactionsScreen({
         <View style={styles.formGroup}>
           <Guided {...fieldErrors.props('label')} focusRef={labelRef}>
           <View style={styles.formRow}>
-            <Text style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]}>Description</Text>
+            {/* Money in with a kind picked (Bonus...) is named after the kind if left empty. */}
+            <MarkedLabel text="Description" mark={directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? 'optional' : 'required'} style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]} />
             <TextInput
               ref={labelRef}
               testID="txn-label-input"
@@ -1190,7 +1194,7 @@ export default function TransactionsScreen({
           </View>
           </Guided>
           <View style={[styles.formRow, styles.formRowLine]}>
-            <Text style={styles.formLabel}>Category</Text>
+            <MarkedLabel text="Category" mark="optional" style={styles.formLabel} />
             <TextInput
               style={styles.formInput}
               placeholder="e.g. Groceries"
@@ -1200,10 +1204,10 @@ export default function TransactionsScreen({
             />
           </View>
           <View style={[styles.formRow, styles.formRowLine]}>
-            <Text style={styles.formLabel}>Note</Text>
+            <MarkedLabel text="Note" mark="optional" style={styles.formLabel} />
             <TextInput
               style={styles.formInput}
-              placeholder="Optional"
+              placeholder="e.g. split with Ana"
               placeholderTextColor={colors.inkFaint}
               value={notesInput}
               onChangeText={setNotesInput}
@@ -1219,6 +1223,7 @@ export default function TransactionsScreen({
           {/* Redesign: the account is required. Money out can't overdraw cash or debit. */}
           <Guided {...fieldErrors.props('account')} inset={false} radius={12}>
             <AccountPicker
+              mark="required"
               model={model}
               direction={directionInput}
               amount={amountInput}
@@ -1267,6 +1272,7 @@ export default function TransactionsScreen({
         <Guided {...fieldErrors.props('date')} inset={false} radius={12}>
           <DateField
             label="Date"
+            mark="required"
             value={dateInput}
             onChange={setDateInput}
             testID="txn-date-field"
@@ -1287,7 +1293,7 @@ export default function TransactionsScreen({
             {refundTrackingEnabled && (
               <Guided {...fieldErrors.props('refund')}>
                 <View style={[styles.formRow, styles.formRowLine]}>
-                  <Text style={[styles.formLabel, fieldErrors.field === 'refund' && { color: colors.error, fontWeight: '700' }]}>Amount back</Text>
+                  <MarkedLabel text="Amount back" mark="required" style={[styles.formLabel, fieldErrors.field === 'refund' && { color: colors.error, fontWeight: '700' }]} />
                   <AmountInput
                     autoFocus={!refundAmountInput}
                     style={styles.inlineAmount}
@@ -1323,7 +1329,7 @@ export default function TransactionsScreen({
         )}
         {moreOpen && !salaryEntry && (
           <>
-            <Text style={styles.inputLabel}>Belongs to</Text>
+            <MarkedLabel text="Belongs to" mark="optional" style={styles.inputLabel} />
             <TextInput
               style={styles.input}
               placeholder="e.g. Miguel, Ana"
@@ -1340,7 +1346,7 @@ export default function TransactionsScreen({
                 ))}
               </View>
             )}
-            <Text style={styles.inputLabel}>Tags</Text>
+            <MarkedLabel text="Tags" mark="optional" style={styles.inputLabel} />
             <TextInput
               style={styles.input}
               placeholder="e.g. vacation, tax-deductible"
@@ -1349,7 +1355,7 @@ export default function TransactionsScreen({
               onChangeText={setTagsInput}
             />
             <Text style={styles.formFooter}>Separate tags with commas.</Text>
-            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Receipt photo</Text>
+            <MarkedLabel text="Receipt photo" mark="optional" style={[styles.inputLabel, { marginTop: 14 }]} />
             {receiptPhoto ? (
               <View style={styles.receiptPreviewWrap}>
                 <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
@@ -1415,7 +1421,9 @@ function makeStyles(colors: any) {
     sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
     sheetBarBtn: { fontSize: 17, color: colors.gold },
     sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
-    bigAmountWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 16, marginBottom: 16, minHeight: 64 },
+    bigAmountWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 4, marginBottom: 16, minHeight: 64 },
+    // The small "Amount *" above the big number (same as Amount due on New bill).
+    amountLabel: { fontSize: 13, color: colors.inkDim, textAlign: 'center', marginTop: 12 },
     bigAmountInput: { fontSize: 40, fontWeight: '700', textAlign: 'center', flex: 0, minWidth: 120 },
     // Grey groups on the white sheet, matching the other fields (date, account).
     formGroup: { backgroundColor: colors.navy2, borderRadius: 12, overflow: 'hidden' },

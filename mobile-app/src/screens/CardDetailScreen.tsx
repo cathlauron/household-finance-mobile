@@ -20,6 +20,7 @@ import type { HouseholdModel, PaymentMethod } from '../types';
 import GradientFill from '../components/GradientFill';
 import { cardFaceColors, CardFaceFill } from '../components/CardFace';
 import AmountInput from '../components/AmountInput';
+import { MarkedLabel } from '../components/MarkedLabel';
 import BottomSheet from '../components/BottomSheet';
 import { TextInput } from '../components/AppText';
 import { showLeafTick } from '../components/LeafTick';
@@ -367,11 +368,11 @@ export default function CardDetailScreen() {
       >
         <View style={[styles.group, { marginBottom: 8 }]}>
           <View style={styles.inlineRow}>
-            <Text style={styles.rowTitle}>Credit limit</Text>
+            <MarkedLabel text="Credit limit" mark="required" style={styles.rowTitle} />
             <AmountInput style={styles.inlineAmount} value={dLimit} onChangeAmount={setDLimit} />
           </View>
           <View style={[styles.inlineRow, styles.line]}>
-            <Text style={styles.rowTitle}>Statement due day</Text>
+            <MarkedLabel text="Statement due day" mark="optional" style={styles.rowTitle} />
             <TextInput
               style={styles.dayInput}
               value={dDueDay}
@@ -382,7 +383,7 @@ export default function CardDetailScreen() {
             />
           </View>
           <View style={[styles.inlineRow, styles.line]}>
-            <Text style={styles.rowTitle}>Minimum payment</Text>
+            <MarkedLabel text="Minimum payment" mark="optional" style={styles.rowTitle} />
             <AmountInput style={styles.inlineAmount} value={dMin} onChangeAmount={setDMin} />
           </View>
         </View>

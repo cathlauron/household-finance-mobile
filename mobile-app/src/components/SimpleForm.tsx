@@ -54,7 +54,8 @@ export function PasswordRow({ label, value, onChangeText, placeholder, autoFocus
   const [hidden, setHidden] = useState(true);
   return (
     <View style={s.row}>
-      <Text style={[s.label, { width: 92 }]}>{label}</Text>
+      {/* A password box can never be left empty, so it always carries the red *. */}
+      <MarkedLabel text={label} mark="required" style={[s.label, { width: 100 }]} />
       <TextInput
         testID={testID}
         autoFocus={autoFocus}
@@ -82,7 +83,7 @@ export function PinRow({ label, value, onChangeText, autoFocus, testID }: { labe
   const [hidden, setHidden] = useState(true);
   return (
     <View style={s.row}>
-      <Text style={[s.label, { width: 110 }]}>{label}</Text>
+      <MarkedLabel text={label} mark="required" style={[s.label, { width: 122 }]} />
       <TextInput
         testID={testID}
         autoFocus={autoFocus}
@@ -122,12 +123,16 @@ const bar = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', flexShrink: 1 },
 });
 
+export { MarkedLabel } from './MarkedLabel';
+export type { FieldMark } from './MarkedLabel';
+import { MarkedLabel, FieldMark } from './MarkedLabel';
+
 // The one big number at the top of the form.
-export function BigAmount({ label, value, onChange, color, autoFocus, focusRef, invalid }: { label: string; value: number | ''; onChange: (v: number | '') => void; color: string; autoFocus?: boolean; focusRef?: React.Ref<{ focus: () => void }>; invalid?: boolean }) {
+export function BigAmount({ label, value, onChange, color, autoFocus, focusRef, invalid, mark }: { label: string; value: number | ''; onChange: (v: number | '') => void; color: string; autoFocus?: boolean; focusRef?: React.Ref<{ focus: () => void }>; invalid?: boolean; mark?: FieldMark }) {
   const { colors } = useTheme();
   return (
     <View style={{ alignItems: 'center', paddingTop: 4, paddingBottom: 16 }}>
-      <Text style={{ fontSize: 13, color: invalid ? colors.error : colors.inkDim, fontWeight: invalid ? '700' : undefined }}>{label}</Text>
+      <MarkedLabel text={label} mark={mark} style={{ fontSize: 13, color: invalid ? colors.error : colors.inkDim, fontWeight: invalid ? '700' : undefined }} />
       <AmountInput
         autoFocus={autoFocus}
         focusRef={focusRef}
@@ -156,12 +161,12 @@ export function FormGroup({ children, style }: { children: React.ReactNode; styl
   );
 }
 
-export function InputRow({ label, value, onChangeText, placeholder, autoFocus, keyboardType, testID, inputRef, invalid }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; autoFocus?: boolean; keyboardType?: KeyboardTypeOptions; testID?: string; inputRef?: React.Ref<any>; invalid?: boolean }) {
+export function InputRow({ label, value, onChangeText, placeholder, autoFocus, keyboardType, testID, inputRef, invalid, mark }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; autoFocus?: boolean; keyboardType?: KeyboardTypeOptions; testID?: string; inputRef?: React.Ref<any>; invalid?: boolean; mark?: FieldMark }) {
   const { colors } = useTheme();
   const s = rowStyles(colors);
   return (
     <View style={s.row}>
-      <Text style={[s.label, invalid && { color: colors.error, fontWeight: '700' }]}>{label}</Text>
+      <MarkedLabel text={label} mark={mark} style={[s.label, invalid && { color: colors.error, fontWeight: '700' }]} />
       <TextInput
         ref={inputRef}
         testID={testID}
@@ -177,12 +182,12 @@ export function InputRow({ label, value, onChangeText, placeholder, autoFocus, k
   );
 }
 
-export function AmountRow({ label, value, onChange, placeholder }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string }) {
+export function AmountRow({ label, value, onChange, placeholder, mark }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string; mark?: FieldMark }) {
   const { colors } = useTheme();
   const s = rowStyles(colors);
   return (
     <View style={s.row}>
-      <Text style={s.label}>{label}</Text>
+      <MarkedLabel text={label} mark={mark} style={s.label} />
       <AmountInput
         value={value}
         onChangeAmount={onChange}
@@ -204,10 +209,12 @@ export function PickerRow({
   children,
   testID,
   invalid,
+  mark,
 }: {
   label: string;
   value: string;
   invalid?: boolean;
+  mark?: FieldMark;
   dot?: string | null;
   open: boolean;
   onToggle: () => void;
@@ -219,7 +226,7 @@ export function PickerRow({
   return (
     <View>
       <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); animateNextLayout(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
-        <Text style={[s.label, { flex: 1 }, invalid && { color: colors.error, fontWeight: '700' }]}>{label}</Text>
+        <MarkedLabel text={label} mark={mark} style={[s.label, { flex: 1 }, invalid && { color: colors.error, fontWeight: '700' }]} />
         {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
         <Text style={s.value} numberOfLines={1}>{value}</Text>
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={colors.inkFaint} style={{ marginLeft: 6 }} />
@@ -468,11 +475,11 @@ export function DueNowChoice({ rt, day, month, value, onChange }: { rt: Recurrin
 }
 
 // A small grey label and a field, used inside an open row (More details).
-export function InlineField({ label, value, onChangeText, placeholder, keyboardType, multiline }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; keyboardType?: KeyboardTypeOptions; multiline?: boolean }) {
+export function InlineField({ label, value, onChangeText, placeholder, keyboardType, multiline, mark }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; keyboardType?: KeyboardTypeOptions; multiline?: boolean; mark?: FieldMark }) {
   const { colors } = useTheme();
   return (
     <View style={{ marginBottom: 10 }}>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }}>{label}</Text>
+      <MarkedLabel text={label} mark={mark} style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }} />
       <TextInput
         style={{ backgroundColor: colors.navy2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.ink }}
         value={value}
@@ -486,11 +493,11 @@ export function InlineField({ label, value, onChangeText, placeholder, keyboardT
   );
 }
 
-export function InlineAmount({ label, value, onChange, placeholder }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string }) {
+export function InlineAmount({ label, value, onChange, placeholder, mark }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string; mark?: FieldMark }) {
   const { colors } = useTheme();
   return (
     <View style={{ marginBottom: 10 }}>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }}>{label}</Text>
+      <MarkedLabel text={label} mark={mark} style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }} />
       <AmountInput value={value} onChangeAmount={onChange} placeholder={placeholder ?? '0.00'} style={{ backgroundColor: colors.navy2, marginBottom: 0 }} />
     </View>
   );

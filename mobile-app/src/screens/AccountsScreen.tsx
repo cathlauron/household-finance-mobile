@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import { takeAccountHandoff, cancelAccountHandoff } from '../accountHandoff';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Platform, UIManager } from 'react-native';
@@ -472,7 +473,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
         }
       >
         <Guided {...fieldErrors.props('name')} focusRef={nameRef} inset={false} radius={12}>
-        <Text style={[styles.inputLabel, fieldErrors.field === 'name' && { color: colors.error, fontWeight: '700' }]}>Account name</Text>
+        <MarkedLabel text="Account name" mark="required" style={[styles.inputLabel, fieldErrors.field === 'name' && { color: colors.error, fontWeight: '700' }]} />
         <TextInput
           ref={nameRef}
           autoFocus={!editingId}
@@ -484,7 +485,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
         />
         </Guided>
 
-        <Text style={styles.inputLabel}>Balance</Text>
+        <MarkedLabel text="Balance" mark="optional" style={styles.inputLabel} />
           <AmountInput
             style={styles.amountInput}
             value={amountInput}
@@ -494,7 +495,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
 
         {(activeGroup === 'debit' || activeGroup === 'credit') && (
           <>
-            <Text style={styles.inputLabel}>Last 4 digits (optional)</Text>
+            <MarkedLabel text="Last 4 digits" mark="optional" style={styles.inputLabel} />
             <TextInput
               style={[styles.input, { letterSpacing: 3 }]}
               placeholder="e.g. 4821"
@@ -509,7 +510,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
           </>
         )}
 
-        <Text style={styles.inputLabel}>Card color</Text>
+        <MarkedLabel text="Card color" mark="optional" style={styles.inputLabel} />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

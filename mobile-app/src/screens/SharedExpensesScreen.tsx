@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import GradientFill from '../components/GradientFill';
@@ -390,13 +391,13 @@ export default function SharedExpensesScreen() {
                   </View>
                   {settleKey === `${b.from}|${b.to}` && (
                     <View style={styles.settleBox}>
-                      <Text style={styles.settleLabel}>Amount {name(b.from) === 'You' ? 'you paid' : `${name(b.from)} paid`}</Text>
+                      <MarkedLabel text={`Amount ${name(b.from) === 'You' ? 'you paid' : `${name(b.from)} paid`}`} mark="required" style={styles.settleLabel} />
                       <AmountInput autoFocus value={settleAmount} onChangeAmount={(v) => { setSettleAmount(v); setSettleError(''); }} style={{ backgroundColor: colors.navy2, marginBottom: 10 }} />
-                      <Text style={styles.settleLabel}>Note (optional)</Text>
+                      <MarkedLabel text="Note" mark="optional" style={styles.settleLabel} />
                       <TextInput style={[styles.input, { flex: 0, marginBottom: 10 }]} placeholder="e.g. Paid via GCash" placeholderTextColor={colors.inkFaint} value={settleNote} onChangeText={setSettleNote} />
                       {involvesMe && (
                         <>
-                          <Text style={styles.settleLabel}>{b.from === myId ? 'Paid from (optional)' : 'Received into (optional)'}</Text>
+                          <MarkedLabel text={b.from === myId ? 'Paid from' : 'Received into'} mark="optional" style={styles.settleLabel} />
                           <AccountChoices model={model} value={settlePm} onChange={setSettlePm} optional />
                           <Text style={[styles.sub, { marginTop: 6, marginBottom: 10 }]}>Pick an account to also log it as money {b.from === myId ? 'out' : 'in'}.</Text>
                         </>
@@ -546,16 +547,16 @@ export default function SharedExpensesScreen() {
         grouped
         header={<SheetBar title={editingId ? 'Edit shared expense' : 'New shared expense'} onCancel={() => setSheetOpen(false)} onDone={saveExpense} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
-        <BigAmount label="Total" value={amount} onChange={(v) => { setAmount(v); setError(''); }} color={colors.negative} autoFocus={!editingId} />
+        <BigAmount mark="required" label="Total" value={amount} onChange={(v) => { setAmount(v); setError(''); }} color={colors.negative} autoFocus={!editingId} />
         <FormGroup>
-          <InputRow label="For" value={label} onChangeText={(t) => { setLabel(t); setError(''); }} placeholder="e.g. Pizza night" testID="shared-label-input" />
-          <PickerRow label="Paid by" value={paidBy ? name(paidBy) : 'Choose'} open={openRow === 'paid'} onToggle={() => toggleRow('paid')}>
+          <InputRow mark="required" label="For" value={label} onChangeText={(t) => { setLabel(t); setError(''); }} placeholder="e.g. Pizza night" testID="shared-label-input" />
+          <PickerRow mark="required" label="Paid by" value={paidBy ? name(paidBy) : 'Choose'} open={openRow === 'paid'} onToggle={() => toggleRow('paid')}>
             <Choices options={members.map((p) => ({ id: p.id, label: p.id === myId ? 'You' : p.name }))} value={paidBy} onChange={setPaidBy} />
           </PickerRow>
-          <PickerRow label="Date" value={shortDate(date)} open={openRow === 'date'} onToggle={() => toggleRow('date')}>
+          <PickerRow mark="required" label="Date" value={shortDate(date)} open={openRow === 'date'} onToggle={() => toggleRow('date')}>
             <DateField value={date} onChange={setDate} />
           </PickerRow>
-          <PickerRow label="Split" value={splitText} open={openRow === 'split'} onToggle={() => toggleRow('split')}>
+          <PickerRow mark="required" label="Split" value={splitText} open={openRow === 'split'} onToggle={() => toggleRow('split')}>
             <Choices options={[{ id: 'equal', label: 'Equally' }, { id: 'custom', label: 'Custom amounts' }]} value={mode} onChange={(m) => setMode(m as 'equal' | 'custom')} />
             <View style={{ height: 12 }} />
             {mode === 'equal' ? (

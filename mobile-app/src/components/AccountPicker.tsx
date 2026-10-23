@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
+import { MarkedLabel } from './MarkedLabel';
 import { useTheme } from '../ThemeContext';
 import { accountCurrentBalance, formatPeso, SpendingGroup } from '../balanceProjection';
 import type { HouseholdModel, PaymentMethod } from '../types';
@@ -66,11 +67,13 @@ type Props = {
   // Version 2.1 (Cath): money being MOVED (into a savings pot, say) can't come from a
   // credit card, since a card's limit only pays for things. Hides credit cards.
   noCredit?: boolean;
+  // Cath, 2026-10-23: required (*) or optional, like every form field.
+  mark?: 'required' | 'optional';
 };
 
 export default React.memo(AccountPicker);
 
-function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit }: Props) {
+function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit, mark }: Props) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   // Speed sweep: each account's balance goes through your whole history, so it's worked
@@ -85,7 +88,7 @@ function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId
 
   return (
     <View>
-      <Text style={styles.label}>{label ?? (spending ? 'Paid from' : 'Add to')}</Text>
+      <MarkedLabel text={label ?? (spending ? 'Paid from' : 'Add to')} mark={mark} style={styles.label} />
       {rows.length === 0 ? (
         <Text style={styles.empty}>
           {noCredit ? 'Add a cash or bank account first (Home › Wallet, or Accounts), then come back.' : 'Add an account first (Home › Wallet, or Accounts), then come back.'}

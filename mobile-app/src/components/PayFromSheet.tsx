@@ -274,7 +274,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             </TouchableOpacity>
           </View>
         )}
-        <AccountPicker model={model} direction={direction} amount={effective} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
+        <AccountPicker mark="required" model={model} direction={direction} amount={effective} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
         </>
         )}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}

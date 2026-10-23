@@ -12,6 +12,7 @@ import Avatar from '../components/Avatar';
 import { Text, TextInput } from '../components/AppText';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { useTheme } from '../ThemeContext';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
@@ -864,7 +865,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           </View>
         </>
       )}
-      <Text style={ms.label}>Email address</Text>
+      <MarkedLabel text="Email address" mark="required" style={ms.label} />
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
           <Ionicons name="mail-outline" size={18} color={colors.decor} />
@@ -885,7 +886,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
 
       {!accountLocked && (
         <>
-      <Text style={ms.label}>Username</Text>
+      <MarkedLabel text="Username" mark="required" style={ms.label} />
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
           <Ionicons name="person-outline" size={18} color={colors.inkFaint} />
@@ -905,7 +906,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
         </>
       )}
 
-      <Text style={ms.label}>Password</Text>
+      <MarkedLabel text="Password" mark="required" style={ms.label} />
       <View style={ms.fieldWrap}>
         <View style={ms.leftIcon} pointerEvents="none">
           <Ionicons name="lock-closed-outline" size={18} color={colors.inkFaint} />

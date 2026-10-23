@@ -850,6 +850,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           focusRef={targetRef}
           invalid={fieldErrors.field === 'target'}
           label="Target"
+          mark="optional"
           value={targetAmountInput === '' ? '' : parseFloat(targetAmountInput)}
           onChange={(v) => setTargetAmountInput(v === '' ? '' : String(v))}
           color={colors.saving}
@@ -858,14 +859,14 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Emergency fund" autoFocus={!editingId} testID="savings-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+            <InputRow mark="required" label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Emergency fund" autoFocus={!editingId} testID="savings-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
           </Guided>
           <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
-          <PickerRow label="Target date" value={targetDateInput ? new Date(targetDateInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Optional'} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="savings-target-date-row">
+          <PickerRow mark="optional" label="Target date" value={targetDateInput ? new Date(targetDateInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Choose'} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="savings-target-date-row">
             <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="savings-target-date-field" />
           </PickerRow>
           </Guided>
-          <PickerRow label="Kept in" value={accountName(model, keptInInput) ?? 'Choose'} open={openRow === 'kept'} onToggle={() => toggleRow('kept')}>
+          <PickerRow mark="optional" label="Kept in" value={accountName(model, keptInInput) ?? 'Choose'} open={openRow === 'kept'} onToggle={() => toggleRow('kept')}>
             <AccountChoices model={model} value={keptInInput} onChange={setKeptInInput} optional noCredit />
           </PickerRow>
         </FormGroup>
@@ -873,7 +874,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
         <FormGroup>
           <SwitchRow label="Add every payday" value={autoOnInput} onChange={setAutoOnInput} />
           <Guided {...fieldErrors.props('auto')}>
-            {autoOnInput && <AmountRow label="Each payday" value={autoAmtInput} onChange={setAutoAmtInput} />}
+            {autoOnInput && <AmountRow mark="required" label="Each payday" value={autoAmtInput} onChange={setAutoAmtInput} />}
           </Guided>
         </FormGroup>
         <Footnote>You can add or move money any time from the pot's page.</Footnote>

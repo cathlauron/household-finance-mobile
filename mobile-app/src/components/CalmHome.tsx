@@ -307,7 +307,7 @@ function EstimateSheet({
           About how much did you spend from {range} that isn't logged yet? It's added as one "Other" line, so you don't have to remember every coffee.
         </Text>
         <AmountInput autoFocus value={amount} onChangeAmount={setAmount} placeholder="0.00" />
-        <AccountPicker model={model} direction="out" amount={amount} value={pm} onChange={setPm} label="Mostly paid from" />
+        <AccountPicker mark="required" model={model} direction="out" amount={amount} value={pm} onChange={setPm} label="Mostly paid from" />
         <TouchableOpacity onPress={add} disabled={saving} style={[s.primary, { backgroundColor: colors.buttonFill, opacity: saving ? 0.6 : 1 }]} accessibilityRole="button" testID="estimate-add">
           <Text style={[s.primaryText, { color: colors.onButton }]}>Add estimate</Text>
         </TouchableOpacity>

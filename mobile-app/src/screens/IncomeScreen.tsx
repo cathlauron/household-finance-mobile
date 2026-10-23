@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import { takeSalaryHandoff, cancelSalaryHandoff } from '../salaryHandoff';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
@@ -767,17 +768,18 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
           <>
             <BigAmount
               label={`What arrived from ${(model.income || []).find((x) => x.id === logSheet.sourceId)?.sourceName || 'this source'}`}
+              mark="required"
               value={logSheet.amount}
               onChange={(v) => setLogSheet((l) => (l ? { ...l, amount: v } : l))}
               color={colors.positive}
             />
             <FormGroup>
               <View style={styles.logDateRow}>
-                <Text style={styles.logDateLabel}>Date</Text>
+                <MarkedLabel text="Date" mark="required" style={styles.logDateLabel} />
                 <DateField value={logSheet.date} onChange={(d: string) => setLogSheet((l) => (l ? { ...l, date: d } : l))} style={{ flex: 1, marginBottom: 0 }} />
               </View>
             </FormGroup>
-            <Text style={styles.logSection}>WENT INTO</Text>
+            <MarkedLabel text="WENT INTO" mark="required" style={styles.logSection} />
             <AccountChoices model={model} value={logSheet.pm} onChange={(pm) => setLogSheet((l) => (l ? { ...l, pm } : l))} />
             <ErrorNote text={logError} />
             <View style={{ height: 16 }} />
@@ -792,27 +794,27 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
         grouped
         header={<SheetBar title={editingId ? 'Edit income' : 'New income'} onCancel={closeModal} onDone={handleSave} doneLabel="Save" busy={saving} />}
       >
-        <BigAmount label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
+        <BigAmount mark="optional" label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
 
         <FormGroup>
-          <InputRow label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />
-          <PickerRow label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
+          <InputRow mark="optional" label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />
+          <PickerRow mark="optional" label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
             <Choices options={CATEGORY_SUGGESTIONS.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
             <OwnChoiceField options={CATEGORY_SUGGESTIONS} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
-          <PickerRow label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
+          <PickerRow mark="optional" label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
             {model.people.length > 0 && (
               <Choices options={model.people.map((p) => ({ id: p.name, label: p.name }))} value={personInput} onChange={setPersonInput} />
             )}
             <View style={{ height: 10 }} />
             <InlineField label="Or type a name" value={model.people.some((p) => p.name === personInput) ? '' : personInput} onChangeText={setPersonInput} placeholder="e.g. Miguel" />
           </PickerRow>
-          <PickerRow label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
+          <PickerRow mark="required" label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
             <Choices options={FREQUENCIES.map((f) => ({ id: f, label: PAY_LABEL[f] }))} value={frequencyInput} onChange={(f) => setFrequencyInput(f as Frequency)} />
           </PickerRow>
           <Guided {...fieldErrors.props('payday')} onShow={() => { if (openRow !== 'payday') toggleRow('payday'); }}>
-          <PickerRow label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} invalid={fieldErrors.field === 'payday'} onToggle={() => toggleRow('payday')}>
+          <PickerRow mark="required" label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} invalid={fieldErrors.field === 'payday'} onToggle={() => toggleRow('payday')}>
             {frequencyInput === 'monthly' && <DayStrip value={parseInt(monthlyDayInput, 10) || null} onChange={(d) => setMonthlyDayInput(String(d))} />}
             {frequencyInput === 'semimonthly' && (
               <>
@@ -830,7 +832,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
           </PickerRow>
           </Guided>
           <Guided {...fieldErrors.props('account')} onShow={() => { if (openRow !== 'account') toggleRow('account'); }}>
-          <PickerRow label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} invalid={fieldErrors.field === 'account'} onToggle={() => toggleRow('account')}>
+          <PickerRow mark="required" label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} invalid={fieldErrors.field === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={depositInput} onChange={setDepositInput} />
           </PickerRow>
           </Guided>

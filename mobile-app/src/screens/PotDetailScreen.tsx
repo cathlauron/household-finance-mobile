@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { toneUnlessZero } from '../moneyColor';
 import { alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
@@ -333,15 +334,18 @@ export default function PotDetailScreen() {
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
           {sheet !== 'keptIn' && (
             <>
-              <Text style={styles.meta}>
-                {sheet === 'auto' ? 'Amount to add on each payday' : sheet === 'out' ? `Up to ${formatPeso(saved)}` : 'Amount'}
-              </Text>
+              <MarkedLabel
+                text={sheet === 'auto' ? 'Amount to add on each payday' : sheet === 'out' ? `Up to ${formatPeso(saved)}` : 'Amount'}
+                mark="required"
+                style={styles.meta}
+              />
               <AmountInput autoFocus value={amount} onChangeAmount={setAmount} placeholder="0.00" />
             </>
           )}
           {(sheet === 'add' || sheet === 'out' || sheet === 'keptIn') && (
             <>
               <AccountPicker
+                mark={sheet === 'keptIn' ? 'optional' : 'required'}
                 model={model}
                 direction={sheet === 'add' ? 'out' : 'in'}
                 amount={sheet === 'keptIn' ? '' : amount}

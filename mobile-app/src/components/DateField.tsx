@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { animateNextLayout } from '../animateLayout';
+import { MarkedLabel } from './MarkedLabel';
 import { View, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
@@ -12,6 +13,8 @@ export type DateFieldProps = {
   value: string; // 'YYYY-MM-DD' or ''
   onChange: (dateStr: string) => void;
   label?: string;
+  // Cath, 2026-10-23: a red * (must be filled in) or a grey "(optional)" after the label.
+  mark?: 'required' | 'optional';
   placeholder?: string;
   testID?: string;
   style?: StyleProp<ViewStyle>;
@@ -49,6 +52,7 @@ export default function DateField({
   value,
   onChange,
   label,
+  mark,
   placeholder = 'Select date',
   testID,
   style,
@@ -136,7 +140,7 @@ export default function DateField({
 
   return (
     <View style={[styles.container, style]}>
-      {!!label && <Text style={styles.inputLabel}>{label}</Text>}
+      {!!label && <MarkedLabel text={label} mark={mark} style={styles.inputLabel} />}
 
       <TouchableOpacity
         testID={testID}

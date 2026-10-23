@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '../components/AppText';
 import AmountInput from '../components/AmountInput';
 import DateField from '../components/DateField';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, accountCurrentBalance } from '../balanceProjection';
@@ -126,7 +127,7 @@ export default function TransferScreen() {
 
   const Picker = ({ label, value, onPick, exclude, list }: { label: string; value?: string; onPick: (k: string) => void; exclude?: string; list: Acct[] }) => (
     <View style={styles.pickWrap}>
-      <Text style={styles.pickLabel}>{label}</Text>
+      <MarkedLabel text={label} mark="required" style={styles.pickLabel} />
       <View style={styles.pickChips}>
         {list.filter((a) => a.key !== exclude).map((a) => (
           <TouchableOpacity key={a.key} style={[styles.pickChip, cardChipColors(a.color, isDark, value === a.key)]} onPress={() => onPick(a.key)} accessibilityRole="button" accessibilityState={{ selected: value === a.key }}>
@@ -162,6 +163,7 @@ export default function TransferScreen() {
           </Text>
         ) : (
           <>
+            <MarkedLabel text="Amount" mark="required" style={styles.amountLabel} />
             <AmountInput style={styles.bigWrap} inputStyle={styles.bigInput} value={amount} onChangeAmount={setAmount} />
             <View style={styles.group}>
               <GradientFill match={styles.group} />
@@ -172,16 +174,16 @@ export default function TransferScreen() {
             <View style={[styles.group, { marginTop: 20 }]}>
               <GradientFill match={[styles.group, { marginTop: 20 }]} />
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Note</Text>
-                <TextInput style={styles.rowInput} value={note} onChangeText={setNote} placeholder="Optional" placeholderTextColor={colors.inkFaint} />
+                <MarkedLabel text="Note" mark="optional" style={styles.rowLabel} />
+                <TextInput style={styles.rowInput} value={note} onChangeText={setNote} placeholder="" placeholderTextColor={colors.inkFaint} />
               </View>
               <View style={[styles.row, styles.lineTop]}>
-                <Text style={styles.rowLabel}>ATM or transfer fee</Text>
+                <MarkedLabel text="ATM or transfer fee" mark="optional" style={styles.rowLabel} />
                 <AmountInput style={styles.inlineAmount} value={fee} onChangeAmount={setFee} />
               </View>
             </View>
             <View style={{ marginTop: 20 }}>
-              <DateField label="Date" value={date} onChange={setDate} />
+              <DateField label="Date" mark="required" value={date} onChange={setDate} />
             </View>
             <Text style={styles.footer}>
               {to?.group === 'credit'
@@ -203,10 +205,11 @@ function makeStyles(colors: ThemeColors) {
     barBtn: { fontSize: 17, color: colors.gold },
     barTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
     content: { paddingHorizontal: 16, paddingBottom: 40 },
-    bigWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginVertical: 20, minHeight: 64 },
+    bigWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 4, marginBottom: 20, minHeight: 64 },
     bigInput: { fontSize: 40, fontWeight: '700', textAlign: 'center', flex: 0, minWidth: 120 },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
     pickWrap: { padding: 16 },
+    amountLabel: { fontSize: 13, color: colors.inkDim, textAlign: 'center', marginTop: 12 },
     pickLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 8 },
     pickChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     pickChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, maxWidth: '100%' },

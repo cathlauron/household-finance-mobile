@@ -666,23 +666,23 @@ export default function EventsScreen() {
         header={<SheetBar title={editingId ? 'Edit event' : 'New event'} onCancel={closeModal} onDone={handleSaveEvent} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
         {itemsInput.length === 0 ? (
-          <BigAmount label="What it will cost" value={budgetInput} onChange={setBudgetInput} color={colors.planned} />
+          <BigAmount mark="optional" label="What it will cost" value={budgetInput} onChange={setBudgetInput} color={colors.planned} />
         ) : (
           <BigTotal label="What it will cost" value={formatPeso(itemsTotal)} sub="Adds up from the items below" color={colors.planned} />
         )}
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-            <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Mama's birthday" autoFocus={!editingId} testID="event-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+            <InputRow mark="required" label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Mama's birthday" autoFocus={!editingId} testID="event-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
           </Guided>
-          <PickerRow label="Type" value={EVENT_TYPES.find((t) => t.id === typeInput)?.label ?? 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
+          <PickerRow mark="optional" label="Type" value={EVENT_TYPES.find((t) => t.id === typeInput)?.label ?? 'Choose'} open={openRow === 'type'} onToggle={() => toggleRow('type')}>
             <Choices<EventItem['type']> options={EVENT_TYPES} value={typeInput} onChange={(v) => setTypeInput(v)} />
           </PickerRow>
-          <PickerRow label="Repeats" value={recurrenceInput === 'annual' ? 'Every year' : 'Once'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+          <PickerRow mark="required" label="Repeats" value={recurrenceInput === 'annual' ? 'Every year' : 'Once'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
             <Choices<EventItem['recurrence']> options={[{ id: 'annual', label: 'Every year' }, { id: 'onetime', label: 'Once' }]} value={recurrenceInput} onChange={(v) => setRecurrenceInput(v)} />
           </PickerRow>
           <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
-          <PickerRow label="Date" value={eventDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="event-date-row">
+          <PickerRow mark="required" label="Date" value={eventDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="event-date-row">
             {recurrenceInput === 'annual' ? (
               <>
                 <View style={{ marginBottom: 10 }}>

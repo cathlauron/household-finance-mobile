@@ -13,6 +13,7 @@ import { computeEnvelopes, monthKey, type EnvelopeRow } from '../envelopes';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
 import AmountInput from '../components/AmountInput';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { makeId } from '../utils';
 import type { ThemeColors } from '../theme';
 import type { CategoryBudget, HouseholdModel } from '../types';
@@ -278,7 +279,7 @@ function EnvelopeSheet({
       <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
         {sheet?.kind === 'assign' ? (
           <>
-            <Text style={styles.label}>Put it into</Text>
+            <MarkedLabel text="Put it into" mark="required" style={styles.label} />
             <View style={styles.chips}>
               {rows.map((r) => {
                 const on = r.envelope.id === targetId;
@@ -295,11 +296,11 @@ function EnvelopeSheet({
                 );
               })}
             </View>
-            <Text style={styles.label}>How much to add</Text>
+            <MarkedLabel text="How much to add" mark="required" style={styles.label} />
           </>
         ) : (
           <>
-            <Text style={styles.label}>Category</Text>
+            <MarkedLabel text="Category" mark="required" style={styles.label} />
             <TextInput
               autoFocus={sheet?.kind === 'add'}
               style={styles.input}
@@ -322,7 +323,7 @@ function EnvelopeSheet({
                 ))}
               </View>
             )}
-            <Text style={styles.label}>Each month</Text>
+            <MarkedLabel text="Each month" mark="required" style={styles.label} />
           </>
         )}
         <AmountInput autoFocus={sheet?.kind === 'assign'} style={styles.amountInput} value={amount} onChangeAmount={(v) => { setAmount(v); setError(''); }} placeholder="0" />

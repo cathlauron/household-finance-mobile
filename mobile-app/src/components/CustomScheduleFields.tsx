@@ -32,8 +32,8 @@ export default function CustomScheduleFields({
     <View>
       <Choices options={CUSTOM_FREQS.map((f) => ({ id: f, label: customFreqLabel(f) }))} value={freq} onChange={onFreq} />
       <View style={{ height: 10 }} />
-      <DateField label="Starts on" value={start} onChange={onStart} placeholder="Pick a date" testID={testID} />
-      <InlineField label="How many times (optional)" value={count} onChangeText={onCount} placeholder="e.g. 12" keyboardType="number-pad" />
+      <DateField mark="required" label="Starts on" value={start} onChange={onStart} placeholder="Pick a date" testID={testID} />
+      <InlineField mark="optional" label="How many times" value={count} onChangeText={onCount} placeholder="e.g. 12" keyboardType="number-pad" />
     </View>
   );
 }

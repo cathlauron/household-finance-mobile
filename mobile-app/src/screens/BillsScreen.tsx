@@ -18,6 +18,7 @@ import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
 import KindSwitch from '../components/KindSwitch';
 import FormSwapFade from '../components/FormSwapFade';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
 import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -688,18 +689,18 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         {/* Smoothness 2026-10-23 (Cath): the fields fade when Bill / Debt / Loan changes. */}
         <FormSwapFade key="pay-form-body" channels={['kind']} swapKey={'bills'}>
           <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
-            <BigAmount label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+            <BigAmount mark="required" label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
 
           <FormGroup>
             <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-              <InputRow label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+              <InputRow mark="required" label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
             </Guided>
-            <PickerRow label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
+            <PickerRow mark="optional" label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
               <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
               <OwnChoiceField style={styles.inlineField} options={BILL_CATEGORIES} value={categoryInput} onChange={setCategoryInput} />
             </PickerRow>
-            <PickerRow label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : recurTypeInput === 'custom' ? 'Custom' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
+            <PickerRow mark="required" label="Repeats" value={recurTypeInput === 'onetime' ? 'Once' : recurTypeInput === 'monthly' ? 'Every month' : recurTypeInput === 'custom' ? 'Custom' : 'Every year'} open={openRow === 'repeat'} onToggle={() => toggleRow('repeat')}>
               <Choices
                 options={[{ id: 'onetime', label: 'Once' }, { id: 'monthly', label: 'Every month' }, { id: 'annual', label: 'Every year' }, { id: 'custom', label: 'Custom' }]}
                 value={recurTypeInput as any}
@@ -707,7 +708,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
               />
             </PickerRow>
             <Guided {...fieldErrors.props('due')} onShow={() => setOpenRow('due')}>
-            <PickerRow label={recurTypeInput === 'custom' ? 'Schedule' : 'Due on'} value={recurTypeInput === 'custom' ? `${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}` : dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
+            <PickerRow mark="required" label={recurTypeInput === 'custom' ? 'Schedule' : 'Due on'} value={recurTypeInput === 'custom' ? `${customFreqLabel(customFreqInput)}${customStartDateInput ? ` from ${customStartDateInput}` : ''}` : dueLabel} open={openRow === 'due'} onToggle={() => toggleRow('due')} invalid={fieldErrors.field === 'due'}>
               {recurTypeInput === 'custom' ? (
                 <CustomScheduleFields freq={customFreqInput} onFreq={setCustomFreqInput} start={customStartDateInput} onStart={setCustomStartDateInput} count={customOccurrenceInput} onCount={setCustomOccurrenceInput} testID="bill-custom-start" />
               ) : recurTypeInput === 'onetime' ? (
@@ -728,7 +729,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
               )}
             </PickerRow>
             </Guided>
-            <PickerRow label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
+            <PickerRow mark="optional" label="Paid from" value={accountName(model, paymentMethodInput) ?? 'Choose'} dot={paymentMethodInput ? paymentMethodColor(model, paymentMethodInput) : null} open={openRow === 'account'} onToggle={() => toggleRow('account')}>
               <AccountChoices model={model} value={paymentMethodInput} onChange={setPaymentMethodInput} optional />
             </PickerRow>
           </FormGroup>
@@ -742,14 +743,14 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                 Tick it for things you can cancel anytime, like Netflix, Spotify, YouTube Premium, iCloud or a gym membership. Leave it off for rent, Meralco, water or internet.
               </Text>
             </View>
-            <PickerRow label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
-              <Text style={styles.inlineLabel}>Priority</Text>
+            <PickerRow mark="optional" label="More details" value={[priorityInput ? 'Priority' : '', notesInput ? 'Note' : ''].filter(Boolean).join(', ') || 'Priority, note'} open={openRow === 'more'} onToggle={() => toggleRow('more')}>
+              <MarkedLabel text="Priority" mark="optional" style={styles.inlineLabel} />
               <Choices
                 options={PRIORITIES.map((pr) => ({ id: pr, label: pr.charAt(0).toUpperCase() + pr.slice(1) }))}
                 value={priorityInput as any}
                 onChange={(pr) => setPriorityInput(priorityInput === pr ? '' : pr)}
               />
-              <Text style={[styles.inlineLabel, { marginTop: 12 }]}>Note</Text>
+              <MarkedLabel text="Note" mark="optional" style={[styles.inlineLabel, { marginTop: 12 }]} />
               <TextInput style={styles.inlineField} placeholder="Optional" placeholderTextColor={colors.inkFaint} value={notesInput} onChangeText={setNotesInput} multiline />
             </PickerRow>
           </FormGroup>

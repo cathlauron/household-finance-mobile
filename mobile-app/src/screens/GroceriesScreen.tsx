@@ -475,10 +475,10 @@ export default function GroceriesScreen() {
       >
         {sheet?.kind === 'item' && (
           <>
-            <BigAmount label="Planned price" value={plannedIn} onChange={setPlannedIn} color={colors.planned} />
+            <BigAmount mark="optional" label="Planned price" value={plannedIn} onChange={setPlannedIn} color={colors.planned} />
             <FormGroup>
-              <InputRow label="Item" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Rice, 5 kg" autoFocus={!sheet.id} testID="groceries-name-input" />
-              {!!sheet.id && <AmountRow label="What you paid" value={actualIn} onChange={setActualIn} placeholder="If different" />}
+              <InputRow mark="required" label="Item" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Rice, 5 kg" autoFocus={!sheet.id} testID="groceries-name-input" />
+              {!!sheet.id && <AmountRow mark="optional" label="What you paid" value={actualIn} onChange={setActualIn} placeholder="If different" />}
             </FormGroup>
           </>
         )}
@@ -486,7 +486,7 @@ export default function GroceriesScreen() {
           <>
             <BigTotal label="Meal total" value={formatPeso(ingredients.reduce((sum, r) => sum + (typeof r.price === 'number' ? r.price : 0), 0))} sub="Adds up from the ingredients" color={colors.planned} />
             <FormGroup>
-              <InputRow label="Name" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Chicken adobo" autoFocus={!sheet.id} testID="groceries-name-input" />
+              <InputRow mark="required" label="Name" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Chicken adobo" autoFocus={!sheet.id} testID="groceries-name-input" />
             </FormGroup>
             <GroupLabel>Ingredients</GroupLabel>
             <FormGroup>

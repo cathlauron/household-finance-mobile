@@ -15,6 +15,7 @@ import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
 import { getMyPersonId, setMyPersonId } from '../myPerson';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -1405,7 +1406,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify them and transfer the household key.
             </Text>
 
-            <Text style={styles.inputLabel}>6-Digit Code</Text>
+            <MarkedLabel text="6-Digit Code" mark="required" style={styles.inputLabel} />
             <TextInput
               style={[styles.input, { letterSpacing: 4, fontSize: 18, textAlign: 'center' }]}
               placeholder="000000"

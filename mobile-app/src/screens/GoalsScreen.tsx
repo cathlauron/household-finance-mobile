@@ -414,9 +414,9 @@ export default function GoalsScreen() {
       >
         <FormGroup>
           <Guided {...fieldErrors.props('title')} focusRef={titleRef}>
-            <InputRow label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" inputRef={titleRef} invalid={fieldErrors.field === 'title'} />
+            <InputRow mark="required" label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" inputRef={titleRef} invalid={fieldErrors.field === 'title'} />
           </Guided>
-          <InputRow label="Description" value={descriptionInput} onChangeText={setDescriptionInput} placeholder="Optional" />
+          <InputRow mark="optional" label="Description" value={descriptionInput} onChangeText={setDescriptionInput} placeholder="e.g. Before the holidays" />
         </FormGroup>
 
         <SegmentedControl<YearlyGoal['mode']>
@@ -431,14 +431,14 @@ export default function GoalsScreen() {
           <>
             <GroupLabel>Progress</GroupLabel>
             <FormGroup>
-              <AmountRow label="Target amount" value={targetAmountInput} onChange={setTargetAmountInput} placeholder="Optional" />
-              {!linkInput && <AmountRow label="So far" value={currentAmountInput} onChange={setCurrentAmountInput} placeholder="Optional" />}
+              <AmountRow mark="optional" label="Target amount" value={targetAmountInput} onChange={setTargetAmountInput} />
+              {!linkInput && <AmountRow mark="optional" label="So far" value={currentAmountInput} onChange={setCurrentAmountInput} />}
               <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
-              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+              <PickerRow mark="optional" label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
                 <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
               </PickerRow>
               </Guided>
-              <PickerRow label="Follow" value={linkLabel} open={openRow === 'follow'} onToggle={() => toggleRow('follow')}>
+              <PickerRow mark="optional" label="Follow" value={linkLabel} open={openRow === 'follow'} onToggle={() => toggleRow('follow')}>
                 <Choices options={followOptions} value={linkInput ? `${linkInput.kind}:${linkInput.id}` : 'none'} onChange={pickFollow} />
               </PickerRow>
             </FormGroup>
@@ -454,7 +454,7 @@ export default function GoalsScreen() {
           <>
             <FormGroup>
               <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
-              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+              <PickerRow mark="optional" label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
                 <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
               </PickerRow>
               </Guided>

@@ -13,6 +13,7 @@ import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { MarkedLabel } from '../components/MarkedLabel';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -1873,16 +1874,18 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             open={openRow === 'watch'}
             onToggle={() => toggleRow('watch')}
           >
+            <MarkedLabel text="Category" mark="required" style={styles.inputLabel} />
             <TextInput
               style={styles.input}
-              placeholder="Category name (e.g. Groceries)"
+              placeholder="e.g. Groceries"
               placeholderTextColor={colors.inkDim}
               value={watchCategoryInput}
               onChangeText={setWatchCategoryInput}
             />
+            <MarkedLabel text="Monthly limit" mark="required" style={styles.inputLabel} />
             <AmountInput
               style={styles.amountInput}
-              placeholder="Monthly limit (e.g. 5000)"
+              placeholder="e.g. 5000"
               value={watchLimitInput}
               onChangeAmount={setWatchLimitInput}
             />
@@ -2088,7 +2091,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         onClose={closeModal}
         title={editingId ? 'Edit category' : 'New category'}
       >
-        <Text style={styles.inputLabel}>Name</Text>
+        <MarkedLabel text="Name" mark="required" style={styles.inputLabel} />
         <TextInput
           autoFocus={!editingId}
           style={styles.input}
@@ -2098,7 +2101,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setNameInput}
         />
 
-        <Text style={styles.inputLabel}>Color</Text>
+        <MarkedLabel text="Color" mark="required" style={styles.inputLabel} />
         <View style={styles.swatchRow}>
           {COLOR_PALETTE.map((c) => (
             <TouchableOpacity
@@ -2127,7 +2130,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         onClose={closePayeeModal}
         title={editingPayeeId ? 'Edit payee' : 'New payee'}
       >
-        <Text style={styles.inputLabel}>Name</Text>
+        <MarkedLabel text="Name" mark="required" style={styles.inputLabel} />
         <TextInput
           autoFocus={!editingPayeeId}
           style={styles.input}
@@ -2137,7 +2140,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setPayeeNameInput}
         />
 
-        <Text style={styles.inputLabel}>Default category (optional)</Text>
+        <MarkedLabel text="Default category" mark="optional" style={styles.inputLabel} />
         <TextInput
           style={styles.input}
           placeholder="e.g. Groceries, Utilities"
@@ -2160,7 +2163,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         onClose={closeRuleModal}
         title={editingRuleId ? 'Edit rule' : 'New rule'}
       >
-        <Text style={styles.inputLabel}>If the label contains</Text>
+        <MarkedLabel text="If the label contains" mark="required" style={styles.inputLabel} />
         <TextInput
           autoFocus={!editingRuleId}
           style={styles.input}
@@ -2171,13 +2174,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           autoCapitalize="none"
         />
 
-        <Text style={styles.inputLabel}>Minimum amount (optional)</Text>
+        <MarkedLabel text="Minimum amount" mark="optional" style={styles.inputLabel} />
         <AmountInput style={styles.amountInput} placeholder="No minimum" value={ruleMinInput} onChangeAmount={setRuleMinInput} />
 
-        <Text style={styles.inputLabel}>Maximum amount (optional)</Text>
+        <MarkedLabel text="Maximum amount" mark="optional" style={styles.inputLabel} />
         <AmountInput style={styles.amountInput} placeholder="No maximum" value={ruleMaxInput} onChangeAmount={setRuleMaxInput} />
 
-        <Text style={styles.inputLabel}>Set category to</Text>
+        <MarkedLabel text="Set category to" mark="required" style={styles.inputLabel} />
         <TextInput
           style={styles.input}
           placeholder="e.g. Groceries, Utilities"
