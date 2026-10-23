@@ -3,6 +3,10 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> START HERE (2026-10-16): This is the ACTIVE progress log. Version 2.0.0 is finished and
 >>> merged into `main` (merge commit 9ae00f9). ALL new work happens on the `v3` branch.
 >>> Read the "▶️ Next step" section at the bottom first.
+>>> NEWEST (2026-10-23, smoothness): new standing skill finance-flow-smoothness-check
+>>> (repo .claude/skills, also offered as a card). Sub-pages now follow your finger on
+>>> v2.2/v3 (Cath's pick B). Phone checks TEST-2.2 section AM. Save gate is now
+>>> `npm run check:all` (inside mobile-app). 4 motion questions wait in SMOOTH-HUNT.md.
 >>> NEWEST (2026-10-21, wrap-up): VERSION 2.2 work lives on branch `v2.2` (v3 = same
 >>> commit, 590fa50). It is NOT on `main` yet. Cath tested sections A-N on her phone in
 >>> Expo Go (TEST-2.2.md on v2.2). Start with the "FIRST THINGS NEXT SESSION" list in the
@@ -186,6 +190,23 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   Running low; each fails with the old code. Account-form double save could not be
   reproduced (check dropped, guard kept). Final: tsc clean, npm test 130/130,
   test:screens 34/34 (9 files), test:hooks 0, hidden-browser walk OK.
+- 2026-10-23 (smoothness, on v2.2/v3, commits 05bee29..16405b5): bug hunt done, Cath asked
+  for a smoothness skill and the same slide on every page with sub-pages. Built:
+  src/motion.ts (one curve + speeds) used by tabs, pages, sheets; tests/motion.test.mjs
+  (npm run test:motion) fails on hand-typed curve/speeds, useNativeDriver false, missing
+  Reduce Motion, sub-page screens not using SlidingPages; Reduce Motion added to Search,
+  offline banner, swipe-row hint (S-01). components/SlidingPages.tsx (sample B "follows
+  your finger", highlight glides with it, soft bounce at the ends, no jump to another
+  tab, neighbour pages built after the screen settles) on To-Pay, Savings, Groceries,
+  Events, Travel trip page (inline mode, height glides). SegmentedControl's highlight
+  glides everywhere. New rows light up only once their page/tab is showing (pageActive).
+  components/CountingText.tsx: Left to Spend, Bills, Debts, Loans, Savings totals count to
+  new values (COUNT_MS 500). Save gate tools/check-all.mjs (npm run check:all): the old
+  tee + grep gate didn't stop on failure (caught, nothing failing saved). Final: tsc
+  clean, npm test 166/166, test:screens 110/110, hooks 0; hidden-browser swipes OK on
+  To-Pay, Savings, Groceries, Events. Emulator walkthrough for Cath (10-22/23 night):
+  welcome, set-up, Home, Transactions, To-Pay, Plan, calendar, bell, add account /
+  transaction / bill all correct.
 
 =====================================================================
 🔧 In progress
@@ -348,6 +369,14 @@ Testing
   for real households (option a). Backup: lock with the account password and delete after
   sharing (option a). While Cath is away, Claude parks anything needing her decision.
 
+- 2026-10-23 (Cath): a smoothness skill like the bug-check one (finance-flow-smoothness-check;
+  its "Cath's decisions" list is additive). Every page with sub-pages SLIDES; style B
+  "follows your finger" (from canvas https://claude.ai/artifact/2iT3fSQu9ifvpzfDrYjWLJ,
+  A/B/C). The switcher highlight glides with the page. Switchers inside forms only glide
+  their highlight. Past the first/last sub-page: soft bounce, never another main tab.
+  Money numbers count quickly to new values (instant with Reduce Motion). Ask her about
+  any motion choice not yet decided.
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -498,6 +527,14 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
   Sign-in/linking/sync can't be tested in Claude's workspace (Firebase emulator download
   blocked). Phone checks for this batch: TEST-2.2 section AG.
 
+- 2026-10-23 (smoothness): WAITING for Cath (SMOOTH-HUNT.md S-04..S-07): main tabs follow
+  the finger too? Search's own curve keep or match? "Loans Borrowed / Lent" turned out to
+  be inside the New loan form (glides only), OK? Green zero amounts (Loans lent, Savings)
+  grey too? Not motion: as a guest, the first item's sign-in sheet shows over an empty
+  list. Hidden browser can't open the empty Travel "No trips yet" card (old build too;
+  web only). Needs the phone: swipe feel, Android label/highlight order, the Bill/Debt/Loan
+  hand-over glide. Emulator mouse drags don't act like a finger (Left to Spend card).
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -583,6 +620,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   SettingsClearAll, SettingsBackup, SettingsRunningLow (pattern for checking whole screens:
   mock DataContext, firebase/*, sessions; see these files).
 
+- 2026-10-23 (smoothness, v2.2/v3): .claude/skills/finance-flow-smoothness-check/SKILL.md;
+  SMOOTH-HUNT.md (root); src/motion.ts, subPages.ts, pageActive.ts, countUp.ts,
+  components/SlidingPages.tsx, components/CountingText.tsx; changed SegmentedControl,
+  swipeTabs (heldOnUI, holdForSubPages), useArrival, TabPage, RootStack, BottomSheet,
+  afterSlide, To-Pay/Savings/Groceries/Events/Travel screens, Bills/Debts/Loans/HomeHero
+  totals; tests/motion, subPages, countUp; __tests__/SlidingPages, SubPageScreens,
+  CountingText; tools/check-all.mjs (npm run check:all), browser-walk drag: step.
+  DataContext stand-ins in __tests__ now include QuietWhenHidden.
+
 =====================================================================
 📅 Session log
 =====================================================================
@@ -633,6 +679,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 
 - 2026-10-22: bug-check setup (see Done). Also wrote a Claude Design brief for a
   clickable prototype (not in the repo; Cath has the file).
+- 2026-10-22/23 (night): Claude drove the emulator on Cath's computer while she watched
+  (stopped by Cath). Then the smoothness skill, the A/B/C slide canvas (Cath picked B),
+  and four batches built while she was away (see Done).
 
 =====================================================================
 ▶️ Next step
@@ -853,3 +902,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   The bug hunt has no open items left that a computer can check. Next (Cath decides):
   the real 2.2 build (AG4 two phones, I11 invite link, I12 opening speed), then merge 2.2
   into main.
+
+- NEWEST (2026-10-23, smoothness): Cath tests TEST-2.2 section AM on her phone (git pull on
+  v2.2, npx expo start -c). Then answer SMOOTH-HUNT.md S-04..S-07. Save the smoothness
+  skill card if not done (it's also in the repo). Still after that: the real 2.2 build
+  (AG4, I11, I12), then merge 2.2 into main.
