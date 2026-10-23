@@ -3,6 +3,7 @@ import SkyGlow from './SkyGlow';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions, Animated, Easing } from 'react-native';
 import { useReduceMotion } from '../reduceMotion';
+import { CURVE, DIM_MS, SHEET_CLOSE_MS, SHEET_OPEN_MS } from '../motion';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
@@ -116,9 +117,9 @@ function useSharedSheet(name: string | undefined, props: BottomSheetProps): bool
 // it's asked for and settles gently (300 ms), the dim behind it fades, and it can be
 // dragged down by its top bar to close. With the phone set to remove animations it just
 // appears and disappears.
-const DRAWER = Easing.bezier(0.32, 0.72, 0, 1);
-const OPEN_MS = 280;
-const CLOSE_MS = 240;
+const DRAWER = Easing.bezier(...CURVE);
+const OPEN_MS = SHEET_OPEN_MS;
+const CLOSE_MS = SHEET_CLOSE_MS;
 // How long to wait for a sheet to finish sliding away before moving to another screen.
 export const SHEET_CLOSE_WAIT = CLOSE_MS + 40;
 
@@ -230,7 +231,7 @@ function OwnSheet({
     }
     Animated.parallel([
       Animated.timing(y, { toValue: 0, duration: OPEN_MS, easing: DRAWER, useNativeDriver: true }),
-      Animated.timing(dim, { toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(dim, { toValue: 1, duration: DIM_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start();
   }, [reduce, y, dim]);
   React.useEffect(() => {

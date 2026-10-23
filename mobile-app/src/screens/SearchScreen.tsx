@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { dateText } from '../dateUtils';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, ScrollView, StyleSheet, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
+import { reduceMotionNow } from '../reduceMotion';
 import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -56,12 +57,12 @@ export default function SearchScreen() {
   const drop = useRef(new Animated.Value(0)).current;
   const closingRef = useRef(false);
   useEffect(() => {
-    Animated.timing(drop, { toValue: 1, duration: 300, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true }).start();
+    Animated.timing(drop, { toValue: 1, duration: reduceMotionNow() ? 0 : 300, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true }).start();
   }, [drop]);
   function close() {
     if (closingRef.current) return;
     closingRef.current = true;
-    Animated.timing(drop, { toValue: 0, duration: 200, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: true }).start(() => navigation.goBack());
+    Animated.timing(drop, { toValue: 0, duration: reduceMotionNow() ? 0 : 200, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: true }).start(() => navigation.goBack());
   }
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {

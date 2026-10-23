@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native'
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
 import { reduceMotionNow } from '../reduceMotion';
+import { CURVE, TAB_MS } from '../motion';
 import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
 
@@ -22,8 +23,8 @@ import { QuietThemeWhenHidden } from '../ThemeContext';
 // Version 2.2 sweep: a little quicker (tabs are switched all day) and the same curve as
 // the sheets and pages, so everything in the app moves alike. With the phone set to
 // remove animations, tabs just switch.
-const FADE_MS = 240;
-const FADE_EASING = Easing.bezier(0.32, 0.72, 0, 1);
+const FADE_MS = TAB_MS;
+const FADE_EASING = Easing.bezier(...CURVE);
 
 // The tab that was showing last, so a tab opened for the first time knows which side
 // to come in from.

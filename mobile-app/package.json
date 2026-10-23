@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "node --experimental-strip-types --no-warnings --import ./tests/ts-resolve.mjs --test tests/*.test.mjs",
+    "test:motion": "node --experimental-strip-types --no-warnings --import ./tests/ts-resolve.mjs --test tests/motion.test.mjs",
     "test:screens": "jest",
     "browser:build": "expo export --platform web --output-dir web-build",
     "browser:walk": "node tools/browser-walk.mjs",

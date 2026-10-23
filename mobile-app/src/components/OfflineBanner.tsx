@@ -2,6 +2,7 @@ import { holdTabSwipe } from '../navigation/swipeTabs';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { View, StyleSheet, Animated } from 'react-native';
+import { reduceMotionNow } from '../reduceMotion';
 import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
@@ -58,7 +59,7 @@ export default function OfflineBanner({ style }: { style?: any }) {
   // it's never confused with swiping between tabs. The ✕ on the right does the same.
   function dismiss() {
     hapticLight();
-    Animated.timing(x, { toValue: -140, duration: 200, useNativeDriver: true }).start(() => setHidden(true));
+    Animated.timing(x, { toValue: -140, duration: reduceMotionNow() ? 0 : 200, useNativeDriver: true }).start(() => setHidden(true));
   }
   const pan = useMemo(
     () =>

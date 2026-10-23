@@ -1,6 +1,7 @@
 import { Easing } from 'react-native';
 import React from 'react';
 import { reduceMotionNow } from '../reduceMotion';
+import { CURVE, PAGE_BACK_MS, PAGE_OPEN_MS } from '../motion';
 import { calendarLeaving } from './calendarLeaving';
 import { createStackNavigator, type StackCardStyleInterpolator } from '@react-navigation/stack';
 import MainTabs from './MainTabs';
@@ -115,11 +116,11 @@ function topRouteName(navigation: any): string | undefined {
 // The same curve as the pop-up sheets; going back is a little quicker than going in.
 const paperTiming = {
   animation: 'timing' as const,
-  config: { duration: 280, easing: Easing.bezier(0.32, 0.72, 0, 1) },
+  config: { duration: PAGE_OPEN_MS, easing: Easing.bezier(...CURVE) },
 };
 const paperTimingBack = {
   animation: 'timing' as const,
-  config: { duration: 240, easing: Easing.bezier(0.32, 0.72, 0, 1) },
+  config: { duration: PAGE_BACK_MS, easing: Easing.bezier(...CURVE) },
 };
 // The Calendar opens as a sheet from the bottom with rounded corners over a dimmed page.
 const sheetUp: StackCardStyleInterpolator = ({ current, layouts }) => ({
