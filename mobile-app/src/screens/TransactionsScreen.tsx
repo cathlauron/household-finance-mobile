@@ -1,6 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
 import { animateNextLayout } from '../animateLayout';
-import { redUnlessZero, isZeroAmount } from '../moneyColor';
+import { redUnlessZero, isZeroAmount, toneUnlessZero } from '../moneyColor';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
@@ -955,7 +955,7 @@ export default function TransactionsScreen({
           <GradientFill match={[styles.group, styles.summary]} />
           <View style={styles.summaryCell} accessible accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}`}>
             <Text style={styles.summaryLabel}>In</Text>
-            <Text style={[styles.summaryAmount, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
+            <Text style={[styles.summaryAmount, { color: toneUnlessZero(totals.totalIn, colors.positive, colors) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
           </View>
           <View style={[styles.summaryCell, styles.summaryDivider]}>
             <Text style={styles.summaryLabel}>Out</Text>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toneUnlessZero } from '../moneyColor';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import LoadingView from './LoadingView';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
@@ -182,7 +183,7 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
                     <Text style={styles.title}>{e.name}</Text>
                     <Text style={styles.meta}>{group === 'cash' ? 'Cash' : group === 'debit' ? 'Debit' : 'Credit'}</Text>
                   </View>
-                  <Text style={[styles.amount, { color: colors.positive }]}>{typeof e.amount === 'number' ? formatPeso(e.amount) : ''}</Text>
+                  <Text style={[styles.amount, { color: toneUnlessZero(typeof e.amount === 'number' ? e.amount : 0, colors.positive, colors) }]}>{typeof e.amount === 'number' ? formatPeso(e.amount) : ''}</Text>
                 </View>
               ))}
               <TouchableOpacity style={[styles.row, accounts.length > 0 && styles.line]} onPress={() => setSheet({ name: '', group: 'debit' })} accessibilityRole="button" testID="onboard-add-account">

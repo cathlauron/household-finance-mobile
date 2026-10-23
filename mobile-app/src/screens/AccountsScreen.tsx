@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted } from '../messages';
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
@@ -353,7 +354,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
                 {nextPay ? `Next payday ${formatShortDate(nextPay.date)}` : (model.income || []).length === 0 ? 'Add where your money comes from' : 'No payday scheduled'}
               </Text>
             </View>
-            {!!nextPay && <Text style={[styles.incomeAmount, { color: colors.planned }]}>+{formatPeso(nextPay.amount)}</Text>}
+            {!!nextPay && <Text style={[styles.incomeAmount, { color: toneUnlessZero(nextPay.amount, colors.planned, colors) }]}>+{formatPeso(nextPay.amount)}</Text>}
             <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
           </TouchableOpacity>
         </View>

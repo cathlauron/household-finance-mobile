@@ -7,6 +7,7 @@ import { CURVE, TAB_MS } from '../motion';
 import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
 import { PageActiveContext } from '../pageActive';
+import { tabDrag, takeCommittedDrag } from './tabDrag';
 
 // Switching tabs is a soft, minimal fade: the old tab fades out while drifting a few
 // pixels away, then the new tab fades in while settling the last few pixels into place
@@ -63,6 +64,13 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       Animated.timing(x, { toValue: to, duration: reduceMotionNow() ? 0 : FADE_MS, easing: FADE_EASING, useNativeDriver: true }).start(({ finished }) => {
         if (finished && done) done();
       });
+    // Smoothness 2026-10-23: the tab changed at the end of a finger swipe. Both pages carry
+    // on from exactly where the finger left them (see tabDrag.ts).
+    const dragged = before !== null && before !== place ? takeCommittedDrag() : 0;
+    if (dragged !== 0 && width > 0) {
+      if (before === 0) x.setValue(dragged / width);
+      else if (place === 0) x.setValue((before as number) + dragged / width);
+    }
     if (before === null) {
       // Opened for the first time: fades in from its side (no movement for the very
       // first tab when the app starts).
@@ -81,12 +89,17 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       // Skipped over: stays hidden and just moves to its new side.
       x.setValue(place);
     }
-  }, [place, routeIndex, x]);
+  }, [place, routeIndex, x, width]);
 
 
-  const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
-  // Fully visible while sliding; hidden only once it's off the screen.
-  const opacity = x.interpolate({ inputRange: [-1, -0.999, 0, 0.999, 1], outputRange: [0, 1, 1, 1, 0] });
+  const base = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
+  // Smoothness 2026-10-23: the tab showing and the ones right beside it follow a finger
+  // swipe; the others stay hidden off screen.
+  const near = Math.abs(routeIndex - shownIndex) <= 1;
+  const translateX = near ? Animated.add(base, tabDrag) : base;
+  // Fully visible while sliding; tabs further away are hidden once off the screen. The
+  // ones beside it stay drawn, so a swipe can bring them in.
+  const opacity = near ? 1 : x.interpolate({ inputRange: [-1, -0.999, 0, 0.999, 1], outputRange: [0, 1, 1, 1, 0] });
 
   return (
     // The page arriving sits on top; pages that aren't showing don't catch taps.

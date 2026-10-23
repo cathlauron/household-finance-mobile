@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { animateNextLayout } from '../animateLayout';
-import { redUnlessZero } from '../moneyColor';
+import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
@@ -271,7 +271,7 @@ export default function GroceriesScreen() {
                 <GradientFill match={styles.group} />
                 <View style={styles.trioCell}>
                   <Text style={styles.meta}>Planned</Text>
-                  <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(planned)}</Text>
+                  <Text style={[styles.headline, { color: toneUnlessZero(planned, colors.planned, colors) }]}>{formatPeso(planned)}</Text>
                 </View>
                 <View style={[styles.trioCell, styles.trioLine]}>
                   <Text style={styles.meta}>Bought</Text>
@@ -342,7 +342,7 @@ export default function GroceriesScreen() {
               <View style={[styles.group, { padding: 18, alignItems: 'center' }]}>
                 <GradientFill match={styles.group} />
                 <Text style={styles.meta}>In your cart</Text>
-                <Text style={[styles.hero, { color: colors.planned }]}>{formatPeso(cart)}</Text>
+                <Text style={[styles.hero, { color: toneUnlessZero(cart, colors.planned, colors) }]}>{formatPeso(cart)}</Text>
                 {planned > 0 && (
                   <Text style={styles.subhead}>
                     {cart <= planned
@@ -363,7 +363,7 @@ export default function GroceriesScreen() {
                           {num(e.qty) || 1} × {formatPeso(num(e.unitPrice) || num(e.amount))}
                         </Text>
                       </View>
-                      <Text style={[styles.amount, { color: colors.planned }]}>{formatPeso(num(e.amount))}</Text>
+                      <Text style={[styles.amount, { color: toneUnlessZero(num(e.amount), colors.planned, colors) }]}>{formatPeso(num(e.amount))}</Text>
                       <TouchableOpacity
                         onPress={() => saveModel({ ...model, groceryCalculator: calc.filter((x) => x.id !== e.id) })}
                         accessibilityRole="button"

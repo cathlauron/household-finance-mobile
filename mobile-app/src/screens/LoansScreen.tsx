@@ -1,6 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
 import { dateText } from '../dateUtils';
-import { redUnlessZero } from '../moneyColor';
+import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved } from '../messages';
@@ -18,7 +18,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useToPayAddRequest, takePendingAdd, switchToPayAdd } from '../fabActions';
-import KindSwitch from '../components/KindSwitch';
+import KindSwitch, { SwitchLine } from '../components/KindSwitch';
 import PayRow from '../components/PayRow';
 import PriorityPick from '../components/PriorityPick';
 import { Priority, priorityRank } from '../priority';
@@ -576,6 +576,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   const totalBorrowed = loans
     .filter((l) => l.direction !== 'lent')
     .reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0);
+  const totalLent = Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0));
 
   // Only borrowed loans with a real remaining balance are worth simulating — a "lent" loan
   // (money owed to you) or a fully-paid loan wouldn't make sense in a payoff projection.
@@ -608,8 +609,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           <View style={[styles.summaryCell, styles.summaryDivider]}>
             <Text style={styles.balanceBannerLabel}>Owed to you (lent)</Text>
             <CountingText
-              style={[styles.balanceBannerAmount, { color: colors.positive }]}
-              value={Math.max(0, loans.filter((l) => l.direction === 'lent').reduce((sum, l) => sum + (loanTotal(l) - loanPaidTotal(l)), 0))}
+              style={[styles.balanceBannerAmount, { color: toneUnlessZero(totalLent, colors.positive, colors) }]}
+              value={totalLent}
               format={formatPeso}
             />
           </View>
@@ -697,6 +698,10 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
             options={[{ id: 'borrowed', label: 'I borrowed' }, { id: 'lent', label: 'I lent' }]}
             value={directionInput}
             onChange={setDirectionInput}
+          />
+          <SwitchLine
+            testID="loan-direction-line"
+            text={directionInput === 'lent' ? 'Money you lent, paid back to you in set payments · to family or a friend' : 'Money you borrowed, paid back in set payments · car, housing, Pag-IBIG'}
           />
         </View>
         {/* Same key in the bill, debt and loan forms: switching keeps the very same amount

@@ -55,3 +55,18 @@ test('Groceries: "Bought ₱0.00" is grey', async () => {
   const zeros = screen.getAllByText('₱0.00');
   expect(zeros.filter((n) => colorOf(n) === lightTheme.negative)).toHaveLength(0);
 }, 30000);
+
+// 2026-10-23 (Cath: yes, grey for green and blue zero amounts too).
+const coloured = (n: any) => [lightTheme.positive, lightTheme.saving, lightTheme.planned, lightTheme.negative].includes(colorOf(n));
+test.each([
+  ['Loans ("Owed to you (lent)")', '../src/screens/LoansScreen'],
+  ['Savings ("Set aside in total")', '../src/screens/SavingsScreen'],
+  ['Groceries (planned)', '../src/screens/GroceriesScreen'],
+  ['Events ("To spend")', '../src/screens/EventsScreen'],
+])('%s: no ₱0.00 is drawn in a colour', async (_name, path) => {
+  mockModel = defaultModel();
+  await draw(path);
+  const zeros = screen.queryAllByText(/^[+−-]?₱0\.00$/, { includeHiddenElements: true });
+  expect(zeros.length).toBeGreaterThan(0);
+  expect(zeros.filter(coloured)).toHaveLength(0);
+}, 30000);

@@ -1,6 +1,9 @@
 import React, { createContext, useCallback, useMemo, useRef } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { makeMutable } from 'react-native-reanimated';
+import { Dimensions } from 'react-native';
+import { commitTabDrag, edgeGive, releaseTabDrag, setTabDrag } from './tabDrag';
+import { settleTarget } from '../subPages';
 import { hapticSelection } from '../haptics';
 
 // Version 2.1 (Cath): swipe the page sideways to move between tabs (Home / Transactions /
@@ -58,13 +61,38 @@ const FLICK = 600;
 // and the outer one stands down if the inner one just acted.
 let lastSwipeAt = 0;
 
+// How far the finger has moved past the first few points it takes to start a swipe (so
+// the page starts moving from where it is, never backwards).
+function pastStart(t: number): number {
+  return Math.sign(t) * Math.max(0, Math.abs(t) - START);
+}
+
 // direction: +1 = to the next tab (finger moves left), -1 = to the previous tab.
-export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: { onSwipe: (direction: 1 | -1) => void; children: React.ReactNode; enabled?: boolean; inner?: boolean }) {
+// Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger too): `follow` = the main
+// tab pages. While you swipe they move with your finger (tabDrag.ts); let go past a
+// quarter of the screen, or flick, and the tab changes; otherwise they glide back. Past
+// Home or Plan they give a little and bounce back.
+export function SwipeTabs({
+  onSwipe,
+  children,
+  enabled = true,
+  inner = false,
+  follow,
+}: {
+  onSwipe: (direction: 1 | -1) => void;
+  children: React.ReactNode;
+  enabled?: boolean;
+  inner?: boolean;
+  follow?: { index: number; count: number };
+}) {
+  const followIndex = follow ? follow.index : -1;
+  const followCount = follow ? follow.count : 0;
   const onSwipeRef = useRef(onSwipe);
   onSwipeRef.current = onSwipe;
   const gesture = useMemo(
     () =>
       Gesture.Pan()
+        .withTestId(followIndex >= 0 ? 'tab-swipe' : 'swipe-tabs')
         .runOnJS(true)
         .enabled(enabled)
         .activeOffsetX([-START, START])
@@ -76,8 +104,32 @@ export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: 
             if (held || subHeld) manager.fail();
           }, 0);
         })
+        .onUpdate((e) => {
+          if (followIndex < 0 || held || subHeld) return;
+          const dx = pastStart(e.translationX);
+          setTabDrag(edgeGive(dx, followIndex, followCount));
+        })
+        .onFinalize((_e, success) => {
+          if (followIndex >= 0 && !success) releaseTabDrag();
+        })
         .onEnd((e) => {
-          if (held || subHeld) return;
+          if (held || subHeld) {
+            if (followIndex >= 0) releaseTabDrag();
+            return;
+          }
+          if (followIndex >= 0) {
+            const dx = pastStart(e.translationX);
+            const target = settleTarget(followIndex, dx, e.velocityX, Dimensions.get('window').width, followCount);
+            if (target === followIndex || Math.abs(e.translationY) > Math.abs(e.translationX)) {
+              releaseTabDrag();
+              return;
+            }
+            lastSwipeAt = Date.now();
+            hapticSelection();
+            commitTabDrag();
+            onSwipeRef.current(target > followIndex ? 1 : -1);
+            return;
+          }
           const dx = e.translationX;
           if (Math.abs(dx) < DISTANCE && Math.abs(e.velocityX) < FLICK) return;
           if (Math.abs(e.translationY) > Math.abs(dx)) return;
@@ -92,7 +144,7 @@ export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: 
             inner ? 0 : 60
           );
         }),
-    [enabled, inner]
+    [enabled, inner, followIndex, followCount]
   );
   const flick = useCallback((dir: 1 | -1) => {
     if (Date.now() - lastSwipeAt < 300) return;

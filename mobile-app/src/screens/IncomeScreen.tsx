@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
 import { WhoFootnote, useWho } from '../components/WhoLogged';
@@ -546,9 +547,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
               <View style={styles.heroCard}>
                 <GradientFill match={styles.heroCard} />
                 <Text style={styles.heroLabel}>EXPECTED IN {monthName.toUpperCase()}</Text>
-                <Text style={[styles.heroAmount, { color: colors.planned }]}>{formatPeso(totals.expected)}</Text>
+                <Text style={[styles.heroAmount, { color: toneUnlessZero(totals.expected, colors.planned, colors) }]}>{formatPeso(totals.expected)}</Text>
                 <Text style={styles.heroSub}>
-                  <Text style={{ color: colors.positive, fontWeight: '700' }}>{formatPeso(totals.received)} received</Text>
+                  <Text style={{ color: toneUnlessZero(totals.received, colors.positive, colors), fontWeight: '700' }}>{formatPeso(totals.received)} received</Text>
                   {` · ${formatPeso(totals.toCome)} still to come`}
                 </Text>
                 <View style={[styles.heroTrack, { backgroundColor: colors.indigoBg }]}>
@@ -588,9 +589,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
                             <View style={styles.personTop}>
                               <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
                               <Text style={styles.personAmounts}>
-                                <Text style={{ color: colors.positive }}>{formatPeso(t.received)}</Text>
+                                <Text style={{ color: toneUnlessZero(t.received, colors.positive, colors) }}>{formatPeso(t.received)}</Text>
                                 <Text style={{ color: colors.inkFaint, fontWeight: '500' }}> / </Text>
-                                <Text style={{ color: colors.planned }}>{formatPeso(t.expected)}</Text>
+                                <Text style={{ color: toneUnlessZero(t.expected, colors.planned, colors) }}>{formatPeso(t.expected)}</Text>
                               </Text>
                             </View>
                             <Text style={styles.rowSub} numberOfLines={1}>
@@ -722,11 +723,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
           <View style={styles.extraTotals}>
             <View style={{ flex: 1 }}>
               <Text style={styles.extraMeta}>This month</Text>
-              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraMonth)}</Text>
+              <Text style={[styles.extraTotal, { color: toneUnlessZero(extraMonth, colors.positive, colors) }]}>+{formatPeso(extraMonth)}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.extraMeta}>This year</Text>
-              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraYear)}</Text>
+              <Text style={[styles.extraTotal, { color: toneUnlessZero(extraYear, colors.positive, colors) }]}>+{formatPeso(extraYear)}</Text>
             </View>
           </View>
           {extras.length === 0 ? (
@@ -747,7 +748,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
                     {t.incomeKind ? incomeKindLabel(t.incomeKind) : 'Other'} · {formatShortDate(new Date(t.date + 'T00:00:00'))}
                   </Text>
                 </View>
-                <Text style={[styles.rowAmount, { color: colors.positive }]}>+{formatPeso(t.amount)}</Text>
+                <Text style={[styles.rowAmount, { color: toneUnlessZero(t.amount, colors.positive, colors) }]}>+{formatPeso(t.amount)}</Text>
               </TouchableOpacity>
             ))
           )}

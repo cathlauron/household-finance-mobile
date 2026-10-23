@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { animateNextLayout } from '../animateLayout';
-import { redUnlessZero } from '../moneyColor';
+import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { alertDidntWork } from '../messages';
 import { useArrival } from '../useArrival';
@@ -759,11 +759,11 @@ export default function TravelScreen() {
                     <View style={[styles.trio, { marginTop: 0, paddingTop: 0, borderTopWidth: 0 }]}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.tripSub}>Budget</Text>
-                        <Text style={[styles.trioVal, { color: colors.planned }]}>{formatPeso(budget)}</Text>
+                        <Text style={[styles.trioVal, { color: toneUnlessZero(budget, colors.planned, colors) }]}>{formatPeso(budget)}</Text>
                       </View>
                       <View style={styles.trioCell}>
                         <Text style={styles.tripSub}>Left</Text>
-                        <Text style={[styles.trioVal, { color: colors.saving }]}>{formatPeso(Math.max(0, budget - paid))}</Text>
+                        <Text style={[styles.trioVal, { color: toneUnlessZero(Math.max(0, budget - paid), colors.saving, colors) }]}>{formatPeso(Math.max(0, budget - paid))}</Text>
                       </View>
                       <View style={styles.trioCell}>
                         <Text style={styles.tripSub}>Paid</Text>
@@ -815,7 +815,7 @@ export default function TravelScreen() {
                               </Text>
                             </View>
                             {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
-                            <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: colors.planned }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
+                            <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -1075,7 +1075,7 @@ export default function TravelScreen() {
                 />
               </View>
               {typeof item.cost === 'number' && (
-                <Text style={[styles.formItemCost, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: colors.planned }]}>{formatPeso(item.cost)}</Text>
+                <Text style={[styles.formItemCost, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{formatPeso(item.cost)}</Text>
               )}
               <TouchableOpacity onPress={() => handleRemoveChecklistItem(item.id)} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                 <Ionicons name="close-circle" size={20} color={colors.inkFaint} />

@@ -49,7 +49,6 @@ const OWN_TIMING_OK = new Set([
   'components/OfflineBanner.tsx',
   'components/SwipeableRow.tsx',
   'screens/IntroScreen.tsx',
-  'screens/SearchScreen.tsx',
   'useArrival.ts',
 ]);
 
@@ -61,6 +60,13 @@ test('the shared motion values exist', async () => {
   assert.equal(m.PAGE_BACK_MS, 240);
   assert.equal(m.SHEET_OPEN_MS, 280);
   assert.equal(m.SHEET_CLOSE_MS, 240);
+});
+
+test('Search drops down with the house curve and speeds (Cath, 2026-10-23)', () => {
+  const f = files.find((x) => x.name === 'screens/SearchScreen.tsx');
+  assert.doesNotMatch(code(f.text), /bezier\(\s*0\.2[23]/);
+  assert.match(f.text, /SHEET_OPEN_MS/);
+  assert.match(f.text, /SHEET_CLOSE_MS/);
 });
 
 test('the house curve is never typed out by hand (it comes from motion.ts)', () => {

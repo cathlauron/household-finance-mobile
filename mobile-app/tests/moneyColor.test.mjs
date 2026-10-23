@@ -17,3 +17,11 @@ test('anything owed or spent is red', () => {
 test('zero after rounding to centavos counts as zero', () => {
   assert.equal(isZeroAmount(0.3 - 0.1 - 0.2), true);
 });
+
+// 2026-10-23 (Cath): green and blue amounts are grey at zero too.
+import { toneUnlessZero } from '../src/moneyColor.ts';
+test('any colour is grey at zero, and keeps its colour otherwise', () => {
+  assert.equal(toneUnlessZero(0, 'green', colors), 'grey');
+  assert.equal(toneUnlessZero(0.004, 'blue', colors), 'grey');
+  assert.equal(toneUnlessZero(500, 'green', colors), 'green');
+});

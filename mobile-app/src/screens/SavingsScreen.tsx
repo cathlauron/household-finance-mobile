@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
@@ -640,7 +641,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                 <View style={styles.summaryCard}>
                   <GradientFill match={styles.summaryCard} />
                   <Text style={styles.balanceBannerLabel}>Set aside in total</Text>
-                  <CountingText style={[styles.potsTotal, { color: colors.saving }]} value={totalSaved} format={formatPeso} />
+                  <CountingText style={[styles.potsTotal, { color: toneUnlessZero(totalSaved, colors.saving, colors) }]} value={totalSaved} format={formatPeso} />
                   {thisMonth !== 0 && (
                     <Text style={[styles.potsThisMonth, { color: colors.saving }]}>
                       {thisMonth > 0 ? '+' : '−'}
@@ -688,7 +689,7 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
                                 <Text style={[styles.goalName, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
                                   {goal.name || 'Untitled pot'}
                                 </Text>
-                                <Text style={[styles.potAmount, { color: colors.saving }]}>{formatPeso(saved)}</Text>
+                                <Text style={[styles.potAmount, { color: toneUnlessZero(saved, colors.saving, colors) }]}>{formatPeso(saved)}</Text>
                               </View>
                               {subParts.length > 0 && <Text style={styles.goalSub} numberOfLines={1}>{subParts.join(' · ')}</Text>}
                               {target > 0 && (

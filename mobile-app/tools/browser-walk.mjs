@@ -44,7 +44,7 @@ const finger = (type, x, y) =>
   touch.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
 const problems = [];
 page.on('pageerror', (e) => problems.push('CRASH: ' + e.message));
-page.on('console', (m) => m.type() === 'error' && problems.push('ERROR: ' + m.text()));
+page.on('console', (m) => { if (m.type() === 'error') problems.push('ERROR: ' + m.text()); if (m.text().startsWith('DBG')) console.log(m.text()); });
 
 let n = 0;
 const log = [];
@@ -128,6 +128,29 @@ async function runStep(step, quiet = false) {
     await page.mouse.wheel(0, Number(step.slice(7)));
     await page.waitForTimeout(1200);
     await picture(`scrolled ${step.slice(7)}`);
+    return;
+  }
+  if (step.startsWith('mdrag:')) {
+    // "mdrag:-200@650" = the same swipe with a mouse (the web build's page-wide tab swipe
+    // only sees mouse drags; emulated touches scroll the page instead).
+    const [dxText, yText] = step.slice(6).split('@');
+    const dx = Number(dxText);
+    const y = yText ? Number(yText) : 520;
+    const x0 = dx < 0 ? 300 : 90;
+    await page.mouse.move(x0, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) {
+      await page.mouse.move(x0 + (dx * i) / 12, y);
+      await page.waitForTimeout(16);
+    }
+    if (!quiet) {
+      await page.waitForTimeout(150);
+      await picture(`mouse down, moved ${dx}`);
+    }
+    await page.mouse.up();
+    if (quiet) return;
+    await page.waitForTimeout(700);
+    await picture(`let go after ${dx}`);
     return;
   }
   if (step.startsWith('drag:')) {

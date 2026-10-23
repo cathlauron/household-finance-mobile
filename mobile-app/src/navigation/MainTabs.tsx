@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { InteractionManager } from 'react-native';
 import { SwipeTabs } from './swipeTabs';
 import { View, Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +25,20 @@ import { buildTransactionsList } from '../transactions';
 import GradientFill from '../components/GradientFill';
 
 const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
+
+// Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger): a swipe brings the next
+// tab in under your finger, so it has to be built already. Once the app has settled after
+// opening, the other tabs are built quietly in the background (once).
+function PreloadTabs({ navigation }: { navigation: any }) {
+  useEffect(() => {
+    const h = InteractionManager.runAfterInteractions(() => {
+      TAB_ORDER.forEach((name) => navigation.preload?.(name));
+    });
+    return () => h.cancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
 
 const Tab = createBottomTabNavigator();
 function TabIcon({
@@ -240,12 +255,14 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
       // Debts / Loans). Tapping the tabs works as before.
       tabBar={(props) => (
         <SwipeTabs
+          follow={{ index: TAB_ORDER.indexOf(props.state.routes[props.state.index].name), count: TAB_ORDER.length }}
           onSwipe={(d) => {
             const next = TAB_ORDER[TAB_ORDER.indexOf(props.state.routes[props.state.index].name) + d];
             if (next) props.navigation.navigate(next);
           }}
         >
           <View collapsable={false}>
+            <PreloadTabs navigation={props.navigation} />
             <BottomTabBar {...props} />
           </View>
         </SwipeTabs>
@@ -265,6 +282,7 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
         >
           {/* Version 2.1: swipe the page sideways to the next / previous tab. */}
           <SwipeTabs
+            follow={{ index: TAB_ORDER.indexOf(route.name), count: TAB_ORDER.length }}
             onSwipe={(d) => {
               const next = TAB_ORDER[TAB_ORDER.indexOf(route.name) + d];
               if (next) navigation.navigate(next);

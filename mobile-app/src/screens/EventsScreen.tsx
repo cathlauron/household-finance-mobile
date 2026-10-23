@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
-import { redUnlessZero } from '../moneyColor';
+import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
@@ -555,7 +555,7 @@ export default function EventsScreen() {
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={styles.eventSub}>To spend</Text>
-                      <Text style={[styles.headline, { color: colors.planned }]}>{formatPeso(toSpend)}</Text>
+                      <Text style={[styles.headline, { color: toneUnlessZero(toSpend, colors.planned, colors) }]}>{formatPeso(toSpend)}</Text>
                     </View>
                   </View>
 
@@ -581,14 +581,14 @@ export default function EventsScreen() {
                                     {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}
                                   </Text>
                                 </View>
-                                <Text style={[styles.eventAmount, { color: colors.planned }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>
+                                <Text style={[styles.eventAmount, { color: toneUnlessZero(budget, colors.planned, colors) }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>
                               </TouchableOpacity>
                               {open && (
                                 <View style={styles.evMore}>
                                   {(ev.items || []).map((it) => (
                                     <View key={it.id} style={styles.subLine}>
                                       <Text style={styles.subLineText}>{it.name}</Text>
-                                      <Text style={[styles.subLineText, { color: colors.planned }]}>{typeof it.cost === 'number' ? formatPeso(it.cost) : ''}</Text>
+                                      <Text style={[styles.subLineText, { color: toneUnlessZero(typeof it.cost === 'number' ? it.cost : 0, colors.planned, colors) }]}>{typeof it.cost === 'number' ? formatPeso(it.cost) : ''}</Text>
                                     </View>
                                   ))}
                                   <View style={[styles.subLine, { alignItems: 'center', marginTop: 4 }]}>

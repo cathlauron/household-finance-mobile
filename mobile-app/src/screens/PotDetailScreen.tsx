@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { toneUnlessZero } from '../moneyColor';
 import { alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
@@ -208,7 +209,7 @@ export default function PotDetailScreen() {
         <GradientFill match={styles.group} />
         <View style={{ padding: 16 }}>
           <Text style={styles.meta}>Saved</Text>
-          <Text style={[styles.big, { color: colors.saving }]}>{formatPeso(saved)}</Text>
+          <Text style={[styles.big, { color: toneUnlessZero(saved, colors.saving, colors) }]}>{formatPeso(saved)}</Text>
           <Text style={styles.subhead}>{sub}</Text>
           {target > 0 && (
             <View style={styles.track}>

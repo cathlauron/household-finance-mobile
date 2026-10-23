@@ -67,6 +67,19 @@ export default function KindSwitch({ current, onSwitch }: { current: ToPaySub; o
   );
 }
 
+// The short line under a switch, in the same style (Cath 2026-10-23: "I borrowed / I lent"
+// copies the line under Bill / Debt / Loan).
+export function SwitchLine({ text, testID }: { text: string; testID?: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={s.lineRow}>
+      <Text testID={testID} style={[s.line, { color: colors.inkDim }]}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   lineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, paddingHorizontal: 4 },
   line: { flex: 1, fontSize: 13, lineHeight: 18 },
