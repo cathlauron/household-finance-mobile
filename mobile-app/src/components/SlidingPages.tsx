@@ -89,8 +89,14 @@ export default function SlidingPages<T extends string>({
 
   // Build the other pages once the screen has settled.
   useEffect(() => {
+    // Or after 1.5 s at the latest (an endless animation can keep the app from ever
+    // counting as settled; same as the main tabs).
     const h = InteractionManager.runAfterInteractions(() => setWarm(true));
-    return () => h.cancel();
+    const t = setTimeout(() => setWarm(true), 1500);
+    return () => {
+      h.cancel();
+      clearTimeout(t);
+    };
   }, []);
 
   // A tap on the switcher, or another screen asking for a page: slide there.

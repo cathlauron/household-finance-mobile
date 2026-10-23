@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
@@ -56,7 +56,10 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
   // tabs are no longer paused. Pausing them ("freezing") hid and re-showed whole pages,
   // which made pop-up forms flash and close. Hidden tabs simply stay drawn, as in 2.1.
 
-  useEffect(() => {
+  // Smoothness 2026-10-23: worked out BEFORE the screen draws (layout effect). Done after
+  // (a plain effect), a finger swipe's last frame showed the next-but-one tab and the old
+  // positions on top of each other for a moment (frame recorder).
+  useLayoutEffect(() => {
     const before = lastPlace.current;
     lastPlace.current = place;
     if (place === 0) lastShownIndex = routeIndex;

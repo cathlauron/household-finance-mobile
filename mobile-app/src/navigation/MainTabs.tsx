@@ -31,10 +31,21 @@ const TAB_ORDER = ['Home', 'Transactions', 'To-Pay', 'Plan'];
 // opening, the other tabs are built quietly in the background (once).
 function PreloadTabs({ navigation }: { navigation: any }) {
   useEffect(() => {
-    const h = InteractionManager.runAfterInteractions(() => {
+    // Once settled, or after 1.5 s at the latest: something that keeps moving (an endless
+    // animation on a slower phone or the web) can keep the app from ever counting as
+    // settled, and a swipe would then bring in an empty page (frame recorder, 10-23).
+    let done = false;
+    const build = () => {
+      if (done) return;
+      done = true;
       TAB_ORDER.forEach((name) => navigation.preload?.(name));
-    });
-    return () => h.cancel();
+    };
+    const h = InteractionManager.runAfterInteractions(build);
+    const t = setTimeout(build, 1500);
+    return () => {
+      h.cancel();
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;

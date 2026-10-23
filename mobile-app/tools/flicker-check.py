@@ -51,6 +51,12 @@ def check(folder):
     step = meta.get('step', folder.name)
     if len(files) < 3:
         return {'step': step, 'frames': len(files), 'problems': [], 'note': 'too few frames (nothing moved?)'}
+    # The browser sometimes delivers frames out of order (10-23: a frame stamped 570 ms
+    # arrived after one stamped 586 ms, which looked like a flash). Put them in time order.
+    if len(times) == len(files) and all(isinstance(t, float) for t in times):
+        order = sorted(range(len(files)), key=lambda i: times[i])
+        files = [files[i] for i in order]
+        times = [times[i] for i in order]
     fr = [load(p) for p in files]
     t0 = times[0]
     ms = [round((t - t0) * 1000) if isinstance(t, float) else t for t in times]
