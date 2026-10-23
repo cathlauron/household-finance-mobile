@@ -152,3 +152,22 @@ test('whole-screen changes: one animation for the whole dip', () => {
   const f = files.find((x) => x.name === 'App.tsx') ?? { text: fs.readFileSync(path.join(src, '..', 'App.tsx'), 'utf8') };
   assert.match(f.text, /duration: DIP_MS \+ FADE_IN_MS/);
 });
+
+// Cath, 2026-10-23: calendar + > add > straight to the right screen, smoothly. The form
+// and the Calendar leave together (no wait in between), and the tab / sub-page switch
+// underneath happens at once, out of sight.
+test('calendar add: leaves at once, the switch underneath is quiet', () => {
+  const cal = files.find((f) => f.name === 'screens/CalendarScreen.tsx');
+  const body = code(cal.text).split('function afterFormAdded')[1].split('function goToList')[0];
+  assert.doesNotMatch(body, /setTimeout/, 'no wait before going to the list');
+  assert.match(body, /quietMovesFor\(/);
+  for (const name of ['navigation/TabPage.tsx', 'components/SlidingPages.tsx']) {
+    assert.match(code(files.find((f) => f.name === name).text), /movesQuiet\(\)/, name);
+  }
+});
+
+test('a sheet taking another sheet\'s place grows from its height (no jump)', () => {
+  const f = files.find((x) => x.name === 'components/BottomSheet.tsx');
+  assert.match(code(f.text), /handoffFromHeight = lastShownHeight/);
+  assert.match(code(f.text), /y\.setValue\(ownH - fromH\)/);
+});

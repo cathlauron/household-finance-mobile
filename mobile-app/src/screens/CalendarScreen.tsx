@@ -22,7 +22,7 @@ import {
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
 import GradientFill from '../components/GradientFill';
-import BottomSheet, { startSheetHandoff, SHEET_CLOSE_WAIT } from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import TransactionsScreen from './TransactionsScreen';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -31,6 +31,7 @@ import { expectArrival } from '../arrivalFocus';
 import { salaryHandoffPending } from '../salaryHandoff';
 import { accountHandoffPending } from '../accountHandoff';
 import { noteCalendarLeaving } from '../navigation/calendarLeaving';
+import { quietMovesFor } from '../quietMoves';
 import { buildTransactionsList } from '../transactions';
 import { hapticSelection } from '../haptics';
 import { requestToPayTab } from '../openToPayTabRequest';
@@ -500,8 +501,14 @@ export default function CalendarScreen() {
     setFormHosts((l) => [...l, { kind: k, date, nonce: Date.now() }]);
   }
   function afterFormAdded(kind: 'txn' | 'bills' | 'debts' | 'loans') {
-    // The form slides away first, then the app goes to the list.
-    setTimeout(() => goToList(kind), SHEET_CLOSE_WAIT);
+    // 2026-10-23 (Cath: straight to the right screen, smoothly): the form and the Calendar
+    // go down together, in one motion. Underneath, the right tab (and Bills / Debts /
+    // Loans page) is already in place - switched at once, out of sight - and the new one
+    // lights up there. (Before: the form went first, the Calendar sat there a moment, then
+    // went down while the tab slid underneath: three moves in a row.)
+    noteCalendarLeaving();
+    quietMovesFor(400);
+    goToList(kind);
   }
   function goToList(kind: 'txn' | 'bills' | 'debts' | 'loans') {
     if (kind === 'txn') {

@@ -12,6 +12,7 @@ import { dragPosition, settleTarget } from '../subPages';
 import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
 import { PageActiveContext, usePageActive } from '../pageActive';
+import { movesQuiet } from '../quietMoves';
 
 // Smoothness 2026-10-23 (Cath picked sample B, "follows your finger"): every page with
 // sub-pages (To-Pay Bills / Debts / Loans, Savings, Groceries, Events, Travel, Loans
@@ -113,7 +114,7 @@ export default function SlidingPages<T extends string>({
     }
     slidTo.current = null;
     cancelAnimation(pos);
-    pos.value = reduce ? index : withTiming(index, { duration: SUBPAGE_MS, easing: Easing.bezier(...CURVE) });
+    pos.value = reduce || movesQuiet() ? index : withTiming(index, { duration: SUBPAGE_MS, easing: Easing.bezier(...CURVE) });
   }, [index, reduce, pos]);
 
   const commit = useCallback((target: number) => {

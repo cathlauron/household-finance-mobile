@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native'
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
 import { reduceMotionNow } from '../reduceMotion';
+import { movesQuiet } from '../quietMoves';
 import { CURVE, TAB_MS } from '../motion';
 import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
@@ -64,7 +65,7 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     lastPlace.current = place;
     if (place === 0) lastShownIndex = routeIndex;
     const run = (to: number, done?: () => void) =>
-      Animated.timing(x, { toValue: to, duration: reduceMotionNow() ? 0 : FADE_MS, easing: FADE_EASING, useNativeDriver: true }).start(({ finished }) => {
+      Animated.timing(x, { toValue: to, duration: reduceMotionNow() || movesQuiet() ? 0 : FADE_MS, easing: FADE_EASING, useNativeDriver: true }).start(({ finished }) => {
         if (finished && done) done();
       });
     // Smoothness 2026-10-23: the tab changed at the end of a finger swipe. Both pages carry

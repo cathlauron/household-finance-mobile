@@ -3,7 +3,7 @@ import SkyGlow from './SkyGlow';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions, Animated, Easing } from 'react-native';
 import { useReduceMotion } from '../reduceMotion';
-import { CURVE, DIM_MS, ROW_MS, SHEET_CLOSE_MS, SHEET_OPEN_MS } from '../motion';
+import { CURVE, DIM_MS, FADE_IN_MS, ROW_MS, SHEET_CLOSE_MS, SHEET_OPEN_MS } from '../motion';
 import { formSwitching } from './FormSwapFade';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -131,8 +131,14 @@ export const SHEET_CLOSE_WAIT = CLOSE_MS + 40;
 let handoffClose: (() => void) | null = null;
 let handoffUntil = 0;
 let instantCloseUntil = 0;
+// 2026-10-23 (Cath: calendar + smoother): the height of the sheet on screen, so the next
+// sheet taking its place (the calendar's "what to add" > the form) can start from that
+// height and grow to its own, its contents fading in, instead of jumping in one frame.
+let lastShownHeight = 0;
+let handoffFromHeight = 0;
 export function startSheetHandoff(closePrevious: () => void) {
   handoffClose = closePrevious;
+  handoffFromHeight = lastShownHeight;
   handoffUntil = Date.now() + 1500;
   // If the next sheet never shows, the old one still closes (normally).
   setTimeout(() => {
@@ -224,13 +230,32 @@ function OwnSheet({
   const [, redraw] = React.useReducer((n: number) => n + 1, 0);
   // Smoothness 2026-10-23: the sheet is "resting" when it's fully up and not being dragged.
   const resting = React.useRef(false);
+  // The sheet's contents (not its background), faded in when it takes another sheet's place.
+  const content = React.useRef(new Animated.Value(1)).current;
   const openNow = React.useCallback(() => {
     const prev = takeHandoff();
     if (prev) {
-      y.setValue(0);
+      const fromH = handoffFromHeight;
+      handoffFromHeight = 0;
+      const ownH = lastHeight.current;
       dim.setValue(1);
       instantCloseUntil = Date.now() + 400;
-      resting.current = true;
+      if (!reduce && fromH > 0 && ownH > 0 && Math.abs(ownH - fromH) > 2) {
+        // Starts exactly where the old sheet's top edge was and glides to its own height;
+        // its contents fade in (the old one goes at once underneath).
+        y.setValue(ownH - fromH);
+        content.setValue(0);
+        resting.current = false;
+        Animated.parallel([
+          Animated.timing(y, { toValue: 0, duration: ROW_MS, easing: DRAWER, useNativeDriver: true }),
+          Animated.timing(content, { toValue: 1, duration: FADE_IN_MS, easing: DRAWER, useNativeDriver: true }),
+        ]).start(({ finished }) => {
+          if (finished) resting.current = true;
+        });
+      } else {
+        y.setValue(0);
+        resting.current = true;
+      }
       prev();
       return;
     }
@@ -264,6 +289,7 @@ function OwnSheet({
     sheetRef.current?.measure((_x, _y, _w, h) => {
       const before = lastHeight.current;
       lastHeight.current = h;
+      lastShownHeight = h;
       if (!before || Math.abs(h - before) < 2 || !resting.current || reduce || !formSwitching()) return;
       // Taller: it starts lower by the difference and rises; shorter: it starts higher
       // (the strip below it is covered by the filler under the sheet) and settles.
@@ -367,6 +393,7 @@ function OwnSheet({
           >
             {/* Version 2.1: the same time-of-day glow as Home, without rays/rain/stars. */}
             <SkyGlow plain />
+            <Animated.View style={{ opacity: content, flexShrink: 1 }}>
             <GestureDetector gesture={drag}>
               <View>
                 <View style={styles.handleWrap}>
@@ -391,6 +418,7 @@ function OwnSheet({
             >
               {children}
             </KeyboardAwareScrollView>
+            </Animated.View>
 
             <View style={{ height: bottomSpace }} />
           </Animated.View>
