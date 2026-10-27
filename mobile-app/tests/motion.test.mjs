@@ -208,3 +208,13 @@ test('curvedRange: same start and end, follows the curve, never goes backwards',
   // The house curve leaps at once: halfway through time it is well past halfway.
   assert.ok(cubicBezierAt(CURVE, 0.5) > 0.8);
 });
+
+// 2026-10-26 (Cath's phone screenshot): every Bills / Debts / Loans label had its own
+// shadowed box, because Android draws a shadow around anything given `elevation`. The
+// switcher's look is the approved mockup: one white piece with a soft drawn shadow behind
+// plain labels. No elevation anywhere in it.
+test('switchers: no Android elevation (it boxed every label)', () => {
+  const f = files.find((x) => x.name === 'components/SegmentedControl.tsx');
+  assert.doesNotMatch(code(f.text), /elevation\s*:/);
+  assert.match(f.text, /boxShadow/);
+});

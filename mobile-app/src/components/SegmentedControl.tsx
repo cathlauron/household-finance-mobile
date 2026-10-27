@@ -72,7 +72,7 @@ export default function SegmentedControl<T extends string>({ options, value, onC
         const on = opt.id === value;
         // Until the bar has been measured (its first moment on screen) the chosen option
         // carries the raised piece itself, as before.
-        const look = [styles.segment, gliding && styles.above, on && !gliding && [styles.segmentOn, { backgroundColor: onColor }]];
+        const look = [styles.segment, on && !gliding && [styles.segmentOn, { backgroundColor: onColor }]];
         return (
           <TouchableOpacity
             key={opt.id}
@@ -107,17 +107,13 @@ export default function SegmentedControl<T extends string>({ options, value, onC
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', borderRadius: 12, padding: PAD, gap: GAP },
   segment: { flex: 1, minHeight: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  segmentOn: {
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
+  // 2026-10-26 (Cath: "not what I approved"): the soft shadow is a plain drawn shadow
+  // (boxShadow), not Android's "raised" elevation. Elevation lifts a view above its
+  // neighbours, so the labels had to be raised too, and Android then drew a shadowed box
+  // around EVERY label (three boxed buttons on her phone). Now nothing is raised: the
+  // white piece is drawn first and the labels on top of it, like the mockup.
+  segmentOn: { boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.12)' },
   label: { fontSize: 15 },
-  // The raised piece sits behind the labels and slides along the track.
+  // The white piece sits behind the labels (drawn first) and slides along the track.
   piece: { position: 'absolute', top: PAD, bottom: PAD, left: 0, flex: 0 },
-  // Android draws raised things on top: the labels sit a step higher than the piece
-  // (no shadow shows, as their background is clear).
-  above: { zIndex: 1, elevation: 3 },
 });
