@@ -455,3 +455,13 @@ AO 2026-10-23 to 10-26: account first, past Loans, calendar, required marks, swi
       and you land on To-Pay > Bills with the new bill. Same for Transaction, Debt, Loan.
 - AO8 Open any form (New bill, New transaction, New trip, Move money, Settings > New
       category, sign-in): needed fields show a red *, the rest a grey "(optional)".
+
+AP 2026-10-26 smoothness sweep. NOT YET TESTED.
+- AP1 Swipe slowly between the main tabs, also right after saving something: the pages stay
+      under your finger the whole way (no lag, no jump when you let go).
+- AP2 Right after opening the app, tap around straight away: no short freeze.
+- AP3 + > add a transaction from Home: the form closes and Transactions slides in smoothly
+      (no stutter); the new entry glows.
+- AP4 Transactions with all your history: opens smoothly; scroll to the bottom: older days
+      are all there.
+- AP5 Calendar: opens straight in the layout you chose last time (no change while rising).

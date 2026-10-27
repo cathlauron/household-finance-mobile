@@ -69,6 +69,22 @@ Could not be checked here (stays "Needs your phone"):
 - S-15 (Cath's screenshot, 2026-10-26): switchers drew a shadowed box around every label
   on Android. Back to the approved look (one white pill), same glide.
 
+- S-16 (sweep 2026-10-26) Main-tab finger swipe lagged behind the finger when the app was
+  busy (every move went through JavaScript). Now it moves on the animation thread.
+- S-17 (sweep, jank reviewer) Every save redrew the whole app, hidden tabs and open pages
+  included. Now only what changed redraws (proven: __tests__/NoRedrawOnSave).
+- S-18 (sweep) All tabs were pre-built at once just after opening (short freeze). Now one
+  at a time, nearest first.
+- S-19 (sweep) Saving (encrypting) ran in the middle of the slide after + Add. Now it waits
+  until the slide is done (still saves at once when the app is put away or you log out).
+- S-20 (sweep) The Transactions list built the whole history at once. Now the newest two
+  months first, older days a moment later.
+- S-21 (sweep) Calendar opened with the default layout, then redrew with yours. Now yours
+  from the start. Home's rain stops while Home isn't showing.
+- Still open (bigger changes, Claude's suggestion, not urgent): pop-up forms are fully built
+  before they start rising (a short pause on big forms); dragging a pop-up down to close
+  still goes through JavaScript; the pop-up jumps up after the keyboard opens.
+
 ## Waiting for Cath's decision
 
 - Nothing waiting (S-04 to S-07 answered 2026-10-23, see Fixed).
