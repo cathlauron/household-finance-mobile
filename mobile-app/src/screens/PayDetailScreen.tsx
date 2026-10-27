@@ -30,7 +30,7 @@ import { getOverdueItems } from '../overdue';
 import { makeId } from '../utils';
 import { todayISO, dateText } from '../dateUtils';
 import type { ThemeColors } from '../theme';
-import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod } from '../types';
+import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod, LoanPayment } from '../types';
 
 // Redesign: the Bill, Debt and Loan pages from the Finance Flow mockups (BillDetail,
 // LoanDetail). Tapping one in To-Pay or Home opens this full page.
@@ -182,8 +182,10 @@ export default function PayDetailScreen() {
   const overdue = !curPaid && days !== null && days < 0;
   const history = paidCycles(rec);
   // Paid (or logged, for a back-dated payment) today: Undo stays available.
+  // Code review 2026-10-27: a back-dated "Just record it" payment (no paidAt) logged today
+  // can be undone too.
   const loggedToday = (() => {
-    const at = history[0]?.paidAt;
+    const at = history[0]?.paidAt ?? history[0]?.loggedAt;
     if (!at) return false;
     const d = new Date(at);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === today;
@@ -262,7 +264,10 @@ export default function PayDetailScreen() {
             style={[styles.primary, { backgroundColor: colors.accentTint }]}
             onPress={() => {
               const next = undoLastPayment(rec);
-              save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
+              // Code review 2026-10-27: the fee paid with it goes too.
+              const feeId = history[0]?.feeTxnId;
+              const base = feeId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== feeId) } : model;
+              save(kind === 'bill' ? { ...base, bills: base.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...base, debts: base.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
             }}
             accessibilityRole="button"
           >
@@ -288,13 +293,14 @@ export default function PayDetailScreen() {
         dueText={dueISO ? `Paying the ${shortDate(dueISO)} ${kind === 'bill' ? 'bill' : 'payment'}` : undefined}
         onConfirm={(pm, paidAmount, lateFee, date, takeOff, fee) => {
           setPayOpen(false);
+          const feeTxnId = fee > 0 ? makeId('txn') : undefined;
           const next =
             kind === 'debt'
-              ? markPaid(rec, pm, date, paidAmount, lateFee, { feePaid: fee })
-              : markPaid(rec, pm, date, paidAmount, 0, { feePaid: fee });
+              ? markPaid(rec, pm, date, paidAmount, lateFee, { feePaid: fee, feeTxnId })
+              : markPaid(rec, pm, date, paidAmount, 0, { feePaid: fee, feeTxnId });
           let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
           // Cath 2026-10-27 (canvas R4): a fee paid with it is its own Fees entry.
-          updated = withFeeEntry(updated, { amount: fee, label: name, date, paymentMethod: pm });
+          updated = withFeeEntry(updated, { amount: fee, label: name, date, paymentMethod: pm, id: feeTxnId });
           if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount + fee);
           save(updated, regular ? 'Sent' : paidAmount < amount ? 'Part paid' : 'Paid');
         }}
@@ -380,6 +386,11 @@ export default function PayDetailScreen() {
   );
 }
 
+function todayISOFrom(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function Row({ styles, label, value, last }: { styles: any; label: string; value: string; last?: boolean }) {
   return (
     <View style={[styles.row, !last && styles.lineBottom]}>
@@ -403,7 +414,11 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   const nextDue = loanNextDueDate(loan);
   const totalPayments = monthly > 0 ? Math.ceil(total / monthly) : 0;
   const today = todayISO();
-  const paidToday = payments[0]?.date === today;
+  // Code review 2026-10-27: Undo is for the payment logged last (also a back-dated one
+  // logged today), and it removes that payment's fee entry too.
+  const lastLogged = (loan.actualPayments || []).reduce<LoanPayment | undefined>((a, p) => (!a || (p.createdAt ?? 0) >= (a.createdAt ?? 0) ? p : a), undefined);
+  const loggedOn = lastLogged?.createdAt ? todayISOFrom(lastLogged.createdAt) : '';
+  const paidToday = !!lastLogged && (lastLogged.date === today || loggedOn === today);
   // Redesign: logging a payment first asks which account it comes from (or, for money
   // you lent, which account it goes into).
   const [payOpen, setPayOpen] = useState(false);
@@ -416,16 +431,17 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
     if (paidNow <= 0) return;
     const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
+    const feeTxnId = fee > 0 && !lent ? makeId('txn') : undefined;
     const next: Loan = {
       ...loan,
       actualPayments: [
         ...(loan.actualPayments || []),
         // Version 3: it covers the oldest scheduled payment still open (a missed one first).
-        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}) },
+        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 && !lent ? { fee, feeTxnId } : {}) },
       ],
     };
     let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
-    if (!lent) updated = withFeeEntry(updated, { amount: fee, label: loan.name || 'Loan', date, paymentMethod: pm });
+    if (!lent) updated = withFeeEntry(updated, { amount: fee, label: loan.name || 'Loan', date, paymentMethod: pm, id: feeTxnId });
     if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, paidNow + fee);
     save(updated, lent ? 'Received' : 'Paid');
   }
@@ -443,10 +459,11 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
     save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, 'Recorded');
   }
   function undoPayment() {
-    const last = payments[0];
+    const last = lastLogged;
     if (!last) return;
     const next: Loan = { ...loan, actualPayments: (loan.actualPayments || []).filter((p) => p.id !== last.id) };
-    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) });
+    const base = last.feeTxnId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== last.feeTxnId) } : model;
+    save({ ...base, loans: (base.loans || []).map((l) => (l.id === loan.id ? next : l)) });
   }
 
   return (

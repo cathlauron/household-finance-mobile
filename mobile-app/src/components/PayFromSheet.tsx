@@ -111,7 +111,8 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
       setError("A payment can't be dated in the future.");
       return;
     }
-    if (effective <= 0 && !allowNoAmount) {
+    // Only an item with no cost may be ticked without an amount (code review 10-27).
+    if (effective <= 0 && !(allowNoAmount && amount === 0)) {
       setError(direction === 'in' ? 'Enter how much you received.' : 'Enter how much you paid.');
       return;
     }

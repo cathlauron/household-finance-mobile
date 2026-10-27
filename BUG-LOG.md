@@ -67,6 +67,10 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-045 | A trip with an empty checklist showed no Checklist at all (Budget page cut to To-do's height; phone only) | components/SlidingPages.tsx (heights kept in a ref) | __tests__/InlineHeights.test.tsx (phone-like delayed writes; red-green) |
 | B-046 | "Dates (optional)" squeezed to one letter per line in the trip form (any long value in a form row) | components/SimpleForm.tsx PickerRow | tests/motion.test.mjs ("row labels keep their width"); look needs your phone |
 | - | Plan pages: swiping sideways no longer goes back to Plan (Cath) | navigation/RootStack.tsx NO_SWIPE_BACK | tests/motion.test.mjs ("Plan pages: no swipe-back") |
+| H-23 | (caught by code review before Cath saw it) Undo of a "Just record it" payment kept the flag: paying again from an account went missing from Transactions | billPayments.ts markPaid / undoLastPayment | tests/recordOnly.test.mjs (red-green) |
+| H-24 | (code review) Undo of a payment left its separate fee entry behind | PayDetailScreen.tsx (feeTxnId) | phone check TEST-3 8 |
+| H-25 | (code review) Paying more than a bill's amount made every later round look smaller in the forecast | balanceProjection.ts outstandingBalance | tests/recordOnly.test.mjs (red-green) |
+| H-26 | (code review) Payment-method and tax reports counted recorded-only payments; extra loan principal counted as a "late fee" | reports/PaymentMethodsReport.tsx, TaxSummaryReport.tsx | read-checked |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 

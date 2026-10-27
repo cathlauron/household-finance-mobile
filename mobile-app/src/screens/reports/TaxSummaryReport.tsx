@@ -55,11 +55,11 @@ function loanLateFeesInYear(model: HouseholdModel, year: number): number {
   let total = 0;
   (model.loans || []).forEach((loan) => {
     if (loan.direction === 'lent') return; // repayments received aren't a cost to you
-    const expected = typeof loan.expectedPayment === 'number' ? loan.expectedPayment : 0;
+    // Code review 2026-10-27: payments can now be any amount (paying extra is not a fee),
+    // and fees are entered on their own: count those.
     (loan.actualPayments || []).forEach((p) => {
-      const actual = typeof p.actual === 'number' ? p.actual : 0;
       if (!p.date || !p.date.startsWith(prefix)) return;
-      if (actual > expected) total += actual - expected;
+      if (typeof p.fee === 'number' && p.fee > 0) total += p.fee;
     });
   });
   return total;

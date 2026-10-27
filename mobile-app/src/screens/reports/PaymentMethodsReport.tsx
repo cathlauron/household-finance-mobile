@@ -79,7 +79,8 @@ export default function PaymentMethodsReport() {
     bill.cycles.forEach((cycle) => {
       const amt = typeof cycle.amountPaid === 'number' ? cycle.amountPaid : 0;
       const date = cycle.paidDate || cycle.dueDate;
-      if (!date || amt <= 0) return;
+      // Code review 2026-10-27: "Just record it" payments used no account.
+      if (!date || amt <= 0 || cycle.recordedOnly) return;
       addAmount(amt, cycle.paymentMethod);
     });
   });
@@ -88,7 +89,8 @@ export default function PaymentMethodsReport() {
     debt.cycles.forEach((cycle) => {
       const amt = typeof cycle.amountPaid === 'number' ? cycle.amountPaid : 0;
       const date = cycle.paidDate || cycle.dueDate;
-      if (!date || amt <= 0) return;
+      // Code review 2026-10-27: "Just record it" payments used no account.
+      if (!date || amt <= 0 || cycle.recordedOnly) return;
       addAmount(amt, cycle.paymentMethod);
     });
   });
@@ -97,7 +99,7 @@ export default function PaymentMethodsReport() {
     if (loan.direction === 'lent') return; // money coming in, not a spend
     loan.actualPayments.forEach((p) => {
       const amt = typeof p.actual === 'number' ? p.actual : 0;
-      if (!p.date || amt <= 0) return;
+      if (!p.date || amt <= 0 || p.recordedOnly) return;
       addAmount(amt, p.paymentMethod);
     });
   });

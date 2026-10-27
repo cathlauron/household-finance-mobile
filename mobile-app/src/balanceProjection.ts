@@ -186,7 +186,9 @@ export function bakeCurrentBalances(model: HouseholdModel): HouseholdModel['bala
 // ---- Bill / Debt outstanding amount ----
 // How much is currently still owed on a bill or debt, across every logged payment cycle.
 export function outstandingBalance(record: Bill | Debt): number {
-  return (record.cycles || []).reduce((sum, c) => sum + (toNumber(c.amountDue) - toNumber(c.amountPaid)), 0);
+  // Code review 2026-10-27: paying more than was due on one round never makes later
+  // rounds look smaller (each round counts at most what it still owes).
+  return (record.cycles || []).reduce((sum, c) => sum + Math.max(0, toNumber(c.amountDue) - toNumber(c.amountPaid)), 0);
 }
 
 // ---- Loan outstanding amount ----

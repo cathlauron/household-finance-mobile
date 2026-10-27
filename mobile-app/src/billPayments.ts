@@ -87,7 +87,7 @@ export function markPaid<T extends CycleRecord>(
   // Cath, 2026-10-27 (canvas R4): "Just record it": no account, no time stamp (so no
   // balance, spending or forecast counts it), only the history. `feePaid`: a fee paid
   // with the payment (shown in History; from an account it's its own Fees entry).
-  opts: { recordedOnly?: boolean; feePaid?: number } = {}
+  opts: { recordedOnly?: boolean; feePaid?: number; feeTxnId?: string } = {}
 ): T {
   const cur = currentCycle(record);
   if (!cur || isCyclePaid(cur)) return record;
@@ -97,25 +97,28 @@ export function markPaid<T extends CycleRecord>(
   const partial = paidAmt < due;
   const feePaid = Math.max(0, Math.round((opts.feePaid || 0) * 100) / 100);
   const { paymentMethod: _drop, paidAt: _dropAt, ...curWithoutAccount } = cur;
+  // Code review 2026-10-27: flags from an earlier (undone) recording never carry over.
+  const { recordedOnly: _r, feePaid: _f, feeTxnId: _t, loggedAt: _l, ...curClean } = cur;
   const paid: BillCycle = opts.recordedOnly
     ? {
         ...curWithoutAccount,
         amountPaid: paidAmt,
         paidDate: date,
         recordedOnly: true,
+        loggedAt: Date.now(),
         ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
         ...(fee > 0 ? { lateFee: fee } : {}),
         ...(feePaid > 0 ? { feePaid } : {}),
       }
     : {
-        ...cur,
+        ...curClean,
         amountPaid: paidAmt,
         paidDate: date,
         paidAt: Date.now(),
         paymentMethod: pm ?? cur.paymentMethod,
         ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
         ...(fee > 0 ? { lateFee: fee } : {}),
-        ...(feePaid > 0 ? { feePaid } : {}),
+        ...(feePaid > 0 ? { feePaid, ...(opts.feeTxnId ? { feeTxnId: opts.feeTxnId } : {}) } : {}),
       };
   const cycles = (record.cycles || []).map((c) => (c.id === cur.id ? paid : c));
   const base = {
@@ -123,7 +126,8 @@ export function markPaid<T extends CycleRecord>(
     amountPaid: '' as const,
     paidDate: '',
     notes: '',
-    paymentMethod: paid.paymentMethod,
+    // A recorded-only payment has no account; the next one keeps the usual account.
+    paymentMethod: opts.recordedOnly ? cur.paymentMethod : paid.paymentMethod,
     ...(cur.feesPortion !== undefined ? { feesPortion: cur.feesPortion } : {}),
   };
   const nextDue = nextOpenDueAfter({ ...record, cycles } as T, cur.dueDate || date);
@@ -148,7 +152,7 @@ export function undoLastPayment<T extends CycleRecord>(record: T): T {
   if (idx < 0) return record;
   const last = cycles[cycles.length - 1];
   if (idx !== cycles.length - 1 && num(last.amountPaid) === 0 && !last.notes) cycles.pop();
-  const { dueBefore, lateFee, ...rest } = cycles[idx];
+  const { dueBefore, lateFee, recordedOnly, feePaid, feeTxnId, loggedAt, ...rest } = cycles[idx];
   cycles[idx] = { ...rest, amountPaid: '', paidDate: '', paidAt: undefined, ...(typeof dueBefore === 'number' ? { amountDue: dueBefore } : {}) };
   return { ...record, cycles };
 }

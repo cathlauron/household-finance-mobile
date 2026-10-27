@@ -3,7 +3,7 @@
 // its own Fees entry; loans log the amount actually paid.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { markPaid, currentCycle, isCyclePaid } from '../src/billPayments.ts';
+import { markPaid, currentCycle, isCyclePaid, undoLastPayment } from '../src/billPayments.ts';
 import { buildTransactionsList } from '../src/transactions.ts';
 import { accountCurrentBalance } from '../src/balanceProjection.ts';
 import { withFeeEntry } from '../src/payFees.ts';
@@ -55,4 +55,30 @@ test('loans: a recorded-only payment counts as paid but is not spending or a bal
     actualPayments: [{ id: 'p1', date: '2026-03-16', actual: 4800, recordedOnly: true }] }];
   assert.equal(accountCurrentBalance(m, 'debit', m.balanceAccounts.debit[0]), 10000);
   assert.equal(buildTransactionsList(m).filter((t) => t.source === 'loan').length, 0);
+});
+
+// Code review 2026-10-27 (independent agent), each proven failing first by its probe:
+test('undo of a recorded payment, then paying from an account: a normal payment again', () => {
+  const m = model();
+  const rec = markPaid(m.bills[0], undefined, '2026-03-16', 2000, 0, { recordedOnly: true, feePaid: 50 });
+  const undone = undoLastPayment(rec);
+  assert.equal(undone.cycles[0].recordedOnly, undefined);
+  assert.equal(undone.cycles[0].feePaid, undefined);
+  const paid = markPaid(undone, BDO, '2026-03-16', 2000);
+  assert.equal(paid.cycles[0].recordedOnly, undefined);
+  const after = { ...m, bills: [paid] };
+  assert.equal(buildTransactionsList(after).filter((t) => t.source === 'bill').length, 1);
+});
+
+test('recording a payment keeps the usual account for the next one', () => {
+  const m = model();
+  const rec = markPaid(m.bills[0], undefined, '2026-03-16', 2000, 0, { recordedOnly: true });
+  assert.deepEqual(currentCycle(rec).paymentMethod, BDO);
+});
+
+test('paying more than due never makes later rounds look smaller', async () => {
+  const { outstandingBalance } = await import('../src/balanceProjection.ts');
+  const m = model();
+  const paid = markPaid(m.bills[0], BDO, '2026-03-16', 2500);
+  assert.equal(outstandingBalance(paid), 2000);
 });

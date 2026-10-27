@@ -144,6 +144,10 @@ export type BillCycle = {
   // account and no effect on any balance or spending. `feePaid`: a fee paid with it.
   recordedOnly?: boolean;
   feePaid?: number;
+  // The fee's own Fees entry (removed on Undo), and when a recorded-only payment was logged
+  // (for Undo; it has no paidAt).
+  feeTxnId?: string;
+  loggedAt?: number;
   // Partial debt payments (Round 3). On a cycle paid with less than was due, amountDue
   // is lowered to what was paid (so the cycle counts as settled everywhere) and the
   // original due amount is kept here, for history and Undo.
@@ -228,6 +232,7 @@ export type LoanPayment = {
   // fee paid with it.
   recordedOnly?: boolean;
   fee?: number;
+  feeTxnId?: string;
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
   createdAt?: number;

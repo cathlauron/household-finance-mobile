@@ -6,12 +6,12 @@ import { makeId } from './utils';
 // counts as spending, like a transfer's fee. Nothing is added for a zero fee.
 export function withFeeEntry(
   model: HouseholdModel,
-  fee: { amount: number; label: string; date: string; paymentMethod: PaymentMethod; notes?: string }
+  fee: { amount: number; label: string; date: string; paymentMethod: PaymentMethod; notes?: string; id?: string }
 ): HouseholdModel {
   const amount = Math.round(fee.amount * 100) / 100;
   if (!(amount > 0)) return model;
   const entry: ManualTransaction = {
-    id: makeId('txn'),
+    id: fee.id || makeId('txn'),
     date: fee.date,
     label: `Fee: ${fee.label}`,
     amount,
