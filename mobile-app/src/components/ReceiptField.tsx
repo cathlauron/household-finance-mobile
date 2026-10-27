@@ -124,7 +124,7 @@ export default function ReceiptField({
 
 const styles = (c: any) =>
   StyleSheet.create({
-    card: { backgroundColor: c.navy3, borderRadius: 12 },
+    card: { backgroundColor: c.navy3, borderRadius: 16 }, // like a form group
     sunk: { backgroundColor: c.navy2 },
     emptyRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, gap: 12 },
     fullCard: { paddingHorizontal: 16, paddingVertical: 14, gap: 12 },

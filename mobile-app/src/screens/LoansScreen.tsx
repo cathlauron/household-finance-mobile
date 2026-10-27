@@ -697,7 +697,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           />
           <SwitchLine
             testID="loan-direction-line"
-            text={directionInput === 'lent' ? 'Money you lent, paid back to you in set payments · to family or a friend' : 'Money you borrowed, paid back in set payments · car, housing, Pag-IBIG'}
+            text={directionInput === 'lent' ? 'Money you lent, paid back to you in set payments' : 'Money you borrowed and pay back in set payments'}
           />
         </FormSwapFade>
         {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
@@ -742,7 +742,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
               </Guided>
             )}
             <Guided {...fieldErrors.props('interest')} focusRef={interestRef}>
-              <InputRow mark="optional" label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
+              <InputRow mark="optional" label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
             </Guided>
           </FormGroup>
 

@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const here = path.dirname(new URL(import.meta.url).pathname);
-const root = path.join(here, '..', 'web-build');
+const root = process.env.WALK_ROOT || path.join(here, '..', 'web-build'); // WALK_ROOT: a copied build
 const out = process.env.WALK_OUT || path.join(here, '..', 'web-shots'); // WALK_OUT: own folder, so two walks can run at once
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
@@ -198,6 +198,23 @@ async function runStep(step, quiet = false) {
     if (quiet) return;
     await page.waitForTimeout(700);
     await picture(`let go after ${dx}`);
+    return;
+  }
+  if (step.startsWith('probe:')) {
+    // "probe:Paid on" = print where that text is drawn and what's covering it (debugging).
+    const t = step.slice(6);
+    const info = await page.evaluate((t) => {
+      const el = [...document.querySelectorAll('div,span')].find((e) => e.childNodes.length === 1 && e.textContent.trim().startsWith(t));
+      if (!el) return 'not found';
+      const r = el.getBoundingClientRect();
+      const chain = [];
+      for (let e = el; e && chain.length < 40; e = e.parentElement) {
+        const cs = getComputedStyle(e);
+        if (cs.transform !== 'none' || cs.opacity !== '1' || cs.visibility !== 'visible' || cs.display === 'none') chain.push(`${e.tagName} t=${cs.transform} o=${cs.opacity} v=${cs.visibility}`);
+      }
+      return JSON.stringify({ x: r.x, y: r.y, w: r.width, h: r.height }) + ' ' + chain.join(' | ');
+    }, t);
+    console.log(`probe ${t}: ${info}`);
     return;
   }
   if (step.startsWith('wait:')) {

@@ -4,7 +4,7 @@ import { dateText } from '../dateUtils';
 import AppSwitch from './AppSwitch';
 import DateField from './DateField';
 import { getNextDueDate, RecurringType, recentOccurrences } from '../recurrence';
-import { View, StyleSheet, ScrollView, KeyboardTypeOptions } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardTypeOptions, Platform } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from './AppText';
@@ -166,7 +166,9 @@ export function InputRow({ label, value, onChangeText, placeholder, autoFocus, k
   const s = rowStyles(colors);
   return (
     <View style={s.row}>
-      <MarkedLabel text={label} mark={mark} style={[s.label, invalid && { color: colors.error, fontWeight: '700' }]} />
+      {/* Review 10-27: the label keeps its width (like a picker row's), and typed values end
+          where the values with an arrow end, so the whole form shares one right edge. */}
+      <MarkedLabel text={label} mark={mark} style={[s.label, s.pickLabel, invalid && { color: colors.error, fontWeight: '700' }]} />
       <TextInput
         ref={inputRef}
         testID={testID}
@@ -187,13 +189,15 @@ export function AmountRow({ label, value, onChange, placeholder, mark }: { label
   const s = rowStyles(colors);
   return (
     <View style={s.row}>
-      <MarkedLabel text={label} mark={mark} style={s.label} />
+      <MarkedLabel text={label} mark={mark} style={[s.label, s.pickLabel]} />
       <AmountInput
         value={value}
         onChangeAmount={onChange}
         placeholder={placeholder ?? '0.00'}
-        style={{ flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, paddingHorizontal: 0, justifyContent: 'flex-end' }}
-        inputStyle={{ textAlign: 'right', flex: 0, minWidth: 90 }}
+        style={{ flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, paddingHorizontal: 0, justifyContent: 'flex-end', marginRight: 22 }}
+        // Cath 2026-10-27 ("not aligned"): the ₱ sits right next to the amount, not far left of it.
+        // (On the phone the box grows with the number; a web box doesn't, so it gets room.)
+        inputStyle={{ textAlign: 'right', flex: 0, minWidth: Platform.OS === 'web' ? 110 : 44, paddingLeft: 2 }}
       />
     </View>
   );
@@ -379,7 +383,7 @@ function rowStyles(colors: ThemeColors) {
     value: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
     pickLabel: { flexShrink: 0, maxWidth: '60%' },
     valueBox: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
-    input: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
+    input: { flex: 1, minWidth: 0, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12, marginRight: 22 },
   });
 }
 

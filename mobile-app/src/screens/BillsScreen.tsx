@@ -190,7 +190,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         ? dateText(new Date(onetimeDateInput + 'T00:00:00'), { weekday: true })
         : 'Choose'
       : dueNowInput
-      ? new Date(dueNowInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? dateText(new Date(dueNowInput + 'T00:00:00'), { weekday: true }) // same look as debts and loans (review 10-27)
       : recurTypeInput === 'monthly'
       ? dayInput ? `the ${ordinal(parseInt(dayInput, 10))}` : 'Choose'
       : dayInput && monthInput ? `${MONTHS_SHORT[parseInt(monthInput, 10) - 1] ?? ''} ${parseInt(dayInput, 10)}` : 'Choose';

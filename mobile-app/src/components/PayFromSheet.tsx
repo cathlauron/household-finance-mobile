@@ -161,7 +161,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
         </View>
       }
     >
-      <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+      <View style={{ paddingBottom: 24 }}>
         {!!onRecord && (
           <View style={{ marginBottom: 12 }}>
             <SegmentedControl<'account' | 'record'>

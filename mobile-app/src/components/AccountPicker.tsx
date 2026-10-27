@@ -129,7 +129,7 @@ function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId
                 <View style={[styles.miniCard, { backgroundColor: cardColor(a, g) }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name} numberOfLines={1}>{a.name || GROUP_LABEL[g]}</Text>
-                  <Text style={[styles.sub, reason ? { color: colors.negative } : null]}>
+                  <Text style={[styles.sub, reason ? { color: colors.negative } : null]} numberOfLines={1}>
                     {reason ? `${GROUP_LABEL[g]} · ${reason}` : GROUP_LABEL[g]}
                   </Text>
                 </View>

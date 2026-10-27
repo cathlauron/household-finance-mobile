@@ -1,4 +1,5 @@
 import React from 'react';
+import { walkFixtureOn } from '../walkFixture';
 import SkyGlow from './SkyGlow';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions, Animated, Easing } from 'react-native';
@@ -212,7 +213,8 @@ function OwnSheet({
   // Opening and closing. The window shows as soon as it's asked for (no extra redraw
   // first, 2.2 speed fix); the slide starts the moment the phone has shown it. It stays
   // shown while the sheet slides away.
-  const reduce = useReduceMotion();
+  // (The background tester's web build shows sheets at once: its pages don't run the slide.)
+  const reduce = useReduceMotion() || walkFixtureOn;
   const [closing, setClosingState] = React.useState(false);
   const closingRef = React.useRef(false);
   const setClosing = (v: boolean) => {
@@ -232,6 +234,15 @@ function OwnSheet({
   const resting = React.useRef(false);
   // The sheet's contents (not its background), faded in when it takes another sheet's place.
   const content = React.useRef(new Animated.Value(1)).current;
+  // (Web's pop-up window doesn't always say it has shown; the tester's build puts it up now.)
+  React.useEffect(() => {
+    if (!walkFixtureOn || !visible) return;
+    const t = setTimeout(() => {
+      y.setValue(0);
+      dim.setValue(1);
+    }, 60);
+    return () => clearTimeout(t);
+  }, [visible]);
   const openNow = React.useCallback(() => {
     const prev = takeHandoff();
     if (prev) {

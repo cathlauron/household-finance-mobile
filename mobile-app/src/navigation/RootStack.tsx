@@ -18,6 +18,7 @@ import PremiumScreen from '../screens/PremiumScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import SharedExpensesScreen from '../screens/SharedExpensesScreen';
+import InvestmentsScreen from '../screens/InvestmentsScreen';
 import ReviewScreen from '../screens/ReviewScreen';
 import RecurringScreen from '../screens/RecurringScreen';
 import EnvelopesScreen from '../screens/EnvelopesScreen';
@@ -67,6 +68,7 @@ export type RootStackParamList = {
   Events: undefined;
   YearlyGoals: undefined;
   SharedExpenses: { fromTransactionId?: string; editExpenseId?: string; nonce?: number } | undefined;
+  Investments: { openId?: string } | undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -305,6 +307,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
       <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
       <Stack.Screen name="SharedExpenses" component={SharedExpensesScreen} options={{ title: 'Shared Expenses', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
+      <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Investments', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Recurring" component={RecurringScreen} options={{ title: 'Recurring', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Envelopes" component={EnvelopesScreen} options={{ title: 'Envelopes', headerBackTitle: 'Budgeting' }} />

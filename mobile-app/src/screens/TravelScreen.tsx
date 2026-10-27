@@ -838,7 +838,7 @@ export default function TravelScreen() {
                       <View style={[styles.checkRow, (t.checklist || []).length > 0 && styles.rowDivider]}>
                         <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
                         <TextInput
-                          style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
+                          style={[styles.tripName, { flex: 1, minWidth: 0, paddingVertical: 4 }]}
                           value={pageItemText}
                           onChangeText={setPageItemText}
                           placeholder="Add an item"
@@ -848,7 +848,7 @@ export default function TravelScreen() {
                           testID="travel-page-item-input"
                         />
                         <TextInput
-                          style={[styles.tripName, styles.costInput]}
+                          style={[styles.tripName, styles.costInput, !!pageItemText.trim() && { width: 76 }]}
                           value={pageItemCost}
                           onChangeText={(v) => setPageItemCost(v.replace(/[^0-9.]/g, ''))}
                           placeholder="₱ Cost"

@@ -34,6 +34,7 @@ const GROUPS: Group[] = [
       { title: 'Savings', subtitle: 'Pots, emergency fund and FI', icon: 'leaf-outline', testID: 'more-savings-row', go: (n) => n.navigate('Savings') },
       { title: 'Yearly Goals', subtitle: `What you want to achieve in ${new Date().getFullYear()}`, icon: 'flag-outline', testID: 'plan-goals-row', go: (n) => n.navigate('YearlyGoals') },
       { title: 'Shared Expenses', subtitle: 'Split costs and settle up', icon: 'people-outline', testID: 'plan-shared-row', go: (n) => n.navigate('SharedExpenses') },
+      { title: 'Investments', subtitle: 'MP2, stocks, funds: what they are worth', icon: 'trending-up-outline', testID: 'plan-investments-row', go: (n) => n.navigate('Investments') },
     ],
   },
   {

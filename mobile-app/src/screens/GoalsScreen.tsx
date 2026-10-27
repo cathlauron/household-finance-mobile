@@ -310,7 +310,7 @@ export default function GoalsScreen() {
         <View style={[styles.summaryCard, styles.ringCard]}>
           <GradientFill match={styles.summaryCard} />
           <Svg width={64} height={64} viewBox="0 0 64 64" accessibilityLabel={`${doneCount} of ${goals.length} goals done`}>
-            <Circle cx={32} cy={32} r={27} fill="none" stroke={colors.navy1} strokeWidth={7} />
+            <Circle cx={32} cy={32} r={27} fill="none" stroke={colors.navy4} strokeWidth={7} />
             {goals.length > 0 && (
               <Circle
                 cx={32}

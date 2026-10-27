@@ -24,6 +24,7 @@
 // ============================================================
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource, PaymentMethod, BalanceAccountEntry } from './types';
+import { accountEffect as investmentAccountEffect } from './investments';
 import { isCyclePaid, lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
@@ -149,6 +150,14 @@ export function accountActivitySinceUpdate(model: HouseholdModel, group: Spendin
     (g.contributions || []).forEach((c) => {
       if (!matches(c.paymentMethod) || !happenedSinceUpdate(model, c.date, c.createdAt, today)) return;
       delta -= toNumber(c.amount); // put in = leaves the account; taken out (negative) = comes back
+    })
+  );
+  // Cath 2026-10-27 (canvas I1): money put into an investment leaves the account; money
+  // taken out comes back to it. What an investment is worth never counts here.
+  (model.investments || []).forEach((inv) =>
+    (inv.entries || []).forEach((e) => {
+      if (!happenedSinceUpdate(model, e.date, e.createdAt, today)) return;
+      delta += investmentAccountEffect(e, matches);
     })
   );
   return delta;

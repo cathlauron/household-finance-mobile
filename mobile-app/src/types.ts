@@ -50,6 +50,34 @@ export type Settings = {
 };
 
 // Shared Expenses: one thing someone paid for that a few people share.
+// Cath, 2026-10-27 (canvas I1, "count the money going into investments and only add it
+// towards the balance if the investment has been withdrawn").
+//   add      = money put in (from an account: it leaves that account; not spending)
+//   withdraw = money taken out (into an account: it comes back to that account)
+//   value    = what it's worth on that date (typed in; no live prices)
+export type InvestmentEntry = {
+  id: string;
+  date: string;
+  type: 'add' | 'withdraw' | 'value';
+  amount: number;
+  paymentMethod?: PaymentMethod;
+  note?: string;
+  createdAt?: number;
+  addedBy?: string;
+};
+export type InvestmentKind = 'mp2' | 'stocks' | 'fund' | 'timedeposit' | 'crypto' | 'other';
+export type Investment = {
+  id: string;
+  name: string;
+  kind: InvestmentKind;
+  note?: string;
+  entries: InvestmentEntry[];
+  createdAt?: number;
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
+};
+
 export type SharedExpense = {
   id: string;
   date: string;
@@ -641,6 +669,9 @@ export type HouseholdModel = {
   sharedMembers?: string[];
   sharedExpenses?: SharedExpense[];
   sharedSettlements?: SharedSettlement[];
+  // Cath, 2026-10-27 (canvas I1): investments (Plan > Investments). Money put in from an
+  // account leaves it (not spending); what they're worth is never in what you can spend.
+  investments?: Investment[];
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];

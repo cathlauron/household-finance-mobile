@@ -268,7 +268,7 @@ test('heights are never read back from an animation value; row labels keep their
 // Cath, 2026-10-27: swiping sideways on a Plan page never goes back to Plan.
 test('Plan pages: no swipe-back (back arrow / phone back only)', () => {
   const rs = code(files.find((x) => x.name === 'navigation/RootStack.tsx').text);
-  for (const name of ['Savings', 'Groceries', 'Travel', 'Events', 'YearlyGoals', 'SharedExpenses']) {
+  for (const name of ['Savings', 'Groceries', 'Travel', 'Events', 'YearlyGoals', 'SharedExpenses', 'Investments']) {
     const at = rs.indexOf(`name="${name}"`);
     assert.ok(at >= 0, name);
     assert.match(rs.slice(at, at + 260), /NO_SWIPE_BACK/, name);

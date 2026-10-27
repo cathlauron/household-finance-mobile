@@ -382,7 +382,7 @@ export default function SharedExpensesScreen() {
                     <View style={[styles.avatar, { backgroundColor: involvesMe ? colors.accentTint : colors.navy2 }]}>
                       <Text style={[styles.avatarText, { color: involvesMe ? colors.gold : colors.inkDim }]}>{(model.people.find((p) => p.id === (involvesMe ? other : b.from))?.name ?? '?').charAt(0).toUpperCase()}</Text>
                     </View>
-                    <Text style={styles.rowTitle} numberOfLines={1}>{text}</Text>
+                    <Text style={styles.rowTitle} numberOfLines={2}>{text}</Text>
                     <Text style={[styles.amt, { color }]}>{formatPeso(b.amount)}</Text>
                     {settleKey !== `${b.from}|${b.to}` && (
                       <TouchableOpacity
@@ -536,7 +536,7 @@ export default function SharedExpensesScreen() {
                 </View>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.rowTitle, { flexShrink: 1 }]} numberOfLines={1}>{e.label}</Text>
+                    <Text style={[styles.rowTitle, { flex: 0, flexShrink: 1 }]} numberOfLines={1}>{e.label}</Text>
                     {!!e.receiptPhoto && <ReceiptMark />}
                   </View>
                   <Text style={styles.sub} numberOfLines={1}>
