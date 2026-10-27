@@ -109,7 +109,21 @@ export function splitModel(model: HouseholdModel, opts: { extraReceipts?: boolea
   return parts;
 }
 
-export function joinParts(parts: HouseholdParts): HouseholdModel {
+// Every receipt outside transactions in a (joined) household, by its part id. The sync keeps
+// these in memory so a photo part that an older phone removed can be put back (review 10-27).
+export function extraReceiptPhotos(model: HouseholdModel): Record<string, string> {
+  const out: Record<string, string> = {};
+  eachExtraReceipt(model as any, (key, holder) => {
+    const v = holder.receiptPhoto;
+    if (typeof v === 'string' && v && !v.startsWith('part:')) out[key] = v;
+  });
+  return out;
+}
+
+// `fallback`: where a receipt pointer's photo part is missing, a photo this phone saw
+// before under the same id. (A pointer only stays behind without its part when an older
+// phone removed the part; a receipt removed on purpose takes its pointer with it.)
+export function joinParts(parts: HouseholdParts, fallback?: (key: string) => string | undefined): HouseholdModel {
   const coreRaw = parts[CORE_PART] as (Record<string, unknown> & {
     __hasTransactions?: boolean;
     __hasAvatarPhotos?: boolean;
@@ -157,7 +171,7 @@ export function joinParts(parts: HouseholdParts): HouseholdModel {
   eachExtraReceipt(coreCopy, (_key, holder) => {
     const v = holder.receiptPhoto;
     if (typeof v !== 'string' || !v.startsWith('part:')) return;
-    const photo = receipts[v.slice(5)];
+    const photo = receipts[v.slice(5)] ?? fallback?.(v.slice(5));
     if (photo) holder.receiptPhoto = photo;
     else delete holder.receiptPhoto;
   });

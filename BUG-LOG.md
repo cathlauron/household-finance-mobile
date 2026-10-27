@@ -71,6 +71,9 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-24 | (code review) Undo of a payment left its separate fee entry behind | PayDetailScreen.tsx (feeTxnId) | phone check TEST-3 8 |
 | H-25 | (code review) Paying more than a bill's amount made every later round look smaller in the forecast | balanceProjection.ts outstandingBalance | tests/recordOnly.test.mjs (red-green) |
 | H-26 | (code review) Payment-method and tax reports counted recorded-only payments; extra loan principal counted as a "late fee" | reports/PaymentMethodsReport.tsx, TaxSummaryReport.tsx | read-checked |
+| H-27 | (code review, receipts sync) An older (2.2) phone opening a parts household, e.g. the side-by-side 2.2 build on the same account, would delete the new receipt parts | householdParts.ts joinParts fallback, householdPartsSync.ts (seen receipts put back and re-saved; gate re-checked on every live update) | proven: tests/extraReceipts.test.mjs |
+| H-28 | (code review) Moving to the bigger storage compared against this phone's last-saved parts, not what is online, so a part another phone removed could stay missing | householdPartsSync.ts saveWhenTooBig | read-checked |
+| H-29 | (code review, open) While a phone is still on 2.2, receipts on shared expenses / payments / trips stay inside the main copy (~200 KB each); after about 4-5 the household can say storage is full until every phone is on 3.0 | (by design, safe; no data lost) | open: tell Cath |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 

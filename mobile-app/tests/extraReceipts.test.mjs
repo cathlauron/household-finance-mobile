@@ -2,7 +2,7 @@
 // expenses, bill/debt payments, loan payments and trip items, kept safe in the parts sync).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitModel, joinParts, partTexts, changedParts, CORE_PART } from '../src/householdParts.ts';
+import { splitModel, joinParts, partTexts, changedParts, CORE_PART, extraReceiptPhotos } from '../src/householdParts.ts';
 import { everyoneReadsParts, EXTRA_RECEIPTS_VERSION, PARTS_READER_VERSION } from '../src/partsGate.ts';
 
 const PIC = (n) => `data:image/jpeg;base64,${n}`;
@@ -71,4 +71,20 @@ test('the receipt parts need every phone on 3.0; the bigger storage still needs 
   assert.equal(everyoneReadsParts(['u1', 'u2'], { u1: '3.0', u2: '2.2' }, EXTRA_RECEIPTS_VERSION), false);
   assert.equal(everyoneReadsParts(['u1', 'u2'], { u1: '3.0', u2: '3.0' }, EXTRA_RECEIPTS_VERSION), true);
   assert.equal(everyoneReadsParts(['u1', 'u2'], { u1: '3.0', u2: '2.2' }, PARTS_READER_VERSION), true);
+});
+
+test('code review: a photo part an older phone removed is put back from what this phone saw', () => {
+  const m = model();
+  const seen = extraReceiptPhotos(m);
+  assert.equal(seen['rcpt-x-se-shx-1'], PIC('SHARED'));
+  assert.equal(Object.keys(seen).length, 5);
+  const parts = splitModel(m, { extraReceipts: true });
+  delete parts['rcpt-x-se-shx-1']; // what a 2.2 phone's save does
+  const back = joinParts(parts, (key) => seen[key]);
+  assert.equal(back.sharedExpenses[0].receiptPhoto, PIC('SHARED'));
+  // A receipt removed on purpose takes its pointer with it, so nothing comes back.
+  const removed = model();
+  delete removed.sharedExpenses[0].receiptPhoto;
+  const again = joinParts(splitModel(removed, { extraReceipts: true }), (key) => seen[key]);
+  assert.equal(again.sharedExpenses[0].receiptPhoto, undefined);
 });

@@ -17,7 +17,7 @@
 import CryptoJS from 'crypto-js';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { splitModel, joinParts, partTexts } from './householdParts';
+import { splitModel, joinParts, partTexts, extraReceiptPhotos } from './householdParts';
 import { saveParts, loadParts, deleteAllParts, migrateToParts, reportMemberVersion, PartTooBigError } from './householdCloudParts';
 import type { HouseholdModel } from './types';
 import { partsEnabledFor, everyoneReadsParts, EXTRA_RECEIPTS_VERSION } from './partsGate';
@@ -41,8 +41,41 @@ function inOrder<T>(job: () => Promise<T>): Promise<T> {
 type State = { householdId: string | null; layout: number; texts: Record<string, string>; extraReceipts: boolean };
 const state: State = { householdId: null, layout: 0, texts: {}, extraReceipts: false };
 
+// Receipts outside transactions this phone has seen (part id -> photo), this session.
+// If an older phone removed one of their parts, joining puts the photo back from here and
+// the next save writes the part again (code review 2026-10-27).
+const seenReceipts: Record<string, string> = {};
+function remember(model: HouseholdModel) {
+  try {
+    Object.assign(seenReceipts, extraReceiptPhotos(model));
+  } catch {}
+}
+let restored = false;
+function join(parts: Record<string, unknown>): HouseholdModel {
+  restored = false;
+  const model = joinParts(parts, (key) => {
+    const photo = parts[key] ? undefined : seenReceipts[key];
+    if (photo) restored = true;
+    return photo;
+  });
+  remember(model);
+  return model;
+}
+// After a join that had to put a photo back: write the missing parts again straight away.
+async function repairIfRestored(householdId: string, key: CryptoJS.lib.WordArray, model: HouseholdModel) {
+  if (!restored) return;
+  restored = false;
+  try {
+    state.texts = await saveParts(householdId, key, split(model), state.texts);
+    console.log('[parts] put back receipt photo(s) another phone had removed');
+  } catch (e) {
+    console.warn('[parts] could not put back a receipt photo (tried again on the next save):', e);
+  }
+}
+
 // Splits the household the way this household can safely read it (see partsGate.ts).
 function split(model: HouseholdModel) {
+  remember(model);
   return splitModel(model, { extraReceipts: state.extraReceipts });
 }
 
@@ -67,6 +100,7 @@ function sameHousehold(householdId: string) {
     state.layout = 0;
     state.texts = {};
     state.extraReceipts = false;
+    for (const k of Object.keys(seenReceipts)) delete seenReceipts[k];
   }
 }
 
@@ -79,6 +113,7 @@ export function forgetParts() {
   state.layout = 0;
   state.texts = {};
   state.extraReceipts = false;
+  for (const k of Object.keys(seenReceipts)) delete seenReceipts[k];
 }
 
 // layout 2 only: reads the household from its parts. Returns null if that isn't possible
@@ -96,7 +131,9 @@ export async function loadModelFromParts(
     if (!parts) return null;
     state.layout = layout;
     state.texts = partTexts(parts);
-    return joinParts(parts);
+    const model = join(parts);
+    inOrder(() => repairIfRestored(householdId, key, model));
+    return model;
   } catch (e) {
     console.warn('[parts] could not load from parts:', e);
     return null;
@@ -182,7 +219,11 @@ export async function saveWhenTooBig(username: string, householdId: string, key:
       console.warn('[parts] not every phone in the household reads parts yet; staying on one copy');
       return false;
     }
-    state.texts = await saveParts(householdId, key, split(model), state.texts);
+    // Code review 2026-10-27: compare with the parts as they are online right now (another
+    // phone may have changed or removed some since this phone last saved), so every part the
+    // household needs is really there before the parts become the main copy.
+    const online = await loadParts(householdId, key);
+    state.texts = await saveParts(householdId, key, split(model), online ? partTexts(online) : state.texts);
     // updatedAt changes too, so other phones' live listener notices the new version.
     await updateDoc(doc(db, 'households', householdId), { layout: 2, updatedAt: Date.now() });
     state.layout = 2;
@@ -217,12 +258,17 @@ export async function modelFromPartsForUpdate(
   if (!partsEnabledFor(username) || layout < 2) return null;
   return inOrder(async () => {
     sameHousehold(householdId);
+    // A phone that just joined or opened on an older version shows up here: check again
+    // whether the receipt parts are still safe for everyone.
+    await refreshMembers(householdId);
     try {
       const parts = await loadParts(householdId, key);
       if (!parts) return null;
       state.layout = layout;
       state.texts = partTexts(parts);
-      return joinParts(parts);
+      const model = join(parts);
+      await repairIfRestored(householdId, key, model);
+      return model;
     } catch (e) {
       console.warn('[parts] could not read a live update from the parts:', e);
       return null;
