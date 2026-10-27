@@ -1038,3 +1038,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   pick/approval. Open: Travel trip page "Add an item" row not showing with an empty
   checklist (code draws it; asked Cath for a screenshot). Next: her mockup answers, then
   build in small batches on v3; then V3-PLAN items.
+
+- NEWEST (2026-10-27, afternoon, v3 af17ccb..e6b5bfd): Cath approved all canvas mockups and
+  picked option B (regular payments inside Bills). Built + checked: B-045 empty trip
+  checklist cut off (heights race, phone only; proven with phone-like test), B-046 form
+  labels squeezed, no swipe-back on the six Plan pages, Contact support (S1), transfers
+  in Transactions + their page (T1; Undo held back: a balance typed in since would count
+  twice), Regular payments (P2). Phone: TEST-3.md sections 6 and 7. New asks from Cath:
+  (a) loans: edit the amount paid + a fees field, everywhere you pay; (b) "just record
+  it" past payments with no account and no balance change, everywhere - one shared pay
+  sheet drawn as canvas R4, waiting for her OK; (c) receipts on shared expenses /
+  payments / trip items need the photo "parts" sync extended (sync change: her yes
+  first); (d) investments (least priority, scope + mockup first).
