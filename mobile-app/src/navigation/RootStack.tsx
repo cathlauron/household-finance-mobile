@@ -30,6 +30,7 @@ import TravelScreen from '../screens/TravelScreen';
 import EventsScreen from '../screens/EventsScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
+import TransferDetailScreen from '../screens/TransferDetailScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { GuestGate } from '../components/GuestSaveSheet';
@@ -58,6 +59,7 @@ export type RootStackParamList = {
   Subscriptions: undefined;
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string; backTitle?: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
+  TransferDetail: { id: string };
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
   PotDetail: { id: string; open?: 'out' };
   Groceries: undefined;
@@ -291,6 +293,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="TransferDetail" component={TransferDetailScreen} options={{ title: '', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: ' ', headerBackTitle: 'Insights' }} />

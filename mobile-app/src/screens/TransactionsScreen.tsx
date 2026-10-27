@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { transfersForList, TransferRow } from '../transfersList';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, isZeroAmount, toneUnlessZero } from '../moneyColor';
 import { friendlyError } from '../friendlyError';
@@ -341,7 +342,18 @@ export default function TransactionsScreen({
     }
     return sortTransactions(list, sortOrder);
   }, [model, allEntries, sortOrder, categoryFilter, monthFilter, accountFilter]);
-  const days = useMemo(() => groupByDate(transactions), [transactions]);
+  // Cath, 2026-10-27 (canvas T1): money moved between your own accounts shows in the list,
+  // in grey with its note. Only in what the list shows: never in the totals above.
+  const transferRows = useMemo(
+    () => (model ? transfersForList(model, { month: monthFilter, category: categoryFilter, accountKey: accountFilter?.key }) : []),
+    [model, monthFilter, categoryFilter, accountFilter]
+  );
+  const listed = useMemo(() => {
+    if (transferRows.length === 0) return transactions;
+    const asEntries = transferRows.map((r) => ({ id: r.id, date: r.date, label: r.title, category: '', source: 'manual' as const, amount: r.amount, direction: 'out' as const, owner: 'shared', transfer: r }));
+    return sortTransactions([...transactions, ...asEntries], sortOrder);
+  }, [transactions, transferRows, sortOrder]);
+  const days = useMemo(() => groupByDate(listed), [listed]);
   // Version 2.2 (approved P4): a just-added transaction slides in and glows for a moment.
   // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
   // every key typed in the form).
@@ -403,6 +415,30 @@ export default function TransactionsScreen({
         <View style={styles.group}>
           <GradientFill match={styles.group} />
         {day.items.map((t: TransactionEntry, rowIndex: number) => {
+          const tr = (t as TransactionEntry & { transfer?: TransferRow }).transfer;
+          if (tr) {
+            return (
+              <TouchableOpacity
+                key={t.id}
+                testID={`transfer-row-${t.id}`}
+                style={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]}
+                activeOpacity={0.6}
+                onPress={() => (navigation as any).navigate('TransferDetail', { id: t.id })}
+                accessibilityRole="button"
+                accessibilityLabel={`${tr.title}, ${formatPeso(tr.amount)}, not spending`}
+              >
+                <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
+                <View style={[styles.tile, { backgroundColor: colors.navy2 }]}>
+                  <Ionicons name="swap-horizontal" size={17} color={colors.inkDim} />
+                </View>
+                <View style={styles.txnMain}>
+                  <Text style={styles.txnLabel} numberOfLines={1}>{tr.title}</Text>
+                  <Text style={styles.txnSub} numberOfLines={1}>{tr.sub}</Text>
+                </View>
+                <Text style={[styles.txnAmount, { color: colors.inkDim }]}>{formatPeso(tr.amount)}</Text>
+              </TouchableOpacity>
+            );
+          }
           const isManual = t.source === 'manual';
           const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
@@ -1069,7 +1105,7 @@ export default function TransactionsScreen({
           ))}
         </BottomSheet>
 
-        {transactions.length === 0 && (
+        {listed.length === 0 && (
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 

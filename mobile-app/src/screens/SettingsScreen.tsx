@@ -15,7 +15,9 @@ import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewW
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { MarkedLabel } from '../components/MarkedLabel';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
+import { SUPPORT_EMAIL, supportMailto } from '../support';
+import { showSaved } from '../components/SavedToast';
 import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
@@ -1998,6 +2000,28 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <LogoMark width={96} />
           <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 8 }}>Version {APP_VERSION}</Text>
         </View>
+        {/* Cath, 2026-10-27 (canvas S1): Contact support opens an email to the support address
+            with the version in the subject; the address can be copied too. */}
+        <SettingsGroup plain footer={'"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.'}>
+          <PlainRow
+            testID="settings-contact-support"
+            title="Contact support"
+            sub={SUPPORT_EMAIL}
+            onPress={() => {
+              Linking.openURL(supportMailto(APP_VERSION, Platform.OS)).catch(() =>
+                Alert.alert('No email app found', `Write to ${SUPPORT_EMAIL}. You can copy the address below.`)
+              );
+            }}
+          />
+          <PlainRow
+            testID="settings-copy-support"
+            title="Copy email address"
+            accent
+            onPress={() => {
+              Clipboard.setStringAsync(SUPPORT_EMAIL).then(() => showSaved('Copied')).catch(() => {});
+            }}
+          />
+        </SettingsGroup>
         <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
           <PlainRow title="Help & guides" value="Coming soon" />
         </SettingsGroup>
