@@ -3,6 +3,9 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> START HERE (2026-10-16): This is the ACTIVE progress log. Version 2.0.0 is finished and
 >>> merged into `main` (merge commit 9ae00f9). ALL new work happens on the `v3` branch.
 >>> Read the "▶️ Next step" section at the bottom first.
+>>> NEWEST (2026-10-27, wrap-up): VERSION 2.2.0 (versionCode 4) MERGED INTO `main`
+>>> (merge 035628f; main = v2.2 exactly). Cath builds it, then tests TEST-2.2-FINAL.md
+>>> (54 checks, one pass by screen). New work continues on `v3`. Security SEC-1..7 wait.
 >>> NEWEST (2026-10-26): red error + Home behind pages + switcher look fixed on v2.2/v3;
 >>> phone checks TEST-2.2 AO; security decisions wait in BUG-HUNT.md (SEC-1..7).
 >>> NEWEST (2026-10-23, smoothness): new standing skill finance-flow-smoothness-check
@@ -1008,3 +1011,13 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   v2.2/v3): goToMain now merges (a reminder's openBillId was wiped and all tabs rebuilt);
   tab swipe guards (a self-swiping card always wins; cancelled swipes never change tab);
   Transactions batches restart on a new sort/filter. Phone: TEST-2.2 AO + AP.
+
+- NEWEST (2026-10-27, wrap-up): Cath called 2.2 done. Version checked (app.json 2.2.0 +
+  versionCode 4, SettingsScreen APP_VERSION 2.2.0), v2.2 merged into `main` (035628f, no
+  conflicts; Claude's workspace copy had been a shallow clone, unshallowed first). EAS build
+  is Cath's to start (needs her Expo login). Then: TEST-2.2-FINAL.md on main = every
+  check not yet confirmed on her phone (54, grouped by screen; also a checklist page in her
+  Claude account). After her report: fix anything failed on `v3` (merge main into v3 first
+  if they differ), then security SEC-1/SEC-2 (her OK + Firebase Console steps), then the
+  open smoothness ideas (pop-up forms build before rising; pop-up drag-down; keyboard
+  jump), then version 3 work on `v3`.
