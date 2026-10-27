@@ -31,7 +31,7 @@ import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType } from '../recurrence';
-import { loanNextDueDate } from '../loanSchedule';
+import { loanNextDueDate, loanFirstDate } from '../loanSchedule';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
@@ -275,10 +275,12 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
     {
-      // The first payment if one was picked, else the next one on the schedule.
+      // The first payment if one was picked; for a loan with payments but none picked, the
+      // one its payments started from (Cath 2026-10-27: saving the form used to set it to
+      // the NEXT date, after all the payments); else the next one on the schedule.
       const next = rt === 'monthly' || rt === 'annual' ? getNextDueDate(rt, d) : null;
       const nextIso = next ? `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}` : '';
-      setFirstDateInput(typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : nextIso);
+      setFirstDateInput(typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : loanFirstDate(loan) || nextIso);
     }
     setCustomFreqInput(loan.customFreq || 'monthly');
     setCustomStartDateInput(loan.customStartDate || '');

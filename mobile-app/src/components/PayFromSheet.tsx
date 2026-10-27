@@ -14,6 +14,8 @@ import SegmentedControl from './SegmentedControl';
 import { todayISO, dateText } from '../dateUtils';
 import ReceiptField from './ReceiptField';
 import { MarkedLabel } from './MarkedLabel';
+import { FormGroup, AmountRow, PickerRow } from './SimpleForm';
+import { accountLabel } from '../transactionActions';
 
 // Redesign: asks which account a payment comes from (or goes into) before it's logged,
 // e.g. "Mark as paid" on a bill. Same rules as a new transaction: required, and cash or
@@ -55,6 +57,8 @@ type Props = {
   // Cath, 2026-10-27 (canvas R2-R4): "Receipt photo (optional)" at the bottom, passed to
   // onConfirm / onRecord as the last value (undefined when none was added).
   withReceipt?: boolean;
+  // Cath, 2026-10-27: a warning under the amount (loans: less than the payment due).
+  amountNote?: (amount: number) => string | undefined;
 };
 
 function shortISO(iso: string): string {
@@ -68,7 +72,7 @@ function yesterdayISO(): string {
 }
 const cents = (n: number) => Math.round(n * 100) / 100;
 
-export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onRecord, recordNote, recordLabel, noFees, allowNoAmount, onConfirm, withReceipt }: Props) {
+export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onRecord, recordNote, recordLabel, noFees, allowNoAmount, onConfirm, withReceipt, amountNote }: Props) {
   const { colors } = useTheme();
   const [pm, setPm] = useState<PaymentMethod | undefined>(initial);
   const [error, setError] = useState('');
@@ -80,6 +84,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
   const [takeOff, setTakeOff] = useState(false);
   const [mode, setMode] = useState<'account' | 'record'>('account');
   const [receipt, setReceipt] = useState<string | null>(null);
+  const [openRow, setOpenRow] = useState<'date' | 'account' | null>(null);
   const recording = !!onRecord && mode === 'record';
   const effective = typeof payAmount === 'number' ? payAmount : 0;
   const feeAmt = direction === 'out' && !noFees && typeof fee === 'number' && fee > 0 ? cents(fee) : 0;
@@ -109,6 +114,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     setTakeOff(false);
     setMode('account');
     setReceipt(null);
+    setOpenRow(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? null : 'account');
     setPm(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? initial : undefined);
   }, [visible]);
 
@@ -142,6 +148,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      grouped
       header={
         <View style={styles.bar}>
           <TouchableOpacity onPress={onClose} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -184,6 +191,9 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             <Text style={[styles.quickText, { color: effective === full ? colors.onButton : colors.ink }]}>{editableAmount ? 'Full' : 'Due'} {formatPeso(full)}</Text>
           </TouchableOpacity>
         </View>
+        {!!amountNote?.(effective) && (
+          <Text style={[styles.note, { color: colors.orange }]} testID="pay-amount-note">{amountNote(effective)}</Text>
+        )}
         {short > 0 && (
           <Text style={[styles.note, { color: colors.orange }]}>
             {formatPeso(short)} of the minimum is unpaid. It will be added to the next amount due.
@@ -194,54 +204,57 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             {formatPeso(partLeft)} {partOption!.repeats ? `will be added to your next ${partOption!.name} bill.` : 'stays owed on the same due date.'}
           </Text>
         )}
-        {direction === 'out' && !noFees && (
-          <>
-            <MarkedLabel text="Fees" mark="optional" style={[styles.fieldLabel, { color: colors.inkDim }]} />
-            <AmountInput value={fee} onChangeAmount={setFee} placeholder="0.00" />
-            {feeAmt > 0 && !recording && (
-              <Text style={[styles.note, { color: colors.inkDim }]}>
-                {formatPeso(cents(effective + feeAmt))} comes out: the payment plus the fee. The fee is its own entry in Transactions (Fees).
-              </Text>
+        {/* Cath 2026-10-27 ("not aligned", "forms look messy"): laid out as canvas R4 was
+            drawn: one white group of rows, like every other form. */}
+        <FormGroup style={{ marginTop: 6, marginBottom: 8 }}>
+          {direction === 'out' && !noFees && <AmountRow mark="optional" label="Fees" value={fee} onChange={setFee} />}
+          {editableAmount && !recording && <AmountRow mark="optional" label="Late fee from lender" value={lateFee} onChange={setLateFee} />}
+          <PickerRow mark="required" label={direction === 'in' ? 'Received on' : 'Paid on'} value={dateMode === 'today' ? 'Today' : dateMode === 'yesterday' ? 'Yesterday' : shortISO(date)} open={openRow === 'date'} onToggle={() => setOpenRow((r) => (r === 'date' ? null : 'date'))} testID="pay-date-row">
+            <View style={styles.quickRow}>
+              {(
+                [
+                  ['today', 'Today'],
+                  ['yesterday', 'Yesterday'],
+                  ['pick', 'Pick a date'],
+                ] as const
+              ).map(([id, label]) => {
+                const on = dateMode === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    onPress={() => {
+                      setDateMode(id);
+                      setError('');
+                      if (id === 'today') setDate(todayISO());
+                      if (id === 'yesterday') setDate(yesterdayISO());
+                      if (id !== 'pick') setOpenRow(null);
+                    }}
+                    style={[styles.quick, { backgroundColor: on ? colors.buttonFill : colors.navy2 }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.quickText, { color: on ? colors.onButton : colors.ink }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {dateMode === 'pick' && (
+              <DateField value={date} onChange={(d) => { if (d) setDate(d); setError(''); }} maximumDate={new Date()} placeholder="Pick a date" />
             )}
-          </>
+          </PickerRow>
+          {!recording && (
+            <PickerRow mark="required" label={direction === 'in' ? 'Into' : 'Paid from'} value={pm ? accountLabel(model, pm) || 'Choose' : 'Choose'} open={openRow === 'account'} onToggle={() => setOpenRow((r) => (r === 'account' ? null : 'account'))} testID="pay-account-row">
+              <AccountPicker noLabel mark="required" model={model} direction={direction} amount={effective + feeAmt} value={pm} onChange={(p) => { setPm(p); setError(''); setOpenRow(null); }} />
+            </PickerRow>
+          )}
+        </FormGroup>
+        {feeAmt > 0 && !recording && (
+          <Text style={[styles.note, { color: colors.inkDim, marginHorizontal: 16 }]}>
+            {formatPeso(cents(effective + feeAmt))} comes out{pm ? ` of ${accountLabel(model, pm) || 'the account'}` : ''}: the payment plus the fee. The fee is its own entry in Transactions (Fees).
+          </Text>
         )}
         {editableAmount && !recording && (
-          <>
-            <MarkedLabel text="Late fee added by your lender" mark="optional" style={[styles.fieldLabel, { color: colors.inkDim }]} />
-            <AmountInput value={lateFee} onChangeAmount={setLateFee} placeholder="0.00" />
-          </>
-        )}
-        {/* Version 2.1 (canvas S1): Paid on. Today, yesterday or any past date. */}
-        <MarkedLabel text={direction === 'in' ? 'Received on' : 'Paid on'} mark="required" style={[styles.fieldLabel, { color: colors.inkDim, marginTop: 4 }]} />
-        <View style={styles.quickRow}>
-          {(
-            [
-              ['today', 'Today'],
-              ['yesterday', 'Yesterday'],
-              ['pick', dateMode === 'pick' && date !== todayISO() && date !== yesterdayISO() ? shortISO(date) : 'Pick a date'],
-            ] as const
-          ).map(([id, label]) => {
-            const on = dateMode === id;
-            return (
-              <TouchableOpacity
-                key={id}
-                onPress={() => {
-                  setDateMode(id);
-                  setError('');
-                  if (id === 'today') setDate(todayISO());
-                  if (id === 'yesterday') setDate(yesterdayISO());
-                }}
-                style={[styles.quick, { backgroundColor: on ? colors.buttonFill : colors.navy1 }]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-              >
-                <Text style={[styles.quickText, { color: on ? colors.onButton : colors.ink }]}>{label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {dateMode === 'pick' && (
-          <DateField value={date} onChange={(d) => { if (d) setDate(d); setError(''); }} maximumDate={new Date()} placeholder="Pick a date" />
+          <Text style={[styles.note, { color: colors.inkDim, marginHorizontal: 16 }]}>A late fee from your lender is added to what you owe next.</Text>
         )}
         {recording ? (
           <View style={[styles.markCard, { backgroundColor: colors.accentTint }]} testID="pay-record-note">
@@ -257,25 +270,22 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             </View>
           </View>
         ) : (
-          <>
-            {beforeBalances && (
-              <View style={[styles.balanceNote, { backgroundColor: colors.indigoBg }]}>
-                <Text style={{ fontSize: 14, lineHeight: 20, color: colors.ink }}>
-                  Your balances were updated on {shortISO(asOf as string)}, so this is already in them. Your balance won't change.
-                </Text>
-                <TouchableOpacity onPress={() => setTakeOff((t) => !t)} accessibilityRole="checkbox" accessibilityState={{ checked: takeOff }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                  <View style={[styles.check, { borderColor: colors.gold, backgroundColor: takeOff ? colors.gold : 'transparent' }]}>
-                    {takeOff && <Ionicons name="checkmark" size={13} color={colors.onButton} />}
-                  </View>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold, flexShrink: 1 }}>It isn't included, take it off my balance</Text>
-                </TouchableOpacity>
-                {!!onRecord && <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 8 }}>Only keeping a record? Use "Just record it" at the top: no account needed.</Text>}
-              </View>
-            )}
-            <AccountPicker mark="required" model={model} direction={direction} amount={effective + feeAmt} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
-          </>
+          beforeBalances && (
+            <View style={[styles.balanceNote, { backgroundColor: colors.indigoBg }]}>
+              <Text style={{ fontSize: 14, lineHeight: 20, color: colors.ink }}>
+                Your balances were updated on {shortISO(asOf as string)}, so this is already in them. Your balance won't change.
+              </Text>
+              <TouchableOpacity onPress={() => setTakeOff((t) => !t)} accessibilityRole="checkbox" accessibilityState={{ checked: takeOff }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <View style={[styles.check, { borderColor: colors.gold, backgroundColor: takeOff ? colors.gold : 'transparent' }]}>
+                  {takeOff && <Ionicons name="checkmark" size={13} color={colors.onButton} />}
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold, flexShrink: 1 }}>It isn't included, take it off my balance</Text>
+              </TouchableOpacity>
+              {!!onRecord && <Text style={{ fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 8 }}>Only keeping a record? Use "Just record it" at the top: no account needed.</Text>}
+            </View>
+          )
         )}
-        {withReceipt && <ReceiptField photo={receipt} onChange={setReceipt} testID="pay-receipt" style={{ marginTop: 14, marginBottom: 12 }} />}
+        {withReceipt && <ReceiptField photo={receipt} onChange={setReceipt} testID="pay-receipt" style={{ borderRadius: 16, marginTop: 12, marginBottom: 12 }} />}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
       </View>
     </BottomSheet>

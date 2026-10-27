@@ -230,8 +230,12 @@ export function PickerRow({
             keeps its own width (up to 60%, wrapping by words) and a long value shrinks
             instead, ending in "…". */}
         <MarkedLabel text={label} mark={mark} style={[s.label, s.pickLabel, invalid && { color: colors.error, fontWeight: '700' }]} />
-        {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
-        <Text style={s.value} numberOfLines={1}>{value}</Text>
+        {/* Cath 2026-10-27 ("forms look messy"): the value takes all the room left, so every
+            value and chevron lines up on the right edge, whatever the label's length. */}
+        <View style={s.valueBox}>
+          {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
+          <Text style={s.value} numberOfLines={1}>{value}</Text>
+        </View>
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={colors.inkFaint} style={{ marginLeft: 6 }} />
       </TouchableOpacity>
       {open && <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>{children}</View>}
@@ -373,7 +377,8 @@ function rowStyles(colors: ThemeColors) {
     row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, gap: 12 },
     label: { fontSize: 17, color: colors.ink },
     value: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
-    pickLabel: { flexGrow: 1, flexShrink: 0, maxWidth: '60%' },
+    pickLabel: { flexShrink: 0, maxWidth: '60%' },
+    valueBox: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
     input: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
   });
 }

@@ -20,7 +20,7 @@ test('scheduled dates from the first payment, monthly, up to the number of payme
 test('older loans without a First payment date are not tracked', () => {
   const l = loan('2026-08-05');
   delete l.dueDate.firstDate;
-  assert.deepEqual(loanCoverage(l, '2026-10-19'), { covered: {}, missed: [], nextOpen: null });
+  assert.deepEqual(loanCoverage(l, '2026-10-19'), { covered: {}, missed: [], nextOpen: null, paidTowardNext: 0, leftForNext: 0 });
 });
 
 test('missed: scheduled dates before today with no payment; payments cover the oldest first', () => {
@@ -67,4 +67,36 @@ test('next payment = the oldest unpaid date (Oct 16 after paying up to Sept 16)'
   const old = { ...loan('2026-06-16'), dueDate: { day: '16' } };
   const n3 = loanNextDueDate(old, new Date('2026-10-27T10:00:00'));
   assert.equal(`${n3.getFullYear()}-${n3.getMonth() + 1}-${n3.getDate()}`, '2026-11-16');
+});
+
+// Cath, 2026-10-27 (phone, "Miduri"): no First payment date set, payments every 16th up to
+// Sept 16, today Oct 27: it said "next Nov 16" and nothing past due.
+test('a loan with payments but no First payment date: Oct 16 is next, and past due', async () => {
+  const { loanNextDueDate, loanFirstDate } = await import('../src/loanSchedule.ts');
+  const months = ['2026-06-16', '2026-07-16', '2026-08-16', '2026-09-16'];
+  const l = { ...loan('x'), totalAmount: 200001, expectedPayment: 7000, dueDate: { day: '16' }, actualPayments: months.map((d, i) => ({ id: `p${i}`, date: d, actual: 7000 })) };
+  assert.equal(loanFirstDate(l), '2026-06-16');
+  const n = loanNextDueDate(l, new Date('2026-10-27T10:00:00'));
+  assert.equal(`${n.getFullYear()}-${n.getMonth() + 1}-${n.getDate()}`, '2026-10-16');
+  assert.deepEqual(loanCoverage(l, '2026-10-27').missed, ['2026-10-16']);
+  // Paid a couple of days early for the first one: still starts at that month's 16th.
+  const early = { ...l, actualPayments: [{ id: 'e', date: '2026-06-14', actual: 7000 }] };
+  assert.equal(loanFirstDate(early), '2026-06-16');
+});
+
+// Cath, 2026-10-27: "warn and count what I've actually paid in total".
+test('smaller payments add up: two halves pay one month; one half leaves it open', () => {
+  const half = (id, date, forDate) => ({ id, date, actual: 2500, ...(forDate ? { forDate } : {}) });
+  const one = loan('2026-09-05', [half('a', '2026-09-05', '2026-09-05')]);
+  const c1 = loanCoverage(one, '2026-10-19');
+  assert.equal(c1.nextOpen, '2026-09-05');
+  assert.equal(c1.paidTowardNext, 2500);
+  assert.equal(c1.leftForNext, 2500);
+  assert.deepEqual(c1.missed, ['2026-09-05', '2026-10-05']);
+  const two = loan('2026-09-05', [half('a', '2026-09-05', '2026-09-05'), half('b', '2026-09-20', '2026-09-05')]);
+  assert.deepEqual(loanCoverage(two, '2026-10-19').missed, ['2026-10-05']);
+  // A double payment covers the next one too.
+  const dbl = loan('2026-09-05', [{ id: 'd', date: '2026-09-05', actual: 10000, forDate: '2026-09-05' }]);
+  assert.deepEqual(loanCoverage(dbl, '2026-10-19').missed, []);
+  assert.equal(loanCoverage(dbl, '2026-10-19').nextOpen, '2026-11-05');
 });

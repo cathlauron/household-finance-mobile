@@ -261,7 +261,7 @@ test('heights are never read back from an animation value; row labels keep their
   const sp = code(files.find((x) => x.name === 'components/SlidingPages.tsx').text);
   assert.doesNotMatch(sp, /heights\.value\.slice\(\)/);
   const sf = code(files.find((x) => x.name === 'components/SimpleForm.tsx').text);
-  assert.match(sf, /pickLabel: \{ flexGrow: 1, flexShrink: 0/);
+  assert.match(sf, /pickLabel: \{ flexShrink: 0, maxWidth: '60%' \}/); assert.match(sf, /valueBox: \{ flex: 1/);
   assert.doesNotMatch(sf, /style=\{\[s\.label, \{ flex: 1 \}, invalid/);
 });
 

@@ -66,11 +66,14 @@ export default function ReceiptField({
   onChange,
   testID = 'receipt',
   style,
+  sunk,
 }: {
   photo: string | null | undefined;
   onChange: (next: string | null) => void;
   testID?: string;
   style?: any;
+  // On a white sheet: the same light grey as the account list, so it reads as a box.
+  sunk?: boolean;
 }) {
   const { colors } = useTheme();
   const [viewing, setViewing] = useState(false);
@@ -90,17 +93,17 @@ export default function ReceiptField({
 
   if (!photo) {
     return (
-      <View style={[s.card, s.emptyRow, style]}>
+      <View style={[s.card, sunk && s.sunk, s.emptyRow, style]}>
         <MarkedLabel text="Receipt photo" mark="optional" style={s.label} />
-        <TouchableOpacity onPress={pick} style={s.pill} testID={`${testID}-add`} accessibilityRole="button" accessibilityLabel="Add a receipt photo">
+        <TouchableOpacity onPress={pick} style={[s.pill, s.pillInRow]} testID={`${testID}-add`} accessibilityRole="button" accessibilityLabel="Add a receipt photo">
           <Text style={s.pillText}>{busy ? 'Adding…' : 'Add photo'}</Text>
         </TouchableOpacity>
       </View>
     );
   }
   return (
-    <View style={[s.card, s.fullCard, style]}>
-      <MarkedLabel text="Receipt photo" mark="optional" style={s.label} />
+    <View style={[s.card, sunk && s.sunk, s.fullCard, style]}>
+      <MarkedLabel text="Receipt photo" mark="optional" style={s.labelCol} />
       <View style={s.photoRow}>
         <TouchableOpacity onPress={() => setViewing(true)} testID={`${testID}-thumb`} accessibilityRole="imagebutton" accessibilityLabel="Receipt photo. Tap to see it full size">
           <Image source={{ uri: photo }} style={s.thumb} resizeMode="cover" />
@@ -122,9 +125,14 @@ export default function ReceiptField({
 const styles = (c: any) =>
   StyleSheet.create({
     card: { backgroundColor: c.navy3, borderRadius: 12 },
+    sunk: { backgroundColor: c.navy2 },
     emptyRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, gap: 12 },
     fullCard: { paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-    label: { flex: 1, fontSize: 16, color: c.ink },
+    // (the label above the photo doesn't stretch: no flex in a column)
+    // Cath 2026-10-27 (screenshot): the label and the pill sit on one centre line.
+    label: { flex: 1, fontSize: 17, color: c.ink },
+    pillInRow: { alignSelf: 'center' },
+    labelCol: { fontSize: 17, color: c.ink },
     pill: { backgroundColor: c.accentTint, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-start' },
     pillText: { fontSize: 14, fontWeight: '600', color: c.gold },
     photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

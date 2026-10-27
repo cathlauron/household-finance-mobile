@@ -703,7 +703,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         {/* Smoothness 2026-10-23 (Cath): the fields fade when Bill / Debt / Loan changes. */}
         <FormSwapFade key="pay-form-body" channels={['kind']} swapKey={'bills'}>
           {/* Cath, 2026-10-27 (canvas P2): a bill, or a regular payment that isn't a bill. */}
-          <View style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 2 }}>
+          <View style={{ marginTop: 0, marginBottom: 6 }}>
             <SegmentedControl<'bill' | 'regular'>
               accessibilityLabel="Bill or regular payment"
               options={[{ id: 'bill', label: 'Bill', testID: 'bill-kind-bill' }, { id: 'regular', label: 'Regular payment', testID: 'bill-kind-regular' }]}

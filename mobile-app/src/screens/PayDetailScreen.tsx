@@ -1,4 +1,4 @@
-import { loanCoverage, loanNextDueDate } from '../loanSchedule';
+import { loanCoverage, loanNextDueDate, isTrackedLoan } from '../loanSchedule';
 import { withFeeEntry } from '../payFees';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
@@ -243,7 +243,9 @@ export default function PayDetailScreen() {
         )}
         {paidToday ? (
           <Text style={[styles.badge, { color: colors.positive, backgroundColor: colors.okBg }]}>
-            Paid today{history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
+            {/* Cath 2026-10-27: a back-dated payment says its own date, not "today". */}
+            {history[0]?.paidDate === today ? 'Paid today' : `Paid ${shortDate(history[0]?.paidDate || today)}`}
+            {history[0]?.recordedOnly ? ' · recorded only' : history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
           </Text>
         ) : dueISO && !curPaid ? (
           <Text style={[styles.badge, overdue ? { color: colors.negative, backgroundColor: colors.errorBg } : { color: colors.orange, backgroundColor: colors.warnBg }]}>
@@ -251,7 +253,8 @@ export default function PayDetailScreen() {
           </Text>
         ) : null}
         {paidToday && dueISO && !curPaid && <Text style={styles.nextDue}>Next due {niceDate(dueISO)}</Text>}
-        {!curPaid && !paidToday && (
+        {/* Catching up: when the next one is already past due, Pay stays next to Undo. */}
+        {!curPaid && (!paidToday || overdue) && (
           <TouchableOpacity
             testID="pay-detail-mark-paid"
             style={[styles.primary, { backgroundColor: colors.buttonFill }]}
@@ -275,7 +278,7 @@ export default function PayDetailScreen() {
             accessibilityRole="button"
           >
             <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint }]} />
-            <Text style={[styles.primaryText, { color: colors.gold }]}>Undo</Text>
+            <Text style={[styles.primaryText, { color: colors.gold }]} testID="pay-detail-undo">{history[0]?.paidDate === today ? "Undo today's payment" : `Undo the ${shortDate(history[0]?.paidDate || today)} payment`}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -433,7 +436,17 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   const [payOpen, setPayOpen] = useState(false);
   // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
   const [viewReceipt, setViewReceipt] = useState<string | null>(null);
-  const payAmount = monthly > 0 ? Math.min(monthly, left || monthly) : left;
+  // Cath 2026-10-27 ("warn and count what I've actually paid in total"): a smaller payment
+  // counts toward the oldest open one, which stays open until the rest is paid.
+  const cov = loanCoverage(loan, today);
+  const dueNow = cov.leftForNext > 0 ? cov.leftForNext : monthly;
+  const payAmount = monthly > 0 ? Math.min(dueNow, left || dueNow) : left;
+  const openText = cov.nextOpen ? shortDate(cov.nextOpen) : '';
+  const shortNote = (amt: number): string | undefined => {
+    if (!(monthly > 0) || !cov.nextOpen || !(amt > 0) || amt >= dueNow - 0.005) return undefined;
+    const rest = formatPeso(Math.round((dueNow - amt) * 100) / 100);
+    return `${formatPeso(amt)} is less than the ${formatPeso(dueNow)} ${cov.paidTowardNext > 0 ? 'still due' : 'due'} for ${openText}. It counts toward it, and the ${openText} payment stays open until the other ${rest} is ${lent ? 'received' : 'paid'}.`;
+  };
 
   // Cath, 2026-10-27 (canvas R4): the amount typed in is the one logged (it used to always
   // be the monthly amount), with an optional fee, or "Just record it" (no account).
@@ -500,16 +513,17 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         </View>
       )}
 
-      {!paidToday && left > 0 && (
+      {/* Cath 2026-10-27: catching up on past payments, Log payment stays while one is past due. */}
+      {left > 0 && (!paidToday || cov.missed.length > 0) && (
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill, alignSelf: 'stretch', marginTop: 16 }]} onPress={() => payAmount > 0 && setPayOpen(true)} accessibilityRole="button">
           <GradientFill color={colors.buttonFill} strength={0.18} />
-          <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(Math.min(monthly, left))}` : ''}</Text>
+          <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(payAmount)}` : ''}</Text>
         </TouchableOpacity>
       )}
       {paidToday && (
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} onPress={undoPayment} accessibilityRole="button">
           <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} />
-          <Text style={[styles.primaryText, { color: colors.gold }]}>Undo today's payment</Text>
+          <Text style={[styles.primaryText, { color: colors.gold }]} testID="loan-undo">{lastLogged?.date === today ? "Undo today's payment" : `Undo the ${shortDate(lastLogged?.date || today)} payment`}</Text>
         </TouchableOpacity>
       )}
 
@@ -521,8 +535,9 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
           <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: colors.gold }]} />
         </View>
         <Text style={[styles.meta, { marginTop: 6 }]}>
-          {payments.length}
+          {monthly > 0 && isTrackedLoan(loan) ? Object.keys(cov.covered).length : payments.length}
           {totalPayments ? ` of ${totalPayments}` : ''} payments made
+          {cov.paidTowardNext > 0 && openText ? ` · ${formatPeso(cov.paidTowardNext)} toward ${openText}` : ''}
           {nextDue ? ` · next ${shortDate(`${nextDue.getFullYear()}-${String(nextDue.getMonth() + 1).padStart(2, '0')}-${String(nextDue.getDate()).padStart(2, '0')}`)}` : ''}
         </Text>
         <View style={styles.trio}>
@@ -578,6 +593,8 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         onClose={() => setPayOpen(false)}
         title={lent ? 'Money received' : `Pay ${loan.name || 'loan'}`}
         amount={payAmount}
+        dueText={openText ? `${lent ? 'For' : 'Paying'} the ${openText} payment${cov.paidTowardNext > 0 ? ` (${formatPeso(cov.paidTowardNext)} already paid)` : ''}` : undefined}
+        amountNote={shortNote}
         direction={lent ? 'in' : 'out'}
         model={model}
         initial={payments[0]?.paymentMethod}

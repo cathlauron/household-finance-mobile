@@ -859,8 +859,8 @@ export default function TravelScreen() {
                           testID="travel-page-item-cost"
                         />
                         {!!pageItemText.trim() && (
-                          <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 12 }]}>
-                            <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
+                          <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginBottom: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 14 }]} testID="travel-page-item-add">
+                            <Text style={[styles.addItemButtonText, { color: colors.gold, fontSize: 14 }]}>Add</Text>
                           </TouchableOpacity>
                         )}
                       </View>

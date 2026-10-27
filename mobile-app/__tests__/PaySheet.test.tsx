@@ -46,3 +46,11 @@ test('just record it: saved with no account asked for', async () => {
   expect(onConfirm).not.toHaveBeenCalled();
   expect(onRecord).toHaveBeenCalledWith(5000, 0, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), undefined);
 });
+
+// Cath, 2026-10-27: "warn and count what I've actually paid in total".
+test('a smaller loan payment shows the warning under the amount', async () => {
+  open({ amountNote: (a: number) => (a < 5000 ? `${a} is less than 5000` : undefined) });
+  expect(screen.queryByTestId('pay-amount-note')).toBeNull();
+  await act(async () => { fireEvent.changeText(inputs()[0], '3500'); });
+  expect(screen.getByTestId('pay-amount-note')).toBeTruthy();
+});

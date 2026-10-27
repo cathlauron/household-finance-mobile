@@ -20,7 +20,7 @@ import path from 'node:path';
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const root = path.join(here, '..', 'web-build');
-const out = path.join(here, '..', 'web-shots');
+const out = process.env.WALK_OUT || path.join(here, '..', 'web-shots'); // WALK_OUT: own folder, so two walks can run at once
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 if (!fs.existsSync(path.join(root, 'index.html'))) {

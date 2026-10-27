@@ -20,10 +20,35 @@ function num(v: unknown): number {
 }
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-export function isTrackedLoan(loan: Loan): boolean {
+// Cath, 2026-10-27 (phone, "Miduri" and "Olive"): a repeating loan with no First payment
+// date set showed "next Nov 16" and nothing past due, although Oct 16 was never paid. When
+// a monthly / yearly loan has no First payment date but has payments, the schedule starts
+// at the scheduled date nearest its earliest payment, so it is tracked like any other.
+function scheduleOf(loan: Loan): Record<string, any> | null {
   const rt = loan.recurringType;
+  if (rt !== 'monthly' && rt !== 'annual') return null;
+  const { firstDate: _f, ...rest } = loan.dueDate || {};
+  const sched: Record<string, any> = { ...rest };
+  return sched;
+}
+export function loanFirstDate(loan: Loan): string | null {
   const first = loan.dueDate?.firstDate;
-  return (rt === 'monthly' || rt === 'annual') && typeof first === 'string' && ISO.test(first);
+  const rt = loan.recurringType;
+  if (rt !== 'monthly' && rt !== 'annual') return null;
+  if (typeof first === 'string' && ISO.test(first)) return first;
+  const sched = scheduleOf(loan);
+  if (!sched || sched.day === undefined || sched.day === '') return null;
+  const dates = (loan.actualPayments || []).filter((p) => num(p.actual) > 0 && ISO.test(p.date)).map((p) => p.date).sort();
+  if (!dates.length) return null;
+  // The scheduled date nearest the earliest payment (half a period either side).
+  const from = new Date(dates[0] + 'T00:00:00');
+  from.setDate(from.getDate() - (rt === 'annual' ? 182 : 15));
+  const near = getNextDueDate(rt, sched, from);
+  return near ? toISO(near) : null;
+}
+
+export function isTrackedLoan(loan: Loan): boolean {
+  return loanFirstDate(loan) !== null;
 }
 
 // How many payments the loan needs (0 = unknown, no limit).
@@ -35,12 +60,11 @@ function paymentCount(loan: Loan): number {
 
 // Scheduled payment dates from the first one, up to and including `untilISO`.
 export function loanScheduledDates(loan: Loan, untilISO: string): string[] {
-  if (!isTrackedLoan(loan)) return [];
+  const first = loanFirstDate(loan);
+  if (!first) return [];
   const rt = loan.recurringType as 'monthly' | 'annual';
-  const { firstDate, ...rest } = loan.dueDate || {};
-  const first = firstDate as string;
   // The repeating day (and month) default to the first payment's own.
-  const sched: Record<string, any> = { ...rest };
+  const sched: Record<string, any> = { ...(scheduleOf(loan) || {}) };
   if (sched.day === undefined || sched.day === '') sched.day = String(Number(first.slice(8, 10)));
   if (rt === 'annual' && (sched.month === undefined || sched.month === '')) sched.month = Number(first.slice(5, 7));
   const limit = paymentCount(loan) || 600;
@@ -57,33 +81,65 @@ export function loanScheduledDates(loan: Loan, untilISO: string): string[] {
 }
 
 export type LoanCoverage = {
-  covered: Record<string, string>; // scheduled date -> payment id
-  missed: string[]; // scheduled dates before today with no payment, oldest first
-  nextOpen: string | null; // the oldest scheduled date with no payment (past or future)
+  covered: Record<string, string>; // scheduled date -> payment id that finished paying it
+  missed: string[]; // scheduled dates before today not fully paid, oldest first
+  nextOpen: string | null; // the oldest scheduled date not fully paid (past or future)
+  // Cath, 2026-10-27 ("count what I've actually paid in total"): money already put toward
+  // nextOpen by smaller payments, and how much more it needs.
+  paidTowardNext: number;
+  leftForNext: number;
 };
 
+const cents = (n: number) => Math.round(n * 100) / 100;
+
+// Money paid is counted toward the scheduled payments in order. A payment logged for a
+// date (`forDate`) goes to that date first; anything over goes to the oldest payments not
+// paid yet. A payment smaller than the monthly amount counts toward it, and that payment
+// stays open (and past due once its date passes) until the rest is paid.
+// Loans with no monthly amount: each payment counts as one whole payment, as before.
 export function loanCoverage(loan: Loan, todayISO: string): LoanCoverage {
-  if (!isTrackedLoan(loan)) return { covered: {}, missed: [], nextOpen: null };
-  const payments = [...(loan.actualPayments || [])].filter((p) => num(p.actual) > 0);
+  const none: LoanCoverage = { covered: {}, missed: [], nextOpen: null, paidTowardNext: 0, leftForNext: 0 };
+  if (!isTrackedLoan(loan)) return none;
+  const payments = [...(loan.actualPayments || [])]
+    .filter((p) => num(p.actual) > 0)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const eachRaw = num(loan.expectedPayment);
+  const each = eachRaw > 0 ? eachRaw : 1;
+  const value = (p: LoanPayment) => (eachRaw > 0 ? num(p.actual) : 1);
   // Look far enough ahead to place every payment (paying ahead covers future dates).
   const horizon = new Date(todayISO + 'T00:00:00');
-  horizon.setFullYear(horizon.getFullYear() + 2 + Math.ceil(payments.length / 12));
+  const units = payments.reduce((s, p) => s + value(p), 0) / each;
+  horizon.setFullYear(horizon.getFullYear() + 2 + Math.ceil(units / 12));
   const dates = loanScheduledDates(loan, toISO(horizon));
+  const index = new Map(dates.map((d, i) => [d, i]));
+  const put = dates.map(() => 0);
   const covered: Record<string, string> = {};
-  const set = new Set(dates);
-  payments.forEach((p) => {
-    if (p.forDate && set.has(p.forDate) && !covered[p.forDate]) covered[p.forDate] = p.id;
-  });
-  payments
-    .filter((p) => !p.forDate || covered[p.forDate] !== p.id)
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-    .forEach((p) => {
-      const open = dates.find((d) => !covered[d]);
-      if (open) covered[open] = p.id;
-    });
-  const missed = dates.filter((d) => d < todayISO && !covered[d]);
-  const nextOpen = dates.find((d) => !covered[d]) ?? null;
-  return { covered, missed, nextOpen };
+  const give = (i: number, amount: number, id: string): number => {
+    const room = cents(each - put[i]);
+    const used = Math.min(room, amount);
+    put[i] = cents(put[i] + used);
+    if (put[i] >= each - 0.005 && !covered[dates[i]]) covered[dates[i]] = id;
+    return cents(amount - used);
+  };
+  const rest: { id: string; amount: number }[] = [];
+  for (const p of payments) {
+    const i = p.forDate !== undefined ? index.get(p.forDate) : undefined;
+    let amount = value(p);
+    if (i !== undefined) amount = give(i, amount, p.id);
+    if (amount > 0.005) rest.push({ id: p.id, amount });
+  }
+  for (const r of rest) {
+    let amount = r.amount;
+    for (let i = 0; i < dates.length && amount > 0.005; i++) {
+      if (put[i] < each - 0.005) amount = give(i, amount, r.id);
+    }
+  }
+  const open = dates.findIndex((_d, i) => put[i] < each - 0.005);
+  const missed = dates.filter((d, i) => d < todayISO && put[i] < each - 0.005);
+  const nextOpen = open >= 0 ? dates[open] : null;
+  const paidTowardNext = open >= 0 && eachRaw > 0 ? put[open] : 0;
+  const leftForNext = open >= 0 && eachRaw > 0 ? cents(each - put[open]) : 0;
+  return { covered, missed, nextOpen, paidTowardNext, leftForNext };
 }
 
 // ---- Which payment was this? (canvas M4c) ----
