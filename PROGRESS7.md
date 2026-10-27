@@ -1021,3 +1021,20 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   if they differ), then security SEC-1/SEC-2 (her OK + Firebase Console steps), then the
   open smoothness ideas (pop-up forms build before rising; pop-up drag-down; keyboard
   jump), then version 3 work on `v3`.
+
+- NEWEST (2026-10-27, v3 work starts; Cath's 2.2 build notes): on `v3` (69c18e9, e7c124c):
+  B-041 calendar / Due soon / Left to Spend forecast missed a debt due on a day the Debts
+  page showed (payment round dates ignored; 31st in 30-day months) - fixed, proven;
+  B-042 loan "next" date skipped an unpaid month (Oct 16) - loanNextDueDate, proven;
+  B-043 paste into the big amount - proven; B-044 bill/debt notes shown on their page -
+  proven. Phone: TEST-3.md section 5. Cath's decisions (AskUserQuestion, 10-27): receipts
+  in ALL of shared expenses, bill/debt payments, loan payments and trip items; a new
+  "Regular payment" kind for money that isn't a bill (e.g. monthly money for family:
+  counts in Left to Spend, calendar, reminders); support email
+  support.financeflow00@gmail.com as "Contact support" in Settings > About & Help;
+  transfers (Move money) listed in Transactions with their note. All four: mockup first
+  (Design canvas "Finance Flow v3 mockups: receipts, regular payments, transfers,
+  support", boards R1-R3, P1 vs P2 option for regular payments, T1, S1), waiting for her
+  pick/approval. Open: Travel trip page "Add an item" row not showing with an empty
+  checklist (code draws it; asked Cath for a screenshot). Next: her mockup answers, then
+  build in small batches on v3; then V3-PLAN items.
