@@ -79,3 +79,15 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
 4. Settings > About & Help > Contact support: your email app opens to
    support.financeflow00@gmail.com with "Finance Flow (version) (Android)" as the subject.
    Copy email address: "Copied".
+
+## 8. One payment sheet (canvas R4, 2026-10-27). NOT YET TESTED.
+1. A loan > Pay: change the amount (e.g. ₱4,800) and add a ₱25 fee > Pay: History shows
+   ₱4,800 "· fee ₱25.00"; Transactions shows the payment and "Fee: (loan)" under Fees;
+   the account went down by ₱4,825.
+2. Same on a bill and a debt (debts still have "Late fee added by your lender", which is
+   added to what you owe next, as before).
+3. Just record it: on a loan (or bill / debt), switch to "Just record it", pick a past date,
+   Save: no account asked for; History shows "· recorded only"; no account balance changes;
+   nothing new in Transactions; the next payment moves on.
+4. A trip item: tick it: the same sheet (amount can be changed: the item's cost becomes what
+   you paid). "Just record it" keeps it as Paid in the trip's budget, no spending.

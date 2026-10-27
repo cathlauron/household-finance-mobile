@@ -683,8 +683,14 @@ export default function TravelScreen() {
       model={model}
       initial={lastPaidWith(list)}
       confirmLabel="Mark paid"
-      justMark={{ onConfirm: () => answerPaid({ markedOnly: true, completedDate: todayISO() }), note: "It still counts as Paid in this trip's budget." }}
-      onConfirm={(pm, _amount, _fee, date, takeOff) => answerPaid({ paidWith: pm, completedDate: date, takeOffBalance: takeOff || undefined })}
+      noFees
+      allowNoAmount
+      // Cath, 2026-10-27 (canvas R4): the amount can be changed (the item's cost becomes what
+      // was paid), and "Just record it" keeps it as paid with no account or spending.
+      onRecord={(paid, _fee, date) => answerPaid({ markedOnly: true, completedDate: date, ...(paid > 0 ? { cost: paid } : {}) })}
+      recordNote="It still counts as Paid in this trip's budget."
+      recordLabel="Mark paid"
+      onConfirm={(pm, paid, _lateFee, date, takeOff) => answerPaid({ paidWith: pm, completedDate: date, takeOffBalance: takeOff || undefined, ...(paid > 0 ? { cost: paid } : {}) })}
     />
   );
 

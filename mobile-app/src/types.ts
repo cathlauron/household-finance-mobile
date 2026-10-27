@@ -140,6 +140,10 @@ export type BillCycle = {
   feesPortion?: number | '';
   // Redesign: the exact moment it was marked paid (for Left to Spend's same-day check).
   paidAt?: number;
+  // Cath, 2026-10-27 (canvas R4): "Just record it": kept in the history as paid, with no
+  // account and no effect on any balance or spending. `feePaid`: a fee paid with it.
+  recordedOnly?: boolean;
+  feePaid?: number;
   // Partial debt payments (Round 3). On a cycle paid with less than was due, amountDue
   // is lowered to what was paid (so the cycle counts as settled everywhere) and the
   // original due amount is kept here, for history and Undo.
@@ -220,6 +224,10 @@ export type LoanPayment = {
   // without one cover the oldest scheduled payment not yet covered (loanSchedule.ts).
   forDate?: string;
   paymentMethod?: PaymentMethod;
+  // Cath, 2026-10-27 (canvas R4): "Just record it" (no account, no balance change) and a
+  // fee paid with it.
+  recordedOnly?: boolean;
+  fee?: number;
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
   createdAt?: number;

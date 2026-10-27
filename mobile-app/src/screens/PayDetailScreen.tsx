@@ -1,4 +1,5 @@
 import { loanCoverage, loanNextDueDate } from '../loanSchedule';
+import { withFeeEntry } from '../payFees';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
@@ -285,15 +286,24 @@ export default function PayDetailScreen() {
         minimumAmount={minDue}
         partOption={kind === 'bill' ? { name, repeats: (rec as Bill).recurringType !== 'onetime' } : undefined}
         dueText={dueISO ? `Paying the ${shortDate(dueISO)} ${kind === 'bill' ? 'bill' : 'payment'}` : undefined}
-        onConfirm={(pm, paidAmount, lateFee, date, takeOff) => {
+        onConfirm={(pm, paidAmount, lateFee, date, takeOff, fee) => {
           setPayOpen(false);
           const next =
             kind === 'debt'
-              ? markPaid(rec, pm, date, paidAmount, lateFee)
-              : markPaid(rec, pm, date, paidAmount < amount ? paidAmount : undefined);
+              ? markPaid(rec, pm, date, paidAmount, lateFee, { feePaid: fee })
+              : markPaid(rec, pm, date, paidAmount, 0, { feePaid: fee });
           let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
-          if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount);
-          save(updated, paidAmount < amount ? 'Part paid' : 'Paid');
+          // Cath 2026-10-27 (canvas R4): a fee paid with it is its own Fees entry.
+          updated = withFeeEntry(updated, { amount: fee, label: name, date, paymentMethod: pm });
+          if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount + fee);
+          save(updated, regular ? 'Sent' : paidAmount < amount ? 'Part paid' : 'Paid');
+        }}
+        // "Just record it": kept in History as paid, no account, nothing else changes.
+        onRecord={(paidAmount, fee, date) => {
+          setPayOpen(false);
+          const next = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, feePaid: fee });
+          const updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
+          save(updated, 'Recorded');
         }}
       />
 
@@ -348,6 +358,8 @@ export default function PayDetailScreen() {
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
                       {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
+                      {c.recordedOnly ? ' · recorded only' : ''}
+                      {num(c.feePaid) > 0 ? ` · fee ${formatPeso(num(c.feePaid))}` : ''}
                       {who.by(c.paidBy)}
                       {c.notes?.trim() ? ` · ${c.notes.trim()}` : ''}
                     </Text>
@@ -397,8 +409,11 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   const [payOpen, setPayOpen] = useState(false);
   const payAmount = monthly > 0 ? Math.min(monthly, left || monthly) : left;
 
-  function logPayment(pm: PaymentMethod, _amount?: number, _fee?: number, date: string = today, takeOff = false) {
-    if (payAmount <= 0) return;
+  // Cath, 2026-10-27 (canvas R4): the amount typed in is the one logged (it used to always
+  // be the monthly amount), with an optional fee, or "Just record it" (no account).
+  function logPayment(pm: PaymentMethod, amountPaid?: number, _lateFee?: number, date: string = today, takeOff = false, fee = 0) {
+    const paidNow = typeof amountPaid === 'number' && amountPaid > 0 ? amountPaid : payAmount;
+    if (paidNow <= 0) return;
     const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
     const next: Loan = {
@@ -406,12 +421,26 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
       actualPayments: [
         ...(loan.actualPayments || []),
         // Version 3: it covers the oldest scheduled payment still open (a missed one first).
-        { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}) },
+        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}) },
       ],
     };
     let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
-    if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, payAmount);
+    if (!lent) updated = withFeeEntry(updated, { amount: fee, label: loan.name || 'Loan', date, paymentMethod: pm });
+    if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, paidNow + fee);
     save(updated, lent ? 'Received' : 'Paid');
+  }
+  function recordPayment(amountPaid: number, fee: number, date: string) {
+    if (amountPaid <= 0) return;
+    const openFor = loanCoverage(loan, today).nextOpen;
+    setPayOpen(false);
+    const next: Loan = {
+      ...loan,
+      actualPayments: [
+        ...(loan.actualPayments || []),
+        { id: makeId('lpay'), date, actual: amountPaid, recordedOnly: true, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}) },
+      ],
+    };
+    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, 'Recorded');
   }
   function undoPayment() {
     const last = payments[0];
@@ -498,6 +527,8 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
                     <Text style={styles.meta}>
                       {p.date === today ? 'Paid today' : `Paid ${shortDate(p.date)}`}
                       {p.paymentMethod ? ` · ${accountLabel(model, p.paymentMethod)}` : ''}
+                      {p.recordedOnly ? ' · recorded only' : ''}
+                      {num(p.fee) > 0 ? ` · fee ${formatPeso(num(p.fee))}` : ''}
                       {who.by(p.addedBy)}
                     </Text>
                   </View>
@@ -519,6 +550,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         initial={payments[0]?.paymentMethod}
         confirmLabel={lent ? 'Received' : 'Pay'}
         onConfirm={logPayment}
+        onRecord={recordPayment}
       />
       <WhoFootnote addedBy={loan.addedBy} createdAt={loan.createdAt} changedBy={loan.changedBy} changedAt={loan.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />

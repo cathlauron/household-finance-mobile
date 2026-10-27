@@ -83,7 +83,11 @@ export function markPaid<T extends CycleRecord>(
   pm?: PaymentMethod,
   date: string = todayISO(),
   amount?: number,
-  lateFee: number = 0
+  lateFee: number = 0,
+  // Cath, 2026-10-27 (canvas R4): "Just record it": no account, no time stamp (so no
+  // balance, spending or forecast counts it), only the history. `feePaid`: a fee paid
+  // with the payment (shown in History; from an account it's its own Fees entry).
+  opts: { recordedOnly?: boolean; feePaid?: number } = {}
 ): T {
   const cur = currentCycle(record);
   if (!cur || isCyclePaid(cur)) return record;
@@ -91,15 +95,28 @@ export function markPaid<T extends CycleRecord>(
   const paidAmt = typeof amount === 'number' ? Math.max(0, Math.round(amount * 100) / 100) : due;
   const fee = Math.max(0, Math.round(lateFee * 100) / 100);
   const partial = paidAmt < due;
-  const paid: BillCycle = {
-    ...cur,
-    amountPaid: paidAmt,
-    paidDate: date,
-    paidAt: Date.now(),
-    paymentMethod: pm ?? cur.paymentMethod,
-    ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
-    ...(fee > 0 ? { lateFee: fee } : {}),
-  };
+  const feePaid = Math.max(0, Math.round((opts.feePaid || 0) * 100) / 100);
+  const { paymentMethod: _drop, paidAt: _dropAt, ...curWithoutAccount } = cur;
+  const paid: BillCycle = opts.recordedOnly
+    ? {
+        ...curWithoutAccount,
+        amountPaid: paidAmt,
+        paidDate: date,
+        recordedOnly: true,
+        ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
+        ...(fee > 0 ? { lateFee: fee } : {}),
+        ...(feePaid > 0 ? { feePaid } : {}),
+      }
+    : {
+        ...cur,
+        amountPaid: paidAmt,
+        paidDate: date,
+        paidAt: Date.now(),
+        paymentMethod: pm ?? cur.paymentMethod,
+        ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
+        ...(fee > 0 ? { lateFee: fee } : {}),
+        ...(feePaid > 0 ? { feePaid } : {}),
+      };
   const cycles = (record.cycles || []).map((c) => (c.id === cur.id ? paid : c));
   const base = {
     id: makeId('cycle'),
