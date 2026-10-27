@@ -118,7 +118,7 @@ export default function CenteredAmount({ value, onChangeAmount, onBlur, placehol
         autoFocus={autoFocus}
         keyboardType={allowDecimals ? 'decimal-pad' : 'number-pad'}
         caretHidden
-        contextMenuHidden
+        // Cath 2026-10-27: hold the amount to paste (or copy) one; "₱1,500.50" reads as 1500.50.
         accessibilityLabel="Amount"
         style={styles.hiddenInput}
       />

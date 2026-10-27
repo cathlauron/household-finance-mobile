@@ -319,6 +319,17 @@ export default function PayDetailScreen() {
         <Row styles={styles} label="Remind me" value={`${model.settings.notifyDaysBefore ?? 3} days before`} last />
       </View>
 
+      {/* Cath 2026-10-27: a note added to a bill or debt shows on its page. */}
+      {!!rec.notes?.trim() && (
+        <>
+          <Text style={styles.header}>Note</Text>
+          <View style={styles.group} testID="pay-detail-note">
+            <GradientFill match={styles.group} />
+            <Text style={styles.noteText}>{rec.notes.trim()}</Text>
+          </View>
+        </>
+      )}
+
       {history.length > 0 && (
         <>
           <Text style={styles.header}>History</Text>
@@ -336,6 +347,7 @@ export default function PayDetailScreen() {
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
                       {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
                       {who.by(c.paidBy)}
+                      {c.notes?.trim() ? ` · ${c.notes.trim()}` : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: colors.ink }]}>{formatPeso(num(c.amountPaid))}</Text>
@@ -538,6 +550,7 @@ function makeStyles(colors: ThemeColors) {
     line: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     rowLabel: { fontSize: 17, color: colors.ink, flex: 1 },
     rowValue: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
+    noteText: { fontSize: 16, lineHeight: 22, color: colors.ink, paddingHorizontal: 16, paddingVertical: 14 },
     header: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 24, marginBottom: 6, marginLeft: 16 },
     histRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 10 },
     histTitle: { fontSize: 17, color: colors.ink },
