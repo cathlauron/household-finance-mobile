@@ -1050,3 +1050,25 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   sheet drawn as canvas R4, waiting for her OK; (c) receipts on shared expenses /
   payments / trip items need the photo "parts" sync extended (sync change: her yes
   first); (d) investments (least priority, scope + mockup first).
+
+- NEWEST (2026-10-27, evening, v3 591d438..96b58d9): Cath said yes to R4 ("build as
+  drawn"), to extending the receipts sync, to transfer Undo "only until you update a
+  balance", and "mockup first, decide later" for investments. Built + checked:
+  591d438 one payment sheet (amount always editable, Fees (optional) as its own Fees
+  entry, "Just record it" with no account / no balance change) for bills, debts, loans
+  and trip items; 3d961a5 transfer "Undo this move" (blocked once a balance was typed in
+  after it); ebcb4ae fixes from the independent review (H-23..H-26); a538a81 receipts on
+  shared expenses, bill/debt/loan payments and trip items (ReceiptField; history rows
+  with a paperclip open the photo); 96b58d9 review fixes for the receipts sync
+  (H-27, H-28). Sync design: these receipts get their own `rcpt-x-<kind>-<id>` parts
+  only when every member reports '3.0' (PARTS_APP_VERSION is now '3.0'; the layout-2
+  move still needs only '2.2'); otherwise they stay inside the main copy. A part an
+  older phone deleted is put back from what this phone saw. Known limit (H-29, tell
+  Cath): while a phone is still on 2.2, about 4-5 such receipts can make the household
+  say storage is full (nothing lost). Investments mockup: canvas board I1 (a Plan page:
+  worth now vs put in; Update value / Add money / Take out; open question: count in
+  Home's total or not). Screenshots of all v3 boards: design/3.0-mockups/ (on v3).
+  Phone: TEST-3.md sections 8 and 9. Open question for Cath: a loan payment smaller
+  than the monthly amount still counts as one full scheduled payment - warn, or count
+  by running total? Next: Cath's phone tests (TEST-3 5-9), her answers (partial loan
+  payments; investments yes/no + Home total), then SEC-1..7 when she's ready.
