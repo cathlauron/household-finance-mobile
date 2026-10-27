@@ -7,6 +7,8 @@
 // tab asked for. Use this everywhere instead of navigate('Main', ...).
 export type MainTarget = { screen?: string; params?: object; openBillId?: string };
 
+// Code reviewer, 2026-10-27: Main's other settings (a bill opened from a reminder) are kept
+// (`merge`); only which tab to show is replaced. Replacing everything rebuilt all four tabs.
 export function goToMain(navigation: { navigate: (...args: any[]) => void }, target?: MainTarget): void {
-  navigation.navigate('Main', target, { pop: true });
+  navigation.navigate('Main', { screen: undefined, params: undefined, ...target }, { pop: true, merge: true });
 }

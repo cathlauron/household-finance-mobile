@@ -104,6 +104,12 @@ export function SwipeTabs({
   // glide back). Moving with the finger never waits for it.
   const endFollow = useCallback(
     (dx: number, vx: number, ty: number) => {
+      // Code reviewer 2026-10-27: a card that swipes by itself may say "mine" a moment
+      // late when the app is busy; it still wins (no tab change from swiping that card).
+      if (held || subHeld) {
+        releaseTabDrag();
+        return;
+      }
       const target = settleTarget(followIndex, dx, vx, Dimensions.get('window').width, followCount);
       if (target === followIndex || Math.abs(ty) > Math.abs(dx)) {
         releaseTabDrag();
@@ -140,7 +146,9 @@ export function SwipeTabs({
         .onFinalize((_e, success) => {
           if (!success) releaseTabDrag();
         })
-        .onEnd((e) => {
+        .onEnd((e, success) => {
+          // A swipe that was cancelled (not finished) never changes the tab.
+          if (!success) return;
           if (heldOnUI.value || subHeldOnUI.value) {
             releaseTabDrag();
             return;

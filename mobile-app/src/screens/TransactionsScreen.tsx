@@ -381,6 +381,15 @@ export default function TransactionsScreen({
     return out;
   }, [days]);
   const [batchesShown, setBatchesShown] = useState(FIRST_BATCHES);
+  // A new sort order or filter: draw from the top again in batches (code reviewer 10-27).
+  const firstView = useRef(true);
+  useEffect(() => {
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    setBatchesShown(FIRST_BATCHES);
+  }, [sortOrder, categoryFilter, monthFilter, accountFilter]);
   useEffect(() => {
     if (batchesShown >= chunks.length) return;
     const t = setTimeout(() => setBatchesShown((n) => n + 1), BATCH_GAP_MS);

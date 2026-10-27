@@ -71,3 +71,16 @@ test('nothing in the app goes to Main the old way (always goToMain)', () => {
   });
   expect(bad.map((f) => path.relative(root, f))).toEqual([]);
 });
+
+// Code reviewer, 2026-10-27: going back replaced ALL of Main's settings, so a bill opened
+// from a reminder (openBillId) was wiped, and the tabs were rebuilt from scratch.
+test('goToMain keeps what Main already had (a bill opened from a reminder)', () => {
+  const nav = createNavigationContainerRef<any>();
+  render(<App nav={nav} />);
+  act(() => goToMain(nav, { openBillId: 'b1' }));
+  act(() => nav.navigate('Calendar'));
+  act(() => goToMain(nav, { screen: 'To-Pay' }));
+  const main: any = nav.getRootState().routes.find((r: any) => r.name === 'Main');
+  expect(main.params.openBillId).toBe('b1');
+  expect(nav.getCurrentRoute()?.name).toBe('To-Pay');
+});

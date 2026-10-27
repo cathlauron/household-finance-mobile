@@ -3,7 +3,7 @@ import { Dimensions, View } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { State } from 'react-native-gesture-handler';
-import { SwipeTabs } from '../src/navigation/swipeTabs';
+import { SwipeTabs, holdTabSwipe } from '../src/navigation/swipeTabs';
 import { edgeGive, takeCommittedDrag } from '../src/navigation/tabDrag';
 
 // Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger too).
@@ -67,4 +67,14 @@ test('at the ends the page gives a third as much', () => {
   expect(edgeGive(90, 0, 4)).toBe(30);
   expect(edgeGive(-90, 3, 4)).toBe(-30);
   expect(edgeGive(-90, 1, 4)).toBe(-90);
+});
+
+// Code reviewer 2026-10-27: a swipe that starts on a card that swipes by itself (the Left to
+// Spend card) never changes the tab, even if the card says "mine" late.
+test('a swipe on a card that swipes by itself never changes the tab', async () => {
+  const onSwipe = tabs(1);
+  holdTabSwipe.onTouchStart();
+  await swipe(-W * 0.7, -2000);
+  holdTabSwipe.onTouchEnd();
+  expect(onSwipe).not.toHaveBeenCalled();
 });
