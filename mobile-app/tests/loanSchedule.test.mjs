@@ -100,3 +100,26 @@ test('smaller payments add up: two halves pay one month; one half leaves it open
   assert.deepEqual(loanCoverage(dbl, '2026-10-19').missed, []);
   assert.equal(loanCoverage(dbl, '2026-10-19').nextOpen, '2026-11-05');
 });
+
+// Code review 2026-10-27.
+test('paid two weeks early: it is still that month\'s payment', async () => {
+  const { loanFirstDate } = await import('../src/loanSchedule.ts');
+  const l = { ...loan('x'), expectedPayment: 7000, dueDate: { day: '16' }, actualPayments: [{ id: 'a', date: '2026-10-01', actual: 7000 }] };
+  assert.equal(loanFirstDate(l), '2026-10-16');
+  assert.deepEqual(loanCoverage(l, '2026-10-27').missed, []);
+  const yearly = { ...loan('x'), recurringType: 'annual', expectedPayment: 7000, dueDate: { day: '16', month: 9 }, actualPayments: [{ id: 'a', date: '2026-03-01', actual: 7000 }] };
+  assert.equal(loanFirstDate(yearly), '2026-09-16');
+});
+
+test('a First payment saved after the payments already made (old form mistake) is worked out again', async () => {
+  const { loanFirstDate } = await import('../src/loanSchedule.ts');
+  const l = { ...loan('2026-11-16'), expectedPayment: 7000, dueDate: { day: '16', firstDate: '2026-11-16' }, actualPayments: [{ id: 'a', date: '2026-08-16', actual: 7000 }, { id: 'b', date: '2026-09-16', actual: 7000 }] };
+  assert.equal(loanFirstDate(l), '2026-08-16');
+  assert.deepEqual(loanCoverage(l, '2026-10-27').missed, ['2026-10-16']);
+});
+
+test('no monthly amount: not tracked from its payments (no whole balance shown overdue)', async () => {
+  const { loanFirstDate } = await import('../src/loanSchedule.ts');
+  const l = { ...loan('x'), expectedPayment: '', dueDate: { day: '16' }, actualPayments: [{ id: 'a', date: '2026-08-16', actual: 7000 }] };
+  assert.equal(loanFirstDate(l), null);
+});

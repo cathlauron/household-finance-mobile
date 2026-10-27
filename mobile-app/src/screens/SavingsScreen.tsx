@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { investmentSummary } from '../investments';
 import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
@@ -567,6 +568,8 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
     ...(model.balanceAccounts?.cash || []).map((a) => ({ ...a, group: 'Cash' })),
     ...(model.balanceAccounts?.debit || []).map((a) => ({ ...a, group: 'Debit' })),
     ...(model.balanceAccounts?.investment || []).map((a) => ({ ...a, group: 'Investment' })),
+    // Cath 2026-10-27 ("count it"): Plan > Investments count toward what you own here.
+    ...(model.investments || []).map((i) => ({ id: i.id, name: i.name, amount: investmentSummary(i).worth as number | '', group: 'Investment' })),
   ];
   const fiSelectedAccountIds =
     calcInputsFromModel().fiSelectedAccountIds.length > 0

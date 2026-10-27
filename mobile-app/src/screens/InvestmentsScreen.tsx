@@ -153,7 +153,7 @@ export default function InvestmentsScreen() {
   function deleteInvestment() {
     if (!model || !editingId) return;
     const inv = list.find((i) => i.id === editingId);
-    Alert.alert(`Delete ${inv?.name || 'this investment'}?`, 'Its history goes too. Money it moved in or out of your accounts goes back as if it never happened.', [
+    Alert.alert(`Delete ${inv?.name || 'this investment'}?`, 'Its history goes too, and your accounts are worked out again without the money it moved in or out.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -192,7 +192,7 @@ export default function InvestmentsScreen() {
 
   function removeEntry(inv: Investment, e: InvestmentEntry) {
     if (!model) return;
-    Alert.alert('Remove this from its history?', e.paymentMethod ? `${accountLabel(model, e.paymentMethod) || 'The account'} goes back to as it was before it.` : 'Nothing else changes.', [
+    Alert.alert('Remove this from its history?', e.paymentMethod ? `${accountLabel(model, e.paymentMethod) || 'The account'} is worked out again without it.` : 'Nothing else changes.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => saveModel(withoutEntry(model, inv.id, e.id)) },
     ]);

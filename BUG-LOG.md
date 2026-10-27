@@ -79,6 +79,10 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-27 | (code review, receipts sync) An older (2.2) phone opening a parts household, e.g. the side-by-side 2.2 build on the same account, would delete the new receipt parts | householdParts.ts joinParts fallback, householdPartsSync.ts (seen receipts put back and re-saved; gate re-checked on every live update) | proven: tests/extraReceipts.test.mjs |
 | H-28 | (code review) Moving to the bigger storage compared against this phone's last-saved parts, not what is online, so a part another phone removed could stay missing | householdPartsSync.ts saveWhenTooBig | read-checked |
 | H-29 | (code review, open) While a phone is still on 2.2, receipts on shared expenses / payments / trips stay inside the main copy (~200 KB each); after about 4-5 the household can say storage is full until every phone is on 3.0 | (by design, safe; no data lost) | open: tell Cath |
+| H-30 | (code review) A loan payment two weeks early was counted for the month before, so the paid month showed past due | loanSchedule.ts nearestScheduled | proven: tests/loanSchedule.test.mjs |
+| H-31 | (code review) Loans saved with the old First-payment prefill (a date after the payments made) looked paid ahead; editing a loan asked "Which payment was this?" for no change | loanSchedule.ts loanFirstDate, LoansScreen.tsx | proven: tests/loanSchedule.test.mjs |
+| H-32 | (code review) A repeating loan with no monthly amount showed its whole balance as overdue | loanSchedule.ts (only tracked from payments with a monthly amount) | proven: tests/loanSchedule.test.mjs |
+| H-33 | (code review) Bill Undo could take the fee of a different payment made the same day | screens/PayDetailScreen.tsx | read-checked |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 

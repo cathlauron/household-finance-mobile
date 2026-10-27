@@ -184,6 +184,9 @@ export default function PayDetailScreen() {
   const days = dueISO ? daysBetween(today, dueISO) : null;
   const overdue = !curPaid && days !== null && days < 0;
   const history = paidCycles(rec);
+  // Review 10-27: the payment Undo takes back is the one undoLastPayment picks (newest paid
+  // date, the later one on a tie), so its fee and its date are taken from that same one.
+  const lastPaid = (rec.cycles || []).reduce<(typeof rec.cycles)[number] | undefined>((a, c) => (num(c.amountPaid) > 0 && (!a || (c.paidDate || '') >= (a.paidDate || '')) ? c : a), undefined);
   // Paid (or logged, for a back-dated payment) today: Undo stays available.
   // Code review 2026-10-27: a back-dated "Just record it" payment (no paidAt) logged today
   // can be undone too.
@@ -271,14 +274,14 @@ export default function PayDetailScreen() {
             onPress={() => {
               const next = undoLastPayment(rec);
               // Code review 2026-10-27: the fee paid with it goes too.
-              const feeId = history[0]?.feeTxnId;
+              const feeId = lastPaid?.feeTxnId;
               const base = feeId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== feeId) } : model;
               save(kind === 'bill' ? { ...base, bills: base.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...base, debts: base.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
             }}
             accessibilityRole="button"
           >
             <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint }]} />
-            <Text style={[styles.primaryText, { color: colors.gold }]} testID="pay-detail-undo">{history[0]?.paidDate === today ? "Undo today's payment" : `Undo the ${shortDate(history[0]?.paidDate || today)} payment`}</Text>
+            <Text style={[styles.primaryText, { color: colors.gold }]} testID="pay-detail-undo">{lastPaid?.paidDate === today ? "Undo today's payment" : `Undo the ${shortDate(lastPaid?.paidDate || today)} payment`}</Text>
           </TouchableOpacity>
         )}
       </View>

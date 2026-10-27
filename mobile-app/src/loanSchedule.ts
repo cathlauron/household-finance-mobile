@@ -35,16 +35,49 @@ export function loanFirstDate(loan: Loan): string | null {
   const first = loan.dueDate?.firstDate;
   const rt = loan.recurringType;
   if (rt !== 'monthly' && rt !== 'annual') return null;
-  if (typeof first === 'string' && ISO.test(first)) return first;
   const sched = scheduleOf(loan);
-  if (!sched || sched.day === undefined || sched.day === '') return null;
   const dates = (loan.actualPayments || []).filter((p) => num(p.actual) > 0 && ISO.test(p.date)).map((p) => p.date).sort();
-  if (!dates.length) return null;
-  // The scheduled date nearest the earliest payment (half a period either side).
-  const from = new Date(dates[0] + 'T00:00:00');
-  from.setDate(from.getDate() - (rt === 'annual' ? 182 : 15));
-  const near = getNextDueDate(rt, sched, from);
-  return near ? toISO(near) : null;
+  const inferred = sched && sched.day !== undefined && sched.day !== '' && dates.length && num(loan.expectedPayment) > 0 ? nearestScheduled(rt, sched, dates[0]) : null;
+  if (typeof first === 'string' && ISO.test(first)) {
+    // Review 2026-10-27: before this fix, saving the loan form set the First payment to
+    // the NEXT date, after the payments already made, so they all counted as paid ahead.
+    // A First payment more than a month after the first payment logged is that mistake.
+    const grace = new Date(dates[0] + 'T00:00:00');
+    grace.setDate(grace.getDate() + (rt === 'annual' ? 366 : 31));
+    if (inferred && dates.length && first > toISO(grace)) return inferred;
+    return first;
+  }
+  return inferred;
+}
+
+// The scheduled date nearest a payment (paying a bit early or late); a tie goes to the
+// later one (paying early is more usual). Review 10-27: paid Oct 1 for the 16th = Oct 16.
+function nearestScheduled(rt: 'monthly' | 'annual', sched: Record<string, any>, payISO: string): string | null {
+  // Yearly: the year's payment it was paid for, up to a month late.
+  if (rt === 'annual') {
+    const from = new Date(payISO + 'T00:00:00');
+    from.setDate(from.getDate() - 31);
+    const d = getNextDueDate(rt, sched, from);
+    return d ? toISO(d) : null;
+  }
+  const pay = new Date(payISO + 'T00:00:00').getTime();
+  const from = new Date(payISO + 'T00:00:00');
+  from.setDate(from.getDate() - 40);
+  let best: string | null = null;
+  let bestGap = Infinity;
+  let cur = getNextDueDate(rt, sched, from);
+  for (let i = 0; cur && i < 4; i++) {
+    const gap = Math.abs(cur.getTime() - pay);
+    if (gap <= bestGap) {
+      best = toISO(cur);
+      bestGap = gap;
+    }
+    if (cur.getTime() > pay) break;
+    const after = new Date(cur);
+    after.setDate(after.getDate() + 1);
+    cur = getNextDueDate(rt, sched, after);
+  }
+  return best;
 }
 
 export function isTrackedLoan(loan: Loan): boolean {

@@ -280,7 +280,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       // the NEXT date, after all the payments); else the next one on the schedule.
       const next = rt === 'monthly' || rt === 'annual' ? getNextDueDate(rt, d) : null;
       const nextIso = next ? `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}` : '';
-      setFirstDateInput(typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : loanFirstDate(loan) || nextIso);
+      setFirstDateInput(loanFirstDate(loan) || (typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : nextIso));
     }
     setCustomFreqInput(loan.customFreq || 'monthly');
     setCustomStartDateInput(loan.customStartDate || '');
@@ -461,7 +461,10 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       const before = model.loans.find((x) => x.id === editingId);
       const edited = updated.loans.find((x) => x.id === editingId);
       const newFirst = edited?.dueDate?.firstDate;
-      const moved = !!before && !!edited && (before.dueDate?.firstDate !== newFirst || before.recurringType !== edited.recurringType);
+      // Review 10-27: a loan with no First payment date gets the one its payments started
+      // from filled in; saving that unchanged isn't a move, so no "Which payment was this?".
+      const sameAsWorkedOut = !!before && newFirst === loanFirstDate(before) && before.recurringType === edited?.recurringType;
+      const moved = !!before && !!edited && !sameAsWorkedOut && (before.dueDate?.firstDate !== newFirst || before.recurringType !== edited.recurringType);
       const place = moved && edited && typeof newFirst === 'string' ? loanPaymentToPlace(edited, newFirst) : null;
       if (place && edited) {
         setPlaceAsk({
