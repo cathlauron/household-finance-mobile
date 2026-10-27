@@ -1,7 +1,9 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { alertNotSaved } from '../messages';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Text, TextInput } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
@@ -11,6 +13,7 @@ import { computeEnvelopes, monthKey, type EnvelopeRow } from '../envelopes';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
 import AmountInput from '../components/AmountInput';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { makeId } from '../utils';
 import type { ThemeColors } from '../theme';
 import type { CategoryBudget, HouseholdModel } from '../types';
@@ -44,7 +47,7 @@ export default function EnvelopesScreen() {
     try {
       await saveModel(next);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this envelope'));
     }
   }
 
@@ -71,7 +74,7 @@ export default function EnvelopesScreen() {
         : 'Set a monthly budget or add your income to see this';
 
   return (
-    <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.intro}>Give every peso a job. What is left in an envelope can roll into next month.</Text>
 
       <View style={[styles.group, styles.unassigned]}>
@@ -276,7 +279,7 @@ function EnvelopeSheet({
       <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
         {sheet?.kind === 'assign' ? (
           <>
-            <Text style={styles.label}>Put it into</Text>
+            <MarkedLabel text="Put it into" mark="required" style={styles.label} />
             <View style={styles.chips}>
               {rows.map((r) => {
                 const on = r.envelope.id === targetId;
@@ -293,11 +296,11 @@ function EnvelopeSheet({
                 );
               })}
             </View>
-            <Text style={styles.label}>How much to add</Text>
+            <MarkedLabel text="How much to add" mark="required" style={styles.label} />
           </>
         ) : (
           <>
-            <Text style={styles.label}>Category</Text>
+            <MarkedLabel text="Category" mark="required" style={styles.label} />
             <TextInput
               autoFocus={sheet?.kind === 'add'}
               style={styles.input}
@@ -320,7 +323,7 @@ function EnvelopeSheet({
                 ))}
               </View>
             )}
-            <Text style={styles.label}>Each month</Text>
+            <MarkedLabel text="Each month" mark="required" style={styles.label} />
           </>
         )}
         <AmountInput autoFocus={sheet?.kind === 'assign'} style={styles.amountInput} value={amount} onChangeAmount={(v) => { setAmount(v); setError(''); }} placeholder="0" />

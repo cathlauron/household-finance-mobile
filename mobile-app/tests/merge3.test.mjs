@@ -88,3 +88,29 @@ test('lists without ids (card order): the phone saving now wins', () => {
   const theirs = clone(base); theirs.walletOrder = ['debit:a', 'debit:b', 'debit:c'];
   assert.deepEqual(mergeHouseholds(base, mine, theirs).walletOrder, ['debit:b', 'debit:a']);
 });
+
+// Version 2.2 (review fix): two quick saves in a row while the other phone also saved.
+// Save A went out and came back merged with the other phone's change C; meanwhile this
+// phone already made B on top of A. Folding the result into B keeps all three.
+test('a newer change made while saving keeps the other phone\'s change', () => {
+  const A = clone(base); A.manualTransactions.push({ id: 'tA', label: 'Tick 1', amount: 10 });
+  const B = clone(A); B.manualTransactions.push({ id: 'tB', label: 'Tick 2', amount: 20 });
+  const C = clone(base); C.bills[0].amount = 3200; // the other phone's change
+  const savedOnline = mergeHouseholds(base, A, C); // what save A wrote online (A + C)
+  const folded = mergeHouseholds(A, B, savedOnline); // sent A, newest B, online A + C
+  assert.deepEqual(folded.manualTransactions.map((t) => t.id).sort(), ['t1', 'tA', 'tB']);
+  assert.equal(folded.bills[0].amount, 3200);
+  // and the next save writes it as is (nothing new online since A + C)
+  assert.deepEqual(mergeHouseholds(savedOnline, folded, savedOnline), folded);
+});
+
+test('a newer save from the other phone already on screen is kept when this save comes back', () => {
+  const A = clone(base); A.manualTransactions.push({ id: 'tA', label: 'Tick 1', amount: 10 });
+  const C = clone(base); C.bills[0].amount = 3200;
+  const savedOnline = mergeHouseholds(base, A, C); // this save's result: A + C
+  const D = clone(savedOnline); D.manualTransactions.push({ id: 'tD', label: 'Their taxi', amount: 90 });
+  const onScreen = mergeHouseholds(base, A, D); // the listener already showed A + C + D
+  const folded = mergeHouseholds(A, onScreen, savedOnline);
+  assert.deepEqual(folded.manualTransactions.map((t) => t.id).sort(), ['t1', 'tA', 'tD']);
+  assert.equal(folded.bills[0].amount, 3200);
+});

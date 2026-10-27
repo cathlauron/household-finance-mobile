@@ -1,5 +1,10 @@
-import React, { useMemo, useRef } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { makeMutable, runOnJS } from 'react-native-reanimated';
+import { useReduceMotion } from '../reduceMotion';
+import { Dimensions } from 'react-native';
+import { commitTabDrag, edgeGive, releaseTabDrag, setTabDrag, reduceMotionOnUI } from './tabDrag';
+import { settleTarget } from '../subPages';
 import { hapticSelection } from '../haptics';
 
 // Version 2.1 (Cath): swipe the page sideways to move between tabs (Home / Transactions /
@@ -9,16 +14,49 @@ import { hapticSelection } from '../haptics';
 // stack, swipe-to-delete rows) keep their swipe: they spread `holdTabSwipe` on their outer
 // view, and a page swipe gives way for any touch that starts on them.
 
+// Version 2.2 (Cath: swipe-to-delete opened when she meant to change screens): a quick
+// flick across a swipe-to-delete row still changes the tab. Rows ask the nearest swipe
+// area through this.
+export const SwipeTabsContext = createContext<((direction: 1 | -1) => void) | null>(null);
+
 let held = false;
+// The same "a row or card has this touch" flag, readable on the animation thread (the
+// sliding sub-pages check it there).
+export const heldOnUI = makeMutable(false);
 export const holdTabSwipe = {
   onTouchStart: () => {
     held = true;
+    heldOnUI.value = true;
   },
   onTouchEnd: () => {
     held = false;
+    heldOnUI.value = false;
   },
   onTouchCancel: () => {
     held = false;
+    heldOnUI.value = false;
+  },
+};
+
+// Smoothness 2026-10-23 (Cath picked "follows your finger"): sliding sub-pages (Bills /
+// Debts / Loans and others, components/SlidingPages.tsx) handle their own sideways swipe,
+// so the page-wide swipe that changes the main tab stands aside for touches that start on
+// them. Past the last sub-page they bounce instead of changing tab (Cath's choice).
+let subHeld = false;
+// The same flag on the animation thread (the main-tab swipe runs there, 2026-10-26).
+export const subHeldOnUI = makeMutable(false);
+export const holdForSubPages = {
+  onTouchStart: () => {
+    subHeld = true;
+    subHeldOnUI.value = true;
+  },
+  onTouchEnd: () => {
+    subHeld = false;
+    subHeldOnUI.value = false;
+  },
+  onTouchCancel: () => {
+    subHeld = false;
+    subHeldOnUI.value = false;
   },
 };
 
@@ -29,41 +67,134 @@ const FLICK = 600;
 // and the outer one stands down if the inner one just acted.
 let lastSwipeAt = 0;
 
+// How far the finger has moved past the first few points it takes to start a swipe (so
+// the page starts moving from where it is, never backwards).
+function pastStart(t: number): number {
+  'worklet';
+  return Math.sign(t) * Math.max(0, Math.abs(t) - START);
+}
+
 // direction: +1 = to the next tab (finger moves left), -1 = to the previous tab.
-export function SwipeTabs({ onSwipe, children, enabled = true, inner = false }: { onSwipe: (direction: 1 | -1) => void; children: React.ReactNode; enabled?: boolean; inner?: boolean }) {
+// Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger too): `follow` = the main
+// tab pages. While you swipe they move with your finger (tabDrag.ts); let go past a
+// quarter of the screen, or flick, and the tab changes; otherwise they glide back. Past
+// Home or Plan they give a little and bounce back.
+export function SwipeTabs({
+  onSwipe,
+  children,
+  enabled = true,
+  inner = false,
+  follow,
+}: {
+  onSwipe: (direction: 1 | -1) => void;
+  children: React.ReactNode;
+  enabled?: boolean;
+  inner?: boolean;
+  follow?: { index: number; count: number };
+}) {
+  const followIndex = follow ? follow.index : -1;
+  const followCount = follow ? follow.count : 0;
   const onSwipeRef = useRef(onSwipe);
   onSwipeRef.current = onSwipe;
-  const gesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .runOnJS(true)
+  const reduce = useReduceMotion();
+  useEffect(() => {
+    reduceMotionOnUI.value = reduce;
+  }, [reduce]);
+  // Letting go of a main-tab swipe: the one decision that needs the app (change tab or
+  // glide back). Moving with the finger never waits for it.
+  const endFollow = useCallback(
+    (dx: number, vx: number, ty: number) => {
+      // Code reviewer 2026-10-27: a card that swipes by itself may say "mine" a moment
+      // late when the app is busy; it still wins (no tab change from swiping that card).
+      if (held || subHeld) {
+        releaseTabDrag();
+        return;
+      }
+      const target = settleTarget(followIndex, dx, vx, Dimensions.get('window').width, followCount);
+      if (target === followIndex || Math.abs(ty) > Math.abs(dx)) {
+        releaseTabDrag();
+        return;
+      }
+      lastSwipeAt = Date.now();
+      hapticSelection();
+      commitTabDrag(edgeGive(dx, followIndex, followCount));
+      onSwipeRef.current(target > followIndex ? 1 : -1);
+    },
+    [followIndex, followCount]
+  );
+  const gesture = useMemo(() => {
+    if (followIndex >= 0) {
+      // Smoothness sweep 2026-10-26: the main tabs follow the finger on the phone's
+      // animation thread, so a busy app (saving, syncing, building a page) can't make
+      // them lag behind it.
+      return Gesture.Pan()
+        .withTestId('tab-swipe')
         .enabled(enabled)
         .activeOffsetX([-START, START])
         .failOffsetY([-14, 14])
+        // Touch started on something that swipes by itself: let it have the swipe.
         .onTouchesDown((_e, manager) => {
-          // Touch started on something that swipes by itself: let it have the swipe.
-          // (Its onTouchStart runs first, so `held` is already set.)
-          setTimeout(() => {
-            if (held) manager.fail();
-          }, 0);
+          if (heldOnUI.value || subHeldOnUI.value) manager.fail();
         })
-        .onEnd((e) => {
-          if (held) return;
-          const dx = e.translationX;
-          if (Math.abs(dx) < DISTANCE && Math.abs(e.velocityX) < FLICK) return;
-          if (Math.abs(e.translationY) > Math.abs(dx)) return;
-          const dir: 1 | -1 = dx < 0 ? 1 : -1;
-          setTimeout(
-            () => {
-              if (Date.now() - lastSwipeAt < 300) return;
-              lastSwipeAt = Date.now();
-              hapticSelection();
-              onSwipeRef.current(dir);
-            },
-            inner ? 0 : 60
-          );
-        }),
-    [enabled, inner]
+        .onTouchesMove((_e, manager) => {
+          if (heldOnUI.value || subHeldOnUI.value) manager.fail();
+        })
+        .onUpdate((e) => {
+          if (heldOnUI.value || subHeldOnUI.value) return;
+          setTabDrag(edgeGive(pastStart(e.translationX), followIndex, followCount));
+        })
+        .onFinalize((_e, success) => {
+          if (!success) releaseTabDrag();
+        })
+        .onEnd((e, success) => {
+          // A swipe that was cancelled (not finished) never changes the tab.
+          if (!success) return;
+          if (heldOnUI.value || subHeldOnUI.value) {
+            releaseTabDrag();
+            return;
+          }
+          runOnJS(endFollow)(pastStart(e.translationX), e.velocityX, e.translationY);
+        });
+    }
+    return Gesture.Pan()
+      .withTestId('swipe-tabs')
+      .runOnJS(true)
+      .enabled(enabled)
+      .activeOffsetX([-START, START])
+      .failOffsetY([-14, 14])
+      .onTouchesDown((_e, manager) => {
+        // Touch started on something that swipes by itself: let it have the swipe.
+        // (Its onTouchStart runs first, so `held` is already set.)
+        setTimeout(() => {
+          if (held || subHeld) manager.fail();
+        }, 0);
+      })
+      .onEnd((e) => {
+        if (held || subHeld) return;
+        const dx = e.translationX;
+        if (Math.abs(dx) < DISTANCE && Math.abs(e.velocityX) < FLICK) return;
+        if (Math.abs(e.translationY) > Math.abs(dx)) return;
+        const dir: 1 | -1 = dx < 0 ? 1 : -1;
+        setTimeout(
+          () => {
+            if (Date.now() - lastSwipeAt < 300) return;
+            lastSwipeAt = Date.now();
+            hapticSelection();
+            onSwipeRef.current(dir);
+          },
+          inner ? 0 : 60
+        );
+      });
+  }, [enabled, inner, followIndex, followCount, endFollow]);
+  const flick = useCallback((dir: 1 | -1) => {
+    if (Date.now() - lastSwipeAt < 300) return;
+    lastSwipeAt = Date.now();
+    hapticSelection();
+    onSwipeRef.current(dir);
+  }, []);
+  return (
+    <SwipeTabsContext.Provider value={enabled ? flick : null}>
+      <GestureDetector gesture={gesture}>{children}</GestureDetector>
+    </SwipeTabsContext.Provider>
   );
-  return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }

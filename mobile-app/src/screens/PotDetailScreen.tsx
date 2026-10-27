@@ -1,22 +1,30 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { MarkedLabel } from '../components/MarkedLabel';
+import { toneUnlessZero } from '../moneyColor';
+import { alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { showSaved } from '../components/SavedToast';
 import AppSwitch from '../components/AppSwitch';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import GradientFill from '../components/GradientFill';
 import BottomSheet from '../components/BottomSheet';
+import DeleteRow from '../components/DeleteRow';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
+import { withoutSavingsPot } from '../deleteRecords';
 import AmountInput from '../components/AmountInput';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { useTheme } from '../ThemeContext';
+import SavingsScreen from './SavingsScreen';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { accountLabel } from '../transactionActions';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { hapticLight } from '../haptics';
 import {
   isEmergencyPot,
@@ -38,14 +46,20 @@ import type { PaymentMethod, SavingsGoal } from '../types';
 
 type Sheet = null | 'add' | 'out' | 'keptIn' | 'auto';
 
+function targetDateText(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? iso : dateText(d);
 }
 
 export default function PotDetailScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const id: string = route.params?.id;
@@ -56,6 +70,8 @@ export default function PotDetailScreen() {
 
   const [sheet, setSheet] = useState<Sheet>(null);
   const [amount, setAmount] = useState<number | ''>('');
+  // Version 2.2 (Cath): Edit opens the pot's form right on this page.
+  const [editing, setEditing] = useState(false);
   const [pm, setPm] = useState<PaymentMethod | undefined>(undefined);
 
   useLayoutEffect(() => {
@@ -64,7 +80,7 @@ export default function PotDetailScreen() {
       headerBackTitle: 'Savings',
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => navigation.navigate('Savings', { openSavingsId: id, openSavingsNonce: Date.now() })}
+          onPress={() => setEditing(true)}
           accessibilityRole="button"
           testID="pot-edit"
         >
@@ -73,6 +89,16 @@ export default function PotDetailScreen() {
       ),
     });
   }, [navigation, goal?.name, colors.gold, id]);
+
+  // Version 3: opened from Home's "Running low" tips ("Use ₱1,000 from …"): straight to Move out.
+  const openedOutRef = React.useRef(false);
+  React.useEffect(() => {
+    if (route.params?.open !== 'out' || !goal || openedOutRef.current) return;
+    openedOutRef.current = true;
+    setAmount('');
+    setPm(goal.keptIn);
+    setSheet('out');
+  }, [route.params?.open, goal]);
 
   if (!model || !goal) {
     return (
@@ -98,7 +124,9 @@ export default function PotDetailScreen() {
   if (target > 0) {
     sub = `of ${formatPeso(target)}`;
     if (ef && covered !== null) sub += ` · ${covered.toFixed(1)} of ${efTargetMonths(model)} months covered`;
-    else if (goal.targetDate) sub += ` · by ${shortDate(goal.targetDate)}`;
+    // H-22 (2026-10-22): with the year, the same as the Savings list (a target next year
+    // read like this year without it).
+    else if (goal.targetDate) sub += ` · by ${targetDateText(goal.targetDate)}`;
   } else if (ef && covered !== null) {
     sub = `${covered.toFixed(1)} months covered`;
   } else {
@@ -176,12 +204,13 @@ export default function PotDetailScreen() {
   const fromLabel = (p?: PaymentMethod) => accountLabel(model, p);
 
   return (
-    <KeyboardAwareScrollView contentContainerStyle={styles.content}>
+    <>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={styles.group}>
         <GradientFill match={styles.group} />
         <View style={{ padding: 16 }}>
           <Text style={styles.meta}>Saved</Text>
-          <Text style={[styles.big, { color: colors.saving }]}>{formatPeso(saved)}</Text>
+          <Text style={[styles.big, { color: toneUnlessZero(saved, colors.saving, colors) }]}>{formatPeso(saved)}</Text>
           <Text style={styles.subhead}>{sub}</Text>
           {target > 0 && (
             <View style={styles.track}>
@@ -233,6 +262,7 @@ export default function PotDetailScreen() {
                   <Text style={styles.meta} numberOfLines={1}>
                     {shortDate(c.date)}
                     {from ? ` · ${amt > 0 ? 'from' : 'to'} ${from}` : ''}
+                    {who.by(c.addedBy)}
                   </Text>
                 </View>
                 <Text style={[styles.rowAmount, { color: amt > 0 ? colors.saving : colors.inkDim }]}>
@@ -304,15 +334,18 @@ export default function PotDetailScreen() {
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
           {sheet !== 'keptIn' && (
             <>
-              <Text style={styles.meta}>
-                {sheet === 'auto' ? 'Amount to add on each payday' : sheet === 'out' ? `Up to ${formatPeso(saved)}` : 'Amount'}
-              </Text>
+              <MarkedLabel
+                text={sheet === 'auto' ? 'Amount to add on each payday' : sheet === 'out' ? `Up to ${formatPeso(saved)}` : 'Amount'}
+                mark="required"
+                style={styles.meta}
+              />
               <AmountInput autoFocus value={amount} onChangeAmount={setAmount} placeholder="0.00" />
             </>
           )}
           {(sheet === 'add' || sheet === 'out' || sheet === 'keptIn') && (
             <>
               <AccountPicker
+                mark={sheet === 'keptIn' ? 'optional' : 'required'}
                 model={model}
                 direction={sheet === 'add' ? 'out' : 'in'}
                 amount={sheet === 'keptIn' ? '' : amount}
@@ -325,7 +358,43 @@ export default function PotDetailScreen() {
           )}
         </View>
       </BottomSheet>
+      {/* Version 2.2 (W2 everywhere): who added the pot, and who last changed it. */}
+      {goal && <WhoFootnote addedBy={goal.addedBy} createdAt={goal.createdAt} changedBy={goal.changedBy} changedAt={goal.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />}
+      {/* Version 2.2 (Cath): Delete at the bottom of the page, same as inside Edit. */}
+      <DeleteRow
+        label="Delete savings pot"
+        testID="pot-detail-delete"
+        onPress={() =>
+          Alert.alert('Delete savings goal?', 'Permanently delete this goal and all logged contributions? This cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => {
+                const latest = getModel() ?? model;
+                if (!latest) return;
+                navigation.goBack();
+                saveModel(withoutSavingsPot(latest, id)).catch(() => Alert.alert(...alertNotDeleted('this pot')));
+              },
+            },
+          ])
+        }
+      />
     </KeyboardAwareScrollView>
+    {editing && (
+      <View style={{ position: 'absolute', width: 0, height: 0 }}>
+        <SavingsScreen
+          formOnly
+          openSavingsId={id}
+          onFormClosed={() => {
+            setEditing(false);
+            const latest = getModel();
+            if (latest && !(latest.savingsGoals || []).some((g) => g.id === id)) navigation.goBack();
+          }}
+        />
+      </View>
+    )}
+    </>
   );
 }
 

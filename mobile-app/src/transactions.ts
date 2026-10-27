@@ -35,7 +35,18 @@ export type TransactionEntry = {
   tags?: string[];
 };
 
+// 2.2 speed sweep: the full list is built once per version of your data and reused by
+// every screen that needs it (it only depends on the data; nothing that reads it changes it).
+const listCache = new WeakMap<object, TransactionEntry[]>();
 export function buildTransactionsList(model: HouseholdModel): TransactionEntry[] {
+  const hit = listCache.get(model);
+  if (hit) return hit;
+  const fresh = buildTransactionsListNow(model);
+  listCache.set(model, fresh);
+  return fresh;
+}
+
+function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
   const list: TransactionEntry[] = [];
 
   model.bills.forEach((bill) => {

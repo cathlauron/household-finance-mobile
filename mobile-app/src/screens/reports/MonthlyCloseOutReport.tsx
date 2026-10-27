@@ -5,8 +5,10 @@
 // by default (the one that's "ready"), with arrows to look at other months.
 // ============================================================
 
+import { toneUnlessZero } from '../../moneyColor';
 import React, { useState } from 'react';
-import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import { useData } from '../../DataContext';
@@ -112,9 +114,9 @@ export default function MonthlyCloseOutReport({ activeTag }: Props = {}) {
         </Text>
         <Trio
           items={[
-            { label: 'In', value: '+' + formatPeso(totals.totalIn), color: colors.positive },
-            { label: 'Out', value: '−' + formatPeso(totals.totalOut), color: colors.negative },
-            { label: 'Saved', value: formatPeso(totals.totalSaving), color: colors.saving },
+            { label: 'In', value: '+' + formatPeso(totals.totalIn), color: toneUnlessZero(totals.totalIn, colors.positive, colors) },
+            { label: 'Out', value: '−' + formatPeso(totals.totalOut), color: toneUnlessZero(totals.totalOut, colors.negative, colors) },
+            { label: 'Saved', value: formatPeso(totals.totalSaving), color: toneUnlessZero(totals.totalSaving, colors.saving, colors) },
           ]}
         />
       </Group>

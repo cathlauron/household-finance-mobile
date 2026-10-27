@@ -409,7 +409,29 @@ export function incomeOccurrencesInMonth(source: IncomeSource, year: number, mon
 }
 
 // ---- Every dated event in one month, grouped by day-of-month ----
+// 2.2 speed sweep: Home, Left to Spend, the mood colours and the calendar all ask for the
+// same months again and again. Each month is now worked out once per version of your data
+// (and per day, since "today" matters) and reused. Nothing that reads it changes it.
+const monthEventsCache = new WeakMap<object, Map<string, Record<number, CalendarEvent[]>>>();
 export function computeMonthEvents(
+  model: HouseholdModel,
+  year: number,
+  monthIndex: number
+): Record<number, CalendarEvent[]> {
+  let byMonth = monthEventsCache.get(model);
+  if (!byMonth) {
+    byMonth = new Map();
+    monthEventsCache.set(model, byMonth);
+  }
+  const key = `${toISO(stripTime(new Date()))}|${year}-${monthIndex}`;
+  const hit = byMonth.get(key);
+  if (hit) return hit;
+  const fresh = computeMonthEventsNow(model, year, monthIndex);
+  byMonth.set(key, fresh);
+  return fresh;
+}
+
+function computeMonthEventsNow(
   model: HouseholdModel,
   year: number,
   monthIndex: number
@@ -604,8 +626,13 @@ export function computeRunningBalances(
 // Small local helper so Calendar doesn't need its own copy — matches the web app's
 // two-decimal-places style.
 export function formatPeso(amount: number, currencySymbol: string = '₱'): string {
-  const isNegative = amount < 0;
-  const abs = Math.abs(amount);
+  // H-11 (2026-10-22): a missing or broken amount shows a dash, never "NaN" or "∞"; and the
+  // sign comes from the amount rounded to centavos, so a hair below zero is "₱0.00", not
+  // "-₱0.00".
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return `${currencySymbol}—`;
+  const cents = Math.round(amount * 100);
+  const isNegative = cents < 0;
+  const abs = Math.abs(cents) / 100;
   const formatted = abs.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return `${isNegative ? '-' : ''}${currencySymbol}${formatted}`;
 }
@@ -655,7 +682,10 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
     : new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const basis: 'payday' | 'endOfMonth' = payDate ? 'payday' : 'endOfMonth';
   const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
-  const amount = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  // H-11 (2026-10-22): rounded to centavos (sums like 0.30 - 0.10 - 0.20 land a hair below
+  // zero, which showed "-₱0.00" and "Over budget"). `+ 0` turns -0 into 0.
+  const raw = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  const amount = Math.round(raw * 100) / 100 + 0;
   return { amount, targetDate, basis };
 }
 
@@ -735,7 +765,7 @@ export function getLeftToSpendStatus(
 ): { color: string; label: string; mood: LeftToSpendMood } {
   // Redesign: labels match the Finance Flow mockups, and `mood` drives the Home card
   // colour (green / burnt orange / red).
-  if (amount < 0) return { color: colors.error, label: 'Overspent', mood: 'over' };
+  if (amount < 0) return { color: colors.error, label: 'Over budget', mood: 'over' };
   const cautionAmount = cautionThresholdAmount(model);
   if (amount < cautionAmount) return { color: colors.orange, label: 'Running low', mood: 'low' };
   return { color: colors.ok, label: 'Looking good', mood: 'good' };

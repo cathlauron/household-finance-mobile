@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
+import { MarkedLabel } from './MarkedLabel';
 import { useTheme } from '../ThemeContext';
 import { accountCurrentBalance, formatPeso, SpendingGroup } from '../balanceProjection';
 import type { HouseholdModel, PaymentMethod } from '../types';
@@ -9,9 +11,10 @@ import GradientFill from './GradientFill';
 import { cardColor, cardChipColors } from './CardFace';
 
 // Redesign: choosing the account for a new transaction (required).
-// Money out: "Paid from". Cash and debit accounts with nothing in them, or less than the
-// amount, can't be chosen ("Insufficient balance"), so a balance never goes below zero.
-// Credit cards are borrowing, so they can always be charged.
+// Money out: "Paid from". An account with nothing in it, or less than the amount, is
+// greyed out and can't be chosen ("Insufficient balance"), so a balance never goes below
+// zero. Version 2.2 (Cath): the same for cash, debit AND credit cards (a card is checked
+// against what's still available to use on it), with the same wording everywhere.
 // Money in: "Add to", any account.
 // Balances shown are live (see accountCurrentBalance). When editing a transaction, its
 // own amount is left out, so it isn't counted against itself.
@@ -38,11 +41,18 @@ export function accountProblem(
   if (!pm || !pm.accountId) {
     return direction === 'in' ? 'Choose which account this goes into.' : 'Choose which account this is paid from.';
   }
-  if (direction === 'in' || pm.type === 'credit') return null;
+  if (direction === 'in') return null;
   const bal = availableBalance(model, pm, excludeTxnId) ?? 0;
   const name = model.balanceAccounts[pm.type].find((a) => a.id === pm.accountId)?.name || GROUP_LABEL[pm.type];
-  if (bal <= 0) return `${name} has no balance left.`;
-  if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} has ${formatPeso(bal)}.`;
+  // Version 2.2 (Cath): credit cards are checked too, against what's still available to
+  // use on the card (its balance in the app is the amount you can still use).
+  if (pm.type === 'credit') {
+    if (bal <= 0) return `Insufficient balance: ${name} has nothing left to use.`;
+    if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} has ${formatPeso(bal)} available to use.`;
+    return null;
+  }
+  if (bal <= 0) return `Insufficient balance: ${name} has no money left in it.`;
+  if (typeof amount === 'number' && amount > bal) return `Insufficient balance: ${name} only has ${formatPeso(bal)}.`;
   return null;
 }
 
@@ -57,18 +67,28 @@ type Props = {
   // Version 2.1 (Cath): money being MOVED (into a savings pot, say) can't come from a
   // credit card, since a card's limit only pays for things. Hides credit cards.
   noCredit?: boolean;
+  // Cath, 2026-10-23: required (*) or optional, like every form field.
+  mark?: 'required' | 'optional';
 };
 
-export default function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit }: Props) {
+export default React.memo(AccountPicker);
+
+function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit, mark }: Props) {
   const { colors, isDark } = useTheme();
-  const styles = makeStyles(colors);
-  const groups: SpendingGroup[] = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
-  const rows = groups.flatMap((g) => model.balanceAccounts[g].map((a) => ({ g, a })));
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  // Speed sweep: each account's balance goes through your whole history, so it's worked
+  // out once per change of your data, not again on every key typed in the form.
+  const rows = useMemo(() => {
+    const groups: SpendingGroup[] = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
+    return groups.flatMap((g) =>
+      model.balanceAccounts[g].map((a) => ({ g, a, bal: availableBalance(model, { type: g, accountId: a.id }, excludeTxnId) ?? 0 }))
+    );
+  }, [model, excludeTxnId, noCredit]);
   const spending = direction !== 'in';
 
   return (
     <View>
-      <Text style={styles.label}>{label ?? (spending ? 'Paid from' : 'Add to')}</Text>
+      <MarkedLabel text={label ?? (spending ? 'Paid from' : 'Add to')} mark={mark} style={styles.label} />
       {rows.length === 0 ? (
         <Text style={styles.empty}>
           {noCredit ? 'Add a cash or bank account first (Home › Wallet, or Accounts), then come back.' : 'Add an account first (Home › Wallet, or Accounts), then come back.'}
@@ -76,16 +96,15 @@ export default function AccountPicker({ model, direction, amount, value, onChang
       ) : (
         <View style={styles.group}>
           <GradientFill match={styles.group} />
-          {rows.map(({ g, a }, i) => {
+          {rows.map(({ g, a, bal }, i) => {
             const pm: PaymentMethod = { type: g, accountId: a.id };
-            const bal = availableBalance(model, pm, excludeTxnId) ?? 0;
             const selected = value?.type === g && value?.accountId === a.id;
-            const blocked =
-              spending && g !== 'credit' && (bal <= 0 || (typeof amount === 'number' && amount > bal));
-            const reason = !blocked ? null : bal <= 0 ? 'No balance' : 'Insufficient balance';
+            const blocked = spending && (bal <= 0 || (typeof amount === 'number' && amount > bal));
+            const reason = !blocked ? null : 'Insufficient balance';
             return (
               <TouchableOpacity
                 key={`${g}:${a.id}`}
+                testID={`account-row-${a.id}`}
                 style={[
                   styles.row,
                   i > 0 && styles.rowTop,

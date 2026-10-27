@@ -1,4 +1,9 @@
 import { hapticSelection } from '../haptics';
+import { animateNextLayout } from '../animateLayout';
+import { readyToAutoSave } from '../autoSaveInput';
+import { friendlyError } from '../friendlyError';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted, alertNotSaved, alertDidntWork, TRY_AGAIN } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } from '../paydayTime';
@@ -8,8 +13,10 @@ import { updateSessionPassword } from '../staySignedIn';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
-import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import { MarkedLabel } from '../components/MarkedLabel';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { View, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import BottomSheet from '../components/BottomSheet';
 import LogoMark from '../components/LogoMark';
@@ -18,7 +25,9 @@ import { RowInteractionPreview } from '../components/RowInteractionPreview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../ThemeContext';
-import { useData } from '../DataContext';
+import { useData, withTimeout } from '../DataContext';
+import ClearAllData, { roleFromMembers, type ClearAllRole } from '../components/ClearAllData';
+import { getHouseholdMembers } from '../household';
 import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
@@ -38,7 +47,8 @@ import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
 import { SettingsGroup, SettingsRow, PlainRow, SegmentRow } from '../components/SettingsHub';
 import { PickerRow, Choices, AmountRow, SheetBar, FormGroup, PasswordRow, SheetHero } from '../components/SimpleForm';
-import { deriveKey, decryptJSON } from '../encryption';
+import { deriveKey, decryptJSON, generateSalt } from '../encryption';
+import { makeBackupText, backupFileName, isBackupFileName } from '../backupFile';
 import { getAutoLockMinutes, setAutoLockMinutes, AUTO_LOCK_OPTIONS } from '../autoLock';
 import { getCurrentFirebaseUser } from '../authFirebase';
 import { hasPinSetUp, removePin } from '../pin';
@@ -66,6 +76,7 @@ import AmountInput from '../components/AmountInput';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { useFabSide, setFabSide } from '../fabSide';
 import GradientFill from '../components/GradientFill';
+import { useTightHeadsUp, pretendAwaySixDays } from '../components/CalmHome';
 
 // A small fixed palette to pick from — mirrors the set of colors the original web app
 // auto-assigns to new categories, just offered as tappable swatches here instead ofa
@@ -79,7 +90,7 @@ const COLOR_PALETTE = [
 // ---- Appearance mode options ----
 // Backed entirely by ThemeContext's existing setMode()/mode — this just gives it a UI.
 // Keep in step with "version" in app.json (shown under About).
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 
 const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -111,11 +122,13 @@ const SECTIONS: Record<string, { title: string; parts: string[] }> = {
 export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void; onLock?: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const fabSide = useFabSide();
+  const [tightHeadsUp, setTightHeadsUp] = useTightHeadsUp(); // version 3, this phone only
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const {
     model,
     saveModel,
+    getModel,
     changePassword,
     username,
     isLinked,
@@ -172,7 +185,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     data: 'Data',
   };
 
-  useEffect(() => {
+  // Smoothness 2026-10-23: set before the page is drawn (no frame showing the old title).
+  useLayoutEffect(() => {
     navigation.setOptions({
       title: page ? (SECTIONS[page]?.title ?? PAGE_TITLES[page] ?? 'Settings') : 'Settings',
       headerBackTitle: page ? 'Settings' : 'Home',
@@ -350,7 +364,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       }
     } catch (e) {
       setBiometricPasswordBusy(false);
-      setBiometricPasswordError('Something went wrong. Try again.');
+      setBiometricPasswordError(TRY_AGAIN);
       setBiometricError("Couldn't turn on. Try again.");
     }
   }
@@ -436,9 +450,94 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   // ---- Checkpoint 11.3: Data (backup export + clear all data) ----
   const [exportMsg, setExportMsg] = useState('');
+  // H-05 (2026-10-22): the backup is locked with the account password, asked for here.
+  const [backupSheetOpen, setBackupSheetOpen] = useState(false);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupError, setBackupError] = useState('');
+  const removeOldBackupFilesRef = useRef<() => void>(() => {});
   const [exportBusy, setExportBusy] = useState(false);
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
+  // H-01 (2026-10-22): in a shared household only the owner may clear all data.
+  const [clearRole, setClearRole] = useState<ClearAllRole>(isLinked ? 'checking' : 'solo');
+  const [clearNames, setClearNames] = useState<{ others: string[]; owner: string | null }>({ others: [], owner: null });
+  useEffect(() => {
+    if (page !== 'backup') return;
+    if (!isLinked) {
+      setClearRole('solo');
+      return;
+    }
+    let alive = true;
+    setClearRole('checking');
+    (async () => {
+      try {
+        const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
+        if (!householdId) throw new Error('No household');
+        const members = await withTimeout(getHouseholdMembers(householdId), 8000, 'Timed out checking the household.');
+        if (!alive) return;
+        const r = roleFromMembers(members, getCurrentFirebaseUser()?.uid);
+        setClearRole(r.role);
+        setClearNames({ others: r.others, owner: r.owner });
+      } catch {
+        if (alive) setClearRole('unknown');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [page, isLinked, username]);
+
+  // Version 2.2 (sweep): every hook sits above the loading screen's early return, so the
+  // hooks run in the same order on every draw (a must in React; breaking it can crash).
+  // Left to Spend caution threshold: relying on onBlur alone isn't reliable in React
+  // Native — a TextInput doesn't always emit a blur event before the screen is torn
+  // down (tapping Back, the swipe-back gesture, switching tabs, or fully closing the
+  // app can all skip it), so a typed value could be silently lost instead of saved.
+  // This auto-saves ~600ms after the user stops typing, as a safety net alongside the
+  // existing onBlur save. The mountedRef skips the very first render so opening this
+  // screen doesn't trigger a pointless save before anything's actually been changed.
+  const cautionThresholdMountedRef = useRef(false);
+  useEffect(() => {
+    if (!cautionThresholdMountedRef.current) {
+      cautionThresholdMountedRef.current = true;
+      return;
+    }
+    // H-14: an empty box waits (it's saved as 0 only when you leave it).
+    if (!readyToAutoSave(cautionThresholdInput)) return;
+    const timer = setTimeout(() => {
+      saveCautionThreshold();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [cautionThresholdInput]);
+  // Monthly budget: saved ~600ms after you stop typing (same safety net as above).
+  const monthlyBudgetMountedRef = useRef(false);
+  useEffect(() => {
+    if (!monthlyBudgetMountedRef.current) {
+      monthlyBudgetMountedRef.current = true;
+      return;
+    }
+    const timer = setTimeout(async () => {
+      // Version 2.2: the newest data, so a switch flipped in these 600 ms isn't undone.
+      const latest = getModel() ?? model;
+      if (!latest) return;
+      if ((latest.settings.monthlySpendingBudget ?? '') === monthlyBudgetInput) return;
+      try {
+        await saveModel({ ...latest, settings: { ...latest.settings, monthlySpendingBudget: monthlyBudgetInput } });
+      } catch (e) {
+        Alert.alert(...alertNotSaved('this change'));
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [monthlyBudgetInput]);
+  // Which expanding row (Auto-lock, Day, Watch a category) is open; one at a time.
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const [passSheetOpen, setPassSheetOpen] = useState(false);
+  // The swipe preview only plays right after Swipe to delete is turned on here.
+  const [showSwipePreview, setShowSwipePreview] = useState(false);
+
+  // (Above the loading return so it runs on every render; removeOldBackupFiles is below.)
+  useEffect(() => {
+    if (page === 'backup') removeOldBackupFilesRef.current();
+  }, [page]);
 
   if (!model) {
     return (
@@ -480,62 +579,29 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
   async function saveCautionThreshold() {
-    if (!model) return;
+    // Version 2.2: the newest data (this also runs a moment after typing stops).
+    const latest = getModel() ?? model;
+    if (!latest) return;
     const n = parseInt(cautionThresholdInput, 10);
     const value = isNaN(n) || n < 0 ? 0 : n > 100 ? 100 : n;
     setCautionThresholdInput(String(value));
+    if (latest.settings.cautionThresholdPercent === value) return;
     const updated: HouseholdModel = {
-      ...model,
-      settings: { ...model.settings, cautionThresholdPercent: value },
+      ...latest,
+      settings: { ...latest.settings, cautionThresholdPercent: value },
     };
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this change'));
     }
   }
 
-  // Left to Spend caution threshold: relying on onBlur alone isn't reliable in React
-  // Native — a TextInput doesn't always emit a blur event before the screen is torn
-  // down (tapping Back, the swipe-back gesture, switching tabs, or fully closing the
-  // app can all skip it), so a typed value could be silently lost instead of saved.
-  // This auto-saves ~600ms after the user stops typing, as a safety net alongside the
-  // existing onBlur save. The mountedRef skips the very first render so opening this
-  // screen doesn't trigger a pointless save before anything's actually been changed.
-  const cautionThresholdMountedRef = useRef(false);
-  useEffect(() => {
-    if (!cautionThresholdMountedRef.current) {
-      cautionThresholdMountedRef.current = true;
-      return;
-    }
-    const timer = setTimeout(() => {
-      saveCautionThreshold();
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [cautionThresholdInput]);
-  // Monthly budget: saved ~600ms after you stop typing (same safety net as above).
-  const monthlyBudgetMountedRef = useRef(false);
-  useEffect(() => {
-    if (!monthlyBudgetMountedRef.current) {
-      monthlyBudgetMountedRef.current = true;
-      return;
-    }
-    const timer = setTimeout(async () => {
-      if (!model) return;
-      if ((model.settings.monthlySpendingBudget ?? '') === monthlyBudgetInput) return;
-      try {
-        await saveModel({ ...model, settings: { ...model.settings, monthlySpendingBudget: monthlyBudgetInput } });
-      } catch (e) {
-        Alert.alert('Failed to save', 'Please try again.');
-      }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [monthlyBudgetInput]);
     async function togglePushNotifications() {
     if (!model) return;
     hapticSelection();
@@ -552,15 +618,18 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       }
     }
 
+    // H-20 (2026-10-22): the newest data (a change may have arrived while the phone's
+    // permission pop-up was open; saving the older copy would undo it).
+    const latest = getModel() ?? model;
     const updated: HouseholdModel = {
-      ...model,
-      settings: { ...model.settings, pushNotificationsEnabled: turningOn },
+      ...latest,
+      settings: { ...latest.settings, pushNotificationsEnabled: turningOn },
     };
     try {
       await saveModel(updated);
       setNotifStatusMsg(turningOn ? "You'll get a reminder when a bill is due soon." : 'Turned off.');
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -579,14 +648,16 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       }
     }
 
+    // H-20: the newest data (see togglePushNotifications).
+    const latest = getModel() ?? model;
     const updated: HouseholdModel = {
-      ...model,
-      settings: { ...model.settings, weeklyRecapEnabled: turningOn },
+      ...latest,
+      settings: { ...latest.settings, weeklyRecapEnabled: turningOn },
     };
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -611,7 +682,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                 updateRecentAccountIfPresent(username, { hasPin: false }).catch(() => {});
                 setPinIsSet(false);
               } catch (e) {
-                Alert.alert('Failed to remove PIN', 'Please try again.');
+                Alert.alert(...alertDidntWork('remove your PIN'));
               } finally {
                 setPinBusy(false);
               }
@@ -624,10 +695,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     }
   }
 
-  // Which expanding row (Auto-lock, Day, Watch a category) is open; one at a time.
-  const [openRow, setOpenRow] = useState<string | null>(null);
-  const toggleRow = (key: string) => setOpenRow((o) => (o === key ? null : key));
-  const [passSheetOpen, setPassSheetOpen] = useState(false);
+  const toggleRow = (key: string) => {
+    animateNextLayout();
+    setOpenRow((o) => (o === key ? null : key));
+  };
   const passDone = passChangeMsg === 'Password changed.';
   function closePassSheet() {
     setPassSheetOpen(false);
@@ -652,8 +723,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     />
   );
 
-  // The swipe preview only plays right after Swipe to delete is turned on here.
-  const [showSwipePreview, setShowSwipePreview] = useState(false);
 
   async function handleSetSwipeToDelete(enabled: boolean) {
     if (!model) return;
@@ -664,7 +733,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this change'));
     }
   }
 
@@ -677,7 +746,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -693,7 +762,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      setNotifStatusMsg('Failed to save. Please try again.');
+      setNotifStatusMsg(notSaved('this change'));
     }
   }
 
@@ -739,21 +808,23 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this change'));
     }
   }
 
   async function performDeleteCategory() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      categories: model.categories.filter((c) => c.id !== editingId),
+      ...current,
+      categories: current.categories.filter((c) => c.id !== editingId),
     };
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this change'));
     }
   }
 
@@ -801,7 +872,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setWatchLimitInput('');
       setWatchErrorMsg('');
     } catch (e) {
-      setWatchErrorMsg('Failed to save. Please try again.');
+      setWatchErrorMsg(notSaved('this change'));
     }
   }
 
@@ -814,7 +885,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to remove', 'Please try again.');
+      Alert.alert(...alertDidntWork('remove it'));
     }
   }
 
@@ -878,21 +949,23 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       await saveModel(updated);
       closePayeeModal();
     } catch (e) {
-      setPayeeErrorMsg('Failed to save. Please try again.');
+      setPayeeErrorMsg(notSaved('this payee'));
     }
   }
 
   async function performDeletePayee() {
-    if (!editingPayeeId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingPayeeId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      payees: (model.payees ?? []).filter((p) => p.id !== editingPayeeId),
+      ...current,
+      payees: (current.payees ?? []).filter((p) => p.id !== editingPayeeId),
     };
     try {
       await saveModel(updated);
       closePayeeModal();
     } catch (e) {
-      setPayeeErrorMsg('Failed to delete. Please try again.');
+      setPayeeErrorMsg(notDeleted('this payee'));
     }
   }
 
@@ -992,21 +1065,23 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       showLeafTick(editingRuleId ? 'Saved' : 'Added');
       closeRuleModal();
     } catch (e) {
-      setRuleErrorMsg('Failed to save. Please try again.');
+      setRuleErrorMsg(notSaved('this rule'));
     }
   }
 
   async function performDeleteRule() {
-    if (!editingRuleId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingRuleId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      categorizationRules: (model.categorizationRules ?? []).filter((r) => r.id !== editingRuleId),
+      ...current,
+      categorizationRules: (current.categorizationRules ?? []).filter((r) => r.id !== editingRuleId),
     };
     try {
       await saveModel(updated);
       closeRuleModal();
     } catch (e) {
-      setRuleErrorMsg('Failed to delete. Please try again.');
+      setRuleErrorMsg(notDeleted('this rule'));
     }
   }
 
@@ -1034,7 +1109,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to reorder', 'Please try again.');
+      Alert.alert(...alertDidntWork('change the order'));
     }
   }
 
@@ -1063,7 +1138,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     const result = await changePassword(currentPassInput, newPass1Input);
     setPassChangeBusy(false);
     if (!result.ok) {
-      setPassChangeMsg(result.error || 'Something went wrong. Please try again.');
+      setPassChangeMsg(result.error || TRY_AGAIN);
       return;
     }
     setCurrentPassInput('');
@@ -1139,45 +1214,88 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       setRetroactiveBusy(false);
     } catch (e: any) {
       setRetroactiveBusy(false);
-      setRetroactiveError(e?.message || 'Failed to generate recovery key.');
+      setRetroactiveError(friendlyError(e, "Couldn't make a recovery key. Nothing changed, so please try again in a moment."));
     }
   }
 
   // ---- Checkpoint 11.3: Data handlers ----
-  async function handleExportBackup() {
-    if (!model) return;
+  // Removes backup files left in the phone's cache folder (older versions left a plain,
+  // unlocked one there after every backup). Best effort.
+  removeOldBackupFilesRef.current = removeOldBackupFiles;
+  async function removeOldBackupFiles() {
+    try {
+      const dir = FileSystem.cacheDirectory;
+      if (!dir) return;
+      const names = await FileSystem.readDirectoryAsync(dir);
+      await Promise.all(names.filter(isBackupFileName).map((n) => FileSystem.deleteAsync(dir + n, { idempotent: true })));
+    } catch {}
+  }
+
+  function handleExportBackup() {
     setExportMsg('');
+    setBackupPassword('');
+    setBackupError('');
+    setBackupSheetOpen(true);
+  }
+
+  // H-05: check the password, lock the backup with it, share the file, then remove it.
+  async function handleConfirmBackup() {
+    if (!model) return;
+    if (!backupPassword) {
+      setBackupError('Enter your account password.');
+      return;
+    }
+    setBackupError('');
     setExportBusy(true);
     await paintBusy();
+    let fileUri: string | null = null;
     try {
-      const json = JSON.stringify(model, null, 2);
-      const fileUri = FileSystem.cacheDirectory + `finance-flow-backup-${Date.now()}.json`;
-      await FileSystem.writeAsStringAsync(fileUri, json, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      const canShare = await Sharing.isAvailableAsync();
-      if (!canShare) {
-        setExportMsg('Saving/sharing files is not available on this device.');
-        setExportBusy(false);
+      if (!(await verifyPassword(backupPassword))) {
+        setBackupError('Incorrect password.');
         return;
       }
-      await Sharing.shareAsync(fileUri, {
-        mimeType: 'application/json',
-        dialogTitle: 'Save your backup',
-      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        setBackupError('Saving/sharing files is not available on this device.');
+        return;
+      }
+      const salt = await generateSalt();
+      const iv = await generateSalt();
+      const text = makeBackupText(getModel() ?? model, deriveKey(backupPassword, salt), salt, iv);
+      await removeOldBackupFiles();
+      fileUri = FileSystem.cacheDirectory + backupFileName();
+      await FileSystem.writeAsStringAsync(fileUri, text, { encoding: FileSystem.EncodingType.UTF8 });
+      setBackupSheetOpen(false);
+      setBackupPassword('');
+      await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Save your backup' });
+      // (The phone can't tell us whether it was saved or the share was cancelled.)
+      setExportMsg('Your backup file is locked with your password. Keep that password safe.');
     } catch (e) {
+      setBackupError("Couldn't create the backup file. Please try again.");
       setExportMsg("Couldn't create the backup file. Please try again.");
+    } finally {
+      setExportBusy(false);
+      // The copy in the cache folder is no longer needed once the share sheet has closed
+      // (the app you shared to has its own copy). Removed a little later, to give that app
+      // time to finish reading it; anything left is removed next time this page opens.
+      if (fileUri) {
+        const uri = fileUri;
+        setTimeout(() => FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {}), 60000);
+      }
     }
-    setExportBusy(false);
   }
 
   async function handleClearAllData() {
+    // Only just-you profiles and a household's owner may clear (see ClearAllData).
+    if (clearRole !== 'solo' && clearRole !== 'owner') return false;
+    if (clearRole === 'solo' && isLinked) return false;
     setClearBusy(true);
     try {
       await saveModel(defaultModel());
-      setClearConfirmOpen(false);
+      return true;
     } catch (e) {
-      Alert.alert('Failed to clear data', 'Please try again.');
+      Alert.alert(...alertDidntWork('clear the data'));
+      return false;
     } finally {
       setClearBusy(false);
     }
@@ -1530,16 +1648,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
-        <SettingsGroup label="List rows" plain footer="Swipe a row left to delete it.">
-          <PlainRow
-            title="Swipe to delete"
-            right={settingSwitch(!!model.settings.swipeToDeleteEnabled, (on) => {
-              setShowSwipePreview(on);
-              handleSetSwipeToDelete(on);
-            }, 'settings-swipe-delete')}
-          />
-        </SettingsGroup>
-        {showSwipePreview && <View style={{ marginTop: -12, marginBottom: 24 }}><RowInteractionPreview /></View>}
+        {/* Version 2.2 (Cath): swipe to delete was removed entirely; delete from an item's
+            own page or its Edit form instead. */}
 
         <SettingsGroup plain footer="More languages are coming later.">
           <PlainRow title="Language" value="English" />
@@ -1580,7 +1690,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             right={settingSwitch(model.settings.paydayNudgeEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, paydayNudgeEnabled: on } }), 'settings-payday-nudge')}
           />
           {model.settings.paydayNudgeEnabled !== false && (
-            <PlainRow title="Remind me at" value={formatClock(paydayTime)} onPress={() => setPaydayTimeOpen((o) => !o)} testID="settings-payday-time" />
+            <PlainRow title="Remind me at" value={formatClock(paydayTime)} onPress={() => { animateNextLayout(); setPaydayTimeOpen((o) => !o); }} testID="settings-payday-time" />
           )}
           {model.settings.paydayNudgeEnabled !== false && paydayTimeOpen && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4 }}>
@@ -1733,6 +1843,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
+        <SettingsGroup
+          plain
+          footer="When Left to Spend is running low, Home shows a few ways to free up money before payday. Nothing moves until you choose. This phone only; no notification."
+        >
+          <PlainRow title="Heads-up when money gets tight" right={settingSwitch(tightHeadsUp, setTightHeadsUp, 'settings-tight-heads-up')} />
+        </SettingsGroup>
+
         <SettingsGroup plain footer="Give every peso a job, and roll leftovers into next month.">
           <PlainRow testID="settings-envelopes" title="Envelopes" onPress={() => navigation.navigate('Envelopes')} />
         </SettingsGroup>
@@ -1757,16 +1874,18 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             open={openRow === 'watch'}
             onToggle={() => toggleRow('watch')}
           >
+            <MarkedLabel text="Category" mark="required" style={styles.inputLabel} />
             <TextInput
               style={styles.input}
-              placeholder="Category name (e.g. Groceries)"
+              placeholder="e.g. Groceries"
               placeholderTextColor={colors.inkDim}
               value={watchCategoryInput}
               onChangeText={setWatchCategoryInput}
             />
+            <MarkedLabel text="Monthly limit" mark="required" style={styles.inputLabel} />
             <AmountInput
               style={styles.amountInput}
-              placeholder="Monthly limit (e.g. 5000)"
+              placeholder="e.g. 5000"
               value={watchLimitInput}
               onChangeAmount={setWatchLimitInput}
             />
@@ -1836,7 +1955,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <>
         {/* Version 2.1 (round 6, X5): while saving a backup, a small house beside the title draws itself. */}
         <BusySectionTitle busy={exportBusy} label="YOUR DATA" words={['Gathering your data…', 'Making your file…', 'Almost there…']} />
-        <SettingsGroup label={exportBusy ? undefined : 'Your data'} plain footer={exportMsg || 'Everything is encrypted on this phone before it is saved online.'}>
+        <SettingsGroup label={exportBusy ? undefined : 'Your data'} plain footer={exportMsg || 'The backup file is locked with your password.'}>
           <PlainRow
             title="Save a backup"
             onPress={exportBusy ? undefined : handleExportBackup}
@@ -1861,21 +1980,14 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           />
         </SettingsGroup>
 
-        {!clearConfirmOpen ? (
-          <SettingsGroup plain footer="This can't be undone. You'll be asked to confirm first.">
-            <PlainRow title="Clear all data & start fresh" danger onPress={() => setClearConfirmOpen(true)} />
-          </SettingsGroup>
-        ) : (
-          <View style={styles.dangerConfirmBox}>
-            <Text style={styles.dangerConfirmText}>
-              This clears every entry for this profile — bills, debts, loans, income, savings, accounts, everything. Your username and password stay the same. This can't be undone.
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button variant="solidDanger" label="Yes, clear everything" onPress={handleClearAllData} loading={clearBusy} disabled={clearBusy} style={{ flex: 1 }} />
-              <Button variant="secondary" label="Cancel" onPress={() => setClearConfirmOpen(false)} style={{ flex: 1 }} />
-            </View>
-          </View>
-        )}
+        <ClearAllData
+          role={clearRole}
+          partnerNames={clearNames.others}
+          ownerName={clearNames.owner}
+          busy={clearBusy}
+          onClear={handleClearAllData}
+          onLeave={() => navigation.push('Profile', { section: 'household' })}
+        />
         </>
         )}
 
@@ -1889,6 +2001,19 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
           <PlainRow title="Help & guides" value="Coming soon" />
         </SettingsGroup>
+        {/^test/i.test(username || '') && (
+          <SettingsGroup plain footer="Test accounts only. Close the app fully and open it again: Welcome back shows on Home.">
+            <PlainRow
+              testID="settings-test-away"
+              title="Test: pretend I was away 6 days"
+              onPress={() => {
+                pretendAwaySixDays(username!)
+                  .then(() => Alert.alert('Done', 'Now close the app fully and open it again.'))
+                  .catch(() => {});
+              }}
+            />
+          </SettingsGroup>
+        )}
         </>
         )}
       </PullToRefreshScrollView>
@@ -1966,7 +2091,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         onClose={closeModal}
         title={editingId ? 'Edit category' : 'New category'}
       >
-        <Text style={styles.inputLabel}>Name</Text>
+        <MarkedLabel text="Name" mark="required" style={styles.inputLabel} />
         <TextInput
           autoFocus={!editingId}
           style={styles.input}
@@ -1976,7 +2101,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setNameInput}
         />
 
-        <Text style={styles.inputLabel}>Color</Text>
+        <MarkedLabel text="Color" mark="required" style={styles.inputLabel} />
         <View style={styles.swatchRow}>
           {COLOR_PALETTE.map((c) => (
             <TouchableOpacity
@@ -1991,7 +2116,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           ))}
         </View>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
 
         <Button label="Save" onPress={handleSave} />
 
@@ -2005,7 +2130,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         onClose={closePayeeModal}
         title={editingPayeeId ? 'Edit payee' : 'New payee'}
       >
-        <Text style={styles.inputLabel}>Name</Text>
+        <MarkedLabel text="Name" mark="required" style={styles.inputLabel} />
         <TextInput
           autoFocus={!editingPayeeId}
           style={styles.input}
@@ -2015,7 +2140,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setPayeeNameInput}
         />
 
-        <Text style={styles.inputLabel}>Default category (optional)</Text>
+        <MarkedLabel text="Default category" mark="optional" style={styles.inputLabel} />
         <TextInput
           style={styles.input}
           placeholder="e.g. Groceries, Utilities"
@@ -2024,7 +2149,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setPayeeCategoryInput}
         />
 
-        {!!payeeErrorMsg && <Text style={styles.errorText}>{payeeErrorMsg}</Text>}
+        <ErrorNote text={payeeErrorMsg} />
 
         <Button label="Save" onPress={handleSavePayee} />
 
@@ -2038,7 +2163,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         onClose={closeRuleModal}
         title={editingRuleId ? 'Edit rule' : 'New rule'}
       >
-        <Text style={styles.inputLabel}>If the label contains</Text>
+        <MarkedLabel text="If the label contains" mark="required" style={styles.inputLabel} />
         <TextInput
           autoFocus={!editingRuleId}
           style={styles.input}
@@ -2049,13 +2174,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           autoCapitalize="none"
         />
 
-        <Text style={styles.inputLabel}>Minimum amount (optional)</Text>
+        <MarkedLabel text="Minimum amount" mark="optional" style={styles.inputLabel} />
         <AmountInput style={styles.amountInput} placeholder="No minimum" value={ruleMinInput} onChangeAmount={setRuleMinInput} />
 
-        <Text style={styles.inputLabel}>Maximum amount (optional)</Text>
+        <MarkedLabel text="Maximum amount" mark="optional" style={styles.inputLabel} />
         <AmountInput style={styles.amountInput} placeholder="No maximum" value={ruleMaxInput} onChangeAmount={setRuleMaxInput} />
 
-        <Text style={styles.inputLabel}>Set category to</Text>
+        <MarkedLabel text="Set category to" mark="required" style={styles.inputLabel} />
         <TextInput
           style={styles.input}
           placeholder="e.g. Groceries, Utilities"
@@ -2064,13 +2189,46 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           onChangeText={setRuleCategoryInput}
         />
 
-        {!!ruleErrorMsg && <Text style={styles.errorText}>{ruleErrorMsg}</Text>}
+        <ErrorNote text={ruleErrorMsg} />
 
         <Button label="Save" onPress={handleSaveRule} />
 
         {editingRuleId && <Button label="Delete this rule" variant="destructive" onPress={handleDeleteRule} />}
 
         <Button label="Cancel" variant="quiet" onPress={closeRuleModal} />
+      </BottomSheet>
+
+      {/* H-05: Save a backup asks for the password that locks the file. */}
+      <BottomSheet
+        visible={backupSheetOpen}
+        onClose={() => { if (!exportBusy) setBackupSheetOpen(false); }}
+        grouped
+        header={
+          <SheetBar
+            title="Save a backup"
+            onCancel={() => setBackupSheetOpen(false)}
+            onDone={handleConfirmBackup}
+            doneLabel="Save"
+            busy={exportBusy}
+            doneDisabled={!backupPassword}
+          />
+        }
+      >
+        <BusyHero
+          busy={exportBusy}
+          icon="lock-closed-outline"
+          title="Lock it with your password"
+          sub="The backup file is locked with your account password. You'll need it to open the file."
+          words={['Checking your password…', 'Locking your file…', 'Almost there…']}
+        />
+        <View style={{ opacity: exportBusy ? 0.45 : 1 }} pointerEvents={exportBusy ? 'none' : 'auto'}>
+          <FormGroup>
+            <PasswordRow label="Password" value={backupPassword} onChangeText={setBackupPassword} placeholder="Your password" autoFocus testID="backup-password-input" />
+          </FormGroup>
+        </View>
+        <Text style={[styles.sheetNote, backupError ? { color: colors.error } : null]}>
+          {backupError || (exportBusy ? '' : 'Choose where to keep it next, like Google Drive or email.')}
+        </Text>
       </BottomSheet>
 
       {/* Fingerprint: confirm the password (version 2.1: the app's usual bottom sheet). */}
@@ -2195,7 +2353,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             <Text style={styles.sectionSub}>
     Sign out {deviceToRevoke?.deviceName}? It'll be disconnected right away and need to sign in again.
   </Text>
-            {!!revokeError && <Text style={styles.errorText}>{revokeError}</Text>}
+            <ErrorNote text={revokeError} />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
                 <Button
                   variant="solidDanger"

@@ -1,7 +1,15 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useLayoutEffect, useRef } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import Reanimated, { Easing, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
+import { reduceMotionNow } from '../reduceMotion';
+import { movesQuiet } from '../quietMoves';
+import { CURVE, TAB_MS } from '../motion';
+import { QuietWhenHidden } from '../DataContext';
+import { QuietThemeWhenHidden } from '../ThemeContext';
+import { PageActiveContext } from '../pageActive';
+import { tabDrag, takeCommittedDrag } from './tabDrag';
 
 // Switching tabs is a soft, minimal fade: the old tab fades out while drifting a few
 // pixels away, then the new tab fades in while settling the last few pixels into place
@@ -16,8 +24,13 @@ import LargeHeader from './LargeHeader';
 // Version 2.1 (Cath's pick, sample C "Slide by direction"): a tab to the right slides in
 // from the right while the old one slides out to the left, side by side (they never
 // overlap, so see-through pages stay clean), like turning to the next page.
-const FADE_MS = 280;
-const FADE_EASING = Easing.bezier(0.25, 0.8, 0.25, 1); // same feel as the page slide
+// Version 2.2 sweep: a little quicker (tabs are switched all day) and the same curve as
+// the sheets and pages, so everything in the app moves alike. With the phone set to
+// remove animations, tabs just switch.
+const FADE_MS = TAB_MS;
+const FADE_EASING = Easing.bezier(...CURVE);
+// Smoothness sweep 2026-10-26: positions live on the phone's animation thread (Reanimated),
+// next to the finger's drag (tabDrag.ts), so a busy app never holds a swipe back.
 
 // The tab that was showing last, so a tab opened for the first time knows which side
 // to come in from.
@@ -39,19 +52,29 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
   // -1 = waiting off the left edge, 0 = on screen, 1 = waiting off the right edge.
   const place = Math.sign(routeIndex - shownIndex);
 
-  const x = useRef(
-    new Animated.Value(place === 0 ? Math.sign(routeIndex - lastShownIndex) : place)
-  ).current;
+  const x = useSharedValue(place === 0 ? Math.sign(routeIndex - lastShownIndex) : place);
   const lastPlace = useRef<number | null>(null);
+  // Version 2.2 fix (Cath: forms flashing, Edit on a debt opened and closed again): hidden
+  // tabs are no longer paused. Pausing them ("freezing") hid and re-showed whole pages,
+  // which made pop-up forms flash and close. Hidden tabs simply stay drawn, as in 2.1.
 
-  useEffect(() => {
+  // Smoothness 2026-10-23: worked out BEFORE the screen draws (layout effect). Done after
+  // (a plain effect), a finger swipe's last frame showed the next-but-one tab and the old
+  // positions on top of each other for a moment (frame recorder).
+  useLayoutEffect(() => {
     const before = lastPlace.current;
     lastPlace.current = place;
     if (place === 0) lastShownIndex = routeIndex;
-    const run = (to: number, done?: () => void) =>
-      Animated.timing(x, { toValue: to, duration: FADE_MS, easing: FADE_EASING, useNativeDriver: true }).start(({ finished }) => {
-        if (finished && done) done();
-      });
+    const run = (to: number) => {
+      x.value = reduceMotionNow() || movesQuiet() ? to : withTiming(to, { duration: FADE_MS, easing: FADE_EASING });
+    };
+    // Smoothness 2026-10-23: the tab changed at the end of a finger swipe. Both pages carry
+    // on from exactly where the finger left them (see tabDrag.ts).
+    const dragged = before !== null && before !== place ? takeCommittedDrag() : 0;
+    if (dragged !== 0 && width > 0) {
+      if (before === 0) x.value = dragged / width;
+      else if (place === 0) x.value = (before as number) + dragged / width;
+    }
     if (before === null) {
       // Opened for the first time: fades in from its side (no movement for the very
       // first tab when the app starts).
@@ -63,27 +86,46 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       // Arriving: fades in from the side it was waiting on.
       run(0);
     } else if (before === 0) {
-      // Leaving: fades out toward its side and waits there.
+      // Leaving: fades out toward its side and waits there (its updates then run as quiet
+      // background work, see QuietWhenHidden).
       run(place);
     } else {
       // Skipped over: stays hidden and just moves to its new side.
-      x.setValue(place);
+      x.value = place;
     }
-  }, [place, routeIndex, x]);
+  }, [place, routeIndex, x, width]);
 
-  const translateX = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
-  // Fully visible while sliding; hidden only once it's off the screen.
-  const opacity = x.interpolate({ inputRange: [-1, -0.999, 0, 0.999, 1], outputRange: [0, 1, 1, 1, 0] });
+
+  // Smoothness 2026-10-23: the tab showing and the ones right beside it follow a finger
+  // swipe; the others stay hidden off screen.
+  const near = Math.abs(routeIndex - shownIndex) <= 1;
+  const moved = useAnimatedStyle(() => {
+    const base = x.value * width;
+    return {
+      // Fully visible while sliding; tabs further away are hidden once off the screen.
+      // The ones beside it stay drawn, so a swipe can bring them in.
+      opacity: near ? 1 : interpolate(x.value, [-1, -0.999, 0, 0.999, 1], [0, 1, 1, 1, 0], Extrapolation.CLAMP),
+      transform: [{ translateX: near ? base + tabDrag.value : base }],
+    };
+  }, [near, width]);
 
   return (
     // The page arriving sits on top; pages that aren't showing don't catch taps.
-    <Animated.View
+    <Reanimated.View
       pointerEvents={place === 0 ? 'auto' : 'none'}
-      style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0, opacity, transform: [{ translateX }] }]}
+      style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0 }, moved]}
     >
-      {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
-      {children}
-    </Animated.View>
+      <QuietThemeWhenHidden active={place === 0}>
+        <QuietWhenHidden active={place === 0}>
+          {/* Smoothness 2026-10-23: a hidden tab tells its contents so (new rows wait to
+              light up, numbers don't count off screen). */}
+          <PageActiveContext.Provider value={place === 0}>
+            {showHeader && <LargeHeader navigation={navigation} route={route} options={options} back={undefined} />}
+            {children}
+          </PageActiveContext.Provider>
+        </QuietWhenHidden>
+      </QuietThemeWhenHidden>
+    </Reanimated.View>
   );
 }
 

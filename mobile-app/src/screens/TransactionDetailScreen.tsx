@@ -1,10 +1,15 @@
-import React, { useLayoutEffect, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import React, { useLayoutEffect, useState, useMemo } from 'react';
+import { dateText } from '../dateUtils';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { alertNotSaved, alertNotDeleted } from '../messages';
+import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
+import TransactionsScreen from './TransactionsScreen';
 import { useData } from '../DataContext';
 import { formatPeso } from '../balanceProjection';
 import { buildTransactionsList, TransactionEntry } from '../transactions';
@@ -47,14 +52,17 @@ function whenLabel(date: string, createdAt?: number): string {
 
 export default function TransactionDetailScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel, isLinked, username } = useData();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const id: string = route.params?.id;
   const styles = makeStyles(colors);
   const [repeatOpen, setRepeatOpen] = useState(false);
+  // Version 2.2 (Cath): Edit opens the form right on this page (no jump back to the list).
+  const [editing, setEditing] = useState(false);
 
-  const entry: TransactionEntry | undefined = model ? buildTransactionsList(model).find((t) => t.id === id) : undefined;
+  // Version 2.2 (sweep): built once per change, not on every redraw of this page.
+  const entry: TransactionEntry | undefined = useMemo(() => (model ? buildTransactionsList(model).find((t) => t.id === id) : undefined), [model, id]);
   const raw = entry?.source === 'manual' && model ? (model.manualTransactions || []).find((m) => m.id === entry.rawId) : undefined;
   const isManual = !!raw;
   const linkedShare = raw ? (model?.sharedExpenses ?? []).find((x) => x.transactionId === raw.id) : undefined;
@@ -67,7 +75,7 @@ export default function TransactionDetailScreen() {
         ? () => (
             <TouchableOpacity
               testID="txn-detail-edit"
-              onPress={() => navigation.navigate('Main', { screen: 'Transactions', params: { editId: raw!.id, editNonce: Date.now() } })}
+              onPress={() => setEditing(true)}
               accessibilityRole="button"
             >
               <Text style={[headerButtonText, { color: colors.gold }]}>Edit</Text>
@@ -90,11 +98,12 @@ export default function TransactionDetailScreen() {
   const person = (model.people || []).find((p) => p.id === entry.owner);
   const paidBy = entry.owner === 'shared' || !entry.owner ? 'Shared' : person?.name || '—';
   const account = accountLabel(model, raw?.paymentMethod);
-  const refundExpected = raw?.refundExpectedAmount;
+  // H-16: only money out waits for a refund (a received one still shows on its expense).
+  const refundExpected = raw?.direction === 'out' || raw?.refundTransactionId ? raw?.refundExpectedAmount : undefined;
   const refundReceived = typeof refundExpected === 'number' && !!raw?.refundTransactionId;
 
   const openEdit = () => {
-    if (raw) navigation.navigate('Main', { screen: 'Transactions', params: { editId: raw.id, editNonce: Date.now() } });
+    if (raw) setEditing(true);
   };
   const rule = raw && model ? ruleForTransaction(model, raw) : undefined;
   async function chooseRepeat(freq: RecurringFrequency | 'never') {
@@ -112,7 +121,7 @@ export default function TransactionDetailScreen() {
     try {
       await saveModel(next);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this transaction'));
     }
   }
 
@@ -128,7 +137,7 @@ export default function TransactionDetailScreen() {
             await saveModel(deleteManualTxn(model, raw.id));
             navigation.goBack();
           } catch {
-            Alert.alert('Failed to delete', 'Please try again.');
+            Alert.alert(...alertNotDeleted('this transaction'));
           }
         },
       },
@@ -173,7 +182,8 @@ export default function TransactionDetailScreen() {
   );
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+    <>
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={styles.name} numberOfLines={2}>{entry.label}</Text>
         <Text style={[styles.amount, { color: amountColor }]}>
@@ -281,7 +291,37 @@ export default function TransactionDetailScreen() {
           The next ones are added for you on the day, with the same amount, category and account.
         </Text>
       </BottomSheet>
-    </ScrollView>
+      {/* Version 2.2 (canvas W2): who added it, and who last changed it (shared household). */}
+      {isLinked && raw && (raw.addedBy || raw.changedBy) && (() => {
+        const name = (u: string) => (u === username ? 'you' : u.charAt(0).toUpperCase() + u.slice(1));
+        const when = (ms?: number) => {
+          if (!ms) return '';
+          const d = new Date(ms);
+          const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          return d.toDateString() === new Date().toDateString() ? ` · today, ${time}` : ` · ${dateText(d)}, ${time}`;
+        };
+        return (
+          <View style={{ marginTop: 16, alignItems: 'center' }}>
+            {!!raw.addedBy && <Text style={styles.whoLine}>{`Added by ${name(raw.addedBy)}${when(raw.createdAt)}`}</Text>}
+            {!!raw.changedBy && <Text style={styles.whoLine}>{`Changed by ${name(raw.changedBy)}${when(raw.changedAt)}`}</Text>}
+          </View>
+        );
+      })()}
+    </KeyboardAwareScrollView>
+    {editing && raw && (
+      <View style={{ position: 'absolute', width: 0, height: 0 }}>
+        <TransactionsScreen
+          formOnly
+          editTxnId={raw.id}
+          onFormClosed={() => {
+            setEditing(false);
+            const latest = getModel();
+            if (latest && !(latest.manualTransactions || []).some((m) => m.id === raw.id)) navigation.goBack();
+          }}
+        />
+      </View>
+    )}
+    </>
   );
 }
 
@@ -302,6 +342,7 @@ function makeStyles(colors: ThemeColors) {
     rowValue: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
     header: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 24, marginBottom: 6, marginLeft: 16 },
     footer: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginHorizontal: 16 },
+    whoLine: { fontSize: 13, color: colors.inkFaint ?? colors.inkDim, marginTop: 2 },
     receipt: { width: '100%', height: 200 },
     action: { minHeight: 50, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
     actionText: { fontSize: 17 },

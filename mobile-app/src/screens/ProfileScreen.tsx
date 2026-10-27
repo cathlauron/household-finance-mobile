@@ -1,16 +1,21 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { friendlyError } from '../friendlyError';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, TRY_AGAIN } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
-import NeedsInternetSheet, { type NeedsInternet, withNetTimeout } from '../components/NeedsInternetSheet';
+import NeedsInternetSheet, { type NeedsInternet } from '../components/NeedsInternetSheet';
 import React, { useState, useEffect, useRef } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { paintBusy } from '../components/BusyOverlay';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
 import { getMyPersonId, setMyPersonId } from '../myPerson';
 import { getCurrentFirebaseUser } from '../authFirebase';
@@ -26,6 +31,7 @@ import {
   subscribeToLinkCode,
   cancelLinkCode,
   LINK_CODE_TTL_MS,
+  linkCodeUse,
   type JoinChoice,
 } from '../linking';
 import {
@@ -52,6 +58,9 @@ import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
 import { SettingsGroup, PlainRow } from '../components/SettingsHub';
 import BottomSheet from '../components/BottomSheet';
+import LinkChoice from '../components/LinkChoice';
+import { onPendingJoinCode, takePendingJoinCode } from '../joinLink';
+import { LinkWaysRows, QrInviteModal, ScanJoinModal, TimerChip, askForCamera, shareInvite, useInviteCountdown } from '../components/HouseholdLinkWays';
 import { getPreferredName, withPreferredName, MAX_PREFERRED_NAME_LENGTH } from '../preferredName';
 
 export function getInitials(name: string): string {
@@ -160,7 +169,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       showLeafTick('Saved');
       setNameSheetOpen(false);
     } catch (e: any) {
-      Alert.alert("Couldn't save your name", e?.message || 'Please try again.');
+      Alert.alert("Couldn't save your name", friendlyError(e, 'Please try again.'));
     } finally {
       setNameSaving(false);
     }
@@ -177,6 +186,9 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
   // Start linking / Host invite state
   const [linkCode, setLinkCode] = useState('');
+  // The code showing right now, for timers that run later.
+  const linkCodeRef = useRef('');
+  linkCodeRef.current = linkCode;
   const [linkSecretHex, setLinkSecretHex] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErrorMsg, setLinkErrorMsg] = useState('');
@@ -216,12 +228,24 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     }, 1000);
   }
 
-  function handleLinkCodeExpired() {
+  // Version 2.2 fix (Cath: the code stayed after its 15 minutes, even after using other
+  // accounts): when the time is up, a code nobody has used is put away for good (also on
+  // this phone's memory of it). A code someone already joined with stays, so linking can
+  // still finish.
+  async function handleLinkCodeExpired() {
     clearLinkCodeExpiryTimer();
+    const code = linkCodeRef.current;
+    const use = code ? await linkCodeUse(code) : 'unused';
+    if (use === 'used') return;
+    if (code && linkCodeRef.current !== code) return; // a new code was made meanwhile
+    if (use === 'unused' && code) {
+      cancelLinkCode(code).catch(() => {});
+      if (username) clearPendingHostLink(username).catch(() => {});
+    }
     setLinkCode('');
     setLinkSecretHex('');
     setHostFinishMsg('');
-    setLinkErrorMsg('This code expired — generate a new one.');
+    setLinkErrorMsg('That invite code ran out (15 minutes). Make a new one when you are ready.');
   }
 
   useEffect(() => {
@@ -234,12 +258,36 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   // Restores an in-progress "start linking" (code + secret) if screen opens and one was left unfinished
   useEffect(() => {
     if (!username) return;
-    loadPendingHostLink(username).then((pending) => {
-      if (pending) {
+    let alive = true;
+    loadPendingHostLink(username).then(async (pending) => {
+      if (!pending || !alive) return;
+      const left = typeof pending.at === 'number' ? pending.at + LINK_CODE_TTL_MS - Date.now() : -1;
+      if (left > 0) {
+        // Still within its 15 minutes: shown with the time that's really left.
         setLinkCode(pending.code);
         setLinkSecretHex(pending.secretHex);
+        setCodeStartedAt(pending.at as number);
+        clearLinkCodeExpiryTimer();
+        linkCodeExpiryTimerRef.current = setTimeout(handleLinkCodeExpired, left);
+        return;
+      }
+      // Past its 15 minutes (or made before codes remembered their time).
+      const use = await linkCodeUse(pending.code);
+      if (!alive) return;
+      if (use === 'used') {
+        // Someone joined with it in time: keep it so linking can finish.
+        setLinkCode(pending.code);
+        setLinkSecretHex(pending.secretHex);
+        return;
+      }
+      if (use === 'unused') {
+        cancelLinkCode(pending.code).catch(() => {});
+        clearPendingHostLink(username).catch(() => {});
       }
     });
+    return () => {
+      alive = false;
+    };
   }, [username]);
 
   // Host side finish linking state
@@ -249,6 +297,16 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
 
   // Join with a code state
   const [joinCodeInput, setJoinCodeInput] = useState('');
+  // Version 2.2 (canvas M5): QR, scan, type-a-code and the invite countdown.
+  const [qrOpen, setQrOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [typingCode, setTypingCode] = useState(false);
+  const [codeStartedAt, setCodeStartedAt] = useState<number | null>(null);
+  const inviteCountdown = useInviteCountdown(linkCode ? codeStartedAt : null);
+  // The QR screen closes by itself once the invite is used up or cancelled.
+  useEffect(() => {
+    if (!linkCode) setQrOpen(false);
+  }, [linkCode]);
   const [joinedCode, setJoinedCode] = useState('');
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinErrorMsg, setJoinErrorMsg] = useState('');
@@ -397,8 +455,18 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
           setLinkSecretHex('');
           setLinkErrorMsg('');
           setHostFinishMsg('Linked! Loading your shared data…');
-          await loadModel(username, personalKey);
           unsubscribe();
+          // Version 2.2 (Cath: the inviter stayed on "Almost there…" for minutes): linking
+          // is done at this point. Loading the shared household carries on in the
+          // background instead of holding the busy animation until it finishes.
+          hostFinishInFlightRef.current = false;
+          if (active) setHostFinishBusy(false);
+          loadModel(username, personalKey)
+            .then(() => {
+              if (active) setHostFinishMsg('Linked! You now share one household.');
+            })
+            .catch(() => {});
+          return;
         }
       } catch (e) {
         if (active) setHostFinishMsg("Couldn't finish linking — check your connection and try again.");
@@ -414,18 +482,21 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   }, [linkCode, linkSecretHex, username, loadModel]);
 
   // Handlers
-  async function handleStartLinking() {
+  async function handleStartLinking(): Promise<string | null> {
     if (!isOnline) {
-      setNeedsNet({ title: 'Making an invite needs the internet', why: 'The invite code and the keys that lock your shared data are swapped online.', retry: handleStartLinking });
-      return;
+      setNeedsNet({ title: 'Making an invite needs the internet', why: 'The invite code and the keys that lock your shared data are swapped online.', retry: () => { handleStartLinking(); } });
+      return null;
     }
-    if (!model || !username) return;
+    if (!model || !username) return null;
+    let made: string | null = null;
     setLinkErrorMsg('');
     setLinkBusy(true);
     try {
       const result = await startHouseholdLink(username, model);
       clearLinkCodeExpiryTimer();
       setLinkCode(result.code);
+      setCodeStartedAt(Date.now());
+      made = result.code;
       setLinkSecretHex(result.secretHex);
       setHostFinishMsg('');
       beginLinkCooldown();
@@ -434,19 +505,21 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setLinkErrorMsg("Couldn't start linking — check your connection and try again.");
     }
     setLinkBusy(false);
+    return made;
   }
 
-  async function handleStartHouseholdInvite() {
+  async function handleStartHouseholdInvite(): Promise<string | null> {
     if (!isOnline) {
-      setNeedsNet({ title: 'Making an invite needs the internet', why: 'The invite code and the keys that lock your shared data are swapped online.', retry: handleStartHouseholdInvite });
-      return;
+      setNeedsNet({ title: 'Making an invite needs the internet', why: 'The invite code and the keys that lock your shared data are swapped online.', retry: () => { handleStartHouseholdInvite(); } });
+      return null;
     }
-    if (!model || !username || !isLinked) return;
+    if (!model || !username || !isLinked) return null;
+    let made: string | null = null;
     const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
     const personalKey = getPersonalKey();
     if (!householdId || !personalKey) {
       setLinkErrorMsg('This household is not ready for an invite right now.');
-      return;
+      return null;
     }
     setLinkErrorMsg('');
     setLinkBusy(true);
@@ -461,7 +534,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       if (currentCount >= 5) {
         setLinkErrorMsg('This household is full (5 of 5) — remove someone before inviting another person.');
         setLinkBusy(false);
-        return;
+        return null;
       }
       const wrapped = await loadWrappedHouseholdKey(username);
       if (!wrapped || wrapped.householdId !== householdId) {
@@ -471,6 +544,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       const result = await startHouseholdInvite(householdId, householdKey, model, username);
       clearLinkCodeExpiryTimer();
       setLinkCode(result.code);
+      setCodeStartedAt(Date.now());
+      made = result.code;
       setLinkSecretHex(result.secretHex);
       setHostFinishMsg('');
       beginLinkCooldown();
@@ -479,7 +554,52 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setLinkErrorMsg("Couldn't create the invite — check your connection and try again.");
     }
     setLinkBusy(false);
+    return made;
   }
+
+  // Version 2.2 (canvas M5): the new ways to link.
+  async function ensureInviteCode(): Promise<string | null> {
+    if (linkCode) return linkCode;
+    return isLinked ? handleStartHouseholdInvite() : handleStartLinking();
+  }
+  async function handleSendInvite() {
+    const fresh = !linkCode;
+    const code = await ensureInviteCode();
+    if (code) shareInvite(code, preferredName || undefined, fresh ? Date.now() : codeStartedAt).catch(() => {});
+  }
+  async function handleShowQr() {
+    const code = await ensureInviteCode();
+    if (code) setQrOpen(true);
+  }
+  // Always the newest version of the join step (it reads the connection, data, etc.).
+  const joinWithCodeRef = useRef(handleJoinWithCode);
+  joinWithCodeRef.current = handleJoinWithCode;
+  function handleScanned(code: string) {
+    setScanOpen(false);
+    setJoinCodeInput(code);
+    setTypingCode(true);
+    setTimeout(() => joinWithCodeRef.current(code), 350);
+  }
+  // Version 2.2: a code from an invite link (see joinLink.ts) joins like a scanned one.
+  useEffect(() => {
+    let alive = true;
+    const check = () => {
+      takePendingJoinCode().then((code) => {
+        if (!alive || !code) return;
+        if (isLinked) {
+          Alert.alert('Already in a household', 'To join a different household, first use "Unlink this device" on this page.');
+          return;
+        }
+        handleScanned(code);
+      });
+    };
+    check();
+    const off = onPendingJoinCode(check);
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [isLinked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cancels the open invite/link code without making a new one.
   async function handleCancelInvite() {
@@ -514,26 +634,27 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     }
   }
 
-  async function handleJoinWithCode() {
+  async function handleJoinWithCode(codeOverride?: string) {
+    const codeText = typeof codeOverride === 'string' ? codeOverride : joinCodeInput;
     if (!isOnline) {
-      setNeedsNet({ title: 'Joining a household needs the internet', why: JOIN_WHY, retry: handleJoinWithCode });
+      setNeedsNet({ title: 'Joining a household needs the internet', why: JOIN_WHY, retry: () => handleJoinWithCode(codeText) });
       return;
     }
     setJoinErrorMsg('');
     setJoinChoiceMsg('');
-    if (!joinCodeInput.trim()) {
+    if (!codeText.trim()) {
       setJoinErrorMsg('Enter the code from the other phone.');
       return;
     }
     if (!username) {
-      setJoinErrorMsg('Something went wrong — please try again.');
+      setJoinErrorMsg(TRY_AGAIN);
       return;
     }
     setJoinBusy(true);
     await paintBusy();
     try {
-      const normalizedCode = joinCodeInput.trim().toUpperCase();
-      const result = await withNetTimeout(joinHouseholdLink(joinCodeInput, username));
+      const normalizedCode = codeText.trim().toUpperCase();
+      const result = await joinHouseholdLink(codeText, username); // the timer sits on its online steps only
       setJoinResult(result);
       setJoinedCode(normalizedCode);
     } catch (e: any) {
@@ -555,7 +676,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     }
     const personalKey = getPersonalKey();
     if (!personalKey) {
-      setJoinChoiceMsg('Something went wrong — please try again.');
+      setJoinChoiceMsg(TRY_AGAIN);
       return;
     }
     setJoinChoiceBusy(true);
@@ -573,12 +694,16 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         joinResult.existingHouseholdId
       );
       setJoinChoiceMsg('Linked! Loading your shared data…');
-      await loadModel(username, personalKey);
       setJoinResult(null);
       setJoinCodeInput('');
       setJoinedCode('');
+      // Version 2.2: linking is done; the shared household loads in the background
+      // instead of keeping "Almost there…" on screen until it has fully loaded.
+      loadModel(username, personalKey)
+        .then(() => setJoinChoiceMsg('Linked! You now share one household.'))
+        .catch(() => {});
     } catch (e) {
-      setJoinChoiceMsg((e as Error)?.message || "Something went wrong — check your connection and try again.");
+      setJoinChoiceMsg((e as Error)?.message || "That didn't work. Check your internet connection, then try again.");
     }
     setJoinChoiceBusy(false);
   }
@@ -612,7 +737,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     const result = await unlinkHousehold();
     setUnlinkBusy(false);
     if (!result.ok) {
-      setUnlinkMsg(result.error || 'Something went wrong. Please try again.');
+      setUnlinkMsg(result.error || TRY_AGAIN);
       return;
     }
     setUnlinkConfirmOpen(false);
@@ -637,7 +762,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setHouseholdMembers(members);
       setMemberToRemove(null);
     } catch (e: any) {
-      setRemoveMemberMsg(e?.message || 'Failed to remove member.');
+      setRemoveMemberMsg(friendlyError(e, "Couldn't remove them. Nothing changed, so please try again in a moment."));
     } finally {
       setRemoveMemberBusy(false);
     }
@@ -656,7 +781,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     const result = await unlinkAndTransferOwnership(selectedSuccessorUid);
     setTransferBusy(false);
     if (!result.ok) {
-      setTransferMsg(result.error || 'Failed to transfer ownership.');
+      setTransferMsg(result.error || "Couldn't hand over the household. Nothing changed, so please try again in a moment.");
       return;
     }
     setTransferOwnerModalOpen(false);
@@ -687,7 +812,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       setApprovalCodeInput('');
     } catch (e: any) {
       setApprovalBusy(false);
-      setApprovalErrorMsg(e?.message || 'Could not approve request. Check the code and try again.');
+      setApprovalErrorMsg(friendlyError(e, 'Could not approve request. Check the code and try again.'));
     }
   }
 
@@ -722,7 +847,17 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
         <GradientFill match={styles.hhCodeCard} />
         <Text style={styles.hhRole}>Give this code to the other phone</Text>
         <Text selectable style={[styles.hhCode, { color: colors.ink }]}>{linkCode}</Text>
-        <Text style={[styles.hhRole, { textAlign: 'center' }]}>{hint}</Text>
+        <TimerChip text={inviteCountdown} />
+        <Text style={[styles.hhRole, { textAlign: 'center', marginTop: 6 }]}>{hint}</Text>
+        {/* Version 2.2 (canvas M5b): send it through any app, or show a QR code. */}
+        <View style={[styles.hhCodeButtons, { marginTop: 10 }]}>
+          <TouchableOpacity style={[styles.hhCodeBtn, { backgroundColor: colors.buttonFill }]} onPress={() => shareInvite(linkCode, preferredName || undefined, codeStartedAt).catch(() => {})} accessibilityRole="button" testID="invite-send">
+            <Text style={[styles.hhCodeBtnText, { color: colors.onButton }]}>Send invite</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.hhCodeBtn, { backgroundColor: colors.navy2 }]} onPress={() => setQrOpen(true)} accessibilityRole="button" testID="invite-show-qr">
+            <Text style={[styles.hhCodeBtnText, { color: colors.gold }]}>Show QR code</Text>
+          </TouchableOpacity>
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <DrawingLogo width={22} drawing wordmark={false} />
           <Text style={styles.hhRole}>{hostFinishBusy ? 'Finishing…' : 'Waiting for them to join…'}</Text>
@@ -938,7 +1073,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                       </TouchableOpacity>
                     )}
                   </SettingsGroup>
-                  {!!linkErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginBottom: 16, marginHorizontal: 16 }]}>{linkErrorMsg}</Text>}
+                  <ErrorNote text={linkErrorMsg} />
 
                   {/* Remove Member Confirmation Box */}
                   {memberToRemove && (
@@ -1003,7 +1138,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                                   setMyPersonIdState(pendingPersonId);
                                   setPendingPersonId(null);
                                 } catch (e) {
-                                  setMyPersonMsg('Failed to save. Please try again.');
+                                  setMyPersonMsg(notSaved('this change'));
                                 } finally {
                                   setMyPersonBusy(false);
                                 }
@@ -1149,22 +1284,31 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                 </View>
               )
             ) : (
-              inviteCard('On their phone: Join with a code')
+              inviteCard('On their phone: Household › Scan to join, or Type a code')
             )}
           </>
         ) : (
           <>
             {!linkCode && !joinResult && (
               <>
-                <SettingsGroup plain footer="Invite: you get a code to give them. Join: type the code from their phone.">
-                  <TouchableOpacity style={styles.hhRow} onPress={handleStartLinking} disabled={linkBusy} accessibilityRole="button">
-                    <Ionicons name="add" size={22} color={colors.gold} style={{ opacity: linkBusy ? 0.4 : 1 }} />
-                    <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>{linkBusy ? 'Making your code…' : 'Invite someone'}</Text>
-                  </TouchableOpacity>
+                <SettingsGroup plain footer={`Invite: they join your household. Join: you join theirs. Codes work for 15 minutes.`}>
+                  <LinkWaysRows
+                    busy={linkBusy || joinBusy}
+                    onSend={handleSendInvite}
+                    onShowQR={handleShowQr}
+                    onScan={async () => {
+                      // Version 2.2: ask for the camera right away (the phone's own pop-up).
+                      await askForCamera();
+                      setScanOpen(true);
+                    }}
+                    onType={() => setTypingCode((v) => !v)}
+                  />
+                  {typingCode && (
                   <View style={styles.hhRow}>
                     <TextInput
                       style={{ flex: 1, fontSize: 17, color: colors.ink, paddingVertical: 8 }}
-                      placeholder="Join with a code"
+                      placeholder="Type the 6-letter code"
+                      autoFocus
                       placeholderTextColor={colors.inkFaint}
                       autoCapitalize="characters"
                       autoCorrect={false}
@@ -1174,60 +1318,36 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                     {joinBusy ? (
                       <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold, opacity: 0.5 }}>Joining…</Text>
                     ) : (
-                      <TouchableOpacity onPress={handleJoinWithCode} disabled={!joinCodeInput.trim()} hitSlop={8}>
+                      <TouchableOpacity onPress={() => handleJoinWithCode()} disabled={!joinCodeInput.trim()} hitSlop={8}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold, opacity: joinCodeInput.trim() ? 1 : 0.4 }}>Join</Text>
                       </TouchableOpacity>
                     )}
                   </View>
+                  )}
                 </SettingsGroup>
-                {!!linkErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginHorizontal: 16 }]}>{linkErrorMsg}</Text>}
-                {!!joinErrorMsg && <Text style={[styles.errorText, { marginTop: -16, marginHorizontal: 16 }]}>{joinErrorMsg}</Text>}
+                <ErrorNote text={linkErrorMsg} />
+                <ErrorNote text={joinErrorMsg} />
               </>
             )}
 
             {!!linkCode && (
-              inviteCard("On their phone: Join with a code. This phone links by itself once they finish.")
+              inviteCard('On their phone: Household › Scan to join, or Type a code. This phone links by itself once they finish.')
             )}
 
             {!!joinResult && model && (
-              <View style={styles.linkCodeBox}>
-                <GradientFill match={styles.linkCodeBox} />
-                <Text style={styles.linkCodeLabel}>Found their data</Text>
-                <Text style={styles.hintText}>You: {summarizeModel(model)}</Text>
-                <Text style={styles.hintText}>
-                  {joinResult.hostUsername}: {summarizeModel(joinResult.hostModel)}
-                </Text>
-                <Text style={[styles.hintText, { marginTop: 8, marginBottom: 8 }]}>
-                  Choose what the shared vault starts with — this can't be undone, so confirm with the
-  other phone first.
-                </Text>
-                {/* Version 2.1: no "Keep mine". The person joining can never replace the other
-                    person's data; they start from it or merge theirs in. */}
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={() => handleJoinChoice('theirs')}
-                  disabled={joinChoiceBusy}
-                >
-                  <GradientFill match={styles.dataButton} />
-                  <Text style={styles.dataButtonText}>
-                    {joinResult.isInvite ? 'Keep household data' : 'Keep theirs'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dataButton}
-                  onPress={() => handleJoinChoice('merge')}
-                  disabled={joinChoiceBusy}
-                >
-                  <GradientFill match={styles.dataButton} />
-                  <Text style={styles.dataButtonText}>
-                    {joinResult.isInvite ? 'Merge mine in' : 'Merge both'}
-                  </Text>
-                </TouchableOpacity>
-                {!!joinChoiceMsg && (
-                  <Text style={joinChoiceMsg.startsWith('Linked') ? styles.successText : styles.errorText}>
-                    {joinChoiceMsg}
-                  </Text>
-                )}
+              // Version 2.2 (approved LK1-LK2): both people, two choices with line icons, then a
+              // check sheet. The joiner still can't replace the other person's data (no "Keep mine").
+              <View style={{ marginHorizontal: 16, marginBottom: 24 }}>
+                <LinkChoice
+                  me={username || ''}
+                  them={joinResult.hostUsername}
+                  myModel={model}
+                  theirModel={joinResult.hostModel}
+                  isInvite={!!joinResult.isInvite}
+                  busy={joinChoiceBusy}
+                  message={joinChoiceMsg}
+                  onChoose={(c) => handleJoinChoice(c)}
+                />
               </View>
             )}
           </>
@@ -1286,7 +1406,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify them and transfer the household key.
             </Text>
 
-            <Text style={styles.inputLabel}>6-Digit Code</Text>
+            <MarkedLabel text="6-Digit Code" mark="required" style={styles.inputLabel} />
             <TextInput
               style={[styles.input, { letterSpacing: 4, fontSize: 18, textAlign: 'center' }]}
               placeholder="000000"
@@ -1297,7 +1417,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               onChangeText={setApprovalCodeInput}
             />
 
-            {!!approvalErrorMsg && <Text style={styles.errorText}>{approvalErrorMsg}</Text>}
+            <ErrorNote text={approvalErrorMsg} />
 
               <Button
                 label="Approve & Send Key"
@@ -1363,6 +1483,22 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       </BottomSheet>
     </SafeAreaView>
       <NeedsInternetSheet value={needsNet} onClose={() => setNeedsNet(null)} />
+    <QrInviteModal
+      visible={qrOpen && !!linkCode}
+      code={linkCode}
+      countdown={inviteCountdown}
+      waitingText={hostFinishBusy ? 'Finishing…' : 'Waiting for them to join…'}
+      onClose={() => setQrOpen(false)}
+    />
+    <ScanJoinModal
+      visible={scanOpen}
+      onCode={handleScanned}
+      onClose={() => setScanOpen(false)}
+      onTypeInstead={() => {
+        setScanOpen(false);
+        setTypingCode(true);
+      }}
+    />
     </>
   );
 }

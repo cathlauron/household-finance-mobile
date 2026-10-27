@@ -1,15 +1,22 @@
+import { chartPoints } from '../homeChart';
+import { dateText } from '../dateUtils';
+import { useToday } from '../useToday';
 import React, { useMemo, useState } from 'react';
 import { holdTabSwipe } from '../navigation/swipeTabs';
 import GradientFill from './GradientFill';
-import { View, ScrollView, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, ScrollView, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline, Polygon, Circle } from 'react-native-svg';
 import { Text } from './AppText';
+import CountingText from './CountingText';
 import { useTheme } from '../ThemeContext';
 import { formatPeso, LeftToSpendMood, leftToSpendBreakdown } from '../balanceProjection';
 import { buildTransactionsList, transactionTotals } from '../transactions';
 import type { HouseholdModel } from '../types';
+import { useHideAmounts } from '../hideAmounts';
+import { hapticSelection } from '../haptics';
 
 // Redesign: the Home hero card from the Finance Flow mockup. Two pages you swipe
 // between, with dots underneath:
@@ -33,7 +40,8 @@ type Props = {
   targetDate: Date;
 };
 
-const CARD = {
+// Exported for the set-up screen's mood samples (2.2, approved L2).
+export const CARD = {
   good: null,
   low: { light: '#A33C00', dark: '#933600' },
   over: { light: '#B30F1F', dark: '#A00D1C' },
@@ -60,11 +68,19 @@ function cumulativeOut(list: ReturnType<typeof buildTransactionsList>, ym: strin
   return out;
 }
 
-export default function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isDark, fullDate, targetDate }: Props) {
+// Speed sweep: only redraws when its own numbers change (not when Home shows the slim
+// bar while scrolling).
+export default React.memo(HomeHero);
+
+function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isDark, fullDate, targetDate }: Props) {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [width, setWidth] = useState(0);
   const [page, setPage] = useState(0);
+  // Version 3: the eye beside "Left to spend" hides the amounts (₱ *****).
+  const { hidden, toggle, money } = useHideAmounts();
+  // H-09: the month chart follows the date too.
+  const today = useToday();
 
   const cardColor = mood === 'good' ? colors.cardTealEnd : CARD[mood][isDark ? 'dark' : 'light'];
   const dim = mood === 'good' ? colors.cardTealTextDim : 'rgba(255,255,255,0.92)';
@@ -86,16 +102,15 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
     const sameDayLast = prevCum[Math.min(now.getDate(), daysPrev) - 1] ?? 0;
     const diff = (thisCum[thisCum.length - 1] ?? 0) - sameDayLast;
     return { totals, thisCum, prevCum, daysThis, diff };
-  }, [model]);
+  }, [model, today]);
 
   const breakdown = useMemo(() => leftToSpendBreakdown(model, { amount, targetDate, basis }), [model, amount, targetDate, basis]);
-  const untilLabel = targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const untilLabel = dateText(targetDate, { weekday: true });
 
   const chartW = Math.max(0, width - 40);
   const chartH = 50;
   const maxY = Math.max(1, ...month.thisCum, ...month.prevCum);
-  const pts = (arr: number[]) =>
-    arr.map((v, i) => `${((i / Math.max(1, month.daysThis - 1)) * chartW).toFixed(1)},${(chartH - 2 - (v / maxY) * (chartH - 6)).toFixed(1)}`);
+  const pts = (arr: number[]) => chartPoints(arr, month.daysThis, chartW, chartH, maxY);
   const thisPts = pts(month.thisCum);
   const prevPts = pts(month.prevCum);
   const lastPt = thisPts[thisPts.length - 1]?.split(',').map(Number);
@@ -119,7 +134,22 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
           {/* Page 1: Left to spend */}
           <View style={[styles.page, { width }]}>
             <View style={styles.top}>
-              <Text style={[styles.label, { color: dim }]}>Left to spend</Text>
+              <View style={styles.labelRow}>
+                <Text style={[styles.label, { color: dim }]}>Left to spend</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    hapticSelection();
+                    toggle();
+                  }}
+                  hitSlop={12}
+                  style={styles.eye}
+                  accessibilityRole="button"
+                  accessibilityLabel={hidden ? 'Show amounts' : 'Hide amounts'}
+                  testID="home-hide-amounts"
+                >
+                  <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={19} color={dim} />
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity
                 testID="home-calendar-shortcut"
                 onPress={() => navigation.navigate('Calendar')}
@@ -128,14 +158,15 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               >
                 <Ionicons name="calendar-outline" size={17} color="#FFFFFF" />
                 {/* Today's day and date, e.g. "Thu, Oct 15" (approved mockup, option A). */}
-                <Text style={styles.calText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+                <Text style={styles.calText}>{dateText(new Date(), { weekday: true })}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>{formatPeso(amount)}</Text>
+            {/* Smoothness 2026-10-23 (Cath): counts quickly to the new amount when it changes. */}
+            <CountingText style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={hidden ? 'Amount hidden' : undefined} value={amount} masked={hidden} format={(n) => money(n)} />
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
               <Text style={[styles.status, { color: dim }]} numberOfLines={1}>
-                of {formatPeso(total)} · {statusLabel}
+                of {money(total)} · {statusLabel}
               </Text>
             </View>
             <View style={styles.track}>
@@ -150,7 +181,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               <View style={styles.trend}>
                 <Ionicons name={month.diff <= 0 ? 'chevron-down' : 'chevron-up'} size={12} color="#FFFFFF" />
                 <Text style={styles.trendText}>
-                  {formatPeso(Math.abs(month.diff)).replace('.00', '')} {month.diff <= 0 ? 'less' : 'more'} than last month
+                  {money(Math.abs(month.diff), { noCents: true })} {month.diff <= 0 ? 'less' : 'more'} than last month
                 </Text>
               </View>
             </View>
@@ -158,7 +189,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               width={chartW}
               height={chartH}
               style={{ marginTop: 10 }}
-              accessibilityLabel={`Spending so far this month is ${formatPeso(Math.abs(month.diff))} ${month.diff <= 0 ? 'below' : 'above'} last month at the same point`}
+              accessibilityLabel={`Spending so far this month is ${hidden ? 'hidden' : formatPeso(Math.abs(month.diff))} ${month.diff <= 0 ? 'below' : 'above'} last month at the same point`}
             >
               {thisPts.length > 1 && (
                 <Polygon points={`0,${chartH} ${thisPts.join(' ')} ${thisPts[thisPts.length - 1].split(',')[0]},${chartH}`} fill="rgba(255,255,255,0.10)" />
@@ -170,15 +201,15 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
             <View style={styles.stats}>
               <View style={styles.stat}>
                 <Text style={[styles.statLabel, { color: dim }]}>In</Text>
-                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>+{formatPeso(month.totals.totalIn).replace('.00', '')}</Text>
+                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{hidden ? '' : '+'}{money(month.totals.totalIn, { noCents: true })}</Text>
               </View>
               <View style={[styles.stat, styles.statDivider]}>
                 <Text style={[styles.statLabel, { color: dim }]}>Out</Text>
-                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>−{formatPeso(month.totals.totalOut).replace('.00', '')}</Text>
+                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{hidden ? '' : '−'}{money(month.totals.totalOut, { noCents: true })}</Text>
               </View>
               <View style={[styles.stat, styles.statDivider]}>
                 <Text style={[styles.statLabel, { color: dim }]}>Saved</Text>
-                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{formatPeso(month.totals.totalSaving).replace('.00', '')}</Text>
+                <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>{money(month.totals.totalSaving, { noCents: true })}</Text>
               </View>
             </View>
           </View>
@@ -189,7 +220,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
             <View style={{ marginTop: 8 }}>
               <View style={styles.bRow}>
                 <Text style={[styles.bLabel, { color: dim }]}>In your accounts now</Text>
-                <Text style={styles.bVal}>{formatPeso(breakdown.now)}</Text>
+                <Text style={styles.bVal}>{money(breakdown.now)}</Text>
               </View>
               {breakdown.lines.slice(0, 4).map((l) => (
                 <View key={l.label} style={styles.bRow}>
@@ -197,13 +228,13 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
                     {l.amount < 0 ? '− ' : '+ '}
                     {l.label} {basis === 'payday' ? 'before payday' : 'this month'}
                   </Text>
-                  <Text style={styles.bVal}>{formatPeso(Math.abs(l.amount))}</Text>
+                  <Text style={styles.bVal}>{money(Math.abs(l.amount))}</Text>
                 </View>
               ))}
               {breakdown.lines.length > 4 && (
                 <View style={styles.bRow}>
                   <Text style={[styles.bLabel, { color: dim }]}>{breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0) < 0 ? '− ' : '+ '}Everything else</Text>
-                  <Text style={styles.bVal}>{formatPeso(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
+                  <Text style={styles.bVal}>{money(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
                 </View>
               )}
               {breakdown.lines.length === 0 && (
@@ -211,7 +242,7 @@ export default function HomeHero({ model, amount, statusLabel, basis, mood, tota
               )}
               <View style={[styles.bRow, styles.bTotal]}>
                 <Text style={styles.bTotalLabel}>Left to spend until {untilLabel}</Text>
-                <Text style={styles.bTotalVal}>{formatPeso(amount)}</Text>
+                <Text style={styles.bTotalVal}>{money(amount)}</Text>
               </View>
             </View>
           </View>
@@ -238,6 +269,8 @@ const styles = StyleSheet.create({
   bTotalVal: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: 15, fontWeight: '600' },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eye: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginVertical: -4 },
   calBtn: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 10, paddingRight: 12, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.16)', marginTop: -6, marginRight: -6 },
   calText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   amount: { fontSize: 40, lineHeight: 46, fontWeight: '700', letterSpacing: -0.5, color: '#FFFFFF', marginTop: 4 },

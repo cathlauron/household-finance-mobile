@@ -7,3 +7,15 @@ export function todayISO(): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+// 2026-10-22 (Cath): dates show the year only when it isn't this year: "Nov 11" this
+// year, "Aug 18, 2027" next year. weekday adds "Fri, ".
+export function dateText(d: Date, opts: { weekday?: boolean } = {}, now: Date = new Date()): string {
+  if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', {
+    ...(opts.weekday ? { weekday: 'short' as const } : {}),
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' as const } : {}),
+  });
+}

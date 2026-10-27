@@ -1,8 +1,17 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { firstTimeOpen } from '../handledOpen';
+import { animateNextLayout } from '../animateLayout';
+import { redUnlessZero, isZeroAmount, toneUnlessZero } from '../moneyColor';
+import { friendlyError } from '../friendlyError';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
+import { useArrival } from '../useArrival';
+import ArrivalGlow from '../components/ArrivalGlow';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import AppSwitch from '../components/AppSwitch';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { makeReceiptDataUri } from '../avatars';
@@ -16,7 +25,7 @@ import { usePullDownToOpen } from '../pullDownToOpen';
 import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { requestOpenBill } from '../openBillRequest';
-import { accountLabel } from '../transactionActions';
+import { accountLabel, deleteManualTxn } from '../transactionActions';
 import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { formatPeso } from '../balanceProjection';
@@ -29,7 +38,8 @@ import {
 import { computeAutoCategory } from '../categorization';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { finishSheetHandoff } from '../components/BottomSheet';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { makeId } from '../utils';
 import SwipeableRow from '../components/SwipeableRow';
 import DateField from '../components/DateField';
@@ -40,6 +50,8 @@ import { idsForAccount } from './CardDetailScreen';
 import SegmentedControl from '../components/SegmentedControl';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
+import { startSalaryHandoff } from '../salaryHandoff';
+import { startAccountHandoff } from '../accountHandoff';
 
 function personName(people: Person[], id: string): string {
   const p = people.find((x) => x.id === id);
@@ -123,50 +135,63 @@ function dayHeading(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
-// Bill-sourced TransactionEntry ids are built as 'bill-' + cycle.id
-// (see transactions.ts). This walks that back to the real Bill it came
-// from, so a swipe on the row can jump straight to it.
-function findBillIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const cycleId = txnId.slice(5);
-  const bill = (model.bills || []).find((b) => (b.cycles || []).some((c) => c.id === cycleId));
-  return bill ? bill.id : null;
+// Each list row that came from a bill, debt, loan, income or savings entry can jump to
+// that item. The row ids are 'bill-'/'debt-' + cycle id, 'loan-' + payment id,
+// 'income-' + payday id and 'saving-' + contribution id (see transactions.ts).
+// Speed sweep: instead of searching every bill (and every cycle) for each row, one index
+// from row id to item id is made once per version of your data and reused.
+const parentIndexCache = new WeakMap<object, Map<string, string>>();
+function parentIndex(model: HouseholdModel): Map<string, string> {
+  let idx = parentIndexCache.get(model);
+  if (idx) return idx;
+  idx = new Map();
+  (model.bills || []).forEach((b) => (b.cycles || []).forEach((c) => idx!.set(`bill-${c.id}`, b.id)));
+  (model.debts || []).forEach((d) => (d.cycles || []).forEach((c) => idx!.set(`debt-${c.id}`, d.id)));
+  (model.loans || []).forEach((l) => (l.actualPayments || []).forEach((p) => idx!.set(`loan-${p.id}`, l.id)));
+  (model.income || []).forEach((src) => (src.paymentLog || []).forEach((e) => idx!.set(`income-${e.id}`, src.id)));
+  (model.savingsGoals || []).forEach((g) => (g.contributions || []).forEach((c) => idx!.set(`saving-${c.id}`, g.id)));
+  parentIndexCache.set(model, idx);
+  return idx;
 }
+const findBillIdForTransaction = (model: HouseholdModel, txnId: string) => parentIndex(model).get(txnId) ?? null;
+const findDebtIdForTransaction = findBillIdForTransaction;
+const findLoanIdForTransaction = findBillIdForTransaction;
+const findIncomeSourceIdForTransaction = findBillIdForTransaction;
+const findSavingsGoalIdForTransaction = findBillIdForTransaction;
 
-// Debt-sourced TransactionEntry ids are built as 'debt-' + cycle.id
-// (see transactions.ts) — same shape as bills.
-function findDebtIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const cycleId = txnId.slice(5);
-  const debt = (model.debts || []).find((d) => (d.cycles || []).some((c) => c.id === cycleId));
-  return debt ? debt.id : null;
-}
+// Version 2.2 (Cath: Edit should open where you are): formOnly draws just the form (for
+// the Transaction page's Edit), opened on editTxnId; onFormClosed says when it closed.
+const DAYS_PER_BATCH = 30;
+const FIRST_BATCHES = 2;
+const BATCH_GAP_MS = 120;
+// A batch of days that only redraws when its own days (or how rows look) change.
+const DayBatch = React.memo(function DayBatch({ days, render }: { days: any[]; render: (day: any) => React.ReactNode }) {
+  return <>{days.map(render)}</>;
+});
 
-// Loan-sourced TransactionEntry ids are built as 'loan-' + p.id, where p is
-// a LoanPayment inside loan.actualPayments (see transactions.ts).
-function findLoanIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const paymentId = txnId.slice(5);
-  const loan = (model.loans || []).find((l) => (l.actualPayments || []).some((p) => p.id === paymentId));
-  return loan ? loan.id : null;
-}
-
-// Income-sourced TransactionEntry ids are built as 'income-' + entry.id,
-// where entry is a PaymentLogEntry inside source.paymentLog (see transactions.ts).
-function findIncomeSourceIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const entryId = txnId.slice(7);
-  const source = (model.income || []).find((s) => (s.paymentLog || []).some((e) => e.id === entryId));
-  return source ? source.id : null;
-}
-
-// Savings-sourced TransactionEntry ids are built as 'saving-' + c.id, where c
-// is a SavingsContribution inside goal.contributions (see transactions.ts).
-function findSavingsGoalIdForTransaction(model: HouseholdModel, txnId: string): string | null {
-  const contribId = txnId.slice(7);
-  const goal = (model.savingsGoals || []).find((g) => (g.contributions || []).some((c) => c.id === contribId));
-  return goal ? goal.id : null;
-}
-
-export default function TransactionsScreen() {
+export default function TransactionsScreen({
+  formOnly,
+  editTxnId,
+  onFormClosed,
+  addNonceProp,
+  addDateProp,
+  onFormOpened,
+  onAdded,
+}: {
+  formOnly?: boolean;
+  editTxnId?: string;
+  onFormClosed?: () => void;
+  // Version 2.2 (Cath: + on Home lagged): the quick "New transaction" form over Home
+  // opens on each new number here (see QuickAdd in navigation/MainTabs.tsx).
+  addNonceProp?: number;
+  // The day picked in the calendar (the form over the calendar).
+  addDateProp?: string;
+  onFormOpened?: () => void;
+  // Something new was added (the quick form over Home then goes to Transactions).
+  onAdded?: () => void;
+} = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, isLinked, username, getModel } = useData();
   const navigation = useNavigation();
   // Pull the list down from the top to open Search (like the iPhone).
   const pullToSearch = usePullDownToOpen(() => (navigation as any).navigate('Search'));
@@ -191,11 +216,21 @@ export default function TransactionsScreen() {
   // Redesign: the floating + button opens this tab with { addNonce } to show the
   // "New transaction" sheet straight away.
   const addNonce = route.params?.addNonce;
+  // Version 2.2 (calendar +): the new transaction starts on the day picked in the calendar.
+  const addDate: string | undefined = route.params?.addDate;
   useEffect(() => {
-    if (addNonce) openAddModal();
+    if (!formOnly || !addNonceProp) return;
+    openNewTransaction(addDateProp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addNonceProp]);
+  useEffect(() => {
+    if (formOnly || !addNonce) return;
+    openNewTransaction(addDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addNonce]);
   // Redesign: search button in the title bar (opens Search).
   React.useLayoutEffect(() => {
+    if (formOnly) return;
     // Version 2.1 (S9): the two icons sit on the "Transactions" title line, not the empty row above.
     navigation.setOptions({
       headerTitleRight: () => (
@@ -225,11 +260,21 @@ export default function TransactionsScreen() {
   }, [navigation, colors.gold]);
   // Redesign: the Transaction page's "Edit" comes back here with { editId } to open the form.
   const editNonce = route.params?.editNonce;
+  const formOnlyOpened = React.useRef(false);
   useEffect(() => {
+    if (!formOnly || !editTxnId || !model || formOnlyOpened.current) return;
+    const t = buildTransactionsList(model).find((x) => x.rawId === editTxnId && x.source === 'manual');
+    if (t) {
+      formOnlyOpened.current = true;
+      openEditModal(t);
+    }
+  }, [formOnly, editTxnId, model]);
+  useEffect(() => {
+    if (formOnly) return;
     const editId = route.params?.editId;
     if (!editNonce || !editId || !model) return;
     const t = buildTransactionsList(model).find((x) => x.rawId === editId && x.source === 'manual');
-    if (t) afterSlide(() => openEditModal(t));
+    if (t && firstTimeOpen('txn', editId, editNonce)) afterSlide(() => openEditModal(t));
   }, [editNonce]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
@@ -238,7 +283,7 @@ export default function TransactionsScreen() {
     });
     return unsubscribe;
   }, [navigation]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -264,15 +309,25 @@ export default function TransactionsScreen() {
   const [notesInput, setNotesInput] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
+  // Version 3 (approved K5): split a credit card purchase into 3, 6 or 12 payments (0 = no).
+  const [installmentsInput, setInstallmentsInput] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // H-10 (2026-10-22): after a successful save the form is closing; a quick second tap on
+  // Save would add the same entry again. Blocked until the form is opened again.
+  const savedOnceRef = useRef(false);
   // Redesign: quick-add sheet extras.
   const [moreOpen, setMoreOpen] = useState(false);
   const [ruleFilled, setRuleFilled] = useState(false);
+  // Version 2.2 (smoothness sweep): the full list is built once per change (it was built
+  // twice), and each row finds its own record in a ready-made index instead of searching
+  // every transaction again for every row.
+  const allEntries = useMemo(() => (model ? buildTransactionsList(model) : []), [model]);
+  const manualById = useMemo(() => new Map((model?.manualTransactions || []).map((m) => [m.id, m])), [model?.manualTransactions]);
   const transactions = useMemo(() => {
     if (!model) return [];
-    let list = buildTransactionsList(model);
+    let list = allEntries;
     if (monthFilter !== 'all') {
       list = list.filter((t) => t.date.startsWith(monthFilter));
     }
@@ -285,18 +340,23 @@ export default function TransactionsScreen() {
       list = list.filter((t) => ids.has(t.rawId ?? t.id) || ids.has(t.id));
     }
     return sortTransactions(list, sortOrder);
-  }, [model, sortOrder, categoryFilter, monthFilter, accountFilter]);
+  }, [model, allEntries, sortOrder, categoryFilter, monthFilter, accountFilter]);
+  const days = useMemo(() => groupByDate(transactions), [transactions]);
+  // Version 2.2 (approved P4): a just-added transaction slides in and glows for a moment.
+  // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
+  // every key typed in the form).
+  const txnIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
+  const reviewN = useMemo(() => (model ? reviewCount(model) : 0), [model]);
+  const arrivedTxn = useArrival(txnIds, formOnly ? undefined : 'txn');
 
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
-    if (model) {
-      for (const t of buildTransactionsList(model)) {
-        if (t.date && t.date.length >= 7) months.add(t.date.slice(0, 7));
-      }
+    for (const t of allEntries) {
+      if (t.date && t.date.length >= 7) months.add(t.date.slice(0, 7));
     }
     if (monthFilter !== 'all') months.add(monthFilter);
     return Array.from(months).sort().reverse();
-  }, [model, monthFilter]);
+  }, [allEntries, monthFilter]);
 
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
@@ -307,499 +367,47 @@ export default function TransactionsScreen() {
     clearFieldError();
   }, [amountInput, labelInput, dateInput, paymentMethodInput, incomeSourceIdInput, directionInput, incomeKindInput, modalOpen, clearFieldError]);
 
-  if (!model) {
+  // 2.2 speed fix (Cath: typing an amount lagged): the list behind the form is only redrawn
+  // when what it shows changes, not on every key typed in the form. Swipe-to-delete goes
+  // through a ref so it always uses the newest data.
+  const swipeDeleteRef = useRef<(rawId: string) => void>(() => {});
+  // Smoothness sweep 2026-10-26 (jank reviewer): the list used to build every day of the
+  // whole history in one go (a stall when the tab opened or after + Add). Now the newest
+  // two months draw at once and older days follow in small batches a moment later; days
+  // already drawn are never rebuilt when more arrive.
+  const chunks = useMemo(() => {
+    const out: (typeof days)[] = [];
+    for (let i = 0; i < days.length; i += DAYS_PER_BATCH) out.push(days.slice(i, i + DAYS_PER_BATCH));
+    return out;
+  }, [days]);
+  const [batchesShown, setBatchesShown] = useState(FIRST_BATCHES);
+  // A new sort order or filter: draw from the top again in batches (code reviewer 10-27).
+  const firstView = useRef(true);
+  useEffect(() => {
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    setBatchesShown(FIRST_BATCHES);
+  }, [sortOrder, categoryFilter, monthFilter, accountFilter]);
+  useEffect(() => {
+    if (batchesShown >= chunks.length) return;
+    const t = setTimeout(() => setBatchesShown((n) => n + 1), BATCH_GAP_MS);
+    return () => clearTimeout(t);
+  }, [batchesShown, chunks.length]);
+  const renderDay = useCallback((day: (typeof days)[number]) => {
+    if (!model) return null;
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator color={colors.accent} />
-      </SafeAreaView>
-    );
-  }
-
-  function resetForm() {
-    setLabelInput('');
-    setCategoryInput('');
-    setAmountInput('');
-    setDateInput(todayISO());
-    setDirectionInput('out');
-    setIncomeKindInput(null);
-    setIncomeSourceIdInput(null);
-    setRefundTrackingEnabled(false);
-    setRefundAmountInput('');
-    setReceiptPhoto(null);
-    setPersonInput('');
-    setNotesInput('');
-    setTagsInput('');
-    setPaymentMethodInput(undefined);
-    setErrorMsg('');
-  }
-
-  function openAddModal() {
-    setMoreOpen(false);
-    setRuleFilled(false);
-    setEditingId(null);
-    resetForm();
-    setModalOpen(true);
-  }
-
-  function openEditModal(t: TransactionEntry) {
-    if (t.source !== 'manual' || !t.rawId) return;
-    const raw = (model?.manualTransactions || []).find((m) => m.id === t.rawId);
-    if (!raw) return;
-    setEditingId(raw.id);
-    setRuleFilled(false);
-    setMoreOpen(!!(raw.tags?.length || raw.receiptPhoto || (raw.owner && raw.owner !== 'shared')));
-    setLabelInput(raw.label || '');
-    setCategoryInput(raw.category || '');
-    setPersonInput(personName(model?.people || [], raw.owner || ''));
-    setNotesInput(raw.notes || '');
-    setTagsInput((raw.tags || []).join(', '));
-    setAmountInput(typeof raw.amount === 'number' ? raw.amount : '');
-    setDateInput(raw.date || todayISO());
-    setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
-    setIncomeKindInput(raw.incomeKind ?? null);
-    setIncomeSourceIdInput(null);
-    setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
-    setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
-    setReceiptPhoto(raw.receiptPhoto || null);
-    setPaymentMethodInput(raw.paymentMethod);
-    setErrorMsg('');
-    setModalOpen(true);
-  }
-
-  function closeModal() {
-    setModalOpen(false);
-    setEditingId(null);
-    setErrorMsg('');
-  }
-
-  // ---- Categorization Rules auto-fill ----
-  // Only fills the category in when it's still empty, so this never overwrites a category
-  // the person already typed by hand. Amount-based rules need the amount too, so both the
-  // label and amount fields trigger this — each reading whatever's currently in the other.
-  function handleLabelChange(text: string) {
-    setLabelInput(text);
-    if (!model || categoryInput.trim()) return;
-    const amt = typeof amountInput === 'number' ? amountInput : NaN;
-    const auto = computeAutoCategory(model, text, amt);
-    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
-  }
-
-  function handleAmountChange(val: number | '') {
-    setAmountInput(val);
-    if (!model || categoryInput.trim()) return;
-    const auto = computeAutoCategory(model, labelInput, val === '' ? NaN : val);
-    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
-  }
-
-  async function handlePickReceipt() {
-    setAutoLockSuppressed(true);
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          'Permission needed',
-          'Allow photo library access in your phone settings to attach a receipt.'
-        );
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 1,
-      });
-      if (result.canceled || !result.assets || !result.assets[0]) return;
-      const asset = result.assets[0];
-      // Shrunk before it's kept: a full-size photo could stop the household from syncing.
-      try {
-        setReceiptPhoto(await makeReceiptDataUri(asset.uri, asset.width));
-      } catch (e: any) {
-        Alert.alert("Couldn't add that photo", e?.message || 'Try picking a different one.');
-      }
-    } finally {
-      setAutoLockSuppressed(false);
-    }
-  }
-
-  function handleRemoveReceipt() {
-    setReceiptPhoto(null);
-  }
-
-  // Money in › Salary: logs a payday on the chosen Income source (the same as logging
-  // it on the Income page), into the chosen account.
-  async function saveSalary() {
-    if (!model) return;
-    const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
-    setErrorMsg('');
-    if (!source) {
-      fieldErrors.show('salary', 'Pick which salary this is.');
-      return;
-    }
-    if (amountInput === '' || amountInput <= 0) {
-      fieldErrors.show('amount', 'How much was it?');
-      return;
-    }
-    const trimmedDate = dateInput.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      fieldErrors.show('date', 'Pick a date.');
-      return;
-    }
-    const acctProblem = accountProblem(model, 'in', amountInput, paymentMethodInput);
-    if (acctProblem) {
-      fieldErrors.show('account', acctProblem);
-      return;
-    }
-    const entry = { id: makeId('paylog'), date: trimmedDate, amount: amountInput, paymentMethod: paymentMethodInput, createdAt: Date.now() };
-    const updated: HouseholdModel = {
-      ...model,
-      income: (model.income || []).map((s) => (s.id === source.id ? { ...s, paymentLog: [entry, ...(s.paymentLog || [])] } : s)),
-    };
-    setSaving(true);
-    try {
-      await saveModel(updated);
-      showLeafTick('Added');
-      closeModal();
-    } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSave() {
-    if (!model) return;
-    if (!editingId && directionInput === 'in' && incomeKindInput === 'salary') return saveSalary();
-    // Extra income with no description gets the kind's name (e.g. "Bonus").
-    const extraKind = directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? incomeKindInput : undefined;
-    const trimmedLabel = labelInput.trim() || (extraKind ? incomeKindLabel(extraKind) : '');
-    setErrorMsg('');
-    // Checked top to bottom, the same order as the form.
-    if (amountInput === '' || amountInput <= 0) {
-      fieldErrors.show('amount', 'How much was it?');
-      return;
-    }
-    if (!trimmedLabel) {
-      fieldErrors.show('label', 'What was it for?');
-      return;
-    }
-    const parsedAmount = amountInput;
-    const acctProblem = accountProblem(model, directionInput, parsedAmount, paymentMethodInput, editingId);
-    if (acctProblem) {
-      fieldErrors.show('account', acctProblem);
-      return;
-    }
-    const trimmedDate = dateInput.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      fieldErrors.show('date', 'Pick a date.');
-      return;
-    }
-
-    const refundAmountToSave =
-      directionInput === 'out' && refundTrackingEnabled && typeof refundAmountInput === 'number' && refundAmountInput > 0
-        ? refundAmountInput
-        : undefined;
-    // Version 2.1 (Cath): a refund is the full amount or part of it, never more.
-    if (directionInput === 'out' && refundTrackingEnabled && !alreadyRefunded) {
-      if (refundAmountToSave === undefined) {
-        fieldErrors.show('refund', 'How much are you getting back?');
-        return;
-      }
-      if (refundAmountToSave > parsedAmount) {
-        fieldErrors.show('refund', `A refund can't be more than the ${formatPeso(parsedAmount)} paid.`);
-        return;
-      }
-    }
-
-    const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
-    const parsedTags = tagsInput
-      .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-
-    const updated: HouseholdModel = {
-      ...model,
-      people: peopleWithPerson,
-      manualTransactions: [...(model.manualTransactions || [])],
-    };
-
-    if (editingId) {
-      updated.manualTransactions = updated.manualTransactions.map((t) => {
-        if (t.id !== editingId) return t;
-          const next: ManualTransaction = {
-            ...t,
-            date: trimmedDate,
-            label: trimmedLabel,
-            amount: parsedAmount,
-            direction: directionInput,
-            owner: personId || 'shared',
-            category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
-            notes: notesInput.trim(),
-            tags: parsedTags.length > 0 ? parsedTags : undefined,
-            paymentMethod: paymentMethodInput,
-          };
-        if (extraKind) next.incomeKind = extraKind;
-        else delete next.incomeKind;
-        // Saving an edit counts as checking it.
-        delete next.needsReview;
-        delete next.reviewWhy;
-        if (receiptPhoto) {
-          next.receiptPhoto = receiptPhoto;
-        } else {
-          delete next.receiptPhoto;
-        }
-        if (directionInput === 'out' && !t.refundTransactionId) {
-          if (refundAmountToSave !== undefined) {
-            next.refundExpectedAmount = refundAmountToSave;
-          } else {
-            delete next.refundExpectedAmount;
-          }
-        }
-        return next;
-      });
-    } else {
-        const newTxn: ManualTransaction = {
-          id: makeId('txn'),
-          date: trimmedDate,
-          label: trimmedLabel,
-          amount: parsedAmount,
-          direction: directionInput,
-          owner: personId || 'shared',
-          category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
-          notes: notesInput.trim(),
-          ...(extraKind ? { incomeKind: extraKind, createdAt: Date.now() } : {}),
-          ...(parsedTags.length > 0 ? { tags: parsedTags } : {}),
-          paymentMethod: paymentMethodInput,
-          ...(receiptPhoto ? { receiptPhoto } : {}),
-          ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
-          ...(ruleFilled && categoryInput.trim() ? { needsReview: true, reviewWhy: 'Filled in by your rule' } : {}),
-        };
-      updated.manualTransactions = [...updated.manualTransactions, newTxn];
-    }
-
-    setSaving(true);
-    try {
-      await saveModel(updated);
-      showLeafTick(editingId ? 'Saved' : 'Added');
-      closeModal();
-    } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function performDelete() {
-    if (!editingId || !model) return;
-    const deletedTxn = (model.manualTransactions || []).find((t) => t.id === editingId);
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: (model.manualTransactions || [])
-        .filter((t) => t.id !== editingId)
-        .filter((t) => !(deletedTxn?.refundTransactionId && t.id === deletedTxn.refundTransactionId)),
-    };
-    setSaving(true);
-    try {
-      await saveModel(updated);
-      closeModal();
-    } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleDelete() {
-    Alert.alert(
-      'Delete this transaction?',
-      'This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: performDelete },
-      ]
-    );
-  }
-
-  async function performDeleteTxnById(id: string) {
-    if (!model) return;
-    const deletedTxn = (model.manualTransactions || []).find((t) => t.id === id);
-    const updated: HouseholdModel = {
-      ...model,
-      manualTransactions: (model.manualTransactions || [])
-        .filter((t) => t.id !== id)
-        .filter((t) => !(deletedTxn?.refundTransactionId && t.id === deletedTxn.refundTransactionId)),
-    };
-    setSaving(true);
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleSwipeDelete(rawId: string) {
-    Alert.alert(
-      'Delete this transaction?',
-      'This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => performDeleteTxnById(rawId) },
-      ]
-    );
-  }
-
-  // Marks a pending refund as received: creates a real, linked "money in" transaction for the
-  // amount expected back, and stamps refundTransactionId on the original expense so we know
-  // it's been resolved. Mirrors reconcileTravelChecklistTransactions / reconcileEventTransaction.
-
-  // Undoes a "marked received" refund: removes the linked income transaction it created, and
-  // clears refundTransactionId so it goes back to showing as Pending.
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshControl={pullToSearch}>
-        {/* Redesign: filter chips (month, newest/oldest, category) */}
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            testID="transactions-month-filter"
-            style={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]}
-            onPress={() => setMonthSheetOpen(true)}
-            accessibilityRole="button"
-          >
-            <GradientFill match={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]} />
-            <Text style={[styles.filterChipText, monthFilter !== 'all' && styles.filterChipTextOn]}>
-              {monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={monthFilter !== 'all' ? colors.gold : colors.inkDim} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            testID="transactions-sort"
-            style={styles.filterChip}
-            onPress={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-            accessibilityRole="button"
-            accessibilityLabel={`Sorted ${sortOrder} first. Tap to switch.`}
-          >
-            <GradientFill match={styles.filterChip} />
-            <Text style={styles.filterChipText}>{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
-            <Ionicons name="swap-vertical" size={14} color={colors.inkDim} />
-          </TouchableOpacity>
-          {accountFilter && (
-            <TouchableOpacity
-              style={[styles.filterChip, styles.filterChipOn]}
-              onPress={() => setAccountFilter(null)}
-              accessibilityRole="button"
-              accessibilityLabel={`Showing ${accountFilter.name} only. Tap to clear.`}
-            >
-              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
-              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{accountFilter.name}</Text>
-              <Ionicons name="close-circle" size={15} color={colors.gold} />
-            </TouchableOpacity>
-          )}
-          {categoryFilter && (
-            <TouchableOpacity
-              style={[styles.filterChip, styles.filterChipOn]}
-              onPress={() => setCategoryFilter(null)}
-              accessibilityRole="button"
-              accessibilityLabel={`Showing ${categoryFilter} only. Tap to clear.`}
-            >
-              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
-              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{categoryFilter}</Text>
-              <Ionicons name="close-circle" size={15} color={colors.gold} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Redesign: "To review" card (spending whose category wasn't picked by hand). */}
-        {reviewCount(model) > 0 && (
-          <TouchableOpacity
-            testID="transactions-review"
-            style={[styles.group, styles.reviewCard]}
-            onPress={() => (navigation as any).navigate('Review')}
-            accessibilityRole="button"
-          >
-            <GradientFill match={[styles.group, styles.reviewCard]} />
-            <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
-              <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
-              <Ionicons name="checkmark-done-outline" size={17} color={colors.gold} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.txnLabel}>To review</Text>
-              <Text style={styles.txnSub}>
-                {reviewCount(model)} {reviewCount(model) === 1 ? 'needs' : 'need'} a quick look
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
-          </TouchableOpacity>
-        )}
-
-        {/* Redesign: In / Out summary (just totals; Income is reached from Accounts). */}
-        <View style={[styles.group, styles.summary]}>
-          <GradientFill match={[styles.group, styles.summary]} />
-          <View style={styles.summaryCell} accessible accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}`}>
-            <Text style={styles.summaryLabel}>In</Text>
-            <Text style={[styles.summaryAmount, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
-          </View>
-          <View style={[styles.summaryCell, styles.summaryDivider]}>
-            <Text style={styles.summaryLabel}>Out</Text>
-            <Text style={[styles.summaryAmount, { color: colors.negative }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>−{formatPeso(totals.totalOut)}</Text>
-          </View>
-        </View>
-
-        <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Filter by month">
-          <TouchableOpacity
-            onPress={() => {
-              hapticSelection();
-              setMonthFilter('all');
-              setMonthSheetOpen(false);
-            }}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingVertical: 14,
-              borderBottomWidth: 1,
-              borderBottomColor: colors.navy4,
-            }}
-          >
-            <Text style={{ fontSize: 15, color: colors.ink }}>All time</Text>
-            {monthFilter === 'all' && <Ionicons name="checkmark" size={20} color={colors.gold} />}
-          </TouchableOpacity>
-          {monthOptions.map((ym) => (
-            <TouchableOpacity
-              key={ym}
-              onPress={() => {
-                hapticSelection();
-                setMonthFilter(ym);
-                setMonthSheetOpen(false);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.navy4,
-              }}
-            >
-              <Text style={{ fontSize: 15, color: colors.ink }}>{formatTxMonthLabel(ym)}</Text>
-              {monthFilter === ym && <Ionicons name="checkmark" size={20} color={colors.gold} />}
-            </TouchableOpacity>
-          ))}
-        </BottomSheet>
-
-        {transactions.length === 0 && (
-          <Text style={styles.emptyText}>Nothing recorded yet.</Text>
-        )}
-
-        {groupByDate(transactions).map((day) => (
         <View key={day.date} style={styles.daySection}>
         <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
         <View style={styles.group}>
           <GradientFill match={styles.group} />
         {day.items.map((t: TransactionEntry, rowIndex: number) => {
           const isManual = t.source === 'manual';
-          const rawManual = isManual ? (model.manualTransactions || []).find((m) => m.id === t.rawId) : undefined;
+          const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
-          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId;
+          // H-16: only money out waits for a refund (older entries switched to money in may still carry one).
+          const isRefundPending = typeof refundExpected === 'number' && !rawManual?.refundTransactionId && t.direction === 'out';
           const isRefundReceived = typeof refundExpected === 'number' && !!rawManual?.refundTransactionId;
           const billId = t.source === 'bill' ? findBillIdForTransaction(model, t.id) : null;
           const debtId = t.source === 'debt' ? findDebtIdForTransaction(model, t.id) : null;
@@ -860,7 +468,7 @@ export default function TransactionsScreen() {
             <SwipeableRow
               key={t.id}
               enabled={(isManual && Boolean(model.settings.swipeToDeleteEnabled)) || Boolean(viewAction)}
-              onDelete={() => handleSwipeDelete(t.rawId as string)}
+              onDelete={() => swipeDeleteRef.current(t.rawId as string)}
               viewAction={viewAction}
               testID={`txn-swipe-${t.id}`}
               flat
@@ -874,8 +482,15 @@ export default function TransactionsScreen() {
               accessibilityLabel={`${t.label}, ${t.direction === 'in' ? 'plus' : 'minus'} ${formatPeso(t.amount)}, ${t.category}`}
             >
               <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
+              {arrivedTxn === t.id && <ArrivalGlow />}
               <View style={[styles.tile, { backgroundColor: tileBg(t.direction, colors) }]}>
                 <Ionicons name={DIRECTION_ICON[t.direction] ?? 'swap-vertical'} size={17} color={amountColor(t.direction, colors)} />
+                {/* Version 2.2 (canvas W1 B): a small letter when someone else in the household logged it. */}
+                {isLinked && !!rawManual?.addedBy && rawManual.addedBy !== username && (
+                  <View style={[styles.whoBadge, { backgroundColor: colors.navy3 }]} accessibilityLabel={`Logged by ${rawManual.addedBy}`}>
+                    <Text style={[styles.whoText, { color: colors.indigo ?? colors.inkDim }]}>{rawManual.addedBy.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.txnMain}>
                 <Text style={styles.txnLabel} numberOfLines={1}>{t.label}</Text>
@@ -894,11 +509,576 @@ export default function TransactionsScreen() {
         })}
         </View>
         </View>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, colors, arrivedTxn, isLinked, username, manualById]);
+  const listBlock = useMemo(() => {
+    // The form on its own (Edit on a transaction's page, + on Home) never shows the list.
+    if (!model || formOnly) return null;
+    return (
+      <>
+        {chunks.slice(0, batchesShown).map((c, i) => (
+          <DayBatch key={i} days={c} render={renderDay} />
         ))}
+      </>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chunks, batchesShown, renderDay, formOnly]);
+
+  if (!model) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
+
+  function resetForm() {
+    setLabelInput('');
+    setCategoryInput('');
+    setAmountInput('');
+    setDateInput(todayISO());
+    setDirectionInput('out');
+    setIncomeKindInput(null);
+    setIncomeSourceIdInput(null);
+    setRefundTrackingEnabled(false);
+    setRefundAmountInput('');
+    setReceiptPhoto(null);
+    setPersonInput('');
+    setNotesInput('');
+    setTagsInput('');
+    setPaymentMethodInput(undefined);
+    setInstallmentsInput(0);
+    setErrorMsg('');
+  }
+
+  function openAddModal() {
+    savedOnceRef.current = false;
+    onFormOpened?.();
+    setMoreOpen(false);
+    setRuleFilled(false);
+    setEditingId(null);
+    resetForm();
+    setModalOpen(true);
+  }
+
+  function openEditModal(t: TransactionEntry) {
+    savedOnceRef.current = false;
+    if (t.source !== 'manual' || !t.rawId) return;
+    const raw = (model?.manualTransactions || []).find((m) => m.id === t.rawId);
+    if (!raw) return;
+    setEditingId(raw.id);
+    setRuleFilled(false);
+    setMoreOpen(!!(raw.tags?.length || raw.receiptPhoto || (raw.owner && raw.owner !== 'shared')));
+    setLabelInput(raw.label || '');
+    setCategoryInput(raw.category || '');
+    setPersonInput(personName(model?.people || [], raw.owner || ''));
+    setNotesInput(raw.notes || '');
+    setTagsInput((raw.tags || []).join(', '));
+    setAmountInput(typeof raw.amount === 'number' ? raw.amount : '');
+    setDateInput(raw.date || todayISO());
+    setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
+    setIncomeKindInput(raw.incomeKind ?? null);
+    setIncomeSourceIdInput(null);
+    setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
+    setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
+    setReceiptPhoto(raw.receiptPhoto || null);
+    setPaymentMethodInput(raw.paymentMethod);
+    setInstallmentsInput(raw.installments ?? 0);
+    setErrorMsg('');
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setErrorMsg('');
+    onFormClosed?.();
+  }
+
+  // ---- Categorization Rules auto-fill ----
+  // Only fills the category in when it's still empty, so this never overwrites a category
+  // the person already typed by hand. Amount-based rules need the amount too, so both the
+  // label and amount fields trigger this — each reading whatever's currently in the other.
+  function handleLabelChange(text: string) {
+    setLabelInput(text);
+    if (!model || categoryInput.trim()) return;
+    const amt = typeof amountInput === 'number' ? amountInput : NaN;
+    const auto = computeAutoCategory(model, text, amt);
+    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
+  }
+
+  function handleAmountChange(val: number | '') {
+    setAmountInput(val);
+    if (!model || categoryInput.trim()) return;
+    const auto = computeAutoCategory(model, labelInput, val === '' ? NaN : val);
+    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
+  }
+
+  async function handlePickReceipt() {
+    setAutoLockSuppressed(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission needed',
+          'Allow photo library access in your phone settings to attach a receipt.'
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+      });
+      if (result.canceled || !result.assets || !result.assets[0]) return;
+      const asset = result.assets[0];
+      // Shrunk before it's kept: a full-size photo could stop the household from syncing.
+      try {
+        setReceiptPhoto(await makeReceiptDataUri(asset.uri, asset.width));
+      } catch (e: any) {
+        Alert.alert("Couldn't add that photo", friendlyError(e, 'Try picking a different one.'));
+      }
+    } finally {
+      setAutoLockSuppressed(false);
+    }
+  }
+
+  function handleRemoveReceipt() {
+    setReceiptPhoto(null);
+  }
+
+  // Money in › Salary: logs a payday on the chosen Income source (the same as logging
+  // it on the Income page), into the chosen account.
+  // No salary set up yet: go and add one, then come back to this form with it picked.
+  // Cath, 2026-10-23: + with no account yet goes to adding an account first; once it's
+  // added, you're back here with it picked (and the day from the calendar kept).
+  function hasAnyAccount(): boolean {
+    const m = getModel() ?? model;
+    const b = m?.balanceAccounts;
+    return !!b && (b.cash.length > 0 || b.debit.length > 0 || b.credit.length > 0);
+  }
+  function openNewTransaction(day?: string) {
+    const date = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : undefined;
+    if (!hasAnyAccount()) {
+      startAccountHandoff((account) => {
+        openAddModal();
+        setPaymentMethodInput(account);
+        if (date) setDateInput(date);
+      });
+      // (From the calendar's "what to add" sheet: it closes now, not over Accounts.)
+      finishSheetHandoff();
+      (navigation as any).navigate('Accounts', { addNonce: Date.now() });
+      return;
+    }
+    openAddModal();
+    if (date) setDateInput(date);
+  }
+
+  function goAddSalary() {
+    const keepAmount = amountInput;
+    const keepAccount = paymentMethodInput;
+    const keepDate = dateInput;
+    startSalaryHandoff((sourceId) => {
+      openAddModal();
+      setDirectionInput('in');
+      setIncomeKindInput('salary');
+      setIncomeSourceIdInput(sourceId);
+      setDateInput(keepDate);
+      const src = (getModel()?.income || []).find((x) => x.id === sourceId);
+      setAmountInput(keepAmount !== '' ? keepAmount : typeof src?.expectedAmount === 'number' ? src.expectedAmount : '');
+      setPaymentMethodInput(keepAccount ?? src?.depositTo);
+    });
+    closeModal();
+    (navigation as any).navigate('Income', { openAddNonce: Date.now() });
+  }
+
+  async function saveSalary() {
+    if (savedOnceRef.current) return;
+    if (!model) return;
+    const source = (model.income || []).find((s) => s.id === incomeSourceIdInput);
+    setErrorMsg('');
+    if (!(model.income || []).length) {
+      fieldErrors.show('salary', 'Add your salary first. Tap "Add a salary" above.');
+      return;
+    }
+    if (!source) {
+      fieldErrors.show('salary', 'Pick which salary this is.');
+      return;
+    }
+    if (amountInput === '' || amountInput <= 0) {
+      fieldErrors.show('amount', 'How much was it?');
+      return;
+    }
+    const trimmedDate = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      fieldErrors.show('date', 'Pick a date.');
+      return;
+    }
+    const acctProblem = accountProblem(model, 'in', amountInput, paymentMethodInput);
+    if (acctProblem) {
+      fieldErrors.show('account', acctProblem);
+      return;
+    }
+    const entry = { id: makeId('paylog'), date: trimmedDate, amount: amountInput, paymentMethod: paymentMethodInput, createdAt: Date.now() };
+    const updated: HouseholdModel = {
+      ...model,
+      income: (model.income || []).map((s) => (s.id === source.id ? { ...s, paymentLog: [entry, ...(s.paymentLog || [])] } : s)),
+    };
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      savedOnceRef.current = true;
+      showLeafTick('Added');
+      closeModal();
+      onAdded?.();
+    } catch (e) {
+      setErrorMsg(notSaved('this transaction'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSave() {
+    if (savedOnceRef.current) return;
+    if (!model) return;
+    if (!editingId && directionInput === 'in' && incomeKindInput === 'salary') return saveSalary();
+    // Extra income with no description gets the kind's name (e.g. "Bonus").
+    const extraKind = directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? incomeKindInput : undefined;
+    const trimmedLabel = labelInput.trim() || (extraKind ? incomeKindLabel(extraKind) : '');
+    setErrorMsg('');
+    // Checked top to bottom, the same order as the form.
+    if (amountInput === '' || amountInput <= 0) {
+      fieldErrors.show('amount', 'How much was it?');
+      return;
+    }
+    if (!trimmedLabel) {
+      fieldErrors.show('label', 'What was it for?');
+      return;
+    }
+    const parsedAmount = amountInput;
+    const acctProblem = accountProblem(model, directionInput, parsedAmount, paymentMethodInput, editingId);
+    if (acctProblem) {
+      fieldErrors.show('account', acctProblem);
+      return;
+    }
+    const trimmedDate = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      fieldErrors.show('date', 'Pick a date.');
+      return;
+    }
+
+    const refundAmountToSave =
+      directionInput === 'out' && refundTrackingEnabled && typeof refundAmountInput === 'number' && refundAmountInput > 0
+        ? refundAmountInput
+        : undefined;
+    // Version 2.1 (Cath): a refund is the full amount or part of it, never more.
+    if (directionInput === 'out' && refundTrackingEnabled && !alreadyRefunded) {
+      if (refundAmountToSave === undefined) {
+        fieldErrors.show('refund', 'How much are you getting back?');
+        return;
+      }
+      if (refundAmountToSave > parsedAmount) {
+        fieldErrors.show('refund', `A refund can't be more than the ${formatPeso(parsedAmount)} paid.`);
+        return;
+      }
+    }
+
+    // Only a credit card purchase can be split into payments.
+    const installmentsToSave = directionInput === 'out' && paymentMethodInput?.type === 'credit' && installmentsInput > 1 ? installmentsInput : undefined;
+    const { people: peopleWithPerson, personId } = findOrCreatePerson(model.people, personInput);
+    const parsedTags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    const updated: HouseholdModel = {
+      ...model,
+      people: peopleWithPerson,
+      manualTransactions: [...(model.manualTransactions || [])],
+    };
+
+    if (editingId) {
+      updated.manualTransactions = updated.manualTransactions.map((t) => {
+        if (t.id !== editingId) return t;
+          const next: ManualTransaction = {
+            ...t,
+            date: trimmedDate,
+            label: trimmedLabel,
+            amount: parsedAmount,
+            direction: directionInput,
+            owner: personId || 'shared',
+            category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
+            notes: notesInput.trim(),
+            tags: parsedTags.length > 0 ? parsedTags : undefined,
+            paymentMethod: paymentMethodInput,
+          };
+        if (extraKind) next.incomeKind = extraKind;
+        else delete next.incomeKind;
+        if (installmentsToSave) next.installments = installmentsToSave;
+        else delete next.installments;
+        // Saving an edit counts as checking it.
+        delete next.needsReview;
+        delete next.reviewWhy;
+        if (receiptPhoto) {
+          next.receiptPhoto = receiptPhoto;
+        } else {
+          delete next.receiptPhoto;
+        }
+        if (directionInput === 'out' && !t.refundTransactionId) {
+          if (refundAmountToSave !== undefined) {
+            next.refundExpectedAmount = refundAmountToSave;
+          } else {
+            delete next.refundExpectedAmount;
+          }
+        } else if (directionInput !== 'out' && !t.refundTransactionId) {
+          // H-16 (2026-10-22): only money out can be waiting for a refund. Switched to Money
+          // in (or Saved) before the refund came: it no longer waits for one.
+          delete next.refundExpectedAmount;
+        }
+        return next;
+      });
+    } else {
+        const newTxn: ManualTransaction = {
+          id: makeId('txn'),
+          date: trimmedDate,
+          label: trimmedLabel,
+          amount: parsedAmount,
+          direction: directionInput,
+          owner: personId || 'shared',
+          category: categoryInput.trim() || (extraKind && extraKind !== 'other' ? incomeKindLabel(extraKind) : ''),
+          notes: notesInput.trim(),
+          ...(extraKind ? { incomeKind: extraKind, createdAt: Date.now() } : {}),
+          ...(parsedTags.length > 0 ? { tags: parsedTags } : {}),
+          paymentMethod: paymentMethodInput,
+          ...(receiptPhoto ? { receiptPhoto } : {}),
+          ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
+          ...(installmentsToSave ? { installments: installmentsToSave } : {}),
+          ...(ruleFilled && categoryInput.trim() ? { needsReview: true, reviewWhy: 'Filled in by your rule' } : {}),
+        };
+      updated.manualTransactions = [...updated.manualTransactions, newTxn];
+    }
+
+    setSaving(true);
+    try {
+      const wasNew = !editingId;
+      await saveModel(updated);
+      savedOnceRef.current = true;
+      showLeafTick(editingId ? 'Saved' : 'Added');
+      closeModal();
+      if (wasNew) onAdded?.();
+    } catch (e) {
+      setErrorMsg(notSaved('this transaction'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function performDelete() {
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
+    // One shared delete (H-17: also puts an expense back to "refund pending" when its
+    // refund entry is the one deleted).
+    const updated: HouseholdModel = deleteManualTxn(current, editingId);
+    setSaving(true);
+    try {
+      await saveModel(updated);
+      closeModal();
+    } catch (e) {
+      setErrorMsg(notSaved('this transaction'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleDelete() {
+    Alert.alert(
+      'Delete this transaction?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDelete },
+      ]
+    );
+  }
+
+  async function performDeleteTxnById(id: string) {
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
+    const updated: HouseholdModel = deleteManualTxn(current, id);
+    setSaving(true);
+    try {
+      await saveModel(updated);
+    } catch (e) {
+      Alert.alert(...alertNotDeleted('this transaction'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  swipeDeleteRef.current = (rawId: string) => handleSwipeDelete(rawId);
+  function handleSwipeDelete(rawId: string) {
+    Alert.alert(
+      'Delete this transaction?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => performDeleteTxnById(rawId) },
+      ]
+    );
+  }
+
+  // Marks a pending refund as received: creates a real, linked "money in" transaction for the
+  // amount expected back, and stamps refundTransactionId on the original expense so we know
+  // it's been resolved. Mirrors reconcileTravelChecklistTransactions / reconcileEventTransaction.
+
+  // Undoes a "marked received" refund: removes the linked income transaction it created, and
+  // clears refundTransactionId so it goes back to showing as Pending.
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {!formOnly && (
+      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent} refreshControl={pullToSearch}>
+        {/* Redesign: filter chips (month, newest/oldest, category) */}
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            testID="transactions-month-filter"
+            style={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]}
+            onPress={() => setMonthSheetOpen(true)}
+            accessibilityRole="button"
+          >
+            <GradientFill match={[styles.filterChip, monthFilter !== 'all' && styles.filterChipOn]} />
+            <Text style={[styles.filterChipText, monthFilter !== 'all' && styles.filterChipTextOn]}>
+              {monthFilter === 'all' ? 'All time' : formatTxMonthLabel(monthFilter)}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={monthFilter !== 'all' ? colors.gold : colors.inkDim} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="transactions-sort"
+            style={styles.filterChip}
+            onPress={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+            accessibilityRole="button"
+            accessibilityLabel={`Sorted ${sortOrder} first. Tap to switch.`}
+          >
+            <GradientFill match={styles.filterChip} />
+            <Text style={styles.filterChipText}>{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
+            <Ionicons name="swap-vertical" size={14} color={colors.inkDim} />
+          </TouchableOpacity>
+          {accountFilter && (
+            <TouchableOpacity
+              style={[styles.filterChip, styles.filterChipOn]}
+              onPress={() => setAccountFilter(null)}
+              accessibilityRole="button"
+              accessibilityLabel={`Showing ${accountFilter.name} only. Tap to clear.`}
+            >
+              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
+              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{accountFilter.name}</Text>
+              <Ionicons name="close-circle" size={15} color={colors.gold} />
+            </TouchableOpacity>
+          )}
+          {categoryFilter && (
+            <TouchableOpacity
+              style={[styles.filterChip, styles.filterChipOn]}
+              onPress={() => setCategoryFilter(null)}
+              accessibilityRole="button"
+              accessibilityLabel={`Showing ${categoryFilter} only. Tap to clear.`}
+            >
+              <GradientFill match={[styles.filterChip, styles.filterChipOn]} />
+              <Text style={[styles.filterChipText, styles.filterChipTextOn]}>{categoryFilter}</Text>
+              <Ionicons name="close-circle" size={15} color={colors.gold} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Redesign: "To review" card (spending whose category wasn't picked by hand). */}
+        {reviewN > 0 && (
+          <TouchableOpacity
+            testID="transactions-review"
+            style={[styles.group, styles.reviewCard]}
+            onPress={() => (navigation as any).navigate('Review')}
+            accessibilityRole="button"
+          >
+            <GradientFill match={[styles.group, styles.reviewCard]} />
+            <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+              <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
+              <Ionicons name="checkmark-done-outline" size={17} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.txnLabel}>To review</Text>
+              <Text style={styles.txnSub}>
+                {reviewN} {reviewN === 1 ? 'needs' : 'need'} a quick look
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+          </TouchableOpacity>
+        )}
+
+        {/* Redesign: In / Out summary (just totals; Income is reached from Accounts). */}
+        <View style={[styles.group, styles.summary]}>
+          <GradientFill match={[styles.group, styles.summary]} />
+          <View style={styles.summaryCell} accessible accessibilityLabel={`Money in, ${formatPeso(totals.totalIn)}`}>
+            <Text style={styles.summaryLabel}>In</Text>
+            <Text style={[styles.summaryAmount, { color: toneUnlessZero(totals.totalIn, colors.positive, colors) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>+{formatPeso(totals.totalIn)}</Text>
+          </View>
+          <View style={[styles.summaryCell, styles.summaryDivider]}>
+            <Text style={styles.summaryLabel}>Out</Text>
+            <Text style={[styles.summaryAmount, { color: redUnlessZero(totals.totalOut, colors) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{isZeroAmount(totals.totalOut) ? '' : '−'}{formatPeso(totals.totalOut)}</Text>
+          </View>
+        </View>
+
+        <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Filter by month">
+          <TouchableOpacity
+            onPress={() => {
+              hapticSelection();
+              setMonthFilter('all');
+              setMonthSheetOpen(false);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.navy4,
+            }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>All time</Text>
+            {monthFilter === 'all' && <Ionicons name="checkmark" size={20} color={colors.gold} />}
+          </TouchableOpacity>
+          {monthOptions.map((ym) => (
+            <TouchableOpacity
+              key={ym}
+              onPress={() => {
+                hapticSelection();
+                setMonthFilter(ym);
+                setMonthSheetOpen(false);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 14,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.navy4,
+              }}
+            >
+              <Text style={{ fontSize: 15, color: colors.ink }}>{formatTxMonthLabel(ym)}</Text>
+              {monthFilter === ym && <Ionicons name="checkmark" size={20} color={colors.gold} />}
+            </TouchableOpacity>
+          ))}
+        </BottomSheet>
+
+        {transactions.length === 0 && (
+          <Text style={styles.emptyText}>Nothing recorded yet.</Text>
+        )}
+
+        {listBlock}
 
         {/* Redesign: adding is done with the floating + button; importing a spreadsheet
             moved to Settings › Backup & Data. */}
       </PullToRefreshScrollView>
+      )}
 
       <CsvImportModal visible={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
 
@@ -933,6 +1113,8 @@ export default function TransactionsScreen() {
         />
 
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
+          {/* Cath, 2026-10-23: every field says if it's required (*) or optional. */}
+          <MarkedLabel text="Amount" mark="required" style={[styles.amountLabel, fieldErrors.field === 'amount' && { color: colors.error, fontWeight: '700' }]} />
           <AmountInput
             autoFocus={!editingId}
             centered
@@ -951,7 +1133,7 @@ export default function TransactionsScreen() {
 
         {directionInput === 'in' && (
           <>
-            <Text style={styles.inputLabel}>What is it?</Text>
+            <MarkedLabel text="What is it?" mark="optional" style={styles.inputLabel} />
             <View style={styles.chipRow}>
               {INCOME_KINDS.filter((k) => k.id !== 'salary' || !editingId).map((k) => {
                 const on = incomeKindInput === k.id;
@@ -960,7 +1142,16 @@ export default function TransactionsScreen() {
                     key={k.id}
                     testID={`txn-kind-${k.id}`}
                     style={[styles.chip, on && { backgroundColor: colors.accentTint }]}
-                    onPress={() => { setIncomeKindInput(on ? null : k.id); setErrorMsg(''); }}
+                    onPress={() => {
+                      // Cath, 2026-10-23: Salary with none set up goes straight to adding one
+                      // (then back here with it picked), instead of showing a note first.
+                      if (k.id === 'salary' && !on && !editingId && (model.income || []).length === 0) {
+                        goAddSalary();
+                        return;
+                      }
+                      setIncomeKindInput(on ? null : k.id);
+                      setErrorMsg('');
+                    }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
                   >
@@ -971,10 +1162,30 @@ export default function TransactionsScreen() {
             </View>
             {incomeKindInput === 'salary' && !editingId && (
               (model.income || []).length === 0 ? (
-                <Text style={styles.formFooter}>Add your salary on the Income page first (Home › Wallet › Add account › Income).</Text>
+                // Version 2.2 (Cath): a red note straight away (and again on Add), with a
+                // button that takes you to the next step instead of a list of steps.
+                <Guided {...fieldErrors.props('salary')} inset={false} radius={12}>
+                  <View style={[styles.salaryNeeded, { backgroundColor: colors.errorBg }]}>
+                    <Ionicons name="alert-circle-outline" size={20} color={colors.negative} style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.salaryNeededTitle, { color: colors.negative }]}>No salary set up yet</Text>
+                      <Text style={[styles.salaryNeededBody, { color: colors.negative }]}>
+                        Add it once (how much and when it comes in). You'll come right back here to log this payday.
+                      </Text>
+                      <TouchableOpacity
+                        testID="txn-add-salary-first"
+                        onPress={goAddSalary}
+                        accessibilityRole="button"
+                        style={[styles.salaryNeededBtn, { backgroundColor: colors.buttonFill }]}
+                      >
+                        <Text style={[styles.salaryNeededBtnText, { color: colors.onButton }]}>Add a salary</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Guided>
               ) : (
                 <Guided {...fieldErrors.props('salary')} inset={false} radius={12}>
-                  <Text style={[styles.inputLabel, fieldErrors.field === 'salary' && { color: colors.error, fontWeight: '700' }]}>Which salary?</Text>
+                  <MarkedLabel text="Which salary?" mark="required" style={[styles.inputLabel, fieldErrors.field === 'salary' && { color: colors.error, fontWeight: '700' }]} />
                   <View style={styles.chipRow}>
                     {(model.income || []).map((src) => {
                       const on = incomeSourceIdInput === src.id;
@@ -1008,7 +1219,8 @@ export default function TransactionsScreen() {
         <View style={styles.formGroup}>
           <Guided {...fieldErrors.props('label')} focusRef={labelRef}>
           <View style={styles.formRow}>
-            <Text style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]}>Description</Text>
+            {/* Money in with a kind picked (Bonus...) is named after the kind if left empty. */}
+            <MarkedLabel text="Description" mark={directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? 'optional' : 'required'} style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]} />
             <TextInput
               ref={labelRef}
               testID="txn-label-input"
@@ -1021,7 +1233,7 @@ export default function TransactionsScreen() {
           </View>
           </Guided>
           <View style={[styles.formRow, styles.formRowLine]}>
-            <Text style={styles.formLabel}>Category</Text>
+            <MarkedLabel text="Category" mark="optional" style={styles.formLabel} />
             <TextInput
               style={styles.formInput}
               placeholder="e.g. Groceries"
@@ -1031,10 +1243,10 @@ export default function TransactionsScreen() {
             />
           </View>
           <View style={[styles.formRow, styles.formRowLine]}>
-            <Text style={styles.formLabel}>Note</Text>
+            <MarkedLabel text="Note" mark="optional" style={styles.formLabel} />
             <TextInput
               style={styles.formInput}
-              placeholder="Optional"
+              placeholder="e.g. split with Ana"
               placeholderTextColor={colors.inkFaint}
               value={notesInput}
               onChangeText={setNotesInput}
@@ -1050,6 +1262,7 @@ export default function TransactionsScreen() {
           {/* Redesign: the account is required. Money out can't overdraw cash or debit. */}
           <Guided {...fieldErrors.props('account')} inset={false} radius={12}>
             <AccountPicker
+              mark="required"
               model={model}
               direction={directionInput}
               amount={amountInput}
@@ -1058,11 +1271,47 @@ export default function TransactionsScreen() {
               excludeTxnId={editingId}
             />
           </Guided>
+          {/* Version 3 (approved K5): only when Paid with is a credit card. */}
+          {directionInput === 'out' && paymentMethodInput?.type === 'credit' && (() => {
+            const card = model.balanceAccounts.credit.find((a) => a.id === paymentMethodInput.accountId);
+            const per = typeof amountInput === 'number' && installmentsInput > 1 ? Math.round((amountInput / installmentsInput) * 100) / 100 : 0;
+            return (
+              <View style={[styles.formGroup, { marginTop: -4, marginBottom: 14 }]}>
+                <View style={[styles.formRow, { justifyContent: 'space-between' }]}>
+                  <Text style={styles.formLabel}>Split into payments</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {[0, 3, 6, 12].map((n) => {
+                      const on = installmentsInput === n;
+                      return (
+                        <TouchableOpacity
+                          key={n}
+                          onPress={() => { hapticSelection(); setInstallmentsInput(n); }}
+                          style={{ minWidth: 40, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, alignItems: 'center', backgroundColor: on ? colors.buttonFill : colors.navy4 }}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: on }}
+                          accessibilityLabel={n === 0 ? 'No split' : `${n} payments`}
+                          testID={`txn-installments-${n}`}
+                        >
+                          <Text style={{ fontSize: 15, fontWeight: '700', color: on ? colors.onButton : colors.ink }}>{n === 0 ? 'No' : n}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+                {installmentsInput > 1 && (
+                  <Text style={[styles.formFooter, { marginBottom: 8 }]}>
+                    {per > 0 ? `${formatPeso(per)} a month for ${installmentsInput} months on ${card?.name || 'this card'}. ` : ''}Your spending counts the whole amount today.
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
         </View>
 
         <Guided {...fieldErrors.props('date')} inset={false} radius={12}>
           <DateField
             label="Date"
+            mark="required"
             value={dateInput}
             onChange={setDateInput}
             testID="txn-date-field"
@@ -1083,7 +1332,7 @@ export default function TransactionsScreen() {
             {refundTrackingEnabled && (
               <Guided {...fieldErrors.props('refund')}>
                 <View style={[styles.formRow, styles.formRowLine]}>
-                  <Text style={[styles.formLabel, fieldErrors.field === 'refund' && { color: colors.error, fontWeight: '700' }]}>Amount back</Text>
+                  <MarkedLabel text="Amount back" mark="required" style={[styles.formLabel, fieldErrors.field === 'refund' && { color: colors.error, fontWeight: '700' }]} />
                   <AmountInput
                     autoFocus={!refundAmountInput}
                     style={styles.inlineAmount}
@@ -1112,14 +1361,14 @@ export default function TransactionsScreen() {
         )}
 
         {!salaryEntry && (
-        <TouchableOpacity style={styles.moreToggle} onPress={() => setMoreOpen((v) => !v)} accessibilityRole="button">
+        <TouchableOpacity style={styles.moreToggle} onPress={() => { animateNextLayout(); setMoreOpen((v) => !v); }} accessibilityRole="button">
           <Text style={styles.moreToggleText}>More details</Text>
           <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.gold} />
         </TouchableOpacity>
         )}
         {moreOpen && !salaryEntry && (
           <>
-            <Text style={styles.inputLabel}>Belongs to</Text>
+            <MarkedLabel text="Belongs to" mark="optional" style={styles.inputLabel} />
             <TextInput
               style={styles.input}
               placeholder="e.g. Miguel, Ana"
@@ -1136,7 +1385,7 @@ export default function TransactionsScreen() {
                 ))}
               </View>
             )}
-            <Text style={styles.inputLabel}>Tags</Text>
+            <MarkedLabel text="Tags" mark="optional" style={styles.inputLabel} />
             <TextInput
               style={styles.input}
               placeholder="e.g. vacation, tax-deductible"
@@ -1145,7 +1394,7 @@ export default function TransactionsScreen() {
               onChangeText={setTagsInput}
             />
             <Text style={styles.formFooter}>Separate tags with commas.</Text>
-            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Receipt photo</Text>
+            <MarkedLabel text="Receipt photo" mark="optional" style={[styles.inputLabel, { marginTop: 14 }]} />
             {receiptPhoto ? (
               <View style={styles.receiptPreviewWrap}>
                 <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
@@ -1162,7 +1411,7 @@ export default function TransactionsScreen() {
           </>
         )}
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
 
         {editingId && (
           <TouchableOpacity style={[styles.formGroup, styles.deleteRow]} onPress={handleDelete} accessibilityRole="button">
@@ -1176,6 +1425,11 @@ export default function TransactionsScreen() {
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
+    salaryNeeded: { flexDirection: 'row', gap: 10, borderRadius: 14, padding: 12, marginBottom: 12 },
+    salaryNeededTitle: { fontSize: 15, fontWeight: '600' },
+    salaryNeededBody: { fontSize: 14, lineHeight: 20, marginTop: 2 },
+    salaryNeededBtn: { alignSelf: 'flex-start', marginTop: 10, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
+    salaryNeededBtnText: { fontSize: 15, fontWeight: '600' },
     container: {
       flex: 1,
       backgroundColor: 'transparent',
@@ -1197,6 +1451,8 @@ function makeStyles(colors: any) {
     daySection: { marginBottom: 20 },
     dayHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
     tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    whoBadge: { position: 'absolute', right: -5, bottom: -5, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.navy3, elevation: 1 },
+    whoText: { fontSize: 11, fontWeight: '700', lineHeight: 13 },
     emptyText: { fontSize: 15, color: colors.inkDim, marginTop: 6, marginBottom: 12, textAlign: 'center' },
     txnMain: { flex: 1, marginRight: 10 },
     reviewCard: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 12 },
@@ -1204,7 +1460,9 @@ function makeStyles(colors: any) {
     sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
     sheetBarBtn: { fontSize: 17, color: colors.gold },
     sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
-    bigAmountWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 16, marginBottom: 16, minHeight: 64 },
+    bigAmountWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 4, marginBottom: 16, minHeight: 64 },
+    // The small "Amount *" above the big number (same as Amount due on New bill).
+    amountLabel: { fontSize: 13, color: colors.inkDim, textAlign: 'center', marginTop: 12 },
     bigAmountInput: { fontSize: 40, fontWeight: '700', textAlign: 'center', flex: 0, minWidth: 120 },
     // Grey groups on the white sheet, matching the other fields (date, account).
     formGroup: { backgroundColor: colors.navy2, borderRadius: 12, overflow: 'hidden' },

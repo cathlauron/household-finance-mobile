@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 
 const WORDS = ['Unlocking…', 'Opening your data…', 'Almost there…'];
 import { Ionicons } from '@expo/vector-icons';
-import { verifyPin, hasPinSetUp } from '../pin';
+import { verifyPin, hasPinSetUp, pinLockedUntil, clearPinLock, PIN_LOCK_MS } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
 import PinField from '../components/PinField';
 import PasswordField from '../components/PasswordField';
@@ -41,6 +42,12 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   const [profiles, setProfiles] = useState<ProfileIndexEntry[]>([]);
   const [selectedUsername, setSelectedUsername] = useState(username);
   const [isLockedOut, setIsLockedOut] = useState(false);
+  // H-18 (2026-10-22, Cath): 5 wrong PINs block the PIN for 5 minutes, also after reopening
+  // the app. The password and fingerprint still work meanwhile.
+  const blockedMessage = (until: number) => {
+    const mins = Math.max(1, Math.ceil((until - Date.now()) / 60000));
+    return `Too many incorrect PINs. Use your password, or try your PIN again in ${mins} minute${mins === 1 ? '' : 's'}.`;
+  };
 
   const inFlightRef = useRef(false);
 
@@ -79,6 +86,11 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
       setBiometricState(state);
       setBiometricLabel(label);
       setHasPin(pinConfigured);
+      const blockedUntil = await pinLockedUntil(username);
+      if (blockedUntil) {
+        setUsePasswordMode(true);
+        setError(blockedMessage(blockedUntil));
+      }
       if (state === 'ENABLED') {
         runBiometricAuth(false);
       }
@@ -111,6 +123,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
       }
       setBusy(false);
       await resetPinFailures(selectedUsername);
+      // H-18: the password lifts the PIN block.
+      await clearPinLock(selectedUsername);
       onUnlocked(selectedUsername, key);
     } catch (e) {
       setBusy(false);
@@ -121,6 +135,13 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 
   async function handleUnlock() {
     setError('');
+    const blockedUntil = await pinLockedUntil(username);
+    if (blockedUntil) {
+      setPin('');
+      setUsePasswordMode(true);
+      setError(blockedMessage(blockedUntil));
+      return;
+    }
     setBusy(true);
     await paintBusy();
     const ok = await verifyPin(username, pin);
@@ -134,9 +155,9 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     setBusy(false);
     setPin('');
     if (wiped) {
-      setIsLockedOut(true);
+      // H-18: blocked for 5 minutes (saved on the phone); fingerprint still allowed.
       setUsePasswordMode(true);
-      setError('Too many incorrect PINs. Enter your account password to unlock.');
+      setError(blockedMessage(Date.now() + PIN_LOCK_MS));
       return;
     }
     setError(`Incorrect PIN — ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.`);
@@ -261,7 +282,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
 function makeStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent', padding: 24, paddingTop: 64 },
-    title: { fontSize: 26, fontWeight: '700', textAlign: 'center', color: colors.ink, marginBottom: 8 },
+    title: { fontSize: 26, fontWeight: '600', textAlign: 'center', color: colors.ink, marginBottom: 8 },
     sub: { fontSize: 15, color: colors.inkDim, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
     label: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6, marginTop: 14, marginLeft: 4 },
     input: {

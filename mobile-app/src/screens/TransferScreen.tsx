@@ -1,15 +1,19 @@
 import React, { useMemo, useState } from 'react';
+import { alertNotSaved } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '../components/AppText';
 import AmountInput from '../components/AmountInput';
 import DateField from '../components/DateField';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
-import { formatPeso } from '../balanceProjection';
+import { formatPeso, accountCurrentBalance } from '../balanceProjection';
+import { cardOwed } from '../creditCards';
 import { makeId } from '../utils';
 import { todayISO } from '../dateUtils';
 import type { ThemeColors } from '../theme';
@@ -69,6 +73,14 @@ export default function TransferScreen() {
     if (from.key === to.key) return Alert.alert('Pick two different accounts');
     if (from.group === 'credit') return Alert.alert("A credit card can't send money", 'Pick a cash or bank account to move from.');
     if (amount === '' || amount <= 0) return Alert.alert('Enter how much to move');
+    // Version 3: a card with a limit can't be paid more than you owe on it.
+    if (to.group === 'credit') {
+      const card = model.balanceAccounts.credit.find((a) => a.id === to.id);
+      const owed = card ? cardOwed(card, accountCurrentBalance(model, 'credit', card)) : null;
+      if (owed !== null && amount > owed + 0.004) {
+        return Alert.alert(owed > 0 ? `You owe ${formatPeso(owed)} on ${to.name}` : `Nothing owed on ${to.name}`, owed > 0 ? `Pay up to ${formatPeso(owed)}.` : 'The whole limit is free to use already.');
+      }
+    }
     const feeAmt = fee === '' ? 0 : fee;
     const bump = (m: HouseholdModel, a: Acct, delta: number): HouseholdModel => ({
       ...m,
@@ -107,7 +119,7 @@ export default function TransferScreen() {
       showLeafTick(to.group === 'credit' ? 'Paid' : 'Moved');
       navigation.goBack();
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this transfer'));
     } finally {
       setSaving(false);
     }
@@ -115,7 +127,7 @@ export default function TransferScreen() {
 
   const Picker = ({ label, value, onPick, exclude, list }: { label: string; value?: string; onPick: (k: string) => void; exclude?: string; list: Acct[] }) => (
     <View style={styles.pickWrap}>
-      <Text style={styles.pickLabel}>{label}</Text>
+      <MarkedLabel text={label} mark="required" style={styles.pickLabel} />
       <View style={styles.pickChips}>
         {list.filter((a) => a.key !== exclude).map((a) => (
           <TouchableOpacity key={a.key} style={[styles.pickChip, cardChipColors(a.color, isDark, value === a.key)]} onPress={() => onPick(a.key)} accessibilityRole="button" accessibilityState={{ selected: value === a.key }}>
@@ -142,7 +154,7 @@ export default function TransferScreen() {
           {saving ? <ActivityIndicator color={colors.gold} /> : <Text style={[styles.barBtn, { fontWeight: '700' }]}>Move</Text>}
         </TouchableOpacity>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {accounts.length < 2 || senders.length === 0 ? (
           <Text style={styles.footer}>
             {accounts.length < 2
@@ -151,6 +163,7 @@ export default function TransferScreen() {
           </Text>
         ) : (
           <>
+            <MarkedLabel text="Amount" mark="required" style={styles.amountLabel} />
             <AmountInput style={styles.bigWrap} inputStyle={styles.bigInput} value={amount} onChangeAmount={setAmount} />
             <View style={styles.group}>
               <GradientFill match={styles.group} />
@@ -161,16 +174,16 @@ export default function TransferScreen() {
             <View style={[styles.group, { marginTop: 20 }]}>
               <GradientFill match={[styles.group, { marginTop: 20 }]} />
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Note</Text>
-                <TextInput style={styles.rowInput} value={note} onChangeText={setNote} placeholder="Optional" placeholderTextColor={colors.inkFaint} />
+                <MarkedLabel text="Note" mark="optional" style={styles.rowLabel} />
+                <TextInput style={styles.rowInput} value={note} onChangeText={setNote} placeholder="" placeholderTextColor={colors.inkFaint} />
               </View>
               <View style={[styles.row, styles.lineTop]}>
-                <Text style={styles.rowLabel}>ATM or transfer fee</Text>
+                <MarkedLabel text="ATM or transfer fee" mark="optional" style={styles.rowLabel} />
                 <AmountInput style={styles.inlineAmount} value={fee} onChangeAmount={setFee} />
               </View>
             </View>
             <View style={{ marginTop: 20 }}>
-              <DateField label="Date" value={date} onChange={setDate} />
+              <DateField label="Date" mark="required" value={date} onChange={setDate} />
             </View>
             <Text style={styles.footer}>
               {to?.group === 'credit'
@@ -192,10 +205,11 @@ function makeStyles(colors: ThemeColors) {
     barBtn: { fontSize: 17, color: colors.gold },
     barTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
     content: { paddingHorizontal: 16, paddingBottom: 40 },
-    bigWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginVertical: 20, minHeight: 64 },
+    bigWrap: { backgroundColor: 'transparent', justifyContent: 'center', marginTop: 4, marginBottom: 20, minHeight: 64 },
     bigInput: { fontSize: 40, fontWeight: '700', textAlign: 'center', flex: 0, minWidth: 120 },
     group: { backgroundColor: colors.navy3, borderRadius: 12, overflow: 'hidden' },
     pickWrap: { padding: 16 },
+    amountLabel: { fontSize: 13, color: colors.inkDim, textAlign: 'center', marginTop: 12 },
     pickLabel: { fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 8 },
     pickChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     pickChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, maxWidth: '100%' },

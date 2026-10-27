@@ -11,8 +11,10 @@
 // skipped, matching the same gap noted in balanceProjection.ts.
 // ============================================================
 
-import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { onHomeScrollLock, registerHomeScroller } from '../homeScrollLock';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import HomeWallet from '../components/HomeWallet';
 import { getOverdueItems } from '../overdue';
@@ -106,13 +108,37 @@ function formatDueDate(d: Date): string {
 
 export default function DashboardScreen({
   header,
+  footer,
   onScrollY,
-}: { header?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
+}: { header?: React.ReactNode; footer?: React.ReactNode; onScrollY?: (y: number) => void } = {}) {
   const { model, loading } = useData();
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const [dueSheetOpen, setDueSheetOpen] = useState(false);
+  // The page holds still while a Wallet card is picked up (see homeScrollLock.ts).
+  const [scrollLocked, setScrollLocked] = useState(false);
+  useEffect(() => onHomeScrollLock(setScrollLocked), []);
+  // The Wallet can scroll the page while a card is held near the top or bottom edge.
+  const pageRef = useRef<any>(null);
+  const pageY = useRef(0);
+  const pageContentH = useRef(0);
+  const pageViewH = useRef(0);
+  useEffect(() => {
+    registerHomeScroller({
+      scrollBy: (dy: number) => {
+        const max = Math.max(0, pageContentH.current - pageViewH.current);
+        const to = Math.max(0, Math.min(max, pageY.current + dy));
+        const moved = to - pageY.current;
+        if (moved !== 0) {
+          pageY.current = to;
+          pageRef.current?.scrollTo({ y: to, animated: false });
+        }
+        return moved;
+      },
+    });
+    return () => registerHomeScroller(null);
+  }, []);
 
 
   function openDueItem(item: DueItem) {
@@ -127,6 +153,19 @@ export default function DashboardScreen({
     else requestToPayTab(item.type === 'bill' ? 'bills' : item.type === 'debt' ? 'debts' : 'loans');
     navigation.navigate('To-Pay');
   }
+
+  // Speed sweep: each watched category's spending goes through all transactions, so it's
+  // worked out once per change of your data (not again when Home redraws while scrolling).
+  const spentByCategory = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!model) return m;
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    (model.categoryBudgets || []).forEach((cb) => m.set(cb.category, computeCategorySpend(model, cb.category, prefix)));
+    return m;
+    // (The month is part of it too, so a new month starts fresh.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, new Date().getMonth()]);
 
   if (loading || !model) {
     return (
@@ -156,12 +195,24 @@ export default function DashboardScreen({
   return (
     <>
     <PullToRefreshScrollView
+      ref={pageRef}
+      onContentSizeChange={(_w: number, h: number) => {
+        pageContentH.current = h;
+      }}
+      onLayout={(e: any) => {
+        pageViewH.current = e.nativeEvent.layout.height;
+      }}
       style={styles.container}
         contentContainerStyle={styles.contentContainer}
-        onScroll={onScrollY ? (e: any) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
+        onScroll={(e: any) => {
+          pageY.current = e.nativeEvent.contentOffset.y;
+          onScrollY?.(e.nativeEvent.contentOffset.y);
+        }}
+      scrollEnabled={!scrollLocked}
       scrollEventThrottle={16}
     >
       {header}
+      {footer}
 
       {/* Redesign: the Wallet (Accounts' new home) */}
       <HomeWallet model={model} />
@@ -204,7 +255,7 @@ export default function DashboardScreen({
                   <View style={[styles.groupRowBody, idx > 0 && styles.divider]}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{item.label}</Text>
-                      <Text style={[styles.rowSub, { color: colors.negative }]}>{formatPeso(item.amount)}</Text>
+                      <Text style={[styles.rowSub, { color: isOverdue ? colors.negative : colors.ink }]}>{formatPeso(item.amount)}</Text>
                     </View>
                     <Text
                       style={[
@@ -235,7 +286,7 @@ export default function DashboardScreen({
           <GradientFill match={styles.group} />
           {(model.categoryBudgets || []).map((cb, idx) => {
             const budget = typeof cb.monthlyBudget === 'number' ? cb.monthlyBudget : 0;
-            const spent = computeCategorySpend(model, cb.category, monthPrefix);
+            const spent = spentByCategory.get(cb.category) ?? computeCategorySpend(model, cb.category, monthPrefix);
             const status = getCategoryBudgetStatus(spent, budget, colors);
             return (
               <TouchableOpacity

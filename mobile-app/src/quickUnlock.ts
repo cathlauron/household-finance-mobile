@@ -1,4 +1,5 @@
 ﻿import * as SecureStore from 'expo-secure-store';
+import { lockPin } from './pin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { deriveKey, encryptJSON, decryptJSON, generateSalt } from './encryption';
 import { getBiometricState } from './biometrics';
@@ -173,6 +174,8 @@ export async function registerPinFailure(
 ): Promise<{ wiped: boolean; attemptsLeft: number }> {
   const fails = (await readPinFailures(username)) + 1;
   if (fails >= MAX_PIN_ATTEMPTS) {
+    // H-18: the lock-screen PIN is blocked for 5 minutes (survives reopening the app).
+    await lockPin(username);
     await wipeQuickUnlock(username);
     return { wiped: true, attemptsLeft: 0 };
   }

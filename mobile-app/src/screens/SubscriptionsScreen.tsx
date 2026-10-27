@@ -1,6 +1,9 @@
 import React, { useLayoutEffect } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { alertNotSaved } from '../messages';
 import LoadingView from '../components/LoadingView';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
@@ -12,6 +15,7 @@ import { todayISO } from '../dateUtils';
 import { requestNotificationPermission } from '../pushNotifications';
 import type { ThemeColors } from '../theme';
 import type { Bill } from '../types';
+import { WhoBadge } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 
 // Redesign: Subscriptions, from the Finance Flow mockup (To-Pay > Subscriptions).
@@ -43,7 +47,7 @@ function monthly(b: Bill): number {
 
 export default function SubscriptionsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
 
@@ -65,11 +69,13 @@ export default function SubscriptionsScreen() {
   const perMonth = active.reduce((s, b) => s + monthly(b), 0);
 
   async function update(id: string, patch: Partial<Bill>) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     try {
-      await saveModel({ ...model, bills: model.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
+      await saveModel({ ...current, bills: current.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this subscription'));
     }
   }
 
@@ -127,6 +133,7 @@ export default function SubscriptionsScreen() {
         <View style={[styles.avatar, { backgroundColor: colors.accentTint }]}>
           <GradientFill match={[styles.avatar, { backgroundColor: colors.accentTint }]} />
           <Text style={[styles.avatarText, { color: colors.gold }]}>{(b.name || '?').trim().charAt(0).toUpperCase()}</Text>
+          <WhoBadge by={b.addedBy} />
         </View>
         <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={[styles.title, kind === 'cancelled' && { color: colors.inkDim }]} numberOfLines={1}>{b.name || 'Subscription'}</Text>
@@ -143,7 +150,7 @@ export default function SubscriptionsScreen() {
           </TouchableOpacity>
         ) : (
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.amount, { color: colors.negative }]}>{formatPeso(num(cur?.amountDue)).replace('.00', '')}</Text>
+            <Text style={[styles.amount, { color: colors.ink }]}>{formatPeso(num(cur?.amountDue)).replace('.00', '')}</Text>
             {tag && (
               <Text style={[styles.tag, was !== null ? { color: colors.negative, backgroundColor: colors.errorBg } : { color: colors.orange, backgroundColor: colors.warnBg }]}>
                 {tag}
@@ -156,7 +163,7 @@ export default function SubscriptionsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={[styles.group, { padding: 16 }]}>
         <GradientFill match={[styles.group, { padding: 16 }]} />
         <Text style={styles.meta}>You spend</Text>
@@ -200,7 +207,7 @@ export default function SubscriptionsScreen() {
       )}
 
       {subs.length === 0 && <Text style={styles.footer}>No subscriptions yet. Turn on "Subscription" when adding a bill.</Text>}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

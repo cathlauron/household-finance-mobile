@@ -1,12 +1,15 @@
+import { isEmailFormat, emailTypoSuggestion } from '../typingHelpers';
 import React, { useState } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { claimUsername } from '../usernameClaim';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, Modal, Pressable, Alert, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import GradientFill from '../components/GradientFill';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { useTheme } from '../ThemeContext';
+import { MarkedLabel } from '../components/MarkedLabel';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import CryptoJS from 'crypto-js';
@@ -14,6 +17,9 @@ import { sanitizeUsername } from '../auth';
 import { generateSalt, deriveKey, encryptJSON } from '../encryption';
 import { loadProfilesIndex, saveProfilesIndex, saveEncryptedProfileData } from '../storage';
 import { defaultModel } from '../defaultModel';
+import { suggestUsername } from '../guest';
+import { withPreferredName } from '../preferredName';
+import type { HouseholdModel } from '../types';
 import { createFirebaseAccount } from '../authFirebase';
 import { saveProfileCloudBackup } from '../cloudBackup';
 import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
@@ -24,16 +30,22 @@ import { radii, spacing } from '../tokens';
 type Props = {
   onProfileCreated: (username: string, key: CryptoJS.lib.WordArray, credentials?: { email: string; password: string }) => void;
   onGoToSignIn: () => void;
+  // Version 3 (new start, canvas B8): saving a guest's Finance Flow. The new account starts
+  // with what they set up (and the entry they were adding), their name for Home, and a
+  // username suggested from that name.
+  guest?: { name: string; model: HouseholdModel; entry: string | null; onBack: () => void };
 };
 
-export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: Props) {
+export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, guest }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const [usernameInput, setUsernameInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState(guest ? suggestUsername(guest.name) : '');
   const [emailInput, setEmailInput] = useState('');
   const [password1, setPassword1] = useState('');
   const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
+  // Version 3: "Did you mean ...@gmail.com?" asks once per typed email; Create again keeps it.
+  const [typoAskedFor, setTypoAskedFor] = useState('');
   const [busy, setBusy] = useState(false);
   const [createdInfo, setCreatedInfo] = useState<{ username: string; key: CryptoJS.lib.WordArray } | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
@@ -75,8 +87,14 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       setError('Choose a username.');
       return;
     }
-    if (!email || !email.includes('@')) {
-      setError('Enter a valid email.');
+    if (!email || !isEmailFormat(email)) {
+      setError('Enter a valid email, like name@gmail.com.');
+      return;
+    }
+    const typoFix = emailTypoSuggestion(email);
+    if (typoFix && typoAskedFor !== email) {
+      setTypoAskedFor(email);
+      setError(`Check your email. Did you mean ${typoFix}? Tap the suggestion to fix it, or tap Create again to keep yours.`);
       return;
     }
     if (password1.length < 6) {
@@ -130,7 +148,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
       // password-encrypted profile - exactly as before Phase A.
       const salt = await generateSalt();
       const key = deriveKey(password1, salt);
-      const encrypted = await encryptJSON(key, defaultModel());
+      const startModel = guest ? withPreferredName(guest.model, username, guest.name) ?? guest.model : defaultModel();
+      const encrypted = await encryptJSON(key, startModel);
       profiles.push({ username, salt });
       await saveProfilesIndex(profiles);
       await saveEncryptedProfileData(username, encrypted);
@@ -188,20 +207,42 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.brandWrap}>
-          {/* Version 2.1 (round 6): while creating, this logo draws itself like the opening. */}
-          <DrawingLogo width={84} drawing={busy} />
-        </View>
-        <Text style={styles.title}>Create your account</Text>
-        {busy ? (
-          <BusyWords messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} style={{ marginBottom: 8 }} />
+        {guest ? (
+          <>
+            <TouchableOpacity onPress={guest.onBack} accessibilityRole="button" hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginBottom: 16 }}>
+              <Ionicons name="chevron-back" size={24} color={colors.gold} style={{ marginLeft: -6 }} />
+              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.gold }}>Back</Text>
+            </TouchableOpacity>
+            {busy && (
+              <View style={styles.brandWrap}>
+                <DrawingLogo width={84} drawing />
+              </View>
+            )}
+            <Text style={styles.title}>Save Finance Flow to your email</Text>
+            {busy ? (
+              <BusyWords messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} style={{ marginBottom: 8 }} />
+            ) : (
+              <Text style={styles.sub}>Your password locks your data. Nobody else can read it, not even us.</Text>
+            )}
+          </>
         ) : (
-          <Text style={styles.sub}>Start your financial journey.</Text>
+          <>
+            <View style={styles.brandWrap}>
+              {/* Version 2.1 (round 6): while creating, this logo draws itself like the opening. */}
+              <DrawingLogo width={84} drawing={busy} />
+            </View>
+            <Text style={styles.title}>Create your account</Text>
+            {busy ? (
+              <BusyWords messages={['Creating your account…', 'Locking your data with your password…', 'Making your Recovery Key…', 'Almost there…']} style={{ marginBottom: 8 }} />
+            ) : (
+              <Text style={styles.sub}>Start your financial journey.</Text>
+            )}
+          </>
         )}
 
         <View style={{ opacity: busy ? 0.45 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
 
-        <Text style={styles.label}>Email address</Text>
+        <MarkedLabel text="Email address" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="mail-outline" size={18} color={colors.decor} />
@@ -218,8 +259,24 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
             keyboardType="email-address"
           />
         </View>
+        {!!emailTypoSuggestion(emailInput) && (
+          <TouchableOpacity
+            testID="email-typo-fix"
+            onPress={() => {
+              const fix = emailTypoSuggestion(emailInput);
+              if (fix) setEmailInput(fix);
+              setError('');
+            }}
+            accessibilityRole="button"
+            style={{ marginTop: 6, marginBottom: 2 }}
+          >
+            <Text style={{ fontSize: 14, color: colors.gold, fontWeight: '600' }}>
+              Did you mean {emailTypoSuggestion(emailInput)}? Tap to fix
+            </Text>
+          </TouchableOpacity>
+        )}
 
-        <Text style={styles.label}>Username</Text>
+        <MarkedLabel text="Username" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="person-outline" size={18} color={colors.decor} />
@@ -236,7 +293,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
           />
         </View>
 
-        <Text style={styles.label}>Password</Text>
+        <MarkedLabel text="Password" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="lock-closed-outline" size={18} color={colors.decor} />
@@ -250,7 +307,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
           />
         </View>
 
-        <Text style={styles.label}>Confirm password</Text>
+        <MarkedLabel text="Confirm password" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>
           <View style={styles.leftIcon} pointerEvents="none">
             <Ionicons name="lock-closed-outline" size={18} color={colors.decor} />
@@ -269,7 +326,9 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn }: 
 
         <TouchableOpacity testID="create-profile-button" style={styles.primaryBtn} onPress={() => { hapticLight(); handleCreate(); }} disabled={busy}>
           <GradientFill color={colors.buttonFill} strength={0.18} />
-          <Text style={styles.primaryBtnText}>{busy ? 'Creating…' : 'Create profile'}</Text>
+          <Text style={styles.primaryBtnText}>
+            {busy ? (guest ? 'Saving…' : 'Creating…') : guest ? (guest.entry ? `Save and add my ${guest.entry.split(' ').pop()}` : 'Save') : 'Create profile'}
+          </Text>
           {!busy && <Ionicons name="arrow-forward" size={18} color={colors.navy2} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
 

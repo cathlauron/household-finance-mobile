@@ -1,7 +1,10 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { alertNotSaved } from '../messages';
 import LoadingView from '../components/LoadingView';
 import AppSwitch from '../components/AppSwitch';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
@@ -45,7 +48,7 @@ export default function RecurringScreen() {
     try {
       await saveModel(next);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this repeat'));
     }
   }
 
@@ -75,7 +78,7 @@ export default function RecurringScreen() {
   ];
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce style={{ flex: 1 }} contentContainerStyle={styles.content}>
       <Text style={styles.intro}>Things that happen on a schedule are added for you, so you never type them twice.</Text>
 
       {rules.length === 0 && (
@@ -163,7 +166,7 @@ export default function RecurringScreen() {
           </TouchableOpacity>
         )}
       </BottomSheet>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -93,6 +93,10 @@ export type PaymentLogEntry = {
   // adds to that account's balance; the expected amount is only a projection.
   paymentMethod?: PaymentMethod;
   createdAt?: number; // when it was logged (stamped on save)
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type IncomeSource = {
@@ -108,6 +112,10 @@ export type IncomeSource = {
   // Redesign: the account paydays usually go into (preselected when logging one).
   depositTo?: PaymentMethod;
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // ---- Checkpoint 10.2a: payment method tracking ----
@@ -142,6 +150,8 @@ export type BillCycle = {
   // A late fee the lender charged for this cycle's short or late payment (added to the
   // next amount due).
   lateFee?: number;
+  // Version 2.2 (W1/W2 everywhere): who marked this cycle paid (cleared when unpaid).
+  paidBy?: string;
 };
 
 export type Bill = {
@@ -169,6 +179,10 @@ export type Bill = {
   // "cancel by" date the person wants to be reminded of.
   cancelledOn?: string;
   cancelBy?: string;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type Debt = {
@@ -182,20 +196,33 @@ export type Debt = {
   owner: string;
   interestRate?: number | '';
   minPayment?: number | '';
+  // Version 2.2 (canvas K2): High / Medium / Low.
+  priority?: 'high' | 'medium' | 'low' | '';
   createdAt?: number;
   customFreq?: string;
   customStartDate?: string;
   customOccurrenceCount?: number | '';
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type LoanPayment = {
   id: string;
   date: string;
   actual: number | '';
+  // Version 3: which scheduled payment this covers (YYYY-MM-DD), when chosen; payments
+  // without one cover the oldest scheduled payment not yet covered (loanSchedule.ts).
+  forDate?: string;
   paymentMethod?: PaymentMethod;
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type Loan = {
@@ -208,12 +235,18 @@ export type Loan = {
   owner: string;
   direction: 'borrowed' | 'lent';
   interestRate?: number | '';
+  // Version 2.2 (canvas K2): High / Medium / Low.
+  priority?: 'high' | 'medium' | 'low' | '';
   recurringType?: 'monthly' | 'annual' | 'onetime' | 'custom';
   dueDate?: Record<string, any>;
   customFreq?: string;
   customStartDate?: string;
   customOccurrenceCount?: number | '';
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type SavingsContribution = {
@@ -224,6 +257,10 @@ export type SavingsContribution = {
   paymentMethod?: PaymentMethod;
   auto?: boolean; // added automatically on a payday
   createdAt?: number; // when it was logged (stamped on save)
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type SavingsGoal = {
@@ -238,6 +275,10 @@ export type SavingsGoal = {
   keptIn?: PaymentMethod;
   autoAdd?: { enabled: boolean; amount: number; since: string };
   isEmergency?: boolean;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type CalculatorInputs = {
@@ -294,6 +335,21 @@ export type TravelChecklistItem = {
   // Set once this item is checked (with a cost) and a matching ManualTransaction has been
   // logged for it — lets us find and remove that transaction if the item gets unchecked.
   expenseTransactionId?: string;
+  // Version 2.2 (Cath, canvas P1-P3): how a ticked item was paid. paidWith: the account it
+  // came off (its transaction says the same). markedOnly: "Just mark it paid", so there is
+  // no transaction and no balance or spending changes; it still counts as Paid in the trip.
+  paidWith?: PaymentMethod;
+  markedOnly?: boolean;
+  // How much "take it off my balance" took off paidWith's saved balance, so it can be given
+  // back if the item is unticked, answered again or removed.
+  takenOff?: number;
+  // Only on the way to being saved: "take it off my balance" for a payment dated before
+  // balances were last updated (never kept on a saved item).
+  takeOffBalance?: boolean;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type TravelTrip = {
@@ -314,6 +370,10 @@ export type TravelTrip = {
   trackInSavings?: boolean;
   savingsGoalId?: string;
   createdAt?: number;
+  // Version 2.2 (W1/W2 everywhere): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // ---- Checkpoint 8.3: Events ----
@@ -385,6 +445,17 @@ export type BalanceAccountEntry = {
   currency?: string;
   owner?: string;
   color?: string;
+  // Version 3, credit cards only. `amount` stays what you can still use (approved K3);
+  // with a limit the card page also shows what you owe (limit minus what you can use).
+  creditLimit?: number;
+  statementDueDay?: number; // day of the month the statement is due (1-31)
+  minPayment?: number; // usual minimum payment
+  // Version 2.2 (canvas B1): every time the balance was typed in by hand, newest first
+  // (kept to the last 50). from is null for the first balance.
+  balanceLog?: { at: number; from: number | null; to: number; by?: string }[];
+  // Version 2.2 (canvas D1-D3): optional last 4 digits of a debit or credit card, to tell
+  // cards apart. Exactly 4 numbers; never the full card number.
+  last4?: string;
 };
 
 export type BalanceAccounts = {
@@ -422,6 +493,9 @@ export type ManualTransaction = {
   // "Refunded" rather than "Pending" — mirrors the expenseTransactionId pattern already used
   // by Travel checklist items and Events.
   refundTransactionId?: string;
+  // Version 3 (approved K5): a credit card purchase split into 3, 6 or 12 monthly payments.
+  // Spending counts the whole amount on the day of purchase; this only tracks the parts.
+  installments?: number;
   // When this transaction was first saved (milliseconds since 1970). Lets Left to Spend
   // tell whether spending logged on the same day as a balance update came before or
   // after that update. Older transactions don't have it and are treated as "before".
@@ -436,6 +510,11 @@ export type ManualTransaction = {
   incomeKind?: 'bonus' | 'side' | 'allowance' | 'gift' | 'other';
   // Redesign ("Make it repeat"): set on transactions added by a repeat, pointing at it.
   recurringId?: string;
+  // Version 2.2 (canvas W1 B + W2): who added it (username), and who last changed it and
+  // when. Stamped on save; shown only in a shared household.
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // Redesign ("Make it repeat" / Recurring page): a transaction that is added for you on a

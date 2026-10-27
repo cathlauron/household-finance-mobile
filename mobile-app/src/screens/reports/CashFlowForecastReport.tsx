@@ -7,6 +7,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
+import { dateText } from '../../dateUtils';
 import { View, ActivityIndicator, useWindowDimensions } from 'react-native';
 import Svg, { Line, Polyline, Circle, Text as SvgText } from 'react-native-svg';
 import { Text } from '../../components/AppText';
@@ -23,10 +24,10 @@ type Point = { date: Date; balance: number };
 type Move = { date: Date; event: CalendarEvent; delta: number };
 
 function shortDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateText(d);
 }
 function dayDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return dateText(d, { weekday: true });
 }
 
 function forecast(model: HouseholdModel, daysAhead: number): { series: Point[]; moves: Move[] } {

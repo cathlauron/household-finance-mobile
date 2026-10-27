@@ -1,5 +1,6 @@
 ﻿import React from 'react';
-import { View, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../balanceProjection';

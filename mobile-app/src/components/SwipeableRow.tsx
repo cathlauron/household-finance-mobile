@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
-import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { holdTabSwipe } from '../navigation/swipeTabs';
+import React, { useContext, useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
+import { TouchableOpacity } from './Tap';
+import { holdTabSwipe, SwipeTabsContext } from '../navigation/swipeTabs';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -25,11 +26,33 @@ export type SwipeableRowProps = {
   };
 };
 
+// Version 2.2 (Cath): an open row (showing its trash button) closes by itself when you
+// move to another screen or open another row.
+const openRows = new Set<() => void>();
+export function closeOpenSwipeRows() {
+  openRows.forEach((close) => close());
+  openRows.clear();
+}
+
+// A quick flick (a fast, long sideways swipe) means "next screen", not "delete".
+const FLICK_MS = 230;
+const FLICK_PX = 60;
+
 export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, flat }: SwipeableRowProps) {
   const { colors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
+  const flickToTab = useContext(SwipeTabsContext);
+  const start = useRef<{ x: number; y: number; t: number } | null>(null);
+  const closeMe = useRef(() => swipeableRef.current?.close()).current;
+  useEffect(() => () => {
+    openRows.delete(closeMe);
+  }, [closeMe]);
 
-  if (!enabled) {
+  // Version 2.2 (Cath: "remove swipe to delete entirely"): rows no longer swipe open to a
+  // red trash button. Deleting is done from the item's own page or its Edit form (Delete
+  // at the bottom). Only the gentle "view" swipe (a row made by a bill, debt, loan…
+  // jumping to that item) is kept.
+  if (!enabled || !viewAction) {
     return <>{children}</>;
   }
 
@@ -79,9 +102,37 @@ export function SwipeableRow({ children, enabled, onDelete, testID, viewAction, 
   }
 
   return (
-    <View {...holdTabSwipe}>
+    <View
+      onTouchStart={(e) => {
+        holdTabSwipe.onTouchStart();
+        start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, t: Date.now() };
+      }}
+      onTouchEnd={(e) => {
+        holdTabSwipe.onTouchEnd();
+        const s0 = start.current;
+        start.current = null;
+        if (!s0 || !flickToTab) return;
+        const dx = e.nativeEvent.pageX - s0.x;
+        const dy = e.nativeEvent.pageY - s0.y;
+        if (Date.now() - s0.t <= FLICK_MS && Math.abs(dx) >= FLICK_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          swipeableRef.current?.close();
+          flickToTab(dx < 0 ? 1 : -1);
+        }
+      }}
+      onTouchCancel={() => {
+        holdTabSwipe.onTouchCancel();
+        start.current = null;
+      }}
+    >
     <Swipeable
       ref={swipeableRef}
+      onSwipeableWillOpen={() => {
+        // Only one row open at a time.
+        openRows.forEach((close) => close !== closeMe && close());
+        openRows.clear();
+        openRows.add(closeMe);
+      }}
+      onSwipeableClose={() => openRows.delete(closeMe)}
       renderRightActions={renderRightActions}
       overshootRight={false}
       friction={2}

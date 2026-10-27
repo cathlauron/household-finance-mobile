@@ -1,7 +1,15 @@
+import { firstTimeOpen } from '../handledOpen';
+import { toneUnlessZero } from '../moneyColor';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, alertNotDeleted } from '../messages';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import React, { useState, useRef, useEffect } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { takeSalaryHandoff, cancelSalaryHandoff } from '../salaryHandoff';
+import { MarkedLabel } from '../components/MarkedLabel';
+import { View, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
@@ -27,9 +35,9 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import { monthTotals, sourcesByPerson } from '../incomeMonth';
 import { extraIncome, incomeKindLabel } from '../incomeKinds';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import { useNavigation } from '@react-navigation/native';
-import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
 // Local editing shape for one payment-log row in the modal — amount is kept as
@@ -77,6 +85,9 @@ function sortByNextPayDate(sources: IncomeSource[]): IncomeSource[] {
 }
 
 type IncomeScreenProps = {
+  // Version 2.2: opens the "Add income" form straight away (from a New transaction's
+  // "Add a salary").
+  openAddNonce?: number;
   openIncomeId?: string;
   openIncomeNonce?: number;
   // Set on one person's income page ('__none' = sources with nobody picked).
@@ -85,12 +96,13 @@ type IncomeScreenProps = {
 
 const NO_PERSON = '__none';
 const AVATAR_COLORS = ['#2E6B47', '#5B6CC9', '#D47A9B', '#C2410C', '#0E7490'];
-const dayOf = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-const shortDay = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const dayOf = (d: Date) => dateText(d, { weekday: true });
+const shortDay = (iso: string) => dateText(new Date(iso + 'T00:00:00'), { weekday: true });
 
-export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }: IncomeScreenProps = {}) {
+export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, openAddNonce }: IncomeScreenProps = {}) {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
 
   const openedIncomeRef = useRef<{ id: string; nonce?: number } | undefined>(undefined);
@@ -101,10 +113,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     const target = (model.income || []).find((s) => s.id === openIncomeId);
     if (target) {
       openedIncomeRef.current = { id: openIncomeId, nonce: openIncomeNonce };
+      if (!firstTimeOpen('income', openIncomeId, openIncomeNonce)) return;
       afterSlide(() => openEditModal(target));
     }
   }, [model, openIncomeId, openIncomeNonce]);
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -134,7 +147,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
     if (frequencyInput === 'semimonthly') return semiDay1Input && semiDay2Input ? `${ordinal(parseInt(semiDay1Input, 10))} and ${ordinal(parseInt(semiDay2Input, 10))}` : 'Choose';
     if (frequencyInput === 'weekly') return weeklyDowInput !== null ? `${DOW_LABELS[weeklyDowInput]}s` : 'Choose';
     const d = frequencyInput === 'onetime' ? onetimeDateInput : biweeklyAnchorInput;
-    return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Choose';
+    return d ? dateText(new Date(d + 'T00:00:00'), { weekday: true }) : 'Choose';
   })();
   const nextPaydayText = (() => {
     const pd =
@@ -145,7 +158,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       : biweeklyAnchorInput ? [biweeklyAnchorInput] : [];
     if (!pd.length) return '';
     const next = computeNextPayDate(frequencyInput, pd);
-    return next ? `Next payday ${next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}.` : '';
+    return next ? `Next payday ${dateText(next, { weekday: true })}.` : '';
   })();
 
   // Logging one payday (from a row in "Paydays this month"): the same record as
@@ -179,6 +192,16 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   useEffect(() => {
     clearFieldError();
   }, [monthlyDayInput, semiDay1Input, semiDay2Input, biweeklyAnchorInput, onetimeDateInput, frequencyInput, paymentLogEntries, depositInput, modalOpen, clearFieldError]);
+
+  // Hooks stay above the loading return below, so they run on every render (2026-10-22:
+  // they used to sit below it, which can crash the page when the data briefly goes away,
+  // e.g. while logging out).
+  useEffect(() => {
+    if (!openAddNonce) return;
+    afterSlide(() => openAddModalRef.current());
+  }, [openAddNonce]);
+  // Leaving without adding one: nothing waits for it any more.
+  useEffect(() => () => cancelSalaryHandoff(), []);
 
   if (!model) {
     return (
@@ -239,7 +262,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       showLeafTick('Added');
       setLogSheet(null);
     } catch {
-      setLogError('Failed to save. Please try again.');
+      setLogError(notSaved('this payday'));
     } finally {
       setLogSaving(false);
     }
@@ -303,6 +326,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   async function handleSave() {
     if (!model) return;
     setErrorMsg('');
+    let addedId: string | null = null;
 
     const parsedAmount: number | '' = amountInput === '' ? '' : amountInput;
 
@@ -408,6 +432,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         createdAt: Date.now(),
       };
       updated.income = [...updated.income, newSource];
+      addedId = newSource.id;
     }
 
     setSaving(true);
@@ -415,25 +440,34 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
       await saveModel(updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
+      // Came here from a New transaction's "Add a salary": go straight back to it.
+      const next = addedId ? takeSalaryHandoff() : null;
+      if (next && addedId) {
+        const id = addedId;
+        navigation.goBack();
+        afterSlide(() => next(id));
+      }
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this income'));
     } finally {
       setSaving(false);
     }
   }
 
   async function performDelete() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      income: model.income.filter((s) => s.id !== editingId),
+      ...current,
+      income: current.income.filter((s) => s.id !== editingId),
     };
     setSaving(true);
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this income'));
     } finally {
       setSaving(false);
     }
@@ -450,16 +484,18 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
   }
 
   async function performDeleteSourceById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      income: model.income.filter((s) => s.id !== id),
+      ...current,
+      income: current.income.filter((s) => s.id !== id),
     };
     setSaving(true);
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this income'));
     } finally {
       setSaving(false);
     }
@@ -512,9 +548,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
               <View style={styles.heroCard}>
                 <GradientFill match={styles.heroCard} />
                 <Text style={styles.heroLabel}>EXPECTED IN {monthName.toUpperCase()}</Text>
-                <Text style={[styles.heroAmount, { color: colors.planned }]}>{formatPeso(totals.expected)}</Text>
+                <Text style={[styles.heroAmount, { color: toneUnlessZero(totals.expected, colors.planned, colors) }]}>{formatPeso(totals.expected)}</Text>
                 <Text style={styles.heroSub}>
-                  <Text style={{ color: colors.positive, fontWeight: '700' }}>{formatPeso(totals.received)} received</Text>
+                  <Text style={{ color: toneUnlessZero(totals.received, colors.positive, colors), fontWeight: '700' }}>{formatPeso(totals.received)} received</Text>
                   {` · ${formatPeso(totals.toCome)} still to come`}
                 </Text>
                 <View style={[styles.heroTrack, { backgroundColor: colors.indigoBg }]}>
@@ -554,9 +590,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                             <View style={styles.personTop}>
                               <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
                               <Text style={styles.personAmounts}>
-                                <Text style={{ color: colors.positive }}>{formatPeso(t.received)}</Text>
+                                <Text style={{ color: toneUnlessZero(t.received, colors.positive, colors) }}>{formatPeso(t.received)}</Text>
                                 <Text style={{ color: colors.inkFaint, fontWeight: '500' }}> / </Text>
-                                <Text style={{ color: colors.planned }}>{formatPeso(t.expected)}</Text>
+                                <Text style={{ color: toneUnlessZero(t.expected, colors.planned, colors) }}>{formatPeso(t.expected)}</Text>
                               </Text>
                             </View>
                             <Text style={styles.rowSub} numberOfLines={1}>
@@ -624,7 +660,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                           )}
                           <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={styles.rowName}>{shortDay(r.logged ? r.logged.date : r.date)}</Text>
-                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}</Text>
+                            <Text style={styles.rowSub} numberOfLines={1}>{srcName}{note ? ` · ${note}` : ''}{who.by(r.logged?.addedBy)}</Text>
                           </View>
                           <Text style={[styles.rowAmount, { color: r.logged ? colors.positive : colors.planned }]}>
                             +{formatPeso(r.logged ? got : r.expected)}
@@ -661,7 +697,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <Text style={styles.rowName} numberOfLines={1}>{source.sourceName || source.category || 'Untitled income'}</Text>
                               <Text style={styles.rowSub} numberOfLines={1}>
-                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}
+                                {PAY_LABEL[freq]}{nextDate ? ` · next ${dayOf(nextDate)}` : ''}{who.by(source.addedBy)}
                               </Text>
                             </View>
                             <Text style={[styles.rowAmount, { color: colors.ink }]}>
@@ -688,11 +724,11 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           <View style={styles.extraTotals}>
             <View style={{ flex: 1 }}>
               <Text style={styles.extraMeta}>This month</Text>
-              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraMonth)}</Text>
+              <Text style={[styles.extraTotal, { color: toneUnlessZero(extraMonth, colors.positive, colors) }]}>+{formatPeso(extraMonth)}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.extraMeta}>This year</Text>
-              <Text style={[styles.extraTotal, { color: colors.positive }]}>+{formatPeso(extraYear)}</Text>
+              <Text style={[styles.extraTotal, { color: toneUnlessZero(extraYear, colors.positive, colors) }]}>+{formatPeso(extraYear)}</Text>
             </View>
           </View>
           {extras.length === 0 ? (
@@ -713,7 +749,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
                     {t.incomeKind ? incomeKindLabel(t.incomeKind) : 'Other'} · {formatShortDate(new Date(t.date + 'T00:00:00'))}
                   </Text>
                 </View>
-                <Text style={[styles.rowAmount, { color: colors.positive }]}>+{formatPeso(t.amount)}</Text>
+                <Text style={[styles.rowAmount, { color: toneUnlessZero(t.amount, colors.positive, colors) }]}>+{formatPeso(t.amount)}</Text>
               </TouchableOpacity>
             ))
           )}
@@ -732,19 +768,20 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           <>
             <BigAmount
               label={`What arrived from ${(model.income || []).find((x) => x.id === logSheet.sourceId)?.sourceName || 'this source'}`}
+              mark="required"
               value={logSheet.amount}
               onChange={(v) => setLogSheet((l) => (l ? { ...l, amount: v } : l))}
               color={colors.positive}
             />
             <FormGroup>
               <View style={styles.logDateRow}>
-                <Text style={styles.logDateLabel}>Date</Text>
+                <MarkedLabel text="Date" mark="required" style={styles.logDateLabel} />
                 <DateField value={logSheet.date} onChange={(d: string) => setLogSheet((l) => (l ? { ...l, date: d } : l))} style={{ flex: 1, marginBottom: 0 }} />
               </View>
             </FormGroup>
-            <Text style={styles.logSection}>WENT INTO</Text>
+            <MarkedLabel text="WENT INTO" mark="required" style={styles.logSection} />
             <AccountChoices model={model} value={logSheet.pm} onChange={(pm) => setLogSheet((l) => (l ? { ...l, pm } : l))} />
-            {!!logError && <Text style={[styles.errorText, { marginTop: 10 }]}>{logError}</Text>}
+            <ErrorNote text={logError} />
             <View style={{ height: 16 }} />
           </>
         )}
@@ -757,27 +794,27 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         grouped
         header={<SheetBar title={editingId ? 'Edit income' : 'New income'} onCancel={closeModal} onDone={handleSave} doneLabel="Save" busy={saving} />}
       >
-        <BigAmount label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
+        <BigAmount mark="optional" label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
 
         <FormGroup>
-          <InputRow label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />
-          <PickerRow label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
+          <InputRow mark="optional" label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />
+          <PickerRow mark="optional" label="Kind" value={categoryInput || 'Choose'} open={openRow === 'kind'} onToggle={() => toggleRow('kind')}>
             <Choices options={CATEGORY_SUGGESTIONS.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />
             <View style={{ height: 10 }} />
-            <InlineField label="Or type your own" value={CATEGORY_SUGGESTIONS.includes(categoryInput) ? '' : categoryInput} onChangeText={setCategoryInput} />
+            <OwnChoiceField options={CATEGORY_SUGGESTIONS} value={categoryInput} onChange={setCategoryInput} />
           </PickerRow>
-          <PickerRow label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
+          <PickerRow mark="optional" label="Belongs to" value={personInput || 'Choose'} open={openRow === 'person'} onToggle={() => toggleRow('person')}>
             {model.people.length > 0 && (
               <Choices options={model.people.map((p) => ({ id: p.name, label: p.name }))} value={personInput} onChange={setPersonInput} />
             )}
             <View style={{ height: 10 }} />
             <InlineField label="Or type a name" value={model.people.some((p) => p.name === personInput) ? '' : personInput} onChangeText={setPersonInput} placeholder="e.g. Miguel" />
           </PickerRow>
-          <PickerRow label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
+          <PickerRow mark="required" label="Paid" value={PAY_LABEL[frequencyInput]} open={openRow === 'freq'} onToggle={() => toggleRow('freq')}>
             <Choices options={FREQUENCIES.map((f) => ({ id: f, label: PAY_LABEL[f] }))} value={frequencyInput} onChange={(f) => setFrequencyInput(f as Frequency)} />
           </PickerRow>
           <Guided {...fieldErrors.props('payday')} onShow={() => { if (openRow !== 'payday') toggleRow('payday'); }}>
-          <PickerRow label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} invalid={fieldErrors.field === 'payday'} onToggle={() => toggleRow('payday')}>
+          <PickerRow mark="required" label={frequencyInput === 'biweekly' ? 'Last payday' : frequencyInput === 'onetime' ? 'Date' : 'Payday'} value={paydayLabel} open={openRow === 'payday'} invalid={fieldErrors.field === 'payday'} onToggle={() => toggleRow('payday')}>
             {frequencyInput === 'monthly' && <DayStrip value={parseInt(monthlyDayInput, 10) || null} onChange={(d) => setMonthlyDayInput(String(d))} />}
             {frequencyInput === 'semimonthly' && (
               <>
@@ -795,7 +832,7 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
           </PickerRow>
           </Guided>
           <Guided {...fieldErrors.props('account')} onShow={() => { if (openRow !== 'account') toggleRow('account'); }}>
-          <PickerRow label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} invalid={fieldErrors.field === 'account'} onToggle={() => toggleRow('account')}>
+          <PickerRow mark="required" label="Goes into" value={accountName(model, depositInput) ?? 'Choose'} dot={depositInput ? paymentMethodColor(model, depositInput) : null} open={openRow === 'account'} invalid={fieldErrors.field === 'account'} onToggle={() => toggleRow('account')}>
             <AccountChoices model={model} value={depositInput} onChange={setDepositInput} />
           </PickerRow>
           </Guided>
@@ -840,7 +877,12 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId }
         </Guided>
         <Footnote>You can also log a payday from + › Money in › Salary.</Footnote>
 
-        {!!errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
+        {/* Version 2.2 (W2 everywhere): who added this income, and who last changed it. */}
+        {editingId && (() => {
+          const src = model?.income.find((x) => x.id === editingId);
+          return src ? <WhoFootnote addedBy={src.addedBy} createdAt={src.createdAt} changedBy={src.changedBy} changedAt={src.changedAt} style={{ marginTop: 0, marginBottom: 14 }} /> : null;
+        })()}
         {editingId && <Button label="Delete income source" variant="destructive" onPress={handleDelete} />}
       </BottomSheet>
     </SafeAreaView>

@@ -93,9 +93,12 @@ type Props = {
   color: string; // the mood leaf colour
   opacity: number; // the mood leaf strength (about 0.045)
   veinColor: string; // the page colour, so the veins look cut out
+  // Version 2.2 (Cath): Falling leaves off = the leaves stop where they are (and carry on
+  // from there when it's turned back on), instead of switching to a different still layout.
+  paused?: boolean;
 };
 
-export default function FallingLeaves({ color, opacity, veinColor }: Props) {
+export default function FallingLeaves({ color, opacity, veinColor, paused = false }: Props) {
   const { width, height } = useWindowDimensions();
   const leaves = useMemo(makeLeaves, []);
   return (
@@ -109,6 +112,7 @@ export default function FallingLeaves({ color, opacity, veinColor }: Props) {
           color={color}
           opacity={opacity}
           veinColor={veinColor}
+          paused={paused}
         />
       ))}
     </View>
@@ -122,7 +126,9 @@ const FallingLeaf = React.memo(function FallingLeaf({
   color,
   opacity,
   veinColor,
+  paused,
 }: {
+  paused: boolean;
   leaf: LeafSpec;
   screenW: number;
   screenH: number;
@@ -138,6 +144,7 @@ const FallingLeaf = React.memo(function FallingLeaf({
 
   // Falling: from just above the screen to just below it, then start again at the top.
   useEffect(() => {
+    if (paused) return;
     let stopped = false;
     function run(from: number) {
       fall.setValue(from);
@@ -150,21 +157,28 @@ const FallingLeaf = React.memo(function FallingLeaf({
         if (finished && !stopped) run(0);
       });
     }
-    run(leaf.phase);
+    // Starts (or carries on) from wherever the leaf is now.
+    fall.stopAnimation((now) => {
+      if (!stopped) run(typeof now === 'number' ? now : leaf.phase);
+    });
     return () => {
       stopped = true;
       fall.stopAnimation();
     };
-  }, [fall, leaf]);
+  }, [fall, leaf, paused]);
 
   // Swaying side to side (and tilting with it), forever. Each half-swing starts exactly
   // where the last one ended, so there is never a jump. (Animated.loop resets the value
   // between rounds, which made the leaves twitch.) The first half-swing starts from a
   // random spot, with a duration to match, so the leaves stay out of step.
+  const swayTo = useRef(1);
+  const swayStarted = useRef(false);
   useEffect(() => {
+    if (paused) return;
     let stopped = false;
     const half = leaf.swayMs / 2;
     function swing(from: number, to: number) {
+      swayTo.current = to;
       const share = Math.abs(to - from) / 2; // 1 for a full half-swing
       Animated.timing(sway, {
         toValue: to,
@@ -175,17 +189,25 @@ const FallingLeaf = React.memo(function FallingLeaf({
         if (finished && !stopped) swing(to, -to);
       });
     }
-    sway.setValue(leaf.swayStart);
-    swing(leaf.swayStart, 1);
+    if (!swayStarted.current) {
+      swayStarted.current = true;
+      sway.setValue(leaf.swayStart);
+      swing(leaf.swayStart, 1);
+    } else {
+      sway.stopAnimation((now) => {
+        if (!stopped) swing(typeof now === 'number' ? now : 0, swayTo.current);
+      });
+    }
     return () => {
       stopped = true;
       sway.stopAnimation();
     };
-  }, [sway, leaf]);
+  }, [sway, leaf, paused]);
 
   // Wind: each gust pushes the leaf sideways (quick start, slow settle) and tilts it
   // the way it is pushed, then it carries on falling.
   useEffect(() => {
+    if (paused) return;
     return subscribeToLeafTransition((push) => {
       const dx = push * leaf.wind * WIND_STRENGTH;
       windTarget.current += dx;
@@ -207,7 +229,7 @@ const FallingLeaf = React.memo(function FallingLeaf({
         Animated.timing(tilt, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]).start();
     });
-  }, [wind, tilt, leaf]);
+  }, [wind, tilt, leaf, paused]);
 
   // Drawn size including the padding, so the leaf itself is leaf.size tall.
   const unit = leaf.size / 205;

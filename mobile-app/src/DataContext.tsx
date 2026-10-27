@@ -18,11 +18,15 @@ import { getCurrentFirebaseUser } from './authFirebase';
 import { showSaved } from './components/SavedToast';
 import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import React, { createContext, startTransition, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, InteractionManager } from 'react-native';
+import { SHEET_CLOSE_MS, TAB_MS } from './motion';
+// How long a save waits for the screen to settle (form closing + the next slide).
+const SAVE_AFTER_MOVES_MS = SHEET_CLOSE_MS + TAB_MS + 150;
 import CryptoJS from 'crypto-js';
-import type { HouseholdModel } from './types';
+import type { HouseholdModel, ManualTransaction } from './types';
+import { stampHouseholdWho } from './whoStamp';
 import { defaultModel } from './defaultModel';
 import { deriveKey, generateSalt, encryptJSON, decryptJSON } from './encryption';
 import {
@@ -41,6 +45,7 @@ import {
   saveHouseholdPendingBase,
   loadHouseholdPendingBase,
   saveCachedHouseholdKey,
+  loadCachedHouseholdKey,
 } from './storage';
 import { cancelLinkCode, finishHostLink } from './linking';
 import { rescheduleBillNotifications } from './pushNotifications';
@@ -64,6 +69,7 @@ import {
   saveHouseholdDataChecked,
 } from './household';
 import { mergeHouseholds } from './merge3';
+import { describeNewEntry } from './guest';
 import {
   partsEnabledFor,
   afterLoad as partsAfterLoad,
@@ -108,6 +114,12 @@ type DataContextValue = {
   // background sign-in has worked (before that Firebase would refuse it).
   goOnline: () => void;
   saveModel: (updatedModel: HouseholdModel) => Promise<void>;
+  // Version 2.2: saveModel returns once the screen has the change; this waits (up to a
+  // few seconds) for the saving that carries on in the background. Used before signing out.
+  waitForSaves: (maxMs?: number) => Promise<void>;
+  // Version 2.2: the newest data right now (for saves that run a moment later, e.g. after
+  // typing stops, so they never undo a change made in between).
+  getModel: () => HouseholdModel | null;
   clearModel: () => void;
   refreshModel: () => Promise<RefreshOutcome>;
   verifyPassword: (password: string) => Promise<boolean>;
@@ -140,6 +152,16 @@ type DataContextValue = {
   unlinkAndTransferOwnership: (newOwnerUid: string) => Promise<ChangePasswordResult>;
   linkNoticeMsg: string | null;
   clearLinkNoticeMsg: () => void;
+  // Version 3 (new start): using the app before having an account. Nothing is saved;
+  // the first money entry asks to save Finance Flow to an email first (see guest.ts).
+  guest: boolean;
+  guestRequest: { model: HouseholdModel; entry: string } | null;
+  guestInfo: { name: string; helpWith: string[] } | null;
+  startGuest: (model: HouseholdModel, info: { name: string; helpWith: string[] }) => void;
+  // "Not now": keep showing the entry on this phone without saving it (keep = true), or
+  // drop it (keep = false).
+  resolveGuestRequest: (keep: boolean) => void;
+  endGuest: () => void;
 };
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -169,6 +191,11 @@ const STORAGE_WARN_AT = 0.8;
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<HouseholdModel | null>(null);
+  const [guest, setGuest] = useState(false);
+  const guestRef = useRef(false);
+  guestRef.current = guest;
+  const [guestRequest, setGuestRequest] = useState<{ model: HouseholdModel; entry: string } | null>(null);
+  const [guestInfo, setGuestInfo] = useState<{ name: string; helpWith: string[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
   const [linkNoticeMsg, setLinkNoticeMsg] = useState<string | null>(null);
@@ -182,7 +209,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function noteStorageSize(encrypted: string | null | undefined) {
     if (!encrypted) return;
     const used = encrypted.length / STORAGE_LIMIT_CHARS;
-    setStorageUsed(used);
+    // Version 2.2: Settings shows a whole percent, so only a change of a percent counts.
+    // (Every save used to set a slightly different number, which redrew the whole app
+    // a second time after each tap.)
+    const rounded = Math.round(used * 100) / 100;
+    setStorageUsed((prev) => (Math.round(prev * 100) / 100 === rounded ? prev : used));
     if (used >= STORAGE_WARN_AT && used < 1 && !storageWarnedRef.current) {
       storageWarnedRef.current = true;
       Alert.alert(
@@ -198,14 +229,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
       storageFullWarnedRef.current = true;
       Alert.alert(
         'Online storage is full',
-        'Your latest changes are saved on this phone, but they are too big to send online, so other phones won\'t see them yet. Removing photos frees the most space. We\'re working on more room in an update.'
+        'Your latest changes are saved on this phone, but they are too big to send online, so other phones won\'t see them yet. Removing photos frees the most space. In a shared household, updating Finance Flow on every phone gives it more room.'
       );
     }
     return true;
   }
   const onlineRef = useRef(true);
   const latestModelRef = useRef<HouseholdModel | null>(null);
-  latestModelRef.current = model;
+  // Version 2.2 (speed fix): only when the data on screen actually changes. A save shows
+  // its result one frame later (see saveModel), so a redraw in between (a form closing)
+  // must not put the older data back here.
+  const renderedModelRef = useRef<HouseholdModel | null>(null);
+  // Code review fix: data this phone saved itself never replaces the newest data here
+  // (a second save made just before the first one is shown used to be lost). Only data
+  // that came from somewhere else (loading, the other phone) does.
+  const ownSavesRef = useRef(new WeakSet<HouseholdModel>());
+  if (model !== renderedModelRef.current) {
+    renderedModelRef.current = model;
+    if (!model || !ownSavesRef.current.has(model)) latestModelRef.current = model;
+  }
   const householdUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Kept outside React state (in refs) since we only need them for the next save/load
@@ -347,6 +389,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const fromParts = await modelFromPartsForUpdate(usernameRef.current, householdId, householdKeyRef.current, snapshotData.layout ?? 0);
           if (fromParts && !sameAsParts(fromParts, latestModelRef.current)) {
             const incomingModel = sanitizeModelIds(fromParts);
+            remoteSeqRef.current += 1;
             setModel(incomingModel);
             const username = usernameRef.current;
             const personalKey = keyRef.current;
@@ -366,6 +409,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           snapshotData.data !== lastEncryptedDataRef.current &&
           householdKeyRef.current
         ) {
+          // Version 2.2 (review fix): this phone's own save coming back. Nothing to do here;
+          // the save itself records it (before, it could replace newer changes on screen).
+          if (snapshotData.data === ownWriteRef.current) return;
           try {
             const incomingModel = sanitizeModelIds(
               decryptJSON<HouseholdModel>(householdKeyRef.current, snapshotData.data)
@@ -373,13 +419,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
             lastEncryptedDataRef.current = snapshotData.data;
             noteStorageSize(snapshotData.data);
             // Version 2.1: changes on this phone that haven't been sent yet are merged with
-            // the other phone's update instead of being replaced by it.
+            // the other phone's update instead of being replaced by it. Version 2.2: the same
+            // while this phone is still saving.
             const shown =
-              pendingRef.current > 0 && latestModelRef.current
+              (pendingRef.current > 0 || savesBusy()) && latestModelRef.current
                 ? sanitizeModelIds(mergeHouseholds(lastSyncedModelRef.current, latestModelRef.current, incomingModel))
                 : incomingModel;
             lastSyncedModelRef.current = incomingModel;
+            remoteSeqRef.current += 1;
             setModel(shown);
+            latestModelRef.current = shown;
 
             // Keep personal local backup fresh
             const username = usernameRef.current;
@@ -421,6 +470,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
     forgetParts();
+    // Signing in (or a new account) ends any guest session.
+    setGuest(false);
+    setGuestRequest(null);
     try {
       const profile = bootstrap?.profile ?? (await loadProfilesIndex()).find((p) => p.username === username);
       let householdId = bootstrap?.householdId ?? profile?.householdId;
@@ -568,6 +620,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       return loaded;
     } catch (e) {
+      // H-03 (2026-10-22, Cath chose this): a dropped connection while opening used to show
+      // an EMPTY household, as if not linked, and anything added then overwrote this phone's
+      // copy and the online backup. Now the copy saved on this phone opens instead (still
+      // linked when the household key is saved here too), and the live link reconnects in
+      // the background, merging both sides the same way as after being offline.
+      const fromPhone = await openFromPhoneCopy(username, key, options).catch(() => null);
+      if (fromPhone) return fromPhone;
       const fallback = defaultModel();
       setModel(fallback);
       setIsLinked(false);
@@ -577,52 +636,124 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // H-03: opens the copy saved on this phone after the online part of opening failed.
+  // Returns null when there's no usable copy here (the old behaviour then applies).
+  async function openFromPhoneCopy(
+    username: string,
+    key: CryptoJS.lib.WordArray,
+    options: { deferNotifications?: boolean }
+  ): Promise<HouseholdModel | null> {
+    if (usernameRef.current !== username) return null; // switched account meanwhile
+    const encrypted = await loadEncryptedProfileData(username);
+    if (!encrypted) return null;
+    const local = sanitizeModelIds(decryptJSON<HouseholdModel>(key, encrypted));
+    const householdId = (await loadProfilesIndex()).find((p) => p.username === username)?.householdId;
+    if (householdId) {
+      const cached = await loadCachedHouseholdKey(username);
+      // Linked but the household key isn't saved on this phone: can't safely open it here.
+      if (!cached || cached.householdId !== householdId) return null;
+      if (usernameRef.current !== username) return null;
+      householdIdRef.current = householdId;
+      householdKeyRef.current = unwrapHouseholdKey(cached.wrappedKey, key);
+      // Like opening offline: changes made now wait, and are merged with the online copy
+      // once connected (never replaced by it).
+      awaitingOnlineRef.current = householdId;
+      lastSyncedModelRef.current = local;
+      try {
+        const baseText = await loadHouseholdPendingBase(username);
+        if (baseText) {
+          lastSyncedModelRef.current = sanitizeModelIds(decryptJSON<HouseholdModel>(key, baseText));
+          setPendingChanges(1);
+        }
+      } catch {}
+      setModel(local);
+      setIsLinked(true);
+      // The live link keeps retrying until the connection is back.
+      setTimeout(() => goOnline(), 3000);
+    } else {
+      setModel(local);
+      setIsLinked(false);
+    }
+    if (!options.deferNotifications) rescheduleBillNotifications(local).catch(() => {});
+    return local;
+  }
+
 
   // Sends the latest data to the cloud after being offline (or after a failed sync).
   // Version 2.1 (merge before save) ----
   // Sends this phone's household to the online copy. If another phone saved since this phone
   // last synced, the two are merged first (merge3.ts), all in one step online. Returns what
   // was written and the household it holds.
+  //
+  // Version 2.2 (review fix): `base` / `baseText` are the household as both phones last
+  // agreed on it, taken when this save started. Anything online that differs from that is
+  // the other phone's change and is merged in (before, a change that arrived while this save
+  // was running could be overwritten). The text about to be written is remembered, so when
+  // it comes back through the live listener it's recognised as this phone's own save.
   async function pushHousehold(
     householdId: string,
     householdKey: CryptoJS.lib.WordArray,
     mine: HouseholdModel,
-    mineEncrypted: string
+    mineEncrypted: string,
+    base: HouseholdModel | null = lastSyncedModelRef.current,
+    baseText: string | null = lastEncryptedDataRef.current
   ): Promise<{ encrypted: string; model: HouseholdModel; merged: boolean }> {
     let result = mine;
+    const seq = remoteSeqRef.current;
     const encrypted = await saveHouseholdDataChecked(householdId, async (online) => {
       result = mine;
-      if (online && online !== lastEncryptedDataRef.current && currentLayout(householdId) < 2) {
+      if (online && online !== baseText && currentLayout(householdId) < 2) {
         try {
           const theirs = sanitizeModelIds(decryptJSON<HouseholdModel>(householdKey, online));
-          result = sanitizeModelIds(mergeHouseholds(lastSyncedModelRef.current, mine, theirs));
+          result = sanitizeModelIds(mergeHouseholds(base, mine, theirs));
         } catch (e) {
           result = mine; // can't read the online copy: save as before
         }
       }
-      return result === mine ? mineEncrypted : encryptJSON(householdKey, result);
+      const text = result === mine ? mineEncrypted : await encryptJSON(householdKey, result);
+      ownWriteRef.current = text;
+      return text;
     });
-    lastEncryptedDataRef.current = encrypted;
-    lastSyncedModelRef.current = result;
+    // (Not when the other phone's newer save already came in meanwhile: that one is newer.)
+    if (householdIdRef.current === householdId && remoteSeqRef.current === seq) {
+      lastEncryptedDataRef.current = encrypted;
+      lastSyncedModelRef.current = result;
+    }
     return { encrypted, model: result, merged: result !== mine };
   }
-  // After a merge, show the merged household (unless something newer was saved meanwhile).
-  function showMerged(res: { model: HouseholdModel; merged: boolean }, version: number) {
-    if (!res.merged || modelVersionRef.current !== version) return;
-    setModel(res.model);
-    const username = usernameRef.current;
-    const key = keyRef.current;
-    if (username && key) {
-      encryptJSON(key, res.model).then((enc) => saveEncryptedProfileData(username, enc)).catch(() => {});
+  // After a save that merged in the other phone's changes. Nothing newer on this phone: show
+  // what was saved. Version 2.2 (review fix): newer changes were made while it was saving:
+  // the other phone's changes are folded into them and saved again (before, they were
+  // dropped and the next save wrote over them).
+  function settleMerged(
+    res: { model: HouseholdModel; merged: boolean },
+    sent: HouseholdModel,
+    version: number,
+    username: string,
+    key: CryptoJS.lib.WordArray | null
+  ) {
+    if (!res.merged) return;
+    if (usernameRef.current !== username || keyRef.current !== key) return; // signed out / switched
+    // What's on screen now may be newer than what was sent (changes made here meanwhile, or
+    // the other phone's newer save already shown): fold the saved result into it.
+    const latest = latestModelRef.current;
+    if (!latest) return;
+    const shown = latest === sent ? res.model : sanitizeModelIds(mergeHouseholds(sent, latest, res.model));
+    if (modelVersionRef.current !== version) persistDirtyRef.current = true; // the save line sends it next
+    setModel(shown);
+    latestModelRef.current = shown;
+    if (key) {
+      encryptJSON(key, shown).then((enc) => saveEncryptedProfileData(username, enc)).catch(() => {});
     }
-    rescheduleBillNotifications(res.model).catch(() => {});
+    rescheduleBillNotifications(shown).catch(() => {});
   }
   // A change couldn't be sent: remember the version both phones last agreed on, so it can be
   // merged later even if the app is closed first.
-  function rememberWaitingBase() {
-    const username = usernameRef.current;
-    const key = keyRef.current;
-    const base = lastSyncedModelRef.current;
+  function rememberWaitingBase(
+    username: string | null = usernameRef.current,
+    key: CryptoJS.lib.WordArray | null = keyRef.current,
+    base: HouseholdModel | null = lastSyncedModelRef.current
+  ) {
     if (!username || !key || !base) return;
     loadHouseholdPendingBase(username)
       .then(async (existing) => {
@@ -630,8 +761,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {});
   }
-  function forgetWaitingBase() {
-    const username = usernameRef.current;
+  function forgetWaitingBase(username: string | null = usernameRef.current) {
     if (username) saveHouseholdPendingBase(username, null).catch(() => {});
   }
   // When the app opens: if changes were waiting to be sent, merge this phone's copy (kept on
@@ -664,12 +794,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     offlineNoteShownRef.current = true;
     showSaved("Saved on this phone. It'll sync when you're back online.");
   }
-  async function syncPendingChanges() {
+  function syncPendingChanges() {
     if (syncingRef.current) return;
+    syncingRef.current = true;
+    // Version 2.2: one save at a time (see inSaveLine).
+    inSaveLine(syncPendingChangesNow).finally(() => {
+      syncingRef.current = false;
+    });
+  }
+  async function syncPendingChangesNow() {
     const username = usernameRef.current;
     const current = latestModelRef.current;
     if (!username || !current || awaitingOnlineRef.current) return;
-    syncingRef.current = true;
+    const key = keyRef.current;
     try {
       if (householdIdRef.current && householdKeyRef.current) {
         const encrypted = await encryptJSON(householdKeyRef.current, current);
@@ -684,8 +821,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             12000,
             'Timed out syncing.'
           );
-          showMerged(res, version);
-          forgetWaitingBase();
+          settleMerged(res, current, version, username, key);
+          forgetWaitingBase(username);
           partsAfterSave(username, householdIdRef.current, householdKeyRef.current, res.model).catch(() => {});
         }
       } else if (saltRef.current && keyRef.current) {
@@ -703,11 +840,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const n = pendingRef.current;
         showSaved(`Back online. ${n} ${n === 1 ? 'change' : 'changes'} synced.`);
       }
-      setPendingChanges(0);
+      if (usernameRef.current === username) setPendingChanges(0);
     } catch (e) {
       // Still not reachable; try again on the next change of connection.
-    } finally {
-      syncingRef.current = false;
     }
   }
 
@@ -719,7 +854,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const cameBack = online && !onlineRef.current;
     if (!online) offlineNoteShownRef.current = false;
     onlineRef.current = online;
-    setIsOnline(online);
+    // 2.2 speed sweep: only tell the app when it actually changed (this runs every few seconds).
+    setIsOnline((was) => (was === online ? was : online));
     if (cameBack) syncPendingChanges();
   }
   function recheckNetwork() {
@@ -770,6 +906,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     recheckNetwork();
     const sub = Network.addNetworkStateListener(applyNetworkState);
     const appSub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active') skipSaveWaitRef.current?.();
       if (st === 'active') {
         recheckNetwork();
         resumeLinkCheckRef.current();
@@ -785,22 +922,119 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Version 2.2: the last salt/household note sent online (see persistModel).
+  const cloudMetaSentRef = useRef<string | null>(null);
+  function getModel(): HouseholdModel | null {
+    return latestModelRef.current;
+  }
+  // ---- Version 2.2: the save line ----
+  // Saving (locking the data, writing it on the phone, then online) runs in the background,
+  // one save at a time. Each turn saves the NEWEST data, so quick changes in a row are saved
+  // together (review fix: two saves running side by side could undo the other phone's change).
+  const saveLineRef = useRef<Promise<void>>(Promise.resolve());
+  const persistDirtyRef = useRef(false); // a change is waiting to be saved
+  const persistQueuedRef = useRef(false); // a saving turn is waiting in line or running
+  // The text this phone is writing online right now, so the live listener knows it's ours.
+  const ownWriteRef = useRef<string | null>(null);
+  // Goes up each time the live listener shows the other phone's save (see pushHousehold).
+  const remoteSeqRef = useRef(0);
+  function inSaveLine(job: () => Promise<void>): Promise<void> {
+    const run = saveLineRef.current.then(job).catch((err) => {
+      console.error('Saving failed:', err);
+    });
+    saveLineRef.current = run;
+    return run;
+  }
+  function savesBusy(): boolean {
+    return persistQueuedRef.current || persistDirtyRef.current;
+  }
+  const skipSaveWaitRef = useRef<(() => void) | null>(null);
+  function requestPersist() {
+    persistDirtyRef.current = true;
+    if (persistQueuedRef.current) return; // the turn in line takes the newest data
+    persistQueuedRef.current = true;
+    inSaveLine(async () => {
+      try {
+        // Version 2.2 speed fix (Cath: tapping Add still lagged): locking the data
+        // (encrypting it) blocks the screen while it runs, so it now waits until the form has
+        // closed and the list has redrawn (about a quarter of a second). Saves made in that
+        // moment are written together. Log out / Switch account still wait for this.
+        // Code review fix: if the app is closed or put away in that moment, it saves at once
+        // instead of waiting (a change could be lost if the phone then closed the app).
+        await new Promise<void>((resolve) => {
+          if (AppState.currentState !== 'active') return resolve();
+          skipSaveWaitRef.current = resolve;
+          // Smoothness sweep 2026-10-26 (jank reviewer): long enough for the form to close
+          // AND the screen that follows to finish sliding (+ Add goes on to Transactions);
+          // at 250 ms the encrypting landed in the middle of that slide and stuttered it.
+          InteractionManager.runAfterInteractions(() => setTimeout(resolve, SAVE_AFTER_MOVES_MS));
+        });
+        skipSaveWaitRef.current = null;
+        while (persistDirtyRef.current) {
+          persistDirtyRef.current = false;
+          const username = usernameRef.current;
+          const latest = latestModelRef.current;
+          if (!username || !latest || guestRef.current) return;
+          const version = modelVersionRef.current;
+          const key = keyRef.current;
+          try {
+            await persistModel(latest, username, version);
+          } catch (err) {
+            // Review fix: an unexpected failure says so (it used to be silent).
+            console.error('Saving failed:', err);
+            if (usernameRef.current === username && keyRef.current === key) {
+              setPendingChanges((n) => n + 1);
+              if (householdIdRef.current) rememberWaitingBase(username, key, lastSyncedModelRef.current);
+              Alert.alert("Couldn't save", "Your last change couldn't be saved. It's still on screen; please try again. If it keeps happening, restart the app.");
+            }
+          }
+        }
+      } finally {
+        persistQueuedRef.current = false;
+      }
+    });
+  }
+  // Log out and Switch account wait for saving to finish first (up to about 15 seconds).
+  async function waitForSaves(maxMs = 15000): Promise<void> {
+    if (!savesBusy() && !syncingRef.current) return;
+    // Leaving (log out, switch account): save now instead of waiting for slides to end.
+    skipSaveWaitRef.current?.();
+    showSaved('Saving your last change…');
+    await Promise.race([saveLineRef.current, new Promise<void>((resolve) => setTimeout(resolve, maxMs))]);
+  }
+
+  // Version 2.2 (canvas W1 B + W2): a new transaction remembers who added it; a changed one
+  // remembers who changed it and when. Unchanged ones are left exactly as they were.
+  function stampWho(list: ManualTransaction[], before: ManualTransaction[], knownIds: Set<string>, now: number, who: string | null): ManualTransaction[] {
+    const prevById = new Map(before.map((t) => [t.id, t]));
+    return list.map((t) => {
+      if (!knownIds.has(t.id)) {
+        const stamped = t.createdAt ? t : { ...t, createdAt: now };
+        return who && !stamped.addedBy ? { ...stamped, addedBy: who } : stamped;
+      }
+      const old = prevById.get(t.id);
+      if (!who || !old || old === t) return t;
+      const strip = (x: ManualTransaction) => JSON.stringify({ ...x, changedBy: undefined, changedAt: undefined });
+      if (strip(old) === strip(t)) return t;
+      return { ...t, changedBy: who, changedAt: now };
+    });
+  }
+
   async function saveModel(updatedModel: HouseholdModel) {
     // Left to Spend: stamp the moment each NEW transaction is first saved (any screen
     // that adds one: Transactions, CSV import, Travel, Events, refunds). Existing
     // transactions are never re-stamped.
-    const knownIds = new Set((model?.manualTransactions || []).map((t) => t.id));
+    const prev = latestModelRef.current ?? model;
+    const knownIds = new Set((prev?.manualTransactions || []).map((t) => t.id));
     const now = Date.now();
     // Redesign: loan payments and savings moves get the same stamp, so a card's
     // balance can tell whether they came after its balance was last updated.
-    const knownLoanPays = new Set((model?.loans || []).flatMap((l) => (l.actualPayments || []).map((p) => p.id)));
-    const knownContribs = new Set((model?.savingsGoals || []).flatMap((g) => (g.contributions || []).map((c) => c.id)));
-    const knownPaydays = new Set((model?.income || []).flatMap((s) => (s.paymentLog || []).map((e) => e.id)));
+    const knownLoanPays = new Set((prev?.loans || []).flatMap((l) => (l.actualPayments || []).map((p) => p.id)));
+    const knownContribs = new Set((prev?.savingsGoals || []).flatMap((g) => (g.contributions || []).map((c) => c.id)));
+    const knownPaydays = new Set((prev?.income || []).flatMap((s) => (s.paymentLog || []).map((e) => e.id)));
     const stamped: HouseholdModel = {
       ...updatedModel,
-      manualTransactions: (updatedModel.manualTransactions || []).map((t) =>
-        t.createdAt || knownIds.has(t.id) ? t : { ...t, createdAt: now }
-      ),
+      manualTransactions: stampWho(updatedModel.manualTransactions || [], prev?.manualTransactions || [], knownIds, now, usernameRef.current),
       loans: (updatedModel.loans || []).map((l) =>
         (l.actualPayments || []).some((p) => !p.createdAt && !knownLoanPays.has(p.id))
           ? {
@@ -832,21 +1066,58 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : g
       ),
     };
-    const sanitizedModel = sanitizeModelIds(stamped);
+    // Version 2.2 (W1/W2 everywhere): who added / changed bills, debts, loans, pots,
+    // income, trips and the entries inside them.
+    const sanitizedModel = sanitizeModelIds(stampHouseholdWho(stamped, prev, now, usernameRef.current));
+    // Version 3: no account yet. A new money entry asks to save Finance Flow first;
+    // anything else (Home tidying up) just changes what's on screen.
+    if (guestRef.current) {
+      const entry = describeNewEntry(latestModelRef.current, sanitizedModel);
+      if (entry) setGuestRequest({ model: sanitizedModel, entry });
+      else setModel(sanitizedModel);
+      return;
+    }
+    // Code review fix: a late save after Log out / Switch account (no one signed in) changes
+    // nothing, so the old account's data never comes back on screen.
+    if (!usernameRef.current) return;
     modelVersionRef.current += 1;
-    setModel(sanitizedModel);
+    // Version 2.2 (Cath: the form waited with a spinner before closing): the screens redraw
+    // with the new data one frame later, so a form that closes after saving starts closing
+    // first and the new entry is seen sliding into its list. latestModelRef (just below)
+    // has the new data at once, so another save right after starts from it, and the redraw
+    // always shows the newest data (never an older one that a sync may have replaced).
+    requestAnimationFrame(() => setModel(latestModelRef.current));
+    // The newest data straight away (review fix: a save right after another one used to
+    // start from the data before it).
+    latestModelRef.current = sanitizedModel;
+    ownSavesRef.current.add(sanitizedModel);
     const username = usernameRef.current;
     if (!username) return;
+    // Version 2.2 (Cath: Save and Add buttons lagged, a trip took seconds to save): what's
+    // on screen changes at once and the form can close straight away; saving carries on in
+    // the background, one save at a time (the save line above).
+    requestPersist();
+  }
 
-    if (householdIdRef.current && householdKeyRef.current) {
+  // The saving half of saveModel (run by the save line). The account, household, keys, salt and
+  // the last agreed household are taken when this save starts, so a save still running after
+  // Log out / Switch account finishes in the right place, and changes nothing on screen.
+  async function persistModel(sanitizedModel: HouseholdModel, username: string, version: number) {
+    const householdId = householdIdRef.current;
+    const householdKey = householdKeyRef.current;
+    const key = keyRef.current;
+    const salt = saltRef.current;
+    const base = lastSyncedModelRef.current;
+    const baseText = lastEncryptedDataRef.current;
+    const stillHere = () => usernameRef.current === username && keyRef.current === key;
+    if (householdId && householdKey) {
       // Linked profile: save to the shared household document
-      const encrypted = await encryptJSON(householdKeyRef.current, sanitizedModel);
+      const encrypted = await encryptJSON(householdKey, sanitizedModel);
 
       // Continuous local snapshotting: keep an up-to-date personal copy in local storage first.
       // Deliberately not awaited — this shouldn't hold up the household sync below — but a
       // failure here is no longer swallowed silently, since this snapshot is what offline app
       // launch, household dissolution, and account recovery all fall back to reading.
-      const key = keyRef.current;
       if (key) {
         encryptJSON(key, sanitizedModel)
           .then((personalEncrypted) =>
@@ -858,45 +1129,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
           )
           .catch((err) => {
             console.error('Failed to save personal local snapshot:', err);
-            Alert.alert(
-              'Local Save Failed',
-              'Could not save an offline backup of your changes on this device. Your household sync will still be attempted.'
-            );
+            if (stillHere()) {
+              Alert.alert(
+                'Local Save Failed',
+                'Could not save an offline backup of your changes on this device. Your household sync will still be attempted.'
+              );
+            }
           });
       }
 
-      noteStorageSize(encrypted);
+      if (stillHere()) noteStorageSize(encrypted);
       if (!onlineRef.current || awaitingOnlineRef.current) {
         // Offline (or still signing in after opening from the phone): saved on this phone;
         // it syncs once connected.
-        if (!onlineRef.current) noteSavedOffline();
-        rememberWaitingBase();
-        setPendingChanges((n) => n + 1);
+        rememberWaitingBase(username, key, base);
+        if (stillHere()) {
+          if (!onlineRef.current) noteSavedOffline();
+          setPendingChanges((n) => n + 1);
+        }
       } else if (
         encrypted.length > STORAGE_LIMIT_CHARS &&
-        (await partsSaveWhenTooBig(username, householdIdRef.current, householdKeyRef.current, sanitizedModel))
+        // (with a time limit: saves now wait in line, so none may hang)
+        (await withTimeout(partsSaveWhenTooBig(username, householdId, householdKey, sanitizedModel), 15000, 'Timed out saving parts.').catch(() => false))
       ) {
         // Version 2.1: too big for one copy, saved in parts instead.
       } else if (tooBigToSync(encrypted)) {
-        rememberWaitingBase();
-        setPendingChanges((n) => n + 1);
+        rememberWaitingBase(username, key, base);
+        if (stillHere()) setPendingChanges((n) => n + 1);
       } else {
         try {
-          const version = modelVersionRef.current;
           const res = await withTimeout(
-            pushHousehold(householdIdRef.current, householdKeyRef.current, sanitizedModel, encrypted),
+            pushHousehold(householdId, householdKey, sanitizedModel, encrypted, base, baseText),
             8000,
             'Timed out waiting for the shared household to sync.'
           );
-          showMerged(res, version);
           // The whole household was just sent, so nothing is waiting any more.
-          setPendingChanges(0);
-          forgetWaitingBase();
-          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, res.model).catch(() => {});
+          forgetWaitingBase(username);
+          partsAfterSave(username, householdId, householdKey, res.model).catch(() => {});
+          if (stillHere()) {
+            settleMerged(res, sanitizedModel, version, username, key);
+            setPendingChanges(0);
+          }
         } catch (err) {
-          rememberWaitingBase();
-          setPendingChanges((n) => n + 1);
-          if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
+          rememberWaitingBase(username, key, base);
+          if (stillHere()) setPendingChanges((n) => n + 1);
+          // (Not after Log out / Switch account: that save is no longer this screen's.)
+          if (onlineRef.current && !(await treatAsOfflineIfUnreachable()) && stillHere()) {
             Alert.alert(
               'Sync Failed',
               'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
@@ -905,18 +1183,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      rescheduleBillNotifications(sanitizedModel).catch(() => {});
+      if (stillHere()) rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
-      if (saltRef.current) {
-        saveProfileCloudBackup(username, {
-          salt: saltRef.current,
-          householdId: householdIdRef.current,
-        }).catch(() => {});
+      // The online note of this profile's salt and household. Version 2.2: sent once,
+      // and again only when either changes (it used to be re-sent after every tap).
+      const meta = `${username}|${salt}|${householdId}`;
+      if (salt && cloudMetaSentRef.current !== meta) {
+        saveProfileCloudBackup(username, { salt, householdId })
+          .then(() => {
+            cloudMetaSentRef.current = meta;
+          })
+          .catch(() => {});
       }
       return;
     }
 
-    const key = keyRef.current;
     if (!key) return;
     // Unlinked profile: save on this phone. If that fails, say so (linked profiles
     // already show "Sync Failed"); the change stays on screen until the app closes.
@@ -924,7 +1205,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       encrypted = await encryptJSON(key, sanitizedModel);
       await withTimeout(saveEncryptedProfileData(username, encrypted), 8000, 'Timed out saving on this phone.');
-      if (saltRef.current) await setBackupPending(username, true);
+      if (salt) await setBackupPending(username, true);
     } catch (err) {
       console.error('Failed to save on this phone:', err);
       Alert.alert(
@@ -933,26 +1214,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       );
       return;
     }
-    rescheduleBillNotifications(sanitizedModel).catch(() => {});
+    if (stillHere()) rescheduleBillNotifications(sanitizedModel).catch(() => {});
 
-    if (saltRef.current) {
-      noteStorageSize(encrypted);
-      if (!onlineRef.current) noteSavedOffline();
+    if (salt) {
+      if (stillHere()) noteStorageSize(encrypted);
+      if (!onlineRef.current && stillHere()) noteSavedOffline();
       if (!onlineRef.current || tooBigToSync(encrypted)) {
         // Offline (or too big to send): saved on this phone; it syncs once it can.
-        setPendingChanges((n) => n + 1);
+        if (stillHere()) setPendingChanges((n) => n + 1);
         return;
       }
       try {
         await withTimeout(
-          backupPersonalData(username, saltRef.current, encrypted, modelVersionRef.current),
+          backupPersonalData(username, salt, encrypted, version),
           8000,
           'Timed out waiting for the cloud backup to sync.'
         );
       } catch (err) {
         console.error('Cloud backup failed:', err);
-        setPendingChanges((n) => n + 1);
-        if (onlineRef.current && !(await treatAsOfflineIfUnreachable())) {
+        if (stillHere()) setPendingChanges((n) => n + 1);
+        if (onlineRef.current && !(await treatAsOfflineIfUnreachable()) && stillHere()) {
           Alert.alert(
             'Backup Failed',
             'Your changes were saved locally on this device, but could not be backed up to the cloud. Please check your connection.'
@@ -1068,6 +1349,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function startGuest(initial: HouseholdModel, info: { name: string; helpWith: string[] }) {
+    setGuestInfo(info);
+    cleanupHouseholdListener();
+    usernameRef.current = null;
+    keyRef.current = null;
+    householdIdRef.current = undefined;
+    householdKeyRef.current = null;
+    setIsLinked(false);
+    setGuestRequest(null);
+    setGuest(true);
+    setModel(initial);
+  }
+  function resolveGuestRequest(keep: boolean) {
+    setGuestRequest((req) => {
+      if (req && keep) setModel(req.model);
+      return null;
+    });
+  }
+  function endGuest() {
+    setGuest(false);
+    setGuestRequest(null);
+  }
+
   function goOnline() {
     const id = awaitingOnlineRef.current;
     if (!id || householdIdRef.current !== id) return;
@@ -1082,6 +1386,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   function clearModel() {
     awaitingOnlineRef.current = null;
+    ownWriteRef.current = null;
     cleanupHouseholdListener();
     setPendingChanges(0);
     usernameRef.current = null;
@@ -1419,19 +1724,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }
 
-  return (
-    <DataContext.Provider
-      value={{
+  // 2.2 speed sweep (Cath: "even the card animations is lagging"): the shared data is
+  // only handed out again when something in it really changed. Before, every redraw here
+  // made every screen in the app (including the hidden tabs) redraw too. It covers every
+  // piece of state above, so the functions inside always see the latest data.
+  const username = usernameRef.current;
+  const value = useMemo(
+    () => ({
+        guest,
+        guestInfo,
+        guestRequest,
+        startGuest,
+        resolveGuestRequest,
+        endGuest,
         goOnline,
         model,
         loading,
         loadModel,
         saveModel,
+        waitForSaves,
+        getModel,
         clearModel,
         refreshModel,
         changePassword,
         verifyPassword,
-        username: usernameRef.current,
+        username,
         isOnline,
         pendingChanges,
         storageUsed,
@@ -1443,11 +1760,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
         unlinkAndTransferOwnership,
         linkNoticeMsg,
         clearLinkNoticeMsg,
-      }}
-    >
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [guest, guestInfo, guestRequest, model, loading, isOnline, pendingChanges, storageUsed, isLinked, linkNoticeMsg, username]
+  );
+
+  return (
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
+}
+
+// 2.2 speed sweep (Cath: "do another deep sweep"): a tab you're not looking at still gets
+// every change, but as background work the phone can pause for anything you're doing
+// (a tap, typing, an animation), instead of redrawing the whole hidden page first. The tab
+// you're on always gets changes straight away, and a hidden tab catches up at once when you
+// go to it. Nothing is paused or hidden (unlike the freezing tried before), so pop-up
+// forms aren't affected.
+export function QuietWhenHidden({ active, children }: { active: boolean; children: ReactNode }) {
+  const live = useContext(DataContext);
+  const [shown, setShown] = useState(live);
+  useEffect(() => {
+    if (shown === live) return;
+    if (active) setShown(live);
+    else startTransition(() => setShown(live));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, active]);
+  return <DataContext.Provider value={active ? live : shown}>{children}</DataContext.Provider>;
 }
 
 export function useData(): DataContextValue {

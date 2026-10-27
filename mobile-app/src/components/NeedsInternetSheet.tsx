@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import BottomSheet from './BottomSheet';
@@ -39,13 +40,8 @@ export default function NeedsInternetSheet({ value, onClose }: { value: NeedsInt
   );
 }
 
-// Gives up on an online step after `ms` with a clear "slow connection" error.
-export function withNetTimeout<T>(p: Promise<T>, ms = 15000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(Object.assign(new Error('timeout'), { code: 'net-timeout' })), ms);
-    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
-  });
-}
+// The "slow connection" timer lives in netTimeout.ts so non-screen code can use it too.
+export { withNetTimeout } from '../netTimeout';
 
 const s = StyleSheet.create({
   icon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },

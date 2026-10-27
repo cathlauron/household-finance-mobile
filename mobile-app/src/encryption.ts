@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import CryptoJS from 'crypto-js';
+import { keyDeriver } from './fastCrypto';
 
 // How many times the password is "stretched" before it becomes the real encryption key.
 // Higher = slower to guess by brute force, at the cost of a small delay when signing in.
@@ -23,11 +24,11 @@ async function randomIVHex(): Promise<string> {
 }
 
 // Turns a typed password + that profile's salt into the real encryption key.
+// PBKDF2 with HMAC-SHA256, 100,000 rounds, 256-bit key (unchanged). Version 2.2: in the
+// installed app the phone does this step itself (much faster); the key is exactly the
+// same either way (see pbkdf2Core.ts).
 export function deriveKey(password: string, saltHex: string): CryptoJS.lib.WordArray {
-  return CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(saltHex), {
-    keySize: 256 / 32,
-    iterations: PBKDF2_ITERATIONS,
-  });
+  return keyDeriver.derive(password, CryptoJS.enc.Hex.parse(saltHex), PBKDF2_ITERATIONS);
 }
 
 // Scrambles any data (as JSON) using the derived key. A fresh random IV is used every time,

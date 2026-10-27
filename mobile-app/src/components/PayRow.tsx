@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import GradientFill from './GradientFill';
+import { WhoBadge } from './WhoLogged';
+import ArrivalGlow from './ArrivalGlow';
 
 // Redesign: one row in the To-Pay lists (Finance Flow mockup): icon tile, name,
 // "Due Fri, Oct 16" underneath, and the amount with an optional tag on the right.
@@ -17,11 +20,17 @@ type Props = {
   amountColor: string;
   badge?: { text: string; tone: 'overdue' | 'soon' | 'info' | 'paid' };
   divider?: boolean;
+  // Version 2.2 (canvas K3): a small High / Medium / Low tag after the name.
+  priority?: 'high' | 'medium' | 'low' | '';
   onPress: () => void;
   testID?: string;
+  // Version 2.2 (W1 everywhere): who added it; a small letter shows when it's someone else.
+  addedBy?: string;
+  // Version 2.2 (approved P4): true for a moment after this row was just added.
+  glow?: boolean;
 };
 
-export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, onPress, testID }: Props) {
+export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy, glow }: Props) {
   const { colors } = useTheme();
   const tone = badge
     ? badge.tone === 'overdue'
@@ -38,16 +47,26 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       onPress={onPress}
       activeOpacity={0.6}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}`}
+      accessibilityLabel={`${title}${priority ? `, ${priority} priority` : ''}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}`}
       style={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}
     >
       <GradientFill match={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]} />
+      {glow && <ArrivalGlow />}
       <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
         <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
         <Ionicons name={icon} size={17} color={colors.gold} />
+        <WhoBadge by={addedBy} />
       </View>
       <View style={styles.main}>
-        <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1}>{title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1}>{title}</Text>
+          {!!priority && (() => {
+            // 2.2 (approved P2): a soft filled pill instead of a thin outline.
+            const c = priority === 'high' ? colors.negative : priority === 'medium' ? colors.orange : colors.positive;
+            const bg = priority === 'high' ? colors.errorBg : priority === 'medium' ? colors.warnBg : colors.okBg;
+            return <Text style={[styles.prTag, { color: c, backgroundColor: bg }]}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</Text>;
+          })()}
+        </View>
         <Text style={[styles.sub, { color: colors.inkDim }]} numberOfLines={1}>{sub}</Text>
       </View>
       <View style={styles.right}>
@@ -63,6 +82,8 @@ const styles = StyleSheet.create({
   tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   main: { flex: 1, marginRight: 8 },
   title: { fontSize: 17, fontWeight: '500' },
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  prTag: { marginLeft: 6, fontSize: 11, fontWeight: '700', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
   sub: { fontSize: 13, marginTop: 1 },
   right: { alignItems: 'flex-end' },
   amount: { fontSize: 17, fontWeight: '600' },

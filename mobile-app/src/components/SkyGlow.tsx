@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, AppState, StyleSheet, useWindowDimensions, View } from 'react-native';
 import FallingRain from './FallingRain';
+import { usePageActive } from '../pageActive';
 import Svg, { Circle, Defs, Ellipse, Path, Polygon, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
 import { SkyPhase, SkyWeather, useSkyPhase, useSkyPrefs, useSkyWeather } from '../sky';
@@ -131,6 +132,7 @@ export default function SkyGlow({ plain = false }: { plain?: boolean } = {}) {
   const { glowOn, rainAnimOn } = useSkyPrefs();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [appActive, setAppActive] = useState(AppState.currentState !== 'background');
+  const pageActive = usePageActive();
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
     const motionSub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
@@ -247,7 +249,9 @@ export default function SkyGlow({ plain = false }: { plain?: boolean } = {}) {
       <Svg width={width} height={H} viewBox={`0 0 390 ${H}`} preserveAspectRatio="none">
         {art}
       </Svg>
-      {rainFalls && appActive && <FallingRain color={rainColor} />}
+      {/* Smoothness sweep 2026-10-26: the rain stops while its tab isn't showing (42 drops
+          restarting about 20 times a second behind other tabs). */}
+      {rainFalls && appActive && pageActive && <FallingRain color={rainColor} />}
     </View>
   );
 }

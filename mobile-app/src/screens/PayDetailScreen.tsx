@@ -1,13 +1,24 @@
+import { loanCoverage } from '../loanSchedule';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
+import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { showSaved } from '../components/SavedToast';
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
+import { WhoFootnote, useWho } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
+import DeleteRow from '../components/DeleteRow';
+import BillsScreen from './BillsScreen';
+import DebtsScreen from './DebtsScreen';
+import LoansScreen from './LoansScreen';
+import { withoutBill, withoutDebt, withoutLoan } from '../deleteRecords';
+import { takeOffSavedBalance } from '../takeOffBalance';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { formatPeso, loanOutstandingBalance } from '../balanceProjection';
@@ -15,11 +26,8 @@ import { getNextDueDate, recurringTypeLabel } from '../recurrence';
 import { currentCycle, paidCycles, markPaid, undoLastPayment, isCyclePaid, minimumDue } from '../billPayments';
 import { accountLabel } from '../transactionActions';
 import { getOverdueItems } from '../overdue';
-import { requestOpenBill } from '../openBillRequest';
-import { requestOpenDebt } from '../openDebtRequest';
-import { requestOpenLoan } from '../openLoanRequest';
 import { makeId } from '../utils';
-import { todayISO } from '../dateUtils';
+import { todayISO, dateText } from '../dateUtils';
 import type { ThemeColors } from '../theme';
 import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod } from '../types';
 
@@ -39,7 +47,7 @@ function num(v: unknown): number {
 }
 function niceDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? iso : dateText(d, { weekday: true });
 }
 function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
@@ -48,19 +56,6 @@ function shortDate(iso: string): string {
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
 }
-// Version 2.1 (canvas S4): "It isn't included, take it off my balance": a payment dated before
-// balances were last updated is otherwise treated as already in them, so take it off the
-// saved balance of the account it was paid from.
-function takeOffSavedBalance<M extends HouseholdModel>(model: M, pm: PaymentMethod, amount: number): M {
-  const group = pm.type as 'cash' | 'debit' | 'credit';
-  const list = (model.balanceAccounts as any)[group] as { id: string; amount: number | '' }[] | undefined;
-  if (!list || !list.length) return model;
-  const targetId = pm.accountId || (group === 'cash' ? list[0].id : undefined);
-  if (!targetId) return model;
-  const nextList = list.map((a) => (a.id === targetId ? { ...a, amount: Math.round(((Number(a.amount) || 0) - amount) * 100) / 100 } : a));
-  return { ...model, balanceAccounts: { ...model.balanceAccounts, [group]: nextList } };
-}
-
 function scheduleText(r: { recurringType?: string; dueDate?: Record<string, any>; customFreq?: string }): string {
   const d = r.dueDate || {};
   if (r.recurringType === 'monthly') return d.day ? `Every month on the ${d.day === 'last' ? 'last day' : d.day}` : 'Every month';
@@ -72,7 +67,8 @@ function scheduleText(r: { recurringType?: string; dueDate?: Record<string, any>
 
 export default function PayDetailScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
+  const who = useWho();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const kind: Kind = route.params?.kind;
@@ -89,12 +85,29 @@ export default function PayDetailScreen() {
     ? model.debts.find((d) => d.id === id)
     : (model.loans || []).find((l) => l.id === id);
 
-  const openEdit = () => {
-    if (kind === 'bill') requestOpenBill(id);
-    else if (kind === 'debt') requestOpenDebt(id);
-    else requestOpenLoan(id);
-    navigation.navigate('Main', { screen: 'To-Pay' });
+  // Version 2.2 fix (Cath's video): Edit opens the form right here on this page. Before,
+  // it jumped back to To-Pay and opened the form there, and the page could slide back over
+  // it (the form flashed and closed).
+  const [editing, setEditing] = useState(false);
+  const openEdit = () => setEditing(true);
+  const onEditClosed = () => {
+    setEditing(false);
+    // Deleted from inside the form: this page has nothing left to show.
+    const latest = getModel();
+    const list: { id: string }[] = !latest ? [] : kind === 'bill' ? latest.bills : kind === 'debt' ? latest.debts : latest.loans || [];
+    if (latest && !list.some((r) => r.id === id)) navigation.goBack();
   };
+  const editor = editing ? (
+    <View style={{ position: 'absolute', width: 0, height: 0 }} pointerEvents="box-none">
+      {kind === 'bill' ? (
+        <BillsScreen formOnly openBillId={id} onFormClosed={onEditClosed} />
+      ) : kind === 'debt' ? (
+        <DebtsScreen formOnly openDebtId={id} onFormClosed={onEditClosed} />
+      ) : (
+        <LoansScreen formOnly openLoanId={id} onFormClosed={onEditClosed} />
+      )}
+    </View>
+  ) : null;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -121,11 +134,35 @@ export default function PayDetailScreen() {
       await saveModel(next);
       if (savedLabel) showLeafTick(savedLabel);
     } catch {
-      Alert.alert('Failed to save', 'Please try again.');
+      Alert.alert(...alertNotSaved('this payment'));
     }
   }
 
-  if (kind === 'loan') return <LoanBody loan={record as Loan} model={model} save={save} colors={colors} styles={styles} />;
+  // Version 2.2 (Cath): Delete at the bottom of the page, same as inside Edit.
+  function confirmDelete() {
+    const what = kind === 'bill' ? 'bill' : kind === 'debt' ? 'debt' : 'loan';
+    Alert.alert(`Delete this ${what}?`, `Deletes the ${what} and all payment history. Cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const latest = getModel() ?? model;
+          if (!latest) return;
+          const next = kind === 'bill' ? withoutBill(latest, id) : kind === 'debt' ? withoutDebt(latest, id) : withoutLoan(latest, id);
+          navigation.goBack();
+          saveModel(next).catch(() => Alert.alert(...alertNotDeleted('this item')));
+        },
+      },
+    ]);
+  }
+
+  if (kind === 'loan') return (
+    <>
+      <LoanBody loan={record as Loan} model={model} save={save} colors={colors} styles={styles} onDelete={confirmDelete} />
+      {editor}
+    </>
+  );
 
   // ---------- Bill / Debt ----------
   const rec = record as Bill | Debt;
@@ -165,7 +202,8 @@ export default function PayDetailScreen() {
   const average = withValues.length ? withValues.reduce((s, b) => s + b.v, 0) / withValues.length : 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <View style={[styles.group, styles.hero]}>
         <GradientFill match={[styles.group, styles.hero]} />
         <View style={styles.bigTile}>
@@ -173,7 +211,7 @@ export default function PayDetailScreen() {
           <Ionicons name={icon as any} size={26} color={colors.gold} />
         </View>
         <Text style={styles.name}>{name}</Text>
-        <Text style={[styles.amount, { color: colors.negative }]}>{formatPeso(amount)}</Text>
+        <Text style={[styles.amount, { color: overdue ? colors.negative : colors.ink }]}>{formatPeso(amount)}</Text>
         {/* Version 2.1 (canvas S3): a bill paid in parts shows what's new and what was carried. */}
         {kind === 'bill' && !curPaid && carried > 0 && (
           <View style={{ alignSelf: 'stretch', marginTop: 10, gap: 6 }}>
@@ -213,7 +251,7 @@ export default function PayDetailScreen() {
             accessibilityRole="button"
           >
             <GradientFill color={colors.buttonFill} strength={0.18} />
-            <Text style={[styles.primaryText, { color: colors.onButton }]}>Mark as paid</Text>
+            <Text style={[styles.primaryText, { color: colors.onButton }]}>Pay</Text>
           </TouchableOpacity>
         )}
         {paidToday && (
@@ -239,7 +277,7 @@ export default function PayDetailScreen() {
         direction="out"
         model={model}
         initial={cur?.paymentMethod}
-        confirmLabel="Paid"
+        confirmLabel="Pay"
         editableAmount={kind === 'debt'}
         fullAmount={amount}
         minimumAmount={minDue}
@@ -297,16 +335,22 @@ export default function PayDetailScreen() {
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
                       {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
+                      {who.by(c.paidBy)}
                     </Text>
                   </View>
-                  <Text style={[styles.histAmount, { color: colors.negative }]}>{formatPeso(num(c.amountPaid))}</Text>
+                  <Text style={[styles.histAmount, { color: colors.ink }]}>{formatPeso(num(c.amountPaid))}</Text>
                 </View>
               );
             })}
           </View>
         </>
       )}
-    </ScrollView>
+      {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
+      <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
+      <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
+    </KeyboardAwareScrollView>
+    {editor}
+    </>
   );
 }
 
@@ -319,7 +363,8 @@ function Row({ styles, label, value, last }: { styles: any; label: string; value
   );
 }
 
-function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel, savedLabel?: string) => void; colors: ThemeColors; styles: any }) {
+function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan; model: HouseholdModel; save: (m: HouseholdModel, savedLabel?: string) => void; colors: ThemeColors; styles: any; onDelete: () => void }) {
+  const who = useWho();
   const total = num(loan.totalAmount);
   const monthly = num(loan.expectedPayment);
   const payments = [...(loan.actualPayments || [])].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -339,10 +384,15 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
 
   function logPayment(pm: PaymentMethod, _amount?: number, _fee?: number, date: string = today, takeOff = false) {
     if (payAmount <= 0) return;
+    const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
     const next: Loan = {
       ...loan,
-      actualPayments: [...(loan.actualPayments || []), { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now() }],
+      actualPayments: [
+        ...(loan.actualPayments || []),
+        // Version 3: it covers the oldest scheduled payment still open (a missed one first).
+        { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}) },
+      ],
     };
     let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
     if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, payAmount);
@@ -356,7 +406,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView pageBounce contentContainerStyle={styles.content}>
       <Text style={styles.loanTitle}>{loan.name || 'Loan'}</Text>
       <Text style={styles.loanSub}>
         {lent ? 'You lent this' : 'You borrowed this'}
@@ -394,7 +444,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
         <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
         <Text style={styles.meta}>{lent ? 'Still to get back' : 'Still to pay'}</Text>
-        <Text style={[styles.amount, { color: lent ? colors.positive : colors.negative, fontSize: 34, lineHeight: 40 }]}>{formatPeso(left)}</Text>
+        <Text style={[styles.amount, { color: lent ? colors.positive : overdueItem ? colors.negative : colors.ink, fontSize: 34, lineHeight: 40 }]}>{formatPeso(left)}</Text>
         <View style={styles.track}>
           <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: colors.gold }]} />
         </View>
@@ -414,7 +464,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
           </View>
           <View style={[styles.trioCell]}>
             <Text style={styles.meta}>Monthly</Text>
-            <Text style={[styles.headline, { color: lent ? colors.positive : colors.negative }]}>{monthly ? formatPeso(monthly).replace('.00', '') : '—'}</Text>
+            <Text style={[styles.headline, { color: lent ? colors.positive : colors.ink }]}>{monthly ? formatPeso(monthly).replace('.00', '') : '—'}</Text>
           </View>
         </View>
       </View>
@@ -433,6 +483,7 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
                     <Text style={styles.meta}>
                       {p.date === today ? 'Paid today' : `Paid ${shortDate(p.date)}`}
                       {p.paymentMethod ? ` · ${accountLabel(model, p.paymentMethod)}` : ''}
+                      {who.by(p.addedBy)}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: lent ? colors.positive : colors.negative }]}>{formatPeso(num(p.actual))}</Text>
@@ -451,10 +502,12 @@ function LoanBody({ loan, model, save, colors, styles }: { loan: Loan; model: Ho
         direction={lent ? 'in' : 'out'}
         model={model}
         initial={payments[0]?.paymentMethod}
-        confirmLabel={lent ? 'Received' : 'Paid'}
+        confirmLabel={lent ? 'Received' : 'Pay'}
         onConfirm={logPayment}
       />
-    </ScrollView>
+      <WhoFootnote addedBy={loan.addedBy} createdAt={loan.createdAt} changedBy={loan.changedBy} changedAt={loan.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
+      <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -489,7 +542,7 @@ function makeStyles(colors: ThemeColors) {
     histTitle: { fontSize: 17, color: colors.ink },
     histAmount: { fontSize: 17, fontWeight: '600' },
     footer: { fontSize: 13, color: colors.inkDim, marginTop: 8, marginHorizontal: 16 },
-    loanTitle: { fontSize: 28, fontWeight: '700', color: colors.ink },
+    loanTitle: { fontSize: 28, fontWeight: '600', color: colors.ink },
     loanSub: { fontSize: 15, color: colors.inkDim, marginTop: 2 },
     alert: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
     track: { height: 8, borderRadius: 999, backgroundColor: colors.navy1, overflow: 'hidden', marginTop: 12 },

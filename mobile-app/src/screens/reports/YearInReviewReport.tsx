@@ -5,8 +5,10 @@
 // the year's totals, and a way to share the highlights (no amounts).
 // ============================================================
 
+import { toneUnlessZero } from '../../moneyColor';
 import React, { useState } from 'react';
-import { View, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import { View, ActivityIndicator, Share } from 'react-native';
+import { TouchableOpacity } from '../../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import GradientFill from '../../components/GradientFill';
@@ -72,7 +74,7 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
   const monthsCount = lastMonth + 1;
 
   const tiles = [
-    { label: 'Saved', value: formatPeso(totals.totalSaving), color: colors.saving },
+    { label: 'Saved', value: formatPeso(totals.totalSaving), color: toneUnlessZero(totals.totalSaving, colors.saving, colors) },
     { label: 'Bills paid on time', value: paidCount ? `${onTime} of ${paidCount}` : '—', color: colors.positive },
     { label: 'Biggest category', value: biggestCat || '—', color: colors.ink },
     { label: 'Best month', value: best ? MONTHS[best.m] : '—', color: colors.ink },
@@ -124,7 +126,7 @@ export default function YearInReviewReport({ activeTag }: Props = {}) {
             <Text style={s.body}>Money in</Text>
             <Text style={s.meta}>{monthsCount} {monthsCount === 1 ? 'month' : 'months'}</Text>
           </View>
-          <Text style={[s.amount, { color: colors.positive }]}>+{formatPeso(totals.totalIn)}</Text>
+          <Text style={[s.amount, { color: toneUnlessZero(totals.totalIn, colors.positive, colors) }]}>+{formatPeso(totals.totalIn)}</Text>
         </View>
         <View style={[s.row, s.line]}>
           <View style={{ flex: 1 }}>

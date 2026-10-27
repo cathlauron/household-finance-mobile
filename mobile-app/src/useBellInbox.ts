@@ -1,4 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { dateText } from './dateUtils';
+import { useToday } from './useToday';
 import { getOverdueItems, OverdueItem } from './overdue';
 import { usePendingRecovery } from './usePendingRecovery';
 import { loadBellRead, markBellRead, markAllBellRead, pruneBellRead } from './bellReadState';
@@ -33,8 +35,10 @@ export function useBellInbox(username: string, model: any) {
     return () => { active = false; };
   }, [username]);
 
-  const overdue = useMemo(() => (model ? getOverdueItems(model) : []), [model]);
-  const dueSoon = useMemo(() => (model ? getUpcomingDue(model, 14) : []), [model]);
+  // H-09: worked out again when the date changes, not only when the data does.
+  const today = useToday();
+  const overdue = useMemo(() => (model ? getOverdueItems(model) : []), [model, today]);
+  const dueSoon = useMemo(() => (model ? getUpcomingDue(model, 14) : []), [model, today]);
 
   const items: BellItem[] = useMemo(() => {
     const list: BellItem[] = [];
@@ -60,7 +64,7 @@ export function useBellInbox(username: string, model: any) {
         group: 'due',
         key: `due:${d.type}:${d.id || d.label}:${localISO(d.date)}`,
         title: d.label,
-        subtitle: `Due ${d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        subtitle: `Due ${dateText(d.date)}`,
         due: { type: d.type, id: d.id, amount: d.amount, date: d.date },
       });
     });

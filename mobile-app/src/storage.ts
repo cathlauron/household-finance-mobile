@@ -71,7 +71,9 @@ export async function loadEncryptedProfileData(username: string): Promise<string
 // can come back and finish linking later even if the app was closed, the phone restarted,
 // or (for testing) a different account was signed into in between. finishHostLink() clears
 // this once linking actually completes.
-export type PendingHostLink = { code: string; secretHex: string };
+// Version 2.2 (Cath: an invite code stayed on Household long after its 15 minutes): `at` is
+// when the code was made, so an old code is put away instead of being shown again.
+export type PendingHostLink = { code: string; secretHex: string; at?: number };
 
 function pendingHostLinkKey(username: string): string {
   return `profile:${username}:pending-host-link`;
@@ -80,9 +82,10 @@ function pendingHostLinkKey(username: string): string {
 export async function savePendingHostLink(
   username: string,
   code: string,
-  secretHex: string
+  secretHex: string,
+  at: number = Date.now()
 ): Promise<void> {
-  await AsyncStorage.setItem(pendingHostLinkKey(username), JSON.stringify({ code, secretHex }));
+  await AsyncStorage.setItem(pendingHostLinkKey(username), JSON.stringify({ code, secretHex, at }));
 }
 
 export async function loadPendingHostLink(username: string): Promise<PendingHostLink | null> {

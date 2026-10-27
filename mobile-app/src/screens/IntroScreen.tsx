@@ -136,8 +136,32 @@ export function DriftLeaf({ leaf, index, scale, still, color, opacityScale = 1, 
   );
 }
 
-export default function IntroScreen() {
+// Version 3 (Cath, canvas M2): while a saved account is being unlocked behind the opening,
+// changing words appear just below the little leaf's bar (the leaf stays where it is).
+// The unlock blocks the JS thread for seconds, so the words are driven by a native
+// clock (like everything else here), not by timers.
+// Version 2.2 (Cath: "too fast, then stuck on Almost there"): one line every 3.2 s, and
+// they keep going round for as long as it takes, so it never sits on one line.
+const OPENING_WORDS = [
+  'Opening your money…',
+  'Unlocking your household…',
+  "Getting today's numbers…",
+  'Checking your bills…',
+  "Adding up what's left to spend…",
+  'Keeping it all locked and safe…',
+];
+const WORD_MS = 3200;
+
+export default function IntroScreen({ unlocking = false }: { unlocking?: boolean }) {
   const { width, height } = useWindowDimensions();
+  const wordsClock = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!unlocking) return;
+    const total = OPENING_WORDS.length * WORD_MS;
+    const run = Animated.loop(Animated.timing(wordsClock, { toValue: total, duration: total, easing: Easing.linear, useNativeDriver: true }));
+    run.start();
+    return () => run.stop();
+  }, [unlocking, wordsClock]);
   const scale = width / 390;
   const [still, setStill] = useState(false);
 
@@ -251,11 +275,30 @@ export default function IntroScreen() {
           <Animated.View style={[styles.fill, { transform: [{ translateX: fillX }] }]} />
         </Animated.View>
       </Animated.View>
+      {unlocking && (
+        <Animated.View style={[styles.wordsWrap, { opacity: loader }]} pointerEvents="none" accessibilityLabel="Opening your money">
+          {OPENING_WORDS.map((w, k) => {
+            const start = k * WORD_MS;
+            const opacity = wordsClock.interpolate({
+              inputRange: [start, start + 300, start + WORD_MS - 300, start + WORD_MS],
+              outputRange: [0, 1, 1, 0],
+              extrapolate: 'clamp',
+            });
+            return (
+              <AnimatedText key={w} style={[styles.words, { opacity }]}>
+                {w}
+              </AnimatedText>
+            );
+          })}
+        </Animated.View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wordsWrap: { position: 'absolute', left: 0, right: 0, bottom: 22, height: 24, alignItems: 'center' },
+  words: { position: 'absolute', fontSize: 16, lineHeight: 22, fontWeight: '600', color: CREAM, textAlign: 'center' },
   container: { flex: 1, backgroundColor: '#173829', overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
   wordmark: { marginTop: 26, fontSize: 21, lineHeight: 26, fontWeight: '500', color: CREAM },

@@ -3,6 +3,8 @@ import { ThemeContext } from './ThemeContext';
 import { useData } from './DataContext';
 import { computeLeftToSpend, getLeftToSpendStatus, LeftToSpendMood } from './balanceProjection';
 import type { ThemeColors } from './theme';
+import type { HouseholdModel } from './types';
+import { useLookPreview } from './lookPreview';
 
 // Redesign: mood colours. When Left to Spend is Running low or Overspent, the app's
 // accent colour (buttons, links, selected tabs, icon tiles, the + button and the
@@ -30,19 +32,35 @@ const DARK_PAGE: Record<LeftToSpendMood, string> = {
   over: '#16060A',
 };
 
+// 2.2 speed sweep: working out Left to Spend goes through all your bills and spending.
+// Several parts of the app ask for the mood at once, so it's worked out once per change
+// of your data and remembered (the mood itself doesn't depend on the colours).
+let moodCache: { model: HouseholdModel; day: string; mood: LeftToSpendMood } | null = null;
+function moodFor(model: HouseholdModel, colors: ThemeColors): LeftToSpendMood {
+  // Per day too: Left to Spend changes when a new day starts (sweep fix).
+  const day = new Date().toDateString();
+  if (moodCache && moodCache.model === model && moodCache.day === day) return moodCache.mood;
+  const lts = computeLeftToSpend(model);
+  const mood = getLeftToSpendStatus(lts.amount, model, colors).mood;
+  moodCache = { model, day, mood };
+  return mood;
+}
+
 export function useMood(): LeftToSpendMood {
   const { model } = useData();
   const theme = useContext(ThemeContext);
+  const preview = useLookPreview();
   return useMemo(() => {
+    // Set-up screen (approved L2): the sample being looked at wins.
+    if (preview.mood) return preview.mood;
     if (!model || !theme) return 'good';
     if (model.settings?.moodColorsEnabled === false) return 'good';
     try {
-      const lts = computeLeftToSpend(model);
-      return getLeftToSpendStatus(lts.amount, model, theme.colors).mood;
+      return moodFor(model, theme.colors);
     } catch {
       return 'good';
     }
-  }, [model, theme]);
+  }, [model, theme, preview.mood]);
 }
 
 // Re-provides the theme with the mood's accent colours swapped in. Wraps the app

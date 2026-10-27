@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import ErrorNote from '../components/ErrorNote';
+import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatPeso, outstandingBalance, loanOutstandingBalance } from '../balanceProjection';
 import { potSaved } from '../savingsPots';
-import { todayISO } from '../dateUtils';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { todayISO, dateText } from '../dateUtils';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import BottomSheet from '../components/BottomSheet';
@@ -68,12 +71,12 @@ function monthName(iso?: string): string {
 }
 function shortDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return isNaN(d.getTime()) ? iso : dateText(d);
 }
 
 export default function GoalsScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const styles = makeStyles(colors);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -236,34 +239,38 @@ export default function GoalsScreen() {
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to save. Please try again.');
+      setErrorMsg(notSaved('this goal'));
     }
   }
 
   async function handleDeleteGoal() {
-    if (!editingId || !model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!editingId || !current) return;
     const updated: HouseholdModel = {
-      ...model,
-      yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== editingId),
+      ...current,
+      yearlyGoals: (current.yearlyGoals ?? []).filter((g) => g.id !== editingId),
     };
     try {
       await saveModel(updated);
       closeModal();
     } catch (e) {
-      setErrorMsg('Failed to delete. Please try again.');
+      setErrorMsg(notDeleted('this goal'));
     }
   }
 
   async function performDeleteGoalById(id: string) {
-    if (!model) return;
+    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
+    const current = getModel() ?? model;
+    if (!current) return;
     const updated: HouseholdModel = {
-      ...model,
-      yearlyGoals: (model.yearlyGoals ?? []).filter((g) => g.id !== id),
+      ...current,
+      yearlyGoals: (current.yearlyGoals ?? []).filter((g) => g.id !== id),
     };
     try {
       await saveModel(updated);
     } catch (e) {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Alert.alert(...alertNotDeleted('this goal'));
     }
   }
 
@@ -407,9 +414,9 @@ export default function GoalsScreen() {
       >
         <FormGroup>
           <Guided {...fieldErrors.props('title')} focusRef={titleRef}>
-            <InputRow label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" inputRef={titleRef} invalid={fieldErrors.field === 'title'} />
+            <InputRow mark="required" label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" inputRef={titleRef} invalid={fieldErrors.field === 'title'} />
           </Guided>
-          <InputRow label="Description" value={descriptionInput} onChangeText={setDescriptionInput} placeholder="Optional" />
+          <InputRow mark="optional" label="Description" value={descriptionInput} onChangeText={setDescriptionInput} placeholder="e.g. Before the holidays" />
         </FormGroup>
 
         <SegmentedControl<YearlyGoal['mode']>
@@ -424,14 +431,14 @@ export default function GoalsScreen() {
           <>
             <GroupLabel>Progress</GroupLabel>
             <FormGroup>
-              <AmountRow label="Target amount" value={targetAmountInput} onChange={setTargetAmountInput} placeholder="Optional" />
-              {!linkInput && <AmountRow label="So far" value={currentAmountInput} onChange={setCurrentAmountInput} placeholder="Optional" />}
+              <AmountRow mark="optional" label="Target amount" value={targetAmountInput} onChange={setTargetAmountInput} />
+              {!linkInput && <AmountRow mark="optional" label="So far" value={currentAmountInput} onChange={setCurrentAmountInput} />}
               <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
-              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+              <PickerRow mark="optional" label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
                 <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
               </PickerRow>
               </Guided>
-              <PickerRow label="Follow" value={linkLabel} open={openRow === 'follow'} onToggle={() => toggleRow('follow')}>
+              <PickerRow mark="optional" label="Follow" value={linkLabel} open={openRow === 'follow'} onToggle={() => toggleRow('follow')}>
                 <Choices options={followOptions} value={linkInput ? `${linkInput.kind}:${linkInput.id}` : 'none'} onChange={pickFollow} />
               </PickerRow>
             </FormGroup>
@@ -447,7 +454,7 @@ export default function GoalsScreen() {
           <>
             <FormGroup>
               <Guided {...fieldErrors.props('date')} onShow={() => { if (openRow !== 'date') toggleRow('date'); }}>
-              <PickerRow label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
+              <PickerRow mark="optional" label="Target date" value={targetDateLabel} open={openRow === 'date'} invalid={fieldErrors.field === 'date'} onToggle={() => toggleRow('date')} testID="goal-target-date-row">
                 <DateField value={targetDateInput} onChange={setTargetDateInput} placeholder="Pick a date" clearable testID="goal-target-date-field" />
               </PickerRow>
               </Guided>
@@ -457,7 +464,7 @@ export default function GoalsScreen() {
           </>
         )}
 
-        {!!errorMsg && <Text style={[styles.errorText, { marginHorizontal: 16, marginBottom: 12 }]}>{errorMsg}</Text>}
+        <ErrorNote text={errorMsg} />
         {editingId && <Button label="Delete goal" variant="destructive" onPress={confirmDeleteGoal} />}
       </BottomSheet>
     </View>

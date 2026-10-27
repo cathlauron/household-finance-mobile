@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { paintBusy } from '../components/BusyOverlay';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import {
 } from '../quickUnlock';
 import type { QuickUnlockCredentials } from '../quickUnlock';
 import { radii, spacing } from '../tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Shown after the app was fully closed and reopened. Lists the accounts that
 // have signed in on this phone, then unlocks the chosen one with fingerprint
@@ -46,6 +48,7 @@ export default function AccountSwitcherScreen({
 }: Props) {
   const { colors } = useTheme();
   const s = makeStyles(colors);
+  const insets = useSafeAreaInsets(); // keeps ‹ Accounts below the phone's status bar
 
   const [presence, setPresence] = useState<Record<string, Presence> | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -60,11 +63,35 @@ export default function AccountSwitcherScreen({
   const mountedRef = useRef(true);
   const fingerprintInFlightRef = useRef(false);
   const autoSelectedRef = useRef(false);
+  // Version 3 (M3): the fingerprint prompt waits a moment after an account is picked, so a
+  // wrong tap can be undone ("‹ Accounts" or "Not you?") before the phone asks.
+  const fingerprintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function backToList() {
+    if (fingerprintTimerRef.current) clearTimeout(fingerprintTimerRef.current);
+    fingerprintTimerRef.current = null;
+    setSelected(null);
+    setError('');
+    setPin('');
+  }
+
+  // The phone's Back button goes back to the account list (several accounts).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (selected && accounts.length > 1 && !busy && !working) {
+        backToList();
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [selected, accounts.length, busy, working]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (fingerprintTimerRef.current) clearTimeout(fingerprintTimerRef.current);
     };
   }, []);
 
@@ -97,7 +124,13 @@ export default function AccountSwitcherScreen({
     setError('');
     const nextMode: Mode = p.fingerprint ? 'fingerprint' : p.pin ? 'pin' : 'none';
     setMode(nextMode);
-    if (nextMode === 'fingerprint') runFingerprint(username);
+    if (fingerprintTimerRef.current) clearTimeout(fingerprintTimerRef.current);
+    if (nextMode === 'fingerprint') {
+      fingerprintTimerRef.current = setTimeout(() => {
+        fingerprintTimerRef.current = null;
+        if (mountedRef.current) runFingerprint(username);
+      }, 700);
+    }
   }
 
   async function runFingerprint(username: string) {
@@ -187,6 +220,12 @@ export default function AccountSwitcherScreen({
       style={{ flex: 1, backgroundColor: 'transparent' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {presence !== null && !!selectedAccount && accounts.length > 1 && !active && (
+        <TouchableOpacity testID="account-switcher-top-back" onPress={backToList} accessibilityRole="button" hitSlop={10} style={[s.topBack, { top: insets.top + 10 }]}>
+          <Ionicons name="chevron-back" size={20} color={colors.gold} />
+          <Text style={s.topBackText}>Accounts</Text>
+        </TouchableOpacity>
+      )}
       <KeyboardAwareScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.brandWrap}>
           <DrawingLogo width={84} drawing={active} />
@@ -224,13 +263,7 @@ export default function AccountSwitcherScreen({
             {active ? (
               <BusyWords messages={['Unlocking…', 'Opening your data…', 'Almost there…']} style={{ marginBottom: 8 }} />
             ) : (
-              <Text style={s.sub}>
-                {mode === 'fingerprint'
-                  ? 'Unlock with your fingerprint.'
-                  : mode === 'pin'
-                  ? 'Enter your PIN.'
-                  : 'Sign in with your password.'}
-              </Text>
+              <Text style={s.sub}>Unlocking {selectedAccount.username}'s Finance Flow</Text>
             )}
             <View style={{ opacity: active ? 0.45 : 1 }} pointerEvents={active ? 'none' : 'auto'}>
 
@@ -304,19 +337,16 @@ export default function AccountSwitcherScreen({
               </TouchableOpacity>
             )}
 
-            {accounts.length > 1 && (
-              <TouchableOpacity
-                testID="account-switcher-back"
-                style={s.ghostBtn}
-                onPress={() => {
-                  setSelected(null);
-                  setError('');
-                  setPin('');
-                }}
-              >
-                <Text style={s.ghostBtnText}>Choose a different account</Text>
-              </TouchableOpacity>
-            )}
+            <View style={[s.divider, { backgroundColor: colors.navy4 }]} />
+            <TouchableOpacity
+              testID="account-switcher-back"
+              style={s.ghostBtn}
+              onPress={accounts.length > 1 ? backToList : onUseOtherAccount}
+            >
+              <Text style={s.ghostBtnText}>
+                {accounts.length > 1 ? 'Not you? Choose another account' : 'Not you? Use another account'}
+              </Text>
+            </TouchableOpacity>
             </View>
           </>
         )}
@@ -386,6 +416,9 @@ function makeStyles(colors: any) {
     primaryBtnText: { color: colors.onButton, textAlign: 'center', fontWeight: '700', fontSize: 16 },
     btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     ghostBtn: { paddingVertical: 9, marginTop: 2, alignItems: 'center' },
+    divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 30, marginTop: 14, marginBottom: 4 },
+    topBack: { position: 'absolute', top: 12, left: 14, zIndex: 2, flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+    topBackText: { color: colors.gold, fontSize: 17, fontWeight: '600' },
     ghostBtnText: { color: colors.gold, textAlign: 'center', fontSize: 15, fontWeight: '600' },
     otherBtn: {
       flexDirection: 'row',
