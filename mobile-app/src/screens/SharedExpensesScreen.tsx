@@ -28,6 +28,7 @@ import DateField from '../components/DateField';
 import Button from '../components/Button';
 import { todayISO, dateText } from '../dateUtils';
 import { equalShares } from '../sharedExpenses';
+import ReceiptField, { ReceiptMark } from '../components/ReceiptField';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow } from '../components/SimpleForm';
 
 // Redesign: Shared Expenses (Plan › Shared Expenses), from the Finance Flow mockup.
@@ -63,6 +64,8 @@ export default function SharedExpensesScreen() {
   const [mode, setMode] = useState<'equal' | 'custom'>('equal');
   const [included, setIncluded] = useState<string[]>([]);
   const [custom, setCustom] = useState<Record<string, number | ''>>({});
+  // Cath, 2026-10-27 (canvas R1): a receipt photo on a shared expense.
+  const [receipt, setReceipt] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [openRow, toggleRow] = useOpenRow(sheetOpen);
@@ -93,6 +96,7 @@ export default function SharedExpensesScreen() {
     setMode('equal');
     setIncluded(ids);
     setCustom({});
+    setReceipt(null);
     setError('');
     setSheetOpen(true);
     return true;
@@ -129,6 +133,7 @@ export default function SharedExpensesScreen() {
     setMode(e.splitMode);
     setIncluded(e.shares.filter((x) => x.amount > 0).map((x) => x.personId));
     setCustom(Object.fromEntries(e.shares.map((x) => [x.personId, x.amount])));
+    setReceipt(e.receiptPhoto ?? null);
     setError('');
     setSheetOpen(true);
   }
@@ -236,6 +241,7 @@ export default function SharedExpensesScreen() {
       shares,
       splitMode: mode,
       ...(fromTxnId ? { transactionId: fromTxnId } : {}),
+      ...(receipt ? { receiptPhoto: receipt } : {}),
       createdAt: editingId ? (model.sharedExpenses ?? []).find((x) => x.id === editingId)?.createdAt ?? Date.now() : Date.now(),
     };
     const list = model.sharedExpenses ?? [];
@@ -529,7 +535,10 @@ export default function SharedExpensesScreen() {
                   <Text style={[styles.avatarText, { color: e.paidBy === myId ? colors.gold : colors.inkDim }]}>{(model.people.find((p) => p.id === e.paidBy)?.name ?? '?').charAt(0).toUpperCase()}</Text>
                 </View>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.rowTitle} numberOfLines={1}>{e.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.rowTitle, { flexShrink: 1 }]} numberOfLines={1}>{e.label}</Text>
+                    {!!e.receiptPhoto && <ReceiptMark />}
+                  </View>
                   <Text style={styles.sub} numberOfLines={1}>
                     {shortDate(e.date)} · {name(e.paidBy)} paid {formatPeso(e.amount)} · {e.splitMode === 'custom' ? 'custom split' : `split ${ways} ways`}
                   </Text>
@@ -586,6 +595,7 @@ export default function SharedExpensesScreen() {
             )}
           </PickerRow>
         </FormGroup>
+        <ReceiptField photo={receipt} onChange={setReceipt} testID="shared-receipt" style={{ borderRadius: 16, marginBottom: 20 }} />
         {!!footnote && <Footnote>{footnote}</Footnote>}
         {!!error && <Text style={[styles.meta, { color: colors.negative, marginHorizontal: 16, marginBottom: 12 }]}>{error}</Text>}
         {editingId && <Button label="Delete shared expense" variant="destructive" onPress={deleteExpense} />}

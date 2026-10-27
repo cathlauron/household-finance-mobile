@@ -94,3 +94,17 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
 5. Make a new money move, open it in Transactions: "Undo this move" puts both balances back
    (and removes its fee entry). Type in a new balance for one of its accounts, then open
    another new move between them: it explains it can't be undone. Older moves say the same.
+
+## 9. Receipts (canvas R1-R3, 2026-10-27). NOT YET TESTED.
+1. Plan > Shared expenses > Add: under the form, "Receipt photo (optional)" with "Add photo".
+   Pick a photo: a small picture with "Change photo" and "Remove". Tap the picture: it opens
+   full size; tap to close. Add: the expense shows a small paperclip in the list. Open it
+   again: the photo is still there. Remove + Save: the paperclip is gone.
+2. A bill > Pay: "Receipt photo (optional)" at the bottom of the sheet. Add one, Pay:
+   History shows a paperclip and "· tap to see the receipt"; tapping the row opens it.
+   Undo the payment: the receipt goes with it; the next bill starts with no receipt.
+3. Same on a debt and a loan (loan: in "Payments"), and with "Just record it".
+4. A trip item with a cost: tick it, add a receipt, Mark paid: a small picture shows next
+   to the amount; tap it to see it full size. Untick the item: the picture is gone.
+5. If your partner's phone is on the new build too: their phone shows the same receipts
+   after a pull-down refresh.

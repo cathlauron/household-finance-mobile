@@ -44,5 +44,5 @@ test('just record it: saved with no account asked for', async () => {
   expect(screen.getByTestId('pay-record-note')).toBeTruthy();
   await act(async () => { fireEvent.press(screen.getByTestId('pay-from-confirm')); });
   expect(onConfirm).not.toHaveBeenCalled();
-  expect(onRecord).toHaveBeenCalledWith(5000, 0, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+  expect(onRecord).toHaveBeenCalledWith(5000, 0, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), undefined);
 });

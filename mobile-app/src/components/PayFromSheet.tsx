@@ -12,6 +12,7 @@ import AmountInput from './AmountInput';
 import DateField from './DateField';
 import SegmentedControl from './SegmentedControl';
 import { todayISO, dateText } from '../dateUtils';
+import ReceiptField from './ReceiptField';
 import { MarkedLabel } from './MarkedLabel';
 
 // Redesign: asks which account a payment comes from (or goes into) before it's logged,
@@ -43,14 +44,17 @@ type Props = {
   // "Paying the Oct 15 bill" under the title.
   dueText?: string;
   // "Just record it" (canvas R4): shown when given. `recordNote` adds a line under it.
-  onRecord?: (amount: number, fee: number, date: string) => void;
+  onRecord?: (amount: number, fee: number, date: string, receipt?: string) => void;
   recordNote?: string;
   recordLabel?: string;
   // Trip items: no Fees field (their spending entry is made when the trip is saved).
   noFees?: boolean;
   // Trip items with no cost can still be ticked (no amount needed).
   allowNoAmount?: boolean;
-  onConfirm: (pm: PaymentMethod, amount: number, lateFee: number, date: string, takeOffBalance: boolean, fee: number) => void;
+  onConfirm: (pm: PaymentMethod, amount: number, lateFee: number, date: string, takeOffBalance: boolean, fee: number, receipt?: string) => void;
+  // Cath, 2026-10-27 (canvas R2-R4): "Receipt photo (optional)" at the bottom, passed to
+  // onConfirm / onRecord as the last value (undefined when none was added).
+  withReceipt?: boolean;
 };
 
 function shortISO(iso: string): string {
@@ -64,7 +68,7 @@ function yesterdayISO(): string {
 }
 const cents = (n: number) => Math.round(n * 100) / 100;
 
-export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onRecord, recordNote, recordLabel, noFees, allowNoAmount, onConfirm }: Props) {
+export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onRecord, recordNote, recordLabel, noFees, allowNoAmount, onConfirm, withReceipt }: Props) {
   const { colors } = useTheme();
   const [pm, setPm] = useState<PaymentMethod | undefined>(initial);
   const [error, setError] = useState('');
@@ -75,6 +79,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
   const [dateMode, setDateMode] = useState<'today' | 'yesterday' | 'pick'>('today');
   const [takeOff, setTakeOff] = useState(false);
   const [mode, setMode] = useState<'account' | 'record'>('account');
+  const [receipt, setReceipt] = useState<string | null>(null);
   const recording = !!onRecord && mode === 'record';
   const effective = typeof payAmount === 'number' ? payAmount : 0;
   const feeAmt = direction === 'out' && !noFees && typeof fee === 'number' && fee > 0 ? cents(fee) : 0;
@@ -103,6 +108,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     setDateMode('today');
     setTakeOff(false);
     setMode('account');
+    setReceipt(null);
     setPm(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? initial : undefined);
   }, [visible]);
 
@@ -119,7 +125,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     if (recording) {
       if (confirmedRef.current) return;
       confirmedRef.current = true;
-      onRecord?.(cents(effective), feeAmt, date);
+      onRecord?.(cents(effective), feeAmt, date, (withReceipt && receipt) || undefined);
       return;
     }
     const problem = accountProblem(model, direction, effective + feeAmt, pm);
@@ -129,7 +135,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     }
     if (confirmedRef.current) return;
     confirmedRef.current = true;
-    onConfirm(pm as PaymentMethod, cents(effective), editableAmount && typeof lateFee === 'number' ? lateFee : 0, date, beforeBalances && takeOff, feeAmt);
+    onConfirm(pm as PaymentMethod, cents(effective), editableAmount && typeof lateFee === 'number' ? lateFee : 0, date, beforeBalances && takeOff, feeAmt, (withReceipt && receipt) || undefined);
   }
 
   return (
@@ -269,6 +275,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             <AccountPicker mark="required" model={model} direction={direction} amount={effective + feeAmt} value={pm} onChange={(p) => { setPm(p); setError(''); }} />
           </>
         )}
+        {withReceipt && <ReceiptField photo={receipt} onChange={setReceipt} testID="pay-receipt" style={{ marginTop: 14, marginBottom: 12 }} />}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
       </View>
     </BottomSheet>

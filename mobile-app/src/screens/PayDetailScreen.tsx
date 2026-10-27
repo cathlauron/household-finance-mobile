@@ -14,6 +14,7 @@ import { headerButtonText } from '../navigation/LargeHeader';
 import { WhoFootnote, useWho } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
+import { ReceiptViewer, ReceiptMark } from '../components/ReceiptField';
 import DeleteRow from '../components/DeleteRow';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -77,6 +78,8 @@ export default function PayDetailScreen() {
   const styles = makeStyles(colors);
   // Redesign: "Mark as paid" first asks which account it's paid from.
   const [payOpen, setPayOpen] = useState(false);
+  // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
 
   const record: Bill | Debt | Loan | undefined = !model
     ? undefined
@@ -291,13 +294,14 @@ export default function PayDetailScreen() {
         minimumAmount={minDue}
         partOption={kind === 'bill' ? { name, repeats: (rec as Bill).recurringType !== 'onetime' } : undefined}
         dueText={dueISO ? `Paying the ${shortDate(dueISO)} ${kind === 'bill' ? 'bill' : 'payment'}` : undefined}
-        onConfirm={(pm, paidAmount, lateFee, date, takeOff, fee) => {
+        withReceipt
+        onConfirm={(pm, paidAmount, lateFee, date, takeOff, fee, receiptPhoto) => {
           setPayOpen(false);
           const feeTxnId = fee > 0 ? makeId('txn') : undefined;
           const next =
             kind === 'debt'
-              ? markPaid(rec, pm, date, paidAmount, lateFee, { feePaid: fee, feeTxnId })
-              : markPaid(rec, pm, date, paidAmount, 0, { feePaid: fee, feeTxnId });
+              ? markPaid(rec, pm, date, paidAmount, lateFee, { feePaid: fee, feeTxnId, receiptPhoto })
+              : markPaid(rec, pm, date, paidAmount, 0, { feePaid: fee, feeTxnId, receiptPhoto });
           let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
           // Cath 2026-10-27 (canvas R4): a fee paid with it is its own Fees entry.
           updated = withFeeEntry(updated, { amount: fee, label: name, date, paymentMethod: pm, id: feeTxnId });
@@ -305,9 +309,9 @@ export default function PayDetailScreen() {
           save(updated, regular ? 'Sent' : paidAmount < amount ? 'Part paid' : 'Paid');
         }}
         // "Just record it": kept in History as paid, no account, nothing else changes.
-        onRecord={(paidAmount, fee, date) => {
+        onRecord={(paidAmount, fee, date, receiptPhoto) => {
           setPayOpen(false);
-          const next = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, feePaid: fee });
+          const next = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, feePaid: fee, receiptPhoto });
           const updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
           save(updated, 'Recorded');
         }}
@@ -357,9 +361,12 @@ export default function PayDetailScreen() {
               const late = c.dueDate && c.paidDate ? daysBetween(c.dueDate, c.paidDate) : 0;
               const d = new Date((c.dueDate || c.paidDate) + 'T00:00:00');
               return (
-                <View key={c.id} style={[styles.histRow, i > 0 && styles.line]}>
+                <TouchableOpacity key={c.id} disabled={!c.receiptPhoto} onPress={() => setViewReceipt(c.receiptPhoto || null)} testID={c.receiptPhoto ? 'history-receipt' : undefined} accessibilityRole={c.receiptPhoto ? 'button' : undefined} style={[styles.histRow, i > 0 && styles.line]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.histTitle}>{isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'long' })}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.histTitle}>{isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'long' })}</Text>
+                      {!!c.receiptPhoto && <ReceiptMark />}
+                    </View>
                     <Text style={styles.meta}>
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
@@ -368,16 +375,18 @@ export default function PayDetailScreen() {
                       {num(c.feePaid) > 0 ? ` · fee ${formatPeso(num(c.feePaid))}` : ''}
                       {who.by(c.paidBy)}
                       {c.notes?.trim() ? ` · ${c.notes.trim()}` : ''}
+                      {c.receiptPhoto ? ' · tap to see the receipt' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: colors.ink }]}>{formatPeso(num(c.amountPaid))}</Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
         </>
       )}
       {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
+      <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label={regular ? 'Delete regular payment' : kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </KeyboardAwareScrollView>
@@ -422,11 +431,13 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   // Redesign: logging a payment first asks which account it comes from (or, for money
   // you lent, which account it goes into).
   const [payOpen, setPayOpen] = useState(false);
+  // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
   const payAmount = monthly > 0 ? Math.min(monthly, left || monthly) : left;
 
   // Cath, 2026-10-27 (canvas R4): the amount typed in is the one logged (it used to always
   // be the monthly amount), with an optional fee, or "Just record it" (no account).
-  function logPayment(pm: PaymentMethod, amountPaid?: number, _lateFee?: number, date: string = today, takeOff = false, fee = 0) {
+  function logPayment(pm: PaymentMethod, amountPaid?: number, _lateFee?: number, date: string = today, takeOff = false, fee = 0, receiptPhoto?: string) {
     const paidNow = typeof amountPaid === 'number' && amountPaid > 0 ? amountPaid : payAmount;
     if (paidNow <= 0) return;
     const openFor = loanCoverage(loan, today).nextOpen;
@@ -437,7 +448,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
       actualPayments: [
         ...(loan.actualPayments || []),
         // Version 3: it covers the oldest scheduled payment still open (a missed one first).
-        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 && !lent ? { fee, feeTxnId } : {}) },
+        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 && !lent ? { fee, feeTxnId } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) },
       ],
     };
     let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
@@ -445,7 +456,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
     if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, paidNow + fee);
     save(updated, lent ? 'Received' : 'Paid');
   }
-  function recordPayment(amountPaid: number, fee: number, date: string) {
+  function recordPayment(amountPaid: number, fee: number, date: string, receiptPhoto?: string) {
     if (amountPaid <= 0) return;
     const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
@@ -453,7 +464,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
       ...loan,
       actualPayments: [
         ...(loan.actualPayments || []),
-        { id: makeId('lpay'), date, actual: amountPaid, recordedOnly: true, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}) },
+        { id: makeId('lpay'), date, actual: amountPaid, recordedOnly: true, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) },
       ],
     };
     save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, 'Recorded');
@@ -538,25 +549,30 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
             {payments.map((p, i) => {
               const d = new Date(p.date + 'T00:00:00');
               return (
-                <View key={p.id} style={[styles.histRow, i > 0 && styles.line]}>
+                <TouchableOpacity key={p.id} disabled={!p.receiptPhoto} onPress={() => setViewReceipt(p.receiptPhoto || null)} testID={p.receiptPhoto ? 'history-receipt' : undefined} accessibilityRole={p.receiptPhoto ? 'button' : undefined} style={[styles.histRow, i > 0 && styles.line]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.histTitle}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.histTitle}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                      {!!p.receiptPhoto && <ReceiptMark />}
+                    </View>
                     <Text style={styles.meta}>
                       {p.date === today ? 'Paid today' : `Paid ${shortDate(p.date)}`}
                       {p.paymentMethod ? ` · ${accountLabel(model, p.paymentMethod)}` : ''}
                       {p.recordedOnly ? ' · recorded only' : ''}
                       {num(p.fee) > 0 ? ` · fee ${formatPeso(num(p.fee))}` : ''}
                       {who.by(p.addedBy)}
+                      {p.receiptPhoto ? ' · tap to see the receipt' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: lent ? colors.positive : colors.negative }]}>{formatPeso(num(p.actual))}</Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
         </>
       )}
       <Text style={styles.footer}>Each payment is saved with its date, so late ones are easy to spot.</Text>
+      <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       <PayFromSheet
         visible={payOpen}
         onClose={() => setPayOpen(false)}
@@ -566,6 +582,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         model={model}
         initial={payments[0]?.paymentMethod}
         confirmLabel={lent ? 'Received' : 'Pay'}
+        withReceipt
         onConfirm={logPayment}
         onRecord={recordPayment}
       />

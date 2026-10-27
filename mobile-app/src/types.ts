@@ -63,6 +63,8 @@ export type SharedExpense = {
   createdAt?: number;
   // Made from a transaction's "Split with others": that transaction's id.
   transactionId?: string;
+  // Cath, 2026-10-27 (canvas R1): a receipt photo (see householdParts).
+  receiptPhoto?: string;
 };
 
 // Shared Expenses: one person paying another back ("Settle up").
@@ -144,6 +146,8 @@ export type BillCycle = {
   // account and no effect on any balance or spending. `feePaid`: a fee paid with it.
   recordedOnly?: boolean;
   feePaid?: number;
+  // Cath, 2026-10-27 (canvas R2-R4): a receipt photo for this payment (see householdParts).
+  receiptPhoto?: string;
   // The fee's own Fees entry (removed on Undo), and when a recorded-only payment was logged
   // (for Undo; it has no paidAt).
   feeTxnId?: string;
@@ -233,6 +237,7 @@ export type LoanPayment = {
   recordedOnly?: boolean;
   fee?: number;
   feeTxnId?: string;
+  receiptPhoto?: string;
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
   createdAt?: number;
@@ -348,6 +353,8 @@ export type TravelChecklistItem = {
   // Optional short note shown under the item (booking details, what to bring...).
   note?: string;
   checked: boolean;
+  // Cath, 2026-10-27 (canvas R3): a receipt photo (see householdParts).
+  receiptPhoto?: string;
   completedDate?: string;
   // Set once this item is checked (with a cost) and a matching ManualTransaction has been
   // logged for it — lets us find and remove that transaction if the item gets unchecked.
