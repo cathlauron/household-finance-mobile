@@ -81,6 +81,9 @@ Could not be checked here (stays "Needs your phone"):
   months first, older days a moment later.
 - S-21 (sweep) Calendar opened with the default layout, then redrew with yours. Now yours
   from the start. Home's rain stops while Home isn't showing.
+- Code review of the sweep (2026-10-27, independent agent): 1 real bug fixed (going back to
+  the tabs wiped a reminder's bill and rebuilt all tabs), 2 swipe guards and 1 list detail
+  added. Its other checks found the sweep sound.
 - Still open (bigger changes, Claude's suggestion, not urgent): pop-up forms are fully built
   before they start rising (a short pause on big forms); dragging a pop-up down to close
   still goes through JavaScript; the pop-up jumps up after the keyboard opens.
