@@ -3,6 +3,8 @@ Household Finance Mobile App (Finance Flow) — Progress Log 7: Version 3
 >>> START HERE (2026-10-16): This is the ACTIVE progress log. Version 2.0.0 is finished and
 >>> merged into `main` (merge commit 9ae00f9). ALL new work happens on the `v3` branch.
 >>> Read the "▶️ Next step" section at the bottom first.
+>>> NEWEST (2026-10-26): red error + Home behind pages + switcher look fixed on v2.2/v3;
+>>> phone checks TEST-2.2 AO; security decisions wait in BUG-HUNT.md (SEC-1..7).
 >>> NEWEST (2026-10-23, smoothness): new standing skill finance-flow-smoothness-check
 >>> (repo .claude/skills, also offered as a card). Sub-pages now follow your finger on
 >>> v2.2/v3 (Cath's pick B). Phone checks TEST-2.2 section AM. Save gate is now
@@ -225,6 +227,17 @@ PROGRESS.md are closed history. All progress files live at the REPO ROOT, on `ma
   Note: an earlier run of this same conversation did batches A and B; its reply never
   reached Cath, this run finished the work.
 
+- 2026-10-23 to 10-26 (v2.2/v3, commits 3c192a9..1f61c1f): account first (no account /
+  no income yet: + goes to adding one, then back with it picked); To-Pay past Loans /
+  before Bills hands over to the main tabs with the finger; calendar + > add leaves at
+  once and lands on the right screen; every form field marked red * or grey (optional)
+  (MarkedLabel, permanent check RequiredMarks.test.tsx); afterSlide 1 s fallback (S-12);
+  red "easing not supported by native animated module" error fixed (S-13, curvedRange);
+  the still copy of the app on Home behind sliding pages fixed (S-14, ScreenSwap removes
+  the old screen by the clock too); switchers back to the approved look (S-15, no Android
+  elevation). Independent reviewer agents: design (agreed with S-15), security (findings
+  SEC-1..7 in BUG-HUNT.md, waiting for Cath), motion.
+
 =====================================================================
 🔧 In progress
 =====================================================================
@@ -400,6 +413,12 @@ Testing
   instant like 2.1"); set-up steps slide like pages; no flicker / overlap, smooth fades
   everywhere (see the skill).
 
+- 2026-10-23 (Cath): every form field shows a red * when needed, a grey "(optional)" when
+  not; on/off switches get neither. After adding a missing account / salary from a form,
+  go back to that form with it picked. Past Loans: Plan comes in with your finger.
+- 2026-10-26: security changes wait for Cath's OK (BUG-HUNT.md SEC-1..7); database rule
+  changes are published by Cath in the Firebase Console.
+
 =====================================================================
 ⚠️ Known issues / gotchas — still open
 =====================================================================
@@ -563,6 +582,12 @@ Carried from PROGRESS5.md (paused; status not re-checked since)
   pop-ups opening/closing, lock/unlock and sign-in stay phone checks (TEST-2.2 AN2, AN9).
   Small, to watch on the phone: opening Search, the tab bar's labels fade a moment late.
 
+- 2026-10-26 security review (BUG-HUNT.md, NOT FIXED, Cath decides): SEC-1 serious - the
+  join rule lets anyone who knows a household ID add themselves (invite code ownership not
+  checked; removing a member keeps the same key). SEC-2 reminders with amounts keep coming
+  after sign-out / revoke / unlink. SEC-3..7 smaller (pending invite key in plain storage,
+  6-digit peer recovery, PIN retry rounds, no tamper check on saved data, join links).
+
 =====================================================================
 📁 Files in the repo
 =====================================================================
@@ -718,6 +743,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - 2026-10-22/23 (night): Claude drove the emulator on Cath's computer while she watched
   (stopped by Cath). Then the smoothness skill, the A/B/C slide canvas (Cath picked B),
   and four batches built while she was away (see Done).
+
+- 2026-10-26 new files (v2.2/v3): mobile-app/src/components/ScreenSwap.tsx (moved out of
+  App.tsx), src/components/MarkedLabel.tsx, src/accountHandoff.ts, src/quietMoves.ts;
+  checks __tests__/ScreenSwap.test.tsx, RequiredMarks.test.tsx, AccountFirst.test.tsx.
 
 =====================================================================
 ▶️ Next step
@@ -947,3 +976,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - NEWEST (2026-10-23 morning, smoothness 2): Cath does her batch test: TEST-2.2 sections AM
   and AN on her phone (git pull on v2.2, npx expo start -c). Nothing waits for her decision.
   Then: the real 2.2 build (AG4, I11, I12) and merging 2.2 into main.
+
+
+- NEWEST (2026-10-26, checkpoint): Cath tests TEST-2.2 section AO on her phone (git pull on
+  v2.2, npx expo start -c): no red error, no Home behind Plan pages, the approved switcher
+  look, account / salary first, past Loans, calendar add, required marks. Then decide the
+  security items in BUG-HUNT.md (SEC-1 first). Still after that: the real 2.2 build (AG4,
+  I11, I12), then merge 2.2 into main.
