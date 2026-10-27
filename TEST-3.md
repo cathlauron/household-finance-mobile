@@ -44,3 +44,16 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
 3. After that, "Credit card" shows Limit, You owe, Next statement and Pay. Details sets the limit, the statement due day and the minimum; the due date and minimum then show under Next statement.
 4. Pay opens Pay card with the card under To. Paying more than you owe isn't allowed.
 5. New transaction, money out, Paid with a credit card: "Split into payments" with No / 3 / 6 / 12 appears (not for cash or debit). Pick 6 on ₱7,500: "₱1,250.00 a month for 6 months on (card). Your spending counts the whole amount today." Add it: the card page shows "Installments: (name) · 6 of 6 left · ₱1,250.00 a month".
+
+## 5. From the 2.2 build notes (2026-10-27). NOT YET TESTED.
+1. Calendar, Oct 30 (or any day): every bill and debt due that day shows, the same ones the
+   Bills and Debts pages say are due then (also the one that was missing). Home's Due soon
+   shows it too. Left to Spend may go down by that debt's amount: it was missing there too.
+2. A bill or debt due on the 31st shows on Nov 30 / Feb 28 in the calendar.
+3. Loans: the loan you pay every 16th says "next Oct 16" (with Overdue, as Oct 16 hasn't
+   been logged yet). Log the Oct 16 payment: it then says "next Nov 16" and the Overdue
+   tag goes. The loan's own page says the same.
+4. Any form: hold the big amount at the top (₱0.00): Paste appears; paste "₱1,500.50": it
+   shows ₱1,500.50. Also works in the smaller amount boxes.
+5. A bill and a debt with a Note: their page shows a Note section with it. A payment made
+   with a note shows it in that payment's History line.
