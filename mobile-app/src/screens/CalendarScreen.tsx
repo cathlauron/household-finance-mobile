@@ -69,7 +69,7 @@ function eventColor(ev: CalendarEvent, colors: any): string {
 function eventKind(ev: CalendarEvent): string {
   switch (ev.type) {
     case 'bill':
-      return 'Bill';
+      return ev.regular ? 'Regular payment' : 'Bill';
     case 'debt':
       return 'Debt payment';
     case 'loan':

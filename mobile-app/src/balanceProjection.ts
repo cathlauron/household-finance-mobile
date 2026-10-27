@@ -34,6 +34,7 @@ export type CalendarEvent = {
   amount: number;
   direction?: 'in' | 'out' | 'saving'; // only set for manual transactions
   id?: string; // set for bill, debt and loan events
+  regular?: boolean; // a bill that is a regular payment (Cath, 2026-10-27)
 };
 
 function toNumber(v: number | '' | undefined): number {
@@ -469,7 +470,7 @@ function computeMonthEventsNow(
   model.bills.forEach((bill) => {
     const amount = Math.max(0, outstandingBalance(bill));
     dueDaysInMonth(bill, year, monthIndex).forEach((day) => {
-      push(day, { type: 'bill', label: bill.name || 'Bill', amount, id: bill.id });
+      push(day, { type: 'bill', label: bill.name || 'Bill', amount, id: bill.id, ...(bill.regular ? { regular: true } : {}) });
     });
   });
 

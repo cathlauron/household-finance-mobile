@@ -171,6 +171,10 @@ export type Bill = {
   // B.14: opt-in flag distinguishing a subscription (Netflix) from a plain
   // recurring bill (Rent). Only subscriptions get cancel-reminders.
   isSubscription?: boolean;
+  // Cath, 2026-10-27 (canvas P2): money you send regularly that isn't a bill (monthly
+  // money for family). Works like a bill (Left to Spend, calendar, reminders), shown
+  // in its own "Regular payments" section, marked Sent instead of Paid.
+  regular?: boolean;
   // Undefined/'active' = normal, reminders keep firing each cycle.
   // 'cancelled' = person tapped Cancel; bill stays in the list (for
   // history/reports) but stops generating future reminders.

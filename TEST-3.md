@@ -65,3 +65,17 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
    with "…" on the right if it doesn't fit. Check a few other forms with long values.
 3. Savings, Yearly Goals, Shared Expenses, Groceries, Travel, Events: swiping sideways never
    takes you back to Plan. The back arrow (and your phone's back) still do.
+
+## 7. Regular payments, transfers, support (2026-10-27). NOT YET TESTED.
+1. To-Pay > + > New bill: under Bill / Debt / Loan there's "Bill | Regular payment". Pick
+   Regular payment: the title says "New regular payment". Add "For Mama", ₱5,000, every
+   1st. Bills now has a "Regular payments" section with it; the card on top says
+   "Bills ₱… · regular payments ₱…". Left to Spend counts it; the calendar shows it as
+   "Regular payment".
+2. Open it: the button says Send. Send it: it shows under "Paid and sent this month" as Sent.
+3. Move money between two accounts with a note: Transactions shows "Moved: Cash → BDO"
+   in grey with the note; In / Out at the top don't change. Tap it: its page shows from,
+   to, date, fee and note.
+4. Settings > About & Help > Contact support: your email app opens to
+   support.financeflow00@gmail.com with "Finance Flow (version) (Android)" as the subject.
+   Copy email address: "Copied".

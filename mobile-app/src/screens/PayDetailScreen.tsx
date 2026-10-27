@@ -167,6 +167,8 @@ export default function PayDetailScreen() {
   // ---------- Bill / Debt ----------
   const rec = record as Bill | Debt;
   const name = kind === 'bill' ? (rec as Bill).name || 'Untitled bill' : (rec as Debt).creditorOrPerson || 'Debt';
+  // Cath, 2026-10-27 (canvas P2): a regular payment (not a bill) is sent, not paid.
+  const regular = kind === 'bill' && !!(rec as Bill).regular;
   const cur = currentCycle(rec);
   const curPaid = cur ? isCyclePaid(cur) : true;
   const amount = num(cur?.amountDue);
@@ -251,7 +253,7 @@ export default function PayDetailScreen() {
             accessibilityRole="button"
           >
             <GradientFill color={colors.buttonFill} strength={0.18} />
-            <Text style={[styles.primaryText, { color: colors.onButton }]}>Pay</Text>
+            <Text style={[styles.primaryText, { color: colors.onButton }]}>{regular ? 'Send' : 'Pay'}</Text>
           </TouchableOpacity>
         )}
         {paidToday && (
@@ -272,12 +274,12 @@ export default function PayDetailScreen() {
       <PayFromSheet
         visible={payOpen}
         onClose={() => setPayOpen(false)}
-        title={`Pay ${name}`}
+        title={regular ? `Send ${name}` : `Pay ${name}`}
         amount={kind === 'debt' ? minDue : amount}
         direction="out"
         model={model}
         initial={cur?.paymentMethod}
-        confirmLabel="Pay"
+        confirmLabel={regular ? 'Sent' : 'Pay'}
         editableAmount={kind === 'debt'}
         fullAmount={amount}
         minimumAmount={minDue}
@@ -359,7 +361,7 @@ export default function PayDetailScreen() {
       )}
       {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
       <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
-      <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
+      <DeleteRow label={regular ? 'Delete regular payment' : kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </KeyboardAwareScrollView>
     {editor}
     </>
