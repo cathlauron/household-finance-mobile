@@ -1,4 +1,5 @@
 import React from 'react';
+import { goToMain } from '../navigation/goToMain';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,12 +30,12 @@ export default function GuestPicks() {
   function open(go: 'bill' | 'debt' | 'savings' | 'spend') {
     if (go === 'bill' || go === 'debt') {
       setToPaySub(go === 'bill' ? 'bills' : 'debts');
-      navigation.navigate('Main', { screen: 'To-Pay' });
+      goToMain(navigation, { screen: 'To-Pay' });
       setTimeout(requestToPayAdd, 400);
     } else if (go === 'savings') {
       navigation.navigate('Savings');
     } else {
-      navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
+      goToMain(navigation, { screen: 'Transactions', params: { addNonce: Date.now() } });
     }
   }
 

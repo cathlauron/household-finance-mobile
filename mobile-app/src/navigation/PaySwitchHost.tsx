@@ -5,6 +5,7 @@
 // always work with your newest data, even when To-Pay isn't the tab on screen (for
 // example a form opened from the Calendar).
 import React, { useEffect, useState } from 'react';
+import { goToMain } from './goToMain';
 import { View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
@@ -45,7 +46,7 @@ export default function PaySwitchHost() {
           onAdded: () =>
             setTimeout(() => {
               requestToPayTab(f.sub);
-              navigation.navigate('Main', { screen: 'To-Pay' });
+              goToMain(navigation, { screen: 'To-Pay' });
             }, SHEET_CLOSE_WAIT),
         };
         return (

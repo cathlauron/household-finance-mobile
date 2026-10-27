@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { goToMain } from '../navigation/goToMain';
 import { animateNextLayout } from '../animateLayout';
 import { dateText } from '../dateUtils';
 import { alertDidntWork } from '../messages';
@@ -260,7 +261,7 @@ export default function CardDetailScreen() {
         <Text style={styles.header}>Latest transactions</Text>
         {data.list.length > 0 && (
           <TouchableOpacity
-            onPress={() => navigation.navigate('Main', { screen: 'Transactions', params: { accountFilter: `${group}:${accountId}`, accountFilterName: account.name || GROUP_LABEL[group], filterNonce: Date.now() } })}
+            onPress={() => goToMain(navigation, { screen: 'Transactions', params: { accountFilter: `${group}:${accountId}`, accountFilterName: account.name || GROUP_LABEL[group], filterNonce: Date.now() } })}
             accessibilityRole="button"
           >
             <Text style={styles.link}>See all</Text>

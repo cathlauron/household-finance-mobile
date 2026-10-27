@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { goToMain } from '../navigation/goToMain';
 import { dateText } from '../dateUtils';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, ScrollView, StyleSheet, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
@@ -199,7 +200,7 @@ export default function SearchScreen() {
                   onPress={() => {
                     remember(query);
                     const now = new Date();
-                    navigation.navigate('Main', {
+                    goToMain(navigation, {
                       screen: 'Transactions',
                       params: {
                         categoryFilter: c.name,

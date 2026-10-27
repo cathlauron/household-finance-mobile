@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { goToMain } from '../navigation/goToMain';
 import { View, StyleSheet, AppState, Alert } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -134,7 +135,7 @@ export function WelcomeBackCard({ username }: { username: string }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.chip, { backgroundColor: colors.accentTint }]}
-          onPress={() => navigation.navigate('Main', { screen: 'Transactions' })}
+          onPress={() => goToMain(navigation, { screen: 'Transactions' })}
           accessibilityRole="button"
         >
           <Text style={[s.chipText, { color: colors.gold }]}>Everything</Text>

@@ -61,6 +61,11 @@ Could not be checked here (stays "Needs your phone"):
   copy of the app on Home behind the slide. The whole-screen dip's curve was inside
   interpolate(), which the phone refuses, so the old screen was never removed. Now the
   curve is written as points and the old screen is removed by the clock too.
+  CORRECTION (same day): that fixed the red error but was NOT the overlap. The motion
+  reviewer agent disagreed, and was right (proven with the real navigation library): "go to
+  Main" from a page on top stacked a SECOND copy of the tabs (after a calendar add, search
+  result, card page, Review, reminder tap). The old copy, on Home, showed through every
+  sliding page. Now every place goes BACK to the one Main (goToMain).
 - S-15 (Cath's screenshot, 2026-10-26): switchers drew a shadowed box around every label
   on Android. Back to the approved look (one white pill), same glide.
 

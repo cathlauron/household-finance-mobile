@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { goToMain } from '../navigation/goToMain';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -512,11 +513,11 @@ export default function CalendarScreen() {
   }
   function goToList(kind: 'txn' | 'bills' | 'debts' | 'loans') {
     if (kind === 'txn') {
-      navigation.navigate('Main', { screen: 'Transactions' });
+      goToMain(navigation, { screen: 'Transactions' });
       return;
     }
     requestToPayTab(kind);
-    navigation.navigate('Main', { screen: 'To-Pay' });
+    goToMain(navigation, { screen: 'To-Pay' });
   }
 
   const selectedForList = listLayout ? { y: page.year, m: page.month, d: selDay } : null;

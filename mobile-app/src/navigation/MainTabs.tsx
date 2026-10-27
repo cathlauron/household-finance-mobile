@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { goToMain } from './goToMain';
 import { InteractionManager } from 'react-native';
 import { SwipeTabs } from './swipeTabs';
 import { TAB_ORDER } from './tabDrag';
@@ -136,7 +137,7 @@ function QuickAdd() {
           // Cath: after Add, land on Transactions to see the new entry slide in.
           // Cath: the form slid away while Transactions was already showing (a flash of it).
           // Now the form finishes sliding away first, then Transactions shows.
-          onAdded={() => setTimeout(() => navigation.navigate('Main', { screen: 'Transactions' }), SHEET_CLOSE_WAIT)}
+          onAdded={() => setTimeout(() => goToMain(navigation, { screen: 'Transactions' }), SHEET_CLOSE_WAIT)}
         />
       </QuietWhenHidden>
     </View>
@@ -161,7 +162,7 @@ function AddFab({ bottom }: { bottom: number }) {
         hapticLight();
         if (onToPay) requestToPayAdd();
         else if (activeTab !== 'Transactions' && quickAddOpen) quickAddOpen();
-        else navigation.navigate('Main', { screen: 'Transactions', params: { addNonce: Date.now() } });
+        else goToMain(navigation, { screen: 'Transactions', params: { addNonce: Date.now() } });
       }}
       style={({ pressed }) => [
         fabStyles.fab,

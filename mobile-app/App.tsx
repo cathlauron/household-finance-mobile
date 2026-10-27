@@ -1,4 +1,5 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
+import { goToMain } from './src/navigation/goToMain';
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
 import { isThisDeviceRevoked, getDeviceId } from './src/sessions';
@@ -188,7 +189,7 @@ function AppContent() {
     if (!navigationRef.isReady()) return;
     const billId = pendingDeepLinkBillId.current;
     pendingDeepLinkBillId.current = null;
-    navigationRef.navigate('Main', { openBillId: billId });
+    goToMain(navigationRef, { openBillId: billId });
   }
 
   // Version 2.2: invite links. The code waits (joinLink.ts) until Household picks it up:

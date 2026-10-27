@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from 'react';
+import { goToMain } from '../navigation/goToMain';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved } from '../messages';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
@@ -103,7 +104,7 @@ export default function ReviewScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: colors.accentTint }]}
-              onPress={() => navigation.navigate('Main', { screen: 'Transactions', params: { editId: t.id, editNonce: Date.now() } })}
+              onPress={() => goToMain(navigation, { screen: 'Transactions', params: { editId: t.id, editNonce: Date.now() } })}
               accessibilityRole="button"
             >
               <GradientFill match={[styles.btn, { backgroundColor: colors.accentTint }]} />
