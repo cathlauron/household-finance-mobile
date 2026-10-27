@@ -72,6 +72,10 @@ import {
 } from './src/sessions';
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
+// Smoothness sweep 2026-10-26: one navigation theme for the whole app, made once. A new one
+// on every redraw (every save) made everything that reads it redraw too.
+const NAV_THEME = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent' } };
+
 type Screen = 'loading' | 'createProfile' | 'signIn' | 'home' | 'locked' | 'onboarding' | 'intro' | 'switcher' | 'welcome' | 'setup' | 'guest' | 'guestSignUp';
 
 
@@ -767,10 +771,7 @@ function AppContent() {
       <View style={{ flex: 1, backgroundColor: 'transparent' }} onStartShouldSetResponderCapture={() => { noteTouch(); return false; }}>
         <NavigationContainer
           ref={navigationRef}
-          theme={{
-            ...DefaultTheme,
-            colors: { ...DefaultTheme.colors, background: 'transparent' },
-          }}
+          theme={NAV_THEME}
           onReady={handleNavReady}
           onStateChange={handleNavStateChange}
         >
@@ -866,7 +867,7 @@ function AppContent() {
       <View style={{ flex: 1, backgroundColor: 'transparent' }}>
         <NavigationContainer
           ref={navigationRef}
-          theme={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent' } }}
+          theme={NAV_THEME}
         >
           <RootStack
             username=""

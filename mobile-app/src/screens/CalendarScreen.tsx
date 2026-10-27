@@ -12,8 +12,7 @@ import { computeRunningBalances, formatPeso, computeMonthEvents, CalendarEvent }
 import {
   CalendarViewMode,
   CalendarNavMode,
-  DEFAULT_VIEW_MODE,
-  DEFAULT_NAV_MODE,
+  calendarSettingsNow,
   getCalendarViewMode,
   setCalendarViewMode,
   getCalendarNavMode,
@@ -338,9 +337,13 @@ export default function CalendarScreen() {
   const todayIndex = TODAY_INDEX;
 
   const [level, setLevel] = useState<'year' | 'month'>('month');
-  const [viewMode, setViewModeState] = useState<CalendarViewMode>(DEFAULT_VIEW_MODE);
-  const [navMode, setNavModeState] = useState<CalendarNavMode>(DEFAULT_NAV_MODE);
-  const [showBalance, setShowBalanceState] = useState(true);
+  // Smoothness sweep 2026-10-26: starts with the remembered layout (no redraw while rising).
+  const [viewMode, setViewModeState] = useState<CalendarViewMode>(() => {
+    const v = calendarSettingsNow().view;
+    return v === 'stacked' ? 'details' : v;
+  });
+  const [navMode, setNavModeState] = useState<CalendarNavMode>(() => calendarSettingsNow().nav);
+  const [showBalance, setShowBalanceState] = useState(() => calendarSettingsNow().balance);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   // The month on screen (index into pages) and the chosen day.

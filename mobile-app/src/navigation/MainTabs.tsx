@@ -3,6 +3,7 @@ import { goToMain } from './goToMain';
 import { InteractionManager } from 'react-native';
 import { SwipeTabs } from './swipeTabs';
 import { TAB_ORDER } from './tabDrag';
+import { warmCalendarSettings } from '../calendarSettings';
 import { View, Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFabSide } from '../fabSide';
@@ -30,22 +31,34 @@ import GradientFill from '../components/GradientFill';
 // Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger): a swipe brings the next
 // tab in under your finger, so it has to be built already. Once the app has settled after
 // opening, the other tabs are built quietly in the background (once).
+const PRELOAD_GAP_MS = 300;
 function PreloadTabs({ navigation }: { navigation: any }) {
   useEffect(() => {
     // Once settled, or after 1.5 s at the latest: something that keeps moving (an endless
     // animation on a slower phone or the web) can keep the app from ever counting as
     // settled, and a swipe would then bring in an empty page (frame recorder, 10-23).
+    // Smoothness sweep 2026-10-26 (jank reviewer): one tab at a time, nearest first, with a
+    // pause between, instead of all of them in one go (a short freeze just after opening).
     let done = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     const build = () => {
       if (done) return;
       done = true;
-      TAB_ORDER.forEach((name) => navigation.preload?.(name));
+      const state = navigation.getState?.();
+      const here = state ? TAB_ORDER.indexOf(state.routes[state.index]?.name) : 0;
+      const order = TAB_ORDER.map((name, i) => ({ name, d: Math.abs(i - Math.max(0, here)) }))
+        .filter((t) => t.d > 0)
+        .sort((a, b) => a.d - b.d);
+      order.forEach((t, i) => timers.push(setTimeout(() => navigation.preload?.(t.name), i * PRELOAD_GAP_MS)));
     };
+    // The calendar's saved layout, read now so it opens without redrawing.
+    warmCalendarSettings();
     const h = InteractionManager.runAfterInteractions(build);
     const t = setTimeout(build, 1500);
     return () => {
       h.cancel();
       clearTimeout(t);
+      timers.forEach(clearTimeout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -251,6 +264,10 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
         tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.inkDim,
   }), [colors, isDark, tabBarBottom]);
+  // Smoothness sweep 2026-10-26: Home and To-Pay are drawn by functions made once, so the
+  // navigation library can skip them when nothing about them changed.
+  const renderHome = React.useCallback(() => <HomeScreen username={username} />, [username]);
+  const renderToPay = React.useCallback(() => <ToPayScreen initialOpenBillId={initialOpenBillId} />, [initialOpenBillId]);
   return (
     <View style={{ flex: 1 }}>
     <Tab.Navigator
@@ -316,7 +333,7 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
           tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="home" off="home-outline" />,
         }}
       >
-        {() => <HomeScreen username={username} />}
+        {renderHome}
       </Tab.Screen>
       <Tab.Screen
         name="Transactions"
@@ -331,7 +348,7 @@ export default function MainTabs({ username, initialOpenBillId }: MainTabsProps)
           tabBarIcon: ({ focused, color, size }) => <TabIcon focused={focused} color={color} size={size} on="receipt" off="receipt-outline" />,
         }}
       >
-        {() => <ToPayScreen initialOpenBillId={initialOpenBillId} />}
+        {renderToPay}
       </Tab.Screen>
       {/* Redesign: Plan replaces the old More tab (see PlanScreen.tsx). */}
       <Tab.Screen

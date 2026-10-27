@@ -21,6 +21,9 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 
 import React, { createContext, startTransition, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import * as Network from 'expo-network';
 import { Alert, AppState, InteractionManager } from 'react-native';
+import { SHEET_CLOSE_MS, TAB_MS } from './motion';
+// How long a save waits for the screen to settle (form closing + the next slide).
+const SAVE_AFTER_MOVES_MS = SHEET_CLOSE_MS + TAB_MS + 150;
 import CryptoJS from 'crypto-js';
 import type { HouseholdModel, ManualTransaction } from './types';
 import { stampHouseholdWho } from './whoStamp';
@@ -961,7 +964,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await new Promise<void>((resolve) => {
           if (AppState.currentState !== 'active') return resolve();
           skipSaveWaitRef.current = resolve;
-          InteractionManager.runAfterInteractions(() => setTimeout(resolve, 250));
+          // Smoothness sweep 2026-10-26 (jank reviewer): long enough for the form to close
+          // AND the screen that follows to finish sliding (+ Add goes on to Transactions);
+          // at 250 ms the encrypting landed in the middle of that slide and stuttered it.
+          InteractionManager.runAfterInteractions(() => setTimeout(resolve, SAVE_AFTER_MOVES_MS));
         });
         skipSaveWaitRef.current = null;
         while (persistDirtyRef.current) {
@@ -991,6 +997,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Log out and Switch account wait for saving to finish first (up to about 15 seconds).
   async function waitForSaves(maxMs = 15000): Promise<void> {
     if (!savesBusy() && !syncingRef.current) return;
+    // Leaving (log out, switch account): save now instead of waiting for slides to end.
+    skipSaveWaitRef.current?.();
     showSaved('Saving your last change…');
     await Promise.race([saveLineRef.current, new Promise<void>((resolve) => setTimeout(resolve, maxMs))]);
   }

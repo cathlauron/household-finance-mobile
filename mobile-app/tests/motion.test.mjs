@@ -233,3 +233,23 @@ test('main-tab swipe: moves on the animation thread, not through JavaScript', ()
   const td = code(files.find((x) => x.name === 'navigation/tabDrag.ts').text);
   assert.match(td, /makeMutable/);
 });
+
+// Smoothness sweep 2026-10-26 (jank reviewer's findings, each fixed):
+test('sweep 10-26: no redraw storms, no work landing mid-slide', () => {
+  const get = (n) => code(files.find((x) => x.name === n).text);
+  // Pages in the stack and the main tabs are drawn by functions made once (else every
+  // save redrew everything; proven in __tests__/NoRedrawOnSave).
+  const rs = get('navigation/RootStack.tsx');
+  assert.doesNotMatch(rs, /\{\s*\(\{\s*route\s*\}\)\s*=>\s*\(/);
+  assert.doesNotMatch(rs, /\{\(\) => <(Profile|Settings)Screen/);
+  const mt = get('navigation/MainTabs.tsx');
+  assert.doesNotMatch(mt, /\{\(\) => <(Home|ToPay)Screen/);
+  // Tabs are built one at a time after opening, not all at once.
+  assert.match(mt, /PRELOAD_GAP_MS/);
+  // The rain stops when its tab isn't showing.
+  assert.match(get('components/SkyGlow.tsx'), /pageActive && <FallingRain/);
+  // The calendar opens with the remembered layout.
+  assert.match(get('screens/CalendarScreen.tsx'), /calendarSettingsNow\(\)/);
+  // A save waits until the form has closed and the next slide is done.
+  assert.match(get('DataContext.tsx'), /setTimeout\(resolve, SAVE_AFTER_MOVES_MS\)/);
+});

@@ -141,9 +141,49 @@ type RootStackProps = {
   onGuestSave?: () => void;
 };
 
+// Smoothness sweep 2026-10-26 (jank reviewer, proven in __tests__/NoRedrawOnSave): pages
+// drawn by a function made fresh on every redraw can't be skipped by the navigation
+// library, so every save redrew the main tabs and every open page. These page-drawing
+// functions are made once; pages that only need their route are plain functions here.
+function IncomeRoute({ route }: any) {
+  return <IncomeScreen openAddNonce={route.params?.openAddNonce} openIncomeId={route.params?.openIncomeId} openIncomeNonce={route.params?.openIncomeNonce} />;
+}
+function IncomePersonRoute({ route }: any) {
+  return <IncomeScreen personId={route.params.personId} />;
+}
+function SavingsRoute({ route }: any) {
+  return <SavingsScreen openSavingsId={route.params?.openSavingsId} openSavingsNonce={route.params?.openSavingsNonce} />;
+}
+
 export default function RootStack({ username, onLock, onSignOut, onSwitchAccount, onGuestSave }: RootStackProps) {
   const { colors } = useTheme();
   const { guest } = useData();
+  // The app hands over new lock / sign-out actions each time it redraws; the pages get
+  // steady ones that always call the newest.
+  const latest = React.useRef({ onLock, onSignOut, onSwitchAccount });
+  latest.current = { onLock, onSignOut, onSwitchAccount };
+  const actions = React.useMemo(
+    () => ({
+      onLock: () => latest.current.onLock(),
+      onSignOut: () => latest.current.onSignOut(),
+      onSwitchAccount: () => latest.current.onSwitchAccount(),
+    }),
+    []
+  );
+  const renderMain = React.useCallback(
+    ({ route }: any) => (
+      <MainTabs username={username} onLock={actions.onLock} onSignOut={actions.onSignOut} initialOpenBillId={route.params?.openBillId} />
+    ),
+    [username, actions]
+  );
+  const renderProfile = React.useCallback(
+    () => <ProfileScreen onLock={actions.onLock} onSignOut={actions.onSignOut} onSwitchAccount={actions.onSwitchAccount} />,
+    [actions]
+  );
+  const renderSettings = React.useCallback(
+    () => <SettingsScreen onSignOut={actions.onSignOut} onSwitchAccount={actions.onSwitchAccount} onLock={actions.onLock} />,
+    [actions]
+  );
 
   return (
     <Stack.Navigator
@@ -177,14 +217,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Main"
         options={{ headerShown: false }}
       >
-        {({ route }) => (
-          <MainTabs
-            username={username}
-            onLock={onLock}
-            onSignOut={onSignOut}
-            initialOpenBillId={route.params?.openBillId}
-          />
-        )}
+        {renderMain}
       </Stack.Screen>
       <Stack.Screen
         name="Profile"
@@ -194,7 +227,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
           headerBackTitle: 'Settings',
         }}
       >
-        {() => <ProfileScreen onLock={onLock} onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} />}
+        {renderProfile}
       </Stack.Screen>
       <Stack.Screen
         name="Calendar"
@@ -224,28 +257,17 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Income"
         options={{ title: 'Income', headerBackTitle: 'Transactions' }}
       >
-        {({ route }) => (
-          <IncomeScreen
-            openAddNonce={route.params?.openAddNonce}
-            openIncomeId={route.params?.openIncomeId}
-            openIncomeNonce={route.params?.openIncomeNonce}
-          />
-        )}
+        {IncomeRoute}
       </Stack.Screen>
       {/* One person's income: their paydays this month and their sources. */}
       <Stack.Screen name="IncomePerson" options={{ title: ' ', headerBackTitle: 'Income' }}>
-        {({ route }) => <IncomeScreen personId={route.params.personId} />}
+        {IncomePersonRoute}
       </Stack.Screen>
       <Stack.Screen
         name="Savings"
         options={{ title: 'Savings', headerBackTitle: 'Plan' }}
       >
-        {({ route }) => (
-          <SavingsScreen
-            openSavingsId={route.params?.openSavingsId}
-            openSavingsNonce={route.params?.openSavingsNonce}
-          />
-        )}
+        {SavingsRoute}
       </Stack.Screen>
       <Stack.Screen
         name="Reports"
@@ -256,11 +278,11 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         name="Settings"
         options={{ title: 'Settings', headerBackTitle: 'Home' }}
       >
-        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
+        {renderSettings}
       </Stack.Screen>
       {/* A Settings sub-page (Account & Security, Appearance, ...), pushed so it fades in like other pages. */}
       <Stack.Screen name="SettingsPage" options={{ title: ' ', headerBackTitle: 'Settings' }}>
-        {() => <SettingsScreen onSignOut={onSignOut} onSwitchAccount={onSwitchAccount} onLock={onLock} />}
+        {renderSettings}
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
