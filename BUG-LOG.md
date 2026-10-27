@@ -64,6 +64,9 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-042 | Loan paid every 16th: after logging Sept 16 it said "next Nov 16" (Oct 16 unpaid, shown as past due) | loanSchedule.ts loanNextDueDate (Loans list, sort, loan page, Home tight-money list) | tests/loanSchedule.test.mjs ("next payment = the oldest unpaid date", red-green) |
 | B-043 | Couldn't paste (or copy) in the big amount at the top of forms | components/CenteredAmount.tsx | __tests__/AmountPaste.test.tsx (red-green) |
 | B-044 | A note added to a bill or debt (and a payment's note) showed nowhere | screens/PayDetailScreen.tsx | __tests__/DetailNotes.test.tsx (red-green) |
+| B-045 | A trip with an empty checklist showed no Checklist at all (Budget page cut to To-do's height; phone only) | components/SlidingPages.tsx (heights kept in a ref) | __tests__/InlineHeights.test.tsx (phone-like delayed writes; red-green) |
+| B-046 | "Dates (optional)" squeezed to one letter per line in the trip form (any long value in a form row) | components/SimpleForm.tsx PickerRow | tests/motion.test.mjs ("row labels keep their width"); look needs your phone |
+| - | Plan pages: swiping sideways no longer goes back to Plan (Cath) | navigation/RootStack.tsx NO_SWIPE_BACK | tests/motion.test.mjs ("Plan pages: no swipe-back") |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 

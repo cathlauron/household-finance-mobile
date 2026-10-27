@@ -57,3 +57,11 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
    shows ₱1,500.50. Also works in the smaller amount boxes.
 5. A bill and a debt with a Note: their page shows a Note section with it. A payment made
    with a note shows it in that payment's History line.
+
+## 6. Trip page, form rows, Plan swipe (2026-10-27). NOT YET TESTED.
+1. Open BKK (empty checklist): under the Savings switch you see CHECKLIST, "What will it
+   cost?" and the "Add an item" row. Add an item there: it appears; the page grows.
+2. Edit trip: "Dates (optional)" sits on one line on the left; a long date range is cut
+   with "…" on the right if it doesn't fit. Check a few other forms with long values.
+3. Savings, Yearly Goals, Shared Expenses, Groceries, Travel, Events: swiping sideways never
+   takes you back to Plan. The back arrow (and your phone's back) still do.

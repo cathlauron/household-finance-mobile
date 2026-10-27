@@ -238,13 +238,18 @@ export default function SlidingPages<T extends string>({
     if (!a) return {};
     return { height: interpolate(p, [lo, lo === hi ? lo + 1 : hi], [a, b]) };
   }, [inline]);
+  // 2026-10-27 (Cath's BKK trip: an empty checklist was cut off): the heights are kept
+  // here, where a change is seen at once, and handed to the animation. Read back from the
+  // animation value, a second page measuring in the same moment saw the old list (on a
+  // phone, writes land a moment later) and wiped the first page's height.
+  const knownHeights = useRef<number[]>(options.map(() => 0));
   const measurePage = (k: number) => (e: LayoutChangeEvent) => {
     if (!inline) return;
     const h = e.nativeEvent.layout.height;
-    const next = heights.value.slice();
-    if (next[k] === h) return;
-    next[k] = h;
-    heights.value = next;
+    if (knownHeights.current[k] === h) return;
+    knownHeights.current = knownHeights.current.slice();
+    knownHeights.current[k] = h;
+    heights.value = knownHeights.current;
   };
 
   const onLayout = (e: LayoutChangeEvent) => {

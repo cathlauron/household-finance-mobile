@@ -226,7 +226,10 @@ export function PickerRow({
   return (
     <View>
       <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); animateNextLayout(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
-        <MarkedLabel text={label} mark={mark} style={[s.label, { flex: 1 }, invalid && { color: colors.error, fontWeight: '700' }]} />
+        {/* 2026-10-27 (Cath's screenshot: "Dates (optional)" one letter per line): the label
+            keeps its own width (up to 60%, wrapping by words) and a long value shrinks
+            instead, ending in "…". */}
+        <MarkedLabel text={label} mark={mark} style={[s.label, s.pickLabel, invalid && { color: colors.error, fontWeight: '700' }]} />
         {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
         <Text style={s.value} numberOfLines={1}>{value}</Text>
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={colors.inkFaint} style={{ marginLeft: 6 }} />
@@ -370,6 +373,7 @@ function rowStyles(colors: ThemeColors) {
     row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, gap: 12 },
     label: { fontSize: 17, color: colors.ink },
     value: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
+    pickLabel: { flexGrow: 1, flexShrink: 0, maxWidth: '60%' },
     input: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
   });
 }
