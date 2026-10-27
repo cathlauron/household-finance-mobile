@@ -6,7 +6,7 @@ import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
 import { useArrival } from '../useArrival';
 import ArrivalGlow from '../components/ArrivalGlow';
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
 import AppSwitch from '../components/AppSwitch';
@@ -161,6 +161,14 @@ const findSavingsGoalIdForTransaction = findBillIdForTransaction;
 
 // Version 2.2 (Cath: Edit should open where you are): formOnly draws just the form (for
 // the Transaction page's Edit), opened on editTxnId; onFormClosed says when it closed.
+const DAYS_PER_BATCH = 30;
+const FIRST_BATCHES = 2;
+const BATCH_GAP_MS = 120;
+// A batch of days that only redraws when its own days (or how rows look) change.
+const DayBatch = React.memo(function DayBatch({ days, render }: { days: any[]; render: (day: any) => React.ReactNode }) {
+  return <>{days.map(render)}</>;
+});
+
 export default function TransactionsScreen({
   formOnly,
   editTxnId,
@@ -363,12 +371,24 @@ export default function TransactionsScreen({
   // when what it shows changes, not on every key typed in the form. Swipe-to-delete goes
   // through a ref so it always uses the newest data.
   const swipeDeleteRef = useRef<(rawId: string) => void>(() => {});
-  const listBlock = useMemo(() => {
-    // The form on its own (Edit on a transaction's page, + on Home) never shows the list.
-    if (!model || formOnly) return null;
+  // Smoothness sweep 2026-10-26 (jank reviewer): the list used to build every day of the
+  // whole history in one go (a stall when the tab opened or after + Add). Now the newest
+  // two months draw at once and older days follow in small batches a moment later; days
+  // already drawn are never rebuilt when more arrive.
+  const chunks = useMemo(() => {
+    const out: (typeof days)[] = [];
+    for (let i = 0; i < days.length; i += DAYS_PER_BATCH) out.push(days.slice(i, i + DAYS_PER_BATCH));
+    return out;
+  }, [days]);
+  const [batchesShown, setBatchesShown] = useState(FIRST_BATCHES);
+  useEffect(() => {
+    if (batchesShown >= chunks.length) return;
+    const t = setTimeout(() => setBatchesShown((n) => n + 1), BATCH_GAP_MS);
+    return () => clearTimeout(t);
+  }, [batchesShown, chunks.length]);
+  const renderDay = useCallback((day: (typeof days)[number]) => {
+    if (!model) return null;
     return (
-      <>
-        {days.map((day) => (
         <View key={day.date} style={styles.daySection}>
         <Text style={styles.dayHeader}>{dayHeading(day.date)}</Text>
         <View style={styles.group}>
@@ -480,11 +500,21 @@ export default function TransactionsScreen({
         })}
         </View>
         </View>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, colors, arrivedTxn, isLinked, username, manualById]);
+  const listBlock = useMemo(() => {
+    // The form on its own (Edit on a transaction's page, + on Home) never shows the list.
+    if (!model || formOnly) return null;
+    return (
+      <>
+        {chunks.slice(0, batchesShown).map((c, i) => (
+          <DayBatch key={i} days={c} render={renderDay} />
         ))}
       </>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days, model, colors, arrivedTxn, isLinked, username, manualById]);
+  }, [chunks, batchesShown, renderDay, formOnly]);
 
   if (!model) {
     return (
