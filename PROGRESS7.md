@@ -1003,3 +1003,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   agent; a second agent reviewed Claude's changes. Phone: TEST-2.2 AO + AP. Still open
   (suggested, not urgent): pop-up forms build before rising; pop-up drag-down and keyboard
   jump. Security SEC-1..7 wait for Cath.
+
+- NEWEST (2026-10-27): an independent agent reviewed the smoothness sweep. Fixed (360a3a0,
+  v2.2/v3): goToMain now merges (a reminder's openBillId was wiped and all tabs rebuilt);
+  tab swipe guards (a self-swiping card always wins; cancelled swipes never change tab);
+  Transactions batches restart on a new sort/filter. Phone: TEST-2.2 AO + AP.
