@@ -119,3 +119,36 @@ code says otherwise:
   accounts in 2.1), or limit receipts / profile photos instead?
 - H-05: keep Export backup (and lock the file with your password, then delete it after
   sharing), or remove it until there's a matching Restore?
+
+## Security review 2026-10-26 (independent reviewer agent, checked by Claude) - WAITING FOR CATH
+
+Nothing below has been changed: security changes need Cath's OK first, and database rules
+are published by Cath in the Firebase Console. Claude re-read the code for SEC-1 and SEC-2
+and confirmed them; the others are the reviewer's reading of the code.
+
+- SEC-1 (serious, confirmed) Joining a household: any signed-in account can make its own
+  invite code that points at someone else's household (the code's create rule allows extra
+  fields), and the join rule never checks who made the code. Anyone who knows a household's
+  ID (a removed member, or anyone who saw an invite) could add themselves. Removing a member
+  also keeps the same household key, so a removed member who rejoins can read everything.
+  Proposed: rules check that the code was made by the household's owner/a member and only
+  allow the expected fields (Cath publishes); later, a new household key when someone is
+  removed (encryption change, needs her OK).
+- SEC-2 (medium, confirmed) Bill / payday reminders with amounts keep arriving after signing
+  out, a "sign out other device" or unlinking (only cleared when they're rescheduled).
+  Proposed: clear them on sign-out / revoke / unlink.
+- SEC-3 (medium) A pending invite keeps the raw household key in ordinary phone storage
+  until linking finishes. Proposed: keep it in the phone's secure vault.
+- SEC-4 (medium) Peer recovery hands the household key over under a 6-digit code, readable
+  by every member, no expiry in the rules. Proposed: longer code / requester-only reading /
+  expiry.
+- SEC-5 (low-medium) Lock-screen PIN: after each 5-minute block, 5 new tries, forever; moving
+  the phone's clock ends the block. Proposed: growing wait, password after N rounds.
+- SEC-6 (low) Saved data has no tamper check (AES-CBC without a MAC); 100k PBKDF2 rounds is
+  below today's advice. Encryption change: Cath's decision.
+- SEC-7 (low) A financeflow://join link starts the first join step without asking. Proposed:
+  "Join X's household?" first. Also: the link code is written to the log; the recent-apps
+  preview shows amounts.
+- Checked and OK: secure random everywhere, recovery key strength, vault storage for stay
+  signed in / quick unlock, no keys in logs, backup file encrypted, members-only reads,
+  this week's new code (no old screen or callback survives lock or sign-out).

@@ -55,6 +55,15 @@ Could not be checked here (stays "Needs your phone"):
   one every other page uses).
 - Small: opening Search, the tab bar's labels fade a moment after the rest of the page.
 
+- S-12 "Add an account" (and Edit sheets that wait for a page) never opened when the app
+  never counted as settled. Now 1 s at the latest (2026-10-23).
+- S-13 / S-14 (Cath's recording + red error, 2026-10-26): opening any page showed a still
+  copy of the app on Home behind the slide. The whole-screen dip's curve was inside
+  interpolate(), which the phone refuses, so the old screen was never removed. Now the
+  curve is written as points and the old screen is removed by the clock too.
+- S-15 (Cath's screenshot, 2026-10-26): switchers drew a shadowed box around every label
+  on Android. Back to the approved look (one white pill), same glide.
+
 ## Waiting for Cath's decision
 
 - Nothing waiting (S-04 to S-07 answered 2026-10-23, see Fixed).

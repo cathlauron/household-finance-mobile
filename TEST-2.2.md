@@ -433,3 +433,25 @@ AN 2026-10-23: smoothness 2 (no flicker, no overlap, smooth fades). NOT YET TEST
       after the rest of the page.
 - AN9 Pop-ups (my browser can't check these): open the + form, Cancel, then tap the bell
       straight away: the bell's pop-up opens. Tap the bell right after Home appears: it opens.
+
+AO 2026-10-23 to 10-26: account first, past Loans, calendar, required marks, switcher look,
+   pages behind pages, red error. NOT YET TESTED.
+- AO1 The red "Interpolation property 'easing'" error: open the app fresh (close it fully
+      first), go through any screen change (lock and unlock, or sign in): no red error.
+- AO2 Plan > Savings, Yearly Goals, Shared Expenses, Groceries, Travel, Events (each, then
+      back): only Plan and the new page move side by side. NO Home ("Hi, You", the green
+      card) and no second tab bar anywhere behind them. Do the same from Home > Accounts,
+      a card, Income, Settings.
+- AO3 To-Pay: Bills / Debts / Loans is one grey bar with ONE white pill behind "Bills" and
+      plain "Debts" "Loans" (your approved mockup). No boxes or shadows around each word.
+      Tap Loans: the pill glides. Same look on Events, Groceries, Savings, Travel, the + form.
+- AO4 With no accounts yet: Transactions > + takes you to "Add an account" first; after
+      saving it you're back in New transaction with that account picked.
+- AO5 With no income yet: in New transaction > Money in > Salary goes to adding a salary;
+      after saving you're back in the transaction with that salary picked.
+- AO6 To-Pay > Loans, drag left: Plan comes in WITH your finger (not a stop). On Bills,
+      drag right: Transactions comes in with your finger.
+- AO7 Home > calendar > + > Bill > fill in > Add: the form and the calendar leave together
+      and you land on To-Pay > Bills with the new bill. Same for Transaction, Debt, Loan.
+- AO8 Open any form (New bill, New transaction, New trip, Move money, Settings > New
+      category, sign-in): needed fields show a red *, the rest a grey "(optional)".

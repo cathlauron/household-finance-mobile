@@ -91,6 +91,12 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | S-08 | Whole-screen changes (set-up to Home, unlock) sat on an empty screen for 130-150 ms | App.tsx ScreenSwap | tests/motion.test.mjs ("whole-screen changes: one animation") |
 | S-10 | Bill / Debt / Loan switch: fields swapped at once, pop-up's top edge jumped | components/FormSwapFade.tsx, BottomSheet.tsx | __tests__/SmoothSwaps.test.tsx |
 | S-11 | Finger swipe between main tabs: next tab came in empty; pages overlapped for a frame at let-go | navigation/MainTabs.tsx, TabPage.tsx | tests/motion.test.mjs ("main tabs: the other tabs are always built...") |
+| S-12 | "Add an account" never opened when the app never counted as settled (seen in Claude's browser) | afterSlide.ts | __tests__/SmoothSwaps.test.tsx ("afterSlide still runs...") |
+| S-13 | Red error "Interpolation property 'easing' is not supported by native animated module" (Cath's phone) | components/ScreenSwap.tsx, motion.ts curvedRange | tests/motion.test.mjs ("no interpolate() carries an easing") |
+| S-14 | Opening a Plan page showed a still copy of the app on Home (own tab bar) behind the slide (Cath's recording) | components/ScreenSwap.tsx | __tests__/ScreenSwap.test.tsx |
+| S-15 | Bills / Debts / Loans (all switchers): each label in its own shadowed box on Android (Cath's screenshot) | components/SegmentedControl.tsx | tests/motion.test.mjs ("switchers: no Android elevation") |
+| - | Every form field marked red * (required) or grey (optional) (Cath's request) | components/MarkedLabel.tsx + forms | __tests__/RequiredMarks.test.tsx |
+| - | No account / no income yet: + goes to adding one first, then back with it picked | accountHandoff.ts, TransactionsScreen, AccountsScreen | __tests__/AccountFirst.test.tsx |
 
 ## Still open (not fixed yet)
 
