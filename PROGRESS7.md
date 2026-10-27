@@ -1072,3 +1072,21 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   than the monthly amount still counts as one full scheduled payment - warn, or count
   by running total? Next: Cath's phone tests (TEST-3 5-9), her answers (partial loan
   payments; investments yes/no + Home total), then SEC-1..7 when she's ready.
+
+- NEWEST (2026-10-27, late, v3 9ef90e2..302d4e9): Cath's answers: partial loan payments
+  "warn and count what I've actually paid in total"; investments "built yes. count it, but
+  don't show it as readily available: count the money going in, add it back to the balance
+  only when withdrawn". Her phone notes fixed: B-047 loan with no First payment date said
+  "next Nov 16" with Oct 16 unpaid (schedule now starts from its payments; old wrong saved
+  First dates repaired; H-30..H-32); loans count money paid (a smaller payment leaves that
+  month open, with a warning in the pay sheet); B-048 "Undo today's payment" / "Paid today"
+  for back-dated payments now name the date, Pay / Log payment stays while one is past due;
+  B-049..B-051 alignment (receipt row, trip Add pill, every form's right edge, pay sheet
+  laid out as R4) - two review agents walked every form in the web build. Investments
+  built (Plan > Investments, canvas I1: Update value / Add money / Take out; money in from
+  an account leaves it, taken out comes back; worth never in any balance; moves grey in
+  Transactions; worth counts in the FI calculator's net worth). NOT built yet from I1:
+  "Every month" automatic contribution (calendar / To-Pay) - ask Cath if wanted. Known:
+  2.2 phones keep investments but don't take them off balances (until both phones are on
+  3.0). Background tester: `npm run browser:build:fixture` gives the web build a made-up
+  household (web only). Phone: TEST-3.md sections 9 and 10. Next: Cath's phone tests.
