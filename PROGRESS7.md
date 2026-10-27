@@ -993,3 +993,13 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   (best tested right after a calendar add or a search). Still open from the reviewers: tab
   finger-swipes are tracked on the JS side (can lag when the app is busy) - a bigger
   change, ask Cath; security items SEC-1..7 (BUG-HUNT.md) wait for Cath.
+
+- NEWEST (2026-10-26, night, smoothness sweep; v2.2/v3 ddd7d0e..186e2f4): main-tab finger
+  swipe now on the animation thread (S-16); every save no longer redraws the whole app
+  (S-17, proven __tests__/NoRedrawOnSave); tabs pre-built one at a time (S-18); saving waits
+  until the slide after + Add is done (S-19, still saves at once when put away / logging
+  out); Transactions list draws the newest two months first (S-20); calendar opens in the
+  saved layout, rain pauses behind other tabs (S-21). Found by an independent jank-review
+  agent; a second agent reviewed Claude's changes. Phone: TEST-2.2 AO + AP. Still open
+  (suggested, not urgent): pop-up forms build before rising; pop-up drag-down and keyboard
+  jump. Security SEC-1..7 wait for Cath.
