@@ -1,4 +1,4 @@
-import { loanCoverage } from '../loanSchedule';
+import { loanCoverage, loanNextDueDate } from '../loanSchedule';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
@@ -373,7 +373,8 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
   const lent = loan.direction === 'lent';
   const overdueItem = getOverdueItems(model).find((o) => o.kind === 'loan' && o.id === loan.id);
-  const nextDue = getNextDueDate((loan.recurringType as any) || 'onetime', loan.dueDate || {}, new Date(), loan.customStartDate, loan.customFreq, loan.customOccurrenceCount);
+  // Cath 2026-10-27: the oldest payment not made yet (Oct 16 when Sept 16 was the last paid).
+  const nextDue = loanNextDueDate(loan);
   const totalPayments = monthly > 0 ? Math.ceil(total / monthly) : 0;
   const today = todayISO();
   const paidToday = payments[0]?.date === today;

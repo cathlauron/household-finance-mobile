@@ -24,7 +24,7 @@
 // ============================================================
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource, PaymentMethod, BalanceAccountEntry } from './types';
-import { lastPaidDueDate } from './billPayments';
+import { isCyclePaid, lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
 
@@ -267,16 +267,18 @@ function nextOccurrenceInMonth(record: Bill | Debt, year: number, monthIndex: nu
   const d = record.dueDate || {};
   const daysInMonth = lastDayOfMonth(year, monthIndex);
 
+  // 2026-10-27 (Cath): a day past the month's end (the 31st in November) falls on the
+  // month's last day, the same as the Bills / Debts pages (it used to show nowhere).
   if (record.recurringType === 'monthly') {
     if (!d.day) return [];
-    const day = d.day === 'last' ? daysInMonth : parseInt(d.day, 10);
-    return day >= 1 && day <= daysInMonth ? [day] : [];
+    const day = d.day === 'last' ? daysInMonth : Math.min(parseInt(d.day, 10), daysInMonth);
+    return day >= 1 ? [day] : [];
   }
 
   if (record.recurringType === 'annual') {
-    if (!d.day || !d.month || d.month !== monthIndex + 1) return [];
-    const day = d.day === 'last' ? daysInMonth : parseInt(d.day, 10);
-    return day >= 1 && day <= daysInMonth ? [day] : [];
+    if (!d.day || !d.month || Number(d.month) !== monthIndex + 1) return [];
+    const day = d.day === 'last' ? daysInMonth : Math.min(parseInt(d.day, 10), daysInMonth);
+    return day >= 1 ? [day] : [];
   }
 
   if (record.recurringType === 'onetime') {
@@ -413,6 +415,28 @@ export function incomeOccurrencesInMonth(source: IncomeSource, year: number, mon
 // same months again and again. Each month is now worked out once per version of your data
 // (and per day, since "today" matters) and reused. Nothing that reads it changes it.
 const monthEventsCache = new WeakMap<object, Map<string, Record<number, CalendarEvent[]>>>();
+// The days in a month a bill or debt is due (calendar, Home's Due soon).
+// 2026-10-27 (Cath: a debt due Oct 30 on the Debts page was missing from Oct 30 on the
+// calendar): a saved payment round has its own due date, which can differ from the
+// repeat day (the Debts page shows that date). In a month with a saved round, its date is
+// the one used; in other months, the repeat day. Rounds already paid don't show again
+// (and, as before, nothing up to the newest paid due date shows).
+function dueDaysInMonth(record: Bill | Debt, year: number, monthIndex: number): number[] {
+  const ym = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+  const rounds = (record.cycles || []).filter((c) => typeof c.dueDate === 'string' && c.dueDate.startsWith(ym));
+  if (rounds.length > 0) {
+    const days = rounds
+      .filter((c) => !isCyclePaid(c))
+      .map((c) => parseInt(c.dueDate.slice(8, 10), 10))
+      .filter((d) => d >= 1);
+    return Array.from(new Set(days)).sort((a, b) => a - b);
+  }
+  const paidUpTo = lastPaidDueDate(record);
+  return nextOccurrenceInMonth(record, year, monthIndex).filter(
+    (day) => !(paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo)
+  );
+}
+
 export function computeMonthEvents(
   model: HouseholdModel,
   year: number,
@@ -444,20 +468,14 @@ function computeMonthEventsNow(
 
   model.bills.forEach((bill) => {
     const amount = Math.max(0, outstandingBalance(bill));
-    // Redesign: once a bill is marked paid, its occurrences up to that paid due date
-    // are done — don't count them again (the payment itself shows as a transaction).
-    const paidUpTo = lastPaidDueDate(bill);
-    nextOccurrenceInMonth(bill, year, monthIndex).forEach((day) => {
-      if (paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo) return;
+    dueDaysInMonth(bill, year, monthIndex).forEach((day) => {
       push(day, { type: 'bill', label: bill.name || 'Bill', amount, id: bill.id });
     });
   });
 
   model.debts.forEach((debt) => {
     const amount = Math.max(0, outstandingBalance(debt));
-    const paidUpTo = lastPaidDueDate(debt);
-    nextOccurrenceInMonth(debt, year, monthIndex).forEach((day) => {
-      if (paidUpTo && toISO(new Date(year, monthIndex, day)) <= paidUpTo) return;
+    dueDaysInMonth(debt, year, monthIndex).forEach((day) => {
       push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount, id: debt.id });
     });
   });

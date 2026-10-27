@@ -31,6 +31,7 @@ import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType } from '../recurrence';
+import { loanNextDueDate } from '../loanSchedule';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
@@ -73,22 +74,9 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 // (e.g. saved before Checkpoint 5.4c, or never given a date) sort to the bottom.
 function sortByNextDue(loans: Loan[]): Loan[] {
   return [...loans].sort((a, b) => {
-    const da = getNextDueDate(
-      (a.recurringType as RecurringType) || 'onetime',
-      a.dueDate || {},
-      new Date(),
-      a.customStartDate,
-      a.customFreq,
-      a.customOccurrenceCount
-    );
-    const db = getNextDueDate(
-      (b.recurringType as RecurringType) || 'onetime',
-      b.dueDate || {},
-      new Date(),
-      b.customStartDate,
-      b.customFreq,
-      b.customOccurrenceCount
-    );
+    // Cath 2026-10-27: the next payment is the oldest one not paid yet (loanNextDueDate).
+    const da = loanNextDueDate(a);
+    const db = loanNextDueDate(b);
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
@@ -571,8 +559,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       const oa = overdueLoanIds.has(a.l.id) ? 0 : 1;
       const ob = overdueLoanIds.has(b.l.id) ? 0 : 1;
       if (oa !== ob) return oa - ob;
-      const na = getNextDueDate((a.l.recurringType as RecurringType) || 'onetime', a.l.dueDate || {})?.getTime() ?? Infinity;
-      const nb = getNextDueDate((b.l.recurringType as RecurringType) || 'onetime', b.l.dueDate || {})?.getTime() ?? Infinity;
+      const na = loanNextDueDate(a.l)?.getTime() ?? Infinity;
+      const nb = loanNextDueDate(b.l)?.getTime() ?? Infinity;
       if (na === nb) return priorityRank(a.l.priority) - priorityRank(b.l.priority) || a.i - b.i;
       return a.i - b.i;
     })
@@ -636,14 +624,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           {loans.map((loan, rowIndex) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
             const loanRecurType = (loan.recurringType as RecurringType) || 'onetime';
-            const loanNextDue = getNextDueDate(
-              loanRecurType,
-              loan.dueDate || {},
-              new Date(),
-              loan.customStartDate,
-              loan.customFreq,
-              loan.customOccurrenceCount
-            );
+            const loanNextDue = loanNextDueDate(loan);
             return (
               <SwipeableRow
                 key={loan.id}

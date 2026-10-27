@@ -50,3 +50,21 @@ test('no question when the first date is after the payment, or in the same month
   assert.equal(loanPaymentToPlace(loan('2026-11-05', [pay('p1', '2026-10-05')]), '2026-11-05'), null);
   assert.equal(loanPaymentToPlace(loan('2026-10-05', [pay('p1', '2026-10-20')]), '2026-10-05'), null);
 });
+
+// Cath, 2026-10-27 (2.2 build): payments every 16th; after logging Sept 16, the loan said
+// "next Nov 16" (and showed an amount past due) instead of Oct 16. The next payment is the
+// oldest one not paid yet.
+test('next payment = the oldest unpaid date (Oct 16 after paying up to Sept 16)', async () => {
+  const { loanNextDueDate } = await import('../src/loanSchedule.ts');
+  const l = loan('2026-06-16', [pay('a', '2026-06-16'), pay('b', '2026-07-16'), pay('c', '2026-08-16'), pay('d', '2026-09-16')], { dueDate: { day: '16', firstDate: '2026-06-16' } });
+  const next = loanNextDueDate(l, new Date('2026-10-27T10:00:00'));
+  assert.equal(next && next.toISOString().slice(0, 10) !== undefined && `${next.getFullYear()}-${next.getMonth() + 1}-${next.getDate()}`, '2026-10-16');
+  // Paid ahead through October: next is Nov 16.
+  const ahead = loan('2026-06-16', ['06', '07', '08', '09', '10'].map((m, i) => pay(`p${i}`, `2026-${m}-16`)), { dueDate: { day: '16', firstDate: '2026-06-16' } });
+  const n2 = loanNextDueDate(ahead, new Date('2026-10-27T10:00:00'));
+  assert.equal(`${n2.getFullYear()}-${n2.getMonth() + 1}-${n2.getDate()}`, '2026-11-16');
+  // Older loans without a First payment date: the plain next date, as before.
+  const old = { ...loan('2026-06-16'), dueDate: { day: '16' } };
+  const n3 = loanNextDueDate(old, new Date('2026-10-27T10:00:00'));
+  assert.equal(`${n3.getFullYear()}-${n3.getMonth() + 1}-${n3.getDate()}`, '2026-11-16');
+});

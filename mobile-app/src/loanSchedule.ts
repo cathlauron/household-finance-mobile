@@ -117,3 +117,23 @@ export function placeLoanPayment(loan: Loan, p: LoanPlacement, forISO: string): 
     actualPayments: (loan.actualPayments || []).map((x: LoanPayment) => (x.id === p.paymentId ? { ...x, forDate: forISO } : x)),
   };
 }
+
+// ---- The next payment to make (Cath, 2026-10-27) ----
+// After logging Sept 16 the loan said "next Nov 16" while Oct 16 was still unpaid (and
+// showed as past due). For a tracked loan the next payment is the oldest scheduled one
+// not paid yet, even if that date has passed; loans without a First payment date keep the
+// plain next date from today. null = nothing left to pay / no date.
+export function loanNextDueDate(loan: Loan, today: Date = new Date()): Date | null {
+  if (isTrackedLoan(loan)) {
+    const { nextOpen } = loanCoverage(loan, toISO(today));
+    return nextOpen ? new Date(nextOpen + 'T00:00:00') : null;
+  }
+  return getNextDueDate(
+    (loan.recurringType as any) || 'onetime',
+    loan.dueDate || {},
+    today,
+    (loan as any).customStartDate,
+    (loan as any).customFreq,
+    (loan as any).customOccurrenceCount
+  );
+}

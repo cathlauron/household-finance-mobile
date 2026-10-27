@@ -60,6 +60,8 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-038 | Trip items ticked as paid, "take it off my balance", unticking | trip payment code | logic (partly): paymentPlacement, travelChecklist |
 | B-039 | Who logged / changed it (stamps) | whoStamp code | logic (partly): whoStamp |
 | B-040 | Recovery key dashes, email format, email typo suggestions | typing helpers | logic (partly): typingHelpers |
+| B-041 | Calendar (and Home's Due soon, Left to Spend's forecast) missed a debt due Oct 30 that the Debts page showed: the calendar ignored a payment round's own due date; a due day of 31 showed nowhere in 30-day months | balanceProjection.ts dueDaysInMonth, nextOccurrenceInMonth | tests/calendarDue.test.mjs (red-green) |
+| B-042 | Loan paid every 16th: after logging Sept 16 it said "next Nov 16" (Oct 16 unpaid, shown as past due) | loanSchedule.ts loanNextDueDate (Loans list, sort, loan page, Home tight-money list) | tests/loanSchedule.test.mjs ("next payment = the oldest unpaid date", red-green) |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 

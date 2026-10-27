@@ -11,6 +11,7 @@ import type { HouseholdModel } from './types';
 import { getOverdueItems } from './overdue';
 import { currentCycle, isCyclePaid } from './billPayments';
 import { getNextDueDate } from './recurrence';
+import { loanNextDueDate } from './loanSchedule';
 import { paydaysForSource } from './incomeMonth';
 import { loanOutstandingBalance, formatPeso } from './balanceProjection';
 import { isEmergencyPot, potSaved } from './savingsPots';
@@ -162,7 +163,7 @@ export function highPriorityDue(model: HouseholdModel, untilISO: string): string
   }
   for (const l of model.loans || []) {
     if (l.priority !== 'high' || l.direction !== 'borrowed' || loanOutstandingBalance(l) <= 0) continue;
-    const due = iso(getNextDueDate(l.recurringType || 'onetime', l.dueDate || {}));
+    const due = iso(loanNextDueDate(l));
     const late = getOverdueItems(model).some((o) => o.kind === 'loan' && o.id === l.id);
     if (late || (due && due <= untilISO)) names.push(l.name || 'A loan');
   }
