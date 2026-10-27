@@ -65,3 +65,19 @@ test('the transfer page shows from, to and the note', async () => {
   expect(r.getByText('BDO')).toBeTruthy();
   expect(r.getByText('Deposit at the branch')).toBeTruthy();
 });
+
+test('Undo: shown for a new move; an older move says why it cannot be undone', async () => {
+  mockModel = withTransfer();
+  mockModel.transfers[0].createdAt = Date.now();
+  mockParams = { id: 'x1' };
+  const Screen = require('../src/screens/TransferDetailScreen').default;
+  const r = render(<ThemeProvider><Screen /></ThemeProvider>);
+  await act(async () => {});
+  expect(r.getByTestId('transfer-undo')).toBeTruthy();
+  r.unmount();
+  mockModel = withTransfer();
+  const r2 = render(<ThemeProvider><Screen /></ThemeProvider>);
+  await act(async () => {});
+  expect(r2.queryByTestId('transfer-undo')).toBeNull();
+  expect(r2.getByTestId('transfer-undo-why')).toBeTruthy();
+});

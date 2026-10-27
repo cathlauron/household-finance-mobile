@@ -448,6 +448,11 @@ export type Transfer = {
   amount: number;
   fee?: number;
   note?: string;
+  // Cath, 2026-10-27 (Undo, until a balance is typed in again): when it was made, its fee's
+  // own Fees entry, and whether the fee came straight off the saved balance.
+  createdAt?: number;
+  feeTxnId?: string;
+  feeOffSaved?: boolean;
 };
 
 export type BalanceAccountEntry = {

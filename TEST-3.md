@@ -91,3 +91,6 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
    nothing new in Transactions; the next payment moves on.
 4. A trip item: tick it: the same sheet (amount can be changed: the item's cost becomes what
    you paid). "Just record it" keeps it as Paid in the trip's budget, no spending.
+5. Make a new money move, open it in Transactions: "Undo this move" puts both balances back
+   (and removes its fee entry). Type in a new balance for one of its accounts, then open
+   another new move between them: it explains it can't be undone. Older moves say the same.

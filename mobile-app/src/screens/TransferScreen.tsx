@@ -96,12 +96,14 @@ export default function TransferScreen() {
     const asOf = model.balanceAccounts.asOfDate;
     const feeOffSavedBalance = feeAmt > 0 && !!asOf && date < asOf;
     let next = bump(bump(model, from, -amount - (feeOffSavedBalance ? feeAmt : 0)), to, amount);
-    const record = { id: makeId('xfer'), date, from: from.key, to: to.key, amount, ...(feeAmt ? { fee: feeAmt } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
+    // Cath 2026-10-27 (Undo): when it was made, its fee entry and how the fee came off.
+    const feeTxnId = feeAmt > 0 ? makeId('txn') : undefined;
+    const record = { id: makeId('xfer'), date, from: from.key, to: to.key, amount, createdAt: Date.now(), ...(feeAmt ? { fee: feeAmt, feeTxnId, ...(feeOffSavedBalance ? { feeOffSaved: true } : {}) } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
     next = { ...next, transfers: [...(model.transfers || []), record] };
     if (feeAmt > 0) {
       const pm: PaymentMethod = { type: from.group, accountId: from.id };
       const feeTxn: ManualTransaction = {
-        id: makeId('txn'),
+        id: feeTxnId as string,
         date,
         label: `Fee: ${from.name} to ${to.name}`,
         amount: feeAmt,

@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { View, StyleSheet, Alert } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { TouchableOpacity } from '../components/Tap';
+import { canUndoTransfer, undoTransfer } from '../transferUndo';
+import { alertNotSaved } from '../messages';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { Text } from '../components/AppText';
 import { useTheme } from '../ThemeContext';
@@ -16,8 +19,9 @@ import type { ThemeColors } from '../theme';
 export default function TransferDetailScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { model } = useData();
+  const { model, saveModel, getModel } = useData();
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const t = (model?.transfers || []).find((x) => x.id === route.params?.id);
   if (!model || !t) {
     return (
@@ -42,6 +46,40 @@ export default function TransferDetailScreen() {
         {!!r.note && <Row styles={styles} label="Note" value={r.note} last multiline />}
       </View>
       {r.fee > 0 && <Text style={styles.footer}>The fee is its own entry in Transactions (Fees). It's the only part that counts as spending.</Text>}
+      {/* Cath, 2026-10-27: Undo, only until a balance is typed in again. */}
+      {(() => {
+        const can = canUndoTransfer(model, t);
+        if (!can.ok) return <Text style={[styles.footer, { marginTop: 18 }]} testID="transfer-undo-why">{can.reason}</Text>;
+        return (
+          <TouchableOpacity
+            testID="transfer-undo"
+            accessibilityRole="button"
+            style={styles.undo}
+            onPress={() =>
+              Alert.alert('Undo this move?', `${formatPeso(r.amount)} goes back to ${r.fromName}${r.fee > 0 ? ', and the fee entry is removed' : ''}.`, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Undo',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const latest = getModel() ?? model;
+                    const fresh = (latest.transfers || []).find((x) => x.id === t.id);
+                    if (!fresh) return;
+                    try {
+                      await saveModel(undoTransfer(latest, fresh));
+                      navigation.goBack();
+                    } catch {
+                      Alert.alert(...alertNotSaved('the undo'));
+                    }
+                  },
+                },
+              ])
+            }
+          >
+            <Text style={styles.undoText}>Undo this move</Text>
+          </TouchableOpacity>
+        );
+      })()}
     </KeyboardAwareScrollView>
   );
 }
@@ -68,5 +106,7 @@ function makeStyles(colors: ThemeColors) {
     rowLabel: { fontSize: 17, color: colors.ink, flexShrink: 0 },
     rowValue: { fontSize: 17, color: colors.inkDim, flex: 1, textAlign: 'right' },
     footer: { fontSize: 13, color: colors.inkDim, marginTop: 8, marginHorizontal: 16, lineHeight: 18 },
+    undo: { alignSelf: 'center', marginTop: 18, paddingVertical: 12, paddingHorizontal: 20, minHeight: 44 },
+    undoText: { fontSize: 17, color: colors.negative },
   });
 }
