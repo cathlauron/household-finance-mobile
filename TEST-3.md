@@ -108,3 +108,24 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
    to the amount; tap it to see it full size. Untick the item: the picture is gone.
 5. If your partner's phone is on the new build too: their phone shows the same receipts
    after a pull-down refresh.
+
+## 10. Loans, Undo wording, alignment, investments (2026-10-27, evening). NOT YET TESTED.
+1. Miduri: shows "Overdue ₱7,000.00 was due Oct 16", "next Oct 16" and Log payment ₱7,000.
+2. Miduri > Log payment: type ₱3,500: an orange note says it's less than the ₱7,000 due for
+   Oct 16 and Oct 16 stays open. Pay it: Oct 16 still shows overdue ₱3,500, the button says
+   ₱3,500, the card says "₱3,500.00 toward Oct 16". Pay the ₱3,500: Oct 16 is done.
+3. Olive (or any loan): log a payment with a past date: the button says "Undo the Sep 16
+   payment" (not "today's"). If an older one is still past due, Log payment stays too.
+   A bill paid today for an earlier date says "Paid Oct 1 ..." and "Undo the Oct 1 payment".
+4. Look at the pay sheet (bill, debt, loan): one white group (Fees, Paid on, Paid from), the
+   receipt row below with "Add photo" on the same line as its label; same width as the
+   other sheets. Edit bill / debt / loan and the other forms: every value and arrow ends on
+   the same right edge; "Interest (% a year)" on one line; ₱ right next to the amount
+   (type ₱24,550 in Edit loan > You pay: all digits show).
+5. Shared expense with a receipt: the paperclip is right after its name. Trip page: type an
+   item: the Add pill sits on the same line, inside the card.
+6. Plan > Investments > Add: Pag-IBIG MP2, put in so far ₱60,000, worth now ₱64,180: the
+   page shows Worth ₱64,180, put in ₱60,000, up ₱4,180. Tap it > Add money ₱1,000 From
+   Maribank > Save: Maribank goes down ₱1,000; Transactions shows "Invested: Maribank →
+   Pag-IBIG MP2" in grey (not in spending). Take out ₱2,000 Into Maribank: Maribank goes
+   up ₱2,000. Update value: no account changes. Home's balance never includes the worth.
