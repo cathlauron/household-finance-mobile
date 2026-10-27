@@ -36,9 +36,46 @@ export function monthPartId(date: string | undefined): string {
   return m ? `txn-${m[1]}-${m[2]}` : 'txn-undated';
 }
 
-export function splitModel(model: HouseholdModel): HouseholdParts {
+// ---- Receipts outside transactions (Cath, 2026-10-27, canvas R1-R4) ----
+// Shared expenses, bill and debt payments, loan payments and trip items can carry a
+// receipt photo too. Each goes into its own rcpt-... part with a pointer left behind, like
+// a transaction's receipt, but ONLY when every phone in the household reads these
+// (`extraReceipts`, version 3.0+). Otherwise they stay inside the main copy, which every
+// version keeps safely: an older phone that didn't know these parts would delete them on
+// its next save.
+type Holder = { receiptPhoto?: string };
+function eachExtraReceipt(core: any, visit: (key: string, holder: Holder) => void) {
+  for (const e of core.sharedExpenses || []) if (e && e.id) visit(`rcpt-x-se-${safePartKey(e.id)}`, e);
+  for (const b of core.bills || []) for (const c of b?.cycles || []) if (c && c.id) visit(`rcpt-x-bc-${safePartKey(c.id)}`, c);
+  for (const d of core.debts || []) for (const c of d?.cycles || []) if (c && c.id) visit(`rcpt-x-dc-${safePartKey(c.id)}`, c);
+  for (const l of core.loans || []) for (const p of l?.actualPayments || []) if (p && p.id) visit(`rcpt-x-lp-${safePartKey(p.id)}`, p);
+  for (const t of core.travel || []) for (const i of t?.checklist || []) if (i && i.id) visit(`rcpt-x-ti-${safePartKey(i.id)}`, i);
+}
+// A deep copy of only the lists that hold receipts, so the model itself is never changed.
+function copyReceiptHolders(rest: any): any {
+  const out = { ...rest };
+  if (rest.sharedExpenses) out.sharedExpenses = rest.sharedExpenses.map((e: any) => ({ ...e }));
+  if (rest.bills) out.bills = rest.bills.map((b: any) => ({ ...b, cycles: (b.cycles || []).map((c: any) => ({ ...c })) }));
+  if (rest.debts) out.debts = rest.debts.map((d: any) => ({ ...d, cycles: (d.cycles || []).map((c: any) => ({ ...c })) }));
+  if (rest.loans) out.loans = rest.loans.map((l: any) => ({ ...l, actualPayments: (l.actualPayments || []).map((p: any) => ({ ...p })) }));
+  if (rest.travel) out.travel = rest.travel.map((t: any) => ({ ...t, checklist: (t.checklist || []).map((i: any) => ({ ...i })) }));
+  return out;
+}
+
+export function splitModel(model: HouseholdModel, opts: { extraReceipts?: boolean } = {}): HouseholdParts {
   const parts: HouseholdParts = {};
-  const { manualTransactions, avatarPhotos, ...rest } = model;
+  const { manualTransactions, avatarPhotos, ...restIn } = model;
+  let rest: any = restIn;
+  if (opts.extraReceipts) {
+    rest = copyReceiptHolders(restIn);
+    eachExtraReceipt(rest, (key, holder) => {
+      const photo = holder.receiptPhoto;
+      if (typeof photo !== 'string' || !photo || photo.startsWith('part:')) return;
+      const receipt: ReceiptPart = { txnId: key, dataUri: photo };
+      parts[key] = receipt;
+      holder.receiptPhoto = `part:${key}`;
+    });
+  }
 
   const byMonth: Record<string, ManualTransaction[]> = {};
   for (const t of manualTransactions || []) {
@@ -72,7 +109,21 @@ export function splitModel(model: HouseholdModel): HouseholdParts {
   return parts;
 }
 
-export function joinParts(parts: HouseholdParts): HouseholdModel {
+// Every receipt outside transactions in a (joined) household, by its part id. The sync keeps
+// these in memory so a photo part that an older phone removed can be put back (review 10-27).
+export function extraReceiptPhotos(model: HouseholdModel): Record<string, string> {
+  const out: Record<string, string> = {};
+  eachExtraReceipt(model as any, (key, holder) => {
+    const v = holder.receiptPhoto;
+    if (typeof v === 'string' && v && !v.startsWith('part:')) out[key] = v;
+  });
+  return out;
+}
+
+// `fallback`: where a receipt pointer's photo part is missing, a photo this phone saw
+// before under the same id. (A pointer only stays behind without its part when an older
+// phone removed the part; a receipt removed on purpose takes its pointer with it.)
+export function joinParts(parts: HouseholdParts, fallback?: (key: string) => string | undefined): HouseholdModel {
   const coreRaw = parts[CORE_PART] as (Record<string, unknown> & {
     __hasTransactions?: boolean;
     __hasAvatarPhotos?: boolean;
@@ -114,7 +165,17 @@ export function joinParts(parts: HouseholdParts): HouseholdModel {
     }
   }
 
-  const model = { ...(core as unknown as HouseholdModel) };
+  // Receipts outside transactions: put each photo back where its pointer is (or drop the
+  // pointer if the photo part hasn't arrived).
+  const coreCopy: any = copyReceiptHolders(core);
+  eachExtraReceipt(coreCopy, (_key, holder) => {
+    const v = holder.receiptPhoto;
+    if (typeof v !== 'string' || !v.startsWith('part:')) return;
+    const photo = receipts[v.slice(5)] ?? fallback?.(v.slice(5));
+    if (photo) holder.receiptPhoto = photo;
+    else delete holder.receiptPhoto;
+  });
+  const model = { ...(coreCopy as unknown as HouseholdModel) };
   if (__hasTransactions !== false || transactions.length) model.manualTransactions = transactions;
   if (__hasAvatarPhotos || avatarPhotos) model.avatarPhotos = avatarPhotos || {};
   return model;

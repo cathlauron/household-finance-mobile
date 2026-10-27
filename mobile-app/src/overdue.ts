@@ -62,16 +62,18 @@ function scanLoans(loans: Loan[] | undefined, today: string): OverdueItem[] {
     if (l.direction !== 'borrowed') return;
     // Version 3: a repeating loan with a First payment date shows its missed payments.
     if (isTrackedLoan(l)) {
-      const { missed } = loanCoverage(l, today);
+      const { missed, nextOpen, paidTowardNext } = loanCoverage(l, today);
       const owed = loanOutstandingBalance(l);
       if (!missed.length || owed <= 0) return;
       const each = typeof l.expectedPayment === 'number' ? l.expectedPayment : 0;
+      // Cath 2026-10-27: money already paid toward the oldest one is taken off.
+      const already = nextOpen === missed[0] ? paidTowardNext : 0;
       out.push({
         kind: 'loan',
         id: l.id,
         name: l.name || 'Loan',
         dueDate: missed[0],
-        amountOwed: Math.min(owed, each > 0 ? each * missed.length : owed),
+        amountOwed: Math.min(owed, each > 0 ? Math.round((each * missed.length - already) * 100) / 100 : owed),
         key: `overdue:loan:${l.id}:${missed[0]}`,
       });
       return;

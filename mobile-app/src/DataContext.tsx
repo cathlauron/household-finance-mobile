@@ -15,6 +15,7 @@
 // shared data.
 // ============================================================
 import { getCurrentFirebaseUser } from './authFirebase';
+import { walkFixtureOn } from './walkFixture';
 import { showSaved } from './components/SavedToast';
 import { ensureUsernameClaim } from './usernameClaim';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
@@ -1073,7 +1074,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // anything else (Home tidying up) just changes what's on screen.
     if (guestRef.current) {
       const entry = describeNewEntry(latestModelRef.current, sanitizedModel);
-      if (entry) setGuestRequest({ model: sanitizedModel, entry });
+      // (The background tester's made-up household saves without asking: web only.)
+      if (entry && !walkFixtureOn) setGuestRequest({ model: sanitizedModel, entry });
       else setModel(sanitizedModel);
       return;
     }

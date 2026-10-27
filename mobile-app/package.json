@@ -12,6 +12,7 @@
     "test:screens": "jest",
     "check:all": "node tools/check-all.mjs",
     "browser:build": "expo export --platform web --output-dir web-build",
+    "browser:build:fixture": "EXPO_PUBLIC_WALK_FIXTURE=1 expo export --platform web --output-dir web-build",
     "browser:walk": "node tools/browser-walk.mjs",
     "test:hooks": "eslint src App.tsx"
   },

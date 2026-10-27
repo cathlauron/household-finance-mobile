@@ -17,6 +17,7 @@ describe('Plan tab', () => {
     ['more-savings-row', 'Savings'],
     ['plan-goals-row', 'YearlyGoals'],
     ['plan-shared-row', 'SharedExpenses'],
+    ['plan-investments-row', 'Investments'],
     ['more-planning-row', 'Groceries'],
     ['plan-travel-row', 'Travel'],
     ['plan-events-row', 'Events'],

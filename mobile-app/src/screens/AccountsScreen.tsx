@@ -552,7 +552,7 @@ function makeStyles(colors: any) {
       justifyContent: 'center',
     },
     scrollContent: {
-      paddingHorizontal: 12,
+      paddingHorizontal: 16, // same side margins as every other page (review 10-27)
       paddingTop: 16,
       paddingBottom: 40,
     },

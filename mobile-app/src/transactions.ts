@@ -53,7 +53,8 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
     bill.cycles.forEach((cycle) => {
       const amt = typeof cycle.amountPaid === 'number' ? cycle.amountPaid : 0;
       const date = cycle.paidDate || cycle.dueDate;
-      if (!date || amt <= 0) return;
+      // Cath 2026-10-27: "Just record it" payments are history only, never spending.
+      if (!date || amt <= 0 || cycle.recordedOnly) return;
       list.push({
         id: 'bill-' + cycle.id,
         date,
@@ -71,7 +72,8 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
     debt.cycles.forEach((cycle) => {
       const amt = typeof cycle.amountPaid === 'number' ? cycle.amountPaid : 0;
       const date = cycle.paidDate || cycle.dueDate;
-      if (!date || amt <= 0) return;
+      // Cath 2026-10-27: "Just record it" payments are history only, never spending.
+      if (!date || amt <= 0 || cycle.recordedOnly) return;
       list.push({
         id: 'debt-' + cycle.id,
         date,
@@ -89,7 +91,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
     const lent = loan.direction === 'lent';
     loan.actualPayments.forEach((p) => {
       const amt = typeof p.actual === 'number' ? p.actual : 0;
-      if (!p.date || amt <= 0) return;
+      if (!p.date || amt <= 0 || p.recordedOnly) return;
       list.push({
         id: 'loan-' + p.id,
         date: p.date,

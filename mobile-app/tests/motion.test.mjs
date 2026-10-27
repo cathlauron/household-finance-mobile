@@ -253,3 +253,25 @@ test('sweep 10-26: no redraw storms, no work landing mid-slide', () => {
   // A save waits until the form has closed and the next slide is done.
   assert.match(get('DataContext.tsx'), /setTimeout\(resolve, SAVE_AFTER_MOVES_MS\)/);
 });
+
+// 2026-10-27 (Cath's screenshots): a trip with an empty checklist was cut off (a page's
+// height read back from an animation value was stale on the phone), and "Dates (optional)"
+// was squeezed to one letter per line by a long value.
+test('heights are never read back from an animation value; row labels keep their width', () => {
+  const sp = code(files.find((x) => x.name === 'components/SlidingPages.tsx').text);
+  assert.doesNotMatch(sp, /heights\.value\.slice\(\)/);
+  const sf = code(files.find((x) => x.name === 'components/SimpleForm.tsx').text);
+  assert.match(sf, /pickLabel: \{ flexShrink: 0, maxWidth: '60%' \}/); assert.match(sf, /valueBox: \{ flex: 1/);
+  assert.doesNotMatch(sf, /style=\{\[s\.label, \{ flex: 1 \}, invalid/);
+});
+
+// Cath, 2026-10-27: swiping sideways on a Plan page never goes back to Plan.
+test('Plan pages: no swipe-back (back arrow / phone back only)', () => {
+  const rs = code(files.find((x) => x.name === 'navigation/RootStack.tsx').text);
+  for (const name of ['Savings', 'Groceries', 'Travel', 'Events', 'YearlyGoals', 'SharedExpenses', 'Investments']) {
+    const at = rs.indexOf(`name="${name}"`);
+    assert.ok(at >= 0, name);
+    assert.match(rs.slice(at, at + 260), /NO_SWIPE_BACK/, name);
+  }
+  assert.match(rs, /NO_SWIPE_BACK = \{ gestureEnabled: false \}/);
+});

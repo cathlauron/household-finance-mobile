@@ -64,6 +64,7 @@ type Props = {
   onChange: (pm: PaymentMethod) => void;
   excludeTxnId?: string | null;
   label?: string; // instead of "Paid from" / "Add to"
+  noLabel?: boolean; // inside a form row that already says it
   // Version 2.1 (Cath): money being MOVED (into a savings pot, say) can't come from a
   // credit card, since a card's limit only pays for things. Hides credit cards.
   noCredit?: boolean;
@@ -73,7 +74,7 @@ type Props = {
 
 export default React.memo(AccountPicker);
 
-function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit, mark }: Props) {
+function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit, mark, noLabel }: Props) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   // Speed sweep: each account's balance goes through your whole history, so it's worked
@@ -88,7 +89,7 @@ function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId
 
   return (
     <View>
-      <MarkedLabel text={label ?? (spending ? 'Paid from' : 'Add to')} mark={mark} style={styles.label} />
+      {!noLabel && <MarkedLabel text={label ?? (spending ? 'Paid from' : 'Add to')} mark={mark} style={styles.label} />}
       {rows.length === 0 ? (
         <Text style={styles.empty}>
           {noCredit ? 'Add a cash or bank account first (Home › Wallet, or Accounts), then come back.' : 'Add an account first (Home › Wallet, or Accounts), then come back.'}
@@ -128,7 +129,7 @@ function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId
                 <View style={[styles.miniCard, { backgroundColor: cardColor(a, g) }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name} numberOfLines={1}>{a.name || GROUP_LABEL[g]}</Text>
-                  <Text style={[styles.sub, reason ? { color: colors.negative } : null]}>
+                  <Text style={[styles.sub, reason ? { color: colors.negative } : null]} numberOfLines={1}>
                     {reason ? `${GROUP_LABEL[g]} · ${reason}` : GROUP_LABEL[g]}
                   </Text>
                 </View>

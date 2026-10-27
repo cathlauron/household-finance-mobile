@@ -9,6 +9,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { defaultModel } from './defaultModel';
+import { walkFixtureOn, walkFixtureModel } from './walkFixture';
 import type { HouseholdModel } from './types';
 
 export type HelpWith = 'calm' | 'debt' | 'save' | 'spending';
@@ -46,7 +47,8 @@ export async function clearGuestSetup(): Promise<void> {
 
 // The household a guest starts with: empty, with their look choices applied.
 export function guestModel(setup: GuestSetup): HouseholdModel {
-  const m = defaultModel();
+  // Background tester only (web build with the walk fixture): a made-up household.
+  const m = walkFixtureOn ? walkFixtureModel() : defaultModel();
   return {
     ...m,
     settings: { ...m.settings, fallingLeavesEnabled: setup.fallingLeaves, moodColorsEnabled: setup.moodColors },
@@ -77,6 +79,7 @@ const LISTS: { key: keyof HouseholdModel; what: string }[] = [
   { key: 'yearlyGoals', what: 'goal' },
   { key: 'groceries', what: 'grocery item' },
   { key: 'sharedExpenses', what: 'shared expense' },
+  { key: 'investments', what: 'investment' },
   { key: 'recurring', what: 'repeating entry' },
 ];
 

@@ -6,6 +6,7 @@ import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted } from '../messages';
 import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
+import SegmentedControl from '../components/SegmentedControl';
 import React, { useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
 import { afterSlide } from '../afterSlide';
@@ -156,6 +157,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   const [carriedEdit, setCarriedEdit] = useState(0);
   const [priorityInput, setPriorityInput] = useState<'high' | 'medium' | 'low' | ''>('');
   const [subscriptionInput, setSubscriptionInput] = useState(false);
+  const [regularInput, setRegularInput] = useState(false);
   const [notesInput, setNotesInput] = useState('');
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod | undefined>(undefined);
   const [recurTypeInput, setRecurTypeInput] = useState<RecurringType>('onetime');
@@ -188,7 +190,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         ? dateText(new Date(onetimeDateInput + 'T00:00:00'), { weekday: true })
         : 'Choose'
       : dueNowInput
-      ? new Date(dueNowInput + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? dateText(new Date(dueNowInput + 'T00:00:00'), { weekday: true }) // same look as debts and loans (review 10-27)
       : recurTypeInput === 'monthly'
       ? dayInput ? `the ${ordinal(parseInt(dayInput, 10))}` : 'Choose'
       : dayInput && monthInput ? `${MONTHS_SHORT[parseInt(monthInput, 10) - 1] ?? ''} ${parseInt(dayInput, 10)}` : 'Choose';
@@ -226,6 +228,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     setPriorityInput('');
     setNotesInput('');
     setSubscriptionInput(false);
+    setRegularInput(false);
     setPaymentMethodInput(undefined);
     setRecurTypeInput('onetime');
     setCustomFreqInput('monthly');
@@ -261,6 +264,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     setPriorityInput(bill.priority || '');
     setNotesInput(bill.notes || '');
     setSubscriptionInput(!!bill.isSubscription);
+    setRegularInput(!!bill.regular);
     setPaymentMethodInput(currentCycle(bill)?.paymentMethod);
     const rt = (bill.recurringType as RecurringType) || 'onetime';
     setRecurTypeInput(RECUR_TYPES.includes(rt) ? rt : 'onetime');
@@ -394,6 +398,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
           // that should change subscriptionStatus after that — resaving the
           // form should never silently reset an already-cancelled bill.
           subscriptionStatus: subscriptionInput ? (b.subscriptionStatus || 'active') : b.subscriptionStatus,
+          regular: regularInput || undefined,
         };
       });
     } else {
@@ -413,6 +418,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         createdAt: Date.now(),
         isSubscription: subscriptionInput,
         subscriptionStatus: subscriptionInput ? 'active' : undefined,
+        ...(regularInput ? { regular: true } : {}),
       };
       updated.bills = [...updated.bills, newBill];
     }
@@ -542,7 +548,11 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   todayStart.setHours(0, 0, 0, 0);
   const monthEnd = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
   const daysUntil = (d: Date | null) => (d ? Math.round((d.getTime() - todayStart.getTime()) / 86400000) : Infinity);
-  const unpaid = bills.filter((b) => billDue(b) !== null);
+  // Cath, 2026-10-27 (canvas P2): regular payments (not bills) get their own section.
+  const regulars = bills.filter((b) => b.regular);
+  const onlyBills = bills.filter((b) => !b.regular);
+  const unpaidAll = bills.filter((b) => billDue(b) !== null);
+  const unpaid = onlyBills.filter((b) => billDue(b) !== null);
   const sections: { title: string; items: Bill[] }[] = [
     { title: 'Overdue', items: unpaid.filter((b) => overdueIds.has(b.id)) },
     { title: 'This week', items: unpaid.filter((b) => !overdueIds.has(b.id) && daysUntil(billDue(b)) <= 7) },
@@ -551,16 +561,18 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     // Version 2.1 fix: a bill saved without a due date used to be hidden. It shows here.
     {
       title: 'No due date',
-      items: bills.filter((b) => {
+      items: onlyBills.filter((b) => {
         if (billDue(b) !== null) return false;
         const cur = currentCycle(b);
         return !cur || !isCyclePaid(cur);
       }),
     },
+    { title: 'Regular payments', items: regulars.filter((b) => { const cur = currentCycle(b); return billDue(b) !== null || !cur || !isCyclePaid(cur); }) },
   ];
   const paidThisMonth = bills.filter((b) => wasPaidThisMonth(b));
-  const dueThisMonth = unpaid.filter((b) => overdueIds.has(b.id) || (billDue(b) as Date) <= monthEnd);
+  const dueThisMonth = unpaidAll.filter((b) => overdueIds.has(b.id) || (billDue(b) as Date) <= monthEnd);
   const stillToPay = dueThisMonth.reduce((sum, b) => sum + billAmount(b), 0);
+  const regularDue = dueThisMonth.filter((b) => b.regular).reduce((sum, b) => sum + billAmount(b), 0);
   const subs = bills.filter((b) => b.isSubscription);
   const subsActive = subs.filter((b) => b.subscriptionStatus !== 'cancelled').length;
   const fmtDue = (d: Date | null) => (d ? dateText(d, { weekday: true }) : 'No date set');
@@ -575,7 +587,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
           <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(stillToPay, colors) }]} value={stillToPay} format={formatPeso} />
           <Text style={styles.summarySub}>
-            {paidThisMonth.length} of {paidThisMonth.length + dueThisMonth.length} {paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid
+            {regulars.length > 0
+              ? `Bills ${formatPeso(stillToPay - regularDue).replace('.00', '')} · regular payments ${formatPeso(regularDue).replace('.00', '')}`
+              : `${paidThisMonth.length} of ${paidThisMonth.length + dueThisMonth.length} ${paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid`}
           </Text>
         </View>
 
@@ -620,9 +634,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                       testID={`bill-row-${bill.id}`}
                       glow={arrived === bill.id}
                       addedBy={bill.addedBy}
-                      icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
-                      title={bill.name || 'Untitled bill'}
-                      sub={`${!due ? 'Add a due date anytime' : `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}`}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
+                      icon={bill.regular ? 'heart-outline' : bill.isSubscription ? 'repeat' : 'flash-outline'}
+                      title={bill.name || (bill.regular ? 'Untitled payment' : 'Untitled bill')}
+                      sub={`${!due ? 'Add a date anytime' : `${isOverdue ? 'Was due' : bill.regular ? 'Send' : 'Due'} ${fmtDue(due)}`}${bill.isSubscription ? (cancelled ? ' · Cancelled' : ' · Subscription') : ''}`}
                       amount={formatPeso(billAmount(bill))}
                       amountColor={isOverdue ? colors.negative : colors.ink}
                       badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
@@ -639,18 +653,18 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
 
         {paidThisMonth.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Paid this month</Text>
+            <Text style={styles.sectionHeader}>{regulars.length > 0 ? 'Paid and sent this month' : 'Paid this month'}</Text>
             <View style={styles.group}>
               <GradientFill match={styles.group} />
               {paidThisMonth.map((bill, rowIndex) => (
                 <PayRow
                   key={bill.id}
-                  icon={bill.isSubscription ? 'repeat' : 'flash-outline'}
+                  icon={bill.regular ? 'heart-outline' : bill.isSubscription ? 'repeat' : 'flash-outline'}
                   title={bill.name || 'Untitled bill'}
-                  sub={`Paid ${paidCycles(bill)[0]?.paidDate ?? ''}`}
+                  sub={`${bill.regular ? 'Sent' : 'Paid'} ${paidCycles(bill)[0]?.paidDate ?? ''}`}
                   amount={formatPeso(Number(paidCycles(bill)[0]?.amountPaid) || 0)}
                   amountColor={colors.inkDim}
-                  badge={{ text: 'Paid', tone: 'paid' }}
+                  badge={{ text: bill.regular ? 'Sent' : 'Paid', tone: 'paid' }}
                   divider={rowIndex > 0}
                   addedBy={paidCycles(bill)[0]?.paidBy}
                   onPress={() => openBill(bill)}
@@ -670,7 +684,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
         // One sheet for New bill / debt / loan, so switching only changes the form.
         shared="pay-form"
         grouped
-        header={<SheetBar title={editingId ? 'Edit bill' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
+        header={<SheetBar title={editingId ? (regularInput ? 'Edit regular payment' : 'Edit bill') : regularInput ? 'New regular payment' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
         {!editingId && (
           <KindSwitch
@@ -688,13 +702,22 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
             box (and the keyboard stays up), even though the loan form has an extra row above. */}
         {/* Smoothness 2026-10-23 (Cath): the fields fade when Bill / Debt / Loan changes. */}
         <FormSwapFade key="pay-form-body" channels={['kind']} swapKey={'bills'}>
+          {/* Cath, 2026-10-27 (canvas P2): a bill, or a regular payment that isn't a bill. */}
+          <View style={{ marginTop: 0, marginBottom: 6 }}>
+            <SegmentedControl<'bill' | 'regular'>
+              accessibilityLabel="Bill or regular payment"
+              options={[{ id: 'bill', label: 'Bill', testID: 'bill-kind-bill' }, { id: 'regular', label: 'Regular payment', testID: 'bill-kind-regular' }]}
+              value={regularInput ? 'regular' : 'bill'}
+              onChange={(v) => setRegularInput(v === 'regular')}
+            />
+          </View>
           <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
-            <BigAmount mark="required" label={carriedEdit > 0 ? 'New charges' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
+            <BigAmount mark="required" label={carriedEdit > 0 ? 'New charges' : regularInput ? 'Amount' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
 
           <FormGroup>
             <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-              <InputRow mark="required" label="Name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Meralco" testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+              <InputRow mark="required" label="Name" value={nameInput} onChangeText={setNameInput} placeholder={regularInput ? "e.g. For Mama" : "e.g. Meralco"} testID="bill-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
             </Guided>
             <PickerRow mark="optional" label="Category" value={categoryInput || 'Choose'} open={openRow === 'category'} onToggle={() => toggleRow('category')}>
               <Choices options={BILL_CATEGORIES.map((c) => ({ id: c, label: c }))} value={categoryInput as any} onChange={(c) => setCategoryInput(c)} />

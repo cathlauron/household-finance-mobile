@@ -31,6 +31,7 @@ import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import { getNextDueDate, RecurringType } from '../recurrence';
+import { loanNextDueDate, loanFirstDate } from '../loanSchedule';
 import type { Loan, HouseholdModel, LoanPayment, PaymentMethod } from '../types';
 import LoanPayoffSimulatorModal, { SimLoanInput } from './LoanPayoffSimulatorModal';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
@@ -73,22 +74,9 @@ const RECUR_TYPES: RecurringType[] = ['onetime', 'monthly', 'annual', 'custom'];
 // (e.g. saved before Checkpoint 5.4c, or never given a date) sort to the bottom.
 function sortByNextDue(loans: Loan[]): Loan[] {
   return [...loans].sort((a, b) => {
-    const da = getNextDueDate(
-      (a.recurringType as RecurringType) || 'onetime',
-      a.dueDate || {},
-      new Date(),
-      a.customStartDate,
-      a.customFreq,
-      a.customOccurrenceCount
-    );
-    const db = getNextDueDate(
-      (b.recurringType as RecurringType) || 'onetime',
-      b.dueDate || {},
-      new Date(),
-      b.customStartDate,
-      b.customFreq,
-      b.customOccurrenceCount
-    );
+    // Cath 2026-10-27: the next payment is the oldest one not paid yet (loanNextDueDate).
+    const da = loanNextDueDate(a);
+    const db = loanNextDueDate(b);
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
@@ -287,10 +275,12 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     setDayInput(d.day ? String(d.day) : '');
     setMonthInput(d.month ? String(d.month) : '');
     {
-      // The first payment if one was picked, else the next one on the schedule.
+      // The first payment if one was picked; for a loan with payments but none picked, the
+      // one its payments started from (Cath 2026-10-27: saving the form used to set it to
+      // the NEXT date, after all the payments); else the next one on the schedule.
       const next = rt === 'monthly' || rt === 'annual' ? getNextDueDate(rt, d) : null;
       const nextIso = next ? `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}` : '';
-      setFirstDateInput(typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : nextIso);
+      setFirstDateInput(loanFirstDate(loan) || (typeof d.firstDate === 'string' && d.firstDate ? d.firstDate : nextIso));
     }
     setCustomFreqInput(loan.customFreq || 'monthly');
     setCustomStartDateInput(loan.customStartDate || '');
@@ -471,7 +461,10 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       const before = model.loans.find((x) => x.id === editingId);
       const edited = updated.loans.find((x) => x.id === editingId);
       const newFirst = edited?.dueDate?.firstDate;
-      const moved = !!before && !!edited && (before.dueDate?.firstDate !== newFirst || before.recurringType !== edited.recurringType);
+      // Review 10-27: a loan with no First payment date gets the one its payments started
+      // from filled in; saving that unchanged isn't a move, so no "Which payment was this?".
+      const sameAsWorkedOut = !!before && newFirst === loanFirstDate(before) && before.recurringType === edited?.recurringType;
+      const moved = !!before && !!edited && !sameAsWorkedOut && (before.dueDate?.firstDate !== newFirst || before.recurringType !== edited.recurringType);
       const place = moved && edited && typeof newFirst === 'string' ? loanPaymentToPlace(edited, newFirst) : null;
       if (place && edited) {
         setPlaceAsk({
@@ -571,8 +564,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       const oa = overdueLoanIds.has(a.l.id) ? 0 : 1;
       const ob = overdueLoanIds.has(b.l.id) ? 0 : 1;
       if (oa !== ob) return oa - ob;
-      const na = getNextDueDate((a.l.recurringType as RecurringType) || 'onetime', a.l.dueDate || {})?.getTime() ?? Infinity;
-      const nb = getNextDueDate((b.l.recurringType as RecurringType) || 'onetime', b.l.dueDate || {})?.getTime() ?? Infinity;
+      const na = loanNextDueDate(a.l)?.getTime() ?? Infinity;
+      const nb = loanNextDueDate(b.l)?.getTime() ?? Infinity;
       if (na === nb) return priorityRank(a.l.priority) - priorityRank(b.l.priority) || a.i - b.i;
       return a.i - b.i;
     })
@@ -636,14 +629,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           {loans.map((loan, rowIndex) => {
             const remaining = Math.max(0, loanTotal(loan) - loanPaidTotal(loan));
             const loanRecurType = (loan.recurringType as RecurringType) || 'onetime';
-            const loanNextDue = getNextDueDate(
-              loanRecurType,
-              loan.dueDate || {},
-              new Date(),
-              loan.customStartDate,
-              loan.customFreq,
-              loan.customOccurrenceCount
-            );
+            const loanNextDue = loanNextDueDate(loan);
             return (
               <SwipeableRow
                 key={loan.id}
@@ -714,7 +700,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           />
           <SwitchLine
             testID="loan-direction-line"
-            text={directionInput === 'lent' ? 'Money you lent, paid back to you in set payments · to family or a friend' : 'Money you borrowed, paid back in set payments · car, housing, Pag-IBIG'}
+            text={directionInput === 'lent' ? 'Money you lent, paid back to you in set payments' : 'Money you borrowed and pay back in set payments'}
           />
         </FormSwapFade>
         {/* Same key in the bill, debt and loan forms: switching keeps the very same amount
@@ -759,7 +745,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
               </Guided>
             )}
             <Guided {...fieldErrors.props('interest')} focusRef={interestRef}>
-              <InputRow mark="optional" label="Interest a year (%)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
+              <InputRow mark="optional" label="Interest (% a year)" value={interestRateInput} onChangeText={setInterestRateInput} placeholder="0" keyboardType="decimal-pad" inputRef={interestRef} invalid={fieldErrors.field === 'interest'} />
             </Guided>
           </FormGroup>
 

@@ -1,4 +1,5 @@
-import { loanCoverage } from '../loanSchedule';
+import { loanCoverage, loanNextDueDate, isTrackedLoan } from '../loanSchedule';
+import { withFeeEntry } from '../payFees';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
@@ -13,6 +14,7 @@ import { headerButtonText } from '../navigation/LargeHeader';
 import { WhoFootnote, useWho } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
+import { ReceiptViewer, ReceiptMark } from '../components/ReceiptField';
 import DeleteRow from '../components/DeleteRow';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -29,7 +31,7 @@ import { getOverdueItems } from '../overdue';
 import { makeId } from '../utils';
 import { todayISO, dateText } from '../dateUtils';
 import type { ThemeColors } from '../theme';
-import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod } from '../types';
+import type { Bill, Debt, Loan, HouseholdModel, PaymentMethod, LoanPayment } from '../types';
 
 // Redesign: the Bill, Debt and Loan pages from the Finance Flow mockups (BillDetail,
 // LoanDetail). Tapping one in To-Pay or Home opens this full page.
@@ -76,6 +78,8 @@ export default function PayDetailScreen() {
   const styles = makeStyles(colors);
   // Redesign: "Mark as paid" first asks which account it's paid from.
   const [payOpen, setPayOpen] = useState(false);
+  // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
 
   const record: Bill | Debt | Loan | undefined = !model
     ? undefined
@@ -167,6 +171,8 @@ export default function PayDetailScreen() {
   // ---------- Bill / Debt ----------
   const rec = record as Bill | Debt;
   const name = kind === 'bill' ? (rec as Bill).name || 'Untitled bill' : (rec as Debt).creditorOrPerson || 'Debt';
+  // Cath, 2026-10-27 (canvas P2): a regular payment (not a bill) is sent, not paid.
+  const regular = kind === 'bill' && !!(rec as Bill).regular;
   const cur = currentCycle(rec);
   const curPaid = cur ? isCyclePaid(cur) : true;
   const amount = num(cur?.amountDue);
@@ -178,9 +184,14 @@ export default function PayDetailScreen() {
   const days = dueISO ? daysBetween(today, dueISO) : null;
   const overdue = !curPaid && days !== null && days < 0;
   const history = paidCycles(rec);
+  // Review 10-27: the payment Undo takes back is the one undoLastPayment picks (newest paid
+  // date, the later one on a tie), so its fee and its date are taken from that same one.
+  const lastPaid = (rec.cycles || []).reduce<(typeof rec.cycles)[number] | undefined>((a, c) => (num(c.amountPaid) > 0 && (!a || (c.paidDate || '') >= (a.paidDate || '')) ? c : a), undefined);
   // Paid (or logged, for a back-dated payment) today: Undo stays available.
+  // Code review 2026-10-27: a back-dated "Just record it" payment (no paidAt) logged today
+  // can be undone too.
   const loggedToday = (() => {
-    const at = history[0]?.paidAt;
+    const at = history[0]?.paidAt ?? history[0]?.loggedAt;
     if (!at) return false;
     const d = new Date(at);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === today;
@@ -235,7 +246,9 @@ export default function PayDetailScreen() {
         )}
         {paidToday ? (
           <Text style={[styles.badge, { color: colors.positive, backgroundColor: colors.okBg }]}>
-            Paid today{history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
+            {/* Cath 2026-10-27: a back-dated payment says its own date, not "today". */}
+            {history[0]?.paidDate === today ? 'Paid today' : `Paid ${shortDate(history[0]?.paidDate || today)}`}
+            {history[0]?.recordedOnly ? ' · recorded only' : history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
           </Text>
         ) : dueISO && !curPaid ? (
           <Text style={[styles.badge, overdue ? { color: colors.negative, backgroundColor: colors.errorBg } : { color: colors.orange, backgroundColor: colors.warnBg }]}>
@@ -243,7 +256,8 @@ export default function PayDetailScreen() {
           </Text>
         ) : null}
         {paidToday && dueISO && !curPaid && <Text style={styles.nextDue}>Next due {niceDate(dueISO)}</Text>}
-        {!curPaid && !paidToday && (
+        {/* Catching up: when the next one is already past due, Pay stays next to Undo. */}
+        {!curPaid && (!paidToday || overdue) && (
           <TouchableOpacity
             testID="pay-detail-mark-paid"
             style={[styles.primary, { backgroundColor: colors.buttonFill }]}
@@ -251,7 +265,7 @@ export default function PayDetailScreen() {
             accessibilityRole="button"
           >
             <GradientFill color={colors.buttonFill} strength={0.18} />
-            <Text style={[styles.primaryText, { color: colors.onButton }]}>Pay</Text>
+            <Text style={[styles.primaryText, { color: colors.onButton }]}>{regular ? 'Send' : 'Pay'}</Text>
           </TouchableOpacity>
         )}
         {paidToday && (
@@ -259,12 +273,15 @@ export default function PayDetailScreen() {
             style={[styles.primary, { backgroundColor: colors.accentTint }]}
             onPress={() => {
               const next = undoLastPayment(rec);
-              save(kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
+              // Code review 2026-10-27: the fee paid with it goes too.
+              const feeId = lastPaid?.feeTxnId;
+              const base = feeId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== feeId) } : model;
+              save(kind === 'bill' ? { ...base, bills: base.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...base, debts: base.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
             }}
             accessibilityRole="button"
           >
             <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint }]} />
-            <Text style={[styles.primaryText, { color: colors.gold }]}>Undo</Text>
+            <Text style={[styles.primaryText, { color: colors.gold }]} testID="pay-detail-undo">{lastPaid?.paidDate === today ? "Undo today's payment" : `Undo the ${shortDate(lastPaid?.paidDate || today)} payment`}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -272,26 +289,37 @@ export default function PayDetailScreen() {
       <PayFromSheet
         visible={payOpen}
         onClose={() => setPayOpen(false)}
-        title={`Pay ${name}`}
+        title={regular ? `Send ${name}` : `Pay ${name}`}
         amount={kind === 'debt' ? minDue : amount}
         direction="out"
         model={model}
         initial={cur?.paymentMethod}
-        confirmLabel="Pay"
+        confirmLabel={regular ? 'Sent' : 'Pay'}
         editableAmount={kind === 'debt'}
         fullAmount={amount}
         minimumAmount={minDue}
         partOption={kind === 'bill' ? { name, repeats: (rec as Bill).recurringType !== 'onetime' } : undefined}
         dueText={dueISO ? `Paying the ${shortDate(dueISO)} ${kind === 'bill' ? 'bill' : 'payment'}` : undefined}
-        onConfirm={(pm, paidAmount, lateFee, date, takeOff) => {
+        withReceipt
+        onConfirm={(pm, paidAmount, lateFee, date, takeOff, fee, receiptPhoto) => {
           setPayOpen(false);
+          const feeTxnId = fee > 0 ? makeId('txn') : undefined;
           const next =
             kind === 'debt'
-              ? markPaid(rec, pm, date, paidAmount, lateFee)
-              : markPaid(rec, pm, date, paidAmount < amount ? paidAmount : undefined);
+              ? markPaid(rec, pm, date, paidAmount, lateFee, { feePaid: fee, feeTxnId, receiptPhoto })
+              : markPaid(rec, pm, date, paidAmount, 0, { feePaid: fee, feeTxnId, receiptPhoto });
           let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
-          if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount);
-          save(updated, paidAmount < amount ? 'Part paid' : 'Paid');
+          // Cath 2026-10-27 (canvas R4): a fee paid with it is its own Fees entry.
+          updated = withFeeEntry(updated, { amount: fee, label: name, date, paymentMethod: pm, id: feeTxnId });
+          if (takeOff) updated = takeOffSavedBalance(updated, pm, paidAmount + fee);
+          save(updated, regular ? 'Sent' : paidAmount < amount ? 'Part paid' : 'Paid');
+        }}
+        // "Just record it": kept in History as paid, no account, nothing else changes.
+        onRecord={(paidAmount, fee, date, receiptPhoto) => {
+          setPayOpen(false);
+          const next = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, feePaid: fee, receiptPhoto });
+          const updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
+          save(updated, 'Recorded');
         }}
       />
 
@@ -319,6 +347,17 @@ export default function PayDetailScreen() {
         <Row styles={styles} label="Remind me" value={`${model.settings.notifyDaysBefore ?? 3} days before`} last />
       </View>
 
+      {/* Cath 2026-10-27: a note added to a bill or debt shows on its page. */}
+      {!!rec.notes?.trim() && (
+        <>
+          <Text style={styles.header}>Note</Text>
+          <View style={styles.group} testID="pay-detail-note">
+            <GradientFill match={styles.group} />
+            <Text style={styles.noteText}>{rec.notes.trim()}</Text>
+          </View>
+        </>
+      )}
+
       {history.length > 0 && (
         <>
           <Text style={styles.header}>History</Text>
@@ -328,30 +367,43 @@ export default function PayDetailScreen() {
               const late = c.dueDate && c.paidDate ? daysBetween(c.dueDate, c.paidDate) : 0;
               const d = new Date((c.dueDate || c.paidDate) + 'T00:00:00');
               return (
-                <View key={c.id} style={[styles.histRow, i > 0 && styles.line]}>
+                <TouchableOpacity key={c.id} disabled={!c.receiptPhoto} onPress={() => setViewReceipt(c.receiptPhoto || null)} testID={c.receiptPhoto ? 'history-receipt' : undefined} accessibilityRole={c.receiptPhoto ? 'button' : undefined} style={[styles.histRow, i > 0 && styles.line]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.histTitle}>{isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'long' })}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.histTitle}>{isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'long' })}</Text>
+                      {!!c.receiptPhoto && <ReceiptMark />}
+                    </View>
                     <Text style={styles.meta}>
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
                       {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
+                      {c.recordedOnly ? ' · recorded only' : ''}
+                      {num(c.feePaid) > 0 ? ` · fee ${formatPeso(num(c.feePaid))}` : ''}
                       {who.by(c.paidBy)}
+                      {c.notes?.trim() ? ` · ${c.notes.trim()}` : ''}
+                      {c.receiptPhoto ? ' · tap to see the receipt' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: colors.ink }]}>{formatPeso(num(c.amountPaid))}</Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
         </>
       )}
       {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
+      <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
-      <DeleteRow label={kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
+      <DeleteRow label={regular ? 'Delete regular payment' : kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </KeyboardAwareScrollView>
     {editor}
     </>
   );
+}
+
+function todayISOFrom(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function Row({ styles, label, value, last }: { styles: any; label: string; value: string; last?: boolean }) {
@@ -373,36 +425,72 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
   const lent = loan.direction === 'lent';
   const overdueItem = getOverdueItems(model).find((o) => o.kind === 'loan' && o.id === loan.id);
-  const nextDue = getNextDueDate((loan.recurringType as any) || 'onetime', loan.dueDate || {}, new Date(), loan.customStartDate, loan.customFreq, loan.customOccurrenceCount);
+  // Cath 2026-10-27: the oldest payment not made yet (Oct 16 when Sept 16 was the last paid).
+  const nextDue = loanNextDueDate(loan);
   const totalPayments = monthly > 0 ? Math.ceil(total / monthly) : 0;
   const today = todayISO();
-  const paidToday = payments[0]?.date === today;
+  // Code review 2026-10-27: Undo is for the payment logged last (also a back-dated one
+  // logged today), and it removes that payment's fee entry too.
+  const lastLogged = (loan.actualPayments || []).reduce<LoanPayment | undefined>((a, p) => (!a || (p.createdAt ?? 0) >= (a.createdAt ?? 0) ? p : a), undefined);
+  const loggedOn = lastLogged?.createdAt ? todayISOFrom(lastLogged.createdAt) : '';
+  const paidToday = !!lastLogged && (lastLogged.date === today || loggedOn === today);
   // Redesign: logging a payment first asks which account it comes from (or, for money
   // you lent, which account it goes into).
   const [payOpen, setPayOpen] = useState(false);
-  const payAmount = monthly > 0 ? Math.min(monthly, left || monthly) : left;
+  // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
+  // Cath 2026-10-27 ("warn and count what I've actually paid in total"): a smaller payment
+  // counts toward the oldest open one, which stays open until the rest is paid.
+  const cov = loanCoverage(loan, today);
+  const dueNow = cov.leftForNext > 0 ? cov.leftForNext : monthly;
+  const payAmount = monthly > 0 ? Math.min(dueNow, left || dueNow) : left;
+  const openText = cov.nextOpen ? shortDate(cov.nextOpen) : '';
+  const shortNote = (amt: number): string | undefined => {
+    if (!(monthly > 0) || !cov.nextOpen || !(amt > 0) || amt >= dueNow - 0.005) return undefined;
+    const rest = formatPeso(Math.round((dueNow - amt) * 100) / 100);
+    return `${formatPeso(amt)} is less than the ${formatPeso(dueNow)} ${cov.paidTowardNext > 0 ? 'still due' : 'due'} for ${openText}. It counts toward it, and the ${openText} payment stays open until the other ${rest} is ${lent ? 'received' : 'paid'}.`;
+  };
 
-  function logPayment(pm: PaymentMethod, _amount?: number, _fee?: number, date: string = today, takeOff = false) {
-    if (payAmount <= 0) return;
+  // Cath, 2026-10-27 (canvas R4): the amount typed in is the one logged (it used to always
+  // be the monthly amount), with an optional fee, or "Just record it" (no account).
+  function logPayment(pm: PaymentMethod, amountPaid?: number, _lateFee?: number, date: string = today, takeOff = false, fee = 0, receiptPhoto?: string) {
+    const paidNow = typeof amountPaid === 'number' && amountPaid > 0 ? amountPaid : payAmount;
+    if (paidNow <= 0) return;
+    const openFor = loanCoverage(loan, today).nextOpen;
+    setPayOpen(false);
+    const feeTxnId = fee > 0 && !lent ? makeId('txn') : undefined;
+    const next: Loan = {
+      ...loan,
+      actualPayments: [
+        ...(loan.actualPayments || []),
+        // Version 3: it covers the oldest scheduled payment still open (a missed one first).
+        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 && !lent ? { fee, feeTxnId } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) },
+      ],
+    };
+    let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
+    if (!lent) updated = withFeeEntry(updated, { amount: fee, label: loan.name || 'Loan', date, paymentMethod: pm, id: feeTxnId });
+    if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, paidNow + fee);
+    save(updated, lent ? 'Received' : 'Paid');
+  }
+  function recordPayment(amountPaid: number, fee: number, date: string, receiptPhoto?: string) {
+    if (amountPaid <= 0) return;
     const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
     const next: Loan = {
       ...loan,
       actualPayments: [
         ...(loan.actualPayments || []),
-        // Version 3: it covers the oldest scheduled payment still open (a missed one first).
-        { id: makeId('lpay'), date, actual: payAmount, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}) },
+        { id: makeId('lpay'), date, actual: amountPaid, recordedOnly: true, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) },
       ],
     };
-    let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
-    if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, payAmount);
-    save(updated, lent ? 'Received' : 'Paid');
+    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, 'Recorded');
   }
   function undoPayment() {
-    const last = payments[0];
+    const last = lastLogged;
     if (!last) return;
     const next: Loan = { ...loan, actualPayments: (loan.actualPayments || []).filter((p) => p.id !== last.id) };
-    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) });
+    const base = last.feeTxnId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== last.feeTxnId) } : model;
+    save({ ...base, loans: (base.loans || []).map((l) => (l.id === loan.id ? next : l)) });
   }
 
   return (
@@ -428,16 +516,17 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
         </View>
       )}
 
-      {!paidToday && left > 0 && (
+      {/* Cath 2026-10-27: catching up on past payments, Log payment stays while one is past due. */}
+      {left > 0 && (!paidToday || cov.missed.length > 0) && (
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.buttonFill, alignSelf: 'stretch', marginTop: 16 }]} onPress={() => payAmount > 0 && setPayOpen(true)} accessibilityRole="button">
           <GradientFill color={colors.buttonFill} strength={0.18} />
-          <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(Math.min(monthly, left))}` : ''}</Text>
+          <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(payAmount)}` : ''}</Text>
         </TouchableOpacity>
       )}
       {paidToday && (
         <TouchableOpacity style={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} onPress={undoPayment} accessibilityRole="button">
           <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} />
-          <Text style={[styles.primaryText, { color: colors.gold }]}>Undo today's payment</Text>
+          <Text style={[styles.primaryText, { color: colors.gold }]} testID="loan-undo">{lastLogged?.date === today ? "Undo today's payment" : `Undo the ${shortDate(lastLogged?.date || today)} payment`}</Text>
         </TouchableOpacity>
       )}
 
@@ -449,8 +538,9 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
           <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: colors.gold }]} />
         </View>
         <Text style={[styles.meta, { marginTop: 6 }]}>
-          {payments.length}
+          {monthly > 0 && isTrackedLoan(loan) ? Object.keys(cov.covered).length : payments.length}
           {totalPayments ? ` of ${totalPayments}` : ''} payments made
+          {cov.paidTowardNext > 0 && openText ? ` · ${formatPeso(cov.paidTowardNext)} toward ${openText}` : ''}
           {nextDue ? ` · next ${shortDate(`${nextDue.getFullYear()}-${String(nextDue.getMonth() + 1).padStart(2, '0')}-${String(nextDue.getDate()).padStart(2, '0')}`)}` : ''}
         </Text>
         <View style={styles.trio}>
@@ -477,33 +567,44 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
             {payments.map((p, i) => {
               const d = new Date(p.date + 'T00:00:00');
               return (
-                <View key={p.id} style={[styles.histRow, i > 0 && styles.line]}>
+                <TouchableOpacity key={p.id} disabled={!p.receiptPhoto} onPress={() => setViewReceipt(p.receiptPhoto || null)} testID={p.receiptPhoto ? 'history-receipt' : undefined} accessibilityRole={p.receiptPhoto ? 'button' : undefined} style={[styles.histRow, i > 0 && styles.line]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.histTitle}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.histTitle}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                      {!!p.receiptPhoto && <ReceiptMark />}
+                    </View>
                     <Text style={styles.meta}>
                       {p.date === today ? 'Paid today' : `Paid ${shortDate(p.date)}`}
                       {p.paymentMethod ? ` · ${accountLabel(model, p.paymentMethod)}` : ''}
+                      {p.recordedOnly ? ' · recorded only' : ''}
+                      {num(p.fee) > 0 ? ` · fee ${formatPeso(num(p.fee))}` : ''}
                       {who.by(p.addedBy)}
+                      {p.receiptPhoto ? ' · tap to see the receipt' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: lent ? colors.positive : colors.negative }]}>{formatPeso(num(p.actual))}</Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
         </>
       )}
       <Text style={styles.footer}>Each payment is saved with its date, so late ones are easy to spot.</Text>
+      <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       <PayFromSheet
         visible={payOpen}
         onClose={() => setPayOpen(false)}
         title={lent ? 'Money received' : `Pay ${loan.name || 'loan'}`}
         amount={payAmount}
+        dueText={openText ? `${lent ? 'For' : 'Paying'} the ${openText} payment${cov.paidTowardNext > 0 ? ` (${formatPeso(cov.paidTowardNext)} already paid)` : ''}` : undefined}
+        amountNote={shortNote}
         direction={lent ? 'in' : 'out'}
         model={model}
         initial={payments[0]?.paymentMethod}
         confirmLabel={lent ? 'Received' : 'Pay'}
+        withReceipt
         onConfirm={logPayment}
+        onRecord={recordPayment}
       />
       <WhoFootnote addedBy={loan.addedBy} createdAt={loan.createdAt} changedBy={loan.changedBy} changedAt={loan.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label="Delete loan" onPress={onDelete} testID="pay-detail-delete" />
@@ -537,6 +638,7 @@ function makeStyles(colors: ThemeColors) {
     line: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     rowLabel: { fontSize: 17, color: colors.ink, flex: 1 },
     rowValue: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
+    noteText: { fontSize: 16, lineHeight: 22, color: colors.ink, paddingHorizontal: 16, paddingVertical: 14 },
     header: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 24, marginBottom: 6, marginLeft: 16 },
     histRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 10 },
     histTitle: { fontSize: 17, color: colors.ink },

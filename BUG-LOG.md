@@ -60,6 +60,29 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-038 | Trip items ticked as paid, "take it off my balance", unticking | trip payment code | logic (partly): paymentPlacement, travelChecklist |
 | B-039 | Who logged / changed it (stamps) | whoStamp code | logic (partly): whoStamp |
 | B-040 | Recovery key dashes, email format, email typo suggestions | typing helpers | logic (partly): typingHelpers |
+| B-041 | Calendar (and Home's Due soon, Left to Spend's forecast) missed a debt due Oct 30 that the Debts page showed: the calendar ignored a payment round's own due date; a due day of 31 showed nowhere in 30-day months | balanceProjection.ts dueDaysInMonth, nextOccurrenceInMonth | tests/calendarDue.test.mjs (red-green) |
+| B-042 | Loan paid every 16th: after logging Sept 16 it said "next Nov 16" (Oct 16 unpaid, shown as past due) | loanSchedule.ts loanNextDueDate (Loans list, sort, loan page, Home tight-money list) | tests/loanSchedule.test.mjs ("next payment = the oldest unpaid date", red-green) |
+| B-043 | Couldn't paste (or copy) in the big amount at the top of forms | components/CenteredAmount.tsx | __tests__/AmountPaste.test.tsx (red-green) |
+| B-044 | A note added to a bill or debt (and a payment's note) showed nowhere | screens/PayDetailScreen.tsx | __tests__/DetailNotes.test.tsx (red-green) |
+| B-045 | A trip with an empty checklist showed no Checklist at all (Budget page cut to To-do's height; phone only) | components/SlidingPages.tsx (heights kept in a ref) | __tests__/InlineHeights.test.tsx (phone-like delayed writes; red-green) |
+| B-046 | "Dates (optional)" squeezed to one letter per line in the trip form (any long value in a form row) | components/SimpleForm.tsx PickerRow | tests/motion.test.mjs ("row labels keep their width"); look needs your phone |
+| B-047 | Loan with no First payment date ("Miduri", "Olive"): "next Nov 16" and nothing past due although Oct 16 was never paid; the edit form also prefilled First payment with the NEXT date | loanSchedule.ts loanFirstDate / loanCoverage, overdue.ts, LoansScreen.tsx | tests/loanSchedule.test.mjs (red-green) |
+| B-048 | A back-dated payment logged today said "Undo today's payment" / "Paid today"; catching up hid Pay / Log payment | screens/PayDetailScreen.tsx | __tests__/UndoWording.test.tsx (red-green) |
+| B-049 | Receipt row: "Add photo" pill not on the label's line (shared expenses, bills, debts, loans) | components/ReceiptField.tsx (alignSelf), PayFromSheet.tsx | checked in the web walk; look needs your phone |
+| B-050 | Trip page "Add" pill sat high (and was pushed off the card once you typed) | screens/TravelScreen.tsx | checked in the web walk; look needs your phone |
+| B-051 | Forms messy: values and chevrons at different right edges (B-046 fix regressed it), labels wrapping, ₱ far from the amount, pay sheet laid out unlike canvas R4 | components/SimpleForm.tsx, PayFromSheet.tsx, AccountPicker.tsx, TransactionsScreen.tsx and others (two review agents swept every form) | tests/motion.test.mjs; look needs your phone |
+| - | Plan pages: swiping sideways no longer goes back to Plan (Cath) | navigation/RootStack.tsx NO_SWIPE_BACK | tests/motion.test.mjs ("Plan pages: no swipe-back") |
+| H-23 | (caught by code review before Cath saw it) Undo of a "Just record it" payment kept the flag: paying again from an account went missing from Transactions | billPayments.ts markPaid / undoLastPayment | tests/recordOnly.test.mjs (red-green) |
+| H-24 | (code review) Undo of a payment left its separate fee entry behind | PayDetailScreen.tsx (feeTxnId) | phone check TEST-3 8 |
+| H-25 | (code review) Paying more than a bill's amount made every later round look smaller in the forecast | balanceProjection.ts outstandingBalance | tests/recordOnly.test.mjs (red-green) |
+| H-26 | (code review) Payment-method and tax reports counted recorded-only payments; extra loan principal counted as a "late fee" | reports/PaymentMethodsReport.tsx, TaxSummaryReport.tsx | read-checked |
+| H-27 | (code review, receipts sync) An older (2.2) phone opening a parts household, e.g. the side-by-side 2.2 build on the same account, would delete the new receipt parts | householdParts.ts joinParts fallback, householdPartsSync.ts (seen receipts put back and re-saved; gate re-checked on every live update) | proven: tests/extraReceipts.test.mjs |
+| H-28 | (code review) Moving to the bigger storage compared against this phone's last-saved parts, not what is online, so a part another phone removed could stay missing | householdPartsSync.ts saveWhenTooBig | read-checked |
+| H-29 | (code review, open) While a phone is still on 2.2, receipts on shared expenses / payments / trips stay inside the main copy (~200 KB each); after about 4-5 the household can say storage is full until every phone is on 3.0 | (by design, safe; no data lost) | open: tell Cath |
+| H-30 | (code review) A loan payment two weeks early was counted for the month before, so the paid month showed past due | loanSchedule.ts nearestScheduled | proven: tests/loanSchedule.test.mjs |
+| H-31 | (code review) Loans saved with the old First-payment prefill (a date after the payments made) looked paid ahead; editing a loan asked "Which payment was this?" for no change | loanSchedule.ts loanFirstDate, LoansScreen.tsx | proven: tests/loanSchedule.test.mjs |
+| H-32 | (code review) A repeating loan with no monthly amount showed its whole balance as overdue | loanSchedule.ts (only tracked from payments with a monthly amount) | proven: tests/loanSchedule.test.mjs |
+| H-33 | (code review) Bill Undo could take the fee of a different payment made the same day | screens/PayDetailScreen.tsx | read-checked |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 

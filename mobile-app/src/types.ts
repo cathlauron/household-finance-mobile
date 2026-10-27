@@ -50,6 +50,34 @@ export type Settings = {
 };
 
 // Shared Expenses: one thing someone paid for that a few people share.
+// Cath, 2026-10-27 (canvas I1, "count the money going into investments and only add it
+// towards the balance if the investment has been withdrawn").
+//   add      = money put in (from an account: it leaves that account; not spending)
+//   withdraw = money taken out (into an account: it comes back to that account)
+//   value    = what it's worth on that date (typed in; no live prices)
+export type InvestmentEntry = {
+  id: string;
+  date: string;
+  type: 'add' | 'withdraw' | 'value';
+  amount: number;
+  paymentMethod?: PaymentMethod;
+  note?: string;
+  createdAt?: number;
+  addedBy?: string;
+};
+export type InvestmentKind = 'mp2' | 'stocks' | 'fund' | 'timedeposit' | 'crypto' | 'other';
+export type Investment = {
+  id: string;
+  name: string;
+  kind: InvestmentKind;
+  note?: string;
+  entries: InvestmentEntry[];
+  createdAt?: number;
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
+};
+
 export type SharedExpense = {
   id: string;
   date: string;
@@ -63,6 +91,8 @@ export type SharedExpense = {
   createdAt?: number;
   // Made from a transaction's "Split with others": that transaction's id.
   transactionId?: string;
+  // Cath, 2026-10-27 (canvas R1): a receipt photo (see householdParts).
+  receiptPhoto?: string;
 };
 
 // Shared Expenses: one person paying another back ("Settle up").
@@ -140,6 +170,16 @@ export type BillCycle = {
   feesPortion?: number | '';
   // Redesign: the exact moment it was marked paid (for Left to Spend's same-day check).
   paidAt?: number;
+  // Cath, 2026-10-27 (canvas R4): "Just record it": kept in the history as paid, with no
+  // account and no effect on any balance or spending. `feePaid`: a fee paid with it.
+  recordedOnly?: boolean;
+  feePaid?: number;
+  // Cath, 2026-10-27 (canvas R2-R4): a receipt photo for this payment (see householdParts).
+  receiptPhoto?: string;
+  // The fee's own Fees entry (removed on Undo), and when a recorded-only payment was logged
+  // (for Undo; it has no paidAt).
+  feeTxnId?: string;
+  loggedAt?: number;
   // Partial debt payments (Round 3). On a cycle paid with less than was due, amountDue
   // is lowered to what was paid (so the cycle counts as settled everywhere) and the
   // original due amount is kept here, for history and Undo.
@@ -171,6 +211,10 @@ export type Bill = {
   // B.14: opt-in flag distinguishing a subscription (Netflix) from a plain
   // recurring bill (Rent). Only subscriptions get cancel-reminders.
   isSubscription?: boolean;
+  // Cath, 2026-10-27 (canvas P2): money you send regularly that isn't a bill (monthly
+  // money for family). Works like a bill (Left to Spend, calendar, reminders), shown
+  // in its own "Regular payments" section, marked Sent instead of Paid.
+  regular?: boolean;
   // Undefined/'active' = normal, reminders keep firing each cycle.
   // 'cancelled' = person tapped Cancel; bill stays in the list (for
   // history/reports) but stops generating future reminders.
@@ -216,6 +260,12 @@ export type LoanPayment = {
   // without one cover the oldest scheduled payment not yet covered (loanSchedule.ts).
   forDate?: string;
   paymentMethod?: PaymentMethod;
+  // Cath, 2026-10-27 (canvas R4): "Just record it" (no account, no balance change) and a
+  // fee paid with it.
+  recordedOnly?: boolean;
+  fee?: number;
+  feeTxnId?: string;
+  receiptPhoto?: string;
   // When it was logged (stamped on save), so a card's balance knows whether it came
   // after the balances were last updated that same day.
   createdAt?: number;
@@ -331,6 +381,8 @@ export type TravelChecklistItem = {
   // Optional short note shown under the item (booking details, what to bring...).
   note?: string;
   checked: boolean;
+  // Cath, 2026-10-27 (canvas R3): a receipt photo (see householdParts).
+  receiptPhoto?: string;
   completedDate?: string;
   // Set once this item is checked (with a cost) and a matching ManualTransaction has been
   // logged for it — lets us find and remove that transaction if the item gets unchecked.
@@ -436,6 +488,11 @@ export type Transfer = {
   amount: number;
   fee?: number;
   note?: string;
+  // Cath, 2026-10-27 (Undo, until a balance is typed in again): when it was made, its fee's
+  // own Fees entry, and whether the fee came straight off the saved balance.
+  createdAt?: number;
+  feeTxnId?: string;
+  feeOffSaved?: boolean;
 };
 
 export type BalanceAccountEntry = {
@@ -612,6 +669,9 @@ export type HouseholdModel = {
   sharedMembers?: string[];
   sharedExpenses?: SharedExpense[];
   sharedSettlements?: SharedSettlement[];
+  // Cath, 2026-10-27 (canvas I1): investments (Plan > Investments). Money put in from an
+  // account leaves it (not spending); what they're worth is never in what you can spend.
+  investments?: Investment[];
     yearlyGoals?: YearlyGoal[];
   payees?: Payee[];
   categorizationRules?: CategorizationRule[];

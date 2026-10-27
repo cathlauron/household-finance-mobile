@@ -18,6 +18,7 @@ import PremiumScreen from '../screens/PremiumScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import SharedExpensesScreen from '../screens/SharedExpensesScreen';
+import InvestmentsScreen from '../screens/InvestmentsScreen';
 import ReviewScreen from '../screens/ReviewScreen';
 import RecurringScreen from '../screens/RecurringScreen';
 import EnvelopesScreen from '../screens/EnvelopesScreen';
@@ -30,6 +31,7 @@ import TravelScreen from '../screens/TravelScreen';
 import EventsScreen from '../screens/EventsScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
+import TransferDetailScreen from '../screens/TransferDetailScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { GuestGate } from '../components/GuestSaveSheet';
@@ -58,6 +60,7 @@ export type RootStackParamList = {
   Subscriptions: undefined;
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string; backTitle?: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
+  TransferDetail: { id: string };
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
   PotDetail: { id: string; open?: 'out' };
   Groceries: undefined;
@@ -65,9 +68,15 @@ export type RootStackParamList = {
   Events: undefined;
   YearlyGoals: undefined;
   SharedExpenses: { fromTransactionId?: string; editExpenseId?: string; nonce?: number } | undefined;
+  Investments: { openId?: string } | undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
+
+// Cath, 2026-10-27: on the Plan pages, swiping sideways must not go back to Plan (they
+// have their own sideways pages: Pots / Emergency / FI, List / Calculator...). The back
+// arrow and the phone's back button still go back.
+const NO_SWIPE_BACK = { gestureEnabled: false } as const;
 
 // Version 2.1 (Cath's pick, "Paper slide"): the new page slides in from the right over the
 // old one, which fades back as it's covered. Pages stay see-through so the leaves keep
@@ -265,7 +274,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       </Stack.Screen>
       <Stack.Screen
         name="Savings"
-        options={{ title: 'Savings', headerBackTitle: 'Plan' }}
+        options={{ title: 'Savings', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }}
       >
         {SavingsRoute}
       </Stack.Screen>
@@ -286,17 +295,19 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       </Stack.Screen>
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="TransferDetail" component={TransferDetailScreen} options={{ title: '', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: ' ', headerBackTitle: 'Insights' }} />
       <Stack.Screen name="MoreReports" component={MoreReportsScreen} options={{ title: 'More reports', headerBackTitle: 'Insights' }} />
       <Stack.Screen name="PotDetail" component={PotDetailScreen} options={{ title: ' ', headerBackTitle: 'Savings' }} />
       {/* Redesign: each Plan section is its own page, as in the mockup. */}
-      <Stack.Screen name="Groceries" component={GroceriesScreen} options={{ title: 'Groceries', headerBackTitle: 'Plan' }} />
-      <Stack.Screen name="Travel" component={TravelScreen} options={{ title: 'Travel', headerBackTitle: 'Plan' }} />
-      <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan' }} />
-      <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan' }} />
-      <Stack.Screen name="SharedExpenses" component={SharedExpensesScreen} options={{ title: 'Shared Expenses', headerBackTitle: 'Plan' }} />
+      <Stack.Screen name="Groceries" component={GroceriesScreen} options={{ title: 'Groceries', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
+      <Stack.Screen name="Travel" component={TravelScreen} options={{ title: 'Travel', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
+      <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
+      <Stack.Screen name="YearlyGoals" component={GoalsScreen} options={{ title: 'Yearly Goals', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
+      <Stack.Screen name="SharedExpenses" component={SharedExpensesScreen} options={{ title: 'Shared Expenses', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
+      <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ title: 'Investments', headerBackTitle: 'Plan', ...NO_SWIPE_BACK }} />
       <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'To review', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Recurring" component={RecurringScreen} options={{ title: 'Recurring', headerBackTitle: 'Transactions' }} />
       <Stack.Screen name="Envelopes" component={EnvelopesScreen} options={{ title: 'Envelopes', headerBackTitle: 'Budgeting' }} />

@@ -11,6 +11,12 @@
 // version that reads parts for every account.
 export const PARTS_READER_VERSION = '2.2';
 
+// 3.0 (Cath, 2026-10-27): receipts on shared expenses, payments and trip items get their
+// own parts too, but only once every phone reports 3.0 or newer. A 2.2 phone doesn't know
+// those parts and would delete them on its next save, so until then they stay inside the
+// main copy (safe on every version, just bigger).
+export const EXTRA_RECEIPTS_VERSION = '3.0';
+
 // "2.10" is newer than "2.2"; anything unreadable counts as too old.
 export function versionAtLeast(version: unknown, min: string): boolean {
   if (typeof version !== 'string' || !/^\d+(\.\d+)*$/.test(version)) return false;

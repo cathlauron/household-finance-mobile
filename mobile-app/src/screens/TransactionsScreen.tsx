@@ -1,4 +1,5 @@
 import { firstTimeOpen } from '../handledOpen';
+import { transfersForList, investmentMovesForList, TransferRow } from '../transfersList';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, isZeroAmount, toneUnlessZero } from '../moneyColor';
 import { friendlyError } from '../friendlyError';
@@ -15,6 +16,7 @@ import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import * as ImagePicker from 'expo-image-picker';
 import { makeReceiptDataUri } from '../avatars';
+import ReceiptField from '../components/ReceiptField';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
@@ -341,7 +343,22 @@ export default function TransactionsScreen({
     }
     return sortTransactions(list, sortOrder);
   }, [model, allEntries, sortOrder, categoryFilter, monthFilter, accountFilter]);
-  const days = useMemo(() => groupByDate(transactions), [transactions]);
+  // Cath, 2026-10-27 (canvas T1): money moved between your own accounts shows in the list,
+  // in grey with its note. Only in what the list shows: never in the totals above.
+  const transferRows = useMemo(
+    () => {
+      if (!model) return [];
+      const f = { month: monthFilter, category: categoryFilter, accountKey: accountFilter?.key };
+      return [...transfersForList(model, f), ...investmentMovesForList(model, f)];
+    },
+    [model, monthFilter, categoryFilter, accountFilter]
+  );
+  const listed = useMemo(() => {
+    if (transferRows.length === 0) return transactions;
+    const asEntries = transferRows.map((r) => ({ id: r.id, date: r.date, label: r.title, category: '', source: 'manual' as const, amount: r.amount, direction: 'out' as const, owner: 'shared', transfer: r }));
+    return sortTransactions([...transactions, ...asEntries], sortOrder);
+  }, [transactions, transferRows, sortOrder]);
+  const days = useMemo(() => groupByDate(listed), [listed]);
   // Version 2.2 (approved P4): a just-added transaction slides in and glows for a moment.
   // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
   // every key typed in the form).
@@ -403,6 +420,30 @@ export default function TransactionsScreen({
         <View style={styles.group}>
           <GradientFill match={styles.group} />
         {day.items.map((t: TransactionEntry, rowIndex: number) => {
+          const tr = (t as TransactionEntry & { transfer?: TransferRow }).transfer;
+          if (tr) {
+            return (
+              <TouchableOpacity
+                key={t.id}
+                testID={`transfer-row-${t.id}`}
+                style={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]}
+                activeOpacity={0.6}
+                onPress={() => (tr.investmentId ? (navigation as any).navigate('Investments', { openId: tr.investmentId }) : (navigation as any).navigate('TransferDetail', { id: t.id }))}
+                accessibilityRole="button"
+                accessibilityLabel={`${tr.title}, ${formatPeso(tr.amount)}, not spending`}
+              >
+                <GradientFill match={[styles.txnRow, rowIndex > 0 && styles.txnRowDivider]} />
+                <View style={[styles.tile, { backgroundColor: colors.navy2 }]}>
+                  <Ionicons name={tr.investmentId ? 'trending-up-outline' : 'swap-horizontal'} size={17} color={colors.inkDim} />
+                </View>
+                <View style={styles.txnMain}>
+                  <Text style={styles.txnLabel} numberOfLines={1}>{tr.title}</Text>
+                  <Text style={styles.txnSub} numberOfLines={1}>{tr.sub}</Text>
+                </View>
+                <Text style={[styles.txnAmount, { color: colors.inkDim }]}>{formatPeso(tr.amount)}</Text>
+              </TouchableOpacity>
+            );
+          }
           const isManual = t.source === 'manual';
           const rawManual = isManual && t.rawId ? manualById.get(t.rawId) : undefined;
           const refundExpected = rawManual?.refundExpectedAmount;
@@ -1069,7 +1110,7 @@ export default function TransactionsScreen({
           ))}
         </BottomSheet>
 
-        {transactions.length === 0 && (
+        {listed.length === 0 && (
           <Text style={styles.emptyText}>Nothing recorded yet.</Text>
         )}
 
@@ -1393,21 +1434,9 @@ export default function TransactionsScreen({
               value={tagsInput}
               onChangeText={setTagsInput}
             />
-            <Text style={styles.formFooter}>Separate tags with commas.</Text>
-            <MarkedLabel text="Receipt photo" mark="optional" style={[styles.inputLabel, { marginTop: 14 }]} />
-            {receiptPhoto ? (
-              <View style={styles.receiptPreviewWrap}>
-                <Image source={{ uri: receiptPhoto }} style={styles.receiptThumb} />
-                <TouchableOpacity style={styles.receiptRemoveButton} onPress={handleRemoveReceipt}>
-                  <Text style={styles.receiptRemoveButtonText}>Remove photo</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.receiptPickButton} onPress={handlePickReceipt}>
-                <Ionicons name="attach-outline" size={16} color={colors.gold} style={{ marginRight: 6 }} />
-                <Text style={styles.receiptPickButtonText}>Attach receipt</Text>
-              </TouchableOpacity>
-            )}
+            <Text style={[styles.formFooter, { marginHorizontal: 4, marginTop: -8 }]}>Separate tags with commas.</Text>
+            {/* Review 10-27: the same receipt row as everywhere else (canvas R1). */}
+            <ReceiptField sunk photo={receiptPhoto} onChange={setReceiptPhoto} testID="txn-receipt" style={{ marginTop: 14, marginBottom: 14 }} />
           </>
         )}
 
@@ -1468,7 +1497,8 @@ function makeStyles(colors: any) {
     formGroup: { backgroundColor: colors.navy2, borderRadius: 12, overflow: 'hidden' },
     formRow: { flexDirection: 'row', alignItems: 'center', minHeight: 50, paddingHorizontal: 16 },
     formRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
-    formLabel: { fontSize: 17, color: colors.ink, width: 112 },
+    // Review 10-27: "Category (optional)" kept on one line (was a fixed 112 px).
+    formLabel: { fontSize: 17, color: colors.ink, flexShrink: 0, maxWidth: '60%', marginRight: 12 },
     formInput: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
     formFooter: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginHorizontal: 16 },
     inlineAmount: { flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, justifyContent: 'flex-end' },

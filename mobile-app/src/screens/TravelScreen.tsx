@@ -11,7 +11,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import SlidingPages from '../components/SlidingPages';
 import { useNavigation } from '@react-navigation/native';
 import { todayISO, dateText } from '../dateUtils';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
@@ -38,6 +38,7 @@ import { takeOffSavedBalance } from '../takeOffBalance';
 import { reconcileTravelChecklistTransactions } from '../travelChecklist';
 import { accountLabel } from '../transactionActions';
 import PayFromSheet from '../components/PayFromSheet';
+import { ReceiptViewer } from '../components/ReceiptField';
 import { makeId } from '../utils';
 import { useStickyState } from '../stickyState';
 import DateField from '../components/DateField';
@@ -178,6 +179,8 @@ export default function TravelScreen() {
   // Version 2.2 (Cath, canvas P1-P3): "How was it paid?" for a ticked item (tripId null =
   // an item in the trip form).
   const [payAsk, setPayAsk] = useState<{ tripId: string | null; itemId: string } | null>(null);
+  // Cath, 2026-10-27 (canvas R3): a paid item's receipt, open full size.
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
@@ -245,7 +248,7 @@ export default function TravelScreen() {
       return;
     }
     commitChecklist(trip.id, (list) =>
-      list.map((i) => (i.id === item.id ? (i.checked ? { ...i, checked: false } : { ...i, checked: true, completedDate: todayISO() }) : i))
+      list.map((i) => (i.id === item.id ? (i.checked ? { ...i, checked: false, receiptPhoto: undefined } : { ...i, checked: true, completedDate: todayISO() }) : i))
     );
   }
 
@@ -275,7 +278,7 @@ export default function TravelScreen() {
     const ask = payAsk;
     setPayAsk(null);
     if (!ask) return;
-    const apply = (i: TravelChecklistItem): TravelChecklistItem => (i.id === ask.itemId ? { ...i, checked: true, paidWith: undefined, markedOnly: undefined, ...paid } : i);
+    const apply = (i: TravelChecklistItem): TravelChecklistItem => (i.id === ask.itemId ? { ...i, checked: true, paidWith: undefined, markedOnly: undefined, receiptPhoto: undefined, ...paid } : i);
     if (ask.tripId === null) {
       // In the trip form: kept with the rest of the form until Save.
       setChecklist((prev) => prev.map(apply));
@@ -526,7 +529,7 @@ export default function TravelScreen() {
       prev.map((i) =>
         i.id === id
           ? i.checked
-            ? { ...i, checked: false, completedDate: undefined, paidWith: undefined, markedOnly: undefined }
+            ? { ...i, checked: false, completedDate: undefined, paidWith: undefined, markedOnly: undefined, receiptPhoto: undefined }
             : { ...i, checked: true, completedDate: todayISO() }
           : i
       )
@@ -683,13 +686,21 @@ export default function TravelScreen() {
       model={model}
       initial={lastPaidWith(list)}
       confirmLabel="Mark paid"
-      justMark={{ onConfirm: () => answerPaid({ markedOnly: true, completedDate: todayISO() }), note: "It still counts as Paid in this trip's budget." }}
-      onConfirm={(pm, _amount, _fee, date, takeOff) => answerPaid({ paidWith: pm, completedDate: date, takeOffBalance: takeOff || undefined })}
+      noFees
+      allowNoAmount
+      // Cath, 2026-10-27 (canvas R4): the amount can be changed (the item's cost becomes what
+      // was paid), and "Just record it" keeps it as paid with no account or spending.
+      withReceipt
+      onRecord={(paid, _fee, date, receiptPhoto) => answerPaid({ markedOnly: true, completedDate: date, ...(paid > 0 ? { cost: paid } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) })}
+      recordNote="It still counts as Paid in this trip's budget."
+      recordLabel="Mark paid"
+      onConfirm={(pm, paid, _lateFee, date, takeOff, _fee, receiptPhoto) => answerPaid({ paidWith: pm, completedDate: date, takeOffBalance: takeOff || undefined, ...(paid > 0 ? { cost: paid } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) })}
     />
   );
 
   return (
     <View style={styles.container}>
+      <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       {/* Version 2.2 (Cath: Budget / To-do on a trip didn't swipe): the whole trip page
           swipes between Budget and To-do, not just the boxes at the top. */}
       <SwipeTabs inner enabled={!!openTrip} onSwipe={(d) => setPageTab(d > 0 ? 'todo' : 'budget')}>
@@ -814,6 +825,11 @@ export default function TravelScreen() {
                                 {[item.checked ? paidLine(item) : '', item.note?.trim() || '', who.others(item.addedBy) ? `added by ${who.nameOf(item.addedBy)}` : ''].filter(Boolean).join(' · ') || 'Not paid yet'}
                               </Text>
                             </View>
+                            {item.checked && !!item.receiptPhoto && (
+                              <TouchableOpacity onPress={() => setViewReceipt(item.receiptPhoto || null)} accessibilityRole="imagebutton" accessibilityLabel={`Receipt for ${item.title || 'this item'}. Tap to see it full size`} testID="travel-item-receipt" hitSlop={6} style={{ marginRight: 10 }}>
+                                <Image source={{ uri: item.receiptPhoto }} style={styles.itemReceipt} resizeMode="cover" />
+                              </TouchableOpacity>
+                            )}
                             {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
                             <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
                           </TouchableOpacity>
@@ -822,7 +838,7 @@ export default function TravelScreen() {
                       <View style={[styles.checkRow, (t.checklist || []).length > 0 && styles.rowDivider]}>
                         <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
                         <TextInput
-                          style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
+                          style={[styles.tripName, { flex: 1, minWidth: 0, paddingVertical: 4 }]}
                           value={pageItemText}
                           onChangeText={setPageItemText}
                           placeholder="Add an item"
@@ -832,7 +848,7 @@ export default function TravelScreen() {
                           testID="travel-page-item-input"
                         />
                         <TextInput
-                          style={[styles.tripName, styles.costInput]}
+                          style={[styles.tripName, styles.costInput, !!pageItemText.trim() && { width: 76 }]}
                           value={pageItemCost}
                           onChangeText={(v) => setPageItemCost(v.replace(/[^0-9.]/g, ''))}
                           placeholder="₱ Cost"
@@ -843,8 +859,8 @@ export default function TravelScreen() {
                           testID="travel-page-item-cost"
                         />
                         {!!pageItemText.trim() && (
-                          <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 12 }]}>
-                            <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
+                          <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginBottom: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 14 }]} testID="travel-page-item-add">
+                            <Text style={[styles.addItemButtonText, { color: colors.gold, fontSize: 14 }]}>Add</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1153,6 +1169,7 @@ function makeStyles(colors: any) {
     tripName: { fontSize: 17, fontWeight: '500', color: colors.ink },
     tripSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     tripAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
+    itemReceipt: { width: 30, height: 38, borderRadius: 5, backgroundColor: colors.navy2, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4 },
     formItemRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 8 },
     formItemTitle: { fontSize: 17, color: colors.ink },
     formItemCost: { fontSize: 16, fontWeight: '600' },

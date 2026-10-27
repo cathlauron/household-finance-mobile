@@ -128,6 +128,7 @@ export function sanitizeModelIds(model: HouseholdModel): HouseholdModel {
     recurring: sanitizeIdList(model.recurring ?? [], 'repeat'),
     sharedExpenses: sanitizeIdList(model.sharedExpenses ?? [], 'shx'),
     sharedSettlements: sanitizeIdList(model.sharedSettlements ?? [], 'shs'),
+    ...(model.investments ? { investments: sanitizeIdList(model.investments, 'inv') } : {}),
     yearlyGoals: sanitizeIdList(model.yearlyGoals ?? [], 'ygoal'),
     payees: sanitizeIdList(model.payees ?? [], 'payee'),
     categorizationRules: sanitizeIdList(model.categorizationRules ?? [], 'rule'),
@@ -320,6 +321,20 @@ export function mergeModels(a: HouseholdModel, b: HouseholdModel): HouseholdMode
       (a.sharedExpenses ?? []).forEach((x) => byId.set(x.id, x));
       (b.sharedExpenses ?? []).forEach((x) => {
         if (!byId.has(x.id)) byId.set(x.id, { ...x, paidBy: remapPersonId(x.paidBy), shares: x.shares.map((s) => ({ ...s, personId: remapPersonId(s.personId) })) });
+      });
+      return [...byId.values()];
+    })(),
+    // Investments: the same one on both sides (same id) keeps every entry from both.
+    investments: (() => {
+      const byId = new Map<string, NonNullable<HouseholdModel['investments']>[number]>();
+      (a.investments ?? []).forEach((x) => byId.set(x.id, x));
+      (b.investments ?? []).forEach((x) => {
+        const seen = byId.get(x.id);
+        if (!seen) byId.set(x.id, x);
+        else {
+          const ids = new Set((seen.entries || []).map((e) => e.id));
+          byId.set(x.id, { ...seen, entries: [...(seen.entries || []), ...(x.entries || []).filter((e) => !ids.has(e.id))] });
+        }
       });
       return [...byId.values()];
     })(),
