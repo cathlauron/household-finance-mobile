@@ -983,3 +983,13 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   look, account / salary first, past Loans, calendar add, required marks. Then decide the
   security items in BUG-HUNT.md (SEC-1 first). Still after that: the real 2.2 build (AG4,
   I11, I12), then merge 2.2 into main.
+- NEWEST (2026-10-26, later; CORRECTION, additive): the "Home behind every page" overlap
+  was NOT the screen dip (that fixed only the red error). The independent motion reviewer
+  disagreed and was right, proven with the real navigation library
+  (__tests__/GoToMain.test.tsx): navigate('Main', ...) from a page on top (Calendar add,
+  Search, card page, Review, reminder tap, quick add) stacked a SECOND Main; the old one
+  (on Home) showed through sliding pages. Fixed in 12 places with navigation/goToMain.ts
+  (commit 3b58a88, v2.2/v3); a check fails on any new navigate('Main'. Phone: TEST-2.2 AO2
+  (best tested right after a calendar add or a search). Still open from the reviewers: tab
+  finger-swipes are tracked on the JS side (can lag when the app is busy) - a bigger
+  change, ask Cath; security items SEC-1..7 (BUG-HUNT.md) wait for Cath.
