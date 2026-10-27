@@ -149,8 +149,10 @@ test('sub-pages beside the one showing are built with a time limit too', () => {
 // 2026-10-23: whole screens dip in ONE animation (two in a row left the screen empty for
 // 130-150 ms while other work squeezed in between).
 test('whole-screen changes: one animation for the whole dip', () => {
-  const f = files.find((x) => x.name === 'App.tsx') ?? { text: fs.readFileSync(path.join(src, '..', 'App.tsx'), 'utf8') };
+  const f = files.find((x) => x.name === 'components/ScreenSwap.tsx');
   assert.match(f.text, /duration: DIP_MS \+ FADE_IN_MS/);
+  // 2026-10-26: and the old screen is removed by the clock too (never two apps at once).
+  assert.match(f.text, /setTimeout\([\s\S]*finish\(\)[\s\S]*DIP_MS \+ FADE_IN_MS/);
 });
 
 // Cath, 2026-10-23: calendar + > add > straight to the right screen, smoothly. The form
@@ -170,4 +172,39 @@ test('a sheet taking another sheet\'s place grows from its height (no jump)', ()
   const f = files.find((x) => x.name === 'components/BottomSheet.tsx');
   assert.match(code(f.text), /handoffFromHeight = lastShownHeight/);
   assert.match(code(f.text), /y\.setValue\(ownH - fromH\)/);
+});
+
+// 2026-10-26 (Cath's phone, red error "Interpolation property 'easing' is not supported by
+// native animated module"): Android's native animation engine can't bend an interpolate.
+// Curves inside interpolate are written out as points (curvedRange in motion.ts).
+test('no interpolate() carries an easing (the phone refuses it)', () => {
+  const app = fs.readFileSync(path.join(here, '..', 'App.tsx'), 'utf8');
+  const all = [...files, { name: 'App.tsx', text: app }];
+  const bad = [];
+  for (const f of all) {
+    const t = code(f.text);
+    const re = /\.interpolate\(\s*\{/g;
+    let m;
+    while ((m = re.exec(t))) {
+      let depth = 1;
+      let i = m.index + m[0].length;
+      for (; i < t.length && depth > 0; i++) {
+        if (t[i] === '{') depth++;
+        else if (t[i] === '}') depth--;
+      }
+      if (/\beasing\s*:/.test(t.slice(m.index, i))) bad.push(`${f.name}:${t.slice(0, m.index).split('\n').length}`);
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('curvedRange: same start and end, follows the curve, never goes backwards', async () => {
+  const { curvedRange, cubicBezierAt, CURVE } = await import('../src/motion.ts');
+  const r = curvedRange(0.2, 1, 0, 1, CURVE);
+  assert.equal(r.inputRange[0], 0.2);
+  assert.equal(r.inputRange.at(-1), 1);
+  assert.ok(Math.abs(r.outputRange[0]) < 1e-6 && Math.abs(r.outputRange.at(-1) - 1) < 1e-6);
+  for (let i = 1; i < r.outputRange.length; i++) assert.ok(r.outputRange[i] >= r.outputRange[i - 1] - 1e-9);
+  // The house curve leaps at once: halfway through time it is well past halfway.
+  assert.ok(cubicBezierAt(CURVE, 0.5) > 0.8);
 });

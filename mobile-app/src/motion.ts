@@ -23,3 +23,32 @@ export const ROW_MS = 220; // a row or card opening / closing, the rows below ma
 export const FADE_IN_MS = 180; // something appearing (page content, a title, a toast)
 export const FADE_OUT_MS = 140; // something going away
 export const DIP_MS = 160; // each half of a soft dip (dark mode, whole-screen changes)
+
+// 2026-10-26 fix (Cath's phone: "Interpolation property 'easing' is not supported by native
+// animated module"). Android's native animation engine can't bend an `interpolate` with a
+// curve. This writes the curve out as a row of points instead (a straight line between
+// each), which the native engine runs and which looks the same.
+// Use: value.interpolate({ ...curvedRange(a, b, from, to, CURVE_OUT), extrapolate: 'clamp' })
+export function cubicBezierAt(curve: readonly number[], t: number): number {
+  const [x1, y1, x2, y2] = curve;
+  const at = (a: number, b: number, s: number) => 3 * a * s * (1 - s) ** 2 + 3 * b * s * s * (1 - s) + s ** 3;
+  // Find s where x(s) = t (bisection: plain and safe), then return y(s).
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (at(x1, x2, mid) < t) lo = mid;
+    else hi = mid;
+  }
+  return at(y1, y2, (lo + hi) / 2);
+}
+export function curvedRange(a: number, b: number, from: number, to: number, curve: readonly number[], steps = 12) {
+  const inputRange: number[] = [];
+  const outputRange: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    inputRange.push(a + (b - a) * t);
+    outputRange.push(from + (to - from) * cubicBezierAt(curve, t));
+  }
+  return { inputRange, outputRange };
+}
