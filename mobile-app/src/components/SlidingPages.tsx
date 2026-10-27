@@ -131,10 +131,10 @@ export default function SlidingPages<T extends string>({
   edgeRef.current = edgeToTabs;
   const hasEdge = !!edgeToTabs;
   const tabsDragging = useSharedValue(false);
-  const dragTabs = useCallback((px: number) => {
-    const e = edgeRef.current;
-    if (e) setTabDrag(edgeGive(px, e.index, e.count));
-  }, []);
+  // Smoothness sweep 2026-10-26: the tabs move on the animation thread, straight from the
+  // finger (not via the app's JavaScript side, which can be busy).
+  const edgeIndex = edgeToTabs ? edgeToTabs.index : 0;
+  const edgeCount = edgeToTabs ? edgeToTabs.count : 0;
   const endTabs = useCallback((px: number, vx: number) => {
     const e = edgeRef.current;
     if (!e) return;
@@ -144,7 +144,7 @@ export default function SlidingPages<T extends string>({
     const far = Math.abs(px) > width * 0.25 || (Math.abs(vx) > 600 && Math.abs(px) > 24 && Math.sign(vx) === Math.sign(px));
     if (width > 0 && far && next >= 0 && next < e.count) {
       hapticSelection();
-      commitTabDrag();
+      commitTabDrag(edgeGive(px, e.index, e.count));
       e.go(dir);
     } else {
       releaseTabDrag();
@@ -176,7 +176,7 @@ export default function SlidingPages<T extends string>({
             pos.value = edge;
             if (over !== 0 || tabsDragging.value) {
               tabsDragging.value = over !== 0;
-              runOnJS(dragTabs)(over);
+              setTabDrag(edgeGive(over, edgeIndex, edgeCount));
             }
             return;
           }
@@ -196,7 +196,7 @@ export default function SlidingPages<T extends string>({
           pos.value = reduceSV.value ? target : withTiming(target, { duration: SUBPAGE_MS, easing: Easing.bezier(...CURVE) });
           if (target !== from) runOnJS(commit)(target);
         }),
-    [count, hideSwitcher, testID, commit, warmUp, ignoring, pos, startPos, widthSV, reduceSV, hasEdge, tabsDragging, dragTabs, endTabs]
+    [count, hideSwitcher, testID, commit, warmUp, ignoring, pos, startPos, widthSV, reduceSV, hasEdge, tabsDragging, edgeIndex, edgeCount, endTabs]
   );
 
   // A quick flick across a swipe-to-delete row (SwipeableRow asks through this).

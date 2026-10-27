@@ -218,3 +218,18 @@ test('switchers: no Android elevation (it boxed every label)', () => {
   assert.doesNotMatch(code(f.text), /elevation\s*:/);
   assert.match(f.text, /boxShadow/);
 });
+
+// Smoothness sweep 2026-10-26: the main tabs follow the finger on the animation thread.
+// Through the app's JavaScript side they fell behind the finger whenever the app was busy.
+test('main-tab swipe: moves on the animation thread, not through JavaScript', () => {
+  const sw = code(files.find((x) => x.name === 'navigation/swipeTabs.tsx').text);
+  const follow = sw.slice(sw.indexOf("withTestId('tab-swipe')"), sw.indexOf("withTestId('swipe-tabs')"));
+  assert.ok(follow.length > 0);
+  assert.doesNotMatch(follow, /runOnJS\(true\)/);
+  assert.match(follow, /setTabDrag\(/);
+  const tp = code(files.find((x) => x.name === 'navigation/TabPage.tsx').text);
+  assert.match(tp, /useAnimatedStyle/);
+  assert.doesNotMatch(tp, /Animated\.(timing|add)\(/);
+  const td = code(files.find((x) => x.name === 'navigation/tabDrag.ts').text);
+  assert.match(td, /makeMutable/);
+});

@@ -9,13 +9,17 @@ import { edgeGive, takeCommittedDrag } from '../src/navigation/tabDrag';
 // Smoothness 2026-10-23 (Cath: the bottom tabs follow your finger too).
 const W = Dimensions.get('window').width;
 
-function swipe(dx: number, vx = 0) {
+// 2026-10-26: the swipe runs on the animation thread; letting go hands the decision back
+// to the app a moment later, so the checks wait a tick.
+const tick = () => new Promise((r) => setTimeout(r, 0));
+async function swipe(dx: number, vx = 0) {
   fireGestureHandler(getByGestureTestId('tab-swipe'), [
     { state: State.BEGAN, translationX: 0, translationY: 0 },
     { state: State.ACTIVE, translationX: dx / 2, translationY: 0 },
     { state: State.ACTIVE, translationX: dx, translationY: 0 },
     { state: State.END, translationX: dx, translationY: 0, velocityX: vx },
   ]);
+  await tick();
 }
 function tabs(index: number) {
   const onSwipe = jest.fn();
@@ -27,35 +31,35 @@ function tabs(index: number) {
   return onSwipe;
 }
 
-test('a long swipe left on Transactions goes on to To-Pay, from where the finger left it', () => {
+test('a long swipe left on Transactions goes on to To-Pay, from where the finger left it', async () => {
   const onSwipe = tabs(1);
-  swipe(-W * 0.6);
+  await swipe(-W * 0.6);
   expect(onSwipe).toHaveBeenCalledWith(1);
   // The pages carry on from the finger's spot (minus the first few points it takes to start).
   expect(takeCommittedDrag()).toBeCloseTo(-W * 0.6 + 24);
 });
 
-test('a short slow swipe glides back and stays', () => {
+test('a short slow swipe glides back and stays', async () => {
   const onSwipe = tabs(1);
-  swipe(-60, -100);
+  await swipe(-60, -100);
   expect(onSwipe).not.toHaveBeenCalled();
 });
 
-test('a quick flick changes the tab even if short', () => {
+test('a quick flick changes the tab even if short', async () => {
   const onSwipe = tabs(2);
-  swipe(60, 1200);
+  await swipe(60, 1200);
   expect(onSwipe).toHaveBeenCalledWith(-1);
 });
 
-test('past Plan (the last tab) it only bounces', () => {
+test('past Plan (the last tab) it only bounces', async () => {
   const onSwipe = tabs(3);
-  swipe(-W * 0.8, -2000);
+  await swipe(-W * 0.8, -2000);
   expect(onSwipe).not.toHaveBeenCalled();
 });
 
-test('past Home (the first tab) it only bounces', () => {
+test('past Home (the first tab) it only bounces', async () => {
   const onSwipe = tabs(0);
-  swipe(W * 0.8, 2000);
+  await swipe(W * 0.8, 2000);
   expect(onSwipe).not.toHaveBeenCalled();
 });
 

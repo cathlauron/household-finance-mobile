@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import Reanimated, { Easing, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useNavigationState } from '@react-navigation/native';
 import LargeHeader from './LargeHeader';
 import { reduceMotionNow } from '../reduceMotion';
@@ -28,6 +29,8 @@ import { tabDrag, takeCommittedDrag } from './tabDrag';
 // remove animations, tabs just switch.
 const FADE_MS = TAB_MS;
 const FADE_EASING = Easing.bezier(...CURVE);
+// Smoothness sweep 2026-10-26: positions live on the phone's animation thread (Reanimated),
+// next to the finger's drag (tabDrag.ts), so a busy app never holds a swipe back.
 
 // The tab that was showing last, so a tab opened for the first time knows which side
 // to come in from.
@@ -49,9 +52,7 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
   // -1 = waiting off the left edge, 0 = on screen, 1 = waiting off the right edge.
   const place = Math.sign(routeIndex - shownIndex);
 
-  const x = useRef(
-    new Animated.Value(place === 0 ? Math.sign(routeIndex - lastShownIndex) : place)
-  ).current;
+  const x = useSharedValue(place === 0 ? Math.sign(routeIndex - lastShownIndex) : place);
   const lastPlace = useRef<number | null>(null);
   // Version 2.2 fix (Cath: forms flashing, Edit on a debt opened and closed again): hidden
   // tabs are no longer paused. Pausing them ("freezing") hid and re-showed whole pages,
@@ -64,16 +65,15 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
     const before = lastPlace.current;
     lastPlace.current = place;
     if (place === 0) lastShownIndex = routeIndex;
-    const run = (to: number, done?: () => void) =>
-      Animated.timing(x, { toValue: to, duration: reduceMotionNow() || movesQuiet() ? 0 : FADE_MS, easing: FADE_EASING, useNativeDriver: true }).start(({ finished }) => {
-        if (finished && done) done();
-      });
+    const run = (to: number) => {
+      x.value = reduceMotionNow() || movesQuiet() ? to : withTiming(to, { duration: FADE_MS, easing: FADE_EASING });
+    };
     // Smoothness 2026-10-23: the tab changed at the end of a finger swipe. Both pages carry
     // on from exactly where the finger left them (see tabDrag.ts).
     const dragged = before !== null && before !== place ? takeCommittedDrag() : 0;
     if (dragged !== 0 && width > 0) {
-      if (before === 0) x.setValue(dragged / width);
-      else if (place === 0) x.setValue((before as number) + dragged / width);
+      if (before === 0) x.value = dragged / width;
+      else if (place === 0) x.value = (before as number) + dragged / width;
     }
     if (before === null) {
       // Opened for the first time: fades in from its side (no movement for the very
@@ -91,25 +91,29 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       run(place);
     } else {
       // Skipped over: stays hidden and just moves to its new side.
-      x.setValue(place);
+      x.value = place;
     }
   }, [place, routeIndex, x, width]);
 
 
-  const base = x.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width] });
   // Smoothness 2026-10-23: the tab showing and the ones right beside it follow a finger
   // swipe; the others stay hidden off screen.
   const near = Math.abs(routeIndex - shownIndex) <= 1;
-  const translateX = near ? Animated.add(base, tabDrag) : base;
-  // Fully visible while sliding; tabs further away are hidden once off the screen. The
-  // ones beside it stay drawn, so a swipe can bring them in.
-  const opacity = near ? 1 : x.interpolate({ inputRange: [-1, -0.999, 0, 0.999, 1], outputRange: [0, 1, 1, 1, 0] });
+  const moved = useAnimatedStyle(() => {
+    const base = x.value * width;
+    return {
+      // Fully visible while sliding; tabs further away are hidden once off the screen.
+      // The ones beside it stay drawn, so a swipe can bring them in.
+      opacity: near ? 1 : interpolate(x.value, [-1, -0.999, 0, 0.999, 1], [0, 1, 1, 1, 0], Extrapolation.CLAMP),
+      transform: [{ translateX: near ? base + tabDrag.value : base }],
+    };
+  }, [near, width]);
 
   return (
     // The page arriving sits on top; pages that aren't showing don't catch taps.
-    <Animated.View
+    <Reanimated.View
       pointerEvents={place === 0 ? 'auto' : 'none'}
-      style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0, opacity, transform: [{ translateX }] }]}
+      style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0 }, moved]}
     >
       <QuietThemeWhenHidden active={place === 0}>
         <QuietWhenHidden active={place === 0}>
@@ -121,7 +125,7 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
           </PageActiveContext.Provider>
         </QuietWhenHidden>
       </QuietThemeWhenHidden>
-    </Animated.View>
+    </Reanimated.View>
   );
 }
 

@@ -140,7 +140,7 @@ describe('To-Pay: past the ends, the main tabs take over', () => {
   }
   beforeEach(() => {
     went = [];
-    tabDrag.setValue(0);
+    tabDrag.value = 0;
   });
 
   test('past Loans the drag moves the tabs (Plan comes in with the finger)', async () => {
