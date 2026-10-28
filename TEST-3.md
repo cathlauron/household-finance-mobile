@@ -129,3 +129,21 @@ The card shows after 3 or more days away. To test now: on a test account, Settin
    Maribank > Save: Maribank goes down ₱1,000; Transactions shows "Invested: Maribank →
    Pag-IBIG MP2" in grey (not in spending). Take out ₱2,000 Into Maribank: Maribank goes
    up ₱2,000. Update value: no account changes. Home's balance never includes the worth.
+
+## 11. Version 3.1 (2026-10-27, night). NOT YET TESTED.
+Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1).
+1. Settings > About & Help says Version 3.1.0.
+2. Invites still work (SEC-1): Household > invite > on the other phone (or "Finance Flow 2")
+   join with the code: it joins as before. Then open an invite link on a phone that isn't in
+   a household: it first asks "Join Cath's household?" with Not now / Join (SEC-7).
+3. Sign out (or switch account): no bill or payday reminders arrive for that account
+   afterwards (SEC-2). Signing back in sets them up again.
+4. Lock screen PIN (SEC-5): 5 wrong PINs = wait 5 minutes; the next 5 wrong = 15 minutes;
+   then 60; after that only the password opens it. The password (or the right PIN) starts
+   the waits over.
+5. Investments > an investment > Add money ₱1,000 from Maribank with "Every month" on > Save:
+   To-Pay > Bills > Regular payments shows it for next month (and the calendar). Open it >
+   Send: Maribank goes down ₱1,000 once; the investment shows ₱1,000 more; Transactions
+   shows "Invested: ..." in grey, not as spending. Undo takes it back out.
+6. A form with typing (e.g. New bill > Name): when the keyboard opens, the sheet glides up
+   instead of jumping (and glides back down when it closes).
