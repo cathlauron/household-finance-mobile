@@ -1098,3 +1098,21 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   no conflicts, main = v3). EAS build is Cath's to start (normal "preview" profile, replaces
   the installed app, same as 2.2). Open for later: "Every month" investment contribution
   (ask Cath), security SEC-1..7 (her OK), open smoothness ideas. New work continues on v3.
+
+- NEWEST (2026-10-27, night, v3 53274d2..d7b9848, version 3.1.0 / versionCode 6 set on
+  v3, NOT merged to main yet): Cath: "proceed with the remaining open items, make them 3.1".
+  Her security answers (AskUserQuestion): YES to SEC-1 (invite rules) and SEC-2/3/5/7;
+  NOT SEC-4 or SEC-6 for now; a new household key on member removal: LATER (plan + mockup
+  first). Built: SEC-1 firestore.rules (code only for a household its maker is in, only the
+  app's fields, its household fixed, finish only for that household; join checks the maker
+  is a member) - CATH MUST PUBLISH THE RULES in the Firebase Console (no emulator here; the
+  rules were read-checked by a review agent); SEC-2 every sign-out / revoke / switch clears
+  reminders (epoch guard); SEC-3 pending invite key in SecureStore (old copies moved);
+  SEC-5 PIN waits 5/15/60 min then password only (password or right PIN resets); SEC-7 join
+  links ask "Join X's household?", link code no longer logged. Investments "Every month"
+  (a regular payment linked by investmentId; Sent = investment entry from the account,
+  the bill cycle recordedOnly + investEntryId; Undo removes both and the fee; one-off
+  top-ups never change the plan; "Stop putting money in every month"). Smoothness: sheets
+  glide for the keyboard. Not done (asked Cath): drag-down and build-before-rise need a
+  BottomSheet rebuild. Review agent found H-34..H-38, all fixed. Phone: TEST-3 section 11.
+  Next: Cath publishes rules, tests section 11, then merge v3 into main and build 3.1.0.
