@@ -1,4 +1,5 @@
 import React from 'react';
+import { animateNextLayout } from '../animateLayout';
 import { walkFixtureOn } from '../walkFixture';
 import SkyGlow from './SkyGlow';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -195,9 +196,15 @@ function OwnSheet({
       const screenH = Dimensions.get('screen').height;
       const { screenY, height } = e.endCoordinates ?? { screenY: 0, height: 0 };
       const fromTop = typeof screenY === 'number' && screenY > 0 ? screenH - screenY : 0;
+      // 3.1 smoothness (open idea from SMOOTH-HUNT): the sheet glides up to make room
+      // instead of jumping there in one frame (the shared row glide; instant with Reduce Motion).
+      animateNextLayout();
       setKeyboardHeight(Math.max(height ?? 0, fromTop));
     });
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      animateNextLayout();
+      setKeyboardHeight(0);
+    });
     return () => {
       show.remove();
       hide.remove();
