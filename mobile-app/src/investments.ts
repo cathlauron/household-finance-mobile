@@ -1,6 +1,6 @@
 // Cath, 2026-10-27 (canvas I1): investments. Pure functions, no screens, so the automatic
 // checks (tests/investments.test.mjs) can run them directly.
-import type { HouseholdModel, Investment, InvestmentEntry, InvestmentKind, PaymentMethod } from './types';
+import type { Bill, HouseholdModel, Investment, InvestmentEntry, InvestmentKind, PaymentMethod } from './types';
 
 export const INVESTMENT_KINDS: { id: InvestmentKind; label: string; icon: string }[] = [
   { id: 'mp2', label: 'Pag-IBIG MP2', icon: 'home-outline' },
@@ -89,4 +89,66 @@ export function accountEffect(e: InvestmentEntry, pm: (p?: PaymentMethod) => boo
   if (e.type === 'add') return -num(e.amount);
   if (e.type === 'withdraw') return num(e.amount);
   return 0;
+}
+
+// ---- "Every month" (canvas I1): a regular payment that puts money into the investment ----
+// It sits in To-Pay > Bills > Regular payments and on the calendar like any regular payment;
+// paying it adds an "add" entry to the investment (from the account picked), never spending.
+export function monthlyPlanFor(model: HouseholdModel, investmentId: string): Bill | undefined {
+  return (model.bills || []).find((b) => b.investmentId === investmentId);
+}
+
+function isoDay(y: number, m: number, day: number): string {
+  const last = new Date(y, m + 1, 0).getDate();
+  const d = Math.min(day, last);
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+// The next due date for the plan, on `day`, after `fromISO` (the month after it).
+export function nextPlanDue(fromISO: string, day: number): string {
+  const [y, m] = fromISO.split('-').map(Number);
+  return isoDay(m === 12 ? y + 1 : y, m === 12 ? 0 : m, day);
+}
+
+export function withMonthlyPlan(
+  model: HouseholdModel,
+  inv: Investment,
+  opts: { amount: number; day: number; paymentMethod?: PaymentMethod; firstDue: string; id: string; cycleId: string }
+): HouseholdModel {
+  const existing = monthlyPlanFor(model, inv.id);
+  if (existing) {
+    // Change the amount, day and account; payments already made stay as they were.
+    return {
+      ...model,
+      bills: model.bills.map((b) =>
+        b.id !== existing.id
+          ? b
+          : {
+              ...b,
+              name: inv.name,
+              dueDate: { day: String(opts.day) },
+              cycles: (b.cycles || []).map((c) => (num(c.amountPaid) > 0 ? c : { ...c, amountDue: cents(opts.amount), paymentMethod: opts.paymentMethod })),
+            }
+      ),
+    };
+  }
+  const bill: Bill = {
+    id: opts.id,
+    name: inv.name,
+    category: 'Investments',
+    recurringType: 'monthly',
+    dueDate: { day: String(opts.day) },
+    priority: '',
+    owner: 'shared',
+    notes: '',
+    cycles: [{ id: opts.cycleId, dueDate: opts.firstDue, amountDue: cents(opts.amount), amountPaid: '', paidDate: '', notes: '', ...(opts.paymentMethod ? { paymentMethod: opts.paymentMethod } : {}) }],
+    createdAt: Date.now(),
+    regular: true,
+    investmentId: inv.id,
+  };
+  return { ...model, bills: [...(model.bills || []), bill] };
+}
+
+export function withoutMonthlyPlan(model: HouseholdModel, investmentId: string): HouseholdModel {
+  return { ...model, bills: (model.bills || []).filter((b) => b.investmentId !== investmentId) };
 }

@@ -1,5 +1,6 @@
 import { loanCoverage, loanNextDueDate, isTrackedLoan } from '../loanSchedule';
 import { withFeeEntry } from '../payFees';
+import { withEntry, withoutEntry } from '../investments';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import React, { useLayoutEffect, useState } from 'react';
@@ -248,7 +249,7 @@ export default function PayDetailScreen() {
           <Text style={[styles.badge, { color: colors.positive, backgroundColor: colors.okBg }]}>
             {/* Cath 2026-10-27: a back-dated payment says its own date, not "today". */}
             {history[0]?.paidDate === today ? 'Paid today' : `Paid ${shortDate(history[0]?.paidDate || today)}`}
-            {history[0]?.recordedOnly ? ' · recorded only' : history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
+            {history[0]?.investEntryId ? ' · into the investment' : history[0]?.recordedOnly ? ' · recorded only' : history[0]?.paymentMethod ? ` from ${accountLabel(model, history[0].paymentMethod)}` : ''}
           </Text>
         ) : dueISO && !curPaid ? (
           <Text style={[styles.badge, overdue ? { color: colors.negative, backgroundColor: colors.errorBg } : { color: colors.orange, backgroundColor: colors.warnBg }]}>
@@ -275,7 +276,10 @@ export default function PayDetailScreen() {
               const next = undoLastPayment(rec);
               // Code review 2026-10-27: the fee paid with it goes too.
               const feeId = lastPaid?.feeTxnId;
-              const base = feeId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== feeId) } : model;
+              let base = feeId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== feeId) } : model;
+              // Paid into an investment: that money comes out of the investment again.
+              const invId = kind === 'bill' ? (rec as Bill).investmentId : undefined;
+              if (invId && lastPaid?.investEntryId) base = withoutEntry(base, invId, lastPaid.investEntryId);
               save(kind === 'bill' ? { ...base, bills: base.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...base, debts: base.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
             }}
             accessibilityRole="button"
@@ -303,6 +307,20 @@ export default function PayDetailScreen() {
         withReceipt
         onConfirm={(pm, paidAmount, lateFee, date, takeOff, fee, receiptPhoto) => {
           setPayOpen(false);
+          // Cath 2026-10-27 (canvas I1 "Every month"): money into an investment. The
+          // investment gets it (from this account: a move, not spending); the regular
+          // payment is kept as sent in its history only, so nothing counts twice.
+          if (kind === 'bill' && (rec as Bill).investmentId) {
+            const invId = (rec as Bill).investmentId as string;
+            const entryId = makeId('invx');
+            const nextBill = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, receiptPhoto, investEntryId: entryId });
+            let m2: HouseholdModel = withEntry({ ...model, bills: model.bills.map((b) => (b.id === id ? (nextBill as Bill) : b)) }, invId, { id: entryId, date, type: 'add', amount: paidAmount, paymentMethod: pm, createdAt: Date.now() });
+            const feeTxnId2 = fee > 0 ? makeId('txn') : undefined;
+            m2 = withFeeEntry(m2, { amount: fee, label: name, date, paymentMethod: pm, id: feeTxnId2 });
+            if (takeOff) m2 = takeOffSavedBalance(m2, pm, paidAmount + fee);
+            save(m2, 'Sent');
+            return;
+          }
           const feeTxnId = fee > 0 ? makeId('txn') : undefined;
           const next =
             kind === 'debt'
@@ -317,8 +335,12 @@ export default function PayDetailScreen() {
         // "Just record it": kept in History as paid, no account, nothing else changes.
         onRecord={(paidAmount, fee, date, receiptPhoto) => {
           setPayOpen(false);
-          const next = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, feePaid: fee, receiptPhoto });
-          const updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
+          const invId = kind === 'bill' ? (rec as Bill).investmentId : undefined;
+          const entryId = invId ? makeId('invx') : undefined;
+          const next = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, feePaid: fee, receiptPhoto, investEntryId: entryId });
+          let updated = kind === 'bill' ? { ...model, bills: model.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...model, debts: model.debts.map((d) => (d.id === id ? (next as Debt) : d)) };
+          // Into an investment, no account: only the investment changes.
+          if (invId && entryId) updated = withEntry(updated, invId, { id: entryId, date, type: 'add', amount: paidAmount, createdAt: Date.now() });
           save(updated, 'Recorded');
         }}
       />
@@ -377,7 +399,7 @@ export default function PayDetailScreen() {
                       Paid {shortDate(c.paidDate)} · {late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'on time'}
                       {typeof c.dueBefore === 'number' ? ` · partial, of ${formatPeso(c.dueBefore)}` : ''}
                       {num(c.lateFee) > 0 ? ` · late fee ${formatPeso(num(c.lateFee))}` : ''}
-                      {c.recordedOnly ? ' · recorded only' : ''}
+                      {c.investEntryId ? ' · into the investment' : c.recordedOnly ? ' · recorded only' : ''}
                       {num(c.feePaid) > 0 ? ` · fee ${formatPeso(num(c.feePaid))}` : ''}
                       {who.by(c.paidBy)}
                       {c.notes?.trim() ? ` · ${c.notes.trim()}` : ''}

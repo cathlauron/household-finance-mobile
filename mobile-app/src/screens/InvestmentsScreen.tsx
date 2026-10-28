@@ -23,7 +23,7 @@ import DateField from '../components/DateField';
 import Button from '../components/Button';
 import SegmentedControl from '../components/SegmentedControl';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
-import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow } from '../components/SimpleForm';
+import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, SwitchRow, Footnote, Choices, useOpenRow, ordinal } from '../components/SimpleForm';
 import { showLeafTick } from '../components/LeafTick';
 import { notSaved } from '../messages';
 import { formatPeso } from '../balanceProjection';
@@ -31,7 +31,7 @@ import { accountLabel } from '../transactionActions';
 import { makeId } from '../utils';
 import { hapticLight } from '../haptics';
 import { todayISO, dateText } from '../dateUtils';
-import { INVESTMENT_KINDS, kindInfo, investmentSummary, investmentsTotal, sortedEntries, withEntry, withoutEntry } from '../investments';
+import { INVESTMENT_KINDS, kindInfo, investmentSummary, investmentsTotal, sortedEntries, withEntry, withoutEntry, monthlyPlanFor, withMonthlyPlan, withoutMonthlyPlan, nextPlanDue } from '../investments';
 import type { ThemeColors } from '../theme';
 import type { Investment, InvestmentEntry, InvestmentKind, PaymentMethod } from '../types';
 
@@ -71,6 +71,8 @@ export default function InvestmentsScreen() {
   const [date, setDate] = useState(todayISO());
   const [pm, setPm] = useState<PaymentMethod | undefined>(undefined);
   const [moveError, setMoveError] = useState('');
+  // Canvas I1: "Every month" puts this amount in on the same day each month (a regular payment).
+  const [monthly, setMonthly] = useState(false);
   const [moveRow, toggleMoveRow] = useOpenRow(!!moveFor);
   const [saving, setSaving] = useState(false);
 
@@ -120,6 +122,7 @@ export default function InvestmentsScreen() {
     setDate(todayISO());
     setPm(undefined);
     setMoveError('');
+    setMonthly(!!(model && monthlyPlanFor(model, id)));
   }
 
   async function saveInvestment() {
@@ -159,7 +162,7 @@ export default function InvestmentsScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await saveModel({ ...model, investments: list.filter((i) => i.id !== editingId) });
+          await saveModel(withoutMonthlyPlan({ ...model, investments: list.filter((i) => i.id !== editingId) }, editingId));
           setFormOpen(false);
         },
       },
@@ -177,9 +180,16 @@ export default function InvestmentsScreen() {
       if (problem) return setMoveError(problem);
     }
     const entry: InvestmentEntry = { id: makeId('invx'), date, type: mode, amount: a, createdAt: Date.now(), ...(mode !== 'value' && pm ? { paymentMethod: pm } : {}) };
+    let next = withEntry(model, current.id, entry);
+    if (mode === 'add') {
+      const plan = monthlyPlanFor(model, current.id);
+      const day = Number(date.slice(8, 10));
+      if (monthly) next = withMonthlyPlan(next, current, { amount: a, day, paymentMethod: pm, firstDue: nextPlanDue(date, day), id: makeId('bill'), cycleId: makeId('cycle') });
+      else if (plan) next = withoutMonthlyPlan(next, current.id);
+    }
     setSaving(true);
     try {
-      await saveModel(withEntry(model, current.id, entry));
+      await saveModel(next);
       hapticLight();
       showLeafTick(mode === 'value' ? 'Updated' : mode === 'add' ? 'Added' : 'Taken out');
       setMoveFor(null);
@@ -232,7 +242,14 @@ export default function InvestmentsScreen() {
                 </View>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.rowTitle} numberOfLines={1}>{inv.name}</Text>
-                  <Text style={styles.sub} numberOfLines={1}>{s.lastValueDate ? `Updated ${shortDate(s.lastValueDate)}` : `Put in ${formatPeso(s.putIn)}`}</Text>
+                  <Text style={styles.sub} numberOfLines={1}>
+                    {s.lastValueDate ? `Updated ${shortDate(s.lastValueDate)}` : `Put in ${formatPeso(s.putIn)}`}
+                    {(() => {
+                      const plan = monthlyPlanFor(model, inv.id);
+                      const due = plan?.cycles?.find((c) => !(typeof c.amountPaid === 'number' && c.amountPaid > 0))?.amountDue;
+                      return plan && typeof due === 'number' ? ` · ${formatPeso(due)} every month` : '';
+                    })()}
+                  </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.amt}>{formatPeso(s.worth)}</Text>
@@ -320,6 +337,18 @@ export default function InvestmentsScreen() {
                 ? `${accountLabel(model, pm)} goes up by this: the money is back where you can spend it.`
                 : 'No account: only the investment changes.'}
             </Footnote>
+            {mode === 'add' && (
+              <>
+                <FormGroup>
+                  <SwitchRow label="Every month" value={monthly} onChange={setMonthly} />
+                </FormGroup>
+                <Footnote>
+                  {monthly
+                    ? `Next one on the ${ordinal(Number(date.slice(8, 10)))} of next month. It shows in To-Pay (Regular payments) and the calendar, like a regular payment; marking it Sent puts it in here.`
+                    : 'Turn on to put this in every month: it shows in To-Pay and the calendar.'}
+                </Footnote>
+              </>
+            )}
             {!!moveError && <Text style={[styles.error, { marginHorizontal: 16 }]} testID="investment-error">{moveError}</Text>}
 
             <Text style={[styles.header, { marginTop: 4 }]}>History</Text>
