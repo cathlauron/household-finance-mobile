@@ -92,7 +92,14 @@ function billOutstanding(bill: Bill): number {
 let running: Promise<void> | null = null;
 let queued: HouseholdModel | null = null;
 
+// SEC-2 review: each sign-out starts a new "epoch"; set-ups asked for before it never run
+// after it, so an old account's reminders can't come back after its sign-out.
+let epoch = 0;
+let queuedEpoch = 0;
+let askedSinceClear = false;
 export function rescheduleBillNotifications(model: HouseholdModel): Promise<void> {
+  queuedEpoch = epoch;
+  askedSinceClear = true;
   if (running) {
     queued = model;
     return running;
@@ -101,8 +108,9 @@ export function rescheduleBillNotifications(model: HouseholdModel): Promise<void
     let next: HouseholdModel | null = model;
     while (next) {
       queued = null;
+      const mine = queuedEpoch;
       try {
-        await rescheduleNow(next);
+        if (mine === epoch) await rescheduleNow(next);
       } catch (e) {
         console.warn('Could not set up reminders:', e);
       }
@@ -112,6 +120,31 @@ export function rescheduleBillNotifications(model: HouseholdModel): Promise<void
     running = null;
   });
   return running;
+}
+
+// SEC-2 (Cath's OK, 2026-10-27): signing out, being signed out from another phone, or
+// switching account takes every waiting reminder (they carry names and amounts) off this
+// phone, and clears the ones already showing. The next account sets up its own on opening.
+export async function clearAllReminders(): Promise<void> {
+  epoch += 1;
+  queued = null;
+  askedSinceClear = false;
+  const clear = async () => {
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      await Notifications.dismissAllNotificationsAsync();
+    } catch (e) {
+      console.warn('Could not clear reminders:', e);
+    }
+  };
+  await clear();
+  // A set-up that was already running for the old account finishes first; clear again
+  // after it, unless the next account has already asked for its own (that one starts by
+  // clearing everything itself).
+  if (running) {
+    await running.catch(() => {});
+    if (!askedSinceClear) await clear();
+  }
 }
 
 // A cancel-by reminder for today, set after 9:00, fires once, a minute after it was first

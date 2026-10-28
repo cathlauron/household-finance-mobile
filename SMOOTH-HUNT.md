@@ -107,3 +107,11 @@ Could not be checked here (stays "Needs your phone"):
   things on top; handled, but only a phone shows it).
 - Bill / Debt / Loan switch inside New bill: whether the highlight glides when the form
   hands over to the other kind.
+
+## 3.1 (2026-10-27, night)
+- Done: pop-up sheets glide up for the keyboard (and back down) instead of jumping
+  (BottomSheet keyboard listeners use the shared row glide). Needs your phone; a reviewer
+  noted it now finishes a moment after the keyboard is fully up.
+- Not done, by choice (asked Cath in the 3.1 report): pop-up drag-down still runs through
+  JavaScript, and big forms are built before they rise. Both need BottomSheet rebuilt on
+  the animation library (the most-used piece of the app), a bigger and riskier change.

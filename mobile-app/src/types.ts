@@ -161,6 +161,8 @@ export type PaymentMethod = {
 
 export type BillCycle = {
   id: string;
+  // Paid into an investment (canvas I1): that investment entry's id (undo removes it too).
+  investEntryId?: string;
   dueDate: string;
   amountDue: number | '';
   amountPaid: number | '';
@@ -215,6 +217,9 @@ export type Bill = {
   // money for family). Works like a bill (Left to Spend, calendar, reminders), shown
   // in its own "Regular payments" section, marked Sent instead of Paid.
   regular?: boolean;
+  // Cath 2026-10-27 (canvas I1 "Every month"): this regular payment puts money into the
+  // investment with this id. Paying it adds to the investment (a move, not spending).
+  investmentId?: string;
   // Undefined/'active' = normal, reminders keep firing each cycle.
   // 'cancelled' = person tapped Cancel; bill stays in the list (for
   // history/reports) but stops generating future reminders.

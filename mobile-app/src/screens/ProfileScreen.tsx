@@ -59,7 +59,7 @@ import GradientFill from '../components/GradientFill';
 import { SettingsGroup, PlainRow } from '../components/SettingsHub';
 import BottomSheet from '../components/BottomSheet';
 import LinkChoice from '../components/LinkChoice';
-import { onPendingJoinCode, takePendingJoinCode } from '../joinLink';
+import { onPendingJoinCode, takePendingJoinLink } from '../joinLink';
 import { LinkWaysRows, QrInviteModal, ScanJoinModal, TimerChip, askForCamera, shareInvite, useInviteCountdown } from '../components/HouseholdLinkWays';
 import { getPreferredName, withPreferredName, MAX_PREFERRED_NAME_LENGTH } from '../preferredName';
 
@@ -584,13 +584,21 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
   useEffect(() => {
     let alive = true;
     const check = () => {
-      takePendingJoinCode().then((code) => {
-        if (!alive || !code) return;
+      takePendingJoinLink().then((link) => {
+        if (!alive || !link) return;
         if (isLinked) {
           Alert.alert('Already in a household', 'To join a different household, first use "Unlink this device" on this page.');
           return;
         }
-        handleScanned(code);
+        // SEC-7 (Cath's OK, 2026-10-27): a link never starts joining by itself.
+        Alert.alert(
+          link.from ? `Join ${link.from}'s household?` : 'Join a household?',
+          'Only join if you know who sent you this link. Everyone in a household sees all its money.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Join', onPress: () => handleScanned(link.code) },
+          ]
+        );
       });
     };
     check();

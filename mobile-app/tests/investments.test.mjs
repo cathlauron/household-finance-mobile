@@ -70,3 +70,37 @@ test('two phones adding to the same investment keep both entries', () => {
   const merged = mergeModels(a, b);
   assert.deepEqual(merged.investments[0].entries.map((e) => e.id).sort(), ['e1', 'e2']);
 });
+
+// Canvas I1 "Every month": a regular payment that puts money into the investment.
+test('every month: a regular payment next month; paying it moves money once, never spending', async () => {
+  const { withMonthlyPlan, monthlyPlanFor, nextPlanDue } = await import('../src/investments.ts');
+  const { markPaid } = await import('../src/billPayments.ts');
+  const { buildTransactionsList } = await import('../src/transactions.ts');
+  assert.equal(nextPlanDue('2026-01-31', 31), '2026-02-28');
+  assert.equal(nextPlanDue('2026-12-05', 5), '2027-01-05');
+  let m = withMonthlyPlan(model(), model().investments[0], { amount: 1000, day: 5, paymentMethod: BDO, firstDue: '2026-11-05', id: 'bill-p', cycleId: 'cy1' });
+  const plan = monthlyPlanFor(m, 'mp2');
+  assert.equal(plan.regular, true);
+  assert.equal(plan.cycles[0].dueDate, '2026-11-05');
+  // Sent (as the pay page does): the bill keeps it in its history only; the investment gets it.
+  const paid = markPaid(plan, undefined, today, 1000, 0, { recordedOnly: true, investEntryId: 'e9' });
+  m = { ...m, bills: m.bills.map((b) => (b.id === plan.id ? paid : b)) };
+  m = withEntry(m, 'mp2', { id: 'e9', date: today, type: 'add', amount: 1000, paymentMethod: BDO, createdAt: Date.now() });
+  assert.equal(bdo(m), 49000);
+  assert.equal(investmentSummary(m.investments[0]).putIn, 1000);
+  assert.equal(buildTransactionsList(m).filter((t) => t.direction === 'out').length, 0);
+  assert.equal(paid.cycles[0].investEntryId, 'e9');
+});
+
+test('review 10-27: changing the monthly day moves the one waiting; a fee stays linked', async () => {
+  const { withMonthlyPlan, monthlyPlanFor } = await import('../src/investments.ts');
+  const { markPaid } = await import('../src/billPayments.ts');
+  let m = withMonthlyPlan(model(), model().investments[0], { amount: 1000, day: 5, paymentMethod: BDO, firstDue: '2026-11-05', id: 'bill-p', cycleId: 'cy1' });
+  m = withMonthlyPlan(m, m.investments[0], { amount: 1500, day: 20, paymentMethod: BDO, firstDue: '2026-11-20', id: 'x', cycleId: 'y' });
+  const plan = monthlyPlanFor(m, 'mp2');
+  assert.equal(m.bills.length, 1);
+  assert.equal(plan.cycles[0].dueDate, '2026-11-20');
+  assert.equal(plan.cycles[0].amountDue, 1500);
+  const paid = markPaid(plan, undefined, today, 1500, 0, { recordedOnly: true, investEntryId: 'e1', feePaid: 15, feeTxnId: 'fee1' });
+  assert.equal(paid.cycles[0].feeTxnId, 'fee1');
+});

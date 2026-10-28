@@ -9,7 +9,7 @@ import DrawingLogo, { BusyWords } from '../components/DrawingLogo';
 
 const WORDS = ['Unlocking…', 'Opening your data…', 'Almost there…'];
 import { Ionicons } from '@expo/vector-icons';
-import { verifyPin, hasPinSetUp, pinLockedUntil, clearPinLock, PIN_LOCK_MS } from '../pin';
+import { verifyPin, hasPinSetUp, pinLockedUntil, clearPinLock, PIN_LOCK_MS, PIN_PASSWORD_ONLY } from '../pin';
 import { getBiometricState, getBiometricLabel, attemptBiometricAuth, biometricErrorMessage, BiometricState } from '../biometrics';
 import PinField from '../components/PinField';
 import PasswordField from '../components/PasswordField';
@@ -45,6 +45,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
   // H-18 (2026-10-22, Cath): 5 wrong PINs block the PIN for 5 minutes, also after reopening
   // the app. The password and fingerprint still work meanwhile.
   const blockedMessage = (until: number) => {
+    if (until >= PIN_PASSWORD_ONLY) return 'Too many incorrect PINs. Use your password to open Finance Flow; your PIN works again after that.';
     const mins = Math.max(1, Math.ceil((until - Date.now()) / 60000));
     return `Too many incorrect PINs. Use your password, or try your PIN again in ${mins} minute${mins === 1 ? '' : 's'}.`;
   };
@@ -147,6 +148,7 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     const ok = await verifyPin(username, pin);
     if (ok) {
       await resetPinFailures(username);
+      await clearPinLock(username); // the right PIN: the waits start from 5 minutes again
       setBusy(false);
       onUnlocked();
       return;
@@ -157,7 +159,8 @@ export default function PinUnlockScreen({ username, onUnlocked, onSignOut }: Pro
     if (wiped) {
       // H-18: blocked for 5 minutes (saved on the phone); fingerprint still allowed.
       setUsePasswordMode(true);
-      setError(blockedMessage(Date.now() + PIN_LOCK_MS));
+      // SEC-5: the wait grows each time (5, 15, 60 minutes), then only the password.
+      setError(blockedMessage((await pinLockedUntil(username)) || Date.now() + PIN_LOCK_MS));
       return;
     }
     setError(`Incorrect PIN — ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.`);

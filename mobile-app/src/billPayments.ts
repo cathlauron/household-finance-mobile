@@ -88,7 +88,7 @@ export function markPaid<T extends CycleRecord>(
   // balance, spending or forecast counts it), only the history. `feePaid`: a fee paid
   // with the payment (shown in History; from an account it's its own Fees entry).
   // Cath, 2026-10-27 (canvas R2): `receiptPhoto`: a receipt kept with this payment.
-  opts: { recordedOnly?: boolean; feePaid?: number; feeTxnId?: string; receiptPhoto?: string } = {}
+  opts: { recordedOnly?: boolean; feePaid?: number; feeTxnId?: string; receiptPhoto?: string; investEntryId?: string } = {}
 ): T {
   const cur = currentCycle(record);
   if (!cur || isCyclePaid(cur)) return record;
@@ -97,9 +97,9 @@ export function markPaid<T extends CycleRecord>(
   const fee = Math.max(0, Math.round(lateFee * 100) / 100);
   const partial = paidAmt < due;
   const feePaid = Math.max(0, Math.round((opts.feePaid || 0) * 100) / 100);
-  const { paymentMethod: _drop, paidAt: _dropAt, receiptPhoto: _rp, ...curWithoutAccount } = cur;
+  const { paymentMethod: _drop, paidAt: _dropAt, receiptPhoto: _rp, investEntryId: _ie, ...curWithoutAccount } = cur;
   // Code review 2026-10-27: flags from an earlier (undone) recording never carry over.
-  const { recordedOnly: _r, feePaid: _f, feeTxnId: _t, loggedAt: _l, receiptPhoto: _rp2, ...curClean } = cur;
+  const { recordedOnly: _r, feePaid: _f, feeTxnId: _t, loggedAt: _l, receiptPhoto: _rp2, investEntryId: _ie2, ...curClean } = cur;
   const receipt = opts.receiptPhoto ? { receiptPhoto: opts.receiptPhoto } : {};
   const paid: BillCycle = opts.recordedOnly
     ? {
@@ -110,8 +110,9 @@ export function markPaid<T extends CycleRecord>(
         loggedAt: Date.now(),
         ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
         ...(fee > 0 ? { lateFee: fee } : {}),
-        ...(feePaid > 0 ? { feePaid } : {}),
+        ...(feePaid > 0 ? { feePaid, ...(opts.feeTxnId ? { feeTxnId: opts.feeTxnId } : {}) } : {}),
         ...receipt,
+        ...(opts.investEntryId ? { investEntryId: opts.investEntryId } : {}),
       }
     : {
         ...curClean,
@@ -156,7 +157,7 @@ export function undoLastPayment<T extends CycleRecord>(record: T): T {
   if (idx < 0) return record;
   const last = cycles[cycles.length - 1];
   if (idx !== cycles.length - 1 && num(last.amountPaid) === 0 && !last.notes) cycles.pop();
-  const { dueBefore, lateFee, recordedOnly, feePaid, feeTxnId, loggedAt, receiptPhoto, ...rest } = cycles[idx];
+  const { dueBefore, lateFee, recordedOnly, feePaid, feeTxnId, loggedAt, receiptPhoto, investEntryId, ...rest } = cycles[idx];
   cycles[idx] = { ...rest, amountPaid: '', paidDate: '', paidAt: undefined, ...(typeof dueBefore === 'number' ? { amountDue: dueBefore } : {}) };
   return { ...record, cycles };
 }
