@@ -51,6 +51,9 @@ import {
 import {
   getPeerRecoveryRequest,
   approvePeerRecoveryRequest,
+  normalizePeerCode,
+  formatPeerCode,
+  PEER_CODE_LENGTH,
   type PeerRecoveryRequestDoc,
 } from '../recovery';
 import { hapticLight } from '../haptics';
@@ -1411,18 +1414,20 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
             <GradientFill match={styles.modalCard} />
             <Text style={styles.modalTitle}>Approve Account Recovery</Text>
             <Text style={styles.sectionSub}>
-              Enter the 6-digit code shown on {pendingRecovery?.requesterUsername}'s screen to verify them and transfer the household key.
+              Type the code on {pendingRecovery?.requesterUsername}'s screen. Only approve if they asked you themselves (in person or on a call). Requests stop working after 15 minutes.
             </Text>
 
-            <MarkedLabel text="6-Digit Code" mark="required" style={styles.inputLabel} />
+            <MarkedLabel text="Code" mark="required" style={styles.inputLabel} />
             <TextInput
-              style={[styles.input, { letterSpacing: 4, fontSize: 18, textAlign: 'center' }]}
-              placeholder="000000"
+              style={[styles.input, { letterSpacing: 2, fontSize: 18, textAlign: 'center' }]}
+              placeholder="7KQ4M-2WX9P"
               placeholderTextColor={colors.inkFaint}
-              keyboardType="number-pad"
-              maxLength={6}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={11}
               value={approvalCodeInput}
-              onChangeText={setApprovalCodeInput}
+              onChangeText={(t) => setApprovalCodeInput(formatPeerCode(normalizePeerCode(t)))}
+              testID="peer-approve-code"
             />
 
             <ErrorNote text={approvalErrorMsg} />
@@ -1431,7 +1436,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                 label="Approve & Send Key"
                 onPress={handleApprovePeerRecovery}
                 loading={approvalBusy}
-                disabled={approvalCodeInput.trim().length !== 6 || approvalBusy}
+                disabled={normalizePeerCode(approvalCodeInput).length !== PEER_CODE_LENGTH || approvalBusy}
               />
 
               <Button

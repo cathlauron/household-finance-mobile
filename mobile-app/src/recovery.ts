@@ -28,7 +28,6 @@ import { generateSalt, deriveKey, encryptJSON, decryptJSON, bytesToHex } from '.
 
 const RECOVERY_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const RECOVERY_LENGTH = 16;
-const TRANSFER_CODE_LENGTH = 6;
 
 // Generates a 16-character high-entropy alphanumeric recovery code formatted as XXXX-XXXX-XXXX-XXXX
 export async function generateRecoveryCode(): Promise<string> {
@@ -51,14 +50,27 @@ export function isValidRecoveryCodeFormat(code: string): boolean {
   return norm.length === RECOVERY_LENGTH && /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]+$/.test(norm);
 }
 
-// Generates a 6-digit numeric transfer code for peer recovery (e.g. "492015")
+// K4 / SEC-4 (Cath's OK, 2026-10-27): the code read out to a household member is 10 letters
+// and numbers (was 6 digits), without look-alikes (no 0/O, 1/I/L). Shown as "7KQ4M-2WX9P".
+export const PEER_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const PEER_CODE_LENGTH = 10;
 export async function generatePeerTransferCode(): Promise<string> {
-  const bytes = await Crypto.getRandomBytesAsync(TRANSFER_CODE_LENGTH);
   let code = '';
-  for (let i = 0; i < TRANSFER_CODE_LENGTH; i++) {
-    code += (bytes[i] % 10).toString();
+  while (code.length < PEER_CODE_LENGTH) {
+    const bytes = await Crypto.getRandomBytesAsync(16);
+    for (let i = 0; i < bytes.length && code.length < PEER_CODE_LENGTH; i++) {
+      // 248 = 8 * 31: anything above is skipped so every character is equally likely.
+      if (bytes[i] < 248) code += PEER_CODE_ALPHABET[bytes[i] % PEER_CODE_ALPHABET.length];
+    }
   }
   return code;
+}
+// What was typed, as the code itself: capitals, no dash or spaces.
+export function normalizePeerCode(typed: string): string {
+  return (typed || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+export function formatPeerCode(code: string): string {
+  return code.length > 5 ? `${code.slice(0, 5)}-${code.slice(5)}` : code;
 }
 
 // Generic key wrapping (AES-256 JSON encapsulation)
@@ -279,7 +291,7 @@ export async function getPeerRecoveryRequest(
   }
 }
 
-// Approver (a logged-in household member) verifies the 6-digit transfer code and approves:
+// Approver (a logged-in household member) types the 10-character transfer code and approves:
 // 1. Derives transferKey = deriveKey(transferCode, transferSalt)
 // 2. Encrypts householdKey with transferKey
 // 3. Updates householdRecovery/{requestId} to 'approved'
@@ -300,7 +312,8 @@ export async function approvePeerRecoveryRequest(
     throw new Error('This request has already been processed or cancelled.');
   }
 
-  const transferKey = deriveKey(transferCode.trim(), data.transferSalt);
+  if (Date.now() > data.expiresAt) throw new Error('This request has expired. Ask them to start a new one.');
+  const transferKey = deriveKey(normalizePeerCode(transferCode), data.transferSalt);
   const encryptedHouseholdKey = await encryptJSON(
     transferKey,
     householdKey.toString(CryptoJS.enc.Hex)
