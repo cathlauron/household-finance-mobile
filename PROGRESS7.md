@@ -1116,3 +1116,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   glide for the keyboard. Not done (asked Cath): drag-down and build-before-rise need a
   BottomSheet rebuild. Review agent found H-34..H-38, all fixed. Phone: TEST-3 section 11.
   Next: Cath publishes rules, tests section 11, then merge v3 into main and build 3.1.0.
+
+- NEWEST (2026-10-27, night wrap-up): Cath published the SEC-1 rules and said "device test
+  is as described" (TEST-3 section 11). Version 3.1.0 (versionCode 6) merged into `main`
+  (main = v3). EAS build is Cath's to start ("preview" profile, replaces the app). Still
+  open for version 3: see the list given to Cath this day (accounts: Forgot password /
+  email check / Delete account; publishing: privacy policy, Play listing, App Check;
+  Premium payments; smart features; widgets; Help & FAQ; linked-household extras;
+  security later items SEC-4, SEC-6, new key on removal; sheet rebuild for smoothness).
