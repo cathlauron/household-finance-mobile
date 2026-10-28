@@ -313,9 +313,10 @@ export default function PayDetailScreen() {
           if (kind === 'bill' && (rec as Bill).investmentId) {
             const invId = (rec as Bill).investmentId as string;
             const entryId = makeId('invx');
-            const nextBill = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, receiptPhoto, investEntryId: entryId });
-            let m2: HouseholdModel = withEntry({ ...model, bills: model.bills.map((b) => (b.id === id ? (nextBill as Bill) : b)) }, invId, { id: entryId, date, type: 'add', amount: paidAmount, paymentMethod: pm, createdAt: Date.now() });
             const feeTxnId2 = fee > 0 ? makeId('txn') : undefined;
+            // Review 10-27: the fee is kept with it, so Undo removes the fee entry too.
+            const nextBill = markPaid(rec, undefined, date, paidAmount, 0, { recordedOnly: true, receiptPhoto, investEntryId: entryId, feePaid: fee, feeTxnId: feeTxnId2 });
+            let m2: HouseholdModel = withEntry({ ...model, bills: model.bills.map((b) => (b.id === id ? (nextBill as Bill) : b)) }, invId, { id: entryId, date, type: 'add', amount: paidAmount, paymentMethod: pm, createdAt: Date.now() });
             m2 = withFeeEntry(m2, { amount: fee, label: name, date, paymentMethod: pm, id: feeTxnId2 });
             if (takeOff) m2 = takeOffSavedBalance(m2, pm, paidAmount + fee);
             save(m2, 'Sent');

@@ -97,6 +97,18 @@ export default function InvestmentsScreen() {
   const total = investmentsTotal(model);
   const current = moveFor ? list.find((i) => i.id === moveFor) : undefined;
   const sum = current ? investmentSummary(current) : null;
+  const currentPlan = current ? monthlyPlanFor(model, current.id) : undefined;
+  const planAmount = (() => {
+    const due = currentPlan?.cycles?.find((c) => !(typeof c.amountPaid === 'number' && c.amountPaid > 0))?.amountDue;
+    return typeof due === 'number' ? due : 0;
+  })();
+  function stopPlan() {
+    if (!model || !current) return;
+    Alert.alert('Stop every month?', 'The regular payment is removed from To-Pay and the calendar. Money already put in stays.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Stop', style: 'destructive', onPress: () => saveModel(withoutMonthlyPlan(model, current.id)) },
+    ]);
+  }
 
   function openAdd() {
     setEditingId(null);
@@ -122,7 +134,8 @@ export default function InvestmentsScreen() {
     setDate(todayISO());
     setPm(undefined);
     setMoveError('');
-    setMonthly(!!(model && monthlyPlanFor(model, id)));
+    // Review 10-27: off each time, so a one-off top-up never changes the monthly plan.
+    setMonthly(false);
   }
 
   async function saveInvestment() {
@@ -182,10 +195,8 @@ export default function InvestmentsScreen() {
     const entry: InvestmentEntry = { id: makeId('invx'), date, type: mode, amount: a, createdAt: Date.now(), ...(mode !== 'value' && pm ? { paymentMethod: pm } : {}) };
     let next = withEntry(model, current.id, entry);
     if (mode === 'add') {
-      const plan = monthlyPlanFor(model, current.id);
       const day = Number(date.slice(8, 10));
       if (monthly) next = withMonthlyPlan(next, current, { amount: a, day, paymentMethod: pm, firstDue: nextPlanDue(date, day), id: makeId('bill'), cycleId: makeId('cycle') });
-      else if (plan) next = withoutMonthlyPlan(next, current.id);
     }
     setSaving(true);
     try {
@@ -340,13 +351,20 @@ export default function InvestmentsScreen() {
             {mode === 'add' && (
               <>
                 <FormGroup>
-                  <SwitchRow label="Every month" value={monthly} onChange={setMonthly} />
+                  <SwitchRow label={currentPlan ? 'Make this the monthly amount' : 'Every month'} value={monthly} onChange={setMonthly} />
                 </FormGroup>
                 <Footnote>
-                  {monthly
-                    ? `Next one on the ${ordinal(Number(date.slice(8, 10)))} of next month. It shows in To-Pay (Regular payments) and the calendar, like a regular payment; marking it Sent puts it in here.`
+                  {currentPlan && !monthly
+                    ? `Now ${formatPeso(planAmount)} every month on the ${ordinal(Number(currentPlan.dueDate?.day) || 1)}. This one is just once.`
+                    : monthly
+                    ? `Next one ${shortDate(nextPlanDue(date, Number(date.slice(8, 10))))}. It shows in To-Pay (Regular payments) and the calendar, like a regular payment; marking it Sent puts it in here.`
                     : 'Turn on to put this in every month: it shows in To-Pay and the calendar.'}
                 </Footnote>
+                {!!currentPlan && (
+                  <TouchableOpacity onPress={stopPlan} accessibilityRole="button" testID="investment-stop-monthly" style={{ marginHorizontal: 16, marginBottom: 16 }}>
+                    <Text style={styles.link}>Stop putting money in every month</Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
             {!!moveError && <Text style={[styles.error, { marginHorizontal: 16 }]} testID="investment-error">{moveError}</Text>}

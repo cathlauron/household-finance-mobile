@@ -110,7 +110,7 @@ export function markPaid<T extends CycleRecord>(
         loggedAt: Date.now(),
         ...(partial ? { amountDue: paidAmt, dueBefore: due } : {}),
         ...(fee > 0 ? { lateFee: fee } : {}),
-        ...(feePaid > 0 ? { feePaid } : {}),
+        ...(feePaid > 0 ? { feePaid, ...(opts.feeTxnId ? { feeTxnId: opts.feeTxnId } : {}) } : {}),
         ...receipt,
         ...(opts.investEntryId ? { investEntryId: opts.investEntryId } : {}),
       }

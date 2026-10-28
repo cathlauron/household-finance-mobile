@@ -1,4 +1,5 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
+import { clearPinLock } from './src/pin';
 import { clearAllReminders } from './src/pushNotifications';
 import { goToMain } from './src/navigation/goToMain';
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
@@ -959,6 +960,7 @@ function AppContent() {
           working={unlocking || (silentSignIn && !!autoSignIn)}
           onUnlocked={(creds) => {
             resetPinFailures(creds.username).catch(() => {});
+            clearPinLock(creds.username).catch(() => {}); // SEC-5: a password sign-in lifts the PIN wait
             setUnlocking(true);
             (async () => {
               await paintBusy(); // let the unlocking animation appear first

@@ -127,7 +127,8 @@ export function withMonthlyPlan(
               ...b,
               name: inv.name,
               dueDate: { day: String(opts.day) },
-              cycles: (b.cycles || []).map((c) => (num(c.amountPaid) > 0 ? c : { ...c, amountDue: cents(opts.amount), paymentMethod: opts.paymentMethod })),
+              // The one waiting moves to the new day too (review 10-27).
+              cycles: (b.cycles || []).map((c) => (num(c.amountPaid) > 0 ? c : { ...c, dueDate: opts.firstDue, amountDue: cents(opts.amount), paymentMethod: opts.paymentMethod })),
             }
       ),
     };

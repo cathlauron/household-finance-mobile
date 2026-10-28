@@ -141,9 +141,12 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
 4. Lock screen PIN (SEC-5): 5 wrong PINs = wait 5 minutes; the next 5 wrong = 15 minutes;
    then 60; after that only the password opens it. The password (or the right PIN) starts
    the waits over.
-5. Investments > an investment > Add money ₱1,000 from Maribank with "Every month" on > Save:
+5. Investments > an investment > Add money ₱1,000 from Maribank, turn "Every month" on > Save:
    To-Pay > Bills > Regular payments shows it for next month (and the calendar). Open it >
    Send: Maribank goes down ₱1,000 once; the investment shows ₱1,000 more; Transactions
-   shows "Invested: ..." in grey, not as spending. Undo takes it back out.
+   shows "Invested: ..." in grey, not as spending. Undo takes it back out. Add money again
+   without the switch: the monthly amount stays as it was. "Stop putting money in every
+   month" removes it from To-Pay.
 6. A form with typing (e.g. New bill > Name): when the keyboard opens, the sheet glides up
-   instead of jumping (and glides back down when it closes).
+   instead of jumping (and glides back down when it closes). Tell me if it now feels slow
+   to make room (it starts once the keyboard is fully up).

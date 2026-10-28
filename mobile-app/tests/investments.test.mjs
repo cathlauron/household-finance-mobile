@@ -91,3 +91,16 @@ test('every month: a regular payment next month; paying it moves money once, nev
   assert.equal(buildTransactionsList(m).filter((t) => t.direction === 'out').length, 0);
   assert.equal(paid.cycles[0].investEntryId, 'e9');
 });
+
+test('review 10-27: changing the monthly day moves the one waiting; a fee stays linked', async () => {
+  const { withMonthlyPlan, monthlyPlanFor } = await import('../src/investments.ts');
+  const { markPaid } = await import('../src/billPayments.ts');
+  let m = withMonthlyPlan(model(), model().investments[0], { amount: 1000, day: 5, paymentMethod: BDO, firstDue: '2026-11-05', id: 'bill-p', cycleId: 'cy1' });
+  m = withMonthlyPlan(m, m.investments[0], { amount: 1500, day: 20, paymentMethod: BDO, firstDue: '2026-11-20', id: 'x', cycleId: 'y' });
+  const plan = monthlyPlanFor(m, 'mp2');
+  assert.equal(m.bills.length, 1);
+  assert.equal(plan.cycles[0].dueDate, '2026-11-20');
+  assert.equal(plan.cycles[0].amountDue, 1500);
+  const paid = markPaid(plan, undefined, today, 1500, 0, { recordedOnly: true, investEntryId: 'e1', feePaid: 15, feeTxnId: 'fee1' });
+  assert.equal(paid.cycles[0].feeTxnId, 'fee1');
+});

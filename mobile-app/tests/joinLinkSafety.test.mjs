@@ -27,4 +27,5 @@ test('rules: a code is made by a member of its household, with only the app\'s f
   assert.match(rules, /keys\(\)\.hasOnly\(\['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid', 'createdAt', 'existingHouseholdId', 'isInvite'\]\)/);
   assert.match(rules, /lastJoinCode\)\)\.data\.hostUid in resource\.data\.members/);
   assert.match(rules, /get\('existingHouseholdId', null\) == resource\.data\.get\('existingHouseholdId', null\)/);
+  assert.match(rules, /request\.resource\.data\.householdId == resource\.data\.get\('existingHouseholdId', null\)/);
 });

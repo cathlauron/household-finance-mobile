@@ -83,6 +83,11 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | H-31 | (code review) Loans saved with the old First-payment prefill (a date after the payments made) looked paid ahead; editing a loan asked "Which payment was this?" for no change | loanSchedule.ts loanFirstDate, LoansScreen.tsx | proven: tests/loanSchedule.test.mjs |
 | H-32 | (code review) A repeating loan with no monthly amount showed its whole balance as overdue | loanSchedule.ts (only tracked from payments with a monthly amount) | proven: tests/loanSchedule.test.mjs |
 | H-33 | (code review) Bill Undo could take the fee of a different payment made the same day | screens/PayDetailScreen.tsx | read-checked |
+| H-34 | (review, 3.1) A fee paid with a monthly investment payment stayed after Undo | billPayments.ts, PayDetailScreen.tsx | proven: tests/investments.test.mjs |
+| H-35 | (review, 3.1) A one-off top-up quietly changed the monthly plan; changing the plan day left the waiting payment on the old date | InvestmentsScreen.tsx, investments.ts | proven: tests/investments.test.mjs |
+| H-36 | (review, SEC-1) Anyone with a code could mark it finished with any household id (blocking the inviter's phone from finishing) | firestore.rules | tests/joinLinkSafety.test.mjs (rules text); Cath publishes |
+| H-37 | (review, SEC-2) A reminder set-up already running could finish after sign-out, or wipe the next account's | pushNotifications.ts | read-checked |
+| H-38 | (review, SEC-5) Signing in with the password from the account list didn't lift "password only" for the PIN | App.tsx | read-checked |
 
 ## Found by Claude's bug hunt (before Cath saw them)
 
