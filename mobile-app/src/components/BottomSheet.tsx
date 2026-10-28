@@ -3,6 +3,7 @@ import { animateNextLayout } from '../animateLayout';
 import { walkFixtureOn } from '../walkFixture';
 import SkyGlow from './SkyGlow';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, { Easing as REasing, useAnimatedStyle, useSharedValue, withTiming, runOnJS } from 'react-native-reanimated';
 import { Modal, View, Pressable, KeyboardAvoidingView, StyleSheet, Platform, useWindowDimensions, Keyboard, Dimensions, Animated, Easing } from 'react-native';
 import { useReduceMotion } from '../reduceMotion';
 import { CURVE, DIM_MS, FADE_IN_MS, ROW_MS, SHEET_CLOSE_MS, SHEET_OPEN_MS } from '../motion';
@@ -351,27 +352,50 @@ function OwnSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  // Drag down by the handle or the top bar to close; let go early and it springs back.
+  // Drag down by the handle or the top bar to close; let go early and it glides back.
+  // 3.2 smoothness (open idea from SMOOTH-HUNT): the drag runs on the phone's animation
+  // thread (it used to go through JavaScript on every frame), in its own layer on top of
+  // the open / close slide, which is unchanged.
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
+  const dragY = useSharedValue(0);
+  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateY: dragY.value }] }));
+  React.useEffect(() => {
+    // A fresh sheet always starts with no drag left over.
+    if (visible) dragY.value = 0;
+  }, [visible, dragY]);
+  const setResting = React.useCallback((v: boolean) => {
+    resting.current = v;
+  }, []);
+  const closeFromDrag = React.useCallback(() => onCloseRef.current(), []);
   const drag = React.useMemo(
     () =>
       Gesture.Pan()
-        .runOnJS(true)
         .activeOffsetY(12)
         .failOffsetX([-24, 24])
+        .onStart(() => {
+          runOnJS(setResting)(false);
+        })
         .onUpdate((e) => {
-          resting.current = false;
-          y.setValue(Math.max(0, e.translationY));
+          dragY.value = Math.max(0, e.translationY);
         })
         .onEnd((e) => {
-          if (e.translationY > 120 || e.velocityY > 900) onCloseRef.current();
-          else
-            Animated.spring(y, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start(({ finished }) => {
-              if (finished) resting.current = true;
-            });
+          if (e.translationY > 120 || e.velocityY > 900) {
+            // It keeps sliding from where the finger let go (the close slide adds to it);
+            // the drag is cleared once the sheet is shown again.
+            runOnJS(closeFromDrag)();
+            return;
+          }
+          if (reduce) {
+            dragY.value = 0;
+            runOnJS(setResting)(true);
+            return;
+          }
+          dragY.value = withTiming(0, { duration: ROW_MS, easing: REasing.bezier(...CURVE) }, (finished) => {
+            if (finished) runOnJS(setResting)(true);
+          });
         }),
-    [y]
+    [dragY, reduce, setResting, closeFromDrag]
   );
 
   return (
@@ -400,6 +424,7 @@ function OwnSheet({
           style={styles.keyboardWrap}
           pointerEvents="box-none"
         >
+          <Reanimated.View style={dragStyle} pointerEvents="box-none">
           <Animated.View
             ref={sheetRef}
             style={[
@@ -446,6 +471,7 @@ function OwnSheet({
             pointerEvents="none"
             style={[styles.filler, { backgroundColor: grouped ? colors.navy2 : colors.navy3, transform: [{ translateY: y }] }]}
           />
+          </Reanimated.View>
         </KeyboardAvoidingView>
       </View>
       </GestureHandlerRootView>
