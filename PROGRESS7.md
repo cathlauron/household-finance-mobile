@@ -1090,3 +1090,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   2.2 phones keep investments but don't take them off balances (until both phones are on
   3.0). Background tester: `npm run browser:build:fixture` gives the web build a made-up
   household (web only). Phone: TEST-3.md sections 9 and 10. Next: Cath's phone tests.
+
+- NEWEST (2026-10-27, wrap-up): Cath: "device test is as described" for TEST-3 sections 9
+  and 10 (receipts, loans past due + partial payments, Undo wording, alignment,
+  investments). Version 3.0.0 set (app.json version 3.0.0 + versionCode 5, SettingsScreen
+  APP_VERSION 3.0.0; PARTS_APP_VERSION already '3.0'), v3 merged into `main` (fc85302,
+  no conflicts, main = v3). EAS build is Cath's to start (normal "preview" profile, replaces
+  the installed app, same as 2.2). Open for later: "Every month" investment contribution
+  (ask Cath), security SEC-1..7 (her OK), open smoothness ideas. New work continues on v3.
