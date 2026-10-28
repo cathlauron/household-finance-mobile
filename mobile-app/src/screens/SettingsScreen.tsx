@@ -1,4 +1,5 @@
 import { hapticSelection } from '../haptics';
+import { measureSignInSpeed, speedText } from '../signInSpeed';
 import { animateNextLayout } from '../animateLayout';
 import { readyToAutoSave } from '../autoSaveInput';
 import { friendlyError } from '../friendlyError';
@@ -2024,6 +2025,22 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         </SettingsGroup>
         <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
           <PlainRow title="Help & guides" value="Coming soon" />
+        </SettingsGroup>
+        {/* K5 (Cath, 2026-10-27): try the stronger password lock's speed before choosing it. */}
+        <SettingsGroup plain footer="Times the password step on this phone at today's strength and two stronger ones. Uses a made-up password; nothing changes.">
+          <PlainRow
+            testID="settings-signin-speed"
+            title="Check sign-in speed"
+            accent
+            onPress={() => {
+              showSaved('Measuring…');
+              // Let "Measuring…" show first: the check keeps the phone busy for a moment.
+              setTimeout(() => {
+                const r = measureSignInSpeed();
+                Alert.alert('Sign-in speed on this phone', speedText(r));
+              }, 120);
+            }}
+          />
         </SettingsGroup>
         {/^test/i.test(username || '') && (
           <SettingsGroup plain footer="Test accounts only. Close the app fully and open it again: Welcome back shows on Home.">

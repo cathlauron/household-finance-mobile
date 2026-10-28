@@ -1,4 +1,5 @@
 import * as Crypto from 'expo-crypto';
+import { isV2Payload, openV2 } from './envelopeV2';
 import CryptoJS from 'crypto-js';
 import { keyDeriver } from './fastCrypto';
 
@@ -44,6 +45,9 @@ export async function encryptJSON(key: CryptoJS.lib.WordArray, data: unknown): P
 // Reverses encryptJSON. Throws if the key is wrong (e.g. incorrect password) — callers
 // should catch this and show "incorrect password" rather than let the app crash.
 export function decryptJSON<T>(key: CryptoJS.lib.WordArray, payload: string): T {
+  // K5 (3.2): the newer, tamper-checked kind is read too (see envelopeV2.ts). 3.2 only
+  // READS it; writing it waits until every phone in use reads it.
+  if (isV2Payload(payload)) return JSON.parse(openV2(key, payload));
   const [ivHex, ciphertext] = payload.split(':');
   if (!ivHex || !ciphertext) throw new Error('Malformed encrypted payload');
   const iv = CryptoJS.enc.Hex.parse(ivHex);
