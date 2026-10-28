@@ -1,4 +1,5 @@
 import { wipeQuickUnlock, saveFingerprintCopyIfPossible, resetPinFailures } from './src/quickUnlock';
+import { clearAllReminders } from './src/pushNotifications';
 import { goToMain } from './src/navigation/goToMain';
 import { upsertRecentAccount, removeRecentAccount, loadRecentAccounts } from './src/recentAccounts';
 import type { RecentAccount } from './src/recentAccounts';
@@ -7,7 +8,7 @@ import { saveSession, loadSession, clearSession, saveSessionKey, loadSessionKey,
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ActivityIndicator, AppState, AppStateStatus, View, LogBox, StyleSheet, Linking } from 'react-native';
 import ScreenSwap from './src/components/ScreenSwap';
-import { joinCodeFromUrl, setPendingJoinCode } from './src/joinLink';
+import { joinCodeFromUrl, setPendingJoinCode, inviterFromUrl } from './src/joinLink';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -202,7 +203,7 @@ function AppContent() {
     const handle = (url: string | null) => {
       const code = joinCodeFromUrl(url);
       if (!code) return;
-      setPendingJoinCode(code);
+      setPendingJoinCode(code, inviterFromUrl(url));
       pendingJoinOpen.current = true;
       flushPendingDeepLink();
     };
@@ -310,6 +311,7 @@ function AppContent() {
       wipeQuickUnlock(username).catch(() => {});
       removeRecentAccount(username).catch(() => {});
       clearSession().catch(() => {});
+      clearAllReminders().catch(() => {}); // SEC-2
       clearModel();
       setCurrentUsername(null);
       setDerivedKey(null);
@@ -418,6 +420,7 @@ function AppContent() {
       wipeQuickUnlock(revokedUsername).catch(() => {});
     }
     clearSession().catch(() => {});
+    clearAllReminders().catch(() => {}); // SEC-2
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -475,7 +478,10 @@ function AppContent() {
         setSilentSignIn(true);
         return;
       }
-      if (saved) clearSession().catch(() => {});
+      if (saved) {
+        clearSession().catch(() => {});
+        clearAllReminders().catch(() => {}); // SEC-2
+      }
       await introDoneRef.current;
       if (!profiles.length) {
         // Version 3: brand-new phone: Welcome, four questions, then Home without an account
@@ -613,6 +619,7 @@ function AppContent() {
     }
     // Log out always means the password is asked for next time.
     clearSession().catch(() => {});
+    clearAllReminders().catch(() => {}); // SEC-2
     clearIdleTimer();
     // 1. Unsubscribe listener FIRST (Correction 3)
     if (deviceSessionUnsubRef.current) {
@@ -662,6 +669,7 @@ function AppContent() {
     await waitForSaves();
     // The next launch shows the account switcher instead of opening this account.
     clearSession().catch(() => {});
+    clearAllReminders().catch(() => {}); // SEC-2
     // 1. Unsubscribe listener FIRST (same ordering as handleFullSignOut)
     if (deviceSessionUnsubRef.current) {
       deviceSessionUnsubRef.current();
@@ -751,7 +759,10 @@ function AppContent() {
             if (newUsername && newKey) {
               // Unlocked into a different account with only its password: there is no
               // email to remember, so the next launch asks once.
-              if (newUsername !== currentUsername) clearSession().catch(() => {});
+              if (newUsername !== currentUsername) {
+                clearSession().catch(() => {});
+                clearAllReminders().catch(() => {}); // SEC-2
+              }
               setCurrentUsername(newUsername);
               setDerivedKey(newKey);
               loadModel(newUsername, newKey);
@@ -1032,6 +1043,7 @@ function AppContent() {
         onAutoSignInFailed={(username) => {
           wipeQuickUnlock(username).catch(() => {});
           clearSession().catch(() => {});
+          clearAllReminders().catch(() => {}); // SEC-2
           setAutoSignIn(null);
           setSignInPrefillUsername(username);
           setRemoteRevokeNotice('Your saved sign-in is out of date. Sign in with your password.');
@@ -1092,6 +1104,7 @@ function AppContent() {
                 const revoked = await isThisDeviceRevoked(user.uid, deviceId);
                 if (revoked) {
                   clearSession().catch(() => {});
+                  clearAllReminders().catch(() => {}); // SEC-2
                   wipeQuickUnlock(username).catch(() => {});
                   removeRecentAccount(username).catch(() => {});
                   clearModel();

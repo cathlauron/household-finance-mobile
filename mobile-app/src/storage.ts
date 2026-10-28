@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 const PROFILES_INDEX_KEY = 'profiles-index';
 
@@ -79,17 +81,31 @@ function pendingHostLinkKey(username: string): string {
   return `profile:${username}:pending-host-link`;
 }
 
+// SEC-3 (Cath's OK, 2026-10-27): a waiting invite holds the household key, so it's kept in
+// the phone's secure vault (like "stay signed in"), not in ordinary app storage. One saved
+// the old way is moved into the vault the first time it's read. (Web has no vault.)
+function vaultKey(username: string): string {
+  return `pendingHostLink.${username.replace(/[^A-Za-z0-9._-]/g, '_')}`;
+}
+const vaultOn = Platform.OS !== 'web';
+const VAULT_OPTS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
+
 export async function savePendingHostLink(
   username: string,
   code: string,
   secretHex: string,
   at: number = Date.now()
 ): Promise<void> {
-  await AsyncStorage.setItem(pendingHostLinkKey(username), JSON.stringify({ code, secretHex, at }));
+  const text = JSON.stringify({ code, secretHex, at });
+  if (vaultOn) {
+    await SecureStore.setItemAsync(vaultKey(username), text, VAULT_OPTS);
+    await AsyncStorage.removeItem(pendingHostLinkKey(username)).catch(() => {});
+  } else {
+    await AsyncStorage.setItem(pendingHostLinkKey(username), text);
+  }
 }
 
-export async function loadPendingHostLink(username: string): Promise<PendingHostLink | null> {
-  const raw = await AsyncStorage.getItem(pendingHostLinkKey(username));
+function parsePending(raw: string | null): PendingHostLink | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
@@ -100,7 +116,24 @@ export async function loadPendingHostLink(username: string): Promise<PendingHost
   }
 }
 
+export async function loadPendingHostLink(username: string): Promise<PendingHostLink | null> {
+  if (vaultOn) {
+    const inVault = parsePending(await SecureStore.getItemAsync(vaultKey(username)).catch(() => null));
+    if (inVault) return inVault;
+  }
+  const old = parsePending(await AsyncStorage.getItem(pendingHostLinkKey(username)));
+  if (old && vaultOn) {
+    // Moved into the vault (and out of ordinary storage).
+    try {
+      await SecureStore.setItemAsync(vaultKey(username), JSON.stringify(old), VAULT_OPTS);
+      await AsyncStorage.removeItem(pendingHostLinkKey(username));
+    } catch (e) {}
+  }
+  return old;
+}
+
 export async function clearPendingHostLink(username: string): Promise<void> {
+  if (vaultOn) await SecureStore.deleteItemAsync(vaultKey(username)).catch(() => {});
   await AsyncStorage.removeItem(pendingHostLinkKey(username));
 }
 

@@ -49,3 +49,30 @@ test('fewer than 5 wrong PINs: the right PIN still works', async () => {
   expect(await verifyPin('ana', '5678')).toBe(true);
   expect(await pinLockedUntil('ana')).toBe(0);
 });
+
+// SEC-5 (Cath's OK, 2026-10-27): the waits grow (5, 15, 60 minutes), then only the password
+// opens the app; the password starts the waits over.
+test('each new block is longer, and after three only the password works', async () => {
+  const { PIN_LOCK_STEPS_MS, PIN_PASSWORD_ONLY, clearPinLock } = require('../src/pin');
+  await savePin('eve', '1111');
+  const realNow = Date.now;
+  let shift = 0;
+  Date.now = () => realNow() + shift;
+  try {
+    for (let round = 0; round < 3; round++) {
+      const start = Date.now();
+      for (let i = 0; i < 5; i++) await registerPinFailure('eve');
+      const until = await pinLockedUntil('eve');
+      expect(until - start).toBeGreaterThanOrEqual(PIN_LOCK_STEPS_MS[round]);
+      expect(until - start).toBeLessThan(PIN_LOCK_STEPS_MS[round] + 5000);
+      shift += PIN_LOCK_STEPS_MS[round] + 1000; // the wait passes (or the clock is moved)
+    }
+    for (let i = 0; i < 5; i++) await registerPinFailure('eve');
+    shift += 365 * 24 * 3600 * 1000; // moving the clock a year doesn't help
+    expect(await pinLockedUntil('eve')).toBe(PIN_PASSWORD_ONLY);
+    await clearPinLock('eve'); // the password was used
+    expect(await pinLockedUntil('eve')).toBe(0);
+  } finally {
+    Date.now = realNow;
+  }
+});

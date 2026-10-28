@@ -37,8 +37,16 @@ service cloud.firestore {
             // has joined. Nobody else gets the extra time.
             || resource.data.hostUid == request.auth.uid);
 
+      // SEC-1 (Cath's OK, 2026-10-27): a code can only point at a household its maker is a
+      // member of, and may carry only the fields the app writes. Before, anyone signed in
+      // could make a code for someone else's household and use it to join.
       allow create: if request.auth != null
-        && request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid', 'createdAt'])
+        && request.resource.data.keys().hasAll(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid', 'createdAt', 'existingHouseholdId'])
+        && request.resource.data.keys().hasOnly(['codeSalt', 'encryptedSecret', 'encryptedHostData', 'hostUsername', 'hostUid', 'createdAt', 'existingHouseholdId', 'isInvite'])
+        && request.resource.data.existingHouseholdId is string
+        && exists(/databases/$(database)/documents/households/$(request.resource.data.existingHouseholdId))
+        && request.auth.uid in get(/databases/$(database)/documents/households/$(request.resource.data.existingHouseholdId)).data.members
+        && (!('isInvite' in request.resource.data) || request.resource.data.isInvite is bool)
         && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.hostUid is string
         && request.resource.data.codeSalt is string
@@ -49,6 +57,8 @@ service cloud.firestore {
 
       allow update: if request.auth != null
         && request.resource.data.hostUid == resource.data.hostUid
+        // SEC-1: which household a code is for can never change after it's made.
+        && request.resource.data.get('existingHouseholdId', null) == resource.data.get('existingHouseholdId', null)
         && (
           // Host updating their own code
           request.auth.uid == resource.data.hostUid
@@ -123,6 +133,8 @@ service cloud.firestore {
         && request.resource.data.lastJoinCode is string
         && exists(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode))
         && get(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode)).data.existingHouseholdId == householdId
+        // SEC-1: and the code was made by someone who is in this household.
+        && get(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode)).data.hostUid in resource.data.members
         && request.time < get(/databases/$(database)/documents/linkCodes/$(request.resource.data.lastJoinCode)).data.createdAt + duration.value(15, 'm')
         && (!('memberUsernames' in request.resource.data)
             || (request.resource.data.memberUsernames is map

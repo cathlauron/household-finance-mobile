@@ -34,17 +34,29 @@ export function joinCodeFromUrl(url: string | null | undefined): string | null {
   return codeFromScan(url.split('#')[0].split('?')[0]);
 }
 
-let pending: { code: string; at: number } | null = null;
+// SEC-7: the inviter's first name from the link (n=...), only to ask "Join Cath's household?".
+export function inviterFromUrl(url: string | null | undefined): string | null {
+  const m = (url || '').match(/[#&]n=([^&]+)/);
+  if (!m) return null;
+  try {
+    const name = decodeURIComponent(m[1]).replace(/[\u0000-\u001f<>{}\[\]\\/"`]/g, '').trim().slice(0, 30);
+    return name || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+let pending: { code: string; at: number; from?: string | null } | null = null;
 const listeners = new Set<() => void>();
 
-export function setPendingJoinCode(code: string) {
-  pending = { code, at: Date.now() };
+export function setPendingJoinCode(code: string, from?: string | null) {
+  pending = { code, at: Date.now(), from: from || null };
   AsyncStorage.setItem(KEY, JSON.stringify(pending)).catch(() => {});
   listeners.forEach((fn) => fn());
 }
 
 // Takes the waiting code (once). Null when none, or when it's older than 15 minutes.
-export async function takePendingJoinCode(): Promise<string | null> {
+export async function takePendingJoinLink(): Promise<{ code: string; from: string | null } | null> {
   let p = pending;
   if (!p) {
     try {
@@ -57,7 +69,10 @@ export async function takePendingJoinCode(): Promise<string | null> {
   pending = null;
   AsyncStorage.removeItem(KEY).catch(() => {});
   if (!p || typeof p.code !== 'string' || Date.now() - (p.at || 0) > KEEP_MS) return null;
-  return p.code;
+  return { code: p.code, from: typeof p.from === 'string' ? p.from : null };
+}
+export async function takePendingJoinCode(): Promise<string | null> {
+  return (await takePendingJoinLink())?.code ?? null;
 }
 
 export function onPendingJoinCode(fn: () => void): () => void {

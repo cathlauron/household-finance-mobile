@@ -114,6 +114,20 @@ export function rescheduleBillNotifications(model: HouseholdModel): Promise<void
   return running;
 }
 
+// SEC-2 (Cath's OK, 2026-10-27): signing out, being signed out from another phone, or
+// switching account takes every waiting reminder (they carry names and amounts) off this
+// phone, and clears the ones already showing. The next account sets up its own on opening.
+export async function clearAllReminders(): Promise<void> {
+  queued = null;
+  if (running) await running.catch(() => {});
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await Notifications.dismissAllNotificationsAsync();
+  } catch (e) {
+    console.warn('Could not clear reminders:', e);
+  }
+}
+
 // A cancel-by reminder for today, set after 9:00, fires once, a minute after it was first
 // set up. That moment is remembered so later saves don't keep pushing it back (it used to
 // move a minute later on every save and never arrive) or send it again once it has fired.

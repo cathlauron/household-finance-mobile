@@ -441,7 +441,8 @@ export async function cancelLinkCode(code: string): Promise<void> {
   try {
     await deleteDoc(doc(db, 'linkCodes', code));
   } catch (e: any) {
-    console.warn(`Could not delete linkCodes/${code}:`, e?.message || e);
+    // SEC-7: the code itself is never written to the log.
+    console.warn('Could not delete a link code:', e?.message || e);
   }
 }
 
