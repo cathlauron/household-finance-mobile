@@ -1167,3 +1167,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Lesson: never pipe the check gate (a failing commit b593c9d slipped through, fixed in
   29c7f1b; skill updated). Phone: TEST-3 section 14. NEXT: E2 dropdowns on every form,
   F2 banner + F3 list, D2 inside Edit loan, strikethrough after her B3/B4 pick, H-53.
+
+- NEWEST (2026-10-29, late, v3 7968595): Cath: "device test is as described" (s14); picked
+  B14 (paid look) and L4 (Left to Spend page). BUILT + PROVEN: B14 paid look (B-062), L4 page
+  (B-063), H-53 guest picks (B-064). Phone: TEST-3 section 15. NEXT: E2 dropdowns on every
+  form, F2 banner + F3 list, D2 inside Edit loan.
