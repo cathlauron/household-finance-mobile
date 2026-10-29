@@ -15,6 +15,18 @@ const NOT_DATA = /Clear search|Clear filter|Show all|clear the date|Dismiss/i;
 // Buttons that only call the onDelete they were given: checked by the swipe test below.
 const PASSES_ON = /^onDelete$|swipeableRef\.current\?\.close\(\)[\s\S]*onDelete\(\)/;
 
+// Just a button's own opening tag (its label and onPress), not a button nested inside it.
+function openTag(block) {
+  let depth = 0;
+  for (let i = 1; i < block.length; i++) {
+    const c = block[i];
+    if (c === '{') depth++;
+    else if (c === '}') depth--;
+    else if (c === '>' && depth === 0 && block[i - 1] !== '=') return block.slice(0, i + 1);
+  }
+  return block;
+}
+
 function handlerBody(src, name) {
   const m = new RegExp(`(function ${name}\\b|const ${name} = )`).exec(src);
   if (!m) return '';
@@ -38,12 +50,15 @@ test('H-49: every Remove / Delete / Clear button asks first', () => {
         // An icon-only remove button (close / trash icon) counts too, label or not.
         const iconOnly = /<Ionicons name="(close|close-circle|close-circle-outline|trash|trash-outline)"/.test(block) && !/<Text/.test(block);
         if (iconOnly && !/accessibilityLabel/.test(block)) missing.push(`${f}: an icon-only remove button with no label: ${block.slice(0, 90)}`);
-        const label = (/accessibilityLabel=\{?[`'"]([^`'"]*)/.exec(block) || [])[1] || '';
-        const words = (/label=["']([^"']*)/.exec(block) || [])[1] || (/<Text[^>]*>([^<{]*)/.exec(block) || [])[1] || '';
+        const tag = openTag(block);
+        // A button with another button inside: the inner one is checked on its own.
+        const inner = block.slice(tag.length).includes('<TouchableOpacity');
+        const label = (/accessibilityLabel=\{?[`'"]([^`'"]*)/.exec(tag) || [])[1] || '';
+        const words = inner ? '' : (/label=["']([^"']*)/.exec(tag) || [])[1] || (/<Text[^>]*>([^<{]*)/.exec(block) || [])[1] || '';
         const what = `${label} ${words}`.trim();
         if (!/^(Remove|Delete|Clear)\b/.test(label) && !/^(Remove|Delete|Clear)\b/.test(words.trim())) continue;
         if (NOT_DATA.test(what)) continue;
-        const onPress = (/onPress=\{([\s\S]*?)\}\s*(accessibility|style|hitSlop|testID|>|variant|label|\/)/.exec(block) || [])[1] || '';
+        const onPress = (/onPress=\{([\s\S]*?)\}\s*(accessibility|style|hitSlop|testID|>|variant|label|disabled|\/)/.exec(tag) || [])[1] || '';
         if (ASKS.test(onPress) || PASSES_ON.test(onPress.trim())) continue;
         const called = /^\(\) => (?:\w+\.)?(\w+)\(|^(\w+)$/.exec(onPress.trim());
         const name = called && (called[1] || called[2]);

@@ -219,7 +219,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
         {edit?.amountLocked ? (
           <Text style={[styles.editAmount, { color: colors.ink, textAlign: 'center' }]} testID="pay-edit-amount-locked">{formatPeso(edit.minAmount)}</Text>
         ) : (
-          <AmountInput centered value={payAmount} onChangeAmount={(v) => { setPayAmount(v); setError(''); }} inputStyle={[styles.editAmount, { color: direction === 'in' ? colors.positive : colors.ink }]} />
+          <AmountInput centered testID="pay-amount-input" value={payAmount} onChangeAmount={(v) => { setPayAmount(v); setError(''); }} inputStyle={[styles.editAmount, { color: direction === 'in' ? colors.positive : colors.ink }]} />
         )}
         {!!edit && (
           <Text style={[styles.note, { color: colors.inkDim, textAlign: 'center', marginLeft: 0 }]} testID="pay-edit-amount-note">

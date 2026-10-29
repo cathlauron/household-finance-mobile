@@ -9,6 +9,7 @@ import { useTheme } from '../ThemeContext';
 // anything is typed, then sits right after the digits.
 
 type Props = {
+  testID?: string;
   value: number | '' | undefined;
   onChangeAmount: (value: number | '') => void;
   onBlur?: () => void;
@@ -32,7 +33,7 @@ function fromValue(value: number | '' | undefined): string {
   return typeof value === 'number' && !isNaN(value) ? String(Math.round(value * 100) / 100) : '';
 }
 
-export default function CenteredAmount({ value, onChangeAmount, onBlur, placeholder = '0.00', allowDecimals = true, style, inputStyle, autoFocus, focusRef }: Props) {
+export default function CenteredAmount({ value, onChangeAmount, onBlur, placeholder = '0.00', allowDecimals = true, style, inputStyle, autoFocus, focusRef, testID }: Props) {
   const { colors } = useTheme();
   const flat = StyleSheet.flatten(inputStyle) || {};
   const size = (flat.fontSize as number) || 40;
@@ -107,6 +108,7 @@ export default function CenteredAmount({ value, onChangeAmount, onBlur, placehol
       {/* Before anything is typed, the cursor sits in the middle of the grey ₱0.00. */}
       {focused && empty && caret({ position: 'absolute', alignSelf: 'center' })}
       <TextInput
+        testID={testID}
         ref={inputRef}
         value={buffer}
         onChangeText={handleChangeText}

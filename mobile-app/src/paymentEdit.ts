@@ -2,6 +2,9 @@ import type { BillCycle, HouseholdModel, LoanPayment, PaymentMethod } from './ty
 import { happenedSinceUpdate } from './balanceProjection';
 import { takeOffSavedBalance } from './takeOffBalance';
 import { todayISO } from './dateUtils';
+import { withFeeEntry } from './payFees';
+import { loanCoverage } from './loanSchedule';
+import { makeId } from './utils';
 
 // H-48 (Cath, 2026-10-29, canvas C1-C3): Undo is offered only for 15 minutes after a payment
 // is logged. After that the payment can still be EDITED: a receipt added, the amount raised
@@ -94,4 +97,38 @@ export function editCyclePayment(model: HouseholdModel, kind: 'bill' | 'debt', r
   let m: HouseholdModel = kind === 'bill' ? { ...model, bills: model.bills.map(upd) } : { ...model, debts: model.debts.map(upd) };
   if (!c.recordedOnly) m = correctSaved(m, { amount: num(c.amountPaid), date: c.paidDate, pm: c.paymentMethod, at: c.paidAt }, { amount, date: next.paidDate, pm: next.paymentMethod, at: c.paidAt }, 1);
   return m;
+}
+
+// Logging a loan payment (the loan's page and, H-50 D2, inside Edit loan: the same steps).
+// It covers the oldest scheduled payment still open; a fee is its own Fees entry; "take it
+// off my balance" takes it off the typed-in balance; "Just record it" uses no account.
+export function withLoanPayment(
+  model: HouseholdModel,
+  loanId: string,
+  p: { pm?: PaymentMethod; amount: number; date: string; takeOff?: boolean; fee?: number; receipt?: string; recordedOnly?: boolean }
+): { model: HouseholdModel; payment: LoanPayment | null } {
+  const loan = (model.loans || []).find((l) => l.id === loanId);
+  if (!loan || !(p.amount > 0)) return { model, payment: null };
+  const lent = loan.direction === 'lent';
+  const fee = num(p.fee);
+  const openFor = loanCoverage(loan, todayISO()).nextOpen;
+  const feeTxnId = !p.recordedOnly && fee > 0 && !lent ? makeId('txn') : undefined;
+  const payment: LoanPayment = p.recordedOnly
+    ? { id: makeId('lpay'), date: p.date, actual: p.amount, recordedOnly: true, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}), ...(p.receipt ? { receiptPhoto: p.receipt } : {}) }
+    : { id: makeId('lpay'), date: p.date, actual: p.amount, paymentMethod: p.pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 && !lent ? { fee, feeTxnId } : {}), ...(p.receipt ? { receiptPhoto: p.receipt } : {}) };
+  let m: HouseholdModel = { ...model, loans: model.loans.map((l) => (l.id === loanId ? { ...l, actualPayments: [...(l.actualPayments || []), payment] } : l)) };
+  if (!p.recordedOnly && !lent && p.pm) {
+    m = withFeeEntry(m, { amount: fee, label: loan.name || 'Loan', date: p.date, paymentMethod: p.pm, id: feeTxnId });
+    if (p.takeOff) m = takeOffSavedBalance(m, p.pm, p.amount + fee);
+  }
+  return { model: m, payment };
+}
+
+// Undo (within 15 minutes): the payment and its fee entry go.
+export function withoutLoanPayment(model: HouseholdModel, loanId: string, paymentId: string): HouseholdModel {
+  const loan = (model.loans || []).find((l) => l.id === loanId);
+  const p = loan?.actualPayments.find((x) => x.id === paymentId);
+  if (!loan || !p) return model;
+  const base = p.feeTxnId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== p.feeTxnId) } : model;
+  return { ...base, loans: base.loans.map((l) => (l.id === loanId ? { ...l, actualPayments: l.actualPayments.filter((x) => x.id !== paymentId) } : l)) };
 }

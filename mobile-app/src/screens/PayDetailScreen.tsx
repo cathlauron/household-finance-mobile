@@ -17,7 +17,7 @@ import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
 import { ReceiptViewer, ReceiptMark } from '../components/ReceiptField';
 import UndoPayment from '../components/UndoPayment';
-import { editCyclePayment, editLoanPayment, cycleAmountLocked } from '../paymentEdit';
+import { editCyclePayment, editLoanPayment, cycleAmountLocked, withLoanPayment, withoutLoanPayment } from '../paymentEdit';
 import DeleteRow from '../components/DeleteRow';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -511,41 +511,19 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   function logPayment(pm: PaymentMethod, amountPaid?: number, _lateFee?: number, date: string = today, takeOff = false, fee = 0, receiptPhoto?: string) {
     const paidNow = typeof amountPaid === 'number' && amountPaid > 0 ? amountPaid : payAmount;
     if (paidNow <= 0) return;
-    const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
-    const feeTxnId = fee > 0 && !lent ? makeId('txn') : undefined;
-    const next: Loan = {
-      ...loan,
-      actualPayments: [
-        ...(loan.actualPayments || []),
-        // Version 3: it covers the oldest scheduled payment still open (a missed one first).
-        { id: makeId('lpay'), date, actual: paidNow, paymentMethod: pm, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 && !lent ? { fee, feeTxnId } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) },
-      ],
-    };
-    let updated = { ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) };
-    if (!lent) updated = withFeeEntry(updated, { amount: fee, label: loan.name || 'Loan', date, paymentMethod: pm, id: feeTxnId });
-    if (takeOff && !lent) updated = takeOffSavedBalance(updated, pm, paidNow + fee);
-    save(updated, lent ? 'Received' : 'Paid');
+    // Shared with Edit loan (H-50 D2): paymentEdit.withLoanPayment.
+    save(withLoanPayment(model, loan.id, { pm, amount: paidNow, date, takeOff, fee, receipt: receiptPhoto }).model, lent ? 'Received' : 'Paid');
   }
   function recordPayment(amountPaid: number, fee: number, date: string, receiptPhoto?: string) {
     if (amountPaid <= 0) return;
-    const openFor = loanCoverage(loan, today).nextOpen;
     setPayOpen(false);
-    const next: Loan = {
-      ...loan,
-      actualPayments: [
-        ...(loan.actualPayments || []),
-        { id: makeId('lpay'), date, actual: amountPaid, recordedOnly: true, createdAt: Date.now(), ...(openFor ? { forDate: openFor } : {}), ...(fee > 0 ? { fee } : {}), ...(receiptPhoto ? { receiptPhoto } : {}) },
-      ],
-    };
-    save({ ...model, loans: (model.loans || []).map((l) => (l.id === loan.id ? next : l)) }, 'Recorded');
+    save(withLoanPayment(model, loan.id, { amount: amountPaid, date, fee, receipt: receiptPhoto, recordedOnly: true }).model, 'Recorded');
   }
   function undoPayment() {
     const last = lastLogged;
     if (!last) return;
-    const next: Loan = { ...loan, actualPayments: (loan.actualPayments || []).filter((p) => p.id !== last.id) };
-    const base = last.feeTxnId ? { ...model, manualTransactions: (model.manualTransactions || []).filter((t) => t.id !== last.feeTxnId) } : model;
-    save({ ...base, loans: (base.loans || []).map((l) => (l.id === loan.id ? next : l)) });
+    save(withoutLoanPayment(model, loan.id, last.id));
   }
 
   return (
