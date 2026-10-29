@@ -1124,3 +1124,17 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   email check / Delete account; publishing: privacy policy, Play listing, App Check;
   Premium payments; smart features; widgets; Help & FAQ; linked-household extras;
   security later items SEC-4, SEC-6, new key on removal; sheet rebuild for smoothness).
+
+- NEWEST (2026-10-29, v3 abee78e): Cath's new priority list is logged in BUG-HUNT.md as
+  H-39..H-47 (on v3): Transactions newest to the second; Debts show paid like Bills; "still
+  to pay this month" totals on Debts (+ no-due-date total) and everywhere; idle lock counts
+  in the background; who-added tag everywhere; trips fully editable + log with no account;
+  paid struck through (MOCKUP FIRST); real dropdowns with a guessed category (MOCKUP PER
+  SCREEN FIRST); loans' next payment due still wrong (came back after B-047, ask Cath for
+  the loan's details). Skills improved first, at her request: finance-flow-bug-check now has
+  "Fix directly, or ask first" (her picks: wrong logic with no look change, missing piece of
+  an agreed rule, small text/alignment, crashes/frozen screens), "Cath's app-wide rules"
+  (the list above as standing rules), "Same kind of thing, same behaviour", "When a fixed
+  bug comes back", and a FULL SWEEP (data, rules, smoothness, security) before EVERY batch
+  handed to her. Smoothness skill points to it. Cath: K5 step 1 tested OK; new work on v3.
+  Next: work H-39..H-47 in her order; mockups for H-45 and H-46 before building them.
