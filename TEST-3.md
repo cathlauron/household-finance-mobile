@@ -179,3 +179,23 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
    Calculator > a line's x and Clear; a meal's ingredient x; an event item's x; a receipt
    photo's Remove. Each one: Cancel keeps it, Remove removes it.
 6. Look around: nothing else looks or moves differently.
+
+## 14. Batch 2026-10-29 (night). NOT YET TESTED.
+
+1. To-Pay > Debts (A2): one card with "Still to pay this month", "No due date" total and
+   "Paid this month: X of Y debts". Sections Overdue / This week / Later this month / Coming
+   up / No due date. Pay a debt: it shows under "Paid this month" with a Paid tag.
+2. Home > Left to Spend > swipe to "Where it comes from": "In your accounts now", then one
+   line each (Past due, Bills, Debts, Loans, Groceries list, Trips, Events, ...), and they add
+   up to Left to Spend. No "Other changes". Olive's Oct 16 is in Past due until you pay it.
+3. Log a loan or bill payment: "Undo ..." shows with "Undo is there for 15 more minutes".
+   After 15 minutes it's gone. Tap the payment in Payments / History: "Edit payment" opens
+   with the note. Try a lower amount (refused), then a higher one, a different date or
+   account, add a receipt > Save. The account's balance follows.
+4. Shared > tap a settle-up older than 15 minutes: no Undo, it says to record a payment back.
+   Move money older than 15 minutes: no Undo, it says to make a move back.
+5. Edit loan > Payments: rows look like the loan page (month, "Paid Aug 16 · Cash", amount),
+   newest first; the x only on payments added in the last 15 minutes or not saved yet.
+6. Tap Add (or Save) twice very quickly on a new transaction, a move, or any big button:
+   it's saved once.
+7. Look around: Bills' "Paid this month" rows say "Paid Oct 20" (not 2026-10-20).

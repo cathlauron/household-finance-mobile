@@ -185,3 +185,8 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 - H-45: wants the WHOLE ROW struck through: new mockup first.
 - H-52: Left to Spend only seemed to count bills. Rule (her answers): take off past due unpaid, bills, dated debts, unpaid loan payments, groceries list, trips before payday, events before payday, savings plans, other planned amounts; not no-date debts; one breakdown line each.
 - Flaky checks (2026-10-29, not app bugs): `__tests__/TransactionDoubleTap.test.tsx` and `__tests__/InlineHeights.test.tsx` sometimes fail only in the full `check:all` run (the form / page isn't ready yet under load) and pass alone every time. To do: make them wait for the element instead of a fixed moment.
+
+### Status 2026-10-29 night
+- PROVEN: H-40/H-41 Debts A2 (B-059), H-52 Left to Spend (B-060), H-48 Undo 15 min + Edit payment (B-061), H-50 D1 look (B-061), B-058 double-tap saves.
+- Next batch: H-46 dropdowns E2 on every form; H-51 household changes banner F2 then list F3; H-50 D2 (inside Edit loan: "Log a payment" opens the pay sheet, tap a payment to edit: needs a sheet over the form); H-45 strikethrough waits for Cath's B3/B4 pick.
+- H-53 (found 2026-10-29 in the hidden browser, not checked yet): Home's "YOU PICKED" card says "Your first bill goes here" in a household that already has bills.
