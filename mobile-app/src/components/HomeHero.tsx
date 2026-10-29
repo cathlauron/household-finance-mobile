@@ -222,21 +222,17 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
                 <Text style={[styles.bLabel, { color: dim }]}>In your accounts now</Text>
                 <Text style={styles.bVal}>{money(breakdown.now)}</Text>
               </View>
-              {breakdown.lines.slice(0, 4).map((l) => (
-                <View key={l.label} style={styles.bRow}>
+              {/* H-52 (Cath, 2026-10-29): one line each (past due, bills, debts, loans, plans...);
+                  the total below says until when. */}
+              {breakdown.lines.map((l) => (
+                <View key={l.label} style={styles.bRow} testID={`lts-line-${l.label}`}>
                   <Text style={[styles.bLabel, { color: dim }]} numberOfLines={1}>
                     {l.amount < 0 ? '− ' : '+ '}
-                    {l.label} {basis === 'payday' ? 'before payday' : 'this month'}
+                    {l.label}
                   </Text>
                   <Text style={styles.bVal}>{money(Math.abs(l.amount))}</Text>
                 </View>
               ))}
-              {breakdown.lines.length > 4 && (
-                <View style={styles.bRow}>
-                  <Text style={[styles.bLabel, { color: dim }]}>{breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0) < 0 ? '− ' : '+ '}Everything else</Text>
-                  <Text style={styles.bVal}>{money(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
-                </View>
-              )}
               {breakdown.lines.length === 0 && (
                 <Text style={[styles.bLabel, { color: dim, marginVertical: 2 }]}>Nothing planned to go out {basis === 'payday' ? 'before payday' : 'this month'}.</Text>
               )}

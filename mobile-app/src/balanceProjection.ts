@@ -28,7 +28,7 @@ import { accountEffect as investmentAccountEffect } from './investments';
 import { isCyclePaid, lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
-import { leftToSpendExtras } from './leftToSpendExtras';
+import { leftToSpendAmount } from './leftToSpendExtras';
 
 export type CalendarEvent = {
   type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
@@ -712,15 +712,10 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
       : dayBefore
     : new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const basis: 'payday' | 'endOfMonth' = payDate ? 'payday' : 'endOfMonth';
-  const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
-  // H-11 (2026-10-22): rounded to centavos (sums like 0.30 - 0.10 - 0.20 land a hair below
-  // zero, which showed "-₱0.00" and "Over budget"). `+ 0` turns -0 into 0.
-  const projected = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
-  // H-52 (Cath, 2026-10-29): everything else due before payday that the projection misses
-  // (past due, loans set right, the grocery list, trips, events). leftToSpendExtras.ts.
-  const extras = leftToSpendExtras(model, today, targetDate).reduce((s, l) => s + l.amount, 0);
-  const raw = projected + extras;
-  const amount = Math.round(raw * 100) / 100 + 0;
+  // H-52 (Cath, 2026-10-29): what is in your accounts now, minus everything still to pay up
+  // to the day before payday (past due included), and plans. leftToSpendExtras.ts.
+  // H-11 (2026-10-22): rounded to centavos; `+ 0` turns -0 into 0.
+  const amount = leftToSpendAmount(model, today, targetDate).amount;
   return { amount, targetDate, basis };
 }
 
@@ -734,48 +729,9 @@ export function leftToSpendBreakdown(model: HouseholdModel, result: LeftToSpendR
   now: number;
   lines: LeftToSpendLine[];
 } {
-  const now = totalCurrentBalance(model);
-  const start = stripTime(today);
-  const end = stripTime(result.targetDate);
-  const sums: Record<string, number> = {};
-  const LABEL: Record<CalendarEvent['type'], string> = {
-    bill: 'Bills',
-    debt: 'Debts',
-    loan: 'Loans',
-    saving: 'Savings top-ups',
-    manual: 'Planned transactions',
-    income: 'Income',
-  };
-  let y = start.getFullYear();
-  let m = start.getMonth();
-  while (y < end.getFullYear() || (y === end.getFullYear() && m <= end.getMonth())) {
-    const events = computeMonthEvents(model, y, m);
-    Object.keys(events).forEach((dayStr) => {
-      const d = stripTime(new Date(y, m, parseInt(dayStr, 10)));
-      if (d <= start || d > end) return;
-      events[parseInt(dayStr, 10)].forEach((ev) => {
-        const key = LABEL[ev.type];
-        sums[key] = (sums[key] || 0) + eventDelta(ev);
-      });
-    });
-    m += 1;
-    if (m > 11) {
-      m = 0;
-      y += 1;
-    }
-  }
-  // H-52: one line each for past due, the grocery list, trips and events (and loans set right).
-  for (const l of leftToSpendExtras(model, today, result.targetDate)) {
-    sums[l.label] = (sums[l.label] || 0) + l.amount;
-  }
-  const lines: LeftToSpendLine[] = Object.keys(sums)
-    .filter((k) => Math.abs(sums[k]) >= 0.005)
-    .map((k) => ({ label: k, amount: Math.round(sums[k] * 100) / 100 }))
-    .sort((a, b) => a.amount - b.amount);
-  const counted = now + lines.reduce((sum, l) => sum + l.amount, 0);
-  const other = Math.round((result.amount - counted) * 100) / 100;
-  if (Math.abs(other) >= 0.5) lines.push({ label: 'Other changes', amount: other });
-  return { now, lines };
+  // H-52: the same lines Left to Spend is made of, so they always add up to it exactly.
+  const r = leftToSpendAmount(model, today, result.targetDate);
+  return { now: r.now, lines: r.lines };
 }
 
 // Same three-tier red/orange/green shape as SavingsScreen's getEfStatus() — red when

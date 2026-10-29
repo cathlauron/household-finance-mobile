@@ -4,7 +4,7 @@
 // don't; plans: groceries list, trips and events before payday, savings plans, anything else.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { leftToSpendExtras } from '../src/leftToSpendExtras.ts';
+import { leftToSpendLines as leftToSpendExtras } from '../src/leftToSpendExtras.ts';
 import { defaultModel } from '../src/defaultModel.ts';
 
 const today = new Date(2026, 9, 29); // Thu Oct 29 2026
@@ -35,10 +35,12 @@ test('a bill past due before the balances were updated comes off; a no-date debt
   assert.equal(sum(lines), -2350.45);
 });
 
-test('past due AFTER the balances were updated is already in the projection: not taken off twice', () => {
+test('past due comes off once, whenever the balances were last typed in; paid rounds do not', () => {
   const m = base('2026-10-01');
-  m.bills = [{ id: 'b', name: 'Meralco', category: '', recurringType: 'monthly', dueDate: { day: '20' }, priority: '', owner: '', notes: '', cycles: [{ id: 'c1', dueDate: '2026-10-20', amountDue: 2350.45, amountPaid: '', paidDate: '', notes: '' }] }];
-  assert.equal(line(leftToSpendExtras(m, today, target), 'Past due'), 0);
+  m.bills = [{ id: 'b', name: 'Meralco', category: '', recurringType: 'monthly', dueDate: { day: '20' }, priority: '', owner: '', notes: '', cycles: [
+    { id: 'c0', dueDate: '2026-09-20', amountDue: 2000, amountPaid: 2000, paidDate: '2026-09-20', notes: '' },
+    { id: 'c1', dueDate: '2026-10-20', amountDue: 2350.45, amountPaid: '', paidDate: '', notes: '' }] }];
+  assert.equal(line(leftToSpendExtras(m, today, target), 'Past due'), -2350.45);
 });
 
 test('plans: grocery list, a trip and an event before payday (less what is already saved in their pots)', () => {
@@ -59,12 +61,13 @@ test('plans: grocery list, a trip and an event before payday (less what is alrea
   assert.equal(line(lines, 'Events'), -3000);
 });
 
-test('a loan payment paid ahead (before the balances were updated) is not taken off again', () => {
+test('a loan payment paid ahead is not taken off again', () => {
   const m = base('2026-10-27');
   m.loans = [{ id: 'l', name: 'Pag-IBIG', totalAmount: 60000, expectedPayment: 5000, direction: 'borrowed', owner: 'shared', recurringType: 'monthly', dueDate: { day: '5', firstDate: '2026-10-05' },
     actualPayments: [{ id: 'a', date: '2026-10-05', actual: 5000 }, { id: 'b', date: '2026-10-26', actual: 5000 }] }];
-  // Nov 5 is already paid (Oct 26, already in the balances): the projection took it off, so it comes back.
-  assert.equal(line(leftToSpendExtras(m, today, target), 'Loans'), 5000);
+  // Nov 5 is already paid (Oct 26): nothing more to pay before payday.
+  assert.equal(line(leftToSpendExtras(m, today, target), 'Loans'), 0);
+  assert.equal(line(leftToSpendExtras(m, today, target), 'Past due'), 0);
 });
 
 test('nothing extra: no lines', () => {
@@ -84,3 +87,15 @@ test('H-52: Left to Spend itself goes down by the plans, and "Where it comes fro
   assert.equal(total, r.amount);
 });
 function iso(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
+import { leftToSpendAmount } from '../src/leftToSpendExtras.ts';
+test('H-52: payments logged since the balances were typed in are counted once (accounts now), never again', () => {
+  const m = base('2026-10-01');
+  m.balanceAccounts.cash = [{ id: 'c', name: 'Cash', amount: 50000 }];
+  m.loans = [{ id: 'l', name: 'Pag-IBIG', totalAmount: 60000, expectedPayment: 5000, direction: 'borrowed', owner: 'shared', recurringType: 'monthly', dueDate: { day: '5', firstDate: '2026-10-05' },
+    actualPayments: [{ id: 'a', date: '2026-10-05', actual: 5000, paymentMethod: { type: 'cash', accountId: 'c' } }, { id: 'b', date: '2026-10-26', actual: 5000, paymentMethod: { type: 'cash', accountId: 'c' } }] }];
+  const r = leftToSpendAmount(m, new Date(), new Date(Date.now() + 5 * 86400000));
+  assert.equal(r.now, 40000); // both payments already left Cash
+  assert.equal(r.amount, 40000 + r.lines.reduce((s, l) => s + l.amount, 0));
+  assert.ok(!r.lines.some((l) => l.label === 'Other changes'));
+});

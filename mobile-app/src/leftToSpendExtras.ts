@@ -1,5 +1,5 @@
-import type { HouseholdModel, Loan } from './types';
-import { computeMonthEvents } from './balanceProjection';
+import type { HouseholdModel } from './types';
+import { computeMonthEvents, eventDelta, totalCurrentBalance, type CalendarEvent } from './balanceProjection';
 import { isTrackedLoan, loanCoverage, loanScheduledDates } from './loanSchedule';
 import { nextEventDate, eventBudget } from './eventDates';
 
@@ -9,81 +9,83 @@ import { nextEventDate, eventBudget } from './eventDates';
 // their own total on Debts); plans not yet paid or bought come off: the grocery list, trips
 // that start before payday, events before payday, and any other planned amount.
 //
-// Left to Spend itself is a projection from the saved account balances ("as of" a date)
-// through the calendar's events up to the day before payday. These lines are only what that
-// projection misses, so nothing is counted twice:
-// - Past due: bill / debt rounds and loan payments due ON OR BEFORE the balances' "as of"
-//   date and still unpaid (later ones are already in the projection as events).
-// - Loans: the projection takes off every scheduled loan date, paid or not, and never the
-//   payments themselves. Each loan is set right: payments made after the "as of" date, plus
-//   what's still unpaid up to the Left to Spend date, minus what the projection took off.
-// - Groceries list, Trips, Events: planned and not yet bought / paid, less what is already
-//   saved for it in its own savings pot (that money already left the accounts).
+// Left to Spend = what is in your accounts NOW (the live balances, which already include
+// every payment logged) + the lines below, up to the day before payday. Every line is
+// something she can recognise on "Where it comes from", and they add up exactly:
+// - Past due: bill / debt rounds and loan payments whose date has passed, still unpaid.
+// - Bills, Debts (due today or later, unpaid), Loans (scheduled payments not paid yet;
+//   one paid ahead is not counted again), Savings top-ups and Planned transactions dated
+//   after today, and Income expected before payday (another person's payday, say).
+// - Groceries list, Trips (starting before payday), Events (before payday): planned, not
+//   yet bought or paid, less what is already saved for it in its own savings pot.
 // Savings pots that add "every payday" add ON the payday, so they come out of the next pay.
-// Each line is money that comes off (negative) or goes back (positive).
+// Each line is money coming in (+) or going out (-).
 
-export type ExtraLine = { label: string; amount: number };
+export type LeftToSpendLine = { label: string; amount: number };
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const cents = (n: number) => Math.round(n * 100) / 100;
 
-// What the projection took off for this loan between "as of" (not included) and the end date.
-function projectedLoanOut(model: HouseholdModel, loan: Loan, asOf: string, end: string): number {
-  let total = 0;
-  const from = new Date(asOf + 'T00:00:00');
-  const to = new Date(end + 'T00:00:00');
-  let y = from.getFullYear();
-  let m = from.getMonth();
-  while (y < to.getFullYear() || (y === to.getFullYear() && m <= to.getMonth())) {
-    const events = computeMonthEvents(model, y, m);
-    for (const day of Object.keys(events)) {
-      const d = iso(new Date(y, m, Number(day)));
-      if (d <= asOf || d > end) continue;
-      for (const ev of events[Number(day)]) if (ev.type === 'loan' && ev.id === loan.id) total += ev.amount;
-    }
-    m += 1;
-    if (m > 11) { m = 0; y += 1; }
-  }
-  return total;
-}
+const LABEL: Record<CalendarEvent['type'], string> = {
+  bill: 'Bills',
+  debt: 'Debts',
+  loan: 'Loans',
+  saving: 'Savings top-ups',
+  manual: 'Planned transactions',
+  income: 'Income',
+};
+// The order the lines are shown in (money in first, then what's due soonest to plans).
+const ORDER = ['Income', 'Past due', 'Bills', 'Debts', 'Loans', 'Savings top-ups', 'Planned transactions', 'Groceries list', 'Trips', 'Events'];
 
-export function leftToSpendExtras(model: HouseholdModel, today: Date, target: Date): ExtraLine[] {
+export function leftToSpendLines(model: HouseholdModel, today: Date, target: Date): LeftToSpendLine[] {
   const todayISO = iso(today);
   const end = iso(target);
-  const asOf = model.balanceAccounts?.asOfDate || todayISO;
   const sums: Record<string, number> = {};
   const add = (label: string, amount: number) => {
     if (Math.abs(amount) < 0.005) return;
     sums[label] = cents((sums[label] || 0) + amount);
   };
+  const tracked = new Set((model.loans || []).filter((l) => l.direction !== 'lent' && isTrackedLoan(l) && num(l.expectedPayment) > 0).map((l) => l.id));
 
-  // Past due bill and debt rounds, due on or before the "as of" date.
+  // The calendar's events from today to the Left to Spend date. Today: only bills and debts
+  // still unpaid (today's transactions, moves and paydays are already in the live balances).
+  let y = today.getFullYear();
+  let m = today.getMonth();
+  while (y < target.getFullYear() || (y === target.getFullYear() && m <= target.getMonth())) {
+    const events = computeMonthEvents(model, y, m);
+    for (const day of Object.keys(events)) {
+      const d = iso(new Date(y, m, Number(day)));
+      if (d < todayISO || d > end) continue;
+      for (const ev of events[Number(day)]) {
+        if (ev.type === 'loan' && ev.id && tracked.has(ev.id)) continue; // counted from its schedule below
+        if (d === todayISO && ev.type !== 'bill' && ev.type !== 'debt' && ev.type !== 'loan') continue;
+        add(LABEL[ev.type], eventDelta(ev));
+      }
+    }
+    m += 1;
+    if (m > 11) { m = 0; y += 1; }
+  }
+
+  // Past due bill and debt rounds.
   for (const rec of [...(model.bills || []), ...(model.debts || [])]) {
     for (const c of rec.cycles || []) {
-      if (!c.dueDate || c.dueDate >= todayISO || c.dueDate > asOf) continue;
+      if (!c.dueDate || c.dueDate >= todayISO) continue;
       const owed = num(c.amountDue) - num(c.amountPaid);
       if (owed > 0.005) add('Past due', -owed);
     }
   }
 
-  // Loans you owe that are tracked (a schedule from their first payment).
+  // Loans with a schedule: every scheduled payment up to the Left to Spend date that isn't
+  // paid yet (a part payment counts), past ones as Past due.
   for (const loan of model.loans || []) {
-    if (loan.direction === 'lent' || !isTrackedLoan(loan)) continue;
+    if (!tracked.has(loan.id)) continue;
     const each = num(loan.expectedPayment);
-    if (each <= 0) continue;
     const cov = loanCoverage(loan, todayISO);
-    const left = (d: string) => (cov.covered[d] ? 0 : d === cov.nextOpen ? cov.leftForNext : each);
-    const dates = loanScheduledDates(loan, end);
-    const pastDue = dates.filter((d) => d < todayISO && d <= asOf).reduce((s, d) => s + left(d), 0);
-    const unpaid = dates.reduce((s, d) => s + left(d), 0);
-    const paidSince = (loan.actualPayments || [])
-      .filter((p) => !p.recordedOnly && p.date > asOf && p.date <= todayISO)
-      .reduce((s, p) => s + num(p.actual), 0);
-    const projected = projectedLoanOut(model, loan, asOf, end);
-    const correction = -(paidSince + unpaid - projected);
-    add('Past due', -pastDue);
-    add('Loans', correction + pastDue);
+    for (const d of loanScheduledDates(loan, end)) {
+      const left = cov.covered[d] ? 0 : d === cov.nextOpen ? cov.leftForNext : each;
+      add(d < todayISO ? 'Past due' : 'Loans', -left);
+    }
   }
 
   // Plans not yet bought or paid.
@@ -104,5 +106,15 @@ export function leftToSpendExtras(model: HouseholdModel, today: Date, target: Da
     add('Events', -Math.max(0, eventBudget(ev) - potSaved(ev.savingsGoalId)));
   }
 
-  return Object.keys(sums).filter((k) => Math.abs(sums[k]) >= 0.005).map((label) => ({ label, amount: sums[label] }));
+  return Object.keys(sums)
+    .filter((k) => Math.abs(sums[k]) >= 0.005)
+    .sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
+    .map((label) => ({ label, amount: sums[label] }));
+}
+
+// Left to Spend: the live balances now plus every line above.
+export function leftToSpendAmount(model: HouseholdModel, today: Date, target: Date): { now: number; lines: LeftToSpendLine[]; amount: number } {
+  const now = cents(totalCurrentBalance(model));
+  const lines = leftToSpendLines(model, today, target);
+  return { now, lines, amount: cents(now + lines.reduce((s, l) => s + l.amount, 0)) + 0 };
 }
