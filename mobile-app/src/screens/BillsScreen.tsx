@@ -661,7 +661,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                   key={bill.id}
                   icon={bill.regular ? 'heart-outline' : bill.isSubscription ? 'repeat' : 'flash-outline'}
                   title={bill.name || 'Untitled bill'}
-                  sub={`${bill.regular ? 'Sent' : 'Paid'} ${paidCycles(bill)[0]?.paidDate ?? ''}`}
+                  sub={`${bill.regular ? 'Sent' : 'Paid'} ${paidCycles(bill)[0]?.paidDate ? dateText(new Date(paidCycles(bill)[0].paidDate + 'T00:00:00')) : ''}`}
                   amount={formatPeso(Number(paidCycles(bill)[0]?.amountPaid) || 0)}
                   amountColor={colors.inkDim}
                   badge={{ text: bill.regular ? 'Sent' : 'Paid', tone: 'paid' }}
