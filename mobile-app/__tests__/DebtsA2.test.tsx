@@ -44,4 +44,7 @@ test('A2: paid this month shows, with the no-due-date total', async () => {
   expect(screen.getAllByText('No due date', { exact: false }).length).toBe(2);
   expect(screen.getByTestId('debts-no-date-total').props.children).toBe('₱3,000.00');
   expect(screen.getByText('Still to pay this month')).toBeTruthy();
+  // H-45 (canvas B14): the paid row has its one line from the name to the amount; unpaid rows don't.
+  expect(screen.getByTestId('debt-paid-row-a-paid-line')).toBeTruthy();
+  expect(screen.queryByTestId('debt-row-k-paid-line')).toBeNull();
 }, 30000);

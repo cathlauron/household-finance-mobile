@@ -50,6 +50,7 @@ import BottomSheet from '../components/BottomSheet';
 import { SheetBar, BigTotal, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, GroupLabel, InlineField, InlineAmount, useOpenRow } from '../components/SimpleForm';
 
 import { askToRemove } from '../askToRemove';
+import { PaidLine, paidRowContent } from '../components/PaidLine';
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
     .filter((i) => i.checked)
@@ -841,9 +842,10 @@ export default function TravelScreen() {
                           >
                             {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                           </TouchableOpacity>
-                          <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }} onPress={() => openEditModal(t)} accessibilityRole="button">
+                          <TouchableOpacity style={[{ flex: 1, flexDirection: 'row', alignItems: 'center' }, item.checked && paidRowContent]} onPress={() => openEditModal(t)} accessibilityRole="button">
+                            {item.checked && <PaidLine testID={`travel-item-paid-${item.id}`} />}
                             <View style={{ flex: 1, marginRight: 8 }}>
-                              <Text style={[styles.tripName, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title || 'Item'}</Text>
+                              <Text style={styles.tripName} numberOfLines={1}>{item.title || 'Item'}</Text>
                               <Text style={styles.tripSub} numberOfLines={2}>
                                 {[item.checked ? paidLine(item) : '', item.note?.trim() || '', who.others(item.addedBy) ? `added by ${who.nameOf(item.addedBy)}` : ''].filter(Boolean).join(' · ') || 'Not paid yet'}
                               </Text>
@@ -854,7 +856,7 @@ export default function TravelScreen() {
                               </TouchableOpacity>
                             )}
                             {/* Blue while it's only planned; crossed out in red once it's paid (it now counts as money out). */}
-                            <Text style={[styles.tripAmount, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
+                            <Text style={[styles.tripAmount, item.checked ? { color: colors.negative } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
                           </TouchableOpacity>
                         </View>
                       ))}

@@ -27,6 +27,7 @@ import { useStickyState } from '../stickyState';
 
 import { useWho } from '../components/WhoLogged';
 import { askToRemove } from '../askToRemove';
+import { PaidLine, paidRowContent } from '../components/PaidLine';
 // Redesign: Groceries (Plan › Groceries), matching the Finance Flow mockup.
 // List: tick items off as you shop; "Finish trip" adds what you bought to your spending.
 // Calculator: add prices as you go to see what's in your cart against your plan.
@@ -305,9 +306,10 @@ export default function GroceriesScreen() {
                       >
                         {g.purchased && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.rowMain} onPress={() => openItem(g)} accessibilityRole="button">
+                      <TouchableOpacity style={[styles.rowMain, g.purchased && paidRowContent]} onPress={() => openItem(g)} accessibilityRole="button">
+                        {g.purchased && <PaidLine testID={`grocery-paid-${g.id}`} />}
                         <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={[styles.title, g.purchased && styles.done]} numberOfLines={1}>
+                          <Text style={styles.title} numberOfLines={1}>
                             {g.item || 'Untitled item'}
                           </Text>
                           <Text style={styles.meta} numberOfLines={1}>

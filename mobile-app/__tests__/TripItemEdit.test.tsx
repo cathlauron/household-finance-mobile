@@ -54,3 +54,14 @@ test('H-44: an item added with only a name gets its cost later, without removing
   expect(item.cost).toBe(8450.5);
   expect(item.title).toBe('Plane tickets (Cebu Pacific)');
 }, 30000);
+
+test('H-45 (canvas B14): a paid trip item gets the paid line; an unpaid one does not', async () => {
+  mockModel = household();
+  mockModel.travel[0].checklist = [{ id: 'p1', title: 'Flights', cost: 8000, checked: true, markedOnly: true }, { id: 'u1', title: 'Hotel', cost: 6000, checked: false }];
+  const Screen = require('../src/screens/TravelScreen').default;
+  render(<ThemeProvider><Screen /></ThemeProvider>);
+  await act(async () => {});
+  await act(async () => { fireEvent.press(screen.getAllByText('Cebu')[0]); });
+  expect(screen.getByTestId('travel-item-paid-p1')).toBeTruthy();
+  expect(screen.queryByTestId('travel-item-paid-u1')).toBeNull();
+}, 30000);

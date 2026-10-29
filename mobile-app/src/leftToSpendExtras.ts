@@ -38,18 +38,33 @@ const LABEL: Record<CalendarEvent['type'], string> = {
 // The order the lines are shown in (money in first, then what's due soonest to plans).
 const ORDER = ['Income', 'Past due', 'Bills', 'Debts', 'Loans', 'Savings top-ups', 'Planned transactions', 'Groceries list', 'Trips', 'Events'];
 
-export function leftToSpendLines(model: HouseholdModel, today: Date, target: Date): LeftToSpendLine[] {
+// One thing that makes up Left to Spend (L4 page, Cath 2026-10-29): what it is, a short line
+// under it ("Past due · was due Oct 16"), the money (+ in / - out), and its group (the line it
+// belongs to). `ref` says where tapping it goes.
+export type LeftToSpendItem = {
+  group: string;
+  name: string;
+  sub: string;
+  amount: number;
+  date?: string;
+  ref?: { kind: 'bill' | 'debt' | 'loan'; id: string } | { kind: 'trip' | 'event' | 'groceries' | 'transactions' | 'savings' | 'income' };
+};
+
+const short = (isoDate: string) => new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const shortDay = (isoDate: string) => new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+export function leftToSpendItems(model: HouseholdModel, today: Date, target: Date): LeftToSpendItem[] {
   const todayISO = iso(today);
   const end = iso(target);
-  const sums: Record<string, number> = {};
-  const add = (label: string, amount: number) => {
-    if (Math.abs(amount) < 0.005) return;
-    sums[label] = cents((sums[label] || 0) + amount);
+  const items: LeftToSpendItem[] = [];
+  const push = (it: LeftToSpendItem) => {
+    if (Math.abs(it.amount) >= 0.005) items.push({ ...it, amount: cents(it.amount) });
   };
   const tracked = new Set((model.loans || []).filter((l) => l.direction !== 'lent' && isTrackedLoan(l) && num(l.expectedPayment) > 0).map((l) => l.id));
+  const KIND: Record<CalendarEvent['type'], string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan', saving: 'Savings', manual: 'Planned', income: 'Income' };
 
-  // The calendar's events from today to the Left to Spend date. Today: only bills and debts
-  // still unpaid (today's transactions, moves and paydays are already in the live balances).
+  // The calendar's events from today to the Left to Spend date. Today: only bills, debts and
+  // loans still unpaid (today's transactions, moves and paydays are already in the balances).
   let y = today.getFullYear();
   let m = today.getMonth();
   while (y < target.getFullYear() || (y === target.getFullYear() && m <= target.getMonth())) {
@@ -60,7 +75,8 @@ export function leftToSpendLines(model: HouseholdModel, today: Date, target: Dat
       for (const ev of events[Number(day)]) {
         if (ev.type === 'loan' && ev.id && tracked.has(ev.id)) continue; // counted from its schedule below
         if (d === todayISO && ev.type !== 'bill' && ev.type !== 'debt' && ev.type !== 'loan') continue;
-        add(LABEL[ev.type], eventDelta(ev));
+        const ref: LeftToSpendItem['ref'] = ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan' ? (ev.id ? { kind: ev.type, id: ev.id } : undefined) : ev.type === 'income' ? { kind: 'income' } : ev.type === 'saving' ? { kind: 'savings' } : { kind: 'transactions' };
+        push({ group: LABEL[ev.type], name: ev.label, sub: `${KIND[ev.type]} · ${ev.type === 'income' ? '' : 'due '}${shortDay(d)}`, amount: eventDelta(ev), date: d, ref });
       }
     }
     m += 1;
@@ -68,11 +84,13 @@ export function leftToSpendLines(model: HouseholdModel, today: Date, target: Dat
   }
 
   // Past due bill and debt rounds.
-  for (const rec of [...(model.bills || []), ...(model.debts || [])]) {
-    for (const c of rec.cycles || []) {
-      if (!c.dueDate || c.dueDate >= todayISO) continue;
-      const owed = num(c.amountDue) - num(c.amountPaid);
-      if (owed > 0.005) add('Past due', -owed);
+  for (const [kind, list] of [['bill', model.bills || []], ['debt', model.debts || []]] as const) {
+    for (const rec of list as any[]) {
+      for (const c of rec.cycles || []) {
+        if (!c.dueDate || c.dueDate >= todayISO) continue;
+        const owed = num(c.amountDue) - num(c.amountPaid);
+        if (owed > 0.005) push({ group: 'Past due', name: rec.name || rec.creditorOrPerson || (kind === 'bill' ? 'Bill' : 'Debt'), sub: `Past due · was due ${short(c.dueDate)}`, amount: -owed, date: c.dueDate, ref: { kind, id: rec.id } });
+      }
     }
   }
 
@@ -84,7 +102,8 @@ export function leftToSpendLines(model: HouseholdModel, today: Date, target: Dat
     const cov = loanCoverage(loan, todayISO);
     for (const d of loanScheduledDates(loan, end)) {
       const left = cov.covered[d] ? 0 : d === cov.nextOpen ? cov.leftForNext : each;
-      add(d < todayISO ? 'Past due' : 'Loans', -left);
+      const past = d < todayISO;
+      push({ group: past ? 'Past due' : 'Loans', name: loan.name || 'Loan', sub: past ? `Past due · was due ${short(d)}` : `Loan · due ${shortDay(d)}`, amount: -left, date: d, ref: { kind: 'loan', id: loan.id } });
     }
   }
 
@@ -93,19 +112,27 @@ export function leftToSpendLines(model: HouseholdModel, today: Date, target: Dat
     const g = id ? (model.savingsGoals || []).find((x) => x.id === id) : undefined;
     return g ? (g.contributions || []).reduce((s, c) => s + num(c.amount), 0) : 0;
   };
-  add('Groceries list', -(model.groceries || []).filter((g) => !g.purchased).reduce((s, g) => s + num(g.plannedAmount), 0));
+  const toBuy = (model.groceries || []).filter((g) => !g.purchased && num(g.plannedAmount) > 0);
+  push({ group: 'Groceries list', name: 'Grocery list', sub: `${toBuy.length} ${toBuy.length === 1 ? 'item' : 'items'} not bought yet`, amount: -toBuy.reduce((s, g) => s + num(g.plannedAmount), 0), ref: { kind: 'groceries' } });
   for (const trip of model.travel || []) {
     if (!trip.startDate || trip.startDate > end || (trip.endDate || trip.startDate) < todayISO) continue;
     const unpaid = (trip.checklist || []).filter((i) => !i.checked).reduce((s, i) => s + num(i.cost), 0);
-    add('Trips', -Math.max(0, unpaid - potSaved(trip.savingsGoalId)));
+    const saved = potSaved(trip.savingsGoalId);
+    push({ group: 'Trips', name: trip.name || 'Trip', sub: `Trip · starts ${shortDay(trip.startDate)}${saved > 0 ? ' · less what\'s saved' : ''}`, amount: -Math.max(0, unpaid - saved), date: trip.startDate, ref: { kind: 'trip' } });
   }
   for (const ev of model.events || []) {
     if (ev.completed) continue;
     const date = nextEventDate(ev, todayISO);
     if (!date || date < todayISO || date > end) continue;
-    add('Events', -Math.max(0, eventBudget(ev) - potSaved(ev.savingsGoalId)));
+    const saved = potSaved(ev.savingsGoalId);
+    push({ group: 'Events', name: ev.name || 'Event', sub: `Event · ${shortDay(date)}${saved > 0 ? ' · less what\'s saved' : ''}`, amount: -Math.max(0, eventBudget(ev) - saved), date, ref: { kind: 'event' } });
   }
+  return items;
+}
 
+export function leftToSpendLines(model: HouseholdModel, today: Date, target: Date): LeftToSpendLine[] {
+  const sums: Record<string, number> = {};
+  for (const it of leftToSpendItems(model, today, target)) sums[it.group] = cents((sums[it.group] || 0) + it.amount);
   return Object.keys(sums)
     .filter((k) => Math.abs(sums[k]) >= 0.005)
     .sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))

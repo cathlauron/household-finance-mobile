@@ -665,6 +665,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                   amount={formatPeso(Number(paidCycles(bill)[0]?.amountPaid) || 0)}
                   amountColor={colors.inkDim}
                   badge={{ text: bill.regular ? 'Sent' : 'Paid', tone: 'paid' }}
+                  paid
                   divider={rowIndex > 0}
                   addedBy={paidCycles(bill)[0]?.paidBy}
                   onPress={() => openBill(bill)}

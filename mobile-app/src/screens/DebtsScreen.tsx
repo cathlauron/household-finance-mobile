@@ -588,6 +588,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
                     amount={formatPeso(Number(last?.amountPaid) || 0)}
                     amountColor={colors.inkDim}
                     badge={{ text: 'Paid', tone: 'paid' }}
+                    paid
                     divider={rowIndex > 0}
                     addedBy={last?.paidBy}
                     onPress={() => openDebt(debt)}

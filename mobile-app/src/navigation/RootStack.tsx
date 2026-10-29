@@ -32,6 +32,7 @@ import EventsScreen from '../screens/EventsScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
 import TransferDetailScreen from '../screens/TransferDetailScreen';
+import LeftToSpendScreen from '../screens/LeftToSpendScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { GuestGate } from '../components/GuestSaveSheet';
@@ -61,6 +62,8 @@ export type RootStackParamList = {
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string; backTitle?: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   TransferDetail: { id: string };
+  // H-54 (canvas L4): why Left to Spend is what it is.
+  LeftToSpend: undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
   PotDetail: { id: string; open?: 'out' };
   Groceries: undefined;
@@ -296,6 +299,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
       <Stack.Screen name="TransferDetail" component={TransferDetailScreen} options={{ title: '', headerBackTitle: 'Transactions' }} />
+      <Stack.Screen name="LeftToSpend" component={LeftToSpendScreen} options={{ title: 'Left to spend', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: ' ', headerBackTitle: 'Insights' }} />
