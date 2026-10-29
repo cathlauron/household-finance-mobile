@@ -199,3 +199,14 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
 6. Tap Add (or Save) twice very quickly on a new transaction, a move, or any big button:
    it's saved once.
 7. Look around: Bills' "Paid this month" rows say "Paid Oct 20" (not 2026-10-20).
+
+## 15. Batch 2026-10-29 (late). NOT YET TESTED.
+
+1. To-Pay > Bills and Debts > "Paid this month": each paid row keeps its layout, with one line
+   from the start of the name to the end of the amount, and the row faded (B14). Same on a
+   trip's ticked items and on bought groceries.
+2. Home > tap the Left to Spend amount (or swipe to "Where it comes from" > See every item):
+   the Left to spend page (L4). The card, a "why" line, small bars (You have, Past due, Bills,
+   Debts, Loans, Plans), every account, then every item still to go out (past due first).
+   Tap an item: its own page opens.
+3. Guest mode only: Home's "You picked" hides a step once you've added it (a bill, a debt...).
