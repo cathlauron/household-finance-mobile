@@ -154,6 +154,8 @@ export default function TravelScreen() {
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
   const [checklist, setChecklist] = useState<TravelChecklistItem[]>([]);
+  // H-44 (Cath, 2026-10-29): what's being typed in an item's cost box ("12." isn't a number yet).
+  const [costDrafts, setCostDrafts] = useState<Record<string, string>>({});
   // Version 2.1 (T1): Budget | To-do inside the trip.
   const [tripTab, setTripTab] = useState<'budget' | 'todo'>('budget');
   const [todos, setTodos] = useState<TravelTodo[]>([]);
@@ -516,6 +518,26 @@ export default function TravelScreen() {
   // Edits an item's note in the form (saved with the trip, like the name and dates).
   function handleChecklistNote(id: string, note: string) {
     setChecklist((prev) => prev.map((i) => (i.id === id ? { ...i, note } : i)));
+  }
+
+  // H-44 (Cath, 2026-10-29: "allow everything to be editable"): an item's name and cost can
+  // be changed in the form, e.g. an item added with only a name gets its cost later. Saved
+  // with the trip; a paid item's transaction and balance follow (travelChecklist.ts).
+  function handleChecklistTitle(id: string, title: string) {
+    setChecklist((prev) => prev.map((i) => (i.id === id ? { ...i, title } : i)));
+  }
+  function handleChecklistCost(id: string, raw: string) {
+    const text = raw.replace(/[^0-9.]/g, '');
+    setCostDrafts((d) => ({ ...d, [id]: text }));
+    const n = parseFloat(text);
+    setChecklist((prev) =>
+      prev.map((i) => {
+        if (i.id !== id) return i;
+        // A paid item keeps an amount (clearing it would leave its payment behind).
+        if (!(n > 0)) return i.checked && typeof i.cost === 'number' && i.cost > 0 ? i : { ...i, cost: '' };
+        return { ...i, cost: Math.round(n * 100) / 100 };
+      })
+    );
   }
 
   function handleToggleChecklistItem(id: string) {
@@ -886,7 +908,7 @@ export default function TravelScreen() {
                         </TouchableOpacity>
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={[styles.tripName, td.done && { color: colors.inkDim, textDecorationLine: 'line-through' }]}>{td.text}</Text>
-                          {(td.done || !!td.date) && <Text style={styles.tripSub}>{td.done ? 'Done' : shortDay(td.date as string)}</Text>}
+                          {(td.done || !!td.date || who.others(td.addedBy)) && <Text style={styles.tripSub}>{[td.done ? 'Done' : td.date ? shortDay(td.date as string) : '', who.others(td.addedBy) ? `added by ${who.nameOf(td.addedBy)}` : ''].filter(Boolean).join(' · ')}</Text>}
                         </View>
                         <TouchableOpacity
                           onPress={() => saveTripTodos(t, (t.todos || []).filter((x) => x.id !== td.id))}
@@ -1079,7 +1101,16 @@ export default function TravelScreen() {
                 {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
               </TouchableOpacity>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={[styles.formItemTitle, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]} numberOfLines={1}>{item.title}</Text>
+                <TextInput
+                  style={[styles.formItemTitle, styles.formItemTitleInput, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]}
+                  value={item.title}
+                  onChangeText={(t) => handleChecklistTitle(item.id, t)}
+                  placeholder="Item"
+                  placeholderTextColor={colors.inkFaint}
+                  accessibilityLabel={`Name of ${item.title || 'this item'}`}
+                  maxLength={80}
+                  testID={`travel-form-item-title-${item.id}`}
+                />
                 <TextInput
                   style={styles.checklistNoteInput}
                   placeholder="Add a note"
@@ -1090,9 +1121,18 @@ export default function TravelScreen() {
                   maxLength={140}
                 />
               </View>
-              {typeof item.cost === 'number' && (
-                <Text style={[styles.formItemCost, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{formatPeso(item.cost)}</Text>
-              )}
+              <TextInput
+                style={[styles.formItemCost, styles.costInput, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}
+                value={costDrafts[item.id] ?? (typeof item.cost === 'number' ? formatPeso(item.cost) : '')}
+                onFocus={() => setCostDrafts((d) => ({ ...d, [item.id]: typeof item.cost === 'number' ? String(item.cost) : '' }))}
+                onBlur={() => setCostDrafts((d) => { const { [item.id]: _gone, ...rest } = d; return rest; })}
+                onChangeText={(v) => handleChecklistCost(item.id, v)}
+                placeholder="₱ Cost"
+                placeholderTextColor={colors.inkFaint}
+                keyboardType="decimal-pad"
+                accessibilityLabel={`Cost of ${item.title || 'this item'}`}
+                testID={`travel-form-item-cost-${item.id}`}
+              />
               <TouchableOpacity onPress={() => handleRemoveChecklistItem(item.id)} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                 <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
               </TouchableOpacity>
@@ -1172,6 +1212,7 @@ function makeStyles(colors: any) {
     itemReceipt: { width: 30, height: 38, borderRadius: 5, backgroundColor: colors.navy2, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4 },
     formItemRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 8 },
     formItemTitle: { fontSize: 17, color: colors.ink },
+    formItemTitleInput: { paddingVertical: 0, paddingHorizontal: 0 },
     formItemCost: { fontSize: 16, fontWeight: '600' },
     checklistNoteInput: { fontSize: 12, color: colors.inkDim, paddingVertical: 2, paddingHorizontal: 0, marginTop: 1 },
     addItemButton: {

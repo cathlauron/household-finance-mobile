@@ -30,6 +30,7 @@ import { withoutAccount } from '../deleteRecords';
 import { hapticSelection } from '../haptics';
 import { cardOwed, nextStatementDue, installmentsOnCard, savedBalanceAfterAnswer } from '../creditCards';
 
+import { WhoFootnote } from '../components/WhoLogged';
 // Redesign: the Card page from the Finance Flow mockup, opened by tapping a card in
 // Home's Wallet. Shows the card with its balance, how much was spent from it this
 // week (a bar per day), and its latest transactions. "Move money" moves money
@@ -461,6 +462,7 @@ export default function CardDetailScreen() {
           ])
         }
       />
+      <WhoFootnote addedBy={account?.addedBy} createdAt={account?.createdAt} changedBy={account?.changedBy} changedAt={account?.changedAt} />
     </KeyboardAwareScrollView>
     {editing && (
       <View style={{ position: 'absolute', width: 0, height: 0 }}>

@@ -30,6 +30,7 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import { useStickyState } from '../stickyState';
 
+import { useWho } from '../components/WhoLogged';
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
   { id: 'anniversary', label: 'Anniversary' },
@@ -176,6 +177,7 @@ function rollOverAnnualEvents(events: EventItem[], txns: ManualTransaction[], to
 
 export default function EventsScreen() {
   const { colors } = useTheme();
+  const who = useWho();
   const { model, saveModel, getModel } = useData();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
@@ -578,7 +580,7 @@ export default function EventsScreen() {
                                 <View style={styles.eventRowMain}>
                                   <Text style={styles.eventName} numberOfLines={1}>{ev.name || 'Untitled event'}</Text>
                                   <Text style={styles.eventSub} numberOfLines={1}>
-                                    {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}
+                                    {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}{who.by(ev.addedBy)}
                                   </Text>
                                 </View>
                                 <Text style={[styles.eventAmount, { color: toneUnlessZero(budget, colors.planned, colors) }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>

@@ -25,6 +25,7 @@ import { todayISO } from '../dateUtils';
 import { hapticLight, hapticSelection } from '../haptics';
 import { useStickyState } from '../stickyState';
 
+import { useWho } from '../components/WhoLogged';
 // Redesign: Groceries (Plan › Groceries), matching the Finance Flow mockup.
 // List: tick items off as you shop; "Finish trip" adds what you bought to your spending.
 // Calculator: add prices as you go to see what's in your cart against your plan.
@@ -51,6 +52,7 @@ const STARTERS: { name: string; ingredients: string[] }[] = [
 
 export default function GroceriesScreen() {
   const { colors } = useTheme();
+  const who = useWho();
   const { model, saveModel } = useData();
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
@@ -313,6 +315,7 @@ export default function GroceriesScreen() {
                               : num(g.plannedAmount) > 0
                                 ? 'Planned'
                                 : 'No price yet'}
+                            {who.by(g.addedBy)}
                           </Text>
                         </View>
                         <Text style={[styles.amount, { color: g.purchased ? colors.inkDim : colors.planned }]}>
@@ -436,6 +439,7 @@ export default function GroceriesScreen() {
                       <Text style={[styles.headline, { flex: 1 }]}>{m.name}</Text>
                       <Text style={[styles.amount, { color: colors.planned }]}>{cost > 0 ? formatPeso(cost) : 'Add prices'}</Text>
                     </TouchableOpacity>
+                    {who.others(m.addedBy) && <Text style={[styles.meta, { marginTop: -6 }]}>Added by {who.nameOf(m.addedBy)}</Text>}
                     <View style={styles.chips}>
                       {m.ingredients.map((i) => (
                         <View key={i.id} style={styles.chip}>

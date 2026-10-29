@@ -83,3 +83,44 @@ test('guest (no name): only the time is stamped', () => {
   assert.equal(out[0].createdAt, 9);
   assert.equal(out[0].addedBy, undefined);
 });
+
+// H-43 (Cath, 2026-10-29): "who added it" everywhere data is added, not just Transactions,
+// Bills and Debts.
+test('H-43: groceries, meal ideas, events, trip to-dos, shared expenses, settle-ups, transfers and investments remember who added them', () => {
+  const prev = { ...defaultModel(), travel: [{ id: 't', name: 'Baguio', checklist: [], todos: [] }], investments: [{ id: 'i', name: 'MP2', kind: 'mp2', entries: [] }] };
+  const next = {
+    ...prev,
+    groceries: [{ id: 'g1', name: 'Rice' }],
+    mealIdeas: [{ id: 'm1', name: 'Adobo' }],
+    events: [{ id: 'e1', title: 'Birthday', date: '2026-11-01' }],
+    travel: [{ ...prev.travel[0], todos: [{ id: 'td1', text: 'Book hotel', done: false }] }],
+    sharedExpenses: [{ id: 's1', date: '2026-10-29', label: 'Dinner', amount: 900, paidBy: 'p1', shares: [], splitMode: 'equal' }],
+    sharedSettlements: [{ id: 'x1', date: '2026-10-29', from: 'p1', to: 'p2', amount: 450 }],
+    transfers: [{ id: 'tr1', date: '2026-10-29', from: 'cash:', to: 'debit:a', amount: 100 }],
+    investments: [{ ...prev.investments[0], entries: [{ id: 'ie1', date: '2026-10-29', type: 'add', amount: 1000 }] }],
+  };
+  const out = stampHouseholdWho(next, prev, 5000, 'ana');
+  assert.equal(out.groceries[0].addedBy, 'ana');
+  assert.equal(out.mealIdeas[0].addedBy, 'ana');
+  assert.equal(out.events[0].addedBy, 'ana');
+  assert.equal(out.travel[0].todos[0].addedBy, 'ana');
+  assert.equal(out.sharedExpenses[0].addedBy, 'ana');
+  assert.equal(out.sharedSettlements[0].addedBy, 'ana');
+  assert.equal(out.transfers[0].addedBy, 'ana');
+  assert.equal(out.investments[0].entries[0].addedBy, 'ana');
+  assert.equal(out.investments[0].changedBy, undefined); // adding money is not an edit of the investment
+});
+
+test('H-43: yearly goals and accounts remember who added them; typing a balance is not an edit', () => {
+  const prev = defaultModel();
+  const card = { id: 'a1', name: 'Maribank', amount: 100 };
+  const next = { ...prev, yearlyGoals: [{ id: 'y1', title: 'Pay off Olive', description: '', mode: 'progress', targetAmount: '', currentAmount: '', targetDate: '', completed: false }],
+    balanceAccounts: { ...prev.balanceAccounts, debit: [card] } };
+  const out = stampHouseholdWho(next, prev, 7000, 'ana');
+  assert.equal(out.yearlyGoals[0].addedBy, 'ana');
+  assert.equal(out.balanceAccounts.debit[0].addedBy, 'ana');
+  const typed = { ...out, balanceAccounts: { ...out.balanceAccounts, debit: [{ ...out.balanceAccounts.debit[0], amount: 500 }] } };
+  const out2 = stampHouseholdWho(typed, out, 8000, 'ben');
+  assert.equal(out2.balanceAccounts.debit[0].changedBy, undefined);
+  assert.equal(out2.balanceAccounts.debit[0].addedBy, 'ana');
+});
