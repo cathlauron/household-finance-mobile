@@ -159,3 +159,23 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
 3. Log Olive's October payment (or just look, if you haven't paid yet): after it, Olive says
    "next Nov 16" and is no longer red.
 4. Look around: your other loans still show the next date you expect.
+
+## 13. Batch 2026-10-29 (afternoon). NOT YET TESTED.
+
+1. Transactions, sorted Newest: add a transaction now. It's at the very top. Add a second
+   one a few seconds later: that one is now on top. (Sorted Oldest: the exact reverse.)
+2. Idle lock: leave the app (home button) for 5 to 6 minutes, come back: "Are you still
+   there?" shows with only the seconds that are LEFT (not a fresh minute). Leave it for 7
+   minutes or more: the amounts are already hidden when you come back.
+3. With your partner's phone (shared household): your partner adds a grocery item, an event,
+   a trip to-do, a shared expense and moves money between accounts. On your phone each shows
+   "by [name]" (grocery, event, to-do, shared expense) and the transfer's own page says
+   "Added by [name]". New goals and new accounts say it too.
+4. Plan > Travel > a trip > tap an item > in the form, tap the item's name or cost and change
+   it (e.g. add a cost to an item that had none) > Save. The trip shows the new name and cost.
+   A paid item's cost change also changes its spending entry.
+5. Every Remove asks first now: Edit loan > the x beside a payment; a trip's item x and to-do
+   x (on the trip page and in the form); Income > a payday's x; a savings entry's x; Groceries >
+   Calculator > a line's x and Clear; a meal's ingredient x; an event item's x; a receipt
+   photo's Remove. Each one: Cancel keeps it, Remove removes it.
+6. Look around: nothing else looks or moves differently.

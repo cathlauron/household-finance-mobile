@@ -160,12 +160,12 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 
 | id | What Cath sees / wants | Kind |
 |---|---|---|
-| H-39 | Transactions sorted "Newest" don't show her newest one at the top; must be newest to the second | bug (fix directly) |
-| H-40 | Debts don't show what's already paid; should match Bills | bug / rule |
+| H-39 | Transactions sorted "Newest" don't show her newest one at the top; must be newest to the second | bug (fix directly) - **PROVEN 2026-10-29 (B-053)** |
+| H-40 | Debts don't show what's already paid; should match Bills | bug / rule - **moved into the Debts mockup with H-41 (same layout change)** |
 | H-41 | Debts need Bills' "still to pay this month" total, plus a separate total for debts with no due date; also every other place it applies | rule (ask if it changes the look) |
-| H-42 | Idle lock: the timer must keep running in the background; back after a minute = amounts hidden | bug (security: check with Cath before changing lock code) |
-| H-43 | "Who added it" tag on everything people add, not just Transactions, Bills, Debts | rule (fix directly where the tag already exists) |
-| H-44 | Trips: everything editable (e.g. budget item added with a name only, amount later), and log an item with no account (e.g. plane tickets paid before) | bug / rule |
+| H-42 | Idle lock: the timer must keep running in the background; back after a minute = amounts hidden | bug (security: check with Cath before changing lock code) - **PROVEN 2026-10-29 (B-054); background timing needs your phone** |
+| H-43 | "Who added it" tag on everything people add, not just Transactions, Bills, Debts | rule (fix directly where the tag already exists) - **PROVEN 2026-10-29 (B-055)** |
+| H-44 | Trips: everything editable (e.g. budget item added with a name only, amount later), and log an item with no account (e.g. plane tickets paid before) | bug / rule - **editing PROVEN 2026-10-29 (B-056); "log with no account" exists as "Just record it" when ticking, asked Cath if more is wanted** |
 | H-45 | Paid items struck through everywhere it applies | visual: MOCKUP FIRST |
 | H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST |
 | H-47 | Loans still show the wrong next payment due (came back after B-047). PROVEN 2026-10-29 (B-052): Custom loans now tracked; Cath's rule "a payment before the First payment date means the loan started then" | bug (came back) - fixed, phone check TEST-3 section 12 |
@@ -174,7 +174,7 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 
 | id | What Cath wants | Kind |
 |---|---|---|
-| H-48 | Undo only for 15 minutes (bill/debt/loan payments, shared expense payments, transfers, Edit loan's remove x). After: add receipt, raise amount (never lower), fix date / account; short note | rule (her answers 2026-10-29) |
-| H-49 | Confirm before anything that deletes or does something like it, everywhere | rule |
+| H-48 | Undo only for 15 minutes (bill/debt/loan payments, shared expense payments, transfers, Edit loan's remove x). After: add receipt, raise amount (never lower), fix date / account; short note | rule (her answers 2026-10-29) - **mockup round, built together with editing so Undo is never limited before Edit exists** |
+| H-49 | Confirm before anything that deletes or does something like it, everywhere | rule - **PROVEN 2026-10-29 (B-057)** |
 | H-50 | Edit loan's logged-payments list doesn't look like the rest of the app | visual: MOCKUP FIRST |
 | H-51 | On opening / coming back: show changes another household member made | new: MOCKUP FIRST (in-app card and banner, she picks) |
