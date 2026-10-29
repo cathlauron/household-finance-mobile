@@ -1,6 +1,6 @@
 ---
 name: finance-flow-bug-check
-description: Use for ANY change to Finance Flow app code (bug fix, tweak or feature), whenever Cath reports something broken, and when she says "bug hunt". Proof before "fixed", every bug becomes a permanent check, Claude tests before Cath, and Claude asks instead of guessing.
+description: Use for ANY change to Finance Flow app code (bug fix, tweak or feature), whenever Cath reports something broken, before every batch handed to her, and when she says "bug hunt". Proof before "fixed", every bug becomes a permanent check, Cath's app-wide rules hold everywhere, a full sweep runs before each batch, and Claude asks instead of guessing.
 ---
 
 # Finance Flow bug check
@@ -75,7 +75,103 @@ Never use "should work", "probably", "looks fixed" or "done" without proof.
 9. **Report to Cath** in plain English: what was wrong, what changed, the status word,
    and the proof. Keep it short.
 
-Work in small batches (2-5 bugs), then stop for Cath's phone check.
+Work in small batches (2-5 bugs), then stop for Cath's phone check. Before handing her a
+batch, run the full sweep (next sections).
+
+## Fix directly, or ask first (Cath, 2026-10-29)
+
+**Fix directly** (still with every step above: check first, red-green proof, `check:all`):
+- wrong logic where the screen looks the same (wrong sort order, wrong total, wrong due date)
+- a missing piece of a rule already in "Cath's app-wide rules" below (e.g. the added-by tag
+  missing on one screen when the rule says everywhere)
+- small text or alignment (a typo, a label, a few pixels off)
+- crashes and frozen screens
+
+**Ask first:**
+- anything that changes how a screen looks beyond small alignment, or anything new:
+  mockup first (Design canvas), build only after she picks
+- saving, syncing, deleting, encryption, Firestore rules, household data (as before)
+- a rule that isn't written down yet, or two rules that clash
+
+Either way, she hears about every fix in the batch report, with its status word.
+
+## Cath's app-wide rules (additive: never delete, only add)
+
+A rule here applies to EVERY place it fits, not only the screen where she noticed it. When
+you fix one place, search for all the others (see "Same kind of thing" below). "Look waits on
+mockup" means the rule is agreed but how it looks is not picked yet: don't build its look
+until she picks.
+
+- 2026-10-29: **Newest first means newest to the second.** "Newest" sorts by the full date
+  AND time, down to the second; something just added appears at the very top. Same for every
+  list with a newest/oldest sort.
+- 2026-10-29: **Paid shows the same way everywhere.** Debts show what's already paid the
+  way Bills do (and Loans, and anything else that gets paid).
+- 2026-10-29: **"Still to pay this month" totals.** Bills' "still to pay this month" total
+  also goes on Debts, plus a separate total for debts with no due date, and on every other
+  place it applies.
+- 2026-10-29: **Idle lock keeps counting in the background.** The idle timer keeps running
+  while the app is in the background; coming back after it ran out (she said after a
+  minute), the amounts are hidden.
+- 2026-10-29: **Who added it, everywhere.** The added-by tag shows on everything people
+  add, not just Transactions, Bills and Debts.
+- 2026-10-29: **Everything is editable after adding.** Anything added can be changed
+  later, every field, without removing and re-adding it (e.g. a trip budget item added with
+  a name only gets its amount later).
+- 2026-10-29: **Log without an account.** Trip items (and similar places) can be logged as
+  a reference only, with no account and no balance change (e.g. plane tickets paid before).
+- 2026-10-29: **Paid is struck through** in every place it applies. Look waits on mockup.
+- 2026-10-29: **Real dropdowns.** Every choice in a form is a real dropdown list of choices,
+  and the category is guessed and preselected where possible (she only changes it if it's
+  wrong). Look waits on mockup: one mockup per screen that changes.
+
+## Same kind of thing, same behaviour
+
+Many of Cath's bugs were one sibling getting a fix the others didn't. When you check or fix
+any of these, check its siblings too:
+- Bills / Debts / Loans (paid look, totals, due dates, pay sheet, undo, history)
+- transactions / shared expenses / trip items / grocery items / bill, debt and loan payments
+  (who added it, editable fields, receipts, "just record it")
+- every list with sorting or filters (same sort rule)
+- every form (same row layout, same dropdowns, same right edge)
+
+## When a "fixed" bug comes back
+
+If Cath reports something already in `BUG-LOG.md` as fixed (e.g. loans' next payment due
+after B-047), the old check proved the wrong thing. Before fixing:
+1. Find why the old check passed: usually her real data has a shape the check didn't use
+   (no first date, a partial payment, a back-dated payment, an edited item).
+2. Ask her for the exact details of the item you can't see (dates, what's paid, what the
+   screen says, what she expected). Never guess her data.
+3. Write the new check with data shaped like hers, red-green, and keep the old check.
+4. In `BUG-LOG.md`, add a new row that points back to the old one ("came back: B-047").
+
+## The full sweep (before EVERY batch handed to Cath; Cath, 2026-10-29)
+
+Run all four parts on the screens the batch touched, plus their siblings:
+1. **Data correctness:** sorting, totals, due dates, paid status, the same amount matching
+   on every screen that shows it (Home, To-Pay, details, Reports, Calendar).
+2. **Consistency:** every rule in "Cath's app-wide rules" holds on these screens.
+3. **Smoothness:** the `finance-flow-smoothness-check` steps (shared motion, no flicker,
+   loading animation on anything that loads, Reduce Motion).
+4. **Security and safety:** idle lock and hidden amounts still work; encryption, sync and
+   Firestore rules untouched unless she said yes; every Firestore write has `withTimeout`;
+   nothing can lose data (delete, undo, two phones).
+Then `npm run check:all`, and the hidden-browser walk for anything visible. Write anything
+found that's outside the batch into `BUG-HUNT.md`. In the batch report, say the sweep ran
+and what it found.
+
+## Cath's phone test steps
+
+Every batch ends with numbered steps in TEST-3.md, and in the report:
+
+    cd C:\Projects\household-finance-mobile
+    git pull
+    cd mobile-app
+    npx expo start -c
+
+then what to tap and what she should see. She replies "device test is as described"
+before the next batch.
 
 ## Trying it yourself
 
@@ -108,8 +204,9 @@ When Cath says "bug hunt" (or the next hunt area is up in PROGRESS7.md):
 4. Write each finding in `BUG-HUNT.md`: id (H-number), area, what Cath would see, how
    sure you are (certain / likely / possible), how bad (could lose data / breaks a task /
    annoying / cosmetic), the file and line.
-5. Show Cath the ranked list and ask which to fix first. Never fix anything that touches
-   saving, syncing, deleting, encryption or Firestore rules without her yes.
+5. Fix the "fix directly" kinds (see "Fix directly, or ask first") in small batches. Show
+   Cath the ranked list of the rest and ask which to fix first. Never fix anything that
+   touches saving, syncing, deleting, encryption or Firestore rules without her yes.
 
 ## Never
 

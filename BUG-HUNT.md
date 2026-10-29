@@ -152,3 +152,20 @@ and confirmed them; the others are the reviewer's reading of the code.
 - Checked and OK: secure random everywhere, recovery key strength, vault storage for stay
   signed in / quick unlock, no keys in logs, backup file encrypted, members-only reads,
   this week's new code (no old screen or callback survives lock or sign-out).
+
+## Cath's list, 2026-10-29 (her priority order; not started)
+
+Reported by Cath on 2026-10-29. Nothing here is checked in the code yet; each gets read,
+red-green proof and a phone step as usual. Visual ones get a mockup first (marked).
+
+| id | What Cath sees / wants | Kind |
+|---|---|---|
+| H-39 | Transactions sorted "Newest" don't show her newest one at the top; must be newest to the second | bug (fix directly) |
+| H-40 | Debts don't show what's already paid; should match Bills | bug / rule |
+| H-41 | Debts need Bills' "still to pay this month" total, plus a separate total for debts with no due date; also every other place it applies | rule (ask if it changes the look) |
+| H-42 | Idle lock: the timer must keep running in the background; back after a minute = amounts hidden | bug (security: check with Cath before changing lock code) |
+| H-43 | "Who added it" tag on everything people add, not just Transactions, Bills, Debts | rule (fix directly where the tag already exists) |
+| H-44 | Trips: everything editable (e.g. budget item added with a name only, amount later), and log an item with no account (e.g. plane tickets paid before) | bug / rule |
+| H-45 | Paid items struck through everywhere it applies | visual: MOCKUP FIRST |
+| H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST |
+| H-47 | Loans still show the wrong next payment due (came back after B-047): ask Cath for the loan's details first | bug (came back) |

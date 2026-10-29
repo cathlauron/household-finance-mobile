@@ -129,6 +129,17 @@ How to check (besides reading the code):
 - 2026-10-23: whole-screen changes (welcome, set-up, sign-in, unlock): the old screen fades
   out, then the new one fades in; no blank blink, never both at once. Locking: instant.
 
+## Part of the full sweep (Cath, 2026-10-29)
+
+This check is part 3 of the full sweep in `finance-flow-bug-check`, which runs before EVERY
+batch handed to Cath, not only when she asks. Fix directly: a motion that breaks a decision
+already listed above (a hand-typed speed, a missing Reduce Motion check, a flicker, a missing
+loading animation). Ask first: any motion or look not covered by her decisions (sample
+first).
+
+- 2026-10-29 (from her standing wishes): anything that loads shows a loading animation,
+  never a frozen-looking screen.
+
 ## Steps for any change that moves
 
 1. **List what moves.** Before coding, write down every transition the change touches,
