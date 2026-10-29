@@ -1155,3 +1155,15 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Debts sections + totals (H-40/H-41), B1/B2 strikethrough (H-45), C1-C3 Undo 15 min + Edit
   payment (H-48), D1/D2 Edit loan payments (H-50), E1/E2 dropdown style + E3-E11 every form
   (H-46), F1-F3 household-edit notice (H-51). Next: Cath's phone test s13 and her picks.
+
+- NEWEST (2026-10-29, night, v3 ..see git log): Cath: "device test is as described" (s13).
+  Picks: A2, E2, F2 then F3, C1-C3 + D1-D2 approved, strikethrough = WHOLE ROW (canvas B3/B4
+  added, her pick pending), trips "Just record it" is enough. New rule: Left to Spend counts
+  everything before payday (her answers: past due yes, no-date debts no, plans: groceries,
+  trips, events, savings plans, anything else; one line each). Standing: every report ends
+  with "Next on our list". BUILT + PROVEN: Debts A2 (B-059); Left to Spend = accounts now
+  minus everything still to pay to payday, every line shown, adds up exactly (B-060);
+  Undo 15 min + Edit payment + Edit loan payments look (B-061); double-tap saves (B-058).
+  Lesson: never pipe the check gate (a failing commit b593c9d slipped through, fixed in
+  29c7f1b; skill updated). Phone: TEST-3 section 14. NEXT: E2 dropdowns on every form,
+  F2 banner + F3 list, D2 inside Edit loan, strikethrough after her B3/B4 pick, H-53.
