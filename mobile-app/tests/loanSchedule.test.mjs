@@ -1,7 +1,7 @@
 // Version 3: missed loan payments and "Which payment was this?" (canvas M4c).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loanScheduledDates, loanCoverage, loanPaymentToPlace, placeLoanPayment } from '../src/loanSchedule.ts';
+import { loanScheduledDates, loanCoverage, loanPaymentToPlace, placeLoanPayment, loanNextDueDate } from '../src/loanSchedule.ts';
 
 function loan(first, payments = [], extra = {}) {
   return {
@@ -122,4 +122,54 @@ test('no monthly amount: not tracked from its payments (no whole balance shown o
   const { loanFirstDate } = await import('../src/loanSchedule.ts');
   const l = { ...loan('x'), expectedPayment: '', dueDate: { day: '16' }, actualPayments: [{ id: 'a', date: '2026-08-16', actual: 7000 }] };
   assert.equal(loanFirstDate(l), null);
+});
+
+// H-47 (Cath, 2026-10-29, "Olive"): came back after B-047. Her loan repeats "Custom, monthly
+// from 2025-08-16", 14 payments Aug 16 2025 - Sep 16 2026 (the last one "recorded only").
+// It said "next Nov 16" and nothing past due: Custom loans were never tracked.
+const oliveMonths = Array.from({ length: 14 }, (_, i) => {
+  const d = new Date(2025, 7 + i, 16);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-16`;
+});
+function olive(extra = {}) {
+  return {
+    id: 'o', name: 'Olive', loanType: 'Car', totalAmount: 1200000, expectedPayment: 24550, owner: 'shared', direction: 'borrowed',
+    recurringType: 'custom', customFreq: 'monthly', customStartDate: '2025-08-16', dueDate: {},
+    actualPayments: oliveMonths.map((m, i) => ({ id: 'p' + i, date: m, actual: 24550, ...(i === 13 ? { recordedOnly: true } : {}) })),
+    ...extra,
+  };
+}
+
+test('H-47: a Custom monthly loan is tracked: Oct 16 is past due, not "next Nov 16"', () => {
+  const c = loanCoverage(olive(), '2026-10-29');
+  assert.equal(c.nextOpen, '2026-10-16');
+  assert.deepEqual(c.missed, ['2026-10-16']);
+  assert.equal(Object.keys(c.covered).length, 14);
+  assert.equal(loanNextDueDate(olive(), new Date(2026, 9, 29)).getDate(), 16);
+  assert.equal(loanNextDueDate(olive(), new Date(2026, 9, 29)).getMonth(), 9); // October
+});
+
+test('H-47: a Custom loan is up to date once October is paid', () => {
+  const l = olive();
+  l.actualPayments = [...l.actualPayments, { id: 'p14', date: '2026-10-28', actual: 24550 }];
+  const c = loanCoverage(l, '2026-10-29');
+  assert.equal(c.nextOpen, '2026-11-16');
+  assert.deepEqual(c.missed, []);
+});
+
+test('H-47: Custom schedules stop at the number of payments (and at the occurrence count)', () => {
+  assert.equal(loanScheduledDates(olive(), '2035-01-01').length, 49); // ₱1,200,000 ÷ ₱24,550
+  assert.equal(loanScheduledDates(olive({ customOccurrenceCount: 10 }), '2035-01-01').length, 10);
+});
+
+test('H-47 (Cath\'s rule): a payment a month before the First payment date means the loan started then', () => {
+  const l = olive({ recurringType: 'monthly', customFreq: undefined, customStartDate: undefined, dueDate: { day: '16', firstDate: '2025-09-16' } });
+  const c = loanCoverage(l, '2026-10-29');
+  assert.equal(c.nextOpen, '2026-10-16');
+  assert.deepEqual(c.missed, ['2026-10-16']);
+});
+
+test('H-47: paying the first one a few weeks early does NOT move the start', () => {
+  const l = loan('2026-08-05', [pay('p1', '2026-07-20')]);
+  assert.equal(loanScheduledDates(l, '2026-08-31')[0], '2026-08-05');
 });

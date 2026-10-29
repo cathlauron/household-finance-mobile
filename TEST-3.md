@@ -150,3 +150,12 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
 6. A form with typing (e.g. New bill > Name): when the keyboard opens, the sheet glides up
    instead of jumping (and glides back down when it closes). Tell me if it now feels slow
    to make room (it starts once the keyboard is fully up).
+
+## 12. Loans: Custom repeats and past due (H-47 / B-052, 2026-10-29). NOT YET TESTED.
+
+1. To-Pay > Loans: Olive's row says "next Oct 16" (not Nov 16) and its amount is red (past due).
+2. Open Olive: "14 of 49 payments made · next Oct 16". Home's bell / past-due list shows
+   Olive, Oct 16, ₱24,550.
+3. Log Olive's October payment (or just look, if you haven't paid yet): after it, Olive says
+   "next Nov 16" and is no longer red.
+4. Look around: your other loans still show the next date you expect.

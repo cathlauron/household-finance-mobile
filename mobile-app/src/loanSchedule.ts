@@ -31,7 +31,23 @@ function scheduleOf(loan: Loan): Record<string, any> | null {
   const sched: Record<string, any> = { ...rest };
   return sched;
 }
+// H-47 (Cath, 2026-10-29, "Olive"): a loan that repeats "Custom" (e.g. monthly from a start
+// date) is tracked too, from its start date. Before this, Custom loans showed the next date
+// after today ("next Nov 16") and never anything past due.
+function customOf(loan: Loan): { start: string; freq: string; count: number | undefined } | null {
+  if (loan.recurringType !== 'custom') return null;
+  const d: Record<string, any> = loan.dueDate || {};
+  const start = (loan as any).customStartDate || d.customStartDate || '';
+  if (typeof start !== 'string' || !ISO.test(start)) return null;
+  const freq = (loan as any).customFreq || d.customFreq || 'monthly';
+  const rawCount = (loan as any).customOccurrenceCount ?? d.customOccurrenceCount;
+  const count = typeof rawCount === 'number' && rawCount > 0 ? rawCount : undefined;
+  return { start, freq, count };
+}
+
 export function loanFirstDate(loan: Loan): string | null {
+  const custom = customOf(loan);
+  if (custom) return custom.start;
   const first = loan.dueDate?.firstDate;
   const rt = loan.recurringType;
   if (rt !== 'monthly' && rt !== 'annual') return null;
@@ -42,9 +58,15 @@ export function loanFirstDate(loan: Loan): string | null {
     // Review 2026-10-27: before this fix, saving the loan form set the First payment to
     // the NEXT date, after the payments already made, so they all counted as paid ahead.
     // A First payment more than a month after the first payment logged is that mistake.
-    const grace = new Date(dates[0] + 'T00:00:00');
-    grace.setDate(grace.getDate() + (rt === 'annual' ? 366 : 31));
-    if (inferred && dates.length && first > toISO(grace)) return inferred;
+    // H-47 (Cath, 2026-10-29): "a payment logged before the First payment date means the
+    // loan started then". B-047's check only caught a First payment MORE than a month after
+    // the first payment, so exactly one month later (Aug 16 paid, First payment Sep 16)
+    // slipped through. Now: the earliest payment is at least most of a cycle before the
+    // First payment (25 days / 330 days, so paying the first one a few weeks early still
+    // counts as that payment) and lands on an earlier scheduled date.
+    const early = new Date(dates[0] + 'T00:00:00');
+    early.setDate(early.getDate() + (rt === 'annual' ? 330 : 25));
+    if (inferred && dates.length && inferred < first && first >= toISO(early)) return inferred;
     return first;
   }
   return inferred;
@@ -95,6 +117,19 @@ function paymentCount(loan: Loan): number {
 export function loanScheduledDates(loan: Loan, untilISO: string): string[] {
   const first = loanFirstDate(loan);
   if (!first) return [];
+  const custom = customOf(loan);
+  if (custom) {
+    const limit = paymentCount(loan) || 600;
+    const out: string[] = [];
+    let cur: Date | null = getNextDueDate('custom', {}, new Date(first + 'T00:00:00'), custom.start, custom.freq, custom.count);
+    while (cur && toISO(cur) <= untilISO && out.length < limit) {
+      out.push(toISO(cur));
+      const after = new Date(cur);
+      after.setDate(after.getDate() + 1);
+      cur = getNextDueDate('custom', {}, after, custom.start, custom.freq, custom.count);
+    }
+    return out;
+  }
   const rt = loan.recurringType as 'monthly' | 'annual';
   // The repeating day (and month) default to the first payment's own.
   const sched: Record<string, any> = { ...(scheduleOf(loan) || {}) };

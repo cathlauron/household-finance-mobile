@@ -168,4 +168,4 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 | H-44 | Trips: everything editable (e.g. budget item added with a name only, amount later), and log an item with no account (e.g. plane tickets paid before) | bug / rule |
 | H-45 | Paid items struck through everywhere it applies | visual: MOCKUP FIRST |
 | H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST |
-| H-47 | Loans still show the wrong next payment due (came back after B-047): ask Cath for the loan's details first | bug (came back) |
+| H-47 | Loans still show the wrong next payment due (came back after B-047). PROVEN 2026-10-29 (B-052): Custom loans now tracked; Cath's rule "a payment before the First payment date means the loan started then" | bug (came back) - fixed, phone check TEST-3 section 12 |
