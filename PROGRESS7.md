@@ -1138,3 +1138,20 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   bug comes back", and a FULL SWEEP (data, rules, smoothness, security) before EVERY batch
   handed to her. Smoothness skill points to it. Cath: K5 step 1 tested OK; new work on v3.
   Next: work H-39..H-47 in her order; mockups for H-45 and H-46 before building them.
+
+- NEWEST (2026-10-29, afternoon, v3 25bd87a..ecb96c8): Cath: "device test is as described"
+  for TEST-3 s12 (H-47 Olive: Custom loans tracked). Her new asks + answers (AskUserQuestion):
+  idle 5+1 timer keeps counting in the background; Undo 15 min for bill/debt/loan payments,
+  shared payments, transfers and Edit loan's x, after that edit receipt / higher amount /
+  date / account; household-edit notice: show both styles; one batch per phone test.
+  Skills: smoothness check now also reviews LOOK consistency (no form unlike the app);
+  bug-check: one batch per phone test, new rules (Undo 15 min, confirm before delete,
+  household edits shown on opening). BUILT + PROVEN (red-green, check:all clean): H-39
+  newest to the second (B-053); H-42 idle timer (B-054); H-43 who-added on groceries, meal
+  ideas, events, trip to-dos, shared, settle-ups, transfers, investments, goals, accounts
+  (B-055); H-44 trip item name/cost editable (B-056); H-49 confirm before 12 Remove/Clear
+  buttons + permanent check (B-057). Phone: TEST-3 section 13. MOCKUPS (canvas "Finance
+  Flow mockups: Oct 29 batch", https://claude.ai/artifact/VN7hDuBw6qXNwQc7FkJi9f): A1/A2
+  Debts sections + totals (H-40/H-41), B1/B2 strikethrough (H-45), C1-C3 Undo 15 min + Edit
+  payment (H-48), D1/D2 Edit loan payments (H-50), E1/E2 dropdown style + E3-E11 every form
+  (H-46), F1-F3 household-edit notice (H-51). Next: Cath's phone test s13 and her picks.
