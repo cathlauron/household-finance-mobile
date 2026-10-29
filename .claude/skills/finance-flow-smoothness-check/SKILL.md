@@ -1,6 +1,6 @@
 ---
 name: finance-flow-smoothness-check
-description: Use for ANY Finance Flow change that adds or alters a screen, sheet, switcher, list, animation or transition, and when Cath says "smoothness check". Keeps all motion consistent and smooth, asks Cath when a motion choice isn't set yet.
+description: Use for ANY Finance Flow change that adds or alters a screen, sheet, form, switcher, list, animation or transition, and when Cath says "smoothness check". Keeps all motion AND look consistent and smooth (no form or edit that looks unlike the rest of the app), asks Cath when a choice isn't set yet.
 ---
 
 # Finance Flow smoothness check
@@ -139,6 +139,28 @@ first).
 
 - 2026-10-29 (from her standing wishes): anything that loads shows a loading animation,
   never a frozen-looking screen.
+
+## Same look everywhere (Cath, 2026-10-29)
+
+Cath: forms and edits must never open "completely different from the whole app's vibe"
+(she found the payment list inside Edit loan looking like it came from another app). This
+skill reviews LOOK consistency as well as motion, on every sweep and every change:
+
+- **Same kind of thing, same look.** Every form, edit sheet, section, list row, button,
+  pill, note, empty state and confirmation uses the same shared pieces as the rest of the
+  app (`SimpleForm` rows, `PayRow`, `Button`, `Pill`, `BottomSheet`, `GradientFill`,
+  `AppText`), with the theme's colours, fonts, corner radius and spacing. No grey boxes,
+  raw dates (2025-08-16), plain radio lists, tiny buttons or one-off styles that exist
+  nowhere else.
+- **An edit looks like its page.** Editing something (a loan's payments, a trip item, a
+  payment) shows it the way its own page shows it (same row style, dates written like
+  "Aug 16, 2025", same amount style), not as a different-looking list.
+- **How to check:** open every form and sheet the change touches in the hidden browser,
+  in light and dark, and compare the pictures side by side with a nearby screen that's
+  already right. Anything that looks like it came from another app is a finding.
+- **Fixing:** a small mismatch (spacing, a colour, a font) is fixed directly. Anything
+  that changes a layout is a mockup first (Design canvas), built after she picks.
+- Findings go in `SMOOTH-HUNT.md` with the motion ones (id S-number, "look").
 
 ## Steps for any change that moves
 

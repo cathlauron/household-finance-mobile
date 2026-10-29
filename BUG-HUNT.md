@@ -169,3 +169,12 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 | H-45 | Paid items struck through everywhere it applies | visual: MOCKUP FIRST |
 | H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST |
 | H-47 | Loans still show the wrong next payment due (came back after B-047). PROVEN 2026-10-29 (B-052): Custom loans now tracked; Cath's rule "a payment before the First payment date means the loan started then" | bug (came back) - fixed, phone check TEST-3 section 12 |
+
+## Cath's additions, 2026-10-29 afternoon (after "device test is as described" for TEST-3 s12)
+
+| id | What Cath wants | Kind |
+|---|---|---|
+| H-48 | Undo only for 15 minutes (bill/debt/loan payments, shared expense payments, transfers, Edit loan's remove x). After: add receipt, raise amount (never lower), fix date / account; short note | rule (her answers 2026-10-29) |
+| H-49 | Confirm before anything that deletes or does something like it, everywhere | rule |
+| H-50 | Edit loan's logged-payments list doesn't look like the rest of the app | visual: MOCKUP FIRST |
+| H-51 | On opening / coming back: show changes another household member made | new: MOCKUP FIRST (in-app card and banner, she picks) |

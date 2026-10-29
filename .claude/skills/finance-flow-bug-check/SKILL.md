@@ -75,8 +75,10 @@ Never use "should work", "probably", "looks fixed" or "done" without proof.
 9. **Report to Cath** in plain English: what was wrong, what changed, the status word,
    and the proof. Keep it short.
 
-Work in small batches (2-5 bugs), then stop for Cath's phone check. Before handing her a
-batch, run the full sweep (next sections).
+Batches (Cath, 2026-10-29, replaces "small batches of 2-5"): gather everything that's ready
+into ONE batch per phone test, so she tests many things in one sitting instead of one at a
+time. Mockups for the visual items go out in the same round, so she can pick while she
+tests. Before handing her a batch, run the full sweep (next sections).
 
 ## Fix directly, or ask first (Cath, 2026-10-29)
 
@@ -121,6 +123,19 @@ until she picks.
 - 2026-10-29: **Log without an account.** Trip items (and similar places) can be logged as
   a reference only, with no account and no balance change (e.g. plane tickets paid before).
 - 2026-10-29: **Paid is struck through** in every place it applies. Look waits on mockup.
+- 2026-10-29: **Undo only for 15 minutes.** Undo (bill / debt / loan payments, shared
+  expense payments, transfers, and the remove button on payments in Edit loan) is offered
+  only for 15 minutes after the payment was logged. After that the payment can still be
+  edited: add a receipt photo, raise the amount (never below what was first paid), fix the
+  date or the account. Never removed, never lowered. A short note says so.
+- 2026-10-29: **Confirm before deleting.** Anything that deletes, removes or clears data
+  (or does something like it) asks for a confirmation first, everywhere.
+- 2026-10-29: **Household edits are shown on opening.** When the app opens or comes back
+  from the background, changes another household member made are shown so they can be
+  reviewed right away. Look waits on mockup (in-app card vs banner).
+- 2026-10-29: **Idle timer counts in the background.** The same 5-minute "Are you still
+  there?" + 1-minute countdown keeps counting while the app is in the background (this
+  sharpens the idle-lock rule above).
 - 2026-10-29: **Real dropdowns.** Every choice in a form is a real dropdown list of choices,
   and the category is guessed and preselected where possible (she only changes it if it's
   wrong). Look waits on mockup: one mockup per screen that changes.
@@ -213,6 +228,6 @@ When Cath says "bug hunt" (or the next hunt area is up in PROGRESS7.md):
 - Never say "fixed" without proof.
 - Never change encryption, sync, deletion or Firestore rules without asking Cath first.
 - Never use Cath's computer without asking that same day.
-- Never pile up untested changes: small batches, then her phone check.
+- Never pile up untested changes: one batch, then her phone check, then the next batch.
 - Never delete or weaken an existing check to make the tests pass. If a check is wrong,
   explain why to Cath first.
