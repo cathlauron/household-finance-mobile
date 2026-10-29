@@ -319,6 +319,9 @@ export default function TransactionsScreen({
   // H-10 (2026-10-22): after a successful save the form is closing; a quick second tap on
   // Save would add the same entry again. Blocked until the form is opened again.
   const savedOnceRef = useRef(false);
+  // B-058 (2026-10-29): set the moment a save starts (state updates too late), so a second tap
+  // landing while the first save runs can't save it again.
+  const savingNowRef = useRef(false);
   // Redesign: quick-add sheet extras.
   const [moreOpen, setMoreOpen] = useState(false);
   const [ruleFilled, setRuleFilled] = useState(false);
@@ -765,6 +768,8 @@ export default function TransactionsScreen({
       ...model,
       income: (model.income || []).map((s) => (s.id === source.id ? { ...s, paymentLog: [entry, ...(s.paymentLog || [])] } : s)),
     };
+    if (savingNowRef.current) return;
+    savingNowRef.current = true;
     setSaving(true);
     try {
       await saveModel(updated);
@@ -775,6 +780,7 @@ export default function TransactionsScreen({
     } catch (e) {
       setErrorMsg(notSaved('this transaction'));
     } finally {
+      savingNowRef.current = false;
       setSaving(false);
     }
   }
@@ -899,6 +905,8 @@ export default function TransactionsScreen({
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
     }
 
+    if (savingNowRef.current) return;
+    savingNowRef.current = true;
     setSaving(true);
     try {
       const wasNew = !editingId;
@@ -910,6 +918,7 @@ export default function TransactionsScreen({
     } catch (e) {
       setErrorMsg(notSaved('this transaction'));
     } finally {
+      savingNowRef.current = false;
       setSaving(false);
     }
   }

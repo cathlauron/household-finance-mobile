@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { alertNotSaved } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
@@ -64,6 +64,7 @@ export default function TransferScreen() {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(todayISO());
   const [saving, setSaving] = useState(false);
+  const savingNowRef = useRef(false);
 
   const from = accounts.find((a) => a.key === fromKey);
   const to = accounts.find((a) => a.key === toKey);
@@ -115,6 +116,9 @@ export default function TransferScreen() {
       };
       next = { ...next, manualTransactions: [...(next.manualTransactions || []), feeTxn] };
     }
+    // B-058 (2026-10-29): a second quick tap can't save it twice.
+    if (savingNowRef.current) return;
+    savingNowRef.current = true;
     setSaving(true);
     try {
       await saveModel(next);
@@ -123,6 +127,7 @@ export default function TransferScreen() {
     } catch {
       Alert.alert(...alertNotSaved('this transfer'));
     } finally {
+      savingNowRef.current = false;
       setSaving(false);
     }
   }

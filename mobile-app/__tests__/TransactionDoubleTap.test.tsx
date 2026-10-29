@@ -44,11 +44,13 @@ test('tapping Add twice quickly saves the new transaction once', async () => {
   const cash = screen.queryAllByText('Cash');
   if (cash.length > 1) fireEvent.press(cash[cash.length - 1]);
   await act(async () => {});
+  // A real quick double tap: both presses land before the first save finishes (2026-10-29:
+  // pressing, waiting, then pressing again was flaky under load, because the first save
+  // could finish and close the form in between).
   await act(async () => {
-    fireEvent.press(screen.getByTestId('txn-save'));
-  });
-  await act(async () => {
-    fireEvent.press(screen.getByTestId('txn-save'));
+    const save = screen.getByTestId('txn-save');
+    fireEvent.press(save);
+    fireEvent.press(save);
   });
   expect(mockSaveModel).toHaveBeenCalledTimes(1);
 });
