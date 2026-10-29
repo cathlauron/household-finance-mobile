@@ -151,6 +151,12 @@ until she picks.
   count); dropdowns E2 (a list rises from the bottom); household changes F2 (banner) then
   F3 (the full list); Undo / Edit payment C1-C3 and Edit loan payments D1-D2 approved.
   Strikethrough: she wants the WHOLE ROW struck (new mockup before building).
+- 2026-10-29: **Paid look = canvas B14**: the row keeps its layout; one line runs from the
+  start of the name to the end of the amount, and the whole row is faded. Use it everywhere
+  something is shown as paid next to unpaid things (Paid this month, trip items, groceries).
+- 2026-10-29: **Tapping Left to Spend = canvas L4**: the card, a two-line "why", small bars
+  (You have, Past due, Bills, Debts, Loans, Plans), then every account and every item still
+  to go out before payday.
 - 2026-10-29: Trips: "Just record it" (when ticking an item) is enough for logging with no
   account.
 - 2026-10-29: **Real dropdowns.** Every choice in a form is a real dropdown list of choices,

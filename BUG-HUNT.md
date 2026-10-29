@@ -194,3 +194,4 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 ### Cath, 2026-10-29 evening (TEST-3 s14 "as described")
 - H-45: neither B3 nor B4. New options on the canvas: B5-B10 (her idea first: amount beside the name, one clean line through both). Waiting for her pick.
 - H-54 (new): tapping Left to Spend opens a detailed "why" page (e.g. why it's over). Mockups L1 (why + every item), L2 (bars from what you have to what's left), L3 (day by day: when it goes below zero). Waiting for her pick.
+- Cath picked B14 (H-45) and L4 (H-54), 2026-10-29.
