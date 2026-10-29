@@ -37,7 +37,8 @@ import {
   transactionTotals,
   TransactionEntry,
 } from '../transactions';
-import { computeAutoCategory } from '../categorization';
+import { guessCategory, categoryOptions } from '../categoryGuess';
+import { PickerRow, Choices, OwnChoiceField } from '../components/SimpleForm';
 import type { ManualTransaction, HouseholdModel, Person, PaymentMethod } from '../types';
 import CsvImportModal from './CsvImportModal';
 import BottomSheet, { finishSheetHandoff } from '../components/BottomSheet';
@@ -325,6 +326,10 @@ export default function TransactionsScreen({
   // Redesign: quick-add sheet extras.
   const [moreOpen, setMoreOpen] = useState(false);
   const [ruleFilled, setRuleFilled] = useState(false);
+  // H-46 (Cath, 2026-10-29): the category guessed from your past entries with the same name
+  // (rules: ruleFilled). Either one shows "Suggested"; picking a category yourself clears it.
+  const [pastGuessed, setPastGuessed] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
   // Version 2.2 (smoothness sweep): the full list is built once per change (it was built
   // twice), and each row finds its own record in a ready-made index instead of searching
   // every transaction again for every row.
@@ -601,6 +606,8 @@ export default function TransactionsScreen({
     onFormOpened?.();
     setMoreOpen(false);
     setRuleFilled(false);
+    setPastGuessed(false);
+    setCatOpen(false);
     setEditingId(null);
     resetForm();
     setModalOpen(true);
@@ -613,6 +620,8 @@ export default function TransactionsScreen({
     if (!raw) return;
     setEditingId(raw.id);
     setRuleFilled(false);
+    setPastGuessed(false);
+    setCatOpen(false);
     setMoreOpen(!!(raw.tags?.length || raw.receiptPhoto || (raw.owner && raw.owner !== 'shared')));
     setLabelInput(raw.label || '');
     setCategoryInput(raw.category || '');
@@ -644,19 +653,35 @@ export default function TransactionsScreen({
   // Only fills the category in when it's still empty, so this never overwrites a category
   // the person already typed by hand. Amount-based rules need the amount too, so both the
   // label and amount fields trigger this — each reading whatever's currently in the other.
+  // H-46: a category guessed earlier (not picked by you) is guessed again as you type.
+  function applyGuess(label: string, amt: number) {
+    if (!model) return;
+    const mine = categoryInput.trim() && !ruleFilled && !pastGuessed;
+    if (mine) return;
+    const g = guessCategory(model, label, amt);
+    if (g) {
+      setCategoryInput(g.category);
+      setRuleFilled(g.from === 'rule');
+      setPastGuessed(g.from === 'past');
+    } else if (ruleFilled || pastGuessed) {
+      setCategoryInput('');
+      setRuleFilled(false);
+      setPastGuessed(false);
+    }
+  }
   function handleLabelChange(text: string) {
     setLabelInput(text);
-    if (!model || categoryInput.trim()) return;
-    const amt = typeof amountInput === 'number' ? amountInput : NaN;
-    const auto = computeAutoCategory(model, text, amt);
-    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
+    applyGuess(text, typeof amountInput === 'number' ? amountInput : NaN);
   }
 
   function handleAmountChange(val: number | '') {
     setAmountInput(val);
-    if (!model || categoryInput.trim()) return;
-    const auto = computeAutoCategory(model, labelInput, val === '' ? NaN : val);
-    if (auto) { setCategoryInput(auto); setRuleFilled(true); }
+    applyGuess(labelInput, val === '' ? NaN : val);
+  }
+  function pickCategory(c: string) {
+    setCategoryInput(c);
+    setRuleFilled(false);
+    setPastGuessed(false);
   }
 
   async function handlePickReceipt() {
@@ -1282,15 +1307,28 @@ export default function TransactionsScreen({
             />
           </View>
           </Guided>
-          <View style={[styles.formRow, styles.formRowLine]}>
-            <MarkedLabel text="Category" mark="optional" style={styles.formLabel} />
-            <TextInput
-              style={styles.formInput}
-              placeholder="e.g. Groceries"
-              placeholderTextColor={colors.inkFaint}
-              value={categoryInput}
-              onChangeText={(t) => { setCategoryInput(t); setRuleFilled(false); }}
-            />
+          {/* H-46 (Cath, 2026-10-29, canvas E2): a real dropdown, guessed for you ("Suggested"). */}
+          <View style={styles.formRowLine}>
+            <PickerRow
+              mark="optional"
+              label="Category"
+              value={categoryInput || 'Choose'}
+              tag={(ruleFilled || pastGuessed) && categoryInput ? 'Suggested' : undefined}
+              open={catOpen}
+              onToggle={() => setCatOpen((o) => !o)}
+              testID="txn-category-row"
+            >
+              <Choices
+                options={(() => {
+                  const list = model ? categoryOptions(model) : [];
+                  if (categoryInput && !list.includes(categoryInput)) list.unshift(categoryInput);
+                  return list.map((c) => ({ id: c, label: c, tag: c === categoryInput && (ruleFilled || pastGuessed) ? 'Suggested' : undefined }));
+                })()}
+                value={categoryInput}
+                onChange={pickCategory}
+              />
+              <OwnChoiceField options={model ? categoryOptions(model) : []} value={categoryInput} onChange={pickCategory} placeholder="e.g. Groceries" />
+            </PickerRow>
           </View>
           <View style={[styles.formRow, styles.formRowLine]}>
             <MarkedLabel text="Note" mark="optional" style={styles.formLabel} />
@@ -1304,8 +1342,8 @@ export default function TransactionsScreen({
           </View>
         </View>
         )}
-        {ruleFilled && !!categoryInput && (
-          <Text style={styles.formFooter}>Category was filled in by one of your rules.</Text>
+        {(ruleFilled || pastGuessed) && !!categoryInput && (
+          <Text style={styles.formFooter}>{ruleFilled ? 'Category was filled in by one of your rules.' : 'Category guessed from your last entry with this name. Change it if it\'s wrong.'}</Text>
         )}
 
         <View style={{ marginTop: 20 }}>
