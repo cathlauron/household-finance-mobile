@@ -31,6 +31,7 @@ import Guided, { useFieldErrors } from '../components/Guided';
 import { useStickyState } from '../stickyState';
 
 import { useWho } from '../components/WhoLogged';
+import { askToRemove } from '../askToRemove';
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
   { id: 'anniversary', label: 'Anniversary' },
@@ -718,7 +719,7 @@ export default function EventsScreen() {
                 style={{ backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, paddingHorizontal: 0, justifyContent: 'flex-end' }}
                 inputStyle={{ textAlign: 'right', flex: 0, minWidth: 80, color: colors.planned }}
               />
-              <TouchableOpacity onPress={() => setItemsInput((rows) => rows.filter((r) => r.id !== it.id))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+              <TouchableOpacity onPress={() => askToRemove(`Remove ${it.name?.trim() ? `"${it.name.trim()}"` : 'this item'}?`, 'It comes off this event when you tap Save.', () => setItemsInput((rows) => rows.filter((r) => r.id !== it.id)))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                 <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
               </TouchableOpacity>
             </View>

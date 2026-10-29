@@ -40,6 +40,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SheetBar, BigAmount, FormGroup, InputRow, PickerRow, Footnote, Choices, DayStrip, AccountChoices, accountName, useOpenRow, ordinal, InlineField, OwnChoiceField } from '../components/SimpleForm';
 import { paymentMethodColor } from '../components/CardFace';
 
+import { askToRemove } from '../askToRemove';
 // Local editing shape for one payment-log row in the modal — amount is kept as
 // raw text while typing (not a number) so a half-typed value like "1500."
 // doesn't get mangled, and is only parsed/validated on Save.
@@ -320,7 +321,9 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
   }
 
   function removePaymentLogEntry(id: string) {
-    setPaymentLogEntries((prev) => prev.filter((e) => e.id !== id));
+    askToRemove('Remove this payday?', 'It comes off this income when you tap Save, and the account it went into is worked out again without it.', () =>
+      setPaymentLogEntries((prev) => prev.filter((e) => e.id !== id))
+    );
   }
 
   async function handleSave() {

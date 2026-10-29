@@ -45,6 +45,7 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import SegmentedControl from '../components/SegmentedControl';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, OwnChoiceField } from '../components/SimpleForm';
+import { askToRemove } from '../askToRemove';
 const LOAN_TYPES = ['Car', 'Motorcycle', 'Home', 'Personal', 'Business', 'Other'];
 
 function loanPaidTotal(loan: Loan): number {
@@ -336,7 +337,9 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   }
 
   function handleRemovePayment(paymentId: string) {
-    setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
+    askToRemove('Remove this payment?', 'It comes off this loan when you tap Save, and the account it was paid from is worked out again without it.', () =>
+      setPaymentsInput((list) => list.filter((p) => p.id !== paymentId))
+    );
   }
 
   async function handleSave() {
@@ -775,7 +778,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
                           <Text style={styles.paymentRowAmount}>
                             {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
                           </Text>
-                          <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn}>
+                          <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn} accessibilityRole="button" accessibilityLabel="Remove this payment" testID={`loan-payment-remove-${p.id}`}>
                             <Ionicons name="close" size={14} color={colors.inkFaint} />
                           </TouchableOpacity>
                         </View>

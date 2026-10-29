@@ -49,6 +49,7 @@ import Guided, { useFieldErrors } from '../components/Guided';
 import BottomSheet from '../components/BottomSheet';
 import { SheetBar, BigTotal, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, GroupLabel, InlineField, InlineAmount, useOpenRow } from '../components/SimpleForm';
 
+import { askToRemove } from '../askToRemove';
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
     .filter((i) => i.checked)
@@ -911,7 +912,10 @@ export default function TravelScreen() {
                           {(td.done || !!td.date || who.others(td.addedBy)) && <Text style={styles.tripSub}>{[td.done ? 'Done' : td.date ? shortDay(td.date as string) : '', who.others(td.addedBy) ? `added by ${who.nameOf(td.addedBy)}` : ''].filter(Boolean).join(' · ')}</Text>}
                         </View>
                         <TouchableOpacity
-                          onPress={() => saveTripTodos(t, (t.todos || []).filter((x) => x.id !== td.id))}
+                          onPress={() => askToRemove(`Remove "${td.text}"?`, 'It comes off this trip\'s to-do list.', () => {
+                            const latest = (getModel() ?? model)?.travel?.find((x) => x.id === t.id) ?? t;
+                            saveTripTodos(latest, (latest.todos || []).filter((x) => x.id !== td.id));
+                          })}
                           accessibilityRole="button"
                           accessibilityLabel={`Remove ${td.text}`}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -1058,7 +1062,7 @@ export default function TravelScreen() {
                     onChangeText={(text) => setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, text } : x)))}
                     maxLength={120}
                   />
-                  <TouchableOpacity onPress={() => setTodos((list) => list.filter((x) => x.id !== t.id))} accessibilityRole="button" accessibilityLabel={`Remove ${t.text}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+                  <TouchableOpacity onPress={() => askToRemove(`Remove "${t.text}"?`, 'It comes off the to-do list when you tap Save.', () => setTodos((list) => list.filter((x) => x.id !== t.id)))} accessibilityRole="button" accessibilityLabel={`Remove ${t.text}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                     <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
                   </TouchableOpacity>
                 </View>
@@ -1133,7 +1137,7 @@ export default function TravelScreen() {
                 accessibilityLabel={`Cost of ${item.title || 'this item'}`}
                 testID={`travel-form-item-cost-${item.id}`}
               />
-              <TouchableOpacity onPress={() => handleRemoveChecklistItem(item.id)} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+              <TouchableOpacity onPress={() => askToRemove(`Remove "${item.title || 'this item'}"?`, item.checked ? 'It comes off this trip now, with its payment.' : 'It comes off this trip now.', () => handleRemoveChecklistItem(item.id))} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                 <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
               </TouchableOpacity>
             </View>

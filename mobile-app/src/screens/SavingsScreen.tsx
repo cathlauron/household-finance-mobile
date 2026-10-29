@@ -38,6 +38,7 @@ import { potTarget, isEmergencyPot, monthsCovered, addedThisMonth, efTargetMonth
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, SwitchRow, Footnote, GroupLabel, AccountChoices, accountName, useOpenRow } from '../components/SimpleForm';
 import { useStickyState } from '../stickyState';
 
+import { askToRemove } from '../askToRemove';
 function todayISO(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -276,7 +277,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
 
 
   function removeContribRow(id: string) {
-    setContribRows((rows) => rows.filter((r) => r.id !== id));
+    askToRemove('Remove this entry?', 'It comes off this pot when you tap Save.', () => setContribRows((rows) => rows.filter((r) => r.id !== id)));
   }
 
   function updateContribDate(id: string, value: string) {

@@ -846,7 +846,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           <Ionicons name="warning-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
           <Text style={[styles.revokedBannerText, { flex: 1 }]}>{remoteRevokeNotice}</Text>
           {!!onClearRemoteRevokeNotice && (
-            <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Dismiss this notice">
               <Ionicons name="close" size={16} color={colors.error} style={{ paddingLeft: 8 }} />
             </TouchableOpacity>
           )}

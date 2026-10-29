@@ -26,6 +26,7 @@ import { hapticLight, hapticSelection } from '../haptics';
 import { useStickyState } from '../stickyState';
 
 import { useWho } from '../components/WhoLogged';
+import { askToRemove } from '../askToRemove';
 // Redesign: Groceries (Plan › Groceries), matching the Finance Flow mockup.
 // List: tick items off as you shop; "Finish trip" adds what you bought to your spending.
 // Calculator: add prices as you go to see what's in your cart against your plan.
@@ -53,7 +54,7 @@ const STARTERS: { name: string; ingredients: string[] }[] = [
 export default function GroceriesScreen() {
   const { colors } = useTheme();
   const who = useWho();
-  const { model, saveModel } = useData();
+  const { model, saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
 
@@ -368,7 +369,7 @@ export default function GroceriesScreen() {
                       </View>
                       <Text style={[styles.amount, { color: toneUnlessZero(num(e.amount), colors.planned, colors) }]}>{formatPeso(num(e.amount))}</Text>
                       <TouchableOpacity
-                        onPress={() => saveModel({ ...model, groceryCalculator: calc.filter((x) => x.id !== e.id) })}
+                        onPress={() => askToRemove(`Remove "${e.label}"?`, 'It comes off the calculator.', () => { const m = getModel() ?? model; saveModel({ ...m, groceryCalculator: (m.groceryCalculator ?? []).filter((x) => x.id !== e.id) }); })}
                         accessibilityRole="button"
                         accessibilityLabel={`Remove ${e.label}`}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -409,7 +410,7 @@ export default function GroceriesScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.primary, { flex: 1, marginTop: 0, backgroundColor: colors.navy3 }]}
-                    onPress={() => saveModel({ ...model, groceryCalculator: [] })}
+                    onPress={() => askToRemove('Clear the calculator?', 'Every line on the calculator is removed. Your shopping list stays.', () => { const m = getModel() ?? model; saveModel({ ...m, groceryCalculator: [] }); }, 'Clear')}
                     accessibilityRole="button"
                   >
                     <GradientFill kind="surface" color={colors.navy3} />
@@ -512,7 +513,7 @@ export default function GroceriesScreen() {
                     inputStyle={{ textAlign: 'right', flex: 0, minWidth: 80, color: colors.planned }}
                   />
                   <TouchableOpacity
-                    onPress={() => setIngredients((rows) => rows.filter((r) => r.id !== ing.id))}
+                    onPress={() => askToRemove(`Remove ${ing.name?.trim() ? `"${ing.name.trim()}"` : 'this ingredient'}?`, 'It comes off this meal when you tap Save.', () => setIngredients((rows) => rows.filter((r) => r.id !== ing.id)))}
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ingredient ${i + 1}`}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

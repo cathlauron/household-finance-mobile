@@ -15,6 +15,7 @@ import { makeReceiptDataUri } from '../avatars';
 import { setAutoLockSuppressed } from '../autoLockSuppress';
 import { friendlyError } from '../friendlyError';
 
+import { askToRemove } from '../askToRemove';
 // Opens the photo library and returns the shrunk photo, or null (cancelled / not allowed).
 export async function pickReceiptPhoto(): Promise<string | null> {
   setAutoLockSuppressed(true);
@@ -112,7 +113,7 @@ export default function ReceiptField({
           <TouchableOpacity onPress={pick} style={s.pill} testID={`${testID}-change`} accessibilityRole="button">
             <Text style={s.pillText}>{busy ? 'Adding…' : 'Change photo'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => onChange(null)} testID={`${testID}-remove`} accessibilityRole="button" hitSlop={8}>
+          <TouchableOpacity onPress={() => askToRemove('Remove this receipt photo?', 'The photo is taken off. The payment itself stays.', () => onChange(null))} testID={`${testID}-remove`} accessibilityRole="button" hitSlop={8}>
             <Text style={s.remove}>Remove</Text>
           </TouchableOpacity>
         </View>
