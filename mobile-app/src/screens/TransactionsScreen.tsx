@@ -355,7 +355,7 @@ export default function TransactionsScreen({
   );
   const listed = useMemo(() => {
     if (transferRows.length === 0) return transactions;
-    const asEntries = transferRows.map((r) => ({ id: r.id, date: r.date, label: r.title, category: '', source: 'manual' as const, amount: r.amount, direction: 'out' as const, owner: 'shared', transfer: r }));
+    const asEntries = transferRows.map((r) => ({ id: r.id, date: r.date, label: r.title, category: '', source: 'manual' as const, amount: r.amount, direction: 'out' as const, owner: 'shared', at: r.at, transfer: r }));
     return sortTransactions([...transactions, ...asEntries], sortOrder);
   }, [transactions, transferRows, sortOrder]);
   const days = useMemo(() => groupByDate(listed), [listed]);

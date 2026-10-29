@@ -57,7 +57,8 @@ import type { HouseholdModel } from './src/types';
 import { getBiometricState } from './src/biometrics';
 import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinutes, setAutoLockMinutes } from './src/autoLock';
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
-import { StillTherePopup, PausedCover, AutoLockSheet, STILL_THERE_AFTER_MS } from './src/components/StillThere';
+import { StillTherePopup, PausedCover, AutoLockSheet } from './src/components/StillThere';
+import { stillThereState } from './src/stillThereClock';
 import { onActivity } from './src/activity';
 import { closeOpenSwipeRows } from './src/components/SwipeableRow';
 import { hideAmountsNow } from './src/hideAmounts';
@@ -557,10 +558,20 @@ function AppContent() {
   // minutes or more: it asks as soon as the app is opened again.
   const stillOpenRef = useRef(false);
   stillOpenRef.current = stillThereOpen || pausedCover || autoLockSheetOpen;
+  // H-42 (Cath, 2026-10-29): the 5 + 1 minutes keep counting while the app is in the
+  // background. Back after 6 minutes or more: the amounts are already hidden.
+  const [stillThereDeadline, setStillThereDeadline] = useState<number | undefined>(undefined);
   function checkStillThere() {
     if (screenRef.current !== 'home' || stillOpenRef.current) return;
     if (autoLockMinutesRef.current > 0 || AppState.currentState !== 'active') return;
-    if (Date.now() - lastTouchRef.current >= STILL_THERE_AFTER_MS) setStillThereOpen(true);
+    const st = stillThereState(lastTouchRef.current, Date.now());
+    if (st.kind === 'hide') {
+      hideAmountsNow();
+      setPausedCover(true);
+    } else if (st.kind === 'ask') {
+      setStillThereDeadline(st.deadline);
+      setStillThereOpen(true);
+    }
   }
   useEffect(() => {
     if (screen !== 'home') return;
@@ -796,6 +807,7 @@ function AppContent() {
         </NavigationContainer>
         <StillTherePopup
           visible={stillThereOpen}
+          deadline={stillThereDeadline}
           onHere={() => {
             setStillThereOpen(false);
             noteTouch();
