@@ -32,6 +32,7 @@ import { useStickyState } from '../stickyState';
 
 import { useWho } from '../components/WhoLogged';
 import { askToRemove } from '../askToRemove';
+import { isoOf, nextEventDate as nextDate, eventBudget } from '../eventDates';
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
   { id: 'anniversary', label: 'Anniversary' },
@@ -138,23 +139,8 @@ function reconcileEventTransaction(
 }
 
 // ---- Redesign helpers ----
-function isoOf(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-// The next date this event happens (today counts), or null if it has no date.
-function nextDate(ev: EventItem, today: string): string | null {
-  if (ev.recurrence === 'onetime') return ev.onetimeDate || null;
-  if (typeof ev.month !== 'number' || typeof ev.day !== 'number') return null;
-  const y = Number(today.slice(0, 4));
-  const thisYear = isoOf(new Date(y, ev.month - 1, ev.day));
-  return thisYear >= today ? thisYear : isoOf(new Date(y + 1, ev.month - 1, ev.day));
-}
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
-}
-function eventBudget(ev: EventItem): number {
-  if (ev.items && ev.items.length) return ev.items.reduce((s, i) => s + (typeof i.cost === 'number' ? i.cost : 0), 0);
-  return typeof ev.budget === 'number' ? ev.budget : 0;
 }
 // An event that repeats every year goes back to Upcoming 30 days after it was done,
 // keeping a note of that year in its history.

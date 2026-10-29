@@ -28,6 +28,7 @@ import { accountEffect as investmentAccountEffect } from './investments';
 import { isCyclePaid, lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
+import { leftToSpendExtras } from './leftToSpendExtras';
 
 export type CalendarEvent = {
   type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
@@ -714,7 +715,11 @@ export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date
   const balances = computeRunningBalances(model, targetDate.getFullYear(), targetDate.getMonth());
   // H-11 (2026-10-22): rounded to centavos (sums like 0.30 - 0.10 - 0.20 land a hair below
   // zero, which showed "-₱0.00" and "Over budget"). `+ 0` turns -0 into 0.
-  const raw = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  const projected = balances[targetDate.getDate()] ?? totalLiquidBalance(model);
+  // H-52 (Cath, 2026-10-29): everything else due before payday that the projection misses
+  // (past due, loans set right, the grocery list, trips, events). leftToSpendExtras.ts.
+  const extras = leftToSpendExtras(model, today, targetDate).reduce((s, l) => s + l.amount, 0);
+  const raw = projected + extras;
   const amount = Math.round(raw * 100) / 100 + 0;
   return { amount, targetDate, basis };
 }
@@ -758,6 +763,10 @@ export function leftToSpendBreakdown(model: HouseholdModel, result: LeftToSpendR
       m = 0;
       y += 1;
     }
+  }
+  // H-52: one line each for past due, the grocery list, trips and events (and loans set right).
+  for (const l of leftToSpendExtras(model, today, result.targetDate)) {
+    sums[l.label] = (sums[l.label] || 0) + l.amount;
   }
   const lines: LeftToSpendLine[] = Object.keys(sums)
     .filter((k) => Math.abs(sums[k]) >= 0.005)
