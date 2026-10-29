@@ -46,6 +46,7 @@ import Guided, { useFieldErrors } from '../components/Guided';
 import SegmentedControl from '../components/SegmentedControl';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, OwnChoiceField } from '../components/SimpleForm';
 import { askToRemove } from '../askToRemove';
+import { undoLeftMs } from '../paymentEdit';
 const LOAN_TYPES = ['Car', 'Motorcycle', 'Home', 'Personal', 'Business', 'Other'];
 
 function loanPaidTotal(loan: Loan): number {
@@ -769,20 +770,37 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
                         <Text style={styles.emptyText}>No payments logged yet.</Text>
                       )}
 
-                      {paymentsInput.map((p) => (
-                        <View key={p.id} style={styles.paymentRow}>
-                          <View style={styles.paymentRowMain}>
-                            <Text style={styles.paymentRowDate}>{p.date}</Text>
-                            <Text style={styles.paymentRowMethod}>{paymentMethodLabel(p.paymentMethod, model)}</Text>
+                      {/* H-50 (Cath, 2026-10-29, canvas D1): payments look like they do on the loan's
+                          page (month, "Paid Aug 16 · Cash", amount), newest first. H-48: the x is
+                          only there for a payment added in this form or logged in the last 15
+                          minutes; older ones are fixed by tapping them on the loan's page. */}
+                      {[...paymentsInput].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).map((p, i) => {
+                        const d = new Date(p.date + 'T00:00:00');
+                        const saved = (model?.loans || []).find((l) => l.id === editingId)?.actualPayments?.some((x) => x.id === p.id);
+                        const removable = !saved || undoLeftMs(p.createdAt) > 0;
+                        return (
+                          <View key={p.id} style={[styles.paymentRow, i > 0 && styles.paymentRowLine]} testID={`loan-form-payment-${p.id}`}>
+                            <View style={styles.paymentRowMain}>
+                              <Text style={styles.paymentRowDate}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                              <Text style={styles.paymentRowMethod}>
+                                {isNaN(d.getTime()) ? '' : `Paid ${dateText(d)}`}
+                                {p.recordedOnly ? ' · recorded only' : p.paymentMethod ? ` · ${paymentMethodLabel(p.paymentMethod, model)}` : ''}
+                              </Text>
+                            </View>
+                            <Text style={[styles.paymentRowAmount, { color: directionInput === 'lent' ? colors.positive : colors.negative }]}>
+                              {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
+                            </Text>
+                            {removable && (
+                              <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn} accessibilityRole="button" accessibilityLabel="Remove this payment" testID={`loan-payment-remove-${p.id}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+                              </TouchableOpacity>
+                            )}
                           </View>
-                          <Text style={styles.paymentRowAmount}>
-                            {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
-                          </Text>
-                          <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn} accessibilityRole="button" accessibilityLabel="Remove this payment" testID={`loan-payment-remove-${p.id}`}>
-                            <Ionicons name="close" size={14} color={colors.inkFaint} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
+                        );
+                      })}
+                      {paymentsInput.length > 0 && (
+                        <Text style={styles.paymentEditHint}>To add a receipt or fix a payment, tap it on the loan's page.</Text>
+                      )}
 
                       <View style={styles.paymentAddBox}>
                         <Text style={styles.inputLabel}>Log a new payment</Text>
@@ -881,20 +899,15 @@ function makeStyles(colors: any) {
       borderTopWidth: 1,
       borderTopColor: colors.navy2,
     },
-    paymentRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      marginBottom: 8,
-    },
+    // H-50 (canvas D1): rows like the loan page's Payments, not grey boxes.
+    paymentRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingVertical: 10 },
+    paymentRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy1 },
     paymentRowMain: { flex: 1, marginRight: 8 },
-    paymentRowDate: { fontSize: 12.5, fontWeight: '600', color: colors.ink },
-    paymentRowMethod: { fontSize: 11, color: colors.inkDim, marginTop: 1 },
-    paymentRowAmount: { fontSize: 12.5, fontWeight: '600', color: colors.ink, marginRight: 8 },
-    paymentRemoveBtn: { paddingHorizontal: 6, paddingVertical: 2 },
+    paymentRowDate: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    paymentRowMethod: { fontSize: 15, color: colors.inkDim, marginTop: 1 },
+    paymentRowAmount: { fontSize: 17, fontWeight: '600', color: colors.ink, marginRight: 4 },
+    paymentRemoveBtn: { paddingLeft: 10, paddingVertical: 4 },
+    paymentEditHint: { fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 6, marginBottom: 4 },
     paymentAddBox: {
       backgroundColor: colors.navy2,
       borderRadius: 10,

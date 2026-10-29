@@ -105,7 +105,7 @@ export function isPaydayReceived(source: IncomeSource, expectedISO: string): boo
 // the Accounts page folds this activity in and starts afresh.
 export type SpendingGroup = 'cash' | 'debit' | 'credit';
 
-function happenedSinceUpdate(model: HouseholdModel, date: string | undefined, at: number | undefined, today: string): boolean {
+export function happenedSinceUpdate(model: HouseholdModel, date: string | undefined, at: number | undefined, today: string): boolean {
   const asOf = model.balanceAccounts.asOfDate;
   if (!date || !asOf || date > today) return false;
   if (date > asOf) return true;

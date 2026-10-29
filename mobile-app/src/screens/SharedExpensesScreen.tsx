@@ -32,6 +32,7 @@ import ReceiptField, { ReceiptMark } from '../components/ReceiptField';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow } from '../components/SimpleForm';
 
 import { useWho } from '../components/WhoLogged';
+import { undoLeftMs } from '../paymentEdit';
 // Redesign: Shared Expenses (Plan › Shared Expenses), from the Finance Flow mockup.
 // - Overall: what you're owed or owe in total.
 // - Balances: one netted number per pair of people.
@@ -333,6 +334,11 @@ export default function SharedExpensesScreen() {
 
   function undoSettlement(st: SharedSettlement) {
     if (!model) return;
+    // H-48 (Cath, 2026-10-29): Undo is only there for 15 minutes after the payment.
+    if (undoLeftMs(st.createdAt) <= 0) {
+      Alert.alert(`${name(st.from)} paid ${name(st.to)} ${formatPeso(st.amount)}`, `${shortDate(st.date)}${st.note ? ` · ${st.note}` : ''}\n\nUndo is only there for 15 minutes after a payment. To fix it, record a payment back the other way.`, [{ text: 'OK', style: 'cancel' }]);
+      return;
+    }
     Alert.alert(`${name(st.from)} paid ${name(st.to)} ${formatPeso(st.amount)}`, `${shortDate(st.date)}${st.note ? ` · ${st.note}` : ''}`, [
       { text: 'Close', style: 'cancel' },
       {

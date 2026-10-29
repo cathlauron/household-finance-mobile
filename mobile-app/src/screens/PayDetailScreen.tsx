@@ -16,6 +16,8 @@ import { WhoFootnote, useWho } from '../components/WhoLogged';
 import GradientFill from '../components/GradientFill';
 import PayFromSheet from '../components/PayFromSheet';
 import { ReceiptViewer, ReceiptMark } from '../components/ReceiptField';
+import UndoPayment from '../components/UndoPayment';
+import { editCyclePayment, editLoanPayment, cycleAmountLocked } from '../paymentEdit';
 import DeleteRow from '../components/DeleteRow';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
@@ -81,6 +83,8 @@ export default function PayDetailScreen() {
   const [payOpen, setPayOpen] = useState(false);
   // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
   const [viewReceipt, setViewReceipt] = useState<string | null>(null);
+  // H-48 (canvas C2-C3): the payment being edited (tap a row in History).
+  const [editCycleId, setEditCycleId] = useState<string | null>(null);
 
   const record: Bill | Debt | Loan | undefined = !model
     ? undefined
@@ -269,10 +273,13 @@ export default function PayDetailScreen() {
             <Text style={[styles.primaryText, { color: colors.onButton }]}>{regular ? 'Send' : 'Pay'}</Text>
           </TouchableOpacity>
         )}
-        {paidToday && (
-          <TouchableOpacity
-            style={[styles.primary, { backgroundColor: colors.accentTint }]}
-            onPress={() => {
+        {/* H-48 (Cath, 2026-10-29): Undo only for 15 minutes after logging, then edit instead. */}
+        <UndoPayment
+          loggedAt={lastPaid?.paidAt ?? lastPaid?.loggedAt}
+          testID="pay-detail-undo"
+          style={{ alignSelf: 'stretch', marginTop: 16 }}
+          label={lastPaid?.paidDate === today ? "Undo today's payment" : `Undo the ${shortDate(lastPaid?.paidDate || today)} payment`}
+          onUndo={() => {
               const next = undoLastPayment(rec);
               // Code review 2026-10-27: the fee paid with it goes too.
               const feeId = lastPaid?.feeTxnId;
@@ -281,13 +288,8 @@ export default function PayDetailScreen() {
               const invId = kind === 'bill' ? (rec as Bill).investmentId : undefined;
               if (invId && lastPaid?.investEntryId) base = withoutEntry(base, invId, lastPaid.investEntryId);
               save(kind === 'bill' ? { ...base, bills: base.bills.map((b) => (b.id === id ? (next as Bill) : b)) } : { ...base, debts: base.debts.map((d) => (d.id === id ? (next as Debt) : d)) });
-            }}
-            accessibilityRole="button"
-          >
-            <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint }]} />
-            <Text style={[styles.primaryText, { color: colors.gold }]} testID="pay-detail-undo">{lastPaid?.paidDate === today ? "Undo today's payment" : `Undo the ${shortDate(lastPaid?.paidDate || today)} payment`}</Text>
-          </TouchableOpacity>
-        )}
+          }}
+        />
       </View>
 
       <PayFromSheet
@@ -390,7 +392,7 @@ export default function PayDetailScreen() {
               const late = c.dueDate && c.paidDate ? daysBetween(c.dueDate, c.paidDate) : 0;
               const d = new Date((c.dueDate || c.paidDate) + 'T00:00:00');
               return (
-                <TouchableOpacity key={c.id} disabled={!c.receiptPhoto} onPress={() => setViewReceipt(c.receiptPhoto || null)} testID={c.receiptPhoto ? 'history-receipt' : undefined} accessibilityRole={c.receiptPhoto ? 'button' : undefined} style={[styles.histRow, i > 0 && styles.line]}>
+                <TouchableOpacity key={c.id} onPress={() => setEditCycleId(c.id)} testID={`history-row-${c.id}`} accessibilityRole="button" accessibilityHint="Opens this payment to add a receipt or fix it" style={[styles.histRow, i > 0 && styles.line]}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={styles.histTitle}>{isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'long' })}</Text>
@@ -404,7 +406,6 @@ export default function PayDetailScreen() {
                       {num(c.feePaid) > 0 ? ` · fee ${formatPeso(num(c.feePaid))}` : ''}
                       {who.by(c.paidBy)}
                       {c.notes?.trim() ? ` · ${c.notes.trim()}` : ''}
-                      {c.receiptPhoto ? ' · tap to see the receipt' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: colors.ink }]}>{formatPeso(num(c.amountPaid))}</Text>
@@ -416,6 +417,35 @@ export default function PayDetailScreen() {
       )}
       {/* Version 2.2 (W2 everywhere): who added it, and who last changed it. */}
       <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
+      {(() => {
+        const ec = editCycleId ? (rec.cycles || []).find((x) => x.id === editCycleId) : undefined;
+        return (
+          <PayFromSheet
+            visible={!!ec}
+            onClose={() => setEditCycleId(null)}
+            title="Edit payment"
+            amount={num(ec?.amountPaid)}
+            direction="out"
+            model={model}
+            initial={ec?.paymentMethod}
+            confirmLabel="Save"
+            withReceipt
+            onConfirm={() => {}}
+            edit={ec ? {
+              date: ec.paidDate,
+              pm: ec.paymentMethod,
+              receipt: ec.receiptPhoto,
+              recordedOnly: !!ec.recordedOnly,
+              minAmount: num(ec.amountPaid),
+              amountLocked: cycleAmountLocked(ec),
+              onSave: (ch) => {
+                setEditCycleId(null);
+                save(editCyclePayment(model, kind as 'bill' | 'debt', id, ec.id, ch), 'Saved');
+              },
+            } : undefined}
+          />
+        );
+      })()}
       <WhoFootnote addedBy={rec.addedBy} createdAt={rec.createdAt} changedBy={rec.changedBy} changedAt={rec.changedAt} style={{ marginTop: 4, marginBottom: 12 }} />
       <DeleteRow label={regular ? 'Delete regular payment' : kind === 'bill' ? 'Delete bill' : 'Delete debt'} onPress={confirmDelete} testID="pay-detail-delete" />
     </KeyboardAwareScrollView>
@@ -462,6 +492,8 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
   const [payOpen, setPayOpen] = useState(false);
   // Cath, 2026-10-27 (canvas R2): a payment with a receipt opens it full size.
   const [viewReceipt, setViewReceipt] = useState<string | null>(null);
+  // H-48 (canvas C2-C3): the payment being edited (tap a row in Payments).
+  const [editPayId, setEditPayId] = useState<string | null>(null);
   // Cath 2026-10-27 ("warn and count what I've actually paid in total"): a smaller payment
   // counts toward the oldest open one, which stays open until the rest is paid.
   const cov = loanCoverage(loan, today);
@@ -546,12 +578,14 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
           <Text style={[styles.primaryText, { color: colors.onButton }]}>{lent ? 'Log money received' : 'Log payment'}{monthly > 0 ? ` · ${formatPeso(payAmount)}` : ''}</Text>
         </TouchableOpacity>
       )}
-      {paidToday && (
-        <TouchableOpacity style={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} onPress={undoPayment} accessibilityRole="button">
-          <GradientFill match={[styles.primary, { backgroundColor: colors.accentTint, alignSelf: 'stretch', marginTop: 16 }]} />
-          <Text style={[styles.primaryText, { color: colors.gold }]} testID="loan-undo">{lastLogged?.date === today ? "Undo today's payment" : `Undo the ${shortDate(lastLogged?.date || today)} payment`}</Text>
-        </TouchableOpacity>
-      )}
+      {/* H-48 (Cath, 2026-10-29): Undo only for 15 minutes after logging, then edit instead. */}
+      <UndoPayment
+        loggedAt={lastLogged?.createdAt}
+        testID="loan-undo"
+        style={{ alignSelf: 'stretch', marginTop: 16 }}
+        label={lastLogged?.date === today ? "Undo today's payment" : `Undo the ${shortDate(lastLogged?.date || today)} payment`}
+        onUndo={undoPayment}
+      />
 
       <View style={[styles.group, { padding: 16, marginTop: 20 }]}>
         <GradientFill match={[styles.group, { padding: 16, marginTop: 20 }]} />
@@ -590,7 +624,7 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
             {payments.map((p, i) => {
               const d = new Date(p.date + 'T00:00:00');
               return (
-                <TouchableOpacity key={p.id} disabled={!p.receiptPhoto} onPress={() => setViewReceipt(p.receiptPhoto || null)} testID={p.receiptPhoto ? 'history-receipt' : undefined} accessibilityRole={p.receiptPhoto ? 'button' : undefined} style={[styles.histRow, i > 0 && styles.line]}>
+                <TouchableOpacity key={p.id} onPress={() => setEditPayId(p.id)} testID={`loan-payment-row-${p.id}`} accessibilityRole="button" accessibilityHint="Opens this payment to add a receipt or fix it" style={[styles.histRow, i > 0 && styles.line]}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={styles.histTitle}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
@@ -602,7 +636,6 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
                       {p.recordedOnly ? ' · recorded only' : ''}
                       {num(p.fee) > 0 ? ` · fee ${formatPeso(num(p.fee))}` : ''}
                       {who.by(p.addedBy)}
-                      {p.receiptPhoto ? ' · tap to see the receipt' : ''}
                     </Text>
                   </View>
                   <Text style={[styles.histAmount, { color: lent ? colors.positive : colors.negative }]}>{formatPeso(num(p.actual))}</Text>
@@ -612,7 +645,35 @@ function LoanBody({ loan, model, save, colors, styles, onDelete }: { loan: Loan;
           </View>
         </>
       )}
-      <Text style={styles.footer}>Each payment is saved with its date, so late ones are easy to spot.</Text>
+      <Text style={styles.footer}>Each payment is saved with its date, so late ones are easy to spot. Tap one to add a receipt or fix it.</Text>
+      {(() => {
+        const ep = editPayId ? (loan.actualPayments || []).find((x) => x.id === editPayId) : undefined;
+        return (
+          <PayFromSheet
+            visible={!!ep}
+            onClose={() => setEditPayId(null)}
+            title="Edit payment"
+            amount={num(ep?.actual)}
+            direction={lent ? 'in' : 'out'}
+            model={model}
+            initial={ep?.paymentMethod}
+            confirmLabel="Save"
+            withReceipt
+            onConfirm={() => {}}
+            edit={ep ? {
+              date: ep.date,
+              pm: ep.paymentMethod,
+              receipt: ep.receiptPhoto,
+              recordedOnly: !!ep.recordedOnly,
+              minAmount: num(ep.actual),
+              onSave: (ch) => {
+                setEditPayId(null);
+                save(editLoanPayment(model, loan.id, ep.id, ch), 'Saved');
+              },
+            } : undefined}
+          />
+        );
+      })()}
       <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       <PayFromSheet
         visible={payOpen}
