@@ -178,3 +178,9 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 | H-49 | Confirm before anything that deletes or does something like it, everywhere | rule - **PROVEN 2026-10-29 (B-057)** |
 | H-50 | Edit loan's logged-payments list doesn't look like the rest of the app | visual: MOCKUP FIRST |
 | H-51 | On opening / coming back: show changes another household member made | new: MOCKUP FIRST (in-app card and banner, she picks) |
+
+## Cath's picks and new asks, 2026-10-29 evening (TEST-3 s13 "as described")
+
+- Picks: A2, E2, F2 then F3, C1-C3 and D1-D2 approved. H-44 "log with no account": "Just record it" is enough (closed).
+- H-45: wants the WHOLE ROW struck through: new mockup first.
+- H-52: Left to Spend only seemed to count bills. Rule (her answers): take off past due unpaid, bills, dated debts, unpaid loan payments, groceries list, trips before payday, events before payday, savings plans, other planned amounts; not no-date debts; one breakdown line each.

@@ -74,6 +74,8 @@ Never use "should work", "probably", "looks fixed" or "done" without proof.
    batch.
 9. **Report to Cath** in plain English: what was wrong, what changed, the status word,
    and the proof. Keep it short.
+   **End every report with "Next on our list"** (Cath, 2026-10-29): the next few items
+   waiting, in order (from BUG-HUNT.md / PROGRESS7.md), so she always knows what's coming.
 
 Batches (Cath, 2026-10-29, replaces "small batches of 2-5"): gather everything that's ready
 into ONE batch per phone test, so she tests many things in one sitting instead of one at a
@@ -136,6 +138,17 @@ until she picks.
 - 2026-10-29: **Idle timer counts in the background.** The same 5-minute "Are you still
   there?" + 1-minute countdown keeps counting while the app is in the background (this
   sharpens the idle-lock rule above).
+- 2026-10-29: **Left to Spend counts everything due before payday** (her answers): bills,
+  debts with a date, loan payments not yet paid, anything PAST DUE and unpaid, and plans not
+  yet paid or bought: the grocery list, trips that start before payday, events before
+  payday, savings plans, and any other planned amount. Debts with no due date are left out
+  (they have their own total on Debts). "Where it comes from" shows one line per kind.
+- 2026-10-29: **Picks:** Debts A2 (one card: still to pay this month, no due date, paid
+  count); dropdowns E2 (a list rises from the bottom); household changes F2 (banner) then
+  F3 (the full list); Undo / Edit payment C1-C3 and Edit loan payments D1-D2 approved.
+  Strikethrough: she wants the WHOLE ROW struck (new mockup before building).
+- 2026-10-29: Trips: "Just record it" (when ticking an item) is enough for logging with no
+  account.
 - 2026-10-29: **Real dropdowns.** Every choice in a form is a real dropdown list of choices,
   and the category is guessed and preselected where possible (she only changes it if it's
   wrong). Look waits on mockup: one mockup per screen that changes.
