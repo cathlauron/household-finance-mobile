@@ -41,11 +41,15 @@ async function draw(path: string) {
   await act(async () => {});
 }
 
-test('Debts: "Total debt logged ₱0.00" is grey', async () => {
+// 2026-10-29 (canvas A2): the card's total is now "Still to pay this month", with a "No due
+// date" total under it. Both zeros stay grey.
+test('Debts: "Still to pay this month ₱0.00" and "No due date ₱0.00" are grey', async () => {
   mockModel = defaultModel();
   await draw('../src/screens/DebtsScreen');
-  expect(screen.getByText('Total debt logged')).toBeTruthy();
-  expect(colorOf(screen.getByText('₱0.00'))).toBe(lightTheme.inkDim);
+  expect(screen.getByText('Still to pay this month')).toBeTruthy();
+  const zeros = screen.getAllByText('₱0.00');
+  expect(zeros).toHaveLength(2);
+  for (const z of zeros) expect(colorOf(z)).toBe(lightTheme.inkDim);
 }, 30000);
 
 test('Groceries: "Bought ₱0.00" is grey', async () => {

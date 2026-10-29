@@ -184,3 +184,4 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 - Picks: A2, E2, F2 then F3, C1-C3 and D1-D2 approved. H-44 "log with no account": "Just record it" is enough (closed).
 - H-45: wants the WHOLE ROW struck through: new mockup first.
 - H-52: Left to Spend only seemed to count bills. Rule (her answers): take off past due unpaid, bills, dated debts, unpaid loan payments, groceries list, trips before payday, events before payday, savings plans, other planned amounts; not no-date debts; one breakdown line each.
+- Flaky checks (2026-10-29, not app bugs): `__tests__/TransactionDoubleTap.test.tsx` and `__tests__/InlineHeights.test.tsx` sometimes fail only in the full `check:all` run (the form / page isn't ready yet under load) and pass alone every time. To do: make them wait for the element instead of a fixed moment.

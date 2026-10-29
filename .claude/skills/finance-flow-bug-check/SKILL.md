@@ -67,6 +67,10 @@ Never use "should work", "probably", "looks fixed" or "done" without proof.
    the screen checks through `tee` and grepping for "failed", did NOT stop the chain;
    it was caught before anything failing was saved.) Never commit after only reading a
    summary line.
+   (2026-10-29: it happened again: `npm run check:all 2>&1 | grep ... && git commit` saved and
+   pushed a commit with a failing screen check, because the pipe's grep succeeded. NEVER pipe
+   the gate. Run it as `npm run check:all > /tmp/gate.log 2>&1 && git commit ...`, then read
+   the log.)
 7. **Try it yourself** (next section) when the change is visible on screen.
 8. **Record it.** Add or update the `BUG-LOG.md` row (id, what Cath saw, cause, the
    check's file and name, status). Only add a `TEST-2.2.md` phone check (later
