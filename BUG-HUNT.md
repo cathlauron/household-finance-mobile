@@ -190,3 +190,7 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 - PROVEN: H-40/H-41 Debts A2 (B-059), H-52 Left to Spend (B-060), H-48 Undo 15 min + Edit payment (B-061), H-50 D1 look (B-061), B-058 double-tap saves.
 - Next batch: H-46 dropdowns E2 on every form; H-51 household changes banner F2 then list F3; H-50 D2 (inside Edit loan: "Log a payment" opens the pay sheet, tap a payment to edit: needs a sheet over the form); H-45 strikethrough waits for Cath's B3/B4 pick.
 - H-53 (found 2026-10-29 in the hidden browser, not checked yet): Home's "YOU PICKED" card says "Your first bill goes here" in a household that already has bills.
+
+### Cath, 2026-10-29 evening (TEST-3 s14 "as described")
+- H-45: neither B3 nor B4. New options on the canvas: B5-B10 (her idea first: amount beside the name, one clean line through both). Waiting for her pick.
+- H-54 (new): tapping Left to Spend opens a detailed "why" page (e.g. why it's over). Mockups L1 (why + every item), L2 (bars from what you have to what's left), L3 (day by day: when it goes below zero). Waiting for her pick.
