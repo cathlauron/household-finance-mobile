@@ -49,3 +49,12 @@ here is built yet. Cath's answers decide the open questions (bottom).
 - Also re-lock when a member leaves by themselves / an owner hands over and leaves?
 - Unlinked profiles with a Recovery Key: offer "Upgrade lock" that also makes a new code?
 - 600,000 rounds after measuring on her phone?
+
+## Built so far
+- Step 1 (v2 reader): built and phone-tested earlier.
+- Step 2 (2026-10-30, v3): the round count travels INSIDE the salt text ("r600000$<salt>";
+  a plain salt = 100,000), passwordRounds.ts. So every place that already keeps the salt
+  (phone, online backup, new-phone sign-in, recovery) keeps the count too: no new field, no
+  rules change. Limits 100,000 to 2,000,000. Nothing writes a count yet, so every key is
+  exactly as before (tests/passwordRounds.test.mjs proves the same key). An old 3.1 phone
+  could not read a counted salt: step 9 only writes it once all of a person's phones are 3.2.

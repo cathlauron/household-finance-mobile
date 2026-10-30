@@ -2,10 +2,12 @@ import * as Crypto from 'expo-crypto';
 import { isV2Payload, openV2 } from './envelopeV2';
 import CryptoJS from 'crypto-js';
 import { keyDeriver } from './fastCrypto';
+import { saltParts } from './passwordRounds';
 
 // How many times the password is "stretched" before it becomes the real encryption key.
 // Higher = slower to guess by brute force, at the cost of a small delay when signing in.
-const PBKDF2_ITERATIONS = 100000;
+// K5 step 2: an ordinary salt still means 100,000; a salt can carry its own count
+// (see passwordRounds.ts). Nothing writes a different count yet.
 
 export function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -28,8 +30,9 @@ async function randomIVHex(): Promise<string> {
 // PBKDF2 with HMAC-SHA256, 100,000 rounds, 256-bit key (unchanged). Version 2.2: in the
 // installed app the phone does this step itself (much faster); the key is exactly the
 // same either way (see pbkdf2Core.ts).
-export function deriveKey(password: string, saltHex: string): CryptoJS.lib.WordArray {
-  return keyDeriver.derive(password, CryptoJS.enc.Hex.parse(saltHex), PBKDF2_ITERATIONS);
+export function deriveKey(password: string, salt: string): CryptoJS.lib.WordArray {
+  const { saltHex, rounds } = saltParts(salt);
+  return keyDeriver.derive(password, CryptoJS.enc.Hex.parse(saltHex), rounds);
 }
 
 // Scrambles any data (as JSON) using the derived key. A fresh random IV is used every time,

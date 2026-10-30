@@ -1363,3 +1363,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - Bug hunt: H-58 Delete account retry / username put-back FIXED and proven (B-073). H-59 (email
   note ✕ hides for every account on the phone) logged for Cath. Full checks pass: 295 logic, 235 screen.
 - Next: K5 preparation steps (SECURITY-3.2-PLAN.md), then K3 once Cath picks (a) emulator or (b) 3 real accounts.
+- 2026-10-30 (later still): Cath picked K3 option (a) (emulator test on her PC, Java install, one
+  command; no real 3-person household). K5 step 2 built: rounds travel inside the salt
+  (passwordRounds.ts); keys unchanged, proven by check. Checks: 299 logic, 235 screen.
+  Next: K5 steps 3-5 (report 3.2 per phone/member, gated v2 writer, save key check) + K3, then
+  ONE rules publish (K4 + K3) after her emulator run.
