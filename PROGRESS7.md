@@ -1333,3 +1333,20 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   missing checks; a fresh bug hunt. Order: she builds 3.2.0 (needed `npm install` first for
   expo-updates) and sends sign-in times; Claude builds everything as ONE EAS Update
   (channel preview) + one rules publish; "Check sign-in speed" removed and rounds set then.
+
+- NEWEST (2026-10-30, morning): BATCH 2 PROGRESS on `v3` (NOT on main; main = what she builds
+  as 3.2.0). DONE, all checks pass (289 logic, 228 screen), each red-green where it fixes a bug:
+  short Quick Unlock list in TEST-3 section 18; B-069 H-04 slow sync says "Still saving…"
+  (SlowSyncNotFailed.test); B-070 H-06 saves wait for the phone copy (SaveWaitsForPhoneCopy.test);
+  B-071 guest first item shows before the sheet (GuestFirstItem.test); B-072 an unused
+  new-household code removes its empty household (UnusedCodeCleanup.test) + CONSOLE-STEPS.md
+  (old empty households; email deletion requests); Delete account DA1 (deleteAccount.ts,
+  DeleteAccountScreen.tsx, route DeleteAccount; needs NO rules change: existing rules already
+  allow every step; DeleteAccount.test). Mockup FP (Forgot password + email check reminder):
+  artifact "Mockup FP: Forgot password and email check", design/3.0-mockups/forgot-password-fp.html,
+  waiting for her pick.
+  BLOCKER for answer 4a: the Firebase emulator can't run in Claude's workspace (its download
+  from storage.googleapis.com is blocked). K3 rules need a real test: ask her to run a
+  prepared one-command rules test on her PC (needs Java 11+), or another way.
+  NOT STARTED: K3 + K5 steps 1-8, the 17 missing checks, the fresh bug hunt.
+  Web pages changed (support.html, delete-account.html): publish hosting again with the update.
