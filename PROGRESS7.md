@@ -1200,3 +1200,23 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
      and orphaned Firestore household cleanup (older notes); guest "Keep your first entry
      safe" sheet shows before the item appears (cosmetic); H-04 / H-06 parked by her ("leave
      as is"); a fresh bug hunt with the improved skill.
+
+- NEWEST (2026-10-29, 17:25): Cath shared her other account's conversation. Corrections to
+  the open list: her K3 answers are IN (key chain; also re-key when someone leaves by
+  themselves; unlinked accounts get a new Recovery Key after the upgrade); password rounds
+  stay 100,000 until she times "Check sign-in speed" in the INSTALLED app; K4 is built on v3
+  but its Firestore rules (householdRecovery: requester-only read once sent, 15-minute
+  expiry) are NOT published yet (to publish with K3); K3 was being built by a helper in a
+  separate copy that never reached the repo: not built; peel-off K2c mockup (top-right to
+  bottom-left, live peek, steady peel on tap) waits for her OK; "big forms built before they
+  rise" left out on purpose (it would add a blank moment): her call.
+  AGREED ORDER (batches): 1) Release 3.2 + speed check (merge v3 to main, version 3.2.0,
+  EAS build, build-only phone checks, she times sign-in speed, stray files removed, package
+  name confirmed). 2) Security: K3 + K5 writer steps (+ rounds from her timing), ONE rules
+  publish (K4 + K3), 3-person test household. 3) Safety net + polish: checks for the 17
+  unguarded old bugs, peel-off switches (after her OK), guest first-entry cosmetic, fresh
+  bug hunt from data safety. 4) Accounts + publishing: Forgot password / email check /
+  Delete account, privacy policy, Help & FAQ, App Check, Play listing. 5) Growth: Premium
+  payments, smart features, widgets (development build), linked-household extras.
+  Ask-later: big-form rise rebuild, Quick Unlock Step 6, Payment Methods report, orphaned
+  household cleanup, H-04 / H-06.
