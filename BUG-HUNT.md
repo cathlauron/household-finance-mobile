@@ -204,3 +204,20 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
   happens to items a member added to a shared household (written neutrally until she
   decides; same question as the in-app Delete account in batch 2). Data, rules, idle lock
   and hidden amounts untouched; no Firestore, sync or encryption code changed.
+
+## Fresh bug hunt 2026-10-30 (Cath: "1 through 7"), data safety first, new batch-2 code first
+- H-58 (data safety, FIXED, proven red-green, B-073): Delete account stopping part way
+  could leave the account stuck. A second try failed on the household already left, and the
+  username had already been freed while the sign-in still existed. Now a second try skips
+  what's done, and the username is put back if the sign-in can't be deleted.
+- H-59 (low, not fixed, Cath decides): ✕ on the email note hides it for a week on this
+  phone for every account on it, not only the one signed in. Two accounts on one phone is
+  rare; fix is small if she wants it.
+- Checked, nothing wrong: unused-code cleanup (code goes first, only own unfinished
+  non-invite codes, household only while 1 member); Forgot password (no hint whether an
+  email has an account); email note never blocks anything and does nothing for guests.
+- 17 old bugs with no check (BUG-LOG "none yet"): 7 now have new checks (B-004, B-015,
+  B-016, B-025, B-030, B-031 in tests/oldBugs.test.mjs; red-green for B-016 and B-025),
+  4 point to existing checks (B-012, B-022, B-033, and partly B-006/B-009/B-014/B-028),
+  2 are removed features (B-010 swipe-to-delete, B-029 Reports Customize), and 4 can only
+  be seen on a phone (B-007, B-013, B-017 two phones).

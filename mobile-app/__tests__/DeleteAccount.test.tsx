@@ -10,6 +10,7 @@ import { ThemeProvider } from '../src/ThemeContext';
 const mockCalls: string[] = [];
 let mockMembers: any[] = [];
 let mockPwOk = true;
+let mockSignInDeleteFails = false;
 jest.mock('../src/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'me', email: 'cath@x.com' } } }));
 jest.mock('firebase/auth', () => ({
   EmailAuthProvider: { credential: (e: string, p: string) => ({ e, p }) },
@@ -17,13 +18,20 @@ jest.mock('firebase/auth', () => ({
     mockCalls.push('password');
     if (!mockPwOk) throw Object.assign(new Error('bad'), { code: 'auth/invalid-credential' });
   },
-  deleteUser: async () => { mockCalls.push('delete sign-in'); },
+  deleteUser: async () => {
+    mockCalls.push('delete sign-in');
+    if (mockSignInDeleteFails) throw Object.assign(new Error('offline'), { code: 'auth/network-request-failed' });
+  },
 }));
 jest.mock('firebase/firestore', () => ({
   doc: (_db: any, ...p: string[]) => ({ path: p.join('/') }),
   collection: (_db: any, ...p: string[]) => ({ path: p.join('/') }),
   getDocs: async () => ({ docs: [{ ref: { path: 'sessions/me/devices/d1' } }] }),
   deleteDoc: async (r: any) => { mockCalls.push('delete ' + r.path); },
+  getDoc: async (r: any) => ({ exists: () => true, data: () => ({ uid: 'me', path: r.path }) }),
+  serverTimestamp: () => 'SERVER_TIME',
+  // The rules only let a username record be made with exactly uid + createdAt = now.
+  setDoc: async (r: any, d: any) => { mockCalls.push('put back ' + r.path + ' ' + d.uid + ' ' + Object.keys(d).sort().join(',') + ' ' + d.createdAt); },
 }));
 jest.mock('../src/household', () => ({
   getHouseholdMembers: async () => mockMembers,
@@ -37,7 +45,7 @@ jest.mock('../src/recovery', () => ({ deleteRecoveryKey: async () => { mockCalls
 
 const { deleteMyAccount, planDelete, WrongPasswordError } = require('../src/deleteAccount');
 const base = { username: 'cath', email: 'cath@x.com', password: 'pw' };
-beforeEach(() => { mockCalls.length = 0; mockPwOk = true; });
+beforeEach(() => { mockCalls.length = 0; mockPwOk = true; mockSignInDeleteFails = false; });
 
 test('not linked: password, every record, username, sign-in', async () => {
   mockMembers = [];
@@ -102,3 +110,26 @@ test('the page: explains, asks for a choice and the password, confirms, then say
   fireEvent.press(screen.getByTestId('delete-back-to-start'));
   expect(onDone).toHaveBeenCalled();
 }, 30000);
+
+// Bug hunt 2026-10-30 (H-58): a second try must not get stuck, and a sign-in that fails
+// to delete must not leave the account without its username.
+test('H-58: second try after already leaving the household: no leave again, it finishes', async () => {
+  mockMembers = [{ uid: 'm', username: 'miguel', isOwner: true }];
+  await deleteMyAccount({ ...base, householdId: 'h1' });
+  expect(mockCalls).not.toContain('leave');
+  expect(mockCalls[mockCalls.length - 1]).toBe('delete sign-in');
+});
+
+test('H-58: second try after the household was already deleted: it finishes', async () => {
+  mockMembers = [];
+  await deleteMyAccount({ ...base, householdId: 'h1' });
+  expect(mockCalls.some((c) => c === 'delete parts' || c === 'delete household h1')).toBe(false);
+  expect(mockCalls[mockCalls.length - 1]).toBe('delete sign-in');
+});
+
+test('H-58: if the sign-in cannot be deleted, the username is put back', async () => {
+  mockMembers = [];
+  mockSignInDeleteFails = true;
+  await expect(deleteMyAccount(base)).rejects.toThrow(/wasn't deleted/);
+  expect(mockCalls).toContain('put back usernames/cath me createdAt,uid SERVER_TIME');
+});

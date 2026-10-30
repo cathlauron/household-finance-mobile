@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { buildPages, todayIndex, YEARS_EACH_SIDE, type Page } from '../calendarPages';
 import { goToMain } from '../navigation/goToMain';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
@@ -114,22 +115,10 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
 // only redraw when something about them changes, and only the months near the screen are
 // drawn.
 
-type Page = { year: number; month: number };
 // Version 2.2 (Cath: the year view started at Oct 2024 with empty months before it, and
-// ended at 2028): the calendar covers whole years, from 5 years before this year to 5
-// years after it (2021 to 2031 in 2026, Cath asked for 5), and says so at both ends of
-// the year view.
-const YEARS_EACH_SIDE = 5;
-
-function buildPages(): Page[] {
-  const now = new Date();
-  const pages: Page[] = [];
-  for (let y = now.getFullYear() - YEARS_EACH_SIDE; y <= now.getFullYear() + YEARS_EACH_SIDE; y++) {
-    for (let m = 0; m < 12; m++) pages.push({ year: y, month: m });
-  }
-  return pages;
-}
-const TODAY_INDEX = YEARS_EACH_SIDE * 12 + new Date().getMonth();
+// ended at 2028): the calendar covers whole years, 5 before this year to 5 after it, and
+// says so at both ends of the year view. The months are worked out in calendarPages.ts.
+const TODAY_INDEX = todayIndex();
 
 function weeksIn(year: number, month: number): number {
   const first = new Date(year, month, 1).getDay();

@@ -10,7 +10,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import {
   getHouseholdMembers,
@@ -33,8 +33,9 @@ export async function planDelete(householdId: string | undefined, myUid: string)
   if (!householdId) return { kind: 'alone' };
   const members = await getHouseholdMembers(householdId);
   const others = members.filter((m) => m.uid !== myUid);
-  if (others.length === 0) return { kind: 'alone' };
   const me = members.find((m) => m.uid === myUid);
+  // Not in it any more (an earlier try already left, or it's gone): only the account goes.
+  if (!me || others.length === 0) return { kind: 'alone' };
   if (me?.isOwner) return { kind: 'owner', others: others.map((m) => ({ uid: m.uid, username: m.username })) };
   return { kind: 'member', others: others.map((m) => m.username) };
 }
@@ -61,8 +62,12 @@ export async function deleteMyAccount(opts: {
   const uid = user.uid;
 
   // 2. The household.
+  // H-58: a second try (after an earlier one stopped part way) skips what's already done:
+  // a household this person already left, or one already deleted, is left alone.
+  const members = opts.householdId ? await getHouseholdMembers(opts.householdId) : [];
+  const stillIn = members.some((m) => m.uid === uid);
   const plan = await planDelete(opts.householdId, uid);
-  if (opts.householdId) {
+  if (opts.householdId && stillIn) {
     if (plan.kind === 'alone') {
       await removePartsBeforeDissolve(opts.username, opts.householdId);
       await deleteHousehold(opts.householdId);
@@ -84,10 +89,19 @@ export async function deleteMyAccount(opts: {
     await Promise.all(devices.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
   } catch (e) {}
   // The username goes last of these: it frees the name for someone else.
-  await deleteDoc(doc(db, 'usernames', opts.username)).catch(() => {});
+  const nameRef = doc(db, 'usernames', opts.username);
+  const nameOwner = await getDoc(nameRef).then((d) => (d.exists() ? d.data()?.uid : null)).catch(() => null);
+  await deleteDoc(nameRef).catch(() => {});
 
-  // 4. The sign-in itself.
-  await deleteUser(user);
+  // 4. The sign-in itself. H-58: if this fails (e.g. the connection drops), the username is
+  // put back so the account can still be signed in to, and a second try can finish.
+  try {
+    await deleteUser(user);
+  } catch (e) {
+    // The rules only allow a username record made of uid + createdAt "now".
+    if (nameOwner === uid) await setDoc(nameRef, { uid, createdAt: serverTimestamp() }).catch(() => {});
+    throw new Error("Your account wasn't deleted. Check your connection and try again.");
+  }
 
   // 5. This phone's copies.
   await forgetOnThisPhone(opts.username);

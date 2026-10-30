@@ -1355,3 +1355,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   the email; "Confirm your email" note at the top of Settings, hides for a week on ✕). Build it
   in batch 2. Still waiting: her answer (a) one-command rules test on her PC / (b) 3-account
   real test, for K3.
+
+### 2026-10-30 (later): the 17 old checks + bug hunt (batch 2, on v3)
+- 17 old bugs without a check: 7 now guarded (tests/oldBugs.test.mjs), 4 pointed to existing
+  checks, 2 removed features, 4 need a phone. Every BUG-LOG row now says which (none left "none yet").
+  calendarPages.ts and linkCodeTime.ts split out of Calendar / Profile so they can be checked (same behaviour).
+- Bug hunt: H-58 Delete account retry / username put-back FIXED and proven (B-073). H-59 (email
+  note ✕ hides for every account on the phone) logged for Cath. Full checks pass: 295 logic, 235 screen.
+- Next: K5 preparation steps (SECURITY-3.2-PLAN.md), then K3 once Cath picks (a) emulator or (b) 3 real accounts.

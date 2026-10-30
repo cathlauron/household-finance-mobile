@@ -79,7 +79,7 @@ export default function DeleteAccountScreen({ onDone }: { onDone: () => void }) 
       );
       setDone(true);
     } catch (e: any) {
-      setError(e instanceof da().WrongPasswordError ? "That password isn't right." : e?.message || "Couldn't delete your account. Nothing was changed. Try again.");
+      setError(e instanceof da().WrongPasswordError ? "That password isn't right." : e?.message || "Your account wasn't deleted. Try again.");
     } finally {
       setBusy(false);
     }

@@ -1,4 +1,5 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { codeTimeLeft } from '../linkCodeTime';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, TRY_AGAIN } from '../messages';
@@ -264,7 +265,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
     let alive = true;
     loadPendingHostLink(username).then(async (pending) => {
       if (!pending || !alive) return;
-      const left = typeof pending.at === 'number' ? pending.at + LINK_CODE_TTL_MS - Date.now() : -1;
+      const left = codeTimeLeft(pending.at, LINK_CODE_TTL_MS);
       if (left > 0) {
         // Still within its 15 minutes: shown with the time that's really left.
         setLinkCode(pending.code);

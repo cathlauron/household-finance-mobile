@@ -23,36 +23,36 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-001 | Holding a Home card and moving it froze after a few seconds | homeScrollLock.ts | phone only |
 | B-002 | A held card dragged to the top or bottom of the screen should scroll the page | homeScrollLock.ts | phone only |
 | B-003 | "Scan to join" said "Allow the camera" but no pop-up came | components/HouseholdLinkWays.tsx | phone only |
-| B-004 | After adding a bill she had to scroll down to find it | components/ArrivalGlow.tsx, arrivalFocus.ts | none yet |
+| B-004 | After adding a bill she had to scroll down to find it | components/ArrivalGlow.tsx, arrivalFocus.ts | tests/oldBugs.test.mjs "B-004" (added 2026-10-30) |
 | B-005 | Debts, Loans, Plan, FI didn't bounce at the ends like Bills | components/KeyboardAwareScrollView.tsx | phone only |
-| B-006 | Switching Bill / Debt / Loan closed the sheet and opened it again | components/BottomSheet.tsx | none yet |
-| B-007 | Switching Bill / Debt / Loan jumped to the other list | screens/BillsScreen.tsx, DebtsScreen.tsx, LoansScreen.tsx | none yet |
+| B-006 | Switching Bill / Debt / Loan closed the sheet and opened it again | components/BottomSheet.tsx | partly: __tests__/SmoothSwaps.test.tsx "a form switch changes the form only once…"; the sheet staying open needs the phone |
+| B-007 | Switching Bill / Debt / Loan jumped to the other list | screens/BillsScreen.tsx, DebtsScreen.tsx, LoansScreen.tsx | needs the phone (gesture + list position; can't be checked off the phone) |
 | B-008 | + on Home lagged | navigation/MainTabs.tsx, screens/TransactionsScreen.tsx | phone only |
-| B-009 | After Add, the form slid away while Transactions was already showing (a flash) | navigation/MainTabs.tsx | none yet |
-| B-010 | Swipe-to-delete opened when she meant to change screens (swipe-to-delete later removed at her request) | navigation/swipeTabs.tsx, components/SwipeableRow.tsx | none yet |
+| B-009 | After Add, the form slid away while Transactions was already showing (a flash) | navigation/MainTabs.tsx | partly: __tests__/SmoothTransitions.test.tsx "page contents arrive a moment after the slide"; the flash itself needs the phone |
+| B-010 | Swipe-to-delete opened when she meant to change screens (swipe-to-delete later removed at her request) | navigation/swipeTabs.tsx, components/SwipeableRow.tsx | feature removed at her request (swipe-to-delete): nothing left to guard |
 | B-011 | Going back from Accounts > Income > a person "looked buggy" (empty moment, then pop) | navigation/RootStack.tsx | phone only |
-| B-012 | After + in the calendar, going back and reopening showed the calendar behind Home | navigation/RootStack.tsx | none yet |
-| B-013 | Scrolling the months closed the calendar | navigation/RootStack.tsx | none yet |
-| B-014 | Screens flash and go back; forms flashing; Edit on a debt opened and closed again; a form still opened by itself when tapping something | afterSlide.ts, navigation/TabPage.tsx, handledOpen.ts | none yet |
-| B-015 | The invite sent through Messenger had no link | joinLink.ts | none yet |
-| B-016 | An invite code stayed on Household long after its 15 minutes | storage.ts, screens/ProfileScreen.tsx | none yet |
-| B-017 | The inviter stayed on "Almost there…" for minutes | screens/ProfileScreen.tsx, linking.ts | none yet |
+| B-012 | After + in the calendar, going back and reopening showed the calendar behind Home | navigation/RootStack.tsx | __tests__/GoToMain.test.tsx (never a second Main / calendar behind Home) |
+| B-013 | Scrolling the months closed the calendar | navigation/RootStack.tsx | needs the phone (scroll gesture) |
+| B-014 | Screens flash and go back; forms flashing; Edit on a debt opened and closed again; a form still opened by itself when tapping something | afterSlide.ts, navigation/TabPage.tsx, handledOpen.ts | partly: __tests__/SmoothSwaps.test.tsx "afterSlide still runs (once)…"; the flashes need the phone |
+| B-015 | The invite sent through Messenger had no link | joinLink.ts | tests/oldBugs.test.mjs "B-015" (added 2026-10-30) |
+| B-016 | An invite code stayed on Household long after its 15 minutes | storage.ts, screens/ProfileScreen.tsx | tests/oldBugs.test.mjs "B-016" (added 2026-10-30, red-green proven) |
+| B-017 | The inviter stayed on "Almost there…" for minutes | screens/ProfileScreen.tsx, linking.ts | needs two phones (inviter + joiner) |
 | B-018 | Light/dark switch lagged; 2.1's was smoother | ThemeContext.tsx, screens/HomeScreen.tsx | phone only |
 | B-019 | Tapping Add lagged; Save/Add lagged; a trip took seconds to save; the form waited with a spinner | DataContext.tsx | phone only |
 | B-020 | Card animations lagged | DataContext.tsx | phone only |
 | B-021 | Typing an amount lagged | screens/TransactionsScreen.tsx | phone only |
-| B-022 | Budget / To-do on a trip didn't swipe | screens/TravelScreen.tsx | none yet |
+| B-022 | Budget / To-do on a trip didn't swipe | screens/TravelScreen.tsx | __tests__/SubPageScreens.test.tsx (Travel trip: Budget / To-do slide) |
 | B-023 | No Overdue tag on a debt past its due date | screens/DebtsScreen.tsx, overdue.ts | logic (partly): sanitizeIds "overdue items" |
 | B-024 | Opening: everything appeared at once and the loader was gone; the opening animation froze; then "too fast, then stuck on Almost there" | screens/IntroScreen.tsx | phone only |
-| B-025 | Calendar year view started at Oct 2024 with empty months before it | screens/CalendarScreen.tsx | none yet |
+| B-025 | Calendar year view started at Oct 2024 with empty months before it | screens/CalendarScreen.tsx | tests/oldBugs.test.mjs "B-025" (added 2026-10-30, red-green proven) |
 | B-026 | The picked calendar day showed a square on Android | screens/CalendarScreen.tsx | phone only |
 | B-027 | Calendar years showed blank while scrolling | screens/CalendarScreen.tsx | phone only |
-| B-028 | Adding from the calendar jumped to the other screen before she'd added it | screens/CalendarScreen.tsx | none yet |
-| B-029 | Reports "Customize" checklist didn't show several picks at once (old Bug #14) | screens/InsightsScreen.tsx / reports | none yet |
-| B-030 | FI calculator largely not working (old Bug #4) | screens/SavingsScreen.tsx, fiScenario.ts | none yet |
-| B-031 | Emergency fund calculator (old Bugs #5 / #5b) | screens/SavingsScreen.tsx | none yet |
+| B-028 | Adding from the calendar jumped to the other screen before she'd added it | screens/CalendarScreen.tsx | partly: __tests__/GoToMain.test.tsx; the timing needs the phone |
+| B-029 | Reports "Customize" checklist didn't show several picks at once (old Bug #14) | screens/InsightsScreen.tsx / reports | feature removed (Reports page redesigned; no Customize list any more) |
+| B-030 | FI calculator largely not working (old Bug #4) | screens/SavingsScreen.tsx, fiScenario.ts | tests/oldBugs.test.mjs "B-030" (added 2026-10-30) |
+| B-031 | Emergency fund calculator (old Bugs #5 / #5b) | screens/SavingsScreen.tsx | tests/oldBugs.test.mjs "B-031" (added 2026-10-30) |
 | B-032 | Deleting while offline hung (old Bug #1) | netTimeout.ts, deleteRecords.ts | logic (partly): deleteRecords |
-| B-033 | Left to Spend "caution" level didn't stay saved | balanceProjection.ts, Settings | none yet |
+| B-033 | Left to Spend "caution" level didn't stay saved | balanceProjection.ts, Settings | __tests__/SettingsRunningLow.test.tsx (the caution / running-low percent saves) |
 | B-034 | Two phones saving close together could lose one person's change (RISK 3) | merge3.ts, DataContext.tsx | logic (partly): merge3 (12 checks) |
 | B-035 | Paying a bill / debt: amounts, carry-over, undo, paying twice | billPayments.ts, recurrence.ts | logic (partly): money |
 | B-036 | Bill due dates on the 31st, "last day", yearly, past this month | recurrence.ts | logic (partly): money |
@@ -92,6 +92,7 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 | B-070 | H-06: a change made offline could be lost if the app was closed right away | The phone's own copy was written in the background and nothing waited for it | DataContext.tsx persistModel: each save's turn now waits for the phone copy (Log out / Switch account / going to the background wait for saves) | __tests__/SaveWaitsForPhoneCopy.test.tsx (red on the old code, green now) |
 | B-071 | As a guest, "Keep your first entry safe" rose over an empty list (the item wasn't there yet) | The entry was held back until the sheet was answered | DataContext.tsx saveModel (guest): the item shows first, the sheet rises 0.7 s later and says it's in the list, not saved yet | __tests__/GuestFirstItem.test.tsx (red on the old code, green now) |
 | B-072 | Old note: invite codes never used left empty household records online (answer 13) | A new-household code made its household at once and nothing removed it | linking.ts cancelLinkCode: putting an unused code away also removes its household while the inviter is its only member (code first, so nobody can join meanwhile); older ones: CONSOLE-STEPS.md | __tests__/UnusedCodeCleanup.test.tsx (red on the old code, green now) |
+| B-073 | Bug hunt H-58: Delete account stopping part way (e.g. connection drops) could leave the account stuck: a second try failed on the household already left, and the username was already freed while the sign-in still existed | Each step assumed a first try; the username was removed before the sign-in | deleteAccount.ts: a second try skips a household already left or deleted; if the sign-in can't be deleted, the username record is put back (uid + time now, as the rules require) and the page says the account wasn't deleted | __tests__/DeleteAccount.test.tsx "H-58" x3 (red on the old code, green now) |
 | - | Plan pages: swiping sideways no longer goes back to Plan (Cath) | navigation/RootStack.tsx NO_SWIPE_BACK | tests/motion.test.mjs ("Plan pages: no swipe-back") |
 | H-23 | (caught by code review before Cath saw it) Undo of a "Just record it" payment kept the flag: paying again from an account went missing from Transactions | billPayments.ts markPaid / undoLastPayment | tests/recordOnly.test.mjs (red-green) |
 | H-24 | (code review) Undo of a payment left its separate fee entry behind | PayDetailScreen.tsx (feeTxnId) | phone check TEST-3 8 |
