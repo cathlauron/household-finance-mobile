@@ -37,6 +37,8 @@ import LeftToSpendScreen from '../screens/LeftToSpendScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { GuestGate } from '../components/GuestSaveSheet';
+// Claude's hidden-browser copy (walk fixture build only) may open Settings as a guest, to check it.
+import { walkFixtureOn } from '../walkFixture';
 import { getSharedHeaderOptions } from './headerOptions';
 
 export type RootStackParamList = {
@@ -207,7 +209,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       screenLayout={({ children, route }) =>
         route.name === 'Main' ? (
           children
-        ) : guest && (route.name === 'Settings' || route.name === 'Profile' || route.name === 'SettingsPage') ? (
+        ) : guest && !walkFixtureOn && (route.name === 'Settings' || route.name === 'Profile' || route.name === 'SettingsPage') ? (
           <GuestGate onContinue={() => onGuestSave?.()} />
         ) : (
           <DeferredContent>{children}</DeferredContent>

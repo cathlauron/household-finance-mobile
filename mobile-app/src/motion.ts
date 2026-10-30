@@ -23,6 +23,7 @@ export const ROW_MS = 220; // a row or card opening / closing, the rows below ma
 export const FADE_IN_MS = 180; // something appearing (page content, a title, a toast)
 export const FADE_OUT_MS = 140; // something going away
 export const DIP_MS = 160; // each half of a soft dip (dark mode, whole-screen changes)
+export const PEEL_TAP_MS = 1000; // a tapped peel-off sticker: one steady peel (Cath, mockup K2e, 2026-10-29)
 
 // 2026-10-26 fix (Cath's phone: "Interpolation property 'easing' is not supported by native
 // animated module"). Android's native animation engine can't bend an `interpolate` with a

@@ -38,7 +38,9 @@ const url = `http://localhost:${server.address().port}`;
 
 const browser = await chromium.launch();
 // A phone: touch screen, so swipes are real finger touches (2026-10-23).
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+// WALK_SIZE=1024x1366 (an iPad), WALK_DARK=1 (phone set to dark): 2026-10-29, iPad check.
+const [walkW, walkH] = (process.env.WALK_SIZE || '390x844').split('x').map(Number);
+const page = await browser.newPage({ viewport: { width: walkW, height: walkH }, hasTouch: true, colorScheme: process.env.WALK_DARK ? 'dark' : 'light' });
 const touch = await page.context().newCDPSession(page);
 const finger = (type, x, y) =>
   touch.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
@@ -198,6 +200,33 @@ async function runStep(step, quiet = false) {
     if (quiet) return;
     await page.waitForTimeout(700);
     await picture(`let go after ${dx}`);
+    return;
+  }
+  if (step.startsWith('peel:') || step.startsWith('mpeel:')) {
+    // "mpeel:..." = the same with a mouse (the web page cancels a diagonal touch drag to
+    // scroll; a phone doesn't).
+    const mouse = step.startsWith('mpeel:');
+    // "peel:settings-theme-dark:-60,40" = put a finger on the top-right corner of the thing
+    // with that test id, move it by (-60, 40), take a picture with the finger still down,
+    // then let go and take another (peel-off switches, 2026-10-29).
+    const [id, d] = step.slice(mouse ? 6 : 5).split(':');
+    const [dx, dy] = d.split(',').map(Number);
+    const box = await page.getByTestId(id).filter({ visible: true }).last().boundingBox();
+    if (!box) { problems.push(`STEP FAILED: nothing with id "${id}"`); return; }
+    const x0 = box.x + box.width - 4, y0 = box.y + 4;
+    const down = (x, y) => (mouse ? page.mouse.move(x, y).then(() => page.mouse.down()) : finger('touchStart', x, y));
+    const move = (x, y) => (mouse ? page.mouse.move(x, y) : finger('touchMove', x, y));
+    const up = (x, y) => (mouse ? page.mouse.up() : finger('touchEnd', x, y));
+    await down(x0, y0);
+    for (let i = 1; i <= 12; i++) {
+      await move(x0 + (dx * i) / 12, y0 + (dy * i) / 12);
+      await page.waitForTimeout(16);
+    }
+    await page.waitForTimeout(250);
+    await picture(`finger down on ${id}, moved ${dx},${dy}`);
+    await up(x0 + dx, y0 + dy);
+    await page.waitForTimeout(1200);
+    await picture(`let go of ${id}`);
     return;
   }
   if (step.startsWith('probe:')) {

@@ -60,6 +60,7 @@ import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { StillTherePopup, PausedCover, AutoLockSheet } from './src/components/StillThere';
 import { stillThereState } from './src/stillThereClock';
 import HouseholdChanges from './src/components/HouseholdChanges';
+import { ScreenPeelHost } from './src/screenPeel';
 import { onActivity } from './src/activity';
 import { closeOpenSwipeRows } from './src/components/SwipeableRow';
 import { hideAmountsNow } from './src/hideAmounts';
@@ -806,6 +807,8 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
+        {/* Mockup K2e: the Dark mode screen peel (Settings › Appearance), above every page. */}
+        <ScreenPeelHost />
         {/* H-51 (canvas F2 + F3): what another household member changed, on opening / coming back. */}
         <HouseholdChanges />
         <StillTherePopup
@@ -904,6 +907,7 @@ function AppContent() {
             onGuestSave={() => setScreen('guestSignUp')}
           />
         </NavigationContainer>
+        <ScreenPeelHost />
         <GuestSaveSheet onContinue={() => setScreen('guestSignUp')} />
       </View>
     );
