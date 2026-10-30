@@ -2,6 +2,7 @@ import { hapticSelection } from '../haptics';
 import { measureSignInSpeed, speedText } from '../signInSpeed';
 import { animateNextLayout } from '../animateLayout';
 import { APP_VERSION } from '../appVersion';
+import { useHelpSeen, markHelpSeen } from '../helpSeen';
 import AppearancePage, { type ScrollFrame } from './AppearancePage';
 import { PRIVACY_URL, DELETE_ACCOUNT_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
@@ -150,6 +151,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   // Where the page sits on the screen right now (the Dark mode screen peel draws a copy there).
   const scrollYRef = useRef(0);
   const [peeling, setPeeling] = useState(false);
+  const helpSeen = useHelpSeen();
   const appearanceFrame = () =>
     new Promise<ScrollFrame>((resolve, reject) => {
       const sv: any = scrollRef.current;
@@ -1911,7 +1913,19 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             Contact support (canvas S1, 2026-10-27) opens an email to the support address with
             the version in the subject; the address can be copied too. */}
         <SettingsGroup footer={'"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.'}>
-          <IconRow testID="settings-help-faq" icon="help" tile={colors.buttonFill} title="Help & FAQ" badge="New" sub="Answers to common questions" onPress={() => navigation.push('HelpFaq')} />
+          {/* Cath, 2026-10-30: the "New" tag goes away once Help & FAQ has been opened (this phone). */}
+          <IconRow
+            testID="settings-help-faq"
+            icon="help"
+            tile={colors.gold}
+            title="Help & FAQ"
+            badge={helpSeen ? undefined : 'New'}
+            sub="Answers to common questions"
+            onPress={() => {
+              markHelpSeen();
+              navigation.push('HelpFaq');
+            }}
+          />
           <IconRow
             testID="settings-contact-support"
             icon="mail"

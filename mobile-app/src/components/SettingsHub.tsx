@@ -156,8 +156,8 @@ export function IconRow({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text numberOfLines={1} style={{ fontSize: 17, color: danger ? colors.negative : colors.ink, flexShrink: 1 }}>{title}</Text>
           {!!badge && (
-            <View style={{ backgroundColor: colors.buttonFill, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 }}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: colors.onButton }}>{badge}</Text>
+            <View style={{ backgroundColor: colors.accentTint, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: colors.gold }}>{badge}</Text>
             </View>
           )}
         </View>

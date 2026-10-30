@@ -64,3 +64,18 @@ test('search narrows the questions; nonsense shows the "no answers" note', async
   expect(screen.getByTestId('help-none')).toBeTruthy();
   expect(screen.getByTestId('help-contact')).toBeTruthy();
 });
+
+test('the "New" tag on Help & FAQ goes away once it has been opened', async () => {
+  mockModel = defaultModel();
+  const AsyncStorage = require('@react-native-async-storage/async-storage');
+  await AsyncStorage.removeItem('helpFaqSeenV1');
+  require('../src/helpSeen').resetHelpSeenForTests();
+  const SettingsScreen = require('../src/screens/SettingsScreen').default;
+  render(<ThemeProvider><SettingsScreen /></ThemeProvider>);
+  await act(async () => {});
+  await act(async () => {});
+  expect(screen.getByText('New')).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByTestId('settings-help-faq')); });
+  expect(screen.queryByText('New')).toBeNull();
+  expect(await AsyncStorage.getItem('helpFaqSeenV1')).toBe('1');
+}, 30000);
