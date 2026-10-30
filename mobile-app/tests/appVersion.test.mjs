@@ -18,3 +18,10 @@ test('there is a store build that makes an app bundle (.aab) for Google Play', (
   const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8'));
   assert.equal(eas.build.production.android.buildType, 'app-bundle');
 });
+
+test('iPad: supported, kept upright and full screen like the iPhone (no upload error for a portrait-only iPad app)', () => {
+  const { expo } = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8'));
+  assert.equal(expo.ios.supportsTablet, true);
+  assert.equal(expo.orientation, 'portrait');
+  assert.equal(expo.ios.requireFullScreen, true);
+});
