@@ -1220,3 +1220,27 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   payments, smart features, widgets (development build), linked-household extras.
   Ask-later: big-form rise rebuild, Quick Unlock Step 6, Payment Methods report, orphaned
   household cleanup, H-04 / H-06.
+
+- NEWEST (2026-10-29, 17:35): STORE READINESS CHECKED (Cath asked before the 3.2 build). Full
+  table in STORE-READINESS.md (repo root, main). Peel-off: Cath picked K2d-1 and asked for
+  it to peel from the top-right corner = mockup K2e (design/3.0-mockups/peel-off-switches-
+  k2e.html on v3); waits for her OK. Help & FAQ is NEEDED: mockup H1 (help-faq-h1.html on
+  v3), waits for her OK on design and answer wording.
+  STORE LIST (complete): BOTH STORES: B1 privacy policy page + in-app link (MISSING);
+  B2 in-app Delete account (MISSING, needs mockup + OK: data); B3 delete-account web page
+  (MISSING); B4 support web page (MISSING; email exists); B5 no placeholders: "Help &
+  guides: Coming soon", remove "Check sign-in speed" after timing (MISSING); B6 hide
+  Premium prices until real in-app purchases (MISSING, her call); B7 privacy label / Data
+  safety answers (Cath); B8 age rating forms (Cath); B9 reviewer test account (Cath); B10
+  listing text, screenshots, Play feature graphic (MISSING; icon OK); B11 permission texts
+  (HAVE). GOOGLE: G1 target API 36 (HAVE: toolchain builds 36); G2 production .aab profile
+  in eas.json (MISSING); G3 Play account + verification + package name (Cath); G4 closed
+  test 12 testers x 14 days if personal account made after 13 Nov 2023 (Cath, ~3 weeks);
+  G5 Financial features declaration (Cath); G6 Data safety deletion link (after B2/B3);
+  G7 ads / app access / content rating / audience forms (Cath). APPLE: A1 developer
+  program $99/yr (Cath; EAS builds without a Mac); A2 Xcode 26 / iOS 26 SDK (HAVE via
+  EAS, confirm at upload); A3 ios.bundleIdentifier missing (MISSING, confirm name); A4
+  supportsTablet true -> iPad screenshots (her call); A5 encryption export answers
+  (crypto-js AES/PBKDF2 = standard algorithms outside Apple's) + ITSAppUsesNonExempt-
+  Encryption (Cath + Claude); A6 Sign in with Apple not needed (HAVE); A7 EU trader
+  status (Cath). Recommended: Forgot password / email check, App Check.
