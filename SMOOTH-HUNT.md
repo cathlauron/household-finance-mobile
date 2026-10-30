@@ -126,3 +126,14 @@ Could not be checked here (stays "Needs your phone"):
 - S-look (iPad, found in the iPad-size walk): every screen works and nothing is cut off,
   but pages stretch across the whole iPad width (long rows, amounts far right, full-width
   buttons). A centred column (like iPad Settings) would look better: MOCKUP FIRST.
+
+## 2026-10-30, Cath's video (Dark mode peel)
+- S-peel-1 (fixed, B-075): sticker froze half peeled while the screen copy was being drawn;
+  screen peel jumped in late. Copy now prepared when Appearance opens.
+- S-peel-2 (fixed, B-075): after the switch the page sat ~30 px high then jumped back (copy
+  placed by window position, off by Android's status bar). Now placed relative to the host.
+- S-peel-3 (fixed, B-075): "Daght" / pink corner on stickers in the copy. Face underneath and
+  lifted corner only drawn while peeling.
+- Look (fixed): the Forgot password email box had no border / mail icon; now matches sign-in.
+- Seen in the hidden browser (both directions): copy lines up, nothing shows before the peel,
+  clean sticker after. The feel on the phone: Needs your phone.

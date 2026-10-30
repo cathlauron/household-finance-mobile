@@ -125,6 +125,10 @@ export default function PeelSticker({
     return { d: pathOf(r.flap, PAD + 1.5, PAD + 3) };
   });
   const topOnProps = useAnimatedProps(() => ({ opacity: topOn.value }));
+  // Cath's video 2026-10-30 ("Daght", a pink corner on "☀ Light"): the face underneath and the
+  // lifted corner are only drawn while a peel is going on. At rest only the top face shows,
+  // even where the phone hasn't applied the "still stuck down" clip yet.
+  const peelingProps = useAnimatedProps(() => ({ opacity: busy.value ? 1 : 0 }));
   const topOffProps = useAnimatedProps(() => ({ opacity: 1 - topOn.value }));
 
   // Ends a peel on the animation thread: swap the faces and lay the new one flat at once.
@@ -242,17 +246,18 @@ export default function PeelSticker({
               <Stop offset="1" stopColor="#000000" stopOpacity={0.22} />
             </LinearGradient>
           </Defs>
-          {/* Underneath: what you get when it comes off. */}
-          <G clipPath={`url(#r${ids})`}>
+          {/* Underneath: what you get when it comes off (only while peeling). */}
+          <AG animatedProps={peelingProps} clipPath={`url(#r${ids})`}>
             <AG animatedProps={topOffProps}>{face(on, onLabel, false)}</AG>
             <AG animatedProps={topOnProps}>{face(PAPER, offLabel, true)}</AG>
-          </G>
+          </AG>
           {/* On top: the setting as it is now, minus the lifted corner. */}
           <G clipPath={`url(#k${ids})`}>
             <AG animatedProps={topOnProps}>{face(on, onLabel, false)}</AG>
             <AG animatedProps={topOffProps}>{face(PAPER, offLabel, true)}</AG>
           </G>
-          {/* The lifted corner: its back, with a soft shadow under it. */}
+          {/* The lifted corner: its back, with a soft shadow under it (only while peeling). */}
+          <AG animatedProps={peelingProps}>
           <APath animatedProps={shadowProps} fill="rgba(0,0,0,0.18)" />
           <AG animatedProps={topOnProps}>
             <APath animatedProps={flapProps} fill={on.bg} />
@@ -261,6 +266,7 @@ export default function PeelSticker({
             <APath animatedProps={flapProps} fill="#F7E7D6" />
           </AG>
           <APath animatedProps={flapProps} fill={`url(#g${ids})`} />
+          </AG>
         </Svg>
       </View>
   );

@@ -76,9 +76,14 @@ export default function ForgotPasswordSheet({
               After a reset, your data opens with your Recovery Key (16 characters), or when someone in your household approves it. Without either, your data can't be opened again.
             </Text>
           </View>
+          {/* Same field look as the sign-in page (border + mail icon). */}
+          <View style={{ justifyContent: 'center' }}>
+          <View style={s.leftIcon} pointerEvents="none">
+            <Ionicons name="mail-outline" size={18} color={colors.decor} />
+          </View>
           <TextInput
             testID="forgot-email"
-            style={[s.input, { backgroundColor: colors.navy3, color: colors.ink }]}
+            style={[s.input, { backgroundColor: colors.navy3, color: colors.ink, borderColor: colors.navy4 }]}
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
@@ -89,6 +94,7 @@ export default function ForgotPasswordSheet({
             editable={!busy}
             accessibilityLabel="Email address"
           />
+          </View>
           {!!error && <Text style={[s.error, { color: colors.negative }]}>{error}</Text>}
           <TouchableOpacity testID="forgot-send" onPress={doSend} disabled={busy} style={[s.primary, { backgroundColor: colors.buttonFill, opacity: busy ? 0.6 : 1 }]} accessibilityRole="button">
             <Text style={[s.primaryText, { color: colors.onButton }]}>{busy ? 'Sending…' : 'Send the reset email'}</Text>
@@ -132,7 +138,8 @@ const s = StyleSheet.create({
   warn: { borderRadius: 14, padding: 14 },
   warnText: { fontSize: 15, lineHeight: 21, color: '#6B4A00' },
   card: { borderRadius: 14, padding: 14 },
-  input: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17 },
+  input: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 42, paddingRight: 14, minHeight: 50, paddingVertical: 13, fontSize: 17 },
+  leftIcon: { position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
   error: { fontSize: 15, textAlign: 'center' },
   primary: { borderRadius: 28, paddingVertical: 15, alignItems: 'center' },
   primaryText: { fontSize: 17, fontWeight: '700' },

@@ -293,4 +293,6 @@ Test in Expo Go first (from v3), then again once the update reaches the installe
 3. Settings › About & Help › Delete account: the page explains what happens (use a TEST account, never your real one).
 4. Saving on both phones (yours + partner's, both on 3.2): a change on one shows on the other, both ways. (After both phones report 3.2 the household is saved in the new tamper-checked kind.)
 5. Slow connection: "Still saving..." instead of "Sync Failed"; guest: the first item shows before the sheet rises.
+6. Appearance › Dark mode: tap it, then peel it with your finger, both ways (dark to light and back). The screen peels from the top-right corner from the very start (no pause with the sticker half off), the page doesn't jump when it settles, and the sticker shows only "☾ Dark" or "☀ Light" (no mixed letters, no pink corner).
+7. The email note: ✕ hides it for this account only. Settings › Account & Security › Email shows Confirmed / Not confirmed; tapping "Not confirmed" sends the link.
 K3 (new key after someone leaves) is checked on your computer with the rules test (rules-test folder, needs Java), not on the phone.

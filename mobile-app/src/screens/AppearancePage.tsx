@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, InteractionManager, View } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SettingsGroup, PlainRow, SegmentRow } from '../components/SettingsHub';
 import PeelSticker from '../components/PeelSticker';
 import { useTheme } from '../ThemeContext';
@@ -9,7 +10,7 @@ import { useFabSide, setFabSide } from '../fabSide';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import LargeHeader from '../navigation/LargeHeader';
-import { darkSticker, endScreenPeel, screenPeelK, showScreenPeel } from '../screenPeel';
+import { darkSticker, endScreenPeel, measurePeelHost, peelFrame, prepareScreenPeel, releaseScreenPeel, screenPeelK, showScreenPeel } from '../screenPeel';
 
 // Settings › Appearance. Version 3.2 (mockup K2e, approved by Cath 2026-10-29): the on/off
 // settings are peel-off stickers. Theme is "Match my phone" + "Dark mode" (Cath's pick);
@@ -48,14 +49,38 @@ export default function AppearancePage({
       })
       .catch(() => {});
   }, [still]);
+  // The copy for the Dark mode peel is drawn (hidden) once the page has finished opening,
+  // so a peel starts at once instead of waiting for it (Cath's video, 2026-10-30).
+  useEffect(() => {
+    if (still || !getFrame) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      prepareScreenPeel(<PeelCopy />);
+      placeCopy();
+    });
+    return () => {
+      task.cancel();
+      releaseScreenPeel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [still]);
+  // Lines the copy up with the page as it sits now (relative to the peel host: both are
+  // measured the same way, so the status bar offset cancels out).
+  async function placeCopy() {
+    const f = await getFrame?.().catch(() => null);
+    if (!f) return false;
+    const hostY = await measurePeelHost();
+    peelFrame.top.value = f.y - hostY;
+    peelFrame.height.value = f.height;
+    peelFrame.scroll.value = f.scrollY;
+    return true;
+  }
   if (!model) return null;
   const hold = { onPeelStart: () => onPeeling?.(true), onPeelEnd: () => onPeeling?.(false) };
 
   // The copy of this page, drawn in the other look, peeled into view under the screen.
-  async function startDarkPeel(toDark: boolean) {
-    const f = await getFrame?.().catch(() => null);
-    if (!f) return;
-    showScreenPeel(<PeelCopy frame={f} />, toDark);
+  function startDarkPeel(toDark: boolean) {
+    showScreenPeel(<PeelCopy />, toDark);
+    placeCopy();
   }
 
   return (
@@ -237,16 +262,21 @@ export default function AppearancePage({
 
 // The Appearance page as it sits on the screen right now (header, then the page scrolled to
 // the same place), for the screen peel. It is drawn in the other look by the peel host.
-function PeelCopy({ frame }: { frame: ScrollFrame }) {
+// The page part follows peelFrame (shared values), so lining it up never redraws the copy.
+const PAD_TOP = 16;
+const PAD_X = 12;
+function PeelCopy() {
   const { colors } = useTheme();
+  const box = useAnimatedStyle(() => ({ top: peelFrame.top.value, height: peelFrame.height.value }));
+  const shift = useAnimatedStyle(() => ({ transform: [{ translateY: -peelFrame.scroll.value }] }));
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy2 }} pointerEvents="none">
       <LargeHeader navigation={{ goBack() {} }} route={{ name: 'SettingsPage' }} options={{ title: 'Appearance', headerBackTitle: 'Settings' }} back={{ title: 'Settings' }} />
-      <View style={{ position: 'absolute', left: 0, right: 0, top: frame.y, height: frame.height, overflow: 'hidden' }}>
-        <View style={{ paddingHorizontal: frame.padX, paddingTop: frame.padTop, transform: [{ translateY: -frame.scrollY }] }}>
+      <Animated.View style={[{ position: 'absolute', left: 0, right: 0, overflow: 'hidden' }, box]}>
+        <Animated.View style={[{ paddingHorizontal: PAD_X, paddingTop: PAD_TOP }, shift]}>
           <AppearancePage still />
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </View>
   );
 }

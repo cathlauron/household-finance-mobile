@@ -7,16 +7,31 @@ import { TouchableOpacity } from './Tap';
 import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { animateNextLayout } from '../animateLayout';
+import { PlainRow } from './SettingsHub';
 
 // Email check (mockup FP, E1, approved by Cath 2026-10-30): a gentle note at the top of
 // Settings until the account's email is confirmed, so a forgotten password can be reset.
-// ✕ hides it for a week. It never blocks anything.
+// It never blocks anything.
+// Cath, 2026-10-30 (H-59): ✕ hides it for good, only for the account that tapped it (not every
+// account on the phone). It stays available in Settings › Account & Security › Email
+// (EmailRow, below), which shows whether the email is confirmed and can send the link.
 
-const HIDDEN_UNTIL = 'emailNoteHiddenUntil';
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const hiddenKey = (uid: string) => `emailNoteHidden:${uid}`;
 
 // The sign-in helpers load only when needed (pages without a signed-in account never touch them).
-const auth = () => require('../authFirebase') as { emailConfirmed?: () => Promise<boolean | null>; sendConfirmEmail?: () => Promise<void> };
+const auth = () =>
+  require('../authFirebase') as {
+    emailConfirmed?: () => Promise<boolean | null>;
+    sendConfirmEmail?: () => Promise<void>;
+    getCurrentFirebaseUser?: () => { uid: string } | null;
+  };
+const myUid = () => {
+  try {
+    return auth().getCurrentFirebaseUser?.()?.uid ?? null;
+  } catch {
+    return null;
+  }
+};
 
 export default function EmailCheckNote() {
   const { colors } = useTheme();
@@ -28,8 +43,9 @@ export default function EmailCheckNote() {
     (async () => {
       const a = auth();
       if (typeof a.emailConfirmed !== 'function') return;
-      const until = Number((await AsyncStorage.getItem(HIDDEN_UNTIL).catch(() => null)) || 0);
-      if (Date.now() < until) return;
+      const uid = myUid();
+      if (!uid) return;
+      if ((await AsyncStorage.getItem(hiddenKey(uid)).catch(() => null)) === '1') return;
       const ok = await a.emailConfirmed().catch(() => null);
       if (live && ok === false) {
         animateNextLayout();
@@ -60,7 +76,8 @@ export default function EmailCheckNote() {
   function hide() {
     animateNextLayout();
     setShow(false);
-    AsyncStorage.setItem(HIDDEN_UNTIL, String(Date.now() + WEEK_MS)).catch(() => {});
+    const uid = myUid();
+    if (uid) AsyncStorage.setItem(hiddenKey(uid), '1').catch(() => {});
   }
 
   return (
@@ -81,10 +98,54 @@ export default function EmailCheckNote() {
           </TouchableOpacity>
         )}
       </View>
-      <TouchableOpacity testID="email-check-hide" onPress={hide} accessibilityRole="button" accessibilityLabel="Hide for a week" hitSlop={10}>
+      <TouchableOpacity testID="email-check-hide" onPress={hide} accessibilityRole="button" accessibilityLabel="Hide this note" hitSlop={10}>
         <Ionicons name="close" size={20} color={colors.inkDim} />
       </TouchableOpacity>
     </View>
+  );
+}
+
+// Settings › Account & Security: the email's state, always there (also after the note was
+// hidden). Not confirmed: tapping sends the confirmation link.
+export function EmailRow() {
+  const [state, setState] = useState<'unknown' | 'yes' | 'no' | 'busy' | 'sent' | 'failed'>('unknown');
+  const check = useCallback(() => {
+    let live = true;
+    const a = auth();
+    if (typeof a.emailConfirmed !== 'function') return;
+    a.emailConfirmed()
+      .then((ok) => {
+        if (!live || ok === null) return;
+        setState((st) => (ok ? 'yes' : st === 'sent' ? 'sent' : 'no'));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  useFocusEffect(check);
+  useEffect(check, [check]);
+  if (state === 'unknown') return null;
+  async function send() {
+    const a = auth();
+    if (typeof a.sendConfirmEmail !== 'function') return;
+    setState('busy');
+    try {
+      await a.sendConfirmEmail();
+      setState('sent');
+    } catch {
+      setState('failed');
+    }
+  }
+  const value = { yes: 'Confirmed', no: 'Not confirmed', busy: 'Sending…', sent: 'Link sent', failed: "Couldn't send" }[state];
+  return (
+    <PlainRow
+      testID="settings-email-row"
+      title="Email"
+      sub={state === 'yes' ? undefined : state === 'sent' ? 'Open the link in your email, then come back here.' : 'Tap to send the confirmation link, so you can reset your password if you ever need to.'}
+      value={value}
+      onPress={state === 'no' || state === 'failed' ? send : undefined}
+    />
   );
 }
 

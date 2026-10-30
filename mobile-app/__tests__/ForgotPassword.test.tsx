@@ -26,16 +26,18 @@ test('Forgot password: a typo in the email is caught before sending', async () =
   expect(screen.getByText(/Type the email address/)).toBeTruthy();
 });
 
+let mockUid = 'cath';
 describe('email note', () => {
   let confirmed = false;
   const sendConfirm = jest.fn(async () => {});
   beforeAll(() => {
-    jest.doMock('../src/authFirebase', () => ({ emailConfirmed: async () => confirmed, sendConfirmEmail: sendConfirm }));
+    jest.doMock('../src/authFirebase', () => ({ emailConfirmed: async () => confirmed, sendConfirmEmail: sendConfirm, getCurrentFirebaseUser: () => ({ uid: mockUid }) }));
     jest.doMock('@react-navigation/native', () => ({ ...jest.requireActual('@react-navigation/native'), useFocusEffect: () => {} }));
   });
-  test('shows until confirmed, sends the link, and ✕ hides it for a week', async () => {
+  test('shows until confirmed, sends the link, and ✕ hides it (for this account only)', async () => {
     const AsyncStorage = require('@react-native-async-storage/async-storage');
-    await AsyncStorage.removeItem('emailNoteHiddenUntil');
+    await AsyncStorage.clear();
+    mockUid = 'cath';
     const Note = require('../src/components/EmailCheckNote').default;
     const r = render(<ThemeProvider><Note /></ThemeProvider>);
     await act(async () => {});
@@ -46,13 +48,31 @@ describe('email note', () => {
     await act(async () => { fireEvent.press(screen.getByTestId('email-check-hide')); });
     expect(screen.queryByTestId('email-check-note')).toBeNull();
     r.unmount();
-    render(<ThemeProvider><Note /></ThemeProvider>);
+    const r2 = render(<ThemeProvider><Note /></ThemeProvider>);
     await act(async () => {});
     expect(screen.queryByTestId('email-check-note')).toBeNull();
+    r2.unmount();
+    // H-59: another account on the same phone still sees its own note.
+    mockUid = 'miguel';
+    const r3 = render(<ThemeProvider><Note /></ThemeProvider>);
+    await act(async () => {});
+    expect(screen.getByTestId('email-check-note')).toBeTruthy();
+    r3.unmount();
+  });
+  test('Settings › Account & Security › Email: always there; not confirmed sends the link', async () => {
+    confirmed = false;
+    sendConfirm.mockClear();
+    const { EmailRow } = require('../src/components/EmailCheckNote');
+    render(<ThemeProvider><EmailRow /></ThemeProvider>);
+    await act(async () => {});
+    expect(screen.getByText('Not confirmed')).toBeTruthy();
+    await act(async () => { fireEvent.press(screen.getByTestId('settings-email-row')); });
+    expect(sendConfirm).toHaveBeenCalled();
+    expect(screen.getByText('Link sent')).toBeTruthy();
   });
   test('a confirmed email: no note', async () => {
     const AsyncStorage = require('@react-native-async-storage/async-storage');
-    await AsyncStorage.removeItem('emailNoteHiddenUntil');
+    await AsyncStorage.clear();
     confirmed = true;
     const Note = require('../src/components/EmailCheckNote').default;
     render(<ThemeProvider><Note /></ThemeProvider>);

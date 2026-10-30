@@ -3,7 +3,7 @@ import { measureSignInSpeed, speedText } from '../signInSpeed';
 import { animateNextLayout } from '../animateLayout';
 import { APP_VERSION } from '../appVersion';
 import { useHelpSeen, markHelpSeen } from '../helpSeen';
-import EmailCheckNote from '../components/EmailCheckNote';
+import EmailCheckNote, { EmailRow } from '../components/EmailCheckNote';
 import AppearancePage, { type ScrollFrame } from './AppearancePage';
 import { PRIVACY_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
@@ -1425,6 +1425,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <>
         <SettingsGroup label="Sign in" plain>
           <PlainRow testID="settings-change-password" title="Change password" onPress={() => { setPassChangeMsg(''); setPassSheetOpen(true); }} />
+          <EmailRow />
           <PlainRow
             testID="settings-recovery-key"
             title="Secret Recovery Key"

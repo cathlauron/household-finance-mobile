@@ -1380,3 +1380,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - 2026-10-30 11:30: Cath ran rules-test on her PC (Java + emulator): 21 pass, 0 fail (K3 + K4
   rules PROVEN on the emulator). The PERMISSION_DENIED lines are the "can't" checks being
   refused, as intended. Next: she publishes mobile-app/firestore.rules in the Console (K4 + K3).
+- 2026-10-30 (12:05): Cath published the rules (K4 + K3). Answer 4 (H-59): hide the email note
+  for good per account, keep it in Settings (Account & Security › Email). Her video: Dark mode
+  peel still not smooth -> B-075 fixed (copy prepared early, placed relative to the host,
+  sticker draws its under face only while peeling), proven by checks + hidden browser; feel
+  needs her phone (TEST-3 s19 items 6-7). Forgot password email box now matches sign-in.
