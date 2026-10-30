@@ -1318,3 +1318,18 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   first-entry cosmetic; fresh bug hunt; big-form rise (her call); Quick Unlock Step 6
   (still wanted?); Payment Methods report; orphaned household cleanup; H-04 / H-06 (parked).
   PARKED by her: iPad layout (idea above); store submission (Play account, testers, listing).
+
+- NEWEST (2026-10-30, 00:25): CATH'S ANSWERS FOR BATCH 2 (all "a" except 12):
+  1 updates download quietly, apply next launch; 2 deleted usernames become free; 3 email
+  deletion requests: Cath deletes by hand with Claude's Console steps; 4 K3 test: Claude runs
+  a private Firebase emulator copy, then a short 2-phone check; 5 partner installs 3.2.0;
+  6 Forgot password = reset email -> sign in -> Recovery Key or member approval -> re-lock,
+  WITH a warning before sending; 7 email check = gentle reminder until confirmed;
+  8 Forgot password: mockup with the update, build after her pick; 9 guest first item shows
+  in the list first (faded, "not saved yet"), then the sheet; 10 big-form rise: leave as is;
+  11 short Quick Unlock check list in the 3.2 build checks; 12 Payment Methods report:
+  DROPPED; 13 household created only when someone joins + Console steps to delete old empty
+  ones; 14 fix H-04 and H-06. Plus: Delete account = DA1, owner chooses successor; the 17
+  missing checks; a fresh bug hunt. Order: she builds 3.2.0 (needed `npm install` first for
+  expo-updates) and sends sign-in times; Claude builds everything as ONE EAS Update
+  (channel preview) + one rules publish; "Check sign-in speed" removed and rounds set then.
