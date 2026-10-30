@@ -59,6 +59,7 @@ import { getAutoLockMinutes, DEFAULT_AUTO_LOCK_MINUTES, subscribeToAutoLockMinut
 import { isAutoLockSuppressed } from './src/autoLockSuppress';
 import { StillTherePopup, PausedCover, AutoLockSheet } from './src/components/StillThere';
 import { stillThereState } from './src/stillThereClock';
+import HouseholdChanges from './src/components/HouseholdChanges';
 import { onActivity } from './src/activity';
 import { closeOpenSwipeRows } from './src/components/SwipeableRow';
 import { hideAmountsNow } from './src/hideAmounts';
@@ -805,6 +806,8 @@ function AppContent() {
             onLock={() => setScreen('locked')}
           />
         </NavigationContainer>
+        {/* H-51 (canvas F2 + F3): what another household member changed, on opening / coming back. */}
+        <HouseholdChanges />
         <StillTherePopup
           visible={stillThereOpen}
           deadline={stillThereDeadline}
