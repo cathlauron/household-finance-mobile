@@ -1377,3 +1377,6 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
     cd rules-test; npm install; npm test. Then ONE rules publish (K4 + K3) in the Console.
   - TEST-3 s19 = batch 2 phone list. Still waiting: her 3.2.0 build + sign-in times (rounds,
     removing "Check sign-in speed"), hosting republish, H-59 answer (email note per account?).
+- 2026-10-30 11:30: Cath ran rules-test on her PC (Java + emulator): 21 pass, 0 fail (K3 + K4
+  rules PROVEN on the emulator). The PERMISSION_DENIED lines are the "can't" checks being
+  refused, as intended. Next: she publishes mobile-app/firestore.rules in the Console (K4 + K3).

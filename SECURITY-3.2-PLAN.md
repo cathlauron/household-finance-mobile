@@ -77,4 +77,4 @@ here is built yet. Cath's answers decide the open questions (bottom).
     next change (still protected by the rules).
   - Rules: data saves after a re-lock need dataKv + dataAt == now; owner re-lock rule;
     keyMembers rule; keyChain (members read; owner create only inside a re-lock; never
-    changed); parts need kv. Checked by rules-test/rules.test.mjs on Cath's PC (emulator).
+    changed); parts need kv. Checked by rules-test/rules.test.mjs on Cath's PC (emulator): 21/21 passed 2026-10-30.
