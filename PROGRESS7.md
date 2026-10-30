@@ -1275,3 +1275,23 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   WALK_DARK, peel: / mpeel: steps; the checking copy may open Settings as a guest.
   STORE-READINESS.md updated. Next: her phone test (TEST-3 section 17), publish the web pages,
   then batch 1 (release 3.2).
+
+- NEWEST (2026-10-30, early): RELEASE 3.2.0 MERGED INTO `main` (merge 6ad15c7; main = v3).
+  Cath: section 17 tested; web pages published (firebase-tools deploy --only hosting, worked).
+  Her answers: deletion within 30 days YES; not for children under 13 YES; what a member added
+  to a shared household STAYS after they delete their account (now on delete-account.html:
+  she must publish hosting again). She found 2 things: (1) B-068 Dark mode sticker drawn half
+  peeled at rest ("☀ Lark") = fixed (sticker owns its values; PeelAtRest check red-green);
+  needs her phone. (2) About & Help didn't match mockup H1 = rebuilt with icon tiles
+  (IconRow in SettingsHub), Help & FAQ + New with Contact support, "Your data" with a red
+  Delete account. 3.2.0 = version 3.2.0, versionCode 7, stray files removed (2 debug logs,
+  screen.png, screen2.png), debug logs in .gitignore. Store plans ON HOLD (her words: only
+  asked for the requirements for the future; no Play account for now).
+  Mockups waiting for her pick (artifact "Mockups: iPad layout and Delete account",
+  design/3.0-mockups/ipad-delete/): iPad I1 full width / I2 centred 600 / I3 centred 720;
+  Delete account DA1 one page / DA2 sheet in 2 steps; owner of a 3+ household: choose who
+  takes over, or first-joined takes over automatically.
+  NEXT: she tests TEST-3 section 18 in Expo Go, then builds 3.2.0 ("preview" profile) and
+  times Check sign-in speed on the installed app. Then batch 2 (3.3): K3 + K5 steps 2-9 with
+  her rounds, Delete account (her pick), iPad (her pick), ONE rules publish, remove "Check
+  sign-in speed".
