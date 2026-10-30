@@ -3,6 +3,7 @@
   "private": true,
   "description": "Checks the Firestore rules on a pretend copy of Firebase on this computer (needs Java). Never touches the real project.",
   "scripts": {
+    "pretest": "node -e \"require('fs').copyFileSync('../mobile-app/firestore.rules','firestore.rules')\"",
     "test": "firebase emulators:exec --only firestore --project demo-finance-flow \"node --test --test-reporter=spec\""
   },
   "devDependencies": {

@@ -12,7 +12,7 @@ const H = 'households/h1';
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-finance-flow',
-    firestore: { rules: readFileSync('../mobile-app/firestore.rules', 'utf8'), host: '127.0.0.1', port: 8085 },
+    firestore: { rules: readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8085 },
   });
 });
 after(async () => env?.cleanup());
