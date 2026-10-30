@@ -48,7 +48,7 @@ import {
 } from '../recovery';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
-import { SettingsGroup, SettingsRow, PlainRow } from '../components/SettingsHub';
+import { SettingsGroup, SettingsRow, PlainRow, IconRow } from '../components/SettingsHub';
 import { PickerRow, Choices, AmountRow, SheetBar, FormGroup, PasswordRow, SheetHero } from '../components/SimpleForm';
 import { deriveKey, decryptJSON, generateSalt } from '../encryption';
 import { makeBackupText, backupFileName, isBackupFileName } from '../backupFile';
@@ -1905,11 +1905,17 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <LogoMark width={96} />
           <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 8 }}>Version {APP_VERSION}</Text>
         </View>
-        {/* Cath, 2026-10-27 (canvas S1): Contact support opens an email to the support address
-            with the version in the subject; the address can be copied too. */}
-        <SettingsGroup plain footer={'"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.'}>
-          <PlainRow
+        {/* Mockup H1 (Cath, 2026-10-29, built to match it exactly 2026-10-30): Help & FAQ (new)
+            and Contact support with icon tiles, Copy email address; then "Your data" with the
+            privacy policy and account deletion pages the app stores ask for.
+            Contact support (canvas S1, 2026-10-27) opens an email to the support address with
+            the version in the subject; the address can be copied too. */}
+        <SettingsGroup footer={'"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.'}>
+          <IconRow testID="settings-help-faq" icon="help" tile={colors.buttonFill} title="Help & FAQ" badge="New" sub="Answers to common questions" onPress={() => navigation.push('HelpFaq')} />
+          <IconRow
             testID="settings-contact-support"
+            icon="mail"
+            tile="#3A7CA5"
             title="Contact support"
             sub={SUPPORT_EMAIL}
             onPress={() => {
@@ -1927,20 +1933,20 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             }}
           />
         </SettingsGroup>
-        {/* Mockup H1 (Cath, 2026-10-29): Help & FAQ replaces "Help & guides: Coming soon";
-            the privacy policy and account deletion pages the app stores ask for live here. */}
-        <SettingsGroup plain>
-          <PlainRow testID="settings-help-faq" title="Help & FAQ" sub="Answers to common questions" onPress={() => navigation.push('HelpFaq')} />
-        </SettingsGroup>
-        <SettingsGroup label="Your data" plain footer="Household budgeting for you and the people you share a home with.">
-          <PlainRow
+        <SettingsGroup label="Your data" footer="Household budgeting for you and the people you share a home with.">
+          <IconRow
             testID="settings-privacy"
+            icon="lock-closed"
+            tile="#6E6E73"
             title="Privacy policy"
             sub="Opens in your browser"
             onPress={() => { Linking.openURL(PRIVACY_URL).catch(() => Alert.alert('Privacy policy', PRIVACY_URL)); }}
           />
-          <PlainRow
+          <IconRow
             testID="settings-delete-account"
+            icon="close"
+            tile={colors.negative}
+            danger
             title="Delete account"
             sub="How to delete your account and data"
             onPress={() => { Linking.openURL(DELETE_ACCOUNT_URL).catch(() => Alert.alert('Delete account', DELETE_ACCOUNT_URL)); }}

@@ -8,6 +8,7 @@ import { hapticSelection } from '../haptics';
 import { useReduceMotion } from '../reduceMotion';
 import { CURVE, PAGE_BACK_MS, PAGE_OPEN_MS, PEEL_TAP_MS } from '../motion';
 import { pathOf, stickerCorner, stickerFar, stickerPeel, type Pt } from '../peelGeometry';
+import type { StickerValues } from '../screenPeel';
 
 // Peel-off switch (mockup K2e, approved by Cath 2026-10-29). A sticker that peels from its
 // top-right corner and follows your finger; let go past halfway and it comes off (the
@@ -36,7 +37,8 @@ export default function PeelSticker({
   screenK,
   onPeelStart,
   onPeelEnd,
-  shared,
+  lendTo,
+  borrow,
   still,
 }: {
   value: boolean;
@@ -50,9 +52,10 @@ export default function PeelSticker({
   screenK?: SharedValue<number>;
   onPeelStart?: (toOn: boolean) => void;
   onPeelEnd?: (flipped: boolean) => void;
-  // Dark mode: the finger position and face live outside, so a copy of this sticker (drawn
-  // on the screen peel, `still`) moves with it.
-  shared?: { px: SharedValue<number>; py: SharedValue<number>; topOn: SharedValue<number>; busy: SharedValue<number> };
+  // Dark mode: `lendTo` lends this sticker's own finger position and face to its copy on the
+  // screen peel; the copy (`still`) draws from `borrow`, so it moves with the real one.
+  lendTo?: { current: StickerValues | null };
+  borrow?: StickerValues | null;
   still?: boolean;
 }) {
   const { colors } = useTheme();
@@ -64,10 +67,17 @@ export default function PeelSticker({
   const ownPy = useSharedValue(C[1]);
   const ownBusy = useSharedValue(0);
   const ownTopOn = useSharedValue(value ? 1 : 0);
-  const px = shared?.px ?? ownPx;
-  const py = shared?.py ?? ownPy;
-  const busy = shared?.busy ?? ownBusy;
-  const topOn = shared?.topOn ?? ownTopOn;
+  const px = borrow?.px ?? ownPx;
+  const py = borrow?.py ?? ownPy;
+  const busy = borrow?.busy ?? ownBusy;
+  const topOn = borrow?.topOn ?? ownTopOn;
+  useEffect(() => {
+    if (!lendTo) return;
+    lendTo.current = { px: ownPx, py: ownPy, topOn: ownTopOn, busy: ownBusy };
+    return () => {
+      if (lendTo.current?.px === ownPx) lendTo.current = null;
+    };
+  }, [lendTo, ownPx, ownPy, ownTopOn, ownBusy]);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const ids = useMemo(() => Math.random().toString(36).slice(2, 8), []);

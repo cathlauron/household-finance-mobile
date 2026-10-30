@@ -1,1 +1,5 @@
 *firebase-adminsdk*.json
+
+# Firebase emulator logs (2026-10-30)
+firestore-debug.log
+*-debug.log

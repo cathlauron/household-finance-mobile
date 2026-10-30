@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { LinearGradient as ShadeGradient } from 'expo-linear-gradient';
-import Animated, { Easing, makeMutable, runOnJS, useAnimatedProps, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, makeMutable, runOnJS, useAnimatedProps, useAnimatedStyle, withTiming, type SharedValue } from 'react-native-reanimated';
 import { ThemeContext, useTheme } from './ThemeContext';
 import { MoodThemeProvider } from './mood';
 import { darkTheme, lightTheme } from './theme';
@@ -18,9 +18,13 @@ import { pathOf, screenPeel } from './peelGeometry';
 // itself drawn in the other look (showScreenPeel) and the sticker drives `screenPeelK`.
 
 export const screenPeelK = makeMutable(0);
-// The Dark mode sticker's own finger position and face, shared with its copy in the peel so
-// the sticker you're holding stays visible on top of the other look.
-export const darkStickerShared = { px: makeMutable(-1), py: makeMutable(-1), topOn: makeMutable(-1), busy: makeMutable(0) };
+// The Dark mode sticker's own finger position and face, lent to its copy in the peel so the
+// sticker you're holding stays visible on top of the other look. B-068 (Cath's video,
+// 2026-10-30): these used to be made here, when the app loaded, starting at -1; on her phone
+// the sticker never received its real starting corner, so it sat half peeled ("☀ Lark").
+// Now the sticker makes its own (starting at its corner) and only lends them here.
+export type StickerValues = { px: SharedValue<number>; py: SharedValue<number>; topOn: SharedValue<number>; busy: SharedValue<number> };
+export const darkSticker: { current: StickerValues | null } = { current: null };
 
 type Peel = { content: React.ReactNode; toDark: boolean; flipped: boolean };
 let current: Peel | null = null;

@@ -117,6 +117,57 @@ export function SettingsRow({
   );
 }
 
+// Mockup H1 (Cath, 2026-10-29, About & Help): a row with a solid coloured icon tile (white
+// icon), a title with an optional small badge ("New"), a grey line under it and a chevron.
+// `danger` writes the title in red (Delete account).
+export function IconRow({
+  icon,
+  tile,
+  title,
+  sub,
+  badge,
+  danger,
+  onPress,
+  testID,
+}: {
+  icon: IconName;
+  tile: string;
+  title: string;
+  sub?: string;
+  badge?: string;
+  danger?: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      testID={testID}
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={{ flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingVertical: 10, paddingHorizontal: 16 }}
+      accessibilityRole="button"
+      accessibilityLabel={[title, badge, sub].filter(Boolean).join(', ')}
+    >
+      <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: tile, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+        <Ionicons name={icon} size={18} color="#FFFFFF" />
+      </View>
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text numberOfLines={1} style={{ fontSize: 17, color: danger ? colors.negative : colors.ink, flexShrink: 1 }}>{title}</Text>
+          {!!badge && (
+            <View style={{ backgroundColor: colors.buttonFill, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: colors.onButton }}>{badge}</Text>
+            </View>
+          )}
+        </View>
+        {!!sub && <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 1 }}>{sub}</Text>}
+      </View>
+      <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
+    </TouchableOpacity>
+  );
+}
+
 // A row with no icon: a title, an optional grey value, and either a chevron (when it
 // opens something), a control on the right (like a Switch), or nothing.
 export function PlainRow({

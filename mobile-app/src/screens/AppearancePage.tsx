@@ -9,7 +9,7 @@ import { useFabSide, setFabSide } from '../fabSide';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import LargeHeader from '../navigation/LargeHeader';
-import { darkStickerShared, endScreenPeel, screenPeelK, showScreenPeel } from '../screenPeel';
+import { darkSticker, endScreenPeel, screenPeelK, showScreenPeel } from '../screenPeel';
 
 // Settings › Appearance. Version 3.2 (mockup K2e, approved by Cath 2026-10-29): the on/off
 // settings are peel-off stickers. Theme is "Match my phone" + "Dark mode" (Cath's pick);
@@ -86,7 +86,8 @@ export default function AppearancePage({
               accessibilityLabel="Dark mode"
               value={isDark}
               disabled={mode === 'device'}
-              shared={darkStickerShared}
+              lendTo={still ? undefined : darkSticker}
+              borrow={still ? darkSticker.current : undefined}
               screenK={still ? undefined : screenPeelK}
               onPeelStart={(toOn) => {
                 onPeeling?.(true);
