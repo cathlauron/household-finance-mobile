@@ -17,6 +17,10 @@ export const PARTS_READER_VERSION = '2.2';
 // main copy (safe on every version, just bigger).
 export const EXTRA_RECEIPTS_VERSION = '3.0';
 
+// K5 (3.2): this version reads the tamper-checked saves (envelopeV2.ts). Writing them is
+// switched on later, once every member's phone reports at least this.
+export const ENVELOPE_READER_VERSION = '3.2';
+
 // "2.10" is newer than "2.2"; anything unreadable counts as too old.
 export function versionAtLeast(version: unknown, min: string): boolean {
   if (typeof version !== 'string' || !/^\d+(\.\d+)*$/.test(version)) return false;

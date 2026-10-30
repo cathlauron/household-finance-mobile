@@ -24,7 +24,8 @@ import PriorityPick from '../components/PriorityPick';
 import { Priority, priorityRank } from '../priority';
 import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
-import { currentCycle, withEditedCurrentCycle, isCyclePaid } from '../billPayments';
+import { currentCycle, withEditedCurrentCycle, isCyclePaid, paidCycles } from '../billPayments';
+import { debtSections, debtDue, debtAmount as debtAmountOf } from '../debtSections';
 import { paymentToPlace, placePayment } from '../billPayments';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import { useData } from '../DataContext';
@@ -41,24 +42,8 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 const DEBT_TYPES = ['Credit card', 'Lending app', 'Family or friend', 'Personal loan', 'Other'];
 
-function debtAmount(debt: Debt): number {
-  // Redesign: the amount of the cycle that's due next (paid cycles are history).
-  const first = currentCycle(debt);
-  return first && typeof first.amountDue === 'number' ? first.amountDue : 0;
-}
+const debtAmount = debtAmountOf;
 
-// Sorts debts by next due date (soonest first); debts with no computable
-// due date yet sort to the bottom.
-function sortByNextDue(debts: Debt[]): Debt[] {
-  return [...debts].sort((a, b) => {
-    const da = getNextDueDate(a.recurringType, a.dueDate);
-    const db = getNextDueDate(b.recurringType, b.dueDate);
-    if (!da && !db) return 0;
-    if (!da) return 1;
-    if (!db) return -1;
-    return da.getTime() - db.getTime();
-  });
-}
 
 
 
@@ -518,82 +503,100 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   // Version 2.2 fix (Cath: no Overdue tag on a debt that was past its due date): overdue
   // debts come first and say so, like bills; on the same day High priority comes first.
   const overdueDebtIds = new Set(getOverdueItems(model).filter((o) => o.kind === 'debt').map((o) => o.id));
-  const debtDueTime = (d: Debt) => {
-    const cur = currentCycle(d);
-    const dt = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : getNextDueDate(d.recurringType, d.dueDate);
-    return dt ? dt.getTime() : Infinity;
-  };
-  const debts = sortByNextDue(model.debts)
-    .map((d, i) => ({ d, i }))
-    .sort((a, b) => {
-      const oa = overdueDebtIds.has(a.d.id) ? 0 : 1;
-      const ob = overdueDebtIds.has(b.d.id) ? 0 : 1;
-      if (oa !== ob) return oa - ob;
-      const ta = debtDueTime(a.d);
-      const tb = debtDueTime(b.d);
-      if (ta === tb) return priorityRank(a.d.priority) - priorityRank(b.d.priority) || a.i - b.i;
-      return a.i - b.i;
-    })
-    .map((x) => x.d);
-  const totalOwed = debts.reduce((sum, d) => sum + debtAmount(d), 0);
+  // H-40 + H-41 (Cath, 2026-10-29, canvas A2): grouped like Bills, with what's paid this
+  // month, "still to pay this month", and the no-due-date total in one card.
+  const grouped = debtSections(model, new Date(), overdueDebtIds);
+  const debts = model.debts;
+  const fmtDue = (d: Date | null) => (d ? dateText(d, { weekday: true }) : 'No date set');
+  const openDebt = (debt: Debt) => navigation.navigate('PayDetail', { kind: 'debt', id: debt.id });
 
   return (
     <SafeAreaView style={styles.container}>
       {!formOnly && (
       <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.group, styles.summaryCard]}>
+        <View style={[styles.group, styles.summaryCard]} testID="debts-summary">
           <GradientFill match={[styles.group, styles.summaryCard]} />
-          <Text style={styles.balanceBannerLabel}>Total debt logged</Text>
-          <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(totalOwed, colors) }]} value={totalOwed} format={formatPeso} />
+          <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
+          <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(grouped.stillToPay, colors) }]} value={grouped.stillToPay} format={formatPeso} />
+          <View style={styles.summaryLine} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summarySub}>No due date</Text>
+            <Text style={[styles.summaryValue, { color: redUnlessZero(grouped.noDateTotal, colors) }]} testID="debts-no-date-total">{formatPeso(grouped.noDateTotal)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summarySub}>Paid this month</Text>
+            <Text style={styles.summarySub}>{grouped.paidCount} of {grouped.dueCount} {grouped.dueCount === 1 ? 'debt' : 'debts'}</Text>
+          </View>
         </View>
 
         {debts.length === 0 && (
           <Text style={styles.emptyText}>No debts yet.</Text>
         )}
 
-        {debts.length > 0 && (
-        <View style={[styles.group, styles.section]}>
-          <GradientFill match={[styles.group, styles.section]} />
-        {debts.map((debt, rowIndex) => {
-          const nextDue = getNextDueDate(debt.recurringType, debt.dueDate);
+        {grouped.sections.map((sec) => sec.items.length === 0 ? null : (
+          <View key={sec.title} style={styles.section}>
+            <Text style={[styles.sectionHeader, sec.title === 'Overdue' && { color: colors.negative }]}>{sec.title}</Text>
+            <View style={styles.group}>
+              <GradientFill match={styles.group} />
+              {sec.items.map((debt, rowIndex) => {
+                const due = debtDue(debt);
+                const isOverdue = overdueDebtIds.has(debt.id);
+                const days = due ? Math.round((due.getTime() - new Date(new Date().setHours(0, 0, 0, 0)).getTime()) / 86400000) : Infinity;
+                return (
+                  <SwipeableRow
+                    key={debt.id}
+                    enabled={Boolean(model.settings.swipeToDeleteEnabled)}
+                    onDelete={() => handleSwipeDelete(debt)}
+                    testID={`debt-swipe-${debt.id}`}
+                    flat
+                  >
+                    <PayRow
+                      testID={`debt-row-${debt.id}`}
+                      glow={arrived === debt.id}
+                      addedBy={debt.addedBy}
+                      icon="people-outline"
+                      title={debt.creditorOrPerson || 'Debt'}
+                      sub={due ? `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}` : 'Pay when you can'}
+                      badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : due && days <= 7 && days >= 0 ? { text: days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
+                      priority={debt.priority}
+                      amount={formatPeso(debtAmount(debt))}
+                      amountColor={isOverdue ? colors.negative : colors.ink}
+                      divider={rowIndex > 0}
+                      onPress={() => openDebt(debt)}
+                    />
+                  </SwipeableRow>
+                );
+              })}
+            </View>
+          </View>
+        ))}
 
-          return (
-            <SwipeableRow
-              key={debt.id}
-              enabled={Boolean(model.settings.swipeToDeleteEnabled)}
-              onDelete={() => handleSwipeDelete(debt)}
-              testID={`debt-swipe-${debt.id}`}
-              flat
-            >
-            <PayRow
-              testID={`debt-row-${debt.id}`}
-              glow={arrived === debt.id}
-              addedBy={debt.addedBy}
-              icon="people-outline"
-              title={debt.creditorOrPerson || 'Debt'}
-              sub={(() => {
-                const cur = currentCycle(debt);
-                const d = cur?.dueDate ? new Date(cur.dueDate + 'T00:00:00') : nextDue;
-                return d ? `${overdueDebtIds.has(debt.id) ? 'Was due' : 'Due'} ${dateText(d, { weekday: true })}` : 'No date set';
-              })()}
-              badge={(() => {
-                if (overdueDebtIds.has(debt.id)) return { text: 'Overdue', tone: 'overdue' as const };
-                const t = debtDueTime(debt);
-                if (!isFinite(t)) return undefined;
-                const today = new Date(); today.setHours(0, 0, 0, 0);
-                const days = Math.round((t - today.getTime()) / 86400000);
-                return days <= 7 && days >= 0 ? { text: days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' as const } : undefined;
-              })()}
-              priority={debt.priority}
-              amount={formatPeso(debtAmount(debt))}
-              amountColor={overdueDebtIds.has(debt.id) ? colors.negative : colors.ink}
-              divider={rowIndex > 0}
-              onPress={() => navigation.navigate('PayDetail', { kind: 'debt', id: debt.id })}
-            />
-            </SwipeableRow>
-          );
-        })}
-        </View>
+        {grouped.paidThisMonth.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>Paid this month</Text>
+            <View style={styles.group}>
+              <GradientFill match={styles.group} />
+              {grouped.paidThisMonth.map((debt, rowIndex) => {
+                const last = paidCycles(debt)[0];
+                return (
+                  <PayRow
+                    key={debt.id}
+                    testID={`debt-paid-row-${debt.id}`}
+                    icon="people-outline"
+                    title={debt.creditorOrPerson || 'Debt'}
+                    sub={`Paid ${last?.paidDate ? dateText(new Date(last.paidDate + 'T00:00:00')) : ''}`}
+                    amount={formatPeso(Number(last?.amountPaid) || 0)}
+                    amountColor={colors.inkDim}
+                    badge={{ text: 'Paid', tone: 'paid' }}
+                    paid
+                    divider={rowIndex > 0}
+                    addedBy={last?.paidBy}
+                    onPress={() => openDebt(debt)}
+                  />
+                );
+              })}
+            </View>
+          </View>
         )}
 
       </PullToRefreshScrollView>
@@ -692,6 +695,12 @@ function makeStyles(colors: any) {
     section: { marginBottom: 20 },
     balanceBannerLabel: { fontSize: 13, color: colors.inkDim, marginBottom: 2 },
     balanceBannerAmount: { fontSize: 22, fontWeight: '700', color: colors.negative },
+    // H-40/H-41 (canvas A2): the summary card's extra lines and the sections, as on Bills.
+    summaryLine: { height: StyleSheet.hairlineWidth, backgroundColor: colors.navy1, marginVertical: 10 },
+    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 },
+    summarySub: { fontSize: 15, color: colors.inkDim },
+    summaryValue: { fontSize: 17, fontWeight: '600' },
+    sectionHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
     emptyText: { fontSize: 15, color: colors.inkDim, marginBottom: 12, textAlign: 'center' },
     errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
   });

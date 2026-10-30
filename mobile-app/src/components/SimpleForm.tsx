@@ -12,6 +12,7 @@ import AmountInput from './AmountInput';
 import { useTheme } from '../ThemeContext';
 import { hapticSelection } from '../haptics';
 import { cardColor } from './CardFace';
+import ChoiceSheet from './ChoiceSheet';
 import type { HouseholdModel, PaymentMethod } from '../types';
 import type { ThemeColors } from '../theme';
 
@@ -214,6 +215,7 @@ export function PickerRow({
   testID,
   invalid,
   mark,
+  tag,
 }: {
   label: string;
   value: string;
@@ -224,9 +226,35 @@ export function PickerRow({
   onToggle: () => void;
   children?: React.ReactNode;
   testID?: string;
+  // H-46: a small tag after the value ("Suggested" when it was guessed for you).
+  tag?: string;
 }) {
   const { colors } = useTheme();
   const s = rowStyles(colors);
+  // H-46 (Cath, 2026-10-29, canvas E2): a row whose choices are a list (Choices, account lists)
+  // is a real dropdown: its choices rise from the bottom in their own list, and picking one
+  // closes it. Rows with dates or typing only stay as they were (they open below the row).
+  const kids = React.Children.toArray(children);
+  const hasDate = kids.some((k) => React.isValidElement(k) && (k.type === DateField || k.type === DayStrip || k.type === ScheduleChoices));
+  const isList = !hasDate && kids.some((k) => React.isValidElement(k) && (k.type as any)?.listChoice);
+  if (isList) {
+    return (
+      <View>
+        <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
+          <MarkedLabel text={label} mark={mark} style={[s.label, s.pickLabel, invalid && { color: colors.error, fontWeight: '700' }]} />
+          <View style={s.valueBox}>
+            {!!dot && <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: dot, marginRight: 6 }} />}
+            <Text style={s.value} numberOfLines={1}>{value}</Text>
+            {!!tag && <Text style={[s.tag, { color: colors.gold, backgroundColor: colors.accentTint }]} testID={testID ? `${testID}-tag` : undefined}>{tag}</Text>}
+          </View>
+          <Ionicons name="chevron-expand" size={16} color={colors.inkFaint} style={{ marginLeft: 6 }} />
+        </TouchableOpacity>
+        <ChoiceSheet visible={open} title={label} onClose={onToggle} testID={testID ? `${testID}-list` : undefined}>
+          {kids.map((k) => (React.isValidElement(k) && (k.type as any)?.listChoice ? React.cloneElement(k as React.ReactElement<any>, { variant: 'list', onPicked: onToggle }) : k))}
+        </ChoiceSheet>
+      </View>
+    );
+  }
   return (
     <View>
       <TouchableOpacity style={s.row} onPress={() => { hapticSelection(); animateNextLayout(); onToggle(); }} accessibilityRole="button" accessibilityState={{ expanded: open }} testID={testID}>
@@ -282,8 +310,9 @@ export function Footnote({ children }: { children: React.ReactNode }) {
 }
 
 // Chips for picking one option inside an open row.
-export function Choices<T extends string>({ options, value, onChange }: { options: { id: T; label: string }[]; value: T | '' | null | undefined; onChange: (v: T) => void }) {
+export function Choices<T extends string>({ options, value, onChange, variant, onPicked }: { options: { id: T; label: string; tag?: string }[]; value: T | '' | null | undefined; onChange: (v: T) => void; variant?: 'list'; onPicked?: () => void }) {
   const { colors } = useTheme();
+  if (variant === 'list') return <ChoiceList options={options} value={value} onChange={(v) => { onChange(v); onPicked?.(); }} />;
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {options.map((o) => {
@@ -297,6 +326,34 @@ export function Choices<T extends string>({ options, value, onChange }: { option
             accessibilityState={{ selected: on }}
           >
             <Text style={{ fontSize: 15, fontWeight: on ? '700' : '600', color: on ? colors.gold : colors.ink }}>{o.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+// H-46 (canvas E2): Choices shown as a list in the bottom sheet: one full-width row each, a tick
+// on the chosen one, and a "Suggested" tag when it was guessed.
+(Choices as any).listChoice = true;
+function ChoiceList<T extends string>({ options, value, onChange }: { options: { id: T; label: string; tag?: string }[]; value: T | '' | null | undefined; onChange: (v: T) => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.navy2 }}>
+      {options.map((o, i) => {
+        const on = value === o.id;
+        return (
+          <TouchableOpacity
+            key={o.id}
+            onPress={() => { hapticSelection(); onChange(o.id); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, paddingHorizontal: 16, borderTopWidth: i > 0 ? StyleSheet.hairlineWidth : 0, borderTopColor: colors.navy4, backgroundColor: on ? colors.accentTint : 'transparent' }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on }}
+            testID={`choice-${o.id}`}
+          >
+            <Text style={{ flex: 1, fontSize: 17, fontWeight: on ? '700' : '400', color: colors.ink }} numberOfLines={1}>{o.label}</Text>
+            {!!o.tag && <Text style={{ fontSize: 12, fontWeight: '700', color: colors.gold, backgroundColor: colors.accentTint, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' }}>{o.tag}</Text>}
+            {on && <Ionicons name="checkmark" size={18} color={colors.gold} />}
           </TouchableOpacity>
         );
       })}
@@ -341,8 +398,10 @@ export function ordinal(n: number): string {
 }
 
 // A list of your accounts, each with its colour square, for "Paid from" style rows.
-export function AccountChoices({ model, value, onChange, optional, noCredit }: { model: HouseholdModel; value?: PaymentMethod; onChange: (pm: PaymentMethod | undefined) => void; optional?: boolean; noCredit?: boolean }) {
+export function AccountChoices({ model, value, onChange: onChangeRaw, optional, noCredit, onPicked }: { model: HouseholdModel; value?: PaymentMethod; onChange: (pm: PaymentMethod | undefined) => void; optional?: boolean; noCredit?: boolean; variant?: 'list'; onPicked?: () => void }) {
   const { colors } = useTheme();
+  // In the bottom list (H-46), picking an account closes the list.
+  const onChange = (pm: PaymentMethod | undefined) => { onChangeRaw(pm); onPicked?.(); };
   // noCredit: for money that's kept or moved (a savings pot), credit cards aren't offered.
   const groups: Array<'cash' | 'debit' | 'credit'> = noCredit ? ['cash', 'debit'] : ['cash', 'debit', 'credit'];
   const rows = groups.flatMap((g) => (model.balanceAccounts[g] || []).map((a) => ({ g, a })));
@@ -369,6 +428,8 @@ export function AccountChoices({ model, value, onChange, optional, noCredit }: {
   );
 }
 
+(AccountChoices as any).listChoice = true;
+
 export function accountName(model: HouseholdModel, pm?: PaymentMethod): string | null {
   if (!pm) return null;
   const list = model.balanceAccounts[pm.type] || [];
@@ -383,6 +444,7 @@ function rowStyles(colors: ThemeColors) {
     value: { fontSize: 17, color: colors.inkDim, flexShrink: 1, textAlign: 'right' },
     pickLabel: { flexShrink: 0, maxWidth: '60%' },
     valueBox: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+    tag: { marginLeft: 8, fontSize: 12, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' },
     input: { flex: 1, minWidth: 0, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12, marginRight: 22 },
   });
 }

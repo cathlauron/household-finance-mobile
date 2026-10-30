@@ -35,6 +35,7 @@ import { INVESTMENT_KINDS, kindInfo, investmentSummary, investmentsTotal, sorted
 import type { ThemeColors } from '../theme';
 import type { Investment, InvestmentEntry, InvestmentKind, PaymentMethod } from '../types';
 
+import { useWho } from '../components/WhoLogged';
 function shortDate(iso: string): string {
   return dateText(new Date(iso + 'T00:00:00'));
 }
@@ -49,6 +50,7 @@ type Mode = 'value' | 'add' | 'withdraw';
 
 export default function InvestmentsScreen() {
   const { colors } = useTheme();
+  const who = useWho();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { model, saveModel } = useData();
   const navigation = useNavigation<any>();
@@ -260,6 +262,7 @@ export default function InvestmentsScreen() {
                       const due = plan?.cycles?.find((c) => !(typeof c.amountPaid === 'number' && c.amountPaid > 0))?.amountDue;
                       return plan && typeof due === 'number' ? ` · ${formatPeso(due)} every month` : '';
                     })()}
+                    {who.by(inv.addedBy)}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
@@ -378,6 +381,7 @@ export default function InvestmentsScreen() {
                     <Text style={styles.sub} numberOfLines={1}>
                       {shortDate(e.date)}
                       {e.paymentMethod ? ` · ${e.type === 'add' ? 'from' : 'into'} ${accountLabel(model, e.paymentMethod) || 'an account'}` : e.type !== 'value' ? ' · no account' : ''}
+                      {who.by(e.addedBy)}
                     </Text>
                   </View>
                   <Text style={[styles.amt, { color: e.type === 'withdraw' ? colors.inkDim : colors.ink }]}>{e.type === 'withdraw' ? '−' : ''}{formatPeso(e.amount)}</Text>

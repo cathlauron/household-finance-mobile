@@ -33,6 +33,9 @@ export type TransactionEntry = {
   // Only set for source === 'manual' — freeform tags the person attached,
   // carried through from ManualTransaction.tags.
   tags?: string[];
+  // H-39 (Cath, 2026-10-29): the moment it was logged (ms), so "Newest" is newest to the
+  // second within a day. Missing on very old entries (they sort as the oldest of their day).
+  at?: number;
 };
 
 // 2.2 speed sweep: the full list is built once per version of your data and reused by
@@ -64,6 +67,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
         amount: amt,
         direction: 'out',
         owner: bill.owner || 'shared',
+        at: cycle.paidAt ?? cycle.loggedAt,
       });
     });
   });
@@ -83,6 +87,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
         amount: amt,
         direction: 'out',
         owner: debt.owner || 'shared',
+        at: cycle.paidAt ?? cycle.loggedAt,
       });
     });
   });
@@ -103,6 +108,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
         amount: amt,
         direction: lent ? 'in' : 'out',
         owner: loan.owner || 'shared',
+        at: p.createdAt,
       });
     });
   });
@@ -120,6 +126,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
         amount: amt,
         direction: 'in',
         owner: source.personId || 'shared',
+        at: entry.createdAt,
       });
     });
   });
@@ -138,6 +145,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
         amount: Math.abs(amt),
         direction: amt > 0 ? 'saving' : 'in',
         owner: 'shared',
+        at: c.createdAt,
       });
     });
   });
@@ -157,6 +165,7 @@ function buildTransactionsListNow(model: HouseholdModel): TransactionEntry[] {
       rawId: t.id,
       notes: t.notes,
       tags: t.tags,
+      at: t.createdAt,
     });
   });
 
@@ -167,7 +176,8 @@ export function sortTransactions(
   list: TransactionEntry[],
   order: 'newest' | 'oldest'
 ): TransactionEntry[] {
-  const sorted = [...list].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  // H-39 (Cath, 2026-10-29): by day, then by the moment it was logged (to the second).
+  const sorted = [...list].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at || 0) - (b.at || 0)));
   return order === 'newest' ? sorted.reverse() : sorted;
 }
 

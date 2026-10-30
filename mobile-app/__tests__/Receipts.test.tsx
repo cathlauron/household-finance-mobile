@@ -34,8 +34,16 @@ test('the receipt row: add a photo, see it, remove it', async () => {
   expect(screen.getByText('Change photo')).toBeTruthy();
   await act(async () => { fireEvent.press(screen.getByTestId('receipt-thumb')); });
   expect(screen.getByTestId('receipt-viewer')).toBeTruthy();
+  // H-49 (Cath, 2026-10-29): Remove asks first. Nothing is removed until "Remove" is tapped.
+  const { Alert } = require('react-native');
+  const ask = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await act(async () => { fireEvent.press(screen.getByTestId('receipt-remove')); });
+  expect(onChange).not.toHaveBeenLastCalledWith(null);
+  expect(ask.mock.calls[0][0]).toBe('Remove this receipt photo?');
+  const yes = (ask.mock.calls[0][2] as any[]).find((b) => b.style === 'destructive');
+  await act(async () => { yes.onPress(); });
   expect(onChange).toHaveBeenLastCalledWith(null);
+  ask.mockRestore();
 });
 
 test('the payment sheet passes the receipt on, from an account and when just recording', async () => {

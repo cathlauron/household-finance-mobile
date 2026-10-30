@@ -152,3 +152,55 @@ and confirmed them; the others are the reviewer's reading of the code.
 - Checked and OK: secure random everywhere, recovery key strength, vault storage for stay
   signed in / quick unlock, no keys in logs, backup file encrypted, members-only reads,
   this week's new code (no old screen or callback survives lock or sign-out).
+
+## Cath's list, 2026-10-29 (her priority order; not started)
+
+Reported by Cath on 2026-10-29. Nothing here is checked in the code yet; each gets read,
+red-green proof and a phone step as usual. Visual ones get a mockup first (marked).
+
+| id | What Cath sees / wants | Kind |
+|---|---|---|
+| H-39 | Transactions sorted "Newest" don't show her newest one at the top; must be newest to the second | bug (fix directly) - **PROVEN 2026-10-29 (B-053)** |
+| H-40 | Debts don't show what's already paid; should match Bills | bug / rule - **moved into the Debts mockup with H-41 (same layout change)** |
+| H-41 | Debts need Bills' "still to pay this month" total, plus a separate total for debts with no due date; also every other place it applies | rule (ask if it changes the look) |
+| H-42 | Idle lock: the timer must keep running in the background; back after a minute = amounts hidden | bug (security: check with Cath before changing lock code) - **PROVEN 2026-10-29 (B-054); background timing needs your phone** |
+| H-43 | "Who added it" tag on everything people add, not just Transactions, Bills, Debts | rule (fix directly where the tag already exists) - **PROVEN 2026-10-29 (B-055)** |
+| H-44 | Trips: everything editable (e.g. budget item added with a name only, amount later), and log an item with no account (e.g. plane tickets paid before) | bug / rule - **editing PROVEN 2026-10-29 (B-056); "log with no account" exists as "Just record it" when ticking, asked Cath if more is wanted** |
+| H-45 | Paid items struck through everywhere it applies | visual: MOCKUP FIRST |
+| H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST |
+| H-47 | Loans still show the wrong next payment due (came back after B-047). PROVEN 2026-10-29 (B-052): Custom loans now tracked; Cath's rule "a payment before the First payment date means the loan started then" | bug (came back) - fixed, phone check TEST-3 section 12 |
+
+## Cath's additions, 2026-10-29 afternoon (after "device test is as described" for TEST-3 s12)
+
+| id | What Cath wants | Kind |
+|---|---|---|
+| H-48 | Undo only for 15 minutes (bill/debt/loan payments, shared expense payments, transfers, Edit loan's remove x). After: add receipt, raise amount (never lower), fix date / account; short note | rule (her answers 2026-10-29) - **mockup round, built together with editing so Undo is never limited before Edit exists** |
+| H-49 | Confirm before anything that deletes or does something like it, everywhere | rule - **PROVEN 2026-10-29 (B-057)** |
+| H-50 | Edit loan's logged-payments list doesn't look like the rest of the app | visual: MOCKUP FIRST |
+| H-51 | On opening / coming back: show changes another household member made | new: MOCKUP FIRST (in-app card and banner, she picks) |
+
+## Cath's picks and new asks, 2026-10-29 evening (TEST-3 s13 "as described")
+
+- Picks: A2, E2, F2 then F3, C1-C3 and D1-D2 approved. H-44 "log with no account": "Just record it" is enough (closed).
+- H-45: wants the WHOLE ROW struck through: new mockup first.
+- H-52: Left to Spend only seemed to count bills. Rule (her answers): take off past due unpaid, bills, dated debts, unpaid loan payments, groceries list, trips before payday, events before payday, savings plans, other planned amounts; not no-date debts; one breakdown line each.
+- Flaky checks (2026-10-29, not app bugs): `__tests__/TransactionDoubleTap.test.tsx` and `__tests__/InlineHeights.test.tsx` sometimes fail only in the full `check:all` run (the form / page isn't ready yet under load) and pass alone every time. To do: make them wait for the element instead of a fixed moment.
+
+### Status 2026-10-29 night
+- PROVEN: H-40/H-41 Debts A2 (B-059), H-52 Left to Spend (B-060), H-48 Undo 15 min + Edit payment (B-061), H-50 D1 look (B-061), B-058 double-tap saves.
+- Next batch: H-46 dropdowns E2 on every form; H-51 household changes banner F2 then list F3; H-50 D2 (inside Edit loan: "Log a payment" opens the pay sheet, tap a payment to edit: needs a sheet over the form); H-45 strikethrough waits for Cath's B3/B4 pick.
+- H-53 (found 2026-10-29 in the hidden browser, not checked yet): Home's "YOU PICKED" card says "Your first bill goes here" in a household that already has bills.
+
+### Cath, 2026-10-29 evening (TEST-3 s14 "as described")
+- H-45: neither B3 nor B4. New options on the canvas: B5-B10 (her idea first: amount beside the name, one clean line through both). Waiting for her pick.
+- H-54 (new): tapping Left to Spend opens a detailed "why" page (e.g. why it's over). Mockups L1 (why + every item), L2 (bars from what you have to what's left), L3 (day by day: when it goes below zero). Waiting for her pick.
+- Cath picked B14 (H-45) and L4 (H-54), 2026-10-29.
+
+- 2026-10-29 (Batch 1+ sweep, store readiness): H-55 iPad layout is stretched full width
+  (works, nothing cut off; centred column = mockup first, see SMOOTH-HUNT). H-56 the web
+  pages (support, privacy, delete account) aren't live until published to Firebase
+  Hosting (Cath runs the deploy). H-57 privacy and delete-account pages hold 3 choices for
+  Cath to confirm: deletion "within 30 days", "not meant for children under 13", and what
+  happens to items a member added to a shared household (written neutrally until she
+  decides; same question as the in-app Delete account in batch 2). Data, rules, idle lock
+  and hidden amounts untouched; no Firestore, sync or encryption code changed.

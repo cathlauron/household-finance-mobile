@@ -15,6 +15,7 @@ import InsightsScreen from '../screens/InsightsScreen';
 import ReportDetailScreen, { MoreReportsScreen } from '../screens/ReportDetailScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
+import HelpFaqScreen from '../screens/HelpFaqScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import SharedExpensesScreen from '../screens/SharedExpensesScreen';
@@ -32,9 +33,12 @@ import EventsScreen from '../screens/EventsScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import TransferScreen from '../screens/TransferScreen';
 import TransferDetailScreen from '../screens/TransferDetailScreen';
+import LeftToSpendScreen from '../screens/LeftToSpendScreen';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { GuestGate } from '../components/GuestSaveSheet';
+// Claude's hidden-browser copy (walk fixture build only) may open Settings as a guest, to check it.
+import { walkFixtureOn } from '../walkFixture';
 import { getSharedHeaderOptions } from './headerOptions';
 
 export type RootStackParamList = {
@@ -52,6 +56,7 @@ export type RootStackParamList = {
   Settings: { page?: string } | undefined;
   SettingsPage: { subPage: string };
   Premium: undefined;
+  HelpFaq: undefined;
   TransactionDetail: { id: string };
   Search: undefined;
   Review: undefined;
@@ -61,6 +66,8 @@ export type RootStackParamList = {
   CardDetail: { group: 'cash' | 'debit' | 'credit'; id: string; backTitle?: string };
   Transfer: { fromGroup?: 'cash' | 'debit' | 'credit'; fromId?: string } | undefined;
   TransferDetail: { id: string };
+  // H-54 (canvas L4): why Left to Spend is what it is.
+  LeftToSpend: undefined;
   PayDetail: { kind: 'bill' | 'debt' | 'loan'; id: string; backTitle?: string };
   PotDetail: { id: string; open?: 'out' };
   Groceries: undefined;
@@ -202,7 +209,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       screenLayout={({ children, route }) =>
         route.name === 'Main' ? (
           children
-        ) : guest && (route.name === 'Settings' || route.name === 'Profile' || route.name === 'SettingsPage') ? (
+        ) : guest && !walkFixtureOn && (route.name === 'Settings' || route.name === 'Profile' || route.name === 'SettingsPage') ? (
           <GuestGate onContinue={() => onGuestSave?.()} />
         ) : (
           <DeferredContent>{children}</DeferredContent>
@@ -296,6 +303,8 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
       <Stack.Screen name="TransferDetail" component={TransferDetailScreen} options={{ title: '', headerBackTitle: 'Transactions' }} />
+      <Stack.Screen name="HelpFaq" component={HelpFaqScreen} options={{ title: 'Help & FAQ', headerBackTitle: 'About & Help' }} />
+      <Stack.Screen name="LeftToSpend" component={LeftToSpendScreen} options={{ title: 'Left to spend', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="Report" component={ReportDetailScreen} options={{ title: ' ', headerBackTitle: 'Insights' }} />

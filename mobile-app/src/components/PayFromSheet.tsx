@@ -59,6 +59,19 @@ type Props = {
   withReceipt?: boolean;
   // Cath, 2026-10-27: a warning under the amount (loans: less than the payment due).
   amountNote?: (amount: number) => string | undefined;
+  // H-48 (Cath, 2026-10-29, canvas C3): "Edit payment". The sheet opens with the payment as
+  // it was logged; the amount can go up, never below `minAmount` (or not change at all when
+  // `amountLocked` says why); date, account (not for "recorded only") and receipt can change.
+  // No Fees, late fee or "Just record it" here. onSave replaces onConfirm.
+  edit?: {
+    date: string;
+    pm?: PaymentMethod;
+    receipt?: string;
+    recordedOnly?: boolean;
+    minAmount: number;
+    amountLocked?: string | null;
+    onSave: (changes: { amount: number; date: string; pm?: PaymentMethod; receipt: string | null }) => void;
+  };
 };
 
 function shortISO(iso: string): string {
@@ -72,7 +85,10 @@ function yesterdayISO(): string {
 }
 const cents = (n: number) => Math.round(n * 100) / 100;
 
-export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onRecord, recordNote, recordLabel, noFees, allowNoAmount, onConfirm, withReceipt, amountNote }: Props) {
+export default function PayFromSheet({ visible, onClose, title, amount, direction, model, initial, confirmLabel, editableAmount, fullAmount, minimumAmount, partOption, dueText, onRecord: onRecordProp, recordNote, recordLabel, noFees: noFeesProp, allowNoAmount, onConfirm, withReceipt, amountNote, edit }: Props) {
+  // Editing a payment: no "Just record it" switch and no Fees (they stay as they were).
+  const onRecord = edit ? undefined : onRecordProp;
+  const noFees = edit ? true : noFeesProp;
   const { colors } = useTheme();
   const [pm, setPm] = useState<PaymentMethod | undefined>(initial);
   const [error, setError] = useState('');
@@ -91,11 +107,11 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
   // Version 2.1 (canvas S4): a payment dated before balances were last updated is already in
   // them (the balance won't change), unless the person says it isn't.
   const asOf = model.balanceAccounts.asOfDate;
-  const beforeBalances = !recording && direction === 'out' && !!asOf && date < asOf;
+  const beforeBalances = !edit && !recording && direction === 'out' && !!asOf && date < asOf;
   const full = typeof fullAmount === 'number' ? fullAmount : amount;
   const minimum = typeof minimumAmount === 'number' ? minimumAmount : full;
-  const short = editableAmount && effective > 0 && effective < minimum ? cents(minimum - effective) : 0;
-  const partLeft = !editableAmount && !!partOption && effective > 0 && effective < amount ? cents(amount - effective) : 0;
+  const short = !edit && editableAmount && effective > 0 && effective < minimum ? cents(minimum - effective) : 0;
+  const partLeft = !edit && !editableAmount && !!partOption && effective > 0 && effective < amount ? cents(amount - effective) : 0;
 
   // A second quick tap on the confirm button (while the sheet is closing) is ignored,
   // so a payment can't be logged twice. Re-armed each time the sheet opens.
@@ -116,9 +132,29 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
     setReceipt(null);
     setOpenRow(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? null : 'account');
     setPm(initial && initial.accountId && !accountProblem(model, direction, amount, initial) ? initial : undefined);
+    if (edit) {
+      // H-48: start from the payment as it was logged.
+      setDate(edit.date);
+      setDateMode(edit.date === todayISO() ? 'today' : edit.date === yesterdayISO() ? 'yesterday' : 'pick');
+      setPm(edit.pm);
+      setReceipt(edit.receipt ?? null);
+      setOpenRow(null);
+    }
   }, [visible]);
 
   function confirm() {
+    if (edit) {
+      // H-48: never below what was first paid, never in the future, an account unless recorded only.
+      const amt = edit.amountLocked ? edit.minAmount : effective;
+      if (date > todayISO()) return setError("A payment can't be dated in the future.");
+      if (!(amt > 0)) return setError('Enter how much was paid.');
+      if (cents(amt) < cents(edit.minAmount)) return setError(`It can't be less than the ${formatPeso(edit.minAmount)} first paid.`);
+      if (!edit.recordedOnly && !pm) return setError('Choose the account it was paid from.');
+      if (confirmedRef.current) return;
+      confirmedRef.current = true;
+      edit.onSave({ amount: cents(amt), date, pm, receipt: withReceipt ? receipt : null });
+      return;
+    }
     if (date > todayISO()) {
       setError("A payment can't be dated in the future.");
       return;
@@ -180,7 +216,17 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
         )}
         {!!dueText && <Text style={[styles.dueText, { color: colors.inkDim }]}>{dueText}</Text>}
         <MarkedLabel text={direction === 'in' ? 'Amount received' : 'Amount paid'} mark="required" style={[styles.fieldLabel, { color: colors.inkDim, textAlign: 'center', marginLeft: 0 }]} />
-        <AmountInput centered value={payAmount} onChangeAmount={(v) => { setPayAmount(v); setError(''); }} inputStyle={[styles.editAmount, { color: direction === 'in' ? colors.positive : colors.ink }]} />
+        {edit?.amountLocked ? (
+          <Text style={[styles.editAmount, { color: colors.ink, textAlign: 'center' }]} testID="pay-edit-amount-locked">{formatPeso(edit.minAmount)}</Text>
+        ) : (
+          <AmountInput centered testID="pay-amount-input" value={payAmount} onChangeAmount={(v) => { setPayAmount(v); setError(''); }} inputStyle={[styles.editAmount, { color: direction === 'in' ? colors.positive : colors.ink }]} />
+        )}
+        {!!edit && (
+          <Text style={[styles.note, { color: colors.inkDim, textAlign: 'center', marginLeft: 0 }]} testID="pay-edit-amount-note">
+            {edit.amountLocked || `Can go up, never below ${formatPeso(edit.minAmount)}`}
+          </Text>
+        )}
+        {!edit && (
         <View style={[styles.quickRow, { justifyContent: 'center', marginTop: 2 }]}>
           {editableAmount && minimum < full && (
             <TouchableOpacity onPress={() => setPayAmount(minimum)} style={[styles.quick, { backgroundColor: effective === minimum ? colors.buttonFill : colors.navy1 }]} accessibilityRole="button">
@@ -191,6 +237,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             <Text style={[styles.quickText, { color: effective === full ? colors.onButton : colors.ink }]}>{editableAmount ? 'Full' : 'Due'} {formatPeso(full)}</Text>
           </TouchableOpacity>
         </View>
+        )}
         {!!amountNote?.(effective) && (
           <Text style={[styles.note, { color: colors.orange }]} testID="pay-amount-note">{amountNote(effective)}</Text>
         )}
@@ -208,7 +255,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             drawn: one white group of rows, like every other form. */}
         <FormGroup style={{ marginTop: 6, marginBottom: 8 }}>
           {direction === 'out' && !noFees && <AmountRow mark="optional" label="Fees" value={fee} onChange={setFee} />}
-          {editableAmount && !recording && <AmountRow mark="optional" label="Late fee from lender" value={lateFee} onChange={setLateFee} />}
+          {editableAmount && !recording && !edit && <AmountRow mark="optional" label="Late fee from lender" value={lateFee} onChange={setLateFee} />}
           <PickerRow mark="required" label={direction === 'in' ? 'Received on' : 'Paid on'} value={dateMode === 'today' ? 'Today' : dateMode === 'yesterday' ? 'Yesterday' : shortISO(date)} open={openRow === 'date'} onToggle={() => setOpenRow((r) => (r === 'date' ? null : 'date'))} testID="pay-date-row">
             <View style={styles.quickRow}>
               {(
@@ -242,7 +289,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
               <DateField value={date} onChange={(d) => { if (d) setDate(d); setError(''); }} maximumDate={new Date()} placeholder="Pick a date" />
             )}
           </PickerRow>
-          {!recording && (
+          {!recording && !edit?.recordedOnly && (
             <PickerRow mark="required" label={direction === 'in' ? 'Into' : 'Paid from'} value={pm ? accountLabel(model, pm) || 'Choose' : 'Choose'} open={openRow === 'account'} onToggle={() => setOpenRow((r) => (r === 'account' ? null : 'account'))} testID="pay-account-row">
               <AccountPicker noLabel mark="required" model={model} direction={direction} amount={effective + feeAmt} value={pm} onChange={(p) => { setPm(p); setError(''); setOpenRow(null); }} />
             </PickerRow>
@@ -253,7 +300,7 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
             {formatPeso(cents(effective + feeAmt))} comes out{pm ? ` of ${accountLabel(model, pm) || 'the account'}` : ''}: the payment plus the fee. The fee is its own entry in Transactions (Fees).
           </Text>
         )}
-        {editableAmount && !recording && (
+        {editableAmount && !recording && !edit && (
           <Text style={[styles.note, { color: colors.inkDim, marginHorizontal: 16 }]}>A late fee from your lender is added to what you owe next.</Text>
         )}
         {recording ? (
@@ -286,6 +333,17 @@ export default function PayFromSheet({ visible, onClose, title, amount, directio
           )
         )}
         {withReceipt && <ReceiptField photo={receipt} onChange={setReceipt} testID="pay-receipt" style={{ borderRadius: 16, marginTop: 12, marginBottom: 12 }} />}
+        {!!edit && (
+          <View style={[styles.markCard, { backgroundColor: colors.accentTint }]} testID="pay-edit-note">
+            <View style={[styles.markIcon, { backgroundColor: colors.navy3 }]}>
+              <Ionicons name="checkmark" size={18} color={colors.gold} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.markTitle, { color: colors.ink }]}>Undo is only there for 15 minutes</Text>
+              <Text style={[styles.markBody, { color: colors.inkDim }]}>After a payment is logged you have 15 minutes to undo it. After that you can add a receipt, raise the amount, or fix the date or the account. The money moves with it.</Text>
+            </View>
+          </View>
+        )}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
       </View>
     </BottomSheet>

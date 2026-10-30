@@ -150,3 +150,113 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
 6. A form with typing (e.g. New bill > Name): when the keyboard opens, the sheet glides up
    instead of jumping (and glides back down when it closes). Tell me if it now feels slow
    to make room (it starts once the keyboard is fully up).
+
+## 12. Loans: Custom repeats and past due (H-47 / B-052, 2026-10-29). NOT YET TESTED.
+
+1. To-Pay > Loans: Olive's row says "next Oct 16" (not Nov 16) and its amount is red (past due).
+2. Open Olive: "14 of 49 payments made · next Oct 16". Home's bell / past-due list shows
+   Olive, Oct 16, ₱24,550.
+3. Log Olive's October payment (or just look, if you haven't paid yet): after it, Olive says
+   "next Nov 16" and is no longer red.
+4. Look around: your other loans still show the next date you expect.
+
+## 13. Batch 2026-10-29 (afternoon). NOT YET TESTED.
+
+1. Transactions, sorted Newest: add a transaction now. It's at the very top. Add a second
+   one a few seconds later: that one is now on top. (Sorted Oldest: the exact reverse.)
+2. Idle lock: leave the app (home button) for 5 to 6 minutes, come back: "Are you still
+   there?" shows with only the seconds that are LEFT (not a fresh minute). Leave it for 7
+   minutes or more: the amounts are already hidden when you come back.
+3. With your partner's phone (shared household): your partner adds a grocery item, an event,
+   a trip to-do, a shared expense and moves money between accounts. On your phone each shows
+   "by [name]" (grocery, event, to-do, shared expense) and the transfer's own page says
+   "Added by [name]". New goals and new accounts say it too.
+4. Plan > Travel > a trip > tap an item > in the form, tap the item's name or cost and change
+   it (e.g. add a cost to an item that had none) > Save. The trip shows the new name and cost.
+   A paid item's cost change also changes its spending entry.
+5. Every Remove asks first now: Edit loan > the x beside a payment; a trip's item x and to-do
+   x (on the trip page and in the form); Income > a payday's x; a savings entry's x; Groceries >
+   Calculator > a line's x and Clear; a meal's ingredient x; an event item's x; a receipt
+   photo's Remove. Each one: Cancel keeps it, Remove removes it.
+6. Look around: nothing else looks or moves differently.
+
+## 14. Batch 2026-10-29 (night). NOT YET TESTED.
+
+1. To-Pay > Debts (A2): one card with "Still to pay this month", "No due date" total and
+   "Paid this month: X of Y debts". Sections Overdue / This week / Later this month / Coming
+   up / No due date. Pay a debt: it shows under "Paid this month" with a Paid tag.
+2. Home > Left to Spend > swipe to "Where it comes from": "In your accounts now", then one
+   line each (Past due, Bills, Debts, Loans, Groceries list, Trips, Events, ...), and they add
+   up to Left to Spend. No "Other changes". Olive's Oct 16 is in Past due until you pay it.
+3. Log a loan or bill payment: "Undo ..." shows with "Undo is there for 15 more minutes".
+   After 15 minutes it's gone. Tap the payment in Payments / History: "Edit payment" opens
+   with the note. Try a lower amount (refused), then a higher one, a different date or
+   account, add a receipt > Save. The account's balance follows.
+4. Shared > tap a settle-up older than 15 minutes: no Undo, it says to record a payment back.
+   Move money older than 15 minutes: no Undo, it says to make a move back.
+5. Edit loan > Payments: rows look like the loan page (month, "Paid Aug 16 · Cash", amount),
+   newest first; the x only on payments added in the last 15 minutes or not saved yet.
+6. Tap Add (or Save) twice very quickly on a new transaction, a move, or any big button:
+   it's saved once.
+7. Look around: Bills' "Paid this month" rows say "Paid Oct 20" (not 2026-10-20).
+
+## 15. Batch 2026-10-29 (late). NOT YET TESTED.
+
+1. To-Pay > Bills and Debts > "Paid this month": each paid row keeps its layout, with one line
+   from the start of the name to the end of the amount, and the row faded (B14). Same on a
+   trip's ticked items and on bought groceries.
+2. Home > tap the Left to Spend amount (or swipe to "Where it comes from" > See every item):
+   the Left to spend page (L4). The card, a "why" line, small bars (You have, Past due, Bills,
+   Debts, Loans, Plans), every account, then every item still to go out (past due first).
+   Tap an item: its own page opens.
+3. Guest mode only: Home's "You picked" hides a step once you've added it (a bill, a debt...).
+
+## 16. Batch 2026-10-29 (evening): E2, D2, F2 + F3. NOT YET TESTED.
+
+1. Dropdowns (E2): in any form (new bill, debt, loan, income, pot, shared expense, investment,
+   event, the pay sheet), tap a row with choices (Category, Repeats, Paid from, Type...): a
+   list rises from the bottom, the chosen one ticked; tap one and it closes. Date rows still
+   open the calendar.
+2. New transaction: type "Jollibee" (or a name you've used before): Category is picked for you
+   with a "Suggested" tag; change it if it's wrong.
+3. Edit loan (D2): "Log a payment" opens the usual pay sheet and saves right away; tap a
+   payment: Edit payment opens (receipt, higher amount, date, account). The x shows only in
+   the first 15 minutes.
+4. Household changes (F2 + F3), needs your partner's phone: your partner adds a transaction,
+   pays a bill and edits a trip item. Close Finance Flow on your phone and open it again (or
+   come back to it): a banner drops in, "[Name] changed 3 things". Tap it: the list. Tap a
+   change: its page opens. Open the app again: the banner doesn't come back for the same
+   changes.
+
+## 17. Batch 2026-10-29 (Batch 1+): store basics, Help & FAQ (H1), peel-off switches (K2e). NOT YET TESTED.
+
+1. Settings › About & Help: no "Coming soon". Rows: Contact support, Copy email address,
+   Help & FAQ, then "Your data": Privacy policy and Delete account. ("More languages are coming
+   later" under Language is gone too.)
+2. Help & FAQ: tap a question: the answer opens under it and the rows below glide down; tap
+   again: it closes. Type "undo" in Search help: only the undo question is left. Type
+   nonsense: "No answers match that". Contact support opens your email app.
+3. Privacy policy and Delete account open your browser. They only work after the web pages
+   are published (step 6 in the report); before that the browser shows "Page not found".
+4. Settings › your profile › Appearance (peel-off switches, K2e). Theme now has two stickers:
+   Match my phone (Off) and Dark mode (☀ Light).
+   a. Put your finger on the top-right corner of Dark mode and drag slowly down-left: the
+      sticker peels, and the whole screen peels from its top-right corner, the dark page
+      showing underneath. Let go before halfway: everything settles back, still light.
+   b. Drag past halfway and let go (or just tap it once: one steady peel): the app turns
+      dark with no flash. The sticker now says ☾ Dark in green.
+   c. Peel the green Dark sticker the same way: the light page peels into view; it turns
+      light again.
+   d. Peel Match my phone on: Dark mode greys out and follows your phone's own setting.
+      Peel it off again.
+   e. Time-of-day glow, Live weather, Rain animation, Mood colours and Falling leaves peel the
+      same way (no screen peel for these). Live weather with location off: it goes back to
+      Off and explains why.
+   f. While you hold a sticker, the page doesn't scroll.
+   g. Phone set to Remove animations / Reduce motion: tapping a sticker turns it on/off at
+      once; dragging still follows your finger.
+5. Look around: the rest of Settings, Home and the + form are as before.
+
+Needs your phone: the feel of the peel (speed, the curl, the shadow), dragging diagonally
+(the hidden browser cancels diagonal touch drags; a phone shouldn't), TalkBack/VoiceOver
+reading "Dark mode, switch, off" and a double tap turning it on.

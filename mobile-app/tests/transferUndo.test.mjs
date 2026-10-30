@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import { canUndoTransfer, undoTransfer } from '../src/transferUndo.ts';
 import { defaultModel } from '../src/defaultModel.ts';
 
+// H-48 (2026-10-29): Undo is only there for 15 minutes. These checks happen one minute after
+// the move (createdAt 5000); the last one 16 minutes after.
+const realNow = Date.now;
+Date.now = () => 5000 + 60_000;
+
 function moved() {
   const m = defaultModel();
   // After moving ₱3,000 Cash → BDO with a ₱15 fee (fee as its own entry).
@@ -47,4 +52,13 @@ test('a fee that came straight off the saved balance goes back too', () => {
   m.balanceAccounts.cash[0].amount = 1985;
   const u = undoTransfer(m, m.transfers[0]);
   assert.equal(u.balanceAccounts.cash[0].amount, 5000);
+});
+
+test('H-48: 16 minutes after the move, Undo is gone (fix it with a move back)', () => {
+  Date.now = () => 5000 + 16 * 60_000;
+  const m = moved();
+  const r = canUndoTransfer(m, m.transfers[0]);
+  Date.now = () => 5000 + 60_000;
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /15 minutes/);
 });

@@ -26,6 +26,8 @@ type Props = {
   autoFocus?: boolean;
   // Lets a form put the cursor here (e.g. when the amount is missing). Big amounts only.
   focusRef?: React.Ref<{ focus: () => void }>;
+  // For checks: finds this box (big amounts).
+  testID?: string;
 };
 
 export function formatWithCommas(num: number, allowDecimals: boolean): string {

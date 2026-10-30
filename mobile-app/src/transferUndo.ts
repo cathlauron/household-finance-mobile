@@ -1,3 +1,4 @@
+import { undoLeftMs } from './paymentEdit';
 import type { BalanceAccountEntry, HouseholdModel, Transfer } from './types';
 
 // Cath, 2026-10-27: Undo a money move, but only until a balance is typed in again. A move
@@ -15,8 +16,10 @@ function account(model: HouseholdModel, key: string): BalanceAccountEntry | unde
   return k ? (model.balanceAccounts[k.group] || []).find((a) => a.id === k.id) : undefined;
 }
 
-export function canUndoTransfer(model: HouseholdModel, t: Transfer): { ok: boolean; reason?: string } {
+export function canUndoTransfer(model: HouseholdModel, t: Transfer, now: number = Date.now()): { ok: boolean; reason?: string } {
   if (!t.createdAt) return { ok: false, reason: "This move was made before Undo existed, so it can't be undone. Make a move back instead." };
+  // H-48 (Cath, 2026-10-29): Undo is only there for 15 minutes after the move.
+  if (undoLeftMs(t.createdAt, now) <= 0) return { ok: false, reason: 'Undo is only there for 15 minutes after a move. To fix it, make a move back.' };
   const from = account(model, t.from);
   const to = account(model, t.to);
   if (!from || !to) return { ok: false, reason: "One of its accounts isn't here any more, so it can't be undone." };

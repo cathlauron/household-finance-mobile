@@ -30,6 +30,9 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import { useStickyState } from '../stickyState';
 
+import { useWho } from '../components/WhoLogged';
+import { askToRemove } from '../askToRemove';
+import { isoOf, nextEventDate as nextDate, eventBudget } from '../eventDates';
 const EVENT_TYPES: { id: EventItem['type']; label: string }[] = [
   { id: 'birthday', label: 'Birthday' },
   { id: 'anniversary', label: 'Anniversary' },
@@ -136,23 +139,8 @@ function reconcileEventTransaction(
 }
 
 // ---- Redesign helpers ----
-function isoOf(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-// The next date this event happens (today counts), or null if it has no date.
-function nextDate(ev: EventItem, today: string): string | null {
-  if (ev.recurrence === 'onetime') return ev.onetimeDate || null;
-  if (typeof ev.month !== 'number' || typeof ev.day !== 'number') return null;
-  const y = Number(today.slice(0, 4));
-  const thisYear = isoOf(new Date(y, ev.month - 1, ev.day));
-  return thisYear >= today ? thisYear : isoOf(new Date(y + 1, ev.month - 1, ev.day));
-}
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
-}
-function eventBudget(ev: EventItem): number {
-  if (ev.items && ev.items.length) return ev.items.reduce((s, i) => s + (typeof i.cost === 'number' ? i.cost : 0), 0);
-  return typeof ev.budget === 'number' ? ev.budget : 0;
 }
 // An event that repeats every year goes back to Upcoming 30 days after it was done,
 // keeping a note of that year in its history.
@@ -176,6 +164,7 @@ function rollOverAnnualEvents(events: EventItem[], txns: ManualTransaction[], to
 
 export default function EventsScreen() {
   const { colors } = useTheme();
+  const who = useWho();
   const { model, saveModel, getModel } = useData();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
@@ -578,7 +567,7 @@ export default function EventsScreen() {
                                 <View style={styles.eventRowMain}>
                                   <Text style={styles.eventName} numberOfLines={1}>{ev.name || 'Untitled event'}</Text>
                                   <Text style={styles.eventSub} numberOfLines={1}>
-                                    {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}
+                                    {typeLabel(ev.type)} · {ev.recurrence === 'annual' ? 'every year' : 'once'} · {open ? extra : when}{who.by(ev.addedBy)}
                                   </Text>
                                 </View>
                                 <Text style={[styles.eventAmount, { color: toneUnlessZero(budget, colors.planned, colors) }]}>{budget > 0 ? formatPeso(budget) : ''}</Text>
@@ -716,7 +705,7 @@ export default function EventsScreen() {
                 style={{ backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, paddingHorizontal: 0, justifyContent: 'flex-end' }}
                 inputStyle={{ textAlign: 'right', flex: 0, minWidth: 80, color: colors.planned }}
               />
-              <TouchableOpacity onPress={() => setItemsInput((rows) => rows.filter((r) => r.id !== it.id))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
+              <TouchableOpacity onPress={() => askToRemove(`Remove ${it.name?.trim() ? `"${it.name.trim()}"` : 'this item'}?`, 'It comes off this event when you tap Save.', () => setItemsInput((rows) => rows.filter((r) => r.id !== it.id)))} accessibilityRole="button" accessibilityLabel="Remove item" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                 <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
               </TouchableOpacity>
             </View>

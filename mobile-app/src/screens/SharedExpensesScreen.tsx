@@ -31,6 +31,8 @@ import { equalShares } from '../sharedExpenses';
 import ReceiptField, { ReceiptMark } from '../components/ReceiptField';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow } from '../components/SimpleForm';
 
+import { useWho } from '../components/WhoLogged';
+import { undoLeftMs } from '../paymentEdit';
 // Redesign: Shared Expenses (Plan › Shared Expenses), from the Finance Flow mockup.
 // - Overall: what you're owed or owe in total.
 // - Balances: one netted number per pair of people.
@@ -47,6 +49,7 @@ function shortDate(iso: string): string {
 
 export default function SharedExpensesScreen() {
   const { colors } = useTheme();
+  const who = useWho();
   const { model, saveModel, username } = useData();
   const styles = makeStyles(colors);
   const [myId, setMyId] = useState<string | null>(null);
@@ -331,6 +334,11 @@ export default function SharedExpensesScreen() {
 
   function undoSettlement(st: SharedSettlement) {
     if (!model) return;
+    // H-48 (Cath, 2026-10-29): Undo is only there for 15 minutes after the payment.
+    if (undoLeftMs(st.createdAt) <= 0) {
+      Alert.alert(`${name(st.from)} paid ${name(st.to)} ${formatPeso(st.amount)}`, `${shortDate(st.date)}${st.note ? ` · ${st.note}` : ''}\n\nUndo is only there for 15 minutes after a payment. To fix it, record a payment back the other way.`, [{ text: 'OK', style: 'cancel' }]);
+      return;
+    }
     Alert.alert(`${name(st.from)} paid ${name(st.to)} ${formatPeso(st.amount)}`, `${shortDate(st.date)}${st.note ? ` · ${st.note}` : ''}`, [
       { text: 'Close', style: 'cancel' },
       {
@@ -515,7 +523,7 @@ export default function SharedExpensesScreen() {
                   </View>
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={styles.rowTitle} numberOfLines={1}>{title}</Text>
-                    <Text style={styles.sub} numberOfLines={1}>{shortDate(st.date)}{st.note ? ` · ${st.note}` : ''}</Text>
+                    <Text style={styles.sub} numberOfLines={1}>{shortDate(st.date)}{st.note ? ` · ${st.note}` : ''}{who.by(st.addedBy)}</Text>
                   </View>
                   <Text style={[styles.lent, { color: toMe ? colors.positive : fromMe ? colors.negative : colors.inkDim }]}>
                     {toMe ? '+' : fromMe ? '−' : ''}{formatPeso(st.amount)}
@@ -540,7 +548,7 @@ export default function SharedExpensesScreen() {
                     {!!e.receiptPhoto && <ReceiptMark />}
                   </View>
                   <Text style={styles.sub} numberOfLines={1}>
-                    {shortDate(e.date)} · {name(e.paidBy)} paid {formatPeso(e.amount)} · {e.splitMode === 'custom' ? 'custom split' : `split ${ways} ways`}
+                    {shortDate(e.date)} · {name(e.paidBy)} paid {formatPeso(e.amount)} · {e.splitMode === 'custom' ? 'custom split' : `split ${ways} ways`}{who.by(e.addedBy)}
                   </Text>
                 </View>
                 <Text style={[styles.lent, { color: rightColor }]}>{right}</Text>

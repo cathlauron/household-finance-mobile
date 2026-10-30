@@ -1,9 +1,9 @@
 import { firstTimeOpen } from '../handledOpen';
-import { dateText } from '../dateUtils';
+import { dateText, todayISO } from '../dateUtils';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
 import ErrorNote from '../components/ErrorNote';
-import { notSaved } from '../messages';
+import { notSaved, alertDidntWork } from '../messages';
 import { useArrival } from '../useArrival';
 import { useSingleForm } from '../singleForm';
 import { loanPaymentToPlace, placeLoanPayment } from '../loanSchedule';
@@ -45,6 +45,10 @@ import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import SegmentedControl from '../components/SegmentedControl';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, Footnote, Choices, useOpenRow, repeatLabel, REPEAT_CHOICES, scheduleLabel, nextDateFor, nextDateText, ScheduleChoices, InlineField, OwnChoiceField } from '../components/SimpleForm';
+import { askToRemove } from '../askToRemove';
+import { undoLeftMs, withLoanPayment, withoutLoanPayment, editLoanPayment } from '../paymentEdit';
+import PayFromSheet from '../components/PayFromSheet';
+import { loanCoverage } from '../loanSchedule';
 const LOAN_TYPES = ['Car', 'Motorcycle', 'Home', 'Personal', 'Business', 'Other'];
 
 function loanPaidTotal(loan: Loan): number {
@@ -181,6 +185,11 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   const [errorMsg, setErrorMsg] = useState('');
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [paymentsInput, setPaymentsInput] = useState<LoanPayment[]>([]);
+  // H-50 (Cath, 2026-10-29, canvas D2): inside Edit loan, "Log a payment" opens the usual pay
+  // sheet and tapping a payment opens Edit payment. Both save straight away (like on the
+  // loan's page), and the list here follows.
+  const [logPayOpen, setLogPayOpen] = useState(false);
+  const [editPayId, setEditPayId] = useState<string | null>(null);
   const [newPaymentDate, setNewPaymentDate] = useState('');
   const [newPaymentAmount, setNewPaymentAmount] = useState<number | ''>('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethod | undefined>(undefined);
@@ -304,39 +313,45 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     onFormClosed?.();
   }
 
-  function handleAddPayment() {
-    const trimmedDate = newPaymentDate.trim();
-    if (!trimmedDate || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-      setPaymentError('Enter date as YYYY-MM-DD.');
-      return;
-    }
-    if (newPaymentAmount === '' || newPaymentAmount <= 0) {
-      setPaymentError('Enter a valid amount paid.');
-      return;
-    }
-    // Redesign: the account is required; paying a loan can't overdraw cash or debit.
-    const acctProblem = model
-      ? accountProblem(model, directionInput === 'lent' ? 'in' : 'out', newPaymentAmount, newPaymentMethod)
-      : null;
-    if (acctProblem) {
-      setPaymentError(acctProblem);
-      return;
-    }
-    const newPayment: LoanPayment = {
-      id: makeId('lpay'),
-      date: trimmedDate,
-      actual: newPaymentAmount,
-      paymentMethod: newPaymentMethod,
-    };
-    setPaymentsInput([newPayment, ...paymentsInput]);
-    setNewPaymentDate('');
-    setNewPaymentAmount('');
-    setNewPaymentMethod(undefined);
-    setPaymentError('');
-  }
+
 
   function handleRemovePayment(paymentId: string) {
-    setPaymentsInput(paymentsInput.filter((p) => p.id !== paymentId));
+    askToRemove('Remove this payment?', 'It comes off this loan now, with its fee, and the account it was paid from is worked out again without it.', () => {
+      const latest = getModel() ?? model;
+      const saved = editingId && latest?.loans.find((l) => l.id === editingId)?.actualPayments?.some((x) => x.id === paymentId);
+      if (latest && saved && editingId) saveModel(withoutLoanPayment(latest, editingId, paymentId)).catch(() => Alert.alert(...alertDidntWork('remove this payment')));
+      setPaymentsInput((list) => list.filter((p) => p.id !== paymentId));
+    });
+  }
+
+  // H-50 D2: log or edit a payment from inside Edit loan; saved now, the list here follows.
+  async function logFromForm(p: { pm?: PaymentMethod; amount: number; date: string; takeOff?: boolean; fee?: number; receipt?: string; recordedOnly?: boolean }) {
+    setLogPayOpen(false);
+    const latest = getModel() ?? model;
+    if (!latest || !editingId) return;
+    const r = withLoanPayment(latest, editingId, p);
+    if (!r.payment) return;
+    try {
+      await saveModel(r.model);
+      setPaymentsInput((list) => [...list, r.payment as LoanPayment]);
+      showLeafTick(p.recordedOnly ? 'Recorded' : 'Paid');
+    } catch {
+      Alert.alert(...alertDidntWork('log this payment'));
+    }
+  }
+  async function editFromForm(paymentId: string, ch: { amount: number; date: string; pm?: PaymentMethod; receipt: string | null }) {
+    setEditPayId(null);
+    const latest = getModel() ?? model;
+    if (!latest || !editingId) return;
+    const next = editLoanPayment(latest, editingId, paymentId, ch);
+    const edited = next.loans.find((l) => l.id === editingId)?.actualPayments.find((x) => x.id === paymentId);
+    try {
+      await saveModel(next);
+      if (edited) setPaymentsInput((list) => list.map((x) => (x.id === paymentId ? edited : x)));
+      showLeafTick('Saved');
+    } catch {
+      Alert.alert(...alertDidntWork('save this payment'));
+    }
   }
 
   async function handleSave() {
@@ -766,51 +781,41 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
                         <Text style={styles.emptyText}>No payments logged yet.</Text>
                       )}
 
-                      {paymentsInput.map((p) => (
-                        <View key={p.id} style={styles.paymentRow}>
-                          <View style={styles.paymentRowMain}>
-                            <Text style={styles.paymentRowDate}>{p.date}</Text>
-                            <Text style={styles.paymentRowMethod}>{paymentMethodLabel(p.paymentMethod, model)}</Text>
-                          </View>
-                          <Text style={styles.paymentRowAmount}>
-                            {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
-                          </Text>
-                          <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn}>
-                            <Ionicons name="close" size={14} color={colors.inkFaint} />
+                      {/* H-50 (Cath, 2026-10-29, canvas D1): payments look like they do on the loan's
+                          page (month, "Paid Aug 16 · Cash", amount), newest first. H-48: the x is
+                          only there for a payment added in this form or logged in the last 15
+                          minutes; older ones are fixed by tapping them on the loan's page. */}
+                      {[...paymentsInput].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).map((p, i) => {
+                        const d = new Date(p.date + 'T00:00:00');
+                        const saved = (model?.loans || []).find((l) => l.id === editingId)?.actualPayments?.some((x) => x.id === p.id);
+                        const removable = !saved || undoLeftMs(p.createdAt) > 0;
+                        return (
+                          <TouchableOpacity key={p.id} style={[styles.paymentRow, i > 0 && styles.paymentRowLine]} testID={`loan-form-payment-${p.id}`} onPress={() => saved && setEditPayId(p.id)} disabled={!saved} accessibilityRole="button" accessibilityHint="Opens this payment to add a receipt or fix it">
+                            <View style={styles.paymentRowMain}>
+                              <Text style={styles.paymentRowDate}>{isNaN(d.getTime()) ? p.date : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+                              <Text style={styles.paymentRowMethod}>
+                                {isNaN(d.getTime()) ? '' : `Paid ${dateText(d)}`}
+                                {p.recordedOnly ? ' · recorded only' : p.paymentMethod ? ` · ${paymentMethodLabel(p.paymentMethod, model)}` : ''}
+                              </Text>
+                            </View>
+                            <Text style={[styles.paymentRowAmount, { color: directionInput === 'lent' ? colors.positive : colors.negative }]}>
+                              {formatPeso(typeof p.actual === 'number' ? p.actual : 0)}
+                            </Text>
+                            {removable && (
+                              <TouchableOpacity onPress={() => handleRemovePayment(p.id)} style={styles.paymentRemoveBtn} accessibilityRole="button" accessibilityLabel="Remove this payment" testID={`loan-payment-remove-${p.id}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+                              </TouchableOpacity>
+                            )}
                           </TouchableOpacity>
-                        </View>
-                      ))}
-
-                      <View style={styles.paymentAddBox}>
-                        <Text style={styles.inputLabel}>Log a new payment</Text>
-                        <DateField
-                          label="Date"
-                          mark="required"
-                          value={newPaymentDate}
-                          onChange={setNewPaymentDate}
-                          placeholder="2026-08-25"
-                          testID="loan-payment-date-field"
-                        />
-                        <MarkedLabel text="Amount paid" mark="required" style={styles.inputLabel} />
-                          <AmountInput
-                            style={styles.amountInput}
-                            value={newPaymentAmount}
-                            onChangeAmount={setNewPaymentAmount}
-                          />
-                        <AccountPicker
-                          mark="required"
-                          model={model}
-                          direction={directionInput === 'lent' ? 'in' : 'out'}
-                          amount={newPaymentAmount}
-                          value={newPaymentMethod}
-                          onChange={setNewPaymentMethod}
-                        />
-                        <ErrorNote text={paymentError} />
-                        <TouchableOpacity style={styles.paymentAddButton} onPress={handleAddPayment}>
-                          <GradientFill match={styles.paymentAddButton} />
-                          <Text style={styles.paymentAddButtonText}>+ Add payment</Text>
-                        </TouchableOpacity>
-                      </View>
+                        );
+                      })}
+                      {paymentsInput.length > 0 && (
+                        <Text style={styles.paymentEditHint}>Tap a payment to add a receipt or fix it.</Text>
+                      )}
+                      <TouchableOpacity style={styles.logPayRow} onPress={() => setLogPayOpen(true)} accessibilityRole="button" testID="loan-form-log-payment">
+                        <Ionicons name="add" size={20} color={colors.gold} />
+                        <Text style={[styles.logPayText, { color: colors.gold }]}>Log a payment</Text>
+                      </TouchableOpacity>
                     </View>
               </PickerRow>
             </FormGroup>
@@ -819,6 +824,45 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           {!!loanFootnote && <Footnote>{loanFootnote}</Footnote>}
           <ErrorNote text={errorMsg} />
           {editingId && <Button label="Delete loan" variant="destructive" onPress={handleDelete} />}
+          {(() => {
+            const loanNow = editingId ? (model?.loans || []).find((l) => l.id === editingId) : undefined;
+            if (!loanNow || !model) return null;
+            const lent = loanNow.direction === 'lent';
+            const cov = loanCoverage(loanNow, todayISO());
+            const each = typeof loanNow.expectedPayment === 'number' ? loanNow.expectedPayment : 0;
+            const ep = editPayId ? loanNow.actualPayments.find((x) => x.id === editPayId) : undefined;
+            return (
+              <>
+                <PayFromSheet
+                  visible={logPayOpen}
+                  onClose={() => setLogPayOpen(false)}
+                  title={lent ? 'Money received' : `Pay ${loanNow.name || 'loan'}`}
+                  amount={cov.leftForNext > 0 ? cov.leftForNext : each}
+                  dueText={cov.nextOpen ? `${lent ? 'For' : 'Paying'} the ${dateText(new Date(cov.nextOpen + 'T00:00:00'))} payment` : undefined}
+                  direction={lent ? 'in' : 'out'}
+                  model={model}
+                  initial={loanNow.actualPayments[loanNow.actualPayments.length - 1]?.paymentMethod}
+                  confirmLabel={lent ? 'Received' : 'Pay'}
+                  withReceipt
+                  onConfirm={(pm, amount, _late, date, takeOff, fee, receipt) => logFromForm({ pm, amount, date, takeOff, fee, receipt })}
+                  onRecord={(amount, fee, date, receipt) => logFromForm({ amount, date, fee, receipt, recordedOnly: true })}
+                />
+                <PayFromSheet
+                  visible={!!ep}
+                  onClose={() => setEditPayId(null)}
+                  title="Edit payment"
+                  amount={typeof ep?.actual === 'number' ? ep.actual : 0}
+                  direction={lent ? 'in' : 'out'}
+                  model={model}
+                  initial={ep?.paymentMethod}
+                  confirmLabel="Save"
+                  withReceipt
+                  onConfirm={() => {}}
+                  edit={ep ? { date: ep.date, pm: ep.paymentMethod, receipt: ep.receiptPhoto, recordedOnly: !!ep.recordedOnly, minAmount: typeof ep.actual === 'number' ? ep.actual : 0, onSave: (ch) => editFromForm(ep.id, ch) } : undefined}
+                />
+              </>
+            );
+          })()}
         </FormSwapFade>
       </BottomSheet>
       <PlacePaymentSheet value={placeAsk} onClose={() => setPlaceAsk(null)} />
@@ -878,20 +922,17 @@ function makeStyles(colors: any) {
       borderTopWidth: 1,
       borderTopColor: colors.navy2,
     },
-    paymentRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.navy2,
-      borderRadius: 8,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      marginBottom: 8,
-    },
+    // H-50 (canvas D1): rows like the loan page's Payments, not grey boxes.
+    paymentRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingVertical: 10 },
+    paymentRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy1 },
     paymentRowMain: { flex: 1, marginRight: 8 },
-    paymentRowDate: { fontSize: 12.5, fontWeight: '600', color: colors.ink },
-    paymentRowMethod: { fontSize: 11, color: colors.inkDim, marginTop: 1 },
-    paymentRowAmount: { fontSize: 12.5, fontWeight: '600', color: colors.ink, marginRight: 8 },
-    paymentRemoveBtn: { paddingHorizontal: 6, paddingVertical: 2 },
+    paymentRowDate: { fontSize: 17, fontWeight: '600', color: colors.ink },
+    paymentRowMethod: { fontSize: 15, color: colors.inkDim, marginTop: 1 },
+    paymentRowAmount: { fontSize: 17, fontWeight: '600', color: colors.ink, marginRight: 4 },
+    paymentRemoveBtn: { paddingLeft: 10, paddingVertical: 4 },
+    logPayRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy1, marginTop: 4 },
+    logPayText: { fontSize: 17, fontWeight: '600' },
+    paymentEditHint: { fontSize: 13, lineHeight: 18, color: colors.inkDim, marginTop: 6, marginBottom: 4 },
     paymentAddBox: {
       backgroundColor: colors.navy2,
       borderRadius: 10,

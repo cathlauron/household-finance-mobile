@@ -64,6 +64,8 @@ export type InvestmentEntry = {
   note?: string;
   createdAt?: number;
   addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 export type InvestmentKind = 'mp2' | 'stocks' | 'fund' | 'timedeposit' | 'crypto' | 'other';
 export type Investment = {
@@ -93,6 +95,10 @@ export type SharedExpense = {
   transactionId?: string;
   // Cath, 2026-10-27 (canvas R1): a receipt photo (see householdParts).
   receiptPhoto?: string;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // Shared Expenses: one person paying another back ("Settle up").
@@ -107,6 +113,10 @@ export type SharedSettlement = {
   // When you paid or were paid from one of your accounts, the money in/out transaction
   // logged with it (removed again if the payment is undone).
   transactionId?: string;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type Person = {
@@ -356,6 +366,11 @@ export type GroceryItem = {
   plannedAmount: number | '';
   actualAmount: number | '';
   purchased: boolean;
+  createdAt?: number;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type GroceryCalcEntry = {
@@ -372,12 +387,18 @@ export type MealIdea = {
   id: string;
   name: string;
   ingredients: { id: string; name: string; price: number | '' }[];
+  createdAt?: number;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // ---- Checkpoint 8.2: Travel ----
 // Version 2.1 (Cath, canvas T1): a trip's to-do list, next to its budget. Plain notes with
 // tick boxes and an optional date; nothing here touches money.
-export type TravelTodo = { id: string; text: string; done: boolean; date?: string };
+// H-43 (Cath, 2026-10-29): who added it (createdAt / addedBy / changedBy / changedAt).
+export type TravelTodo = { id: string; text: string; done: boolean; date?: string; createdAt?: number; addedBy?: string; changedBy?: string; changedAt?: number };
 
 export type TravelChecklistItem = {
   id: string;
@@ -461,6 +482,10 @@ export type EventItem = {
   // and past years of an event that repeats every year.
   items?: { id: string; name: string; cost: number | '' }[];
   history?: { date: string; budget: number; spent: number }[];
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // ---- Checkpoint 8.3: Year-End Goals ----
@@ -481,6 +506,10 @@ export type YearlyGoal = {
   // (how much of it is paid off); and when a checklist goal was ticked off.
   linkedTo?: { kind: 'pot' | 'debt' | 'loan'; id: string };
   completedDate?: string;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 // Redesign (Move money): one move between two of your accounts. The balances are
@@ -498,6 +527,10 @@ export type Transfer = {
   createdAt?: number;
   feeTxnId?: string;
   feeOffSaved?: boolean;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type BalanceAccountEntry = {
@@ -518,6 +551,11 @@ export type BalanceAccountEntry = {
   // Version 2.2 (canvas D1-D3): optional last 4 digits of a debit or credit card, to tell
   // cards apart. Exactly 4 numbers; never the full card number.
   last4?: string;
+  createdAt?: number;
+  // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
+  addedBy?: string;
+  changedBy?: string;
+  changedAt?: number;
 };
 
 export type BalanceAccounts = {

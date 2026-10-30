@@ -18,6 +18,8 @@ export type TransferRow = {
   // Cath 2026-10-27 (canvas I1): money put into / taken out of an investment, opened on
   // the Investments page instead of a transfer's page.
   investmentId?: string;
+  // H-39: when it was logged, for "Newest" to the second.
+  at?: number;
 };
 
 function pmOf(key: string): PaymentMethod | undefined {
@@ -41,6 +43,7 @@ export function transferRow(model: HouseholdModel, t: Transfer): TransferRow {
     note,
     fromName,
     toName,
+    at: t.createdAt,
   };
 }
 
@@ -86,6 +89,7 @@ export function investmentMovesForList(
         fromName: e.type === 'add' ? acct : name,
         toName: e.type === 'add' ? name : acct,
         investmentId: inv.id,
+        at: e.createdAt,
       });
     }
   }

@@ -25,6 +25,9 @@ import { todayISO } from '../dateUtils';
 import { hapticLight, hapticSelection } from '../haptics';
 import { useStickyState } from '../stickyState';
 
+import { useWho } from '../components/WhoLogged';
+import { askToRemove } from '../askToRemove';
+import { PaidLine, paidRowContent } from '../components/PaidLine';
 // Redesign: Groceries (Plan › Groceries), matching the Finance Flow mockup.
 // List: tick items off as you shop; "Finish trip" adds what you bought to your spending.
 // Calculator: add prices as you go to see what's in your cart against your plan.
@@ -51,7 +54,8 @@ const STARTERS: { name: string; ingredients: string[] }[] = [
 
 export default function GroceriesScreen() {
   const { colors } = useTheme();
-  const { model, saveModel } = useData();
+  const who = useWho();
+  const { model, saveModel, getModel } = useData();
   const navigation = useNavigation<any>();
   const styles = makeStyles(colors);
 
@@ -302,9 +306,10 @@ export default function GroceriesScreen() {
                       >
                         {g.purchased && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.rowMain} onPress={() => openItem(g)} accessibilityRole="button">
+                      <TouchableOpacity style={[styles.rowMain, g.purchased && paidRowContent]} onPress={() => openItem(g)} accessibilityRole="button">
+                        {g.purchased && <PaidLine testID={`grocery-paid-${g.id}`} />}
                         <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={[styles.title, g.purchased && styles.done]} numberOfLines={1}>
+                          <Text style={styles.title} numberOfLines={1}>
                             {g.item || 'Untitled item'}
                           </Text>
                           <Text style={styles.meta} numberOfLines={1}>
@@ -313,6 +318,7 @@ export default function GroceriesScreen() {
                               : num(g.plannedAmount) > 0
                                 ? 'Planned'
                                 : 'No price yet'}
+                            {who.by(g.addedBy)}
                           </Text>
                         </View>
                         <Text style={[styles.amount, { color: g.purchased ? colors.inkDim : colors.planned }]}>
@@ -365,7 +371,7 @@ export default function GroceriesScreen() {
                       </View>
                       <Text style={[styles.amount, { color: toneUnlessZero(num(e.amount), colors.planned, colors) }]}>{formatPeso(num(e.amount))}</Text>
                       <TouchableOpacity
-                        onPress={() => saveModel({ ...model, groceryCalculator: calc.filter((x) => x.id !== e.id) })}
+                        onPress={() => askToRemove(`Remove "${e.label}"?`, 'It comes off the calculator.', () => { const m = getModel() ?? model; saveModel({ ...m, groceryCalculator: (m.groceryCalculator ?? []).filter((x) => x.id !== e.id) }); })}
                         accessibilityRole="button"
                         accessibilityLabel={`Remove ${e.label}`}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -406,7 +412,7 @@ export default function GroceriesScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.primary, { flex: 1, marginTop: 0, backgroundColor: colors.navy3 }]}
-                    onPress={() => saveModel({ ...model, groceryCalculator: [] })}
+                    onPress={() => askToRemove('Clear the calculator?', 'Every line on the calculator is removed. Your shopping list stays.', () => { const m = getModel() ?? model; saveModel({ ...m, groceryCalculator: [] }); }, 'Clear')}
                     accessibilityRole="button"
                   >
                     <GradientFill kind="surface" color={colors.navy3} />
@@ -436,6 +442,7 @@ export default function GroceriesScreen() {
                       <Text style={[styles.headline, { flex: 1 }]}>{m.name}</Text>
                       <Text style={[styles.amount, { color: colors.planned }]}>{cost > 0 ? formatPeso(cost) : 'Add prices'}</Text>
                     </TouchableOpacity>
+                    {who.others(m.addedBy) && <Text style={[styles.meta, { marginTop: -6 }]}>Added by {who.nameOf(m.addedBy)}</Text>}
                     <View style={styles.chips}>
                       {m.ingredients.map((i) => (
                         <View key={i.id} style={styles.chip}>
@@ -508,7 +515,7 @@ export default function GroceriesScreen() {
                     inputStyle={{ textAlign: 'right', flex: 0, minWidth: 80, color: colors.planned }}
                   />
                   <TouchableOpacity
-                    onPress={() => setIngredients((rows) => rows.filter((r) => r.id !== ing.id))}
+                    onPress={() => askToRemove(`Remove ${ing.name?.trim() ? `"${ing.name.trim()}"` : 'this ingredient'}?`, 'It comes off this meal when you tap Save.', () => setIngredients((rows) => rows.filter((r) => r.id !== ing.id)))}
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ingredient ${i + 1}`}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

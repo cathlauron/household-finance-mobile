@@ -115,3 +115,14 @@ Could not be checked here (stays "Needs your phone"):
 - Not done, by choice (asked Cath in the 3.1 report): pop-up drag-down still runs through
   JavaScript, and big forms are built before they rise. Both need BottomSheet rebuilt on
   the animation library (the most-used piece of the app), a bigger and riskier change.
+
+## 2026-10-29 (Batch 1+: peel-off switches K2e, Help & FAQ H1)
+- Sweep: the peel uses the shared curve and speeds (PAGE_OPEN_MS when it comes off,
+  PAGE_BACK_MS when it settles back, new PEEL_TAP_MS 1000 for a tapped steady peel, Cath's
+  K2e), runs on the animation thread, and respects Reduce Motion (test:motion passes).
+  Recorded the Dark mode flip frame by frame: no flash at the swap; the screen copy fades
+  away only after the new look is drawn (nothing changes on screen when it goes).
+  Help & FAQ answers open with the shared row glide (animateNextLayout).
+- S-look (iPad, found in the iPad-size walk): every screen works and nothing is cut off,
+  but pages stretch across the whole iPad width (long rows, amounts far right, full-width
+  buttons). A centred column (like iPad Settings) would look better: MOCKUP FIRST.

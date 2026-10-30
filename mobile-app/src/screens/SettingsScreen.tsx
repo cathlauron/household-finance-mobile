@@ -1,5 +1,9 @@
 import { hapticSelection } from '../haptics';
+import { measureSignInSpeed, speedText } from '../signInSpeed';
 import { animateNextLayout } from '../animateLayout';
+import { APP_VERSION } from '../appVersion';
+import AppearancePage, { type ScrollFrame } from './AppearancePage';
+import { PRIVACY_URL, DELETE_ACCOUNT_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -10,8 +14,6 @@ import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } f
 import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
-import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
-import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { MarkedLabel } from '../components/MarkedLabel';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -34,7 +36,6 @@ import { defaultModel } from '../defaultModel';
 import { formatPeso, cautionBase } from '../balanceProjection';
 import type { Category, Payee, CategorizationRule, HouseholdModel } from '../types';
 import { rescheduleBillNotifications, requestNotificationPermission, sendTestNotification, sendTestPaydayNudge, sendTestMonthEnd, countScheduledNotifications } from '../pushNotifications';
-import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   loadProfilesIndex,
@@ -47,7 +48,7 @@ import {
 } from '../recovery';
 import { getInitials } from './ProfileScreen';
 import Avatar from '../components/Avatar';
-import { SettingsGroup, SettingsRow, PlainRow, SegmentRow } from '../components/SettingsHub';
+import { SettingsGroup, SettingsRow, PlainRow, IconRow } from '../components/SettingsHub';
 import { PickerRow, Choices, AmountRow, SheetBar, FormGroup, PasswordRow, SheetHero } from '../components/SimpleForm';
 import { deriveKey, decryptJSON, generateSalt } from '../encryption';
 import { makeBackupText, backupFileName, isBackupFileName } from '../backupFile';
@@ -76,7 +77,6 @@ import { radii, spacing } from '../tokens';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
-import { useFabSide, setFabSide } from '../fabSide';
 import GradientFill from '../components/GradientFill';
 import { useTightHeadsUp, pretendAwaySixDays } from '../components/CalmHome';
 
@@ -89,16 +89,6 @@ const COLOR_PALETTE = [
   '#9333EA', '#0891B2', '#D97706', '#DB2777', '#78716C',
 ];
 
-// ---- Appearance mode options ----
-// Backed entirely by ThemeContext's existing setMode()/mode — this just gives it a UI.
-// Keep in step with "version" in app.json (shown under About).
-const APP_VERSION = '3.1.0';
-
-const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
-  { id: 'light', label: 'Light' },
-  { id: 'dark', label: 'Dark' },
-  { id: 'device', label: 'Auto' },
-];
 
 function amountRangeLabel(rule: CategorizationRule): string {
   const min = rule.amountMin === '' || rule.amountMin === undefined ? null : Number(rule.amountMin);
@@ -122,8 +112,7 @@ const SECTIONS: Record<string, { title: string; parts: string[] }> = {
 };
 
 export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignOut?: () => void; onSwitchAccount?: () => void; onLock?: () => void }) {
-  const { colors, mode, setMode } = useTheme();
-  const fabSide = useFabSide();
+  const { colors } = useTheme();
   const [tightHeadsUp, setTightHeadsUp] = useTightHeadsUp(); // version 3, this phone only
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -158,6 +147,17 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
     });
   }
   const scrollRef = useRef<ScrollView>(null);
+  // Where the page sits on the screen right now (the Dark mode screen peel draws a copy there).
+  const scrollYRef = useRef(0);
+  const [peeling, setPeeling] = useState(false);
+  const appearanceFrame = () =>
+    new Promise<ScrollFrame>((resolve, reject) => {
+      const sv: any = scrollRef.current;
+      if (!sv?.measureInWindow) return reject(new Error('no page'));
+      sv.measureInWindow((_x: number, y: number, _w: number, height: number) =>
+        resolve({ y, height, scrollY: scrollYRef.current, padTop: 16, padX: 12 })
+      );
+    });
 
   // Back (header, swipe or Android) closes an open page first instead of leaving Settings.
   useEffect(() => {
@@ -228,9 +228,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoLockMinutes, setAutoLockMinutesState] = useState<number>(0);
-  const textSize = useTextSize();
-  const skyPrefs = useSkyPrefs();
-  const previewWeather = usePreviewWeather();
 
   // Active Devices state
   const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
@@ -388,11 +385,6 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const [watchLimitInput, setWatchLimitInput] = useState<number | ''>('');
   const [watchErrorMsg, setWatchErrorMsg] = useState('');
   const [testNotifMsg, setTestNotifMsg] = useState('');
-  // Travel time note: the home time zone (saved on this phone).
-  const [homeZoneCity, setHomeZoneCity] = useState<string | null>(null);
-  useEffect(() => {
-    if (page === 'look') getHomeZoneCity().then(setHomeZoneCity).catch(() => {});
-  }, [page]);
   const [notifyDaysInput, setNotifyDaysInput] = useState(
     String(model?.settings?.notifyDaysBefore ?? 3)
   );
@@ -1305,7 +1297,13 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
 
   return (
     <SafeAreaView style={styles.container}>
-      <PullToRefreshScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
+      <PullToRefreshScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scrollContent}
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEnabled={!peeling}
+        scrollEventThrottle={32}
+      >
         {page === null && (
         <>
         {/* Profile Card */}
@@ -1563,101 +1561,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           );
         })()}
 
-        {/* ---------- Appearance ---------- */}
-        {page === 'look' && (
-        <>
-        <SettingsGroup plain>
-          <SegmentRow title="Theme" options={MODE_OPTIONS} value={mode} onChange={setMode} />
-          <SegmentRow title="Text size" options={TEXT_SIZE_OPTIONS} value={textSize} onChange={setTextSize} testIDPrefix="settings-text" />
-          <SegmentRow
-            title="+ button side"
-            options={[{ id: 'left', label: 'Left' }, { id: 'right', label: 'Right' }]}
-            value={fabSide}
-            onChange={(v) => setFabSide(v as 'left' | 'right')}
-            testIDPrefix="settings-fab"
-          />
-        </SettingsGroup>
-
-        <SettingsGroup
-          label="Sky"
-          plain
-          footer="Live weather uses your phone's approximate location to match the sky on Home to your real sunrise, sunset and weather. Only a rounded location is sent to the weather service (Open-Meteo), never your money data. Rain stops falling when Reduce Motion is on."
-        >
-          <PlainRow
-            title="Time-of-day glow"
-            right={settingSwitch(skyPrefs.glowOn, (on) => setSkyGlowOn(on), 'settings-sky-glow')}
-          />
-          <PlainRow
-            title="Live weather"
-            right={settingSwitch(skyPrefs.liveWeatherOn, async (on) => {
-              const ok = await setLiveWeatherOn(on);
-              if (!ok) {
-                Alert.alert(
-                  'Location is off',
-                  "Finance Flow can't see your location, so the sky follows the clock instead. You can allow location for Finance Flow in your phone's settings."
-                );
-              }
-            }, 'settings-live-weather')}
-          />
-          <PlainRow
-            title="Rain animation"
-            right={settingSwitch(skyPrefs.rainAnimOn, (on) => setRainAnimOn(on), 'settings-rain-anim')}
-          />
-          {__DEV__ && (
-            <SegmentRow
-              title="Preview weather (testing only)"
-              options={[
-                { id: 'live', label: 'Live' },
-                { id: 'clear', label: 'Clear' },
-                { id: 'cloudy', label: 'Cloudy' },
-                { id: 'rain', label: 'Rain' },
-              ]}
-              value={previewWeather ?? 'live'}
-              onChange={(v) => setPreviewWeather(v === 'live' ? null : (v as 'clear' | 'cloudy' | 'rain'))}
-              testIDPrefix="settings-preview-weather"
-            />
-          )}
-        </SettingsGroup>
-
-        <SettingsGroup label="Time" plain footer="Finance Flow always uses this phone's date and time. When the phone is in another time zone, Home shows a small note.">
-          <PlainRow
-            title="Home time zone"
-            value={homeZoneCity ?? '…'}
-            testID="settings-home-zone"
-            onPress={() => {
-              const tz = phoneTimeZone();
-              const here = tz ? cityOf(tz) : null;
-              if (!here || here === homeZoneCity) {
-                Alert.alert('Home time zone', `Home is ${homeZoneCity ?? 'this phone'}. When you travel, Home shows how far you are from it. To change it, open this while your phone is set to the new place.`);
-                return;
-              }
-              Alert.alert('Change home time zone?', `Make ${here} (this phone's time zone now) your home instead of ${homeZoneCity}?`, [
-                { text: 'Cancel', style: 'cancel' },
-                { text: `Make ${here} home`, onPress: () => setHomeZoneToPhone().then((c) => c && setHomeZoneCity(c)) },
-              ]);
-            }}
-          />
-        </SettingsGroup>
-
-        <SettingsGroup label="Feel" plain footer="Mood colours: the card, buttons and leaves follow Left to Spend.">
-          <PlainRow
-            title="Mood colours"
-            right={settingSwitch(model.settings.moodColorsEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, moodColorsEnabled: on } }), 'settings-mood-colors')}
-          />
-          <PlainRow
-            title="Falling leaves"
-            right={settingSwitch(model.settings.fallingLeavesEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, fallingLeavesEnabled: on } }), 'settings-falling-leaves')}
-          />
-        </SettingsGroup>
-
-        {/* Version 2.2 (Cath): swipe to delete was removed entirely; delete from an item's
-            own page or its Edit form instead. */}
-
-        <SettingsGroup plain footer="More languages are coming later.">
-          <PlainRow title="Language" value="English" />
-        </SettingsGroup>
-        </>
-        )}
+        {/* ---------- Appearance (src/screens/AppearancePage.tsx) ---------- */}
+        {page === 'look' && <AppearancePage getFrame={appearanceFrame} onPeeling={(b) => setPeeling(b)} />}
 
         {/* ---------- Notifications ---------- */}
         {page === 'notify' && (
@@ -2000,11 +1905,17 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <LogoMark width={96} />
           <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 8 }}>Version {APP_VERSION}</Text>
         </View>
-        {/* Cath, 2026-10-27 (canvas S1): Contact support opens an email to the support address
-            with the version in the subject; the address can be copied too. */}
-        <SettingsGroup plain footer={'"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.'}>
-          <PlainRow
+        {/* Mockup H1 (Cath, 2026-10-29, built to match it exactly 2026-10-30): Help & FAQ (new)
+            and Contact support with icon tiles, Copy email address; then "Your data" with the
+            privacy policy and account deletion pages the app stores ask for.
+            Contact support (canvas S1, 2026-10-27) opens an email to the support address with
+            the version in the subject; the address can be copied too. */}
+        <SettingsGroup footer={'"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.'}>
+          <IconRow testID="settings-help-faq" icon="help" tile={colors.buttonFill} title="Help & FAQ" badge="New" sub="Answers to common questions" onPress={() => navigation.push('HelpFaq')} />
+          <IconRow
             testID="settings-contact-support"
+            icon="mail"
+            tile="#3A7CA5"
             title="Contact support"
             sub={SUPPORT_EMAIL}
             onPress={() => {
@@ -2022,8 +1933,40 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             }}
           />
         </SettingsGroup>
-        <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
-          <PlainRow title="Help & guides" value="Coming soon" />
+        <SettingsGroup label="Your data" footer="Household budgeting for you and the people you share a home with.">
+          <IconRow
+            testID="settings-privacy"
+            icon="lock-closed"
+            tile="#6E6E73"
+            title="Privacy policy"
+            sub="Opens in your browser"
+            onPress={() => { Linking.openURL(PRIVACY_URL).catch(() => Alert.alert('Privacy policy', PRIVACY_URL)); }}
+          />
+          <IconRow
+            testID="settings-delete-account"
+            icon="close"
+            tile={colors.negative}
+            danger
+            title="Delete account"
+            sub="How to delete your account and data"
+            onPress={() => { Linking.openURL(DELETE_ACCOUNT_URL).catch(() => Alert.alert('Delete account', DELETE_ACCOUNT_URL)); }}
+          />
+        </SettingsGroup>
+        {/* K5 (Cath, 2026-10-27): try the stronger password lock's speed before choosing it. */}
+        <SettingsGroup plain footer="Times the password step on this phone at today's strength and two stronger ones. Uses a made-up password; nothing changes.">
+          <PlainRow
+            testID="settings-signin-speed"
+            title="Check sign-in speed"
+            accent
+            onPress={() => {
+              showSaved('Measuring…');
+              // Let "Measuring…" show first: the check keeps the phone busy for a moment.
+              setTimeout(() => {
+                const r = measureSignInSpeed();
+                Alert.alert('Sign-in speed on this phone', speedText(r));
+              }, 120);
+            }}
+          />
         </SettingsGroup>
         {/^test/i.test(username || '') && (
           <SettingsGroup plain footer="Test accounts only. Close the app fully and open it again: Welcome back shows on Home.">

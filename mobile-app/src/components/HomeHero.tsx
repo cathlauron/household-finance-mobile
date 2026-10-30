@@ -161,6 +161,8 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
                 <Text style={styles.calText}>{dateText(new Date(), { weekday: true })}</Text>
               </TouchableOpacity>
             </View>
+            {/* H-54 (Cath, 2026-10-29, canvas L4): tapping the amount shows why it is what it is. */}
+            <TouchableOpacity onPress={() => navigation.navigate('LeftToSpend')} accessibilityRole="button" accessibilityHint="Shows what makes up Left to spend" testID="home-left-to-spend-open">
             {/* Smoothness 2026-10-23 (Cath): counts quickly to the new amount when it changes. */}
             <CountingText style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={hidden ? 'Amount hidden' : undefined} value={amount} masked={hidden} format={(n) => money(n)} />
             <View style={styles.statusRow}>
@@ -168,7 +170,9 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
               <Text style={[styles.status, { color: dim }]} numberOfLines={1}>
                 of {money(total)} · {statusLabel}
               </Text>
+              <Ionicons name="chevron-forward" size={14} color={dim} style={{ marginLeft: 2 }} />
             </View>
+            </TouchableOpacity>
             <View style={styles.track}>
               <View style={[styles.trackFill, { width: `${Math.max(0, 100 - pctUsed)}%`, backgroundColor: fill }]} />
             </View>
@@ -222,21 +226,17 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
                 <Text style={[styles.bLabel, { color: dim }]}>In your accounts now</Text>
                 <Text style={styles.bVal}>{money(breakdown.now)}</Text>
               </View>
-              {breakdown.lines.slice(0, 4).map((l) => (
-                <View key={l.label} style={styles.bRow}>
+              {/* H-52 (Cath, 2026-10-29): one line each (past due, bills, debts, loans, plans...);
+                  the total below says until when. */}
+              {breakdown.lines.map((l) => (
+                <View key={l.label} style={styles.bRow} testID={`lts-line-${l.label}`}>
                   <Text style={[styles.bLabel, { color: dim }]} numberOfLines={1}>
                     {l.amount < 0 ? '− ' : '+ '}
-                    {l.label} {basis === 'payday' ? 'before payday' : 'this month'}
+                    {l.label}
                   </Text>
                   <Text style={styles.bVal}>{money(Math.abs(l.amount))}</Text>
                 </View>
               ))}
-              {breakdown.lines.length > 4 && (
-                <View style={styles.bRow}>
-                  <Text style={[styles.bLabel, { color: dim }]}>{breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0) < 0 ? '− ' : '+ '}Everything else</Text>
-                  <Text style={styles.bVal}>{money(Math.abs(breakdown.lines.slice(4).reduce((s, l) => s + l.amount, 0)))}</Text>
-                </View>
-              )}
               {breakdown.lines.length === 0 && (
                 <Text style={[styles.bLabel, { color: dim, marginVertical: 2 }]}>Nothing planned to go out {basis === 'payday' ? 'before payday' : 'this month'}.</Text>
               )}
@@ -244,6 +244,10 @@ function HomeHero({ model, amount, statusLabel, basis, mood, total, pctUsed, isD
                 <Text style={styles.bTotalLabel}>Left to spend until {untilLabel}</Text>
                 <Text style={styles.bTotalVal}>{money(amount)}</Text>
               </View>
+              <TouchableOpacity onPress={() => navigation.navigate('LeftToSpend')} accessibilityRole="button" style={styles.seeAll} testID="home-left-to-spend-all">
+                <Text style={[styles.seeAllText, { color: dim }]}>See every item</Text>
+                <Ionicons name="chevron-forward" size={14} color={dim} />
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -264,6 +268,8 @@ const styles = StyleSheet.create({
   bRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 2, gap: 8 },
   bLabel: { fontSize: 14, flexShrink: 1 },
   bVal: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  seeAll: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 2, minHeight: 32, marginTop: 2 },
+  seeAllText: { fontSize: 13, fontWeight: '600' },
   bTotal: { marginTop: 6, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.35)' },
   bTotalLabel: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', flexShrink: 1 },
   bTotalVal: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },

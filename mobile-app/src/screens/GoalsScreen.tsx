@@ -28,6 +28,7 @@ import { hapticSelection } from '../haptics';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 
+import { useWho } from '../components/WhoLogged';
 function isValidDateOrEmpty(s: string): boolean {
   if (s.trim() === '') return true;
   return /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
@@ -76,6 +77,7 @@ function shortDate(iso: string): string {
 
 export default function GoalsScreen() {
   const { colors } = useTheme();
+  const who = useWho();
   const { model, saveModel, getModel } = useData();
   const styles = makeStyles(colors);
 
@@ -358,7 +360,7 @@ export default function GoalsScreen() {
                           {isDebt && lp ? `${formatPeso(lp.left ?? 0)} left` : formatPeso(current)}
                         </Text>
                       </View>
-                      {parts.length > 0 && <Text style={styles.goalSub}>{parts.join(' · ')}</Text>}
+                      {(parts.length > 0 || who.others(g.addedBy)) && <Text style={styles.goalSub}>{[...parts, who.others(g.addedBy) ? `added by ${who.nameOf(g.addedBy)}` : ''].filter(Boolean).join(' · ')}</Text>}
                       {target > 0 && (
                         <View style={styles.progressTrack}>
                           <View style={[styles.progressFill, { width: `${pct}%` }]} />
@@ -394,7 +396,7 @@ export default function GoalsScreen() {
                     <TouchableOpacity style={{ flex: 1 }} onPress={() => openEditModal(g)} accessibilityRole="button">
                       <Text style={[styles.goalTitle, g.completed && styles.goalTitleDone]} numberOfLines={2}>{g.title || 'Untitled goal'}</Text>
                       <Text style={styles.goalSub}>
-                        {g.completed ? (g.completedDate ? `Done in ${monthName(g.completedDate)}` : 'Done') : g.targetDate ? `By ${shortDate(g.targetDate)}` : g.description || 'No date'}
+                        {g.completed ? (g.completedDate ? `Done in ${monthName(g.completedDate)}` : 'Done') : g.targetDate ? `By ${shortDate(g.targetDate)}` : g.description || 'No date'}{who.by(g.addedBy)}
                       </Text>
                     </TouchableOpacity>
                   </View>

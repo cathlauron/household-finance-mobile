@@ -22,10 +22,19 @@ const PICKS: Record<string, { title: string; sub: string; icon: keyof typeof Ion
 
 export default function GuestPicks() {
   const { colors } = useTheme();
-  const { guest, guestInfo } = useData();
+  const { guest, guestInfo, model } = useData();
   const navigation = useNavigation<any>();
   if (!guest || !guestInfo) return null;
-  const picks = (guestInfo.helpWith.length ? guestInfo.helpWith : ['calm']).map((id) => PICKS[id]).filter(Boolean);
+  // H-53 (2026-10-29): a first step that's done (a bill, debt, pot or expense already added)
+  // goes away; with all of them done the card goes too.
+  const done: Record<string, boolean> = {
+    bill: (model?.bills || []).length > 0,
+    debt: (model?.debts || []).length > 0,
+    savings: (model?.savingsGoals || []).length > 0,
+    spend: (model?.manualTransactions || []).length > 0,
+  };
+  const picks = (guestInfo.helpWith.length ? guestInfo.helpWith : ['calm']).map((id) => PICKS[id]).filter((p) => p && !done[p.go]);
+  if (picks.length === 0) return null;
 
   function open(go: 'bill' | 'debt' | 'savings' | 'spend') {
     if (go === 'bill' || go === 'debt') {

@@ -14,6 +14,7 @@ import { transferRow } from '../transfersList';
 import GradientFill from '../components/GradientFill';
 import type { ThemeColors } from '../theme';
 
+import { WhoFootnote } from '../components/WhoLogged';
 // Cath, 2026-10-27 (canvas T1): a money move's own page: from, to, date, fee and its note.
 // It's not spending, so nothing here counts towards In / Out or Left to Spend.
 export default function TransferDetailScreen() {
@@ -80,6 +81,7 @@ export default function TransferDetailScreen() {
           </TouchableOpacity>
         );
       })()}
+      <WhoFootnote addedBy={t.addedBy} createdAt={t.createdAt} changedBy={t.changedBy} changedAt={t.changedAt} />
     </KeyboardAwareScrollView>
   );
 }

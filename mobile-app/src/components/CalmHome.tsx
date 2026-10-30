@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { goToMain } from '../navigation/goToMain';
 import { View, StyleSheet, AppState, Alert } from 'react-native';
 import { TouchableOpacity } from './Tap';
@@ -271,6 +271,7 @@ function EstimateSheet({
   const [amount, setAmount] = useState<number | ''>('');
   const [pm, setPm] = useState<PaymentMethod | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  const savingNowRef = useRef(false);
   const today = todayISO();
   const range = `${shortDate(since)}–${shortDate(today)}`;
 
@@ -290,6 +291,9 @@ function EstimateSheet({
       paymentMethod: pm,
       createdAt: Date.now(),
     } as ManualTransaction;
+    // B-058 (2026-10-29): a second quick tap can't save it twice.
+    if (savingNowRef.current) return;
+    savingNowRef.current = true;
     setSaving(true);
     try {
       await saveModel({ ...model, manualTransactions: [...(model.manualTransactions || []), t] });
@@ -297,6 +301,7 @@ function EstimateSheet({
       setAmount('');
       onClose();
     } finally {
+      savingNowRef.current = false;
       setSaving(false);
     }
   }

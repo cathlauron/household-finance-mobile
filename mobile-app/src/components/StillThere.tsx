@@ -20,7 +20,8 @@ import { hapticSelection } from '../haptics';
 //     Show (a PIN or fingerprint is asked for when one is set up).
 // S3: the Auto-lock sheet (5 minutes suggested).
 
-export const STILL_THERE_AFTER_MS = 5 * 60 * 1000;
+import { secondsLeft } from '../stillThereClock';
+export { STILL_THERE_AFTER_MS } from '../stillThereClock';
 const ANSWER_SECONDS = 60;
 
 export function StillTherePopup({
@@ -28,21 +29,24 @@ export function StillTherePopup({
   onHere,
   onAutoLock,
   onTimeout,
+  deadline,
 }: {
   visible: boolean;
   onHere: () => void;
   onAutoLock: () => void;
   onTimeout: () => void;
+  // H-42: when the countdown ends (it keeps counting while the app is in the background).
+  deadline?: number;
 }) {
   const { colors } = useTheme();
   const s = makeStyles(colors);
   const [left, setLeft] = useState(ANSWER_SECONDS);
   useEffect(() => {
     if (!visible) return;
-    const started = Date.now();
-    setLeft(ANSWER_SECONDS);
+    const end = deadline ?? Date.now() + ANSWER_SECONDS * 1000;
+    setLeft(secondsLeft(end, Date.now()));
     const t = setInterval(() => {
-      const l = Math.max(0, ANSWER_SECONDS - Math.floor((Date.now() - started) / 1000));
+      const l = secondsLeft(end, Date.now());
       setLeft(l);
       if (l <= 0) {
         clearInterval(t);
@@ -51,7 +55,7 @@ export function StillTherePopup({
     }, 500);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, deadline]);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onHere} statusBarTranslucent>
       <View style={s.backdrop}>

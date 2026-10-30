@@ -13,7 +13,7 @@
 // - A bill or debt cycle remembers who marked it paid (paidBy); unpaying clears it.
 // - With no username (guest), only createdAt is stamped.
 
-import type { Bill, BillCycle, Debt, HouseholdModel, IncomeSource, Loan, LoanPayment, PaymentLogEntry, SavingsContribution, SavingsGoal, TravelChecklistItem, TravelTrip } from './types';
+import type { BalanceAccountEntry, BalanceAccounts, Bill, BillCycle, Debt, EventItem, GroceryItem, HouseholdModel, IncomeSource, Investment, InvestmentEntry, Loan, LoanPayment, MealIdea, PaymentLogEntry, SavingsContribution, SavingsGoal, SharedExpense, SharedSettlement, Transfer, TravelChecklistItem, TravelTodo, TravelTrip, YearlyGoal } from './types';
 
 export type WhoFields = {
   id: string;
@@ -99,6 +99,19 @@ export function withInner<T, K extends keyof T>(entry: T, key: K, next: T[K]): T
   return next === entry[key] ? entry : { ...entry, [key]: next };
 }
 
+// H-43: every kind of account (wallet cards), each list on its own. A balance typed in is
+// already in the card's balanceLog with who typed it, so it isn't an "edit" here.
+const ACCOUNT_KINDS = ['cash', 'debit', 'credit', 'investment', 'property', 'vehicle'] as const;
+function stampAccounts(acc: BalanceAccounts | undefined, before: BalanceAccounts | undefined, now: number, who: string | null): BalanceAccounts | undefined {
+  if (!acc) return acc;
+  let next = acc;
+  for (const k of ACCOUNT_KINDS) {
+    const list = stampList<BalanceAccountEntry>(acc[k], before?.[k], now, who, { ignore: ['amount', 'balanceLog'] });
+    if (list !== acc[k]) next = { ...next, [k]: list };
+  }
+  return next;
+}
+
 // The whole household at once (called by DataContext.saveModel, after the existing
 // createdAt stamps). Transactions are stamped separately (DataContext.stampWho).
 export function stampHouseholdWho(model: HouseholdModel, prev: HouseholdModel | null | undefined, now: number, who: string | null): HouseholdModel {
@@ -129,7 +142,24 @@ export function stampHouseholdWho(model: HouseholdModel, prev: HouseholdModel | 
     }) as IncomeSource[],
     travel: stampList<TravelTrip>(model.travel, prev?.travel, now, who, {
       ignore: ['checklist', 'todos', 'budget'],
-      inner: (t, old) => withInner(t, 'checklist', stampList<TravelChecklistItem>(t.checklist, old?.checklist, now, who) as TravelChecklistItem[]),
+      inner: (t, old) => {
+        const withList = withInner(t, 'checklist', stampList<TravelChecklistItem>(t.checklist, old?.checklist, now, who) as TravelChecklistItem[]);
+        // H-43: trip to-dos too.
+        return withInner(withList, 'todos', stampList<TravelTodo>(withList.todos, old?.todos, now, who));
+      },
+    }),
+    // H-43 (Cath, 2026-10-29): who added it, everywhere data is added.
+    groceries: stampList<GroceryItem>(model.groceries, prev?.groceries, now, who),
+    mealIdeas: stampList<MealIdea>(model.mealIdeas, prev?.mealIdeas, now, who),
+    events: stampList<EventItem>(model.events, prev?.events, now, who),
+    yearlyGoals: stampList<YearlyGoal>(model.yearlyGoals, prev?.yearlyGoals, now, who),
+    balanceAccounts: stampAccounts(model.balanceAccounts, prev?.balanceAccounts, now, who),
+    sharedExpenses: stampList<SharedExpense>(model.sharedExpenses, prev?.sharedExpenses, now, who),
+    sharedSettlements: stampList<SharedSettlement>(model.sharedSettlements, prev?.sharedSettlements, now, who),
+    transfers: stampList<Transfer>(model.transfers, prev?.transfers, now, who),
+    investments: stampList<Investment>(model.investments, prev?.investments, now, who, {
+      ignore: ['entries'],
+      inner: (inv, old) => withInner(inv, 'entries', stampList<InvestmentEntry>(inv.entries, old?.entries, now, who) as InvestmentEntry[]),
     }),
   };
 }

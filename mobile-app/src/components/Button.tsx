@@ -55,6 +55,9 @@ export default function Button({
   const inactive = disabled || loading;
   const scale = useRef(new Animated.Value(1)).current;
   const squeeze = (to: number, ms: number) => Animated.timing(scale, { toValue: to, duration: ms, easing: EASE_OUT, useNativeDriver: true }).start();
+  // B-058 (2026-10-29): a quick second tap (while the first one's save runs) is ignored, like
+  // SheetBar's Save / Add (H-10). A tap more than 0.8 s later works again.
+  const lastPressAt = useRef(0);
   return (
     <AnimatedTO
       activeOpacity={0.85}
@@ -62,6 +65,9 @@ export default function Button({
       onPressOut={() => squeeze(1, 160)}
       testID={testID}
       onPress={() => {
+        const now = Date.now();
+        if (now - lastPressAt.current < 800) return;
+        lastPressAt.current = now;
         if (isPrimary) hapticLight();
         if (isSolidDanger) hapticMedium();
         onPress();

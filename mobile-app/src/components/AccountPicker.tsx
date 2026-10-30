@@ -72,9 +72,13 @@ type Props = {
   mark?: 'required' | 'optional';
 };
 
-export default React.memo(AccountPicker);
+// H-46 (canvas E2): inside a form row it opens as a list from the bottom; picking closes it.
+const MemoAccountPicker: any = React.memo(AccountPicker);
+MemoAccountPicker.listChoice = true;
+export default MemoAccountPicker as typeof AccountPicker;
 
-function AccountPicker({ model, direction, amount, value, onChange, excludeTxnId, label, noCredit, mark, noLabel }: Props) {
+function AccountPicker({ model, direction, amount, value, onChange: onChangeRaw, excludeTxnId, label, noCredit, mark, noLabel, onPicked }: Props & { variant?: 'list'; onPicked?: () => void }) {
+  const onChange = (pm: PaymentMethod) => { onChangeRaw(pm); onPicked?.(); };
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   // Speed sweep: each account's balance goes through your whole history, so it's worked

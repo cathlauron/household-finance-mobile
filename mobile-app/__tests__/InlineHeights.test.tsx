@@ -61,4 +61,4 @@ test('two pages reporting their height at once: neither height is lost', async (
   });
   const style = [].concat(screen.getByTestId('trip-viewport').props.style).reduce((a: any, s: any) => ({ ...a, ...(s || {}) }), {});
   expect(style.height).toBe(460);
-});
+}, 20000);

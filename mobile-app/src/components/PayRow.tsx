@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from './Tap';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,10 +28,15 @@ type Props = {
   addedBy?: string;
   // Version 2.2 (approved P4): true for a moment after this row was just added.
   glow?: boolean;
+  // H-45 (Cath, 2026-10-29, canvas B14): paid. The layout stays; one line runs from the start
+  // of the name to the end of the amount, and the whole row is faded.
+  paid?: boolean;
 };
 
-export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy, glow }: Props) {
+export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy, glow, paid }: Props) {
   const { colors } = useTheme();
+  // Where the name's line sits, so the paid line goes through its middle.
+  const [nameMid, setNameMid] = useState(11);
   const tone = badge
     ? badge.tone === 'overdue'
       ? { color: colors.negative, bg: colors.errorBg }
@@ -47,18 +52,19 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       onPress={onPress}
       activeOpacity={0.6}
       accessibilityRole="button"
-      accessibilityLabel={`${title}${priority ? `, ${priority} priority` : ''}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}`}
+      accessibilityLabel={`${title}${priority ? `, ${priority} priority` : ''}, ${amount}, ${sub}${badge ? `, ${badge.text}` : ''}${paid && !badge ? ', paid' : ''}`}
       style={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]}
     >
       <GradientFill match={[styles.row, { backgroundColor: colors.navy3 }, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }]} />
       {glow && <ArrivalGlow />}
-      <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+      <View style={[styles.tile, { backgroundColor: colors.accentTint }, paid && { opacity: 0.6 }]}>
         <GradientFill match={[styles.tile, { backgroundColor: colors.accentTint }]} />
         <Ionicons name={icon} size={17} color={colors.gold} />
         <WhoBadge by={addedBy} />
       </View>
+      <View style={[styles.content, paid && styles.paidContent]}>
       <View style={styles.main}>
-        <View style={styles.titleRow}>
+        <View style={styles.titleRow} onLayout={(e) => setNameMid(e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}>
           <Text style={[styles.title, { color: colors.ink, flexShrink: 1 }]} numberOfLines={1}>{title}</Text>
           {!!priority && (() => {
             // 2.2 (approved P2): a soft filled pill instead of a thin outline.
@@ -73,6 +79,8 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
         <Text style={[styles.amount, { color: amountColor }]}>{amount}</Text>
         {badge && tone && <Text style={[styles.badge, { color: tone.color, backgroundColor: tone.bg }]}>{badge.text}</Text>}
       </View>
+      {paid && <View pointerEvents="none" testID={testID ? `${testID}-paid-line` : undefined} style={[styles.paidLine, { top: nameMid - 0.75, backgroundColor: colors.ink }]} />}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -81,6 +89,11 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, paddingVertical: 10 },
   tile: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   main: { flex: 1, marginRight: 8 },
+  // The name and the amount side by side; tops lined up so one line can run across both.
+  content: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  // Paid: tops lined up so the line runs straight from the name to the amount; row faded.
+  paidContent: { alignItems: 'flex-start', opacity: 0.6 },
+  paidLine: { position: 'absolute', left: -2, right: -2, height: 1.5, borderRadius: 1, opacity: 0.55 },
   title: { fontSize: 17, fontWeight: '500' },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
   prTag: { marginLeft: 6, fontSize: 11, fontWeight: '700', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },

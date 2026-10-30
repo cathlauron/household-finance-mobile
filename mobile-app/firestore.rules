@@ -315,8 +315,12 @@ service cloud.firestore {
       allow list: if false;
     }
     match /householdRecovery/{requestId} {
+      // K4 / SEC-4 (Cath's OK, 2026-10-27): once a member has sent the key, only the person
+      // who asked can read it; other members only see a request while it's still waiting.
       allow get: if request.auth != null
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members;
+        && (request.auth.uid == resource.data.requesterUid
+            || (resource.data.status == 'pending'
+                && request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members));
 
       allow create: if request.auth != null
         && request.resource.data.requesterUid == request.auth.uid
@@ -327,12 +331,16 @@ service cloud.firestore {
         && request.resource.data.requesterUsername is string
         && request.resource.data.transferSalt is string
         && request.resource.data.createdAt is number
-        && request.resource.data.expiresAt is number;
+        && request.resource.data.expiresAt is number
+        // K4: a request lasts at most 15 minutes (a minute's slack for the phone's clock).
+        && request.resource.data.expiresAt <= request.time.toMillis() + 16 * 60 * 1000;
 
       allow update: if request.auth != null
         && request.auth.uid in get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members
         && request.auth.uid != resource.data.requesterUid
         && resource.data.status == 'pending'
+        // K4: and only while it hasn't run out.
+        && request.time.toMillis() < resource.data.expiresAt
         && request.resource.data.status == 'approved'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'encryptedHouseholdKey', 'approverUid', 'approvedAt'])
         && request.resource.data.encryptedHouseholdKey is string

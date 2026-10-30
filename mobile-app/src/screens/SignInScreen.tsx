@@ -28,6 +28,7 @@ import {
   recoverKeyWithCode,
   saveRecoveryKey,
   generatePeerTransferCode,
+  formatPeerCode,
   createPeerRecoveryRequest,
   cancelPeerRecoveryRequest,
   deletePeerRecoveryRequest,
@@ -845,7 +846,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           <Ionicons name="warning-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
           <Text style={[styles.revokedBannerText, { flex: 1 }]}>{remoteRevokeNotice}</Text>
           {!!onClearRemoteRevokeNotice && (
-            <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={onClearRemoteRevokeNotice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Dismiss this notice">
               <Ionicons name="close" size={16} color={colors.error} style={{ paddingLeft: 8 }} />
             </TouchableOpacity>
           )}
@@ -1049,11 +1050,11 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                       </View>
                       <Text style={styles.peerWaitingTitle}>Waiting for approval…</Text>
                       <Text style={styles.peerWaitingDesc}>
-                        Ask another household member to open Settings &gt; Household and enter this code:
+                        Read this code to another household member (in person or on a call). They open Settings &gt; Household and type it in. It works for 15 minutes, and only this phone can open what they send back.
                       </Text>
                       <View style={styles.transferCodeBox}>
                         <Text style={styles.transferCodeText}>
-                          {peerTransferCode.slice(0, 3)} - {peerTransferCode.slice(3)}
+                          {formatPeerCode(peerTransferCode)}
                         </Text>
                       </View>
                       <TouchableOpacity

@@ -20,11 +20,12 @@ import { db } from './firebase';
 import { splitModel, joinParts, partTexts, extraReceiptPhotos } from './householdParts';
 import { saveParts, loadParts, deleteAllParts, migrateToParts, reportMemberVersion, PartTooBigError } from './householdCloudParts';
 import type { HouseholdModel } from './types';
-import { partsEnabledFor, everyoneReadsParts, EXTRA_RECEIPTS_VERSION } from './partsGate';
+import { partsEnabledFor, everyoneReadsParts, EXTRA_RECEIPTS_VERSION, ENVELOPE_READER_VERSION } from './partsGate';
 
 // What this phone reports in memberVersions (2.2: reads parts for every account; 3.0: also
 // reads the receipt parts of shared expenses, payments and trip items).
-export const PARTS_APP_VERSION = EXTRA_RECEIPTS_VERSION;
+// 3.2: also reads the tamper-checked saves.
+export const PARTS_APP_VERSION = ENVELOPE_READER_VERSION;
 
 // Who has parts switched on: see partsGate.ts.
 export { partsEnabledFor };
