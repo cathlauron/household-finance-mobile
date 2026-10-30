@@ -1,6 +1,8 @@
 import { hapticSelection } from '../haptics';
 import { measureSignInSpeed, speedText } from '../signInSpeed';
 import { animateNextLayout } from '../animateLayout';
+import { APP_VERSION } from '../appVersion';
+import { PRIVACY_URL, DELETE_ACCOUNT_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -93,7 +95,6 @@ const COLOR_PALETTE = [
 // ---- Appearance mode options ----
 // Backed entirely by ThemeContext's existing setMode()/mode — this just gives it a UI.
 // Keep in step with "version" in app.json (shown under About).
-const APP_VERSION = '3.1.0';
 
 const MODE_OPTIONS: { id: 'light' | 'dark' | 'device'; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -1654,7 +1655,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         {/* Version 2.2 (Cath): swipe to delete was removed entirely; delete from an item's
             own page or its Edit form instead. */}
 
-        <SettingsGroup plain footer="More languages are coming later.">
+        <SettingsGroup plain>
           <PlainRow title="Language" value="English" />
         </SettingsGroup>
         </>
@@ -2023,8 +2024,24 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             }}
           />
         </SettingsGroup>
-        <SettingsGroup plain footer="Household budgeting for you and the people you share a home with.">
-          <PlainRow title="Help & guides" value="Coming soon" />
+        {/* Mockup H1 (Cath, 2026-10-29): Help & FAQ replaces "Help & guides: Coming soon";
+            the privacy policy and account deletion pages the app stores ask for live here. */}
+        <SettingsGroup plain>
+          <PlainRow testID="settings-help-faq" title="Help & FAQ" sub="Answers to common questions" onPress={() => navigation.push('HelpFaq')} />
+        </SettingsGroup>
+        <SettingsGroup label="Your data" plain footer="Household budgeting for you and the people you share a home with.">
+          <PlainRow
+            testID="settings-privacy"
+            title="Privacy policy"
+            sub="Opens in your browser"
+            onPress={() => { Linking.openURL(PRIVACY_URL).catch(() => Alert.alert('Privacy policy', PRIVACY_URL)); }}
+          />
+          <PlainRow
+            testID="settings-delete-account"
+            title="Delete account"
+            sub="How to delete your account and data"
+            onPress={() => { Linking.openURL(DELETE_ACCOUNT_URL).catch(() => Alert.alert('Delete account', DELETE_ACCOUNT_URL)); }}
+          />
         </SettingsGroup>
         {/* K5 (Cath, 2026-10-27): try the stronger password lock's speed before choosing it. */}
         <SettingsGroup plain footer="Times the password step on this phone at today's strength and two stronger ones. Uses a made-up password; nothing changes.">
