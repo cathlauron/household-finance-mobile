@@ -210,3 +210,20 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
    Debts, Loans, Plans), every account, then every item still to go out (past due first).
    Tap an item: its own page opens.
 3. Guest mode only: Home's "You picked" hides a step once you've added it (a bill, a debt...).
+
+## 16. Batch 2026-10-29 (evening): E2, D2, F2 + F3. NOT YET TESTED.
+
+1. Dropdowns (E2): in any form (new bill, debt, loan, income, pot, shared expense, investment,
+   event, the pay sheet), tap a row with choices (Category, Repeats, Paid from, Type...): a
+   list rises from the bottom, the chosen one ticked; tap one and it closes. Date rows still
+   open the calendar.
+2. New transaction: type "Jollibee" (or a name you've used before): Category is picked for you
+   with a "Suggested" tag; change it if it's wrong.
+3. Edit loan (D2): "Log a payment" opens the usual pay sheet and saves right away; tap a
+   payment: Edit payment opens (receipt, higher amount, date, account). The x shows only in
+   the first 15 minutes.
+4. Household changes (F2 + F3), needs your partner's phone: your partner adds a transaction,
+   pays a bill and edits a trip item. Close Finance Flow on your phone and open it again (or
+   come back to it): a banner drops in, "[Name] changed 3 things". Tap it: the list. Tap a
+   change: its page opens. Open the app again: the banner doesn't come back for the same
+   changes.
