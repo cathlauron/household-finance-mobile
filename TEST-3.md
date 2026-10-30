@@ -275,3 +275,13 @@ Only if 1-3 are as described, make the build (3.2.0) and on the INSTALLED app:
 4. Settings › About & Help › Check sign-in speed: send Claude the three times it shows.
 5. Repeat 1 on the installed app (the peel on a real build), and check that sign-in,
    fingerprint/PIN and the household still work as before.
+6. Quick Unlock, short check (old PROGRESS5 Step 6 list, Cath 2026-10-30), on the installed app:
+   a. Close the app fully and open it again: PIN / fingerprint unlock appears and works.
+   b. Log out and log back in: your data is all there.
+   c. From the other phone (Settings › Account & Security › Active devices), sign this
+      phone out: this phone goes to the sign-in screen next time it opens.
+   d. Type a wrong PIN 5 times: it stops offering the PIN and asks for your password.
+   e. Airplane mode on, open the app: it opens from the phone's copy; airplane mode off:
+      your changes sync.
+7. Updates: after the build is installed, open the app, close it, open it again: nothing
+   changes yet (there is no update yet). This just confirms it opens normally.
