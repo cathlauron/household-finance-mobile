@@ -54,6 +54,8 @@ import {
   saveHouseholdData,
   saveWrappedHouseholdKey,
   addMemberToHousehold,
+  getHouseholdMemberCount,
+  deleteHousehold,
 } from './household';
 import { updateProfileHouseholdId, savePendingHostLink, loadPendingHostLink, clearPendingHostLink, loadProfilesIndex } from './storage';
 import { saveProfileCloudBackup } from './cloudBackup';
@@ -438,11 +440,29 @@ export async function linkCodeUse(code: string): Promise<'used' | 'unused' | 'un
 
 export async function cancelLinkCode(code: string): Promise<void> {
   if (!code) return;
+  // Cath, 2026-10-30 (answer 13): a new-household code made a household record straight
+  // away; when the code was never used, that record was left behind empty. Now, when an
+  // unused code is put away, the household made for it goes too (only while the inviter is
+  // still its only member). The code goes first, so nobody can join while this happens.
+  let made: { householdId: string } | null = null;
+  try {
+    const snap = await getDoc(doc(db, 'linkCodes', code));
+    const d = snap.exists() ? (snap.data() as { existingHouseholdId?: string; isInvite?: boolean; finished?: boolean; hostUid?: string }) : null;
+    const me = getCurrentFirebaseUser()?.uid;
+    if (d && !d.isInvite && !d.finished && d.existingHouseholdId && me && d.hostUid === me) made = { householdId: d.existingHouseholdId };
+  } catch (e) {}
   try {
     await deleteDoc(doc(db, 'linkCodes', code));
   } catch (e: any) {
     // SEC-7: the code itself is never written to the log.
     console.warn('Could not delete a link code:', e?.message || e);
+    return;
+  }
+  if (!made) return;
+  try {
+    if ((await getHouseholdMemberCount(made.householdId)) === 1) await deleteHousehold(made.householdId);
+  } catch (e) {
+    // Not fatal: an empty record left behind changes nothing for anyone.
   }
 }
 
