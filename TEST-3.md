@@ -227,3 +227,36 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
    come back to it): a banner drops in, "[Name] changed 3 things". Tap it: the list. Tap a
    change: its page opens. Open the app again: the banner doesn't come back for the same
    changes.
+
+## 17. Batch 2026-10-29 (Batch 1+): store basics, Help & FAQ (H1), peel-off switches (K2e). NOT YET TESTED.
+
+1. Settings › About & Help: no "Coming soon". Rows: Contact support, Copy email address,
+   Help & FAQ, then "Your data": Privacy policy and Delete account. ("More languages are coming
+   later" under Language is gone too.)
+2. Help & FAQ: tap a question: the answer opens under it and the rows below glide down; tap
+   again: it closes. Type "undo" in Search help: only the undo question is left. Type
+   nonsense: "No answers match that". Contact support opens your email app.
+3. Privacy policy and Delete account open your browser. They only work after the web pages
+   are published (step 6 in the report); before that the browser shows "Page not found".
+4. Settings › your profile › Appearance (peel-off switches, K2e). Theme now has two stickers:
+   Match my phone (Off) and Dark mode (☀ Light).
+   a. Put your finger on the top-right corner of Dark mode and drag slowly down-left: the
+      sticker peels, and the whole screen peels from its top-right corner, the dark page
+      showing underneath. Let go before halfway: everything settles back, still light.
+   b. Drag past halfway and let go (or just tap it once: one steady peel): the app turns
+      dark with no flash. The sticker now says ☾ Dark in green.
+   c. Peel the green Dark sticker the same way: the light page peels into view; it turns
+      light again.
+   d. Peel Match my phone on: Dark mode greys out and follows your phone's own setting.
+      Peel it off again.
+   e. Time-of-day glow, Live weather, Rain animation, Mood colours and Falling leaves peel the
+      same way (no screen peel for these). Live weather with location off: it goes back to
+      Off and explains why.
+   f. While you hold a sticker, the page doesn't scroll.
+   g. Phone set to Remove animations / Reduce motion: tapping a sticker turns it on/off at
+      once; dragging still follows your finger.
+5. Look around: the rest of Settings, Home and the + form are as before.
+
+Needs your phone: the feel of the peel (speed, the curl, the shadow), dragging diagonally
+(the hidden browser cancels diagonal touch drags; a phone shouldn't), TalkBack/VoiceOver
+reading "Dark mode, switch, off" and a double tap turning it on.

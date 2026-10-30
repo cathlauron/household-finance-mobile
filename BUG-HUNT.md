@@ -195,3 +195,12 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 - H-45: neither B3 nor B4. New options on the canvas: B5-B10 (her idea first: amount beside the name, one clean line through both). Waiting for her pick.
 - H-54 (new): tapping Left to Spend opens a detailed "why" page (e.g. why it's over). Mockups L1 (why + every item), L2 (bars from what you have to what's left), L3 (day by day: when it goes below zero). Waiting for her pick.
 - Cath picked B14 (H-45) and L4 (H-54), 2026-10-29.
+
+- 2026-10-29 (Batch 1+ sweep, store readiness): H-55 iPad layout is stretched full width
+  (works, nothing cut off; centred column = mockup first, see SMOOTH-HUNT). H-56 the web
+  pages (support, privacy, delete account) aren't live until published to Firebase
+  Hosting (Cath runs the deploy). H-57 privacy and delete-account pages hold 3 choices for
+  Cath to confirm: deletion "within 30 days", "not meant for children under 13", and what
+  happens to items a member added to a shared household (written neutrally until she
+  decides; same question as the in-app Delete account in batch 2). Data, rules, idle lock
+  and hidden amounts untouched; no Firestore, sync or encryption code changed.
