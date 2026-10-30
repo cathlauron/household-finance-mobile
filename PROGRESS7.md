@@ -1350,3 +1350,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   prepared one-command rules test on her PC (needs Java 11+), or another way.
   NOT STARTED: K3 + K5 steps 1-8, the 17 missing checks, the fresh bug hunt.
   Web pages changed (support.html, delete-account.html): publish hosting again with the update.
+
+- NEWEST (2026-10-30, 01:38): Cath APPROVED mockup FP (Forgot password with the warning before
+  the email; "Confirm your email" note at the top of Settings, hides for a week on ✕). Build it
+  in batch 2. Still waiting: her answer (a) one-command rules test on her PC / (b) 3-account
+  real test, for K3.
