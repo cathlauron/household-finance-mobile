@@ -188,6 +188,9 @@ export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMe
 // Firebase allows 1 MB (1,048,576 bytes) per stored item. The encrypted data is plain
 // text, so its length is its size; a little room is left for the item's other fields.
 export const STORAGE_LIMIT_CHARS = 1_000_000;
+// H-04: the online save took longer than 8 seconds (it carries on in the background).
+const SYNC_SLOW = 'Timed out waiting for the shared household to sync.';
+export const STILL_SAVING = "Still saving… it will finish when the connection allows.";
 const STORAGE_WARN_AT = 0.8;
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -1120,8 +1123,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Deliberately not awaited — this shouldn't hold up the household sync below — but a
       // failure here is no longer swallowed silently, since this snapshot is what offline app
       // launch, household dissolution, and account recovery all fall back to reading.
+      // H-06 (Cath, 2026-10-30: fix): started first, and this save's turn now waits for it at
+      // the end (below), so the phone's copy is always written before the change counts as
+      // saved (Log out / Switch account / going to the background wait for it too).
+      let phoneCopy: Promise<unknown> = Promise.resolve();
       if (key) {
-        encryptJSON(key, sanitizedModel)
+        phoneCopy = encryptJSON(key, sanitizedModel)
           .then((personalEncrypted) =>
             withTimeout(
               saveEncryptedProfileData(username, personalEncrypted),
@@ -1159,12 +1166,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         rememberWaitingBase(username, key, base);
         if (stillHere()) setPendingChanges((n) => n + 1);
       } else {
-        try {
-          const res = await withTimeout(
-            pushHousehold(householdId, householdKey, sanitizedModel, encrypted, base, baseText),
-            8000,
-            'Timed out waiting for the shared household to sync.'
-          );
+        const push = pushHousehold(householdId, householdKey, sanitizedModel, encrypted, base, baseText);
+        const sent = (res: { model: HouseholdModel; merged: boolean }) => {
           // The whole household was just sent, so nothing is waiting any more.
           forgetWaitingBase(username);
           partsAfterSave(username, householdId, householdKey, res.model).catch(() => {});
@@ -1172,9 +1175,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             settleMerged(res, sanitizedModel, version, username, key);
             setPendingChanges(0);
           }
-        } catch (err) {
-          rememberWaitingBase(username, key, base);
-          if (stillHere()) setPendingChanges((n) => n + 1);
+        };
+        const failed = async () => {
           // (Not after Log out / Switch account: that save is no longer this screen's.)
           if (onlineRef.current && !(await treatAsOfflineIfUnreachable()) && stillHere()) {
             Alert.alert(
@@ -1182,10 +1184,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
               'Your changes were saved locally on this device, but could not be synced to the shared household. Please check your connection.'
             );
           }
+        };
+        try {
+          sent(await withTimeout(push, 8000, SYNC_SLOW));
+        } catch (err) {
+          rememberWaitingBase(username, key, base);
+          if (stillHere()) setPendingChanges((n) => n + 1);
+          if (err instanceof Error && err.message === SYNC_SLOW) {
+            // H-04 (Cath, 2026-10-30: fix): a slow connection isn't a failure. Say it's still
+            // saving, and only say "Sync Failed" if it really doesn't arrive.
+            if (stillHere()) showSaved(STILL_SAVING);
+            push.then(sent, failed);
+          } else {
+            await failed();
+          }
         }
       }
 
       if (stillHere()) rescheduleBillNotifications(sanitizedModel).catch(() => {});
+      await phoneCopy.catch(() => {});
 
       // The online note of this profile's salt and household. Version 2.2: sent once,
       // and again only when either changes (it used to be re-sent after every tap).
