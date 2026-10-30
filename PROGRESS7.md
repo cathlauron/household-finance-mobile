@@ -1244,3 +1244,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   (crypto-js AES/PBKDF2 = standard algorithms outside Apple's) + ITSAppUsesNonExempt-
   Encryption (Cath + Claude); A6 Sign in with Apple not needed (HAVE); A7 EU trader
   status (Cath). Recommended: Forgot password / email check, App Check.
+
+- NEWEST (2026-10-29, 17:49): CATH'S ANSWERS. No Google Play developer account yet; no
+  Apple developer account yet; iPad: YES (keep supportsTablet true -> iPad layout check +
+  iPad screenshots); iPhone app ID = com.cathlauron.householdfinance (same as Android);
+  Premium: NOT hidden now; she will deal with it before uploading to the stores (reading:
+  real payments before upload; to confirm). She APPROVED mockups K2e (corner peel) and H1
+  (Help & FAQ + support page). She asked what can be done before / alongside batch 1;
+  suggested plan given in chat, waiting for her OK.
