@@ -75,7 +75,7 @@ export const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'How do I delete my account?',
-        a: 'Email support from the address you signed up with and ask us to delete your account. Our website explains every step and what gets deleted: household-finance-mobile.web.app/delete-account',
+        a: 'Settings › About & Help › Delete account. It shows what gets deleted and what stays, then asks for your password. Without the app, email support from the address you signed up with: household-finance-mobile.web.app/delete-account',
       },
     ],
   },

@@ -16,6 +16,7 @@ import ReportDetailScreen, { MoreReportsScreen } from '../screens/ReportDetailSc
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import HelpFaqScreen from '../screens/HelpFaqScreen';
+import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import SharedExpensesScreen from '../screens/SharedExpensesScreen';
@@ -57,6 +58,7 @@ export type RootStackParamList = {
   SettingsPage: { subPage: string };
   Premium: undefined;
   HelpFaq: undefined;
+  DeleteAccount: undefined;
   TransactionDetail: { id: string };
   Search: undefined;
   Review: undefined;
@@ -196,6 +198,8 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
     () => <ProfileScreen onLock={actions.onLock} onSignOut={actions.onSignOut} onSwitchAccount={actions.onSwitchAccount} />,
     [actions]
   );
+  // Delete account (DA1): when it's done, "Back to the start" signs out like Log out does.
+  const renderDeleteAccount = React.useCallback(() => <DeleteAccountScreen onDone={actions.onSignOut} />, [actions]);
   const renderSettings = React.useCallback(
     () => <SettingsScreen onSignOut={actions.onSignOut} onSwitchAccount={actions.onSwitchAccount} onLock={actions.onLock} />,
     [actions]
@@ -303,6 +307,9 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
       <Stack.Screen name="CardDetail" component={CardDetailScreen} options={{ title: '', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Transfer" component={TransferScreen} options={{ headerShown: false }} />
       <Stack.Screen name="TransferDetail" component={TransferDetailScreen} options={{ title: '', headerBackTitle: 'Transactions' }} />
+      <Stack.Screen name="DeleteAccount" options={{ title: 'Delete account', headerBackTitle: 'About & Help' }}>
+        {renderDeleteAccount}
+      </Stack.Screen>
       <Stack.Screen name="HelpFaq" component={HelpFaqScreen} options={{ title: 'Help & FAQ', headerBackTitle: 'About & Help' }} />
       <Stack.Screen name="LeftToSpend" component={LeftToSpendScreen} options={{ title: 'Left to spend', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />

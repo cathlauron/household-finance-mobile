@@ -40,7 +40,7 @@ test('About & Help: no "Coming soon"; Help & FAQ, privacy policy and delete acco
   fireEvent.press(screen.getByTestId('settings-privacy'));
   expect(open).toHaveBeenCalledWith('https://household-finance-mobile.web.app/privacy');
   fireEvent.press(screen.getByTestId('settings-delete-account'));
-  expect(open).toHaveBeenCalledWith('https://household-finance-mobile.web.app/delete-account');
+  expect(mockPush).toHaveBeenCalledWith('DeleteAccount');
 }, 30000);
 
 test('a question opens in place and closes again', async () => {

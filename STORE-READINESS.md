@@ -12,7 +12,7 @@ CATH = an account, form or decision only Cath can do.
 | # | Requirement | Status | Notes |
 |---|---|---|---|
 | B1 | Privacy policy: a public web page, plus a link inside the app | BUILT, NOT LIVE (2026-10-29) | Host at household-finance-mobile.web.app/privacy (existing Firebase site). Cath must read and approve the text. |
-| B2 | Account deletion inside the app (Apple 5.1.1(v); Google User Data policy) | MISSING | Today there is only "Clear all data" and "Leave household". Deletes data, so it needs a mockup and Cath's OK first. Open question: what happens to a shared household when one member deletes. |
+| B2 | Account deletion inside the app (Apple 5.1.1(v); Google User Data policy) | BUILT 2026-10-30 (DA1), in the next update | Today there is only "Clear all data" and "Leave household". Deletes data, so it needs a mockup and Cath's OK first. Open question: what happens to a shared household when one member deletes. |
 | B3 | Account deletion web page, usable without the app (Google) | BUILT, NOT LIVE (by email) | e.g. household-finance-mobile.web.app/delete-account: steps, or a request by email. |
 | B4 | Support page with real contact details (Apple Support URL; Play contact) | BUILT, NOT LIVE | Support email exists: support.financeflow00@gmail.com. Needs the web page: mockup H1 (/support). |
 | B5 | No placeholders or unfinished screens (Apple 2.1) | DONE except "Check sign-in speed" (remove after timing) | "Help & guides: Coming soon" (About & Help) has to go: mockup H1. "Check sign-in speed" is a developer tool: remove it after Cath times it. |

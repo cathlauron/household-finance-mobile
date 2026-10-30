@@ -4,7 +4,7 @@ import { animateNextLayout } from '../animateLayout';
 import { APP_VERSION } from '../appVersion';
 import { useHelpSeen, markHelpSeen } from '../helpSeen';
 import AppearancePage, { type ScrollFrame } from './AppearancePage';
-import { PRIVACY_URL, DELETE_ACCOUNT_URL } from '../helpFaq';
+import { PRIVACY_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -1962,8 +1962,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             tile={colors.negative}
             danger
             title="Delete account"
-            sub="How to delete your account and data"
-            onPress={() => { Linking.openURL(DELETE_ACCOUNT_URL).catch(() => Alert.alert('Delete account', DELETE_ACCOUNT_URL)); }}
+            sub="Your account, and what happens to your data"
+            onPress={() => navigation.push('DeleteAccount')}
           />
         </SettingsGroup>
         {/* K5 (Cath, 2026-10-27): try the stronger password lock's speed before choosing it. */}
