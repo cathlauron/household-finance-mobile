@@ -190,6 +190,8 @@ export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMe
 export const STORAGE_LIMIT_CHARS = 1_000_000;
 // H-04: the online save took longer than 8 seconds (it carries on in the background).
 const SYNC_SLOW = 'Timed out waiting for the shared household to sync.';
+// The guest's first entry is seen in its list (it slides in and glows) before the sheet rises.
+const GUEST_SHEET_AFTER_MS = 700;
 export const STILL_SAVING = "Still saving… it will finish when the connection allows.";
 const STORAGE_WARN_AT = 0.8;
 
@@ -1078,8 +1080,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (guestRef.current) {
       const entry = describeNewEntry(latestModelRef.current, sanitizedModel);
       // (The background tester's made-up household saves without asking: web only.)
-      if (entry && !walkFixtureOn) setGuestRequest({ model: sanitizedModel, entry });
-      else setModel(sanitizedModel);
+      setModel(sanitizedModel);
+      // Cath, 2026-10-30 (answer 9): the new entry shows in its list first (it's on this phone,
+      // not saved yet), then "Keep your first entry safe" rises over it.
+      if (entry && !walkFixtureOn) setTimeout(() => setGuestRequest({ model: sanitizedModel, entry }), GUEST_SHEET_AFTER_MS);
       return;
     }
     // Code review fix: a late save after Log out / Switch account (no one signed in) changes

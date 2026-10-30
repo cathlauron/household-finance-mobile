@@ -23,7 +23,7 @@ export default function GuestSaveSheet({ onContinue }: { onContinue: () => void 
         </View>
         <Text style={[s.title, { color: colors.ink }]}>Keep your first entry safe</Text>
         <Text style={[s.body, { color: colors.inkDim }]}>
-          Sign in so it's locked with your password and backed up. Your {what} waits right here.
+          Your {what} is in your list on this phone, not saved yet. Sign in so it's locked with your password and backed up.
         </Text>
         <TouchableOpacity onPress={onContinue} style={[s.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button" testID="guest-continue-email">
           <Ionicons name="mail-outline" size={20} color={colors.onButton} />
