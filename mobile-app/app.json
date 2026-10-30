@@ -4,6 +4,14 @@
     "slug": "mobile-app",
     "scheme": "financeflow",
     "version": "3.2.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fc22064f-0d07-4d26-814d-61d99dbe6efd",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

@@ -25,3 +25,13 @@ test('iPad: supported, kept upright and full screen like the iPhone (no upload e
   assert.equal(expo.orientation, 'portrait');
   assert.equal(expo.ios.requireFullScreen, true);
 });
+
+test('EAS Update (Cath, 2026-10-30): updates come from this project, only to builds of the same app version, per build kind', () => {
+  const { expo } = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8'));
+  assert.equal(expo.updates.url, `https://u.expo.dev/${expo.extra.eas.projectId}`);
+  assert.deepEqual(expo.runtimeVersion, { policy: 'appVersion' });
+  const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8'));
+  assert.equal(eas.build.preview.channel, 'preview');
+  assert.equal(eas.build.production.channel, 'production');
+  assert.notEqual(eas.build['preview-v2'].channel, 'preview', 'the side-by-side test app must not get the main app updates');
+});
