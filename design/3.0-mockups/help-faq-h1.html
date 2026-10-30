@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Help &amp; FAQ: mockup H1</title>
+<style>
+:root { --page:#EEF0EC; --ink:#16201A; --muted:#5B675F; --accent:#2E6B47; --line:#D5DBD6; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink); font-family:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif; font-size:15px; line-height:1.5; padding:28px 16px 48px; }
+header { max-width:1180px; margin:0 auto 22px; }
+.eyebrow { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+h1 { font-size:30px; line-height:1.15; margin:4px 0 8px; }
+header p { margin:0 0 8px; color:var(--muted); max-width:82ch; }
+.grid { max-width:1180px; margin:0 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; align-items:start; }
+@media (max-width:1100px){ .grid{ grid-template-columns:minmax(0,1fr); justify-items:center; } }
+.col { display:grid; gap:10px; justify-items:center; }
+.col h2 { font-size:18px; margin:0; text-align:center; }
+.col > p { margin:0; color:var(--muted); font-size:14px; text-align:center; max-width:38ch; }
+.phone { width:360px; max-width:100%; height:700px; border-radius:40px; background:#F2F2F7; color:#111; box-shadow:0 18px 50px rgba(0,0,0,.18); overflow:hidden auto; position:relative; }
+.top { padding:44px 20px 0; color:var(--accent); font-size:17px; }
+.big { padding:6px 20px 10px; font-size:30px; font-weight:700; }
+.glabel { margin:16px 32px 6px; font-size:13px; color:#636366; text-transform:uppercase; letter-spacing:.3px; }
+.grp { margin:0 16px; background:#fff; border-radius:16px; overflow:hidden; }
+.row { display:flex; align-items:center; gap:12px; min-height:52px; padding:10px 16px; width:100%; border:0; background:none; font:inherit; color:inherit; text-align:left; }
+.row + .row, .qa + .qa { border-top:.5px solid #D1D1D6; }
+.row .t { flex:1; font-size:17px; }
+.row .sub { display:block; font-size:13px; color:#636366; }
+.row .chev { color:#C7C7CC; font-size:20px; }
+.row.accent .t { color:var(--accent); font-weight:600; }
+.row.danger .t { color:#C4302B; }
+.ico { width:30px; height:30px; border-radius:8px; display:grid; place-items:center; color:#fff; font-size:15px; flex:none; }
+.foot { margin:8px 32px 0; font-size:13px; color:#636366; line-height:18px; }
+.logo { text-align:center; padding:4px 0 6px; }
+.logo .mark { width:64px; height:64px; border-radius:18px; background:linear-gradient(160deg,#2E6B47,#1b372c); margin:0 auto 6px; display:grid; place-items:center; color:#fff; font-weight:800; font-size:24px; }
+.logo small { color:#636366; }
+.new { font-size:11px; font-weight:800; color:#fff; background:var(--accent); border-radius:999px; padding:2px 8px; margin-left:6px; vertical-align:2px; }
+.search { margin:4px 16px 0; background:#E3E3E8; border-radius:12px; padding:10px 12px; color:#636366; display:flex; gap:8px; align-items:center; }
+.search input { border:0; background:transparent; font:inherit; color:#111; flex:1; outline:none; min-width:0; }
+.qa button { width:100%; display:flex; gap:10px; align-items:center; text-align:left; border:0; background:none; font:inherit; font-size:16px; color:#111; padding:14px 16px; min-height:52px; cursor:pointer; }
+.qa button span:first-child { flex:1; }
+.qa button .arrow { flex:none; }
+.qa .arrow { color:#8E8E93; transition:transform .25s cubic-bezier(.32,.72,0,1); }
+.qa.open .arrow { transform:rotate(90deg); }
+.qa .a { display:grid; grid-template-rows:0fr; transition:grid-template-rows .3s cubic-bezier(.32,.72,0,1); }
+.qa.open .a { grid-template-rows:1fr; }
+.qa .a > div { overflow:hidden; padding:0 16px; color:#3A3A3C; font-size:15px; }
+.qa.open .a > div { padding-bottom:14px; }
+@media (prefers-reduced-motion:reduce){ .qa .a, .qa .arrow { transition:none; } }
+.empty { margin:24px 32px; color:#636366; text-align:center; display:none; }
+.web { width:360px; max-width:100%; background:#fff; border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.14); overflow:hidden; }
+.web .bar { background:#E9EAEC; padding:8px 12px; font-size:12px; color:#555; display:flex; gap:6px; align-items:center; }
+.web .bar b { background:#fff; border-radius:999px; padding:3px 10px; font-weight:600; flex:1; text-align:center; }
+.web .body { padding:22px 20px 26px; }
+.web h3 { margin:0 0 4px; font-size:22px; }
+.web h4 { margin:18px 0 6px; font-size:15px; color:var(--accent); text-transform:uppercase; letter-spacing:.04em; }
+.web p { margin:0 0 8px; color:#3A3A3C; font-size:14px; }
+.web .links { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
+.web .links a { font-size:13px; font-weight:700; color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:6px 12px; text-decoration:none; }
+.web details { border-top:1px solid #E5E5EA; padding:10px 0; }
+.web summary { cursor:pointer; font-weight:700; font-size:14px; }
+.note { max-width:1180px; margin:26px auto 0; background:#fff; border-radius:16px; padding:16px 20px; color:var(--muted); font-size:14px; }
+.note b { color:var(--ink); }
+button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Finance Flow 3.2 · mockup H1 · try it</div>
+  <h1>Help &amp; FAQ, and the support page the stores need</h1>
+  <p>The app store needs a real support page and a privacy policy, and "Help &amp; guides: Coming soon" has to go. This shows the same answers in two places: inside the app (Settings › About &amp; Help) and on the web page the stores link to.</p>
+  <p>The answers are a <b>first draft for you to change</b>. Tap a question to open it, or type in the search box.</p>
+</header>
+
+<div class="grid">
+  <div class="col">
+    <h2>1 · About &amp; Help</h2>
+    <p>"Coming soon" is replaced. Privacy policy and Delete account are added here, where the stores expect to find them.</p>
+    <div class="phone" aria-label="About and Help screen">
+      <div class="top">‹ Settings</div>
+      <div class="big">About &amp; Help</div>
+      <div class="logo"><div class="mark">F</div><small>Version 3.2.0</small></div>
+      <div class="grp">
+        <button class="row" type="button"><span class="ico" style="background:#2E6B47">?</span><span class="t">Help &amp; FAQ<span class="new">New</span><span class="sub">Answers to common questions</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="ico" style="background:#3A7CA5">✉</span><span class="t">Contact support<span class="sub">support.financeflow00@gmail.com</span></span><span class="chev">›</span></button>
+        <button class="row accent" type="button"><span class="t">Copy email address</span></button>
+      </div>
+      <div class="foot">"Contact support" opens your email app with the address filled in and the version in the subject. Nothing from your data is sent.</div>
+      <div class="glabel">Your data</div>
+      <div class="grp">
+        <button class="row" type="button"><span class="ico" style="background:#6E6E73">⚿</span><span class="t">Privacy policy<span class="sub">Opens in your browser</span></span><span class="chev">›</span></button>
+        <button class="row danger" type="button"><span class="ico" style="background:#C4302B">✕</span><span class="t">Delete account<span class="sub" style="color:#636366">Designed separately, needs your OK first</span></span><span class="chev">›</span></button>
+      </div>
+      <div class="foot">Household budgeting for you and the people you share a home with.</div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>2 · Help &amp; FAQ inside the app</h2>
+    <p>Grouped questions that open in place (no new page per answer), with search on top and "Still stuck?" at the bottom.</p>
+    <div class="phone" aria-label="Help and FAQ screen">
+      <div class="top">‹ About &amp; Help</div>
+      <div class="big">Help &amp; FAQ</div>
+      <label class="search"><span aria-hidden="true">⌕</span><input id="q" type="search" placeholder="Search help" aria-label="Search help"></label>
+      <div id="faq"></div>
+      <div class="empty" id="empty">No answers match that. Try another word, or write to us below.</div>
+      <div class="glabel">Still stuck?</div>
+      <div class="grp" style="margin-bottom:28px">
+        <button class="row" type="button"><span class="ico" style="background:#3A7CA5">✉</span><span class="t">Contact support<span class="sub">We usually reply within 2 days</span></span><span class="chev">›</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>3 · The web support page</h2>
+    <p>The same answers at household-finance-mobile.web.app/support (your existing Firebase site), with links to the privacy policy and account deletion page. This is the link both stores ask for.</p>
+    <div class="web" aria-label="Support web page">
+      <div class="bar"><span>🔒</span><b>household-finance-mobile.web.app/support</b></div>
+      <div class="body">
+        <h3>Finance Flow support</h3>
+        <p>Household budgeting for you and the people you share a home with.</p>
+        <div class="links"><a href="#">Email support</a><a href="#">Privacy policy</a><a href="#">Delete your account</a></div>
+        <h4>Frequently asked</h4>
+        <div id="webfaq"></div>
+        <p style="margin-top:14px;font-size:13px;color:#636366">Write to support.financeflow00@gmail.com. Never send your password or Recovery Key.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note"><b>What needs your answer before I build this:</b> the wording of each answer; whether "We usually reply within 2 days" is a promise you want to make; and the Delete account design, which comes as its own mockup because it deletes data.</div>
+
+<script>
+const FAQ = [
+  ['Getting started', [
+    ['Do I need an account?', 'No. You can start as a guest and everything stays on this phone. Make an account when you want your data backed up or shared with your household.'],
+    ['How do I add my first transaction?', 'Tap the + button on Home and choose Transaction. Paying a bill, debt or loan from its page adds the transaction for you.'],
+  ]],
+  ['Household', [
+    ['How do I share with my household?', 'Settings › Profile › Household › Invite someone. They scan the QR code or open the invite link, and you both see the same budget.'],
+    ['Who added this?', 'Every item shows a small tag with who added it, so you can tell your entries from your household\'s.'],
+  ]],
+  ['Money and Left to Spend', [
+    ['What is Left to Spend?', 'What your accounts hold now, minus everything still due before your next payday: bills, debts, loan payments, plans, savings and lists. Tap the amount to see every item.'],
+    ['I made a mistake on a payment. Can I undo it?', 'Yes, for 15 minutes after you log it. After that, open the payment from its history and edit it instead.'],
+  ]],
+  ['Privacy and security', [
+    ['Who can see my money data?', 'Only you and the people in your household. Your data is locked with your password before it leaves your phone.'],
+    ['What is the Recovery Key?', 'A backup key that unlocks your data if you can\'t use your password. Keep it somewhere safe and never share it, not even with support.'],
+    ['Why do my amounts hide after a while?', 'If the app sits unused, amounts hide to keep them private. Unlock with your PIN, fingerprint or Face ID to see them again.'],
+  ]],
+  ['Your account', [
+    ['How do I delete my account?', 'Settings › About & Help › Delete account. You can also ask on our website without the app installed.'],
+  ]],
+];
+function render(el, web) {
+  el.innerHTML = '';
+  FAQ.forEach(([group, items]) => {
+    if (web) {
+      items.forEach(([q, a]) => { const d = document.createElement('details'); d.innerHTML = `<summary>${q}</summary><p style="margin-top:6px">${a}</p>`; el.appendChild(d); });
+      return;
+    }
+    const label = document.createElement('div'); label.className = 'glabel'; label.textContent = group; el.appendChild(label);
+    const grp = document.createElement('div'); grp.className = 'grp';
+    items.forEach(([q, a], i) => {
+      const box = document.createElement('div'); box.className = 'qa'; box.dataset.text = (q + ' ' + a).toLowerCase();
+      const id = 'a' + group.length + '-' + i;
+      box.innerHTML = `<button type="button" aria-expanded="false" aria-controls="${id}"><span>${q}</span><span class="arrow" aria-hidden="true">›</span></button><div class="a" id="${id}" role="region"><div>${a}</div></div>`;
+      box.querySelector('button').addEventListener('click', (e) => { const open = box.classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', String(open)); });
+      grp.appendChild(box);
+    });
+    el.appendChild(grp);
+  });
+}
+render(document.getElementById('faq'), false);
+render(document.getElementById('webfaq'), true);
+document.getElementById('q').addEventListener('input', (e) => {
+  const s = e.target.value.trim().toLowerCase(); let shown = 0;
+  document.querySelectorAll('#faq .grp').forEach((grp) => {
+    let any = false;
+    grp.querySelectorAll('.qa').forEach((b) => { const ok = !s || b.dataset.text.includes(s); b.style.display = ok ? '' : 'none'; if (ok) { any = true; shown++; } });
+    grp.style.display = any ? '' : 'none'; grp.previousElementSibling.style.display = any ? '' : 'none';
+  });
+  document.getElementById('empty').style.display = shown ? 'none' : 'block';
+});
+</script>
+</body>
+</html>
