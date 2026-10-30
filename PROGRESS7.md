@@ -1178,3 +1178,25 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   guessed category (B-065), D2 inside Edit loan (B-066), F2 banner + F3 list of household
   changes (B-067). (An earlier run of this request was cut off after E2 and D2 with F2/F3
   half-written; it was finished from where it stopped, not redone.) Phone: TEST-3 section 16.
+
+- NEWEST (2026-10-29, 17:15): Cath: "device test is as described" (TEST-3 s16). Every item
+  from her 2026-10-29 list is built and phone-tested. COMPLETE OPEN LIST given to her today
+  (from BUG-HUNT.md, SECURITY-3.2-PLAN.md, SMOOTH-HUNT.md, BUG-LOG.md, this log):
+  A. Release: v3 holds everything since 3.1.0 (K4, K5 step 1, all of 2026-10-29) and is NOT
+     merged into main; then an EAS build (version 3.2) and its build-only phone checks.
+  B. Security 3.2 (SECURITY-3.2-PLAN.md), her 4 open questions: K3 option A only or A then B;
+     re-lock also when a member leaves / owner hands over; "Upgrade lock" for unlinked
+     profiles; password rounds after "Check sign-in speed" on her phone. Then K5 steps 2-9
+     and K3. K2 peel-off switches: mockup K2c only, her decision.
+  C. Version 3 features not started: Forgot password / email check / Delete account;
+     privacy policy; Play Store listing; Firebase App Check; Premium payments; smart
+     features; widgets (need a development build); Help & FAQ; linked-household extras.
+  D. Smoothness: rebuild BottomSheet on the animation library so big forms are ready before
+     they rise (drag-down already done, bbde10c).
+  E. Housekeeping: 17 older fixed bugs with no automatic check (BUG-LOG B-004..B-033 "none
+     yet"); stray files firestore-debug.log, mobile-app/screen.png, screen2.png; Android
+     package name (now com.cathlauron.householdfinance) to confirm before the Play Store;
+     PROGRESS5 Quick Unlock Step 6 checklist (paused: still wanted?); Payment Methods report
+     and orphaned Firestore household cleanup (older notes); guest "Keep your first entry
+     safe" sheet shows before the item appears (cosmetic); H-04 / H-06 parked by her ("leave
+     as is"); a fresh bug hunt with the improved skill.
