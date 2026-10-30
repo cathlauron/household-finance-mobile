@@ -15,6 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.cathlauron.householdfinance",
+      "buildNumber": "1",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Use Face ID to unlock your household finances quickly."
       }
